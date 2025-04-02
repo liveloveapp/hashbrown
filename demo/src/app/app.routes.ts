@@ -1,10 +1,44 @@
-import { Route } from '@angular/router';
-import { ChatPageComponent } from './pages/chat-page.component';
-import { ShoppingListComponent } from './pages/shopping-list.component';
-import { EmailPageComponent } from './pages/email-page.component';
+import { Routes } from '@angular/router';
 
-export const appRoutes: Route[] = [
-  { path: '', component: ChatPageComponent },
-  { path: 'shopping-list', component: ShoppingListComponent },
-  { path: 'email', component: EmailPageComponent },
+export const routes: Routes = [
+  {
+    path: '',
+    redirectTo: 'lights',
+    pathMatch: 'full',
+  },
+  {
+    path: 'lights',
+    loadComponent: () =>
+      import('./features/lights/lights.component').then(
+        (m) => m.LightsComponent
+      ),
+  },
+  {
+    path: 'lights/add',
+    loadComponent: () =>
+      import('./features/lights/light-form.component').then(
+        (m) => m.LightFormComponent
+      ),
+  },
+  {
+    path: 'lights/:id/edit',
+    loadComponent: () =>
+      import('./features/lights/light-form.component').then(
+        (m) => m.LightFormComponent
+      ),
+  },
+  {
+    path: 'scenes',
+    loadComponent: () =>
+      import('./features/scenes/scenes.component').then(
+        (m) => m.ScenesComponent
+      ),
+  },
+  {
+    path: 'scheduled-scenes',
+    loadComponent: () =>
+      import('./pages/scheduled-scenes/scheduled-scenes.component').then(
+        (m) => m.ScheduledScenesComponent
+      ),
+  },
 ];

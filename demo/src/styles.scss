@@ -1,9 +1,6 @@
-/* You can add global styles to this file, and also import other style files */
-/* http://meyerweb.com/eric/tools/css/reset/ 
-   v2.0 | 20110126
-   License: none (public domain)
-*/
+@use '@angular/material' as mat;
 
+// Reset and global styles
 html,
 body,
 div,
@@ -92,7 +89,7 @@ video {
   font: inherit;
   vertical-align: baseline;
 }
-/* HTML5 display-role reset for older browsers */
+
 article,
 aside,
 details,
@@ -106,17 +103,22 @@ nav,
 section {
   display: block;
 }
+
 body {
   line-height: 1;
+  font-family: 'Roboto', sans-serif;
 }
+
 ol,
 ul {
   list-style: none;
 }
+
 blockquote,
 q {
   quotes: none;
 }
+
 blockquote:before,
 blockquote:after,
 q:before,
@@ -124,6 +126,7 @@ q:after {
   content: '';
   content: none;
 }
+
 table {
   border-collapse: collapse;
   border-spacing: 0;
@@ -133,6 +136,19 @@ table {
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Poppins', sans-serif;
+html {
+  color-scheme: dark;
+  @include mat.theme(
+    (
+      color: mat.$azure-palette,
+      typography: (
+        plain-family: Roboto,
+        brand-family: Open Sans,
+        bold-weight: 900,
+        medium-weight: 500,
+        regular-weight: 300,
+      ),
+      density: 0,
+    )
+  );
 }

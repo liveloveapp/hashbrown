@@ -1,14 +1,22 @@
 import {
   ApplicationConfig,
   provideExperimentalZonelessChangeDetection,
-  provideZoneChangeDetection,
 } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { appRoutes } from './app.routes';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideEffects } from '@ngrx/effects';
+import { provideStore } from '@ngrx/store';
+import { routes } from './app.routes';
+import * as lightApiEffects from './features/lights/effects/light-api.effects';
+import * as scenesApiEffects from './features/scenes/effects/scenes-api.effects';
+import { reducers } from './store';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideExperimentalZonelessChangeDetection(),
-    provideRouter(appRoutes),
+    provideRouter(routes, withComponentInputBinding()),
+    provideAnimations(),
+    provideStore(reducers),
+    provideEffects([lightApiEffects, scenesApiEffects]),
   ],
 };

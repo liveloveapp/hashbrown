@@ -1,6 +1,6 @@
-import { z, ZodObject, ZodTypeAny } from 'zod';
+import { z, ZodObject, ZodType, ZodTypeAny } from 'zod';
 import { Signal, Type } from '@angular/core';
-import { BoundTool } from './create-tool.fn';
+import { BoundTool, createTool } from './create-tool.fn';
 import { ChatMessage } from './types';
 import { chatResource } from './chat-resource.fn';
 /**
@@ -19,48 +19,105 @@ const UI = z.lazy(() =>
 );
  */
 
-type RichChatComponent<Input extends Record<string, ZodTypeAny>> = {
-  input: Input;
-  component: Type<{
-    input: z.infer<ZodObject<Input>>;
-  }>;
+type ChatComponent<Name extends string, T> = {
+  name: Name;
+  description: string;
+  component: Type<T>;
+  inputs: {
+    [K in keyof T]: T[K] extends Signal<infer U> ? ZodType<U> : never;
+  };
 };
 
-export type RichChatElements = {
-  [tagName: string]:
-    | {
-        element: HTMLElement;
-      }
-    | RichChatComponent<any>;
-};
+export function defineChatComponent<Name extends string, T>(
+  name: Name,
+  description: string,
+  component: Type<T>,
+  inputs: { [K in keyof T]: T[K] extends Signal<infer U> ? ZodType<U> : never }
+) {
+  console.log(component);
+  return { name, description, component, inputs };
+}
 
 export function richChatResource(args: {
-  ui: RichChatElements;
+  components: ChatComponent<string, any>[];
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
   messages?: ChatMessage[];
   tools?: BoundTool[];
 }) {
-  const elementUnion = z.record(
-    z.string(),
-    z.union([
-      z.object({
-        element: z.instanceof(HTMLElement),
+  const ui = z.object({
+    ui: z.union([
+      ...args.components.map((component) => {
+        return z.object({
+          name: z.literal(component.name),
+          inputs: z.object(
+            Object.keys(component.inputs).reduce((acc, key) => {
+              acc[key] = component.inputs[key];
+              return acc;
+            }, {} as Record<string, ZodTypeAny>)
+          ),
+        });
       }),
-      z.object({
-        input: z.record(z.string(), z.instanceof(ZodTypeAny)),
-        component: z.custom<Type<{ input: any }>>((val) => val !== undefined),
-      }),
-    ])
-  );
+    ] as any),
+  });
 
-  // const chat = chatResource({
-  //   model: args.model,
-  //   temperature: args.temperature,
-  //   maxTokens: args.maxTokens,
-  //   messages: args.messages,
-  //   tools: args.tools,
-  //   responseFormat: {},
-  // });
+  const chat = chatResource({
+    model: args.model,
+    temperature: args.temperature,
+    maxTokens: args.maxTokens,
+    // messages: args.messages,
+    messages: [
+      {
+        role: 'system',
+        content: `
+        You are chatbot chatting with a human on my web app. Please be 
+        curteuous, helpful, and friendly. Try to answer all questions 
+        to the best of your ability. Keep answers concise and to the point.
+
+        Today's date is ${new Date().toLocaleDateString()}.
+
+        # Tools
+        
+        ## showComponent
+        This tool is running in an Angular app. The angular app developer has
+        provided you with a list of components that can be used to convey
+        information to the user.
+
+        If you want to show a component to the user, you can use the 
+        \`showComponent\` tool.
+
+        The \`showComponent\` tool takes two arguments:
+        - The name of the component to show
+        - The inputs to pass to the component
+        
+        The inputs must match the expected inputs for the component.        
+        
+        Here is the description of each component:
+        ${args.components
+          .map((c) => `- ${c.name}: ${c.description}`)
+          .join('\n')}
+        `,
+      },
+    ],
+    tools: [
+      ...(args.tools ?? []),
+      createTool({
+        name: 'showComponent',
+        description: `
+        Show a component to the user.
+
+        The component must be one of the following:
+        ${args.components.map((c) => c.name).join(', ')}
+        `,
+        schema: ui as any,
+        handler: async (input) => {
+          console.log(input);
+          return {};
+        },
+      }),
+    ],
+  });
+
+  return chat;
 }

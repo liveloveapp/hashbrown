@@ -6,6 +6,7 @@ import {
   computed,
   signal,
   WritableSignal,
+  effect,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import OpenAI from 'openai';
@@ -19,14 +20,17 @@ import { FetchService } from './fetch.service';
 import {
   catchError,
   concatMap,
+  debounceTime,
   EMPTY,
   filter,
   from,
   map,
   Observable,
+  of,
   Subject,
   takeUntil,
   tap,
+  toArray,
 } from 'rxjs';
 import { FunctionParameters } from 'openai/resources';
 import { BoundTool } from './create-tool.fn';
@@ -194,21 +198,40 @@ function processToolCallMessage(
   message: AssistantMessage,
   configTools: BoundTool[] = [],
   injector: Injector
-): Observable<ToolMessage> {
-  const toolCall = message.tool_calls![0];
-  const tool = configTools.find((t) => t.name === toolCall.function.name);
-  if (!tool) {
-    throw new Error(`Tool ${toolCall.function.name} not found`);
-  }
-  const result = runInInjectionContext(injector, () =>
-    tool.handler(JSON.parse(toolCall.function.arguments))
-  );
-  return from(result).pipe(
-    map((result) => ({
-      role: 'tool',
-      content: JSON.stringify(result),
-      tool_call_id: toolCall.id,
-    }))
+): Observable<ToolMessage[]> {
+  const toolCalls = message.tool_calls;
+
+  if (!toolCalls) return EMPTY;
+
+  return from(toolCalls).pipe(
+    concatMap((toolCall) => {
+      const tool = configTools.find((t) => t.name === toolCall.function.name);
+      if (!tool) {
+        throw new Error(`Tool ${toolCall.function.name} not found`);
+      }
+
+      const result = runInInjectionContext(injector, () =>
+        tool.handler(JSON.parse(toolCall.function.arguments))
+      );
+
+      return from(result).pipe(
+        map(
+          (result): ToolMessage => ({
+            role: 'tool',
+            content: JSON.stringify(result),
+            tool_call_id: toolCall.id,
+          })
+        ),
+        catchError((err): Observable<ToolMessage> => {
+          return of({
+            role: 'tool',
+            content: JSON.stringify({ error: err.message }),
+            tool_call_id: toolCall.id,
+          });
+        })
+      );
+    }),
+    toArray()
   );
 }
 
@@ -268,9 +291,14 @@ export function chatResource(config: ChatResourceConfig) {
     return undefined;
   });
 
+  effect(() => {
+    console.log('Current Messages', messagesSignal());
+  });
+
   // Handle client messages and stream chat responses.
   toObservable(messagesSignal)
     .pipe(
+      debounceTime(150),
       filter((messages) => {
         const hasMessages = messages.length > 0;
         const lastMessageNeedsToBeSent =
@@ -329,10 +357,10 @@ export function chatResource(config: ChatResourceConfig) {
         processToolCallMessage(message, config.tools, injector)
       )
     )
-    .subscribe((toolMessage) =>
+    .subscribe((toolMessages) =>
       messagesSignal.update((currentMessages) => [
         ...currentMessages,
-        toolMessage,
+        ...toolMessages,
       ])
     );
 

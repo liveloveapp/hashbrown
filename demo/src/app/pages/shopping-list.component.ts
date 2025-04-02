@@ -2,7 +2,7 @@ import { Component, computed, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { z } from 'zod';
-import { predictionResource, predictionV2Resource } from '@cassini/core';
+import { predictionResource } from '@cassini/core';
 
 interface ShoppingItem {
   id: number;
@@ -178,7 +178,7 @@ export class ShoppingListComponent {
       .filter((item) => item.name)
       .map((item) => item.name);
   });
-  predictions = predictionV2Resource({
+  predictions = predictionResource({
     model: 'gpt-4o-mini',
     input: this.itemNames,
     outputSchema: z.object({

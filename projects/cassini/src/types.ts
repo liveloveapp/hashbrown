@@ -1,5 +1,6 @@
 import { JSONSchema } from 'openai/lib/jsonschema';
 import OpenAI from 'openai';
+import { Signal } from '@angular/core';
 // Tool function definition
 export type Tool<
   Name extends string = string,
@@ -111,3 +112,5 @@ export type ChatCompletionChunk = {
     finish_reason: string | null;
   }[];
 };
+
+export type SignalLike<T> = T | Signal<T>;
