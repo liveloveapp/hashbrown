@@ -5,6 +5,13 @@ export namespace s {
     description: string;
   }
 
+  // New interface for constant (literal) strings
+  export interface ConstStringType<T extends string> {
+    type: 'const-string';
+    description: string;
+    value: T;
+  }
+
   export interface NumberType {
     type: 'number';
     description: string;
@@ -51,16 +58,19 @@ export namespace s {
 
   export type AnyType =
     | StringType
+    | ConstStringType<string>
     | NumberType
     | BooleanType
     | IntegerType
-    | ObjectType<Record<string, AnyType>>
-    | ArrayType<AnyType>
+    | ObjectType<Record<string, any>>
+    | ArrayType<any>
     | EnumType<string[]>
-    | AnyOfType<AnyType[]>
+    | AnyOfType<any[]>
     | NullType;
 
-  export type Infer<T extends AnyType> = T extends StringType
+  export type Infer<T extends AnyType> = T extends ConstStringType<infer U>
+    ? U
+    : T extends StringType
     ? string
     : T extends NumberType
     ? number
@@ -69,15 +79,13 @@ export namespace s {
     : T extends IntegerType
     ? number
     : T extends ObjectType<infer V>
-    ? {
-        [K in keyof V]: Infer<V[K]>;
-      }
-    : T extends ArrayType<infer T>
-    ? Infer<T>[]
-    : T extends EnumType<infer T>
-    ? T[number]
-    : T extends AnyOfType<infer T>
-    ? Infer<T[number]>
+    ? { [K in keyof V]: Infer<V[K]> }
+    : T extends ArrayType<infer U>
+    ? Infer<U>[]
+    : T extends EnumType<infer Arr>
+    ? Arr[number]
+    : T extends AnyOfType<infer Arr>
+    ? Infer<Arr[number]>
     : T extends NullType
     ? null
     : never;
@@ -125,7 +133,9 @@ export namespace s {
     : T extends Array<infer U>
     ? ArrayType<Schema<U>>
     : T extends string
-    ? StringType
+    ? string extends T
+      ? StringType
+      : ConstStringType<T>
     : T extends number
     ? NumberType | IntegerType
     : T extends boolean
@@ -152,6 +162,17 @@ export const s = {
     return {
       type: 'string',
       description,
+    };
+  },
+  // New helper for constant strings
+  constString<T extends string>(
+    description: string,
+    value: T
+  ): s.ConstStringType<T> {
+    return {
+      type: 'const-string',
+      description,
+      value,
     };
   },
   number(description: string): s.NumberType {
@@ -210,6 +231,17 @@ export const s = {
     // Recursively convert our custom schema to a valid JSON Schema.
     switch (schema.type) {
       case 'string':
+        return {
+          type: schema.type,
+          description: schema.description,
+        };
+      case 'const-string': {
+        return {
+          type: 'string',
+          description: schema.description,
+          const: schema.value,
+        };
+      }
       case 'number':
       case 'boolean':
       case 'integer':
@@ -238,7 +270,9 @@ export const s = {
         return {
           type: 'array',
           description: schema.description,
-          items: s.toJsonSchema(schema.items),
+          items: s.toJsonSchema(
+            (schema as unknown as s.ArrayType<s.AnyType>).items
+          ),
         };
       }
 
@@ -253,7 +287,9 @@ export const s = {
       case 'anyOf': {
         return {
           description: schema.description,
-          anyOf: schema.anyOf.map((subSchema) => s.toJsonSchema(subSchema)),
+          anyOf: (schema as unknown as s.AnyOfType<s.AnyType[]>).anyOf.map(
+            (subSchema) => s.toJsonSchema(subSchema)
+          ),
         };
       }
 
@@ -273,77 +309,90 @@ export const s = {
    * @returns The value typed as s.Infer<typeof schema> if valid.
    * @throws Error if the value does not match the schema.
    */
-  parse<T>(schema: s.Schema<T>, value: unknown): T {
+  parse<T extends s.AnyType>(schema: T, value: unknown): s.Infer<T> {
     switch (schema.type) {
       case 'string':
         if (typeof value !== 'string') {
           throw new Error(`Expected string but got ${typeof value}`);
         }
-        return value as T;
+        return value as s.Infer<T>;
+
+      case 'const-string': {
+        if (value !== schema.value) {
+          throw new Error(
+            `Expected constant string ${schema.value} but got ${value}`
+          );
+        }
+        return schema.value as s.Infer<T>;
+      }
 
       case 'number':
         if (typeof value !== 'number') {
           throw new Error(`Expected number but got ${typeof value}`);
         }
-        return value as T;
+        return value as s.Infer<T>;
 
       case 'boolean':
         if (typeof value !== 'boolean') {
           throw new Error(`Expected boolean but got ${typeof value}`);
         }
-        return value as T;
+        return value as s.Infer<T>;
 
       case 'integer':
         if (typeof value !== 'number' || value % 1 !== 0) {
           throw new Error(`Expected integer but got ${value}`);
         }
-        return value as T;
+        return value as s.Infer<T>;
 
       case 'null':
         if (value !== null) {
           throw new Error(`Expected null but got ${typeof value}`);
         }
-        return value as T;
+        return null as any;
 
       case 'object': {
         if (typeof value !== 'object' || value === null) {
           throw new Error(`Expected object but got ${value}`);
         }
+        const schemaObj = schema as s.ObjectType<Record<string, s.AnyType>>;
         const obj = value as Record<string, unknown>;
         const parsedObj: Record<string, unknown> = {};
-        for (const key in schema.properties) {
+        for (const key in schemaObj.properties) {
           if (!(key in obj)) {
             throw new Error(`Missing property: ${key}`);
           }
           parsedObj[key] = s.parse(
-            schema.properties[key] as unknown as s.Schema<T[keyof T]>,
+            schemaObj.properties[key] as unknown as s.Schema<unknown>,
             obj[key]
           );
         }
-        return parsedObj as T;
+        return parsedObj as any as s.Infer<T>;
       }
 
       case 'array': {
         if (!Array.isArray(value)) {
           throw new Error(`Expected array but got ${typeof value}`);
         }
-        return value.map((item) => s.parse(schema.items, item)) as T;
+        return value.map((item) =>
+          (s.parse as any)(schema.items, item)
+        ) as any as s.Infer<T>;
       }
 
       case 'enum': {
-        if (typeof value !== 'string' || !schema.enum.includes(value)) {
+        const enumSchema = schema as s.EnumType<string[]>;
+        if (typeof value !== 'string' || !enumSchema.enum.includes(value)) {
           throw new Error(
-            `Expected one of [${schema.enum.join(', ')}] but got ${value}`
+            `Expected one of [${enumSchema.enum.join(', ')}] but got ${value}`
           );
         }
-        return value as T;
+        return value as s.Infer<T>;
       }
 
       case 'anyOf': {
         let lastError: unknown;
         for (const subSchema of schema.anyOf as s.AnyType[]) {
           try {
-            return s.parse(subSchema as unknown as s.Schema<T>, value);
+            return (s.parse as any)(subSchema, value) as s.Infer<T>;
           } catch (err) {
             lastError = err;
           }

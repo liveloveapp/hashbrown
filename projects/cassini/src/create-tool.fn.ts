@@ -1,20 +1,18 @@
 import { Observable } from 'rxjs';
-import { z } from 'zod';
 import { Tool } from './types';
-import { zodToJsonSchema } from 'zod-to-json-schema';
-import { JSONSchema } from 'openai/lib/jsonschema';
+import { s } from './schema';
 
 export class BoundTool<
   Name extends string = string,
-  Schema extends z.ZodTypeAny = z.ZodTypeAny,
+  InputSchema extends s.AnyType = s.AnyType,
   Output extends object = object
 > {
   constructor(
     readonly name: Name,
     readonly description: string,
-    readonly schema: Schema,
+    readonly schema: InputSchema,
     readonly handler: (
-      input: z.infer<Schema>
+      input: s.Infer<InputSchema>
     ) => Promise<Output> | Observable<Output>
   ) {}
 
@@ -22,20 +20,22 @@ export class BoundTool<
     return {
       name: this.name,
       description: this.description,
-      schema: zodToJsonSchema(this.schema) as unknown as JSONSchema,
+      schema: s.toJsonSchema(this.schema),
     };
   }
 }
 
 export function createTool<
   Name extends string,
-  Schema extends z.ZodTypeAny = z.ZodTypeAny,
+  InputSchema extends s.AnyType = s.AnyType,
   Output extends object = object
 >(input: {
   name: Name;
   description: string;
-  schema: Schema;
-  handler: (input: z.infer<Schema>) => Promise<Output> | Observable<Output>;
+  schema: InputSchema;
+  handler: (
+    input: s.Infer<InputSchema>
+  ) => Promise<Output> | Observable<Output>;
 }) {
   return new BoundTool(
     input.name,

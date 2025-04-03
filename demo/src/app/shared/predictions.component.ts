@@ -1,6 +1,5 @@
 import { Component, inject, linkedSignal } from '@angular/core';
-import { predictionResource } from '@cassini/core';
-import { z } from 'zod';
+import { predictionResource, s } from '@cassini/core';
 import { Store } from '@ngrx/store';
 import { MatIconModule } from '@angular/material/icon';
 import { SmartHomeService } from '../services/smart-home.service';
@@ -13,42 +12,46 @@ import {
 } from '../store';
 import { PredictionsAiActions } from '../features/predictions/actions';
 
-const PREDICTIONS_SCHEMA = z.union([
-  z.object({
-    type: z.literal('Add Light'),
-    reasonForSuggestion: z.string(),
-    name: z.string(),
-    brightness: z.number(),
+const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
+  s.object('Suggests adding a light to the system', {
+    type: s.constString('MUST BE "Add Light"', 'Add Light'),
+    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    name: s.string('The suggested name of the light'),
+    brightness: s.integer('A number between 0-100'),
   }),
-  z.object({
-    type: z.literal('Add Scene'),
-    reasonForSuggestion: z.string(),
-    name: z.string(),
-    lights: z.array(
-      z.object({
-        lightId: z.string(),
-        brightness: z.number(),
+  s.object('Suggest adding a scene to the system', {
+    type: s.constString('MUST BE "Add Scene"', 'Add Scene'),
+    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    name: s.string('The suggested name of the scene'),
+    lights: s.array(
+      'The lights in the scene',
+      s.object('A light in the scene', {
+        lightId: s.string('The ID of the light'),
+        brightness: s.integer('A number between 0-100'),
       })
     ),
   }),
-  z.object({
-    type: z.literal('Schedule Scene'),
-    reasonForSuggestion: z.string(),
-    sceneId: z.string(),
-    datetime: z.string(),
+  s.object('Suggest scheduling a scene to the system', {
+    type: s.constString('MUST BE "Schedule Scene"', 'Schedule Scene'),
+    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    sceneId: s.string('The ID of the scene'),
+    datetime: s.string('The datetime of the scene'),
   }),
-  z.object({
-    type: z.literal('Add Light to Scene'),
-    reasonForSuggestion: z.string(),
-    lightId: z.string(),
-    sceneId: z.string(),
-    brightness: z.number(),
+  s.object('Suggest adding a light to a scene', {
+    type: s.constString('MUST BE "Add Light to Scene"', 'Add Light to Scene'),
+    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    lightId: s.string('The ID of the light'),
+    sceneId: s.string('The ID of the scene'),
+    brightness: s.integer('A number between 0-100'),
   }),
-  z.object({
-    type: z.literal('Remove Light from Scene'),
-    reasonForSuggestion: z.string(),
-    lightId: z.string(),
-    sceneId: z.string(),
+  s.object('Suggest removing a light from a scene', {
+    type: s.constString(
+      'MUST BE "Remove Light from Scene"',
+      'Remove Light from Scene'
+    ),
+    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    lightId: s.string('The ID of the light'),
+    sceneId: s.string('The ID of the scene'),
   }),
 ]);
 
@@ -387,12 +390,12 @@ Additional Rules:
         description: 'All scenes in the smart home',
       },
     },
-    outputSchema: z.array(PREDICTIONS_SCHEMA),
+    outputSchema: s.array('The predictions', PREDICTIONS_SCHEMA),
   });
 
   output = linkedSignal({
     source: this.predictions.output,
-    computation: (source): z.infer<typeof PREDICTIONS_SCHEMA>[] => {
+    computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
       if (source === null || source.length === 0) return [];
 
       return source;

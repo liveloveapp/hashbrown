@@ -34,9 +34,7 @@ import {
 } from 'rxjs';
 import { FunctionParameters } from 'openai/resources';
 import { BoundTool } from './create-tool.fn';
-import { ZodTypeAny } from 'zod';
-import zodToJsonSchema from 'zod-to-json-schema';
-import { JSONSchema } from 'openai/lib/jsonschema';
+import { s } from './schema';
 
 /**
  * Chat resource configuration.
@@ -47,7 +45,7 @@ export type ChatResourceConfig = {
   tools?: BoundTool[];
   maxTokens?: number | Signal<number>;
   messages?: ChatMessage[];
-  responseFormat?: ZodTypeAny | Signal<ZodTypeAny>;
+  responseFormat?: s.AnyType | Signal<s.AnyType>;
 };
 
 /**
@@ -211,7 +209,12 @@ function processToolCallMessage(
       }
 
       const result = runInInjectionContext(injector, () =>
-        tool.handler(JSON.parse(toolCall.function.arguments))
+        (tool.handler as any)(
+          (s.parse as any)(
+            tool.schema as any,
+            JSON.parse(toolCall.function.arguments)
+          )
+        )
       );
 
       return from(result).pipe(
@@ -285,7 +288,7 @@ export function chatResource(config: ChatResourceConfig) {
     const currentFormat = computedResponseFormat();
 
     if (currentFormat) {
-      return zodToJsonSchema(currentFormat) as unknown as JSONSchema;
+      return s.toJsonSchema(currentFormat);
     }
 
     return undefined;

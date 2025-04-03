@@ -1,6 +1,6 @@
 import { computed, Signal } from '@angular/core';
 import { predictionResource } from './prediction-resource.fn';
-import { z } from 'zod';
+import { s } from './schema';
 
 export function predictTextResource(args: {
   input: Signal<string | { before: string; after: string } | null | undefined>;
@@ -13,6 +13,9 @@ export function predictTextResource(args: {
     output: string;
   }[];
 }) {
+  const outputSchema = s.object('The predicted text', {
+    text: s.string('The predicted text'),
+  });
   const prediction = predictionResource({
     input: args.input,
     description: `
@@ -52,12 +55,10 @@ export function predictTextResource(args: {
     model: args.model,
     temperature: args.temperature,
     maxTokens: args.maxTokens,
-    outputSchema: z.object({
-      text: z.string(),
-    }),
+    outputSchema,
     examples: args.examples?.map((example) => ({
       input: example.input,
-      output: { text: example.output },
+      output: { text: example.output } as s.Infer<typeof outputSchema>,
     })),
   });
 

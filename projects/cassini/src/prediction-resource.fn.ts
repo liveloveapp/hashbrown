@@ -1,17 +1,20 @@
 import { Signal, effect, computed } from '@angular/core';
-import { z, ZodSchema } from 'zod';
 import { chatResource } from './chat-resource.fn';
 import { SignalLike, SystemMessage } from './types';
 import { BoundTool, createTool } from './create-tool.fn';
+import { s } from './schema';
 
-export function predictionResource<Input, Output>(args: {
+export function predictionResource<
+  Input,
+  OutputSchema extends s.AnyType
+>(args: {
   model: string;
   temperature?: number;
   maxTokens?: number;
   input: Signal<Input | null | undefined>;
   description: SignalLike<string>;
-  outputSchema: ZodSchema<Output>;
-  examples?: { input: Input; output: Output }[];
+  outputSchema: OutputSchema;
+  examples?: { input: Input; output: s.Infer<OutputSchema> }[];
   tools?: SignalLike<BoundTool[]>;
   signals?: {
     [key: string]: {
@@ -19,7 +22,10 @@ export function predictionResource<Input, Output>(args: {
       description: string;
     };
   };
-}) {
+}): {
+  output: Signal<s.Infer<OutputSchema> | null>;
+  isPredicting: Signal<boolean>;
+} {
   const description = computed(() => {
     return typeof args.description === 'string'
       ? args.description
@@ -28,9 +34,9 @@ export function predictionResource<Input, Output>(args: {
   const readStateTool = createTool({
     name: 'readState',
     description: 'Read the state of the system',
-    schema: z.object({
-      name: z.string(),
-    }) as any,
+    schema: s.object('Read the state of the system', {
+      name: s.string('The name of the state'),
+    }),
     handler: async (input) => {
       const signal = args.signals?.[input.name];
       if (!signal) {
@@ -75,9 +81,9 @@ export function predictionResource<Input, Output>(args: {
       ${signalsInstructions()}
 
       Here are examples:
-      ${args.examples
+      ${(args.examples as unknown as { input: object; output: object }[])
         ?.map(
-          (example) => `
+          (example: { input: object; output: object }) => `
         Input: ${JSON.stringify(example.input)}
         Output: ${JSON.stringify(example.output)}
       `
@@ -102,7 +108,7 @@ export function predictionResource<Input, Output>(args: {
     tools: [...tools(), ...(args.signals ? [readStateTool] : [])],
   });
 
-  const output = computed(() => {
+  const output = computed((): s.Infer<OutputSchema> | null => {
     const messages = chat.messages();
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage) {
@@ -114,7 +120,10 @@ export function predictionResource<Input, Output>(args: {
     }
 
     try {
-      return args.outputSchema.parse(JSON.parse(lastMessage.content ?? '{}'));
+      return (s.parse as any)(
+        args.outputSchema as unknown,
+        JSON.parse(lastMessage.content ?? '{}')
+      );
     } catch (error) {
       return null;
     }

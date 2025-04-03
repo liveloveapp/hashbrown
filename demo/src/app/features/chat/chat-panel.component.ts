@@ -7,7 +7,6 @@ import {
   defineChatComponent,
   richChatResource,
 } from '@cassini/core';
-import { z } from 'zod';
 import { tap } from 'rxjs';
 import { AuthService } from '../../shared/auth.service';
 import { SmartHomeService } from '../../services/smart-home.service';
@@ -16,6 +15,7 @@ import { MessagesComponent } from './components/messages.component';
 import { ComposerComponent } from './components/composer.component';
 import { ChatAiActions } from './actions/chat-ai.actions';
 import { LightCardComponent } from './components/light-card.component';
+import { s } from '@cassini/core';
 
 @Component({
   selector: 'app-chat-panel',
@@ -102,16 +102,6 @@ export class ChatPanelComponent {
   };
 
   chat = richChatResource({
-    components: [
-      defineChatComponent(
-        'light',
-        'Shows a light to the user',
-        LightCardComponent,
-        {
-          lightId: z.string(),
-        } as any
-      ),
-    ],
     model: 'gpt-4o',
     messages: [
       {
@@ -120,33 +110,43 @@ export class ChatPanelComponent {
           'You are a helpful assistant that can answer questions and help with tasks.',
       },
     ],
+    components: [
+      defineChatComponent(
+        'light',
+        'Show a light to the user',
+        LightCardComponent,
+        {
+          lightId: s.string('The id of the light'),
+        }
+      ),
+    ],
     tools: [
       createTool({
         name: 'getUser',
-        description: 'Get the current user',
-        schema: z.object({}) as any,
-        handler: () => this.authService.getUser(),
+        description: 'Get information about the current user',
+        schema: s.object('Empty object', {}),
+        handler: () => {
+          const auth = inject(AuthService);
+
+          return auth.getUser();
+        },
       }),
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
-        schema: z.object({}) as any,
+        schema: s.object('Empty object', {}),
         handler: () => this.smartHomeService.loadLights(),
-      }),
-      createTool({
-        name: 'getScenes',
-        description: 'Get the current scenes',
-        schema: z.object({}) as any,
-        handler: () => this.smartHomeService.loadScenes(),
       }),
       createTool({
         name: 'controlLight',
         description:
           'Control the light. Brightness is a number between 0 and 100.',
-        schema: z.object({
-          lightId: z.string(),
-          brightness: z.number(),
-        }) as any,
+        schema: s.object('Control light input', {
+          lightId: s.string('The id of the light'),
+          brightness: s.number(
+            'The brightness of the light, between 0 and 100'
+          ),
+        }),
         handler: (input) => {
           return this.smartHomeService
             .controlLight(input.lightId, input.brightness)
@@ -160,20 +160,6 @@ export class ChatPanelComponent {
                 )
               )
             );
-        },
-      }),
-      createTool({
-        name: 'applyScene',
-        description: 'Apply a scene to the home',
-        schema: z.object({
-          sceneId: z.string(),
-        }) as any,
-        handler: (input) => {
-          return this.smartHomeService.applyScene(input.sceneId).pipe(
-            tap((scene) => {
-              this.store.dispatch(ChatAiActions.applyScene({ scene }));
-            })
-          );
         },
       }),
     ],

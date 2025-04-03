@@ -1,8 +1,8 @@
-import { z, ZodObject, ZodType, ZodTypeAny } from 'zod';
 import { computed, Signal, Type } from '@angular/core';
 import { BoundTool, createTool } from './create-tool.fn';
 import { ChatMessage } from './types';
 import { chatResource } from './chat-resource.fn';
+import { s } from './schema';
 
 /**
 const UI = z.lazy(() =>
@@ -25,7 +25,7 @@ type ChatComponent<Name extends string, T> = {
   description: string;
   component: Type<T>;
   inputs: Partial<{
-    [K in keyof T]: T[K] extends Signal<infer U> ? ZodType<U> : never;
+    [K in keyof T]: T[K] extends Signal<infer U> ? s.Schema<U> : never;
   }>;
 };
 
@@ -34,7 +34,7 @@ export function defineChatComponent<Name extends string, T>(
   description: string,
   component: Type<T>,
   inputs: Partial<{
-    [K in keyof T]: T[K] extends Signal<infer U> ? ZodType<U> : never;
+    [K in keyof T]: T[K] extends Signal<infer U> ? s.Schema<U> : never;
   }>
 ) {
   console.log(component);
@@ -42,27 +42,44 @@ export function defineChatComponent<Name extends string, T>(
 }
 
 export function richChatResource(args: {
-  components?: ChatComponent<string, any>[];
+  components?: ChatComponent<string, unknown>[];
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
   messages?: ChatMessage[];
   tools?: BoundTool[];
 }) {
-  const ui = z.object({
-    ui: z.union([
+  // const ui = z.object({
+  //   ui: z.union([
+  //     ...(args.components ?? []).map((component) => {
+  //       return z.object({
+  //         name: z.literal(component.name),
+  //         inputs: z.object(
+  //           Object.keys(component.inputs).reduce((acc, key) => {
+  //             (acc as any)[key] = component.inputs[key];
+  //             return acc;
+  //           }, {} as Record<string, ZodTypeAny>)
+  //         ),
+  //       });
+  //     }),
+  //   ] as any),
+  // });
+
+  const ui = s.object('UI', {
+    ui: s.anyOf('Any one of the following components', [
       ...(args.components ?? []).map((component) => {
-        return z.object({
-          name: z.literal(component.name),
-          inputs: z.object(
+        return s.object(component.name, {
+          name: s.string(`Must be ${component.name}`),
+          inputs: s.object(
+            'Values to pass to the component',
             Object.keys(component.inputs).reduce((acc, key) => {
-              (acc as any)[key] = component.inputs[key];
+              (acc as any)[key] = (component.inputs as any)[key];
               return acc;
-            }, {} as Record<string, ZodTypeAny>)
+            }, {} as Record<string, s.AnyType>)
           ),
         });
       }),
-    ] as any),
+    ]),
   });
 
   const showComponentInstruction = computed(() => {
@@ -125,7 +142,7 @@ export function richChatResource(args: {
         The component must be one of the following:
         ${args.components?.map((c) => c.name).join(', ') ?? ''}
         `,
-              schema: ui as any,
+              schema: ui,
               handler: async (input) => {
                 console.log(input);
                 return {};

@@ -18,9 +18,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatIconModule } from '@angular/material/icon';
 import { Scene } from '../../../models/scene.model';
-import { predictionResource } from '@cassini/core';
+import { predictionResource, s } from '@cassini/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { z } from 'zod';
 import { Store } from '@ngrx/store';
 import { selectAllLights, selectLightEntities } from '../../../store';
 
@@ -173,12 +172,14 @@ export class SceneFormDialogComponent {
       Do not include any other text in your response.
     `
     ),
-    outputSchema: z.array(
-      z.object({ lightId: z.string(), brightness: z.number() })
+    outputSchema: s.array(
+      'The lights to add to the scene',
+      s.object('A join between a light and a scene', {
+        lightId: s.string('the ID of the light to add'),
+        brightness: s.number('the brightness of the light'),
+      })
     ),
     model: 'gpt-4o-mini',
-    temperature: 0.5,
-    maxTokens: 1000,
   });
 
   protected get lightsFormArray() {
