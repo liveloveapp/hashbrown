@@ -52,6 +52,10 @@ export class SmartHomeService {
     return of(this.lights());
   }
 
+  loadScenes(): Observable<Scene[]> {
+    return of(this.scenes());
+  }
+
   addLight(light: Omit<Light, 'id'>): Observable<Light> {
     const newLight: Light = {
       ...light,
@@ -207,6 +211,10 @@ export class SmartHomeService {
     );
 
     return of({ lightId, sceneId, brightness });
+  }
+
+  controlLight(lightId: string, brightness: number) {
+    return this.updateLight(lightId, { brightness });
   }
 
   private startScheduledScenesCheck() {

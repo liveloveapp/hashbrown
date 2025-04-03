@@ -4,15 +4,20 @@ import { SystemMessage, Tool } from './types';
 import { chatResource } from './chat-resource.fn';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toObservable } from '@angular/core/rxjs-interop';
+import { s } from './schema';
+import { BoundTool } from './create-tool.fn';
 
-export function toolResultResource<Input, Output extends object>(args: {
+export function toolResultResource<
+  Input,
+  OutputSchema extends s.AnyType
+>(args: {
   input: Signal<Input | null | undefined>;
   description: string;
   model: string;
   temperature?: number;
   maxTokens?: number;
-  examples?: { input: Input; output: Output }[];
-  tool: Tool;
+  examples?: { input: Input; output: s.Infer<OutputSchema> }[];
+  tool: BoundTool<string, OutputSchema, object>;
 }) {
   const systemMessage: SystemMessage = {
     role: 'system',
@@ -28,13 +33,15 @@ export function toolResultResource<Input, Output extends object>(args: {
           ?.map(
             (example) => `
           Input: ${JSON.stringify(example.input)}
-          Output: ${JSON.stringify(example.output)}
+          Output: ${JSON.stringify(
+            (example as unknown as { output: object }).output
+          )}
         `
           )
           .join('\n')}
       `,
   };
-  const output = signal<Output | null>(null);
+  const output = signal<s.Infer<OutputSchema> | null>(null);
 
   const chat = chatResource({
     model: args.model,

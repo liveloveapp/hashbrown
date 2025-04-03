@@ -1,8 +1,9 @@
 import { z, ZodObject, ZodType, ZodTypeAny } from 'zod';
-import { Signal, Type } from '@angular/core';
+import { computed, Signal, Type } from '@angular/core';
 import { BoundTool, createTool } from './create-tool.fn';
 import { ChatMessage } from './types';
 import { chatResource } from './chat-resource.fn';
+
 /**
 const UI = z.lazy(() =>
   z.object({
@@ -23,23 +24,25 @@ type ChatComponent<Name extends string, T> = {
   name: Name;
   description: string;
   component: Type<T>;
-  inputs: {
+  inputs: Partial<{
     [K in keyof T]: T[K] extends Signal<infer U> ? ZodType<U> : never;
-  };
+  }>;
 };
 
 export function defineChatComponent<Name extends string, T>(
   name: Name,
   description: string,
   component: Type<T>,
-  inputs: { [K in keyof T]: T[K] extends Signal<infer U> ? ZodType<U> : never }
+  inputs: Partial<{
+    [K in keyof T]: T[K] extends Signal<infer U> ? ZodType<U> : never;
+  }>
 ) {
   console.log(component);
   return { name, description, component, inputs };
 }
 
 export function richChatResource(args: {
-  components: ChatComponent<string, any>[];
+  components?: ChatComponent<string, any>[];
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
@@ -48,18 +51,45 @@ export function richChatResource(args: {
 }) {
   const ui = z.object({
     ui: z.union([
-      ...args.components.map((component) => {
+      ...(args.components ?? []).map((component) => {
         return z.object({
           name: z.literal(component.name),
           inputs: z.object(
             Object.keys(component.inputs).reduce((acc, key) => {
-              acc[key] = component.inputs[key];
+              (acc as any)[key] = component.inputs[key];
               return acc;
             }, {} as Record<string, ZodTypeAny>)
           ),
         });
       }),
     ] as any),
+  });
+
+  const showComponentInstruction = computed(() => {
+    if (!args.components || args.components.length === 0) {
+      return '';
+    }
+
+    return `
+     ## showComponent
+        This tool is running in an Angular app. The angular app developer has
+        provided you with a list of components that can be used to convey
+        information to the user.
+
+        If you want to show a component to the user, you can use the 
+        \`showComponent\` tool.
+
+        The \`showComponent\` tool takes two arguments:
+        - The name of the component to show
+        - The inputs to pass to the component
+        
+        The inputs must match the expected inputs for the component.        
+        
+        Here is the description of each component:
+        ${args.components
+          .map((c) => `- ${c.name}: ${c.description}`)
+          .join('\n')}
+    `;
   });
 
   const chat = chatResource({
@@ -78,44 +108,31 @@ export function richChatResource(args: {
         Today's date is ${new Date().toLocaleDateString()}.
 
         # Tools
-        
-        ## showComponent
-        This tool is running in an Angular app. The angular app developer has
-        provided you with a list of components that can be used to convey
-        information to the user.
-
-        If you want to show a component to the user, you can use the 
-        \`showComponent\` tool.
-
-        The \`showComponent\` tool takes two arguments:
-        - The name of the component to show
-        - The inputs to pass to the component
-        
-        The inputs must match the expected inputs for the component.        
-        
-        Here is the description of each component:
-        ${args.components
-          .map((c) => `- ${c.name}: ${c.description}`)
-          .join('\n')}
+        ${showComponentInstruction()}
+       
         `,
       },
     ],
     tools: [
       ...(args.tools ?? []),
-      createTool({
-        name: 'showComponent',
-        description: `
+      ...(args.components && args.components.length
+        ? [
+            createTool({
+              name: 'showComponent',
+              description: `
         Show a component to the user.
 
         The component must be one of the following:
-        ${args.components.map((c) => c.name).join(', ')}
+        ${args.components?.map((c) => c.name).join(', ') ?? ''}
         `,
-        schema: ui as any,
-        handler: async (input) => {
-          console.log(input);
-          return {};
-        },
-      }),
+              schema: ui as any,
+              handler: async (input) => {
+                console.log(input);
+                return {};
+              },
+            }),
+          ]
+        : []),
     ],
   });
 

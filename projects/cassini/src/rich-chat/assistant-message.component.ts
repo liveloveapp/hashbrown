@@ -22,7 +22,7 @@ interface RenderData {
     @if (renderData()) {
     <ng-template #componentContainer></ng-template>
     } @else {
-    {{ message()?.content }}
+    {{ message().content }}
     }
   `,
 })
@@ -37,6 +37,17 @@ export class AssistantMessageComponent {
   // Define the viewChild as a signal.
   readonly container = viewChild('componentContainer', {
     read: ViewContainerRef,
+  });
+
+  showComponentToolCalls = computed(() => {
+    const msg = this.message();
+    const toolCalls = msg?.tool_calls;
+
+    if (!toolCalls) {
+      return [];
+    }
+
+    return toolCalls.filter((tc) => tc.function.name === 'showComponent');
   });
 
   // Computed signal to extract render instructions from the message.

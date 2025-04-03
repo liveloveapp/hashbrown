@@ -3,7 +3,7 @@ import { createReducer, on } from '@ngrx/store';
 import { Light } from '../models/light.model';
 import { LightsApiActions } from '../features/lights/actions/lights-api.actions';
 import { LightsPageActions } from '../features/lights/actions/lights-page.actions';
-
+import { ChatAiActions } from '../features/chat/actions';
 export interface LightsState extends EntityState<Light> {
   isLoading: boolean;
   error: string | null;
@@ -50,7 +50,22 @@ export const lightsReducer = createReducer(
   on(LightsApiActions.deleteLightFailure, (state, action) => ({
     ...state,
     error: action.error,
-  }))
+  })),
+  on(ChatAiActions.controlLight, (state, action) =>
+    adapter.updateOne(
+      { id: action.lightId, changes: { brightness: action.brightness } },
+      state
+    )
+  ),
+  on(ChatAiActions.applyScene, (state, action) =>
+    adapter.updateMany(
+      action.scene.lights.map((light) => ({
+        id: light.lightId,
+        changes: { brightness: light.brightness },
+      })),
+      state
+    )
+  )
 );
 
 export const { selectAll, selectEntities, selectIds, selectTotal } =
