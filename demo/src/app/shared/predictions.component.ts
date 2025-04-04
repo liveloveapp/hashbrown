@@ -394,9 +394,9 @@ Additional Rules:
   });
 
   output = linkedSignal({
-    source: this.predictions.output,
+    source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
-      if (source === null || source.length === 0) return [];
+      if (source === undefined || source.length === 0) return [];
 
       return source;
     },

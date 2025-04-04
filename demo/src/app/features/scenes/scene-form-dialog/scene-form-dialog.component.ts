@@ -80,7 +80,7 @@ import { selectAllLights, selectLightEntities } from '../../../store';
           }
         </div>
 
-        @let suggestedLights = predictedLights.output(); @if (suggestedLights) {
+        @let suggestedLights = predictedLights.value(); @if (suggestedLights) {
 
         <h5><mat-icon aria-hidden="true" inline>bolt</mat-icon> Suggestions</h5>
         @for (light of suggestedLights; track light.lightId) { @let

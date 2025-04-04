@@ -7,6 +7,9 @@ import {
   signal,
   WritableSignal,
   effect,
+  Resource,
+  ResourceStatus,
+  WritableResource,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import OpenAI from 'openai';
@@ -18,7 +21,9 @@ import {
 } from './types';
 import { FetchService } from './fetch.service';
 import {
+  BehaviorSubject,
   catchError,
+  combineLatest,
   concatMap,
   debounceTime,
   EMPTY,
@@ -36,13 +41,17 @@ import { FunctionParameters } from 'openai/resources';
 import { BoundTool } from './create-tool.fn';
 import { s } from './schema';
 
+export interface ChatResource extends WritableResource<ChatMessage[]> {
+  sendMessage: (message: ChatMessage | ChatMessage[]) => void;
+}
+
 /**
  * Chat resource configuration.
  */
 export type ChatResourceConfig = {
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
-  tools?: BoundTool[];
+  tools?: BoundTool<string, any>[];
   maxTokens?: number | Signal<number>;
   messages?: ChatMessage[];
   responseFormat?: s.AnyType | Signal<s.AnyType>;
@@ -122,7 +131,7 @@ function updateMessagesWithDelta(
  * @returns An array of tool definitions for the chat completion.
  */
 function createToolDefinitions(
-  tools: BoundTool[] = []
+  tools: BoundTool<string, s.ObjectType<Record<string, s.AnyType>>>[] = []
 ): OpenAI.Chat.Completions.ChatCompletionTool[] {
   return tools.map((boundTool): OpenAI.Chat.Completions.ChatCompletionTool => {
     const tool = boundTool.toTool();
@@ -194,7 +203,7 @@ function finalizeChat(
  */
 function processToolCallMessage(
   message: AssistantMessage,
-  configTools: BoundTool[] = [],
+  configTools: BoundTool<string, any>[] = [],
   injector: Injector
 ): Observable<ToolMessage[]> {
   const toolCalls = message.tool_calls;
@@ -244,7 +253,7 @@ function processToolCallMessage(
  * @param config - The chat resource configuration.
  * @returns An object with reactive signals and a sendMessage function.
  */
-export function chatResource(config: ChatResourceConfig) {
+export function chatResource(config: ChatResourceConfig): ChatResource {
   const injector = inject(Injector);
   const fetchService = inject(FetchService);
   const messagesSignal = signal<ChatMessage[]>(config.messages || []);
@@ -255,6 +264,7 @@ export function chatResource(config: ChatResourceConfig) {
   const toolDefinitions = createToolDefinitions(config.tools);
   const toolCallMessages$ = new Subject<AssistantMessage>();
   const abortSignal = new Subject<void>();
+  const reloadSignal = new BehaviorSubject<true>(true);
 
   const computedModel = computed(() =>
     typeof config.model === 'string' ? config.model : config.model()
@@ -299,17 +309,17 @@ export function chatResource(config: ChatResourceConfig) {
   });
 
   // Handle client messages and stream chat responses.
-  toObservable(messagesSignal)
+  combineLatest([toObservable(messagesSignal), reloadSignal.asObservable()])
     .pipe(
       debounceTime(150),
-      filter((messages) => {
+      filter(([messages]) => {
         const hasMessages = messages.length > 0;
         const lastMessageNeedsToBeSent =
           messages[messages.length - 1]?.role !== 'assistant' &&
           messages[messages.length - 1]?.role !== 'system';
         return hasMessages && lastMessageNeedsToBeSent;
       }),
-      concatMap((messages) => {
+      concatMap(([messages]) => {
         isSending.set(true);
         isReceiving.set(false);
         console.log('sending these messages', messages);
@@ -367,41 +377,86 @@ export function chatResource(config: ChatResourceConfig) {
       ])
     );
 
-  return {
-    messages: messagesSignal,
-    isSending,
-    isReceiving,
-    error,
-    /**
-     * Sends a chat message or an array of chat messages.
-     *
-     * @param message - A chat message or an array of chat messages.
-     */
-    sendMessage: (message: ChatMessage | ChatMessage[]) => {
-      if (isSending() || isReceiving()) {
-        throw new Error('Cannot send message while sending or receiving');
-      }
+  function sendMessage(message: ChatMessage | ChatMessage[]) {
+    if (isSending() || isReceiving()) {
+      throw new Error('Cannot send message while sending or receiving');
+    }
 
-      messagesSignal.update((currentMessages) => [
-        ...currentMessages,
-        ...(Array.isArray(message) ? message : [message]),
-      ]);
-    },
-    /**
-     * Replaces all existing messages with new messages and starts a new chat.
-     *
-     * @param newMessages - The new messages to set.
-     */
-    setMessages: (newMessages: ChatMessage[]) => {
+    messagesSignal.update((currentMessages) => [
+      ...currentMessages,
+      ...(Array.isArray(message) ? message : [message]),
+    ]);
+  }
+
+  function setMessages(newMessages: ChatMessage[]) {
+    abortSignal.next();
+
+    // Reset all state
+    error.set(null);
+    isSending.set(false);
+    isReceiving.set(false);
+
+    // Clear existing messages and set new ones
+    messagesSignal.set(newMessages);
+  }
+
+  function updateMessages(updater: (messages: ChatMessage[]) => ChatMessage[]) {
+    abortSignal.next();
+
+    // Reset all state
+    error.set(null);
+    isSending.set(false);
+    isReceiving.set(false);
+
+    // Update messages
+    messagesSignal.update(updater);
+  }
+
+  function hasValue(this: ChatResource) {
+    return true;
+  }
+
+  const isLoading = computed(() => isSending() || isReceiving());
+  const status = computed(() => {
+    if (isLoading()) {
+      return ResourceStatus.Loading;
+    }
+
+    if (error()) {
+      return ResourceStatus.Error;
+    }
+
+    return ResourceStatus.Idle;
+  });
+
+  function reload() {
+    if (isLoading()) {
       abortSignal.next();
+      reloadSignal.next(true);
 
-      // Reset all state
-      error.set(null);
-      isSending.set(false);
-      isReceiving.set(false);
+      return true;
+    }
 
-      // Clear existing messages and set new ones
-      messagesSignal.set(newMessages);
-    },
+    return false;
+  }
+
+  return {
+    value: messagesSignal,
+    status,
+    isLoading,
+    sendMessage,
+    set: setMessages,
+    update: updateMessages,
+    error,
+    hasValue: hasValue as any,
+    reload,
+    asReadonly: (): Resource<ChatMessage[]> => ({
+      value: messagesSignal,
+      status,
+      isLoading,
+      error,
+      hasValue: hasValue as any,
+      reload,
+    }),
   };
 }

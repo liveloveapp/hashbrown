@@ -4,7 +4,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { Store } from '@ngrx/store';
 import {
   createTool,
-  defineChatComponent,
+  createToolWithArgs,
+  exposeComponent,
   richChatResource,
 } from '@cassini/core';
 import { tap } from 'rxjs';
@@ -41,7 +42,7 @@ import { s } from '@cassini/core';
 
     <div class="chat-messages">
       <app-chat-messages
-        [messages]="chat.messages()"
+        [messages]="chat.value()"
         [components]="components"
       ></app-chat-messages>
     </div>
@@ -111,20 +112,19 @@ export class ChatPanelComponent {
       },
     ],
     components: [
-      defineChatComponent(
-        'light',
-        'Show a light to the user',
-        LightCardComponent,
-        {
+      exposeComponent({
+        name: 'light',
+        description: 'Show a light to the user',
+        component: LightCardComponent,
+        inputs: {
           lightId: s.string('The id of the light'),
-        }
-      ),
+        },
+      }),
     ],
     tools: [
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
-        schema: s.object('Empty object', {}),
         handler: () => {
           const auth = inject(AuthService);
 
@@ -134,10 +134,9 @@ export class ChatPanelComponent {
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
-        schema: s.object('Empty object', {}),
         handler: () => this.smartHomeService.loadLights(),
       }),
-      createTool({
+      createToolWithArgs({
         name: 'controlLight',
         description:
           'Control the light. Brightness is a number between 0 and 100.',

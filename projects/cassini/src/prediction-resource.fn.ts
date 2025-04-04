@@ -1,7 +1,7 @@
-import { Signal, effect, computed } from '@angular/core';
+import { Signal, effect, computed, Resource } from '@angular/core';
 import { chatResource } from './chat-resource.fn';
 import { SignalLike, SystemMessage } from './types';
-import { BoundTool, createTool } from './create-tool.fn';
+import { BoundTool, createToolWithArgs } from './create-tool.fn';
 import { s } from './schema';
 
 export function predictionResource<
@@ -15,23 +15,20 @@ export function predictionResource<
   description: SignalLike<string>;
   outputSchema: OutputSchema;
   examples?: { input: Input; output: s.Infer<OutputSchema> }[];
-  tools?: SignalLike<BoundTool[]>;
+  tools?: SignalLike<BoundTool<string, any>[]>;
   signals?: {
     [key: string]: {
       signal: Signal<any>;
       description: string;
     };
   };
-}): {
-  output: Signal<s.Infer<OutputSchema> | null>;
-  isPredicting: Signal<boolean>;
-} {
+}): Resource<s.Infer<OutputSchema> | undefined> {
   const description = computed(() => {
     return typeof args.description === 'string'
       ? args.description
       : args.description();
   });
-  const readStateTool = createTool({
+  const readStateTool = createToolWithArgs({
     name: 'readState',
     description: 'Read the state of the system',
     schema: s.object('Read the state of the system', {
@@ -108,15 +105,15 @@ export function predictionResource<
     tools: [...tools(), ...(args.signals ? [readStateTool] : [])],
   });
 
-  const output = computed((): s.Infer<OutputSchema> | null => {
-    const messages = chat.messages();
+  const output = computed((): s.Infer<OutputSchema> | undefined => {
+    const messages = chat.value();
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage) {
-      return null;
+      return undefined;
     }
 
     if (lastMessage.role !== 'assistant') {
-      return null;
+      return undefined;
     }
 
     try {
@@ -125,12 +122,8 @@ export function predictionResource<
         JSON.parse(lastMessage.content ?? '{}')
       );
     } catch (error) {
-      return null;
+      return undefined;
     }
-  });
-
-  const isPredicting = computed(() => {
-    return chat.isSending() || chat.isReceiving();
   });
 
   effect(() => {
@@ -140,7 +133,7 @@ export function predictionResource<
       return;
     }
 
-    chat.setMessages([
+    chat.set([
       systemMessage(),
       {
         role: 'user',
@@ -149,8 +142,18 @@ export function predictionResource<
     ]);
   });
 
-  return {
-    output,
-    isPredicting,
-  };
+  function hasValue() {
+    return output() !== undefined;
+  }
+
+  const resource = {
+    error: chat.error,
+    hasValue: hasValue as any,
+    isLoading: chat.isLoading,
+    status: chat.status,
+    value: output,
+    reload: chat.reload,
+  } satisfies Resource<unknown>;
+
+  return resource as unknown as Resource<s.Infer<OutputSchema>>;
 }

@@ -1,24 +1,8 @@
 import { computed, Signal, Type } from '@angular/core';
-import { BoundTool, createTool } from './create-tool.fn';
+import { BoundTool, createToolWithArgs } from './create-tool.fn';
 import { ChatMessage } from './types';
 import { chatResource } from './chat-resource.fn';
 import { s } from './schema';
-
-/**
-const UI = z.lazy(() =>
-  z.object({
-    type: z.enum(["div", "button", "header", "section", "field", "form"]),
-    label: z.string(),
-    children: z.array(UI),
-    attributes: z.array(
-      z.object({
-        name: z.string(),
-        value: z.string(),
-      })
-    ),
-  })
-);
- */
 
 type ChatComponent<Name extends string, T> = {
   name: Name;
@@ -29,16 +13,16 @@ type ChatComponent<Name extends string, T> = {
   }>;
 };
 
-export function defineChatComponent<Name extends string, T>(
-  name: Name,
-  description: string,
-  component: Type<T>,
+export function exposeComponent<Name extends string, T>(config: {
+  name: Name;
+  description: string;
+  component: Type<T>;
   inputs: Partial<{
     [K in keyof T]: T[K] extends Signal<infer U> ? s.Schema<U> : never;
-  }>
-) {
-  console.log(component);
-  return { name, description, component, inputs };
+  }>;
+}) {
+  console.log(config);
+  return config;
 }
 
 export function richChatResource(args: {
@@ -47,24 +31,8 @@ export function richChatResource(args: {
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
   messages?: ChatMessage[];
-  tools?: BoundTool[];
+  tools?: BoundTool<string, any>[];
 }) {
-  // const ui = z.object({
-  //   ui: z.union([
-  //     ...(args.components ?? []).map((component) => {
-  //       return z.object({
-  //         name: z.literal(component.name),
-  //         inputs: z.object(
-  //           Object.keys(component.inputs).reduce((acc, key) => {
-  //             (acc as any)[key] = component.inputs[key];
-  //             return acc;
-  //           }, {} as Record<string, ZodTypeAny>)
-  //         ),
-  //       });
-  //     }),
-  //   ] as any),
-  // });
-
   const ui = s.object('UI', {
     ui: s.anyOf('Any one of the following components', [
       ...(args.components ?? []).map((component) => {
@@ -134,7 +102,7 @@ export function richChatResource(args: {
       ...(args.tools ?? []),
       ...(args.components && args.components.length
         ? [
-            createTool({
+            createToolWithArgs({
               name: 'showComponent',
               description: `
         Show a component to the user.

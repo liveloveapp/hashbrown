@@ -1,8 +1,15 @@
+const output = Symbol('output');
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace s {
+  export type SchemaType<T> = {
+    [output]: T;
+  };
+
   export interface StringType {
     type: 'string';
     description: string;
+    [output]: string;
   }
 
   // New interface for constant (literal) strings
@@ -10,50 +17,59 @@ export namespace s {
     type: 'const-string';
     description: string;
     value: T;
+    [output]: T;
   }
 
   export interface NumberType {
     type: 'number';
     description: string;
+    [output]: number;
   }
 
   export interface BooleanType {
     type: 'boolean';
     description: string;
+    [output]: boolean;
   }
 
   export interface IntegerType {
     type: 'integer';
     description: string;
+    [output]: number;
   }
 
   export interface ObjectType<V extends Record<string, AnyType>> {
     type: 'object';
     description: string;
     properties: V;
+    [output]: { [K in keyof V]: Infer<V[K]> };
   }
 
   export interface ArrayType<T extends AnyType> {
     type: 'array';
     description: string;
     items: T;
+    [output]: Infer<T>[];
   }
 
   export interface EnumType<T extends string[]> {
     type: 'enum';
     description: string;
     enum: [...T];
+    [output]: T[number];
   }
 
   export interface AnyOfType<T extends AnyType[]> {
     type: 'anyOf';
     description: string;
     anyOf: T;
+    [output]: Infer<T[number]>;
   }
 
   export interface NullType {
     type: 'null';
     description: string;
+    [output]: null;
   }
 
   export type AnyType =
@@ -68,27 +84,7 @@ export namespace s {
     | AnyOfType<any[]>
     | NullType;
 
-  export type Infer<T extends AnyType> = T extends ConstStringType<infer U>
-    ? U
-    : T extends StringType
-    ? string
-    : T extends NumberType
-    ? number
-    : T extends BooleanType
-    ? boolean
-    : T extends IntegerType
-    ? number
-    : T extends ObjectType<infer V>
-    ? { [K in keyof V]: Infer<V[K]> }
-    : T extends ArrayType<infer U>
-    ? Infer<U>[]
-    : T extends EnumType<infer Arr>
-    ? Arr[number]
-    : T extends AnyOfType<infer Arr>
-    ? Infer<Arr[number]>
-    : T extends NullType
-    ? null
-    : never;
+  export type Infer<T extends SchemaType<any>> = T[typeof output];
 
   // Detects if T is a union type.
   type IsUnion<T, U = T> = T extends any
@@ -156,12 +152,14 @@ export const s = {
       type: 'object',
       description,
       properties,
+      [output]: {} as { [K in keyof T]: s.Infer<T[K]> },
     };
   },
   string(description: string): s.StringType {
     return {
       type: 'string',
       description,
+      [output]: '' as string,
     };
   },
   // New helper for constant strings
@@ -173,18 +171,21 @@ export const s = {
       type: 'const-string',
       description,
       value,
+      [output]: value,
     };
   },
   number(description: string): s.NumberType {
     return {
       type: 'number',
       description,
+      [output]: 0 as number,
     };
   },
   boolean(description: string): s.BooleanType {
     return {
       type: 'boolean',
       description,
+      [output]: false as boolean,
     };
   },
   /**
@@ -198,6 +199,7 @@ export const s = {
     return {
       type: 'integer',
       description,
+      [output]: 0 as number,
     };
   },
   enum<T extends string[]>(description: string, enumValues: T): s.EnumType<T> {
@@ -205,6 +207,7 @@ export const s = {
       type: 'enum',
       description,
       enum: enumValues,
+      [output]: enumValues[0] as T[number],
     };
   },
   anyOf<T extends s.AnyType[]>(description: string, anyOf: T): s.AnyOfType<T> {
@@ -212,6 +215,7 @@ export const s = {
       type: 'anyOf',
       description,
       anyOf,
+      [output]: anyOf[0] as s.Infer<T[number]>,
     };
   },
   array<T extends s.AnyType>(description: string, items: T): s.ArrayType<T> {
@@ -219,12 +223,14 @@ export const s = {
       type: 'array',
       description,
       items,
+      [output]: [] as s.Infer<T>[],
     };
   },
   null(description: string): s.NullType {
     return {
       type: 'null',
       description,
+      [output]: null,
     };
   },
   toJsonSchema(schema: s.AnyType): object {
@@ -263,6 +269,7 @@ export const s = {
           description: schema.description,
           properties,
           required,
+          additionalProperties: false,
         };
       }
 
@@ -348,7 +355,7 @@ export const s = {
         if (value !== null) {
           throw new Error(`Expected null but got ${typeof value}`);
         }
-        return null as any;
+        return null as s.Infer<T>;
 
       case 'object': {
         if (typeof value !== 'object' || value === null) {
@@ -366,16 +373,14 @@ export const s = {
             obj[key]
           );
         }
-        return parsedObj as any as s.Infer<T>;
+        return parsedObj as s.Infer<T>;
       }
 
       case 'array': {
         if (!Array.isArray(value)) {
           throw new Error(`Expected array but got ${typeof value}`);
         }
-        return value.map((item) =>
-          (s.parse as any)(schema.items, item)
-        ) as any as s.Infer<T>;
+        return value.map((item) => s.parse(schema.items, item)) as s.Infer<T>;
       }
 
       case 'enum': {
@@ -392,7 +397,7 @@ export const s = {
         let lastError: unknown;
         for (const subSchema of schema.anyOf as s.AnyType[]) {
           try {
-            return (s.parse as any)(subSchema, value) as s.Infer<T>;
+            return s.parse(subSchema, value) as s.Infer<T>;
           } catch (err) {
             lastError = err;
           }
