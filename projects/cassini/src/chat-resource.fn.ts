@@ -213,15 +213,16 @@ function processToolCallMessage(
   return from(toolCalls).pipe(
     concatMap((toolCall) => {
       const tool = configTools.find((t) => t.name === toolCall.function.name);
+
       if (!tool) {
         throw new Error(`Tool ${toolCall.function.name} not found`);
       }
 
       const result = runInInjectionContext(injector, () =>
-        (tool.handler as any)(
-          (s.parse as any)(
-            tool.schema as any,
-            JSON.parse(toolCall.function.arguments)
+        tool.handler(
+          s.parse(
+            tool.schema,
+            s.parse(tool.schema, JSON.parse(toolCall.function.arguments))
           )
         )
       );
