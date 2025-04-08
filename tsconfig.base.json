@@ -13,10 +13,15 @@
     "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
+    "strict": true,
     "baseUrl": ".",
     "paths": {
       "@hashbrownai/angular": ["packages/angular/src/index.ts"]
     }
+  },
+  "angularCompilerOptions": {
+    "strict": true,
+    "strictTemplates": true
   },
   "exclude": ["node_modules", "tmp"]
 }
