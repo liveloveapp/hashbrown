@@ -1,28 +1,28 @@
 {
-  "name": "demo",
-  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "name": "client",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "prefix": "app",
-  "sourceRoot": "demo/src",
+  "sourceRoot": "samples/smart-home/client/src",
   "tags": [],
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/demo",
-        "index": "demo/src/index.html",
-        "browser": "demo/src/main.ts",
+        "outputPath": "dist/samples/smart-home/client",
+        "index": "samples/smart-home/client/src/index.html",
+        "browser": "samples/smart-home/client/src/main.ts",
         "polyfills": [],
-        "tsConfig": "demo/tsconfig.app.json",
+        "tsConfig": "samples/smart-home/client/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
         "assets": [
           {
             "glob": "**/*",
-            "input": "demo/public"
+            "input": "samples/smart-home/client/public"
           }
         ],
-        "styles": ["demo/src/styles.scss"],
+        "styles": ["samples/smart-home/client/src/styles.scss"],
         "scripts": []
       },
       "configurations": {
@@ -53,21 +53,21 @@
       "executor": "@angular-devkit/build-angular:dev-server",
       "configurations": {
         "production": {
-          "buildTarget": "demo:build:production"
+          "buildTarget": "client:build:production"
         },
         "development": {
-          "buildTarget": "demo:build:development"
+          "buildTarget": "client:build:development"
         }
       },
       "defaultConfiguration": "development",
       "options": {
-        "proxyConfig": "demo/proxy.conf.json"
+        "proxyConfig": "samples/smart-home/client/proxy.conf.json"
       }
     },
     "extract-i18n": {
       "executor": "@angular-devkit/build-angular:extract-i18n",
       "options": {
-        "buildTarget": "demo:build"
+        "buildTarget": "client:build"
       }
     },
     "lint": {
@@ -76,8 +76,8 @@
     "serve-static": {
       "executor": "@nx/web:file-server",
       "options": {
-        "buildTarget": "demo:build",
-        "staticFilePath": "dist/demo/browser",
+        "buildTarget": "client:build",
+        "staticFilePath": "dist/samples/smart-home/client/browser",
         "spa": true
       }
     }

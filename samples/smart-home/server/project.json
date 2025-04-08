@@ -1,8 +1,9 @@
 {
-  "name": "demo-backend",
-  "$schema": "../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "demo-backend/src",
+  "name": "server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/smart-home/server/src",
   "projectType": "application",
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
@@ -10,12 +11,12 @@
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
-        "outputPath": "dist/demo-backend",
+        "outputPath": "dist/samples/smart-home/server",
         "format": ["cjs"],
         "bundle": false,
-        "main": "demo-backend/src/main.ts",
-        "tsConfig": "demo-backend/tsconfig.app.json",
-        "assets": ["demo-backend/src/assets"],
+        "main": "samples/smart-home/server/src/main.ts",
+        "tsConfig": "samples/smart-home/server/tsconfig.app.json",
+        "assets": ["samples/smart-home/server/src/assets"],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
@@ -41,18 +42,17 @@
       "defaultConfiguration": "development",
       "dependsOn": ["build"],
       "options": {
-        "buildTarget": "demo-backend:build",
+        "buildTarget": "server:build",
         "runBuildTargetDependencies": false
       },
       "configurations": {
         "development": {
-          "buildTarget": "demo-backend:build:development"
+          "buildTarget": "server:build:development"
         },
         "production": {
-          "buildTarget": "demo-backend:build:production"
+          "buildTarget": "server:build:production"
         }
       }
     }
-  },
-  "tags": []
+  }
 }

@@ -19,7 +19,7 @@
 
 2. **Create the environment configuration:**
 
-   Create a file named `environment.ts` in the `demo-backend/src` directory with the following content:
+   Create a file named `environment.ts` in the `samples/smart-home/server/src` directory with the following content:
 
    ```ts
    export const OPEN_AI_API_KEY = 'SOME_API_KEY';
@@ -40,7 +40,7 @@
    Run the following command to start the backend server:
 
    ```sh
-   npx nx serve demo-backend
+   npx nx s server
    ```
 
 2. **Start the frontend application:**
@@ -48,7 +48,7 @@
    Run the following command to start the frontend application:
 
    ```sh
-   npx nx serve demo
+   npx nx s client
    ```
 
 Now, you should have both the backend server and the frontend application running. You can access the application in your browser.

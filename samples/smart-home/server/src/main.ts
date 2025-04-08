@@ -2,9 +2,9 @@ import {
   ChatCompletionChunk,
   ChatCompletionWithToolsRequest,
 } from '@ngai/hashbrown';
+import cors from 'cors';
 import express from 'express';
 import OpenAI from 'openai';
-import cors from 'cors';
 import { OPEN_AI_API_KEY } from './environment';
 
 const host = process.env.HOST ?? 'localhost';
