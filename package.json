@@ -1,9 +1,28 @@
 {
-  "name": "@cassini/source",
+  "name": "@ngai/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
-  "private": true,
+  "author": "LiveLoveApp <hello@liveloveapp.com>",
+  "keywords": [
+    "angular",
+    "ai"
+  ],
+  "scripts": {
+    "build": "npx nx run-many --target=build --all",
+    "clean": "git clean -xdf",
+    "prepare": "husky install",
+    "prettier": "prettier --write \"**/*.ts\"",
+    "test": "npx nx run-many --target=test --all --parallel"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix -c ./.eslintrc.sort-import.json",
+      "prettier --write"
+    ],
+    "*.{html,scss,js,json}": [
+      "prettier --write"
+    ]
+  },
   "dependencies": {
     "@analogjs/content": "^1.14.0",
     "@analogjs/router": "^1.14.0",
@@ -68,9 +87,11 @@
     "esbuild": "^0.19.2",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^9.0.0",
+    "husky": "^9.1.7",
     "jiti": "2.4.2",
     "jsdom": "^22.1.0",
     "jsonc-eslint-parser": "^2.1.0",
+    "lint-staged": "^15.5.0",
     "ng-packagr": "~19.2.0",
     "nx": "20.6.0",
     "openai": "^4.87.3",
