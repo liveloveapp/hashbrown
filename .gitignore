@@ -1,5 +1,3 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
-
 # compiled output
 dist
 tmp
@@ -38,12 +36,16 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# nx monorepo
 .nx/cache
 .nx/workspace-data
 
+# Angular
 .angular
 
+# Vite
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
 
-demo-backend/src/environment.ts
+# environment files
+samples/smart-home/server/src/environment.ts
