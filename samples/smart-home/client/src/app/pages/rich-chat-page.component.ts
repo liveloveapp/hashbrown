@@ -4,7 +4,7 @@ import {
   createTool,
   defineChatComponent,
   richChatResource,
-} from '@ngai/hashbrown';
+} from '@hashbrownai/angular';
 import { z } from 'zod';
 import { OrdersService } from '../services/orders.service';
 

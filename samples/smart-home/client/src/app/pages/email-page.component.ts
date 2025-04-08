@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
-import { predictTextResource } from '@ngai/hashbrown';
+import { predictTextResource } from '@hashbrownai/angular';
 import { PredictiveTextareaComponent } from '../components/predictive-textarea.component';
 
 @Component({

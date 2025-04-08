@@ -15,7 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@ngai/hashbrown": ["packages/hashbrown/src/index.ts"]
+      "@hashbrownai/angular": ["packages/angular/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

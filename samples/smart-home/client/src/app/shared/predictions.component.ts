@@ -1,6 +1,6 @@
 import { Component, inject, linkedSignal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { predictionResource, s } from '@ngai/hashbrown';
+import { predictionResource, s } from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
 import { PredictionsAiActions } from '../features/predictions/actions';
 import { SmartHomeService } from '../services/smart-home.service';

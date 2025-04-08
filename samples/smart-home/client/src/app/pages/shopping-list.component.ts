@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, HostListener, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { predictionResource } from '@ngai/hashbrown';
+import { predictionResource } from '@hashbrownai/angular';
 import { z } from 'zod';
 
 interface ShoppingItem {
