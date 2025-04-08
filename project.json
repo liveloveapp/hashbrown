@@ -1,5 +1,5 @@
 {
-  "name": "@cassini/source",
+  "name": "@ngai/source",
   "$schema": "node_modules/nx/schemas/project-schema.json",
   "targets": {
     "local-registry": {

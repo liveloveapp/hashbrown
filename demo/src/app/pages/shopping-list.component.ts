@@ -1,8 +1,8 @@
-import { Component, computed, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, HostListener, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { predictionResource } from '@ngai/hashbrown';
 import { z } from 'zod';
-import { predictionResource } from '@cassini/core';
 
 interface ShoppingItem {
   id: number;
@@ -67,30 +67,30 @@ interface ShoppingItem {
       margin: 0 auto;
       padding: 20px;
     }
-    
+
     .items-container {
       margin: 20px 0;
     }
-    
+
     .item-row {
       display: flex;
       align-items: center;
       margin-bottom: 10px;
       gap: 10px;
     }
-    
+
     .item-row input[type="text"] {
       flex-grow: 1;
       padding: 8px;
       border: 1px solid #ccc;
       border-radius: 4px;
     }
-    
+
     .completed input[type="text"] {
       text-decoration: line-through;
       color: #888;
     }
-    
+
     button {
       padding: 8px 12px;
       background-color: #f44336;
@@ -99,7 +99,7 @@ interface ShoppingItem {
       border-radius: 4px;
       cursor: pointer;
     }
-    
+
     .add-button {
       background-color: #4CAF50;
       width: 100%;
@@ -185,13 +185,13 @@ export class ShoppingListComponent {
       items: z.array(z.string().describe('The name of the item')),
     }),
     description: `
-      Predict the next items in the shopping list. The user will provide the 
+      Predict the next items in the shopping list. The user will provide the
       items they have already added. The output should be an array of strings,
       each representing the name of an item that the user might want to add to
       their shopping list. Do not include any duplicate items. Do not include
       any items that the user has already added. For example, if the user has
       already added "apple" and "banana", do not include "apple" or "banana"
-      in the output. 
+      in the output.
     `,
     examples: [
       {

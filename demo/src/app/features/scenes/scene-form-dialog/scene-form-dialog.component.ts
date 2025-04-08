@@ -1,26 +1,26 @@
-import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
   FormBuilder,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import {
+  MAT_DIALOG_DATA,
   MatDialogModule,
   MatDialogRef,
-  MAT_DIALOG_DATA,
 } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
-import { MatIconModule } from '@angular/material/icon';
-import { Scene } from '../../../models/scene.model';
-import { predictionResource, s } from '@cassini/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { predictionResource, s } from '@ngai/hashbrown';
 import { Store } from '@ngrx/store';
+import { Scene } from '../../../models/scene.model';
 import { selectAllLights, selectLightEntities } from '../../../store';
 
 @Component({
@@ -157,7 +157,7 @@ export class SceneFormDialogComponent {
       Predict the lights that will be added to the scene based on the name. For example,
       if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
       be in the bedroom at a lower brightness.
-      
+
       Here's the list of lights:
       ${this.lights()
         .map((light) => `${light.id}: ${light.name}`)

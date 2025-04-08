@@ -1,5 +1,5 @@
 import { Component, input, Type } from '@angular/core';
-import { ChatMessage, AssistantMessageComponent } from '@cassini/core';
+import { AssistantMessageComponent, ChatMessage } from '@ngai/hashbrown';
 
 @Component({
   selector: 'app-chat-messages',

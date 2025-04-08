@@ -1,7 +1,7 @@
 import {
   ChatCompletionChunk,
   ChatCompletionWithToolsRequest,
-} from '@cassini/core';
+} from '@ngai/hashbrown';
 import express from 'express';
 import OpenAI from 'openai';
 import cors from 'cors';

@@ -1,16 +1,16 @@
 import { Component, inject, linkedSignal } from '@angular/core';
-import { predictionResource, s } from '@cassini/core';
-import { Store } from '@ngrx/store';
 import { MatIconModule } from '@angular/material/icon';
+import { predictionResource, s } from '@ngai/hashbrown';
+import { Store } from '@ngrx/store';
+import { PredictionsAiActions } from '../features/predictions/actions';
 import { SmartHomeService } from '../services/smart-home.service';
 import {
+  selectAllLights,
+  selectAllScenes,
   selectLastUserAction,
   selectLightEntities,
   selectScenesEntities,
-  selectAllLights,
-  selectAllScenes,
 } from '../store';
-import { PredictionsAiActions } from '../features/predictions/actions';
 
 const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
   s.object('Suggests adding a light to the system', {

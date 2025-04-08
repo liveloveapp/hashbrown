@@ -1,22 +1,22 @@
 import { Component, inject } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { Store } from '@ngrx/store';
+import { MatIconModule } from '@angular/material/icon';
 import {
   createTool,
   createToolWithArgs,
   exposeComponent,
   richChatResource,
-} from '@cassini/core';
+  s,
+} from '@ngai/hashbrown';
+import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
-import { AuthService } from '../../shared/auth.service';
 import { SmartHomeService } from '../../services/smart-home.service';
+import { AuthService } from '../../shared/auth.service';
 import { ChatActions } from './actions';
-import { MessagesComponent } from './components/messages.component';
-import { ComposerComponent } from './components/composer.component';
 import { ChatAiActions } from './actions/chat-ai.actions';
+import { ComposerComponent } from './components/composer.component';
 import { LightCardComponent } from './components/light-card.component';
-import { s } from '@cassini/core';
+import { MessagesComponent } from './components/messages.component';
 
 @Component({
   selector: 'app-chat-panel',

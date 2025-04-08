@@ -1,7 +1,7 @@
-import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, signal } from '@angular/core';
+import { predictTextResource } from '@ngai/hashbrown';
 import { PredictiveTextareaComponent } from '../components/predictive-textarea.component';
-import { predictTextResource } from '@cassini/core';
 
 @Component({
   selector: 'app-email-page',
@@ -41,28 +41,28 @@ import { predictTextResource } from '@cassini/core';
       margin: 0 auto;
       padding: 20px;
     }
-    
+
     .form-group {
       margin-bottom: 20px;
     }
-    
+
     label {
       display: block;
       margin-bottom: 5px;
       font-weight: bold;
     }
-    
+
     .form-control {
       width: 100%;
       padding: 8px;
       border: 1px solid #ccc;
       border-radius: 4px;
     }
-    
+
     .actions {
       margin-top: 20px;
     }
-    
+
     .btn {
       padding: 8px 16px;
       margin-right: 10px;
@@ -70,17 +70,17 @@ import { predictTextResource } from '@cassini/core';
       border-radius: 4px;
       cursor: pointer;
     }
-    
+
     .btn-primary {
       background-color: #007bff;
       color: white;
     }
-    
+
     .btn-secondary {
       background-color: #6c757d;
       color: white;
     }
-    
+
     .prediction-status {
       margin-top: 10px;
       font-style: italic;

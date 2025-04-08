@@ -1,7 +1,7 @@
 {
-  "name": "cassini",
+  "name": "hashbrown",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "projects/cassini/src",
+  "sourceRoot": "packages/hashbrown/src",
   "prefix": "lib",
   "projectType": "library",
   "release": {
@@ -19,14 +19,14 @@
       "executor": "@nx/angular:package",
       "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
       "options": {
-        "project": "projects/cassini/ng-package.json"
+        "project": "packages/hashbrown/ng-package.json"
       },
       "configurations": {
         "production": {
-          "tsConfig": "projects/cassini/tsconfig.lib.prod.json"
+          "tsConfig": "packages/hashbrown/tsconfig.lib.prod.json"
         },
         "development": {
-          "tsConfig": "projects/cassini/tsconfig.lib.json"
+          "tsConfig": "packages/hashbrown/tsconfig.lib.json"
         }
       },
       "defaultConfiguration": "production"
@@ -40,7 +40,7 @@
       "executor": "@nx/vite:test",
       "outputs": ["{options.reportsDirectory}"],
       "options": {
-        "reportsDirectory": "../../coverage/projects/cassini"
+        "reportsDirectory": "../../coverage/packages/hashbrown"
       }
     },
     "lint": {

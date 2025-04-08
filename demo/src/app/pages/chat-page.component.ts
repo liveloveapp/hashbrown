@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
-import { chatResource, createTool } from '@cassini/core';
-import { z } from 'zod';
 import { JsonPipe } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { chatResource, createTool } from '@ngai/hashbrown';
+import { z } from 'zod';
 import { AuthService } from '../auth.service';
 
 @Component({

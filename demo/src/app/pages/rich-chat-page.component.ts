@@ -1,13 +1,11 @@
 import { Component, computed, effect, inject, input } from '@angular/core';
 import {
-  createTool,
-  richChatResource,
-  defineChatComponent,
   AssistantMessageComponent,
-} from '@cassini/core';
+  createTool,
+  defineChatComponent,
+  richChatResource,
+} from '@ngai/hashbrown';
 import { z } from 'zod';
-import { JsonPipe } from '@angular/common';
-import { AuthService } from '../auth.service';
 import { OrdersService } from '../services/orders.service';
 
 @Component({
