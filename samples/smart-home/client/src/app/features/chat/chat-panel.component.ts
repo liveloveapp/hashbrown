@@ -7,7 +7,7 @@ import {
   exposeComponent,
   richChatResource,
   s,
-} from '@ngai/hashbrown';
+} from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';

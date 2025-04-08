@@ -1,7 +1,7 @@
 import {
   ChatCompletionChunk,
   ChatCompletionWithToolsRequest,
-} from '@ngai/hashbrown';
+} from '@hashbrownai/angular';
 import cors from 'cors';
 import express from 'express';
 import OpenAI from 'openai';

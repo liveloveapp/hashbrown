@@ -18,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
-import { predictionResource, s } from '@ngai/hashbrown';
+import { predictionResource, s } from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
 import { Scene } from '../../../models/scene.model';
 import { selectAllLights, selectLightEntities } from '../../../store';

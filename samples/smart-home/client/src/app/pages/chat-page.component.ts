@@ -1,6 +1,6 @@
 import { JsonPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { chatResource, createTool } from '@ngai/hashbrown';
+import { chatResource, createTool } from '@hashbrownai/angular';
 import { z } from 'zod';
 import { AuthService } from '../auth.service';
 

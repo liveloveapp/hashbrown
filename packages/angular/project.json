@@ -1,7 +1,7 @@
 {
-  "name": "hashbrown",
+  "name": "angular",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "packages/hashbrown/src",
+  "sourceRoot": "packages/angular/src",
   "prefix": "lib",
   "projectType": "library",
   "release": {
@@ -19,14 +19,14 @@
       "executor": "@nx/angular:package",
       "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
       "options": {
-        "project": "packages/hashbrown/ng-package.json"
+        "project": "packages/angular/ng-package.json"
       },
       "configurations": {
         "production": {
-          "tsConfig": "packages/hashbrown/tsconfig.lib.prod.json"
+          "tsConfig": "packages/angular/tsconfig.lib.prod.json"
         },
         "development": {
-          "tsConfig": "packages/hashbrown/tsconfig.lib.json"
+          "tsConfig": "packages/angular/tsconfig.lib.json"
         }
       },
       "defaultConfiguration": "production"
@@ -40,7 +40,7 @@
       "executor": "@nx/vite:test",
       "outputs": ["{options.reportsDirectory}"],
       "options": {
-        "reportsDirectory": "../../coverage/packages/hashbrown"
+        "reportsDirectory": "../../coverage/packages/angular"
       }
     },
     "lint": {
