@@ -80,10 +80,10 @@ import { selectAllLights, selectLightEntities } from '../../../store';
           }
         </div>
 
-        @let suggestedLights = predictedLights.value(); @if (suggestedLights) {
+        @let prediction = predictedLights.value(); @if (prediction) {
 
         <h5><mat-icon aria-hidden="true" inline>bolt</mat-icon> Suggestions</h5>
-        @for (light of suggestedLights; track light.lightId) { @let
+        @for (light of prediction.lights; track light.lightId) { @let
         suggestedLight = lightEntities()[light.lightId];
 
         <div class="predicted-light">
@@ -162,23 +162,17 @@ export class SceneFormDialogComponent {
       ${this.lights()
         .map((light) => `${light.id}: ${light.name}`)
         .join('\n')}
-
-      Your response must be a JSON array of objects with the following shape:
-      {
-        lightId: string,
-        brightness: number
-      }
-
-      Do not include any other text in your response.
     `
     ),
-    outputSchema: s.array(
-      'The lights to add to the scene',
-      s.object('A join between a light and a scene', {
-        lightId: s.string('the ID of the light to add'),
-        brightness: s.number('the brightness of the light'),
-      })
-    ),
+    outputSchema: s.object('Your response', {
+      lights: s.array(
+        'The lights to add to the scene',
+        s.object('A join between a light and a scene', {
+          lightId: s.string('the ID of the light to add'),
+          brightness: s.number('the brightness of the light'),
+        })
+      ),
+    }),
     model: 'gpt-4o-mini',
   });
 

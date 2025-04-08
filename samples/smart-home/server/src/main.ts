@@ -24,7 +24,7 @@ app.post('/chat', async (req, res) => {
   const openai = new OpenAI({
     apiKey: OPEN_AI_API_KEY,
   });
-  const { messages, model, max_tokens, temperature, tools } =
+  const { messages, model, max_tokens, temperature, tools, response_format } =
     req.body as ChatCompletionWithToolsRequest;
 
   console.log('messages', JSON.stringify(messages, null, 2));
@@ -45,9 +45,8 @@ app.post('/chat', async (req, res) => {
             role: message.role,
             content: message.content,
             tool_calls:
-              message.tool_calls.length === 0
-                ? undefined
-                : message.tool_calls.map(
+              message.tool_calls && message.tool_calls.length > 0
+                ? message.tool_calls.map(
                     (
                       toolCall
                     ): OpenAI.Chat.Completions.ChatCompletionMessageToolCall => ({
@@ -55,11 +54,11 @@ app.post('/chat', async (req, res) => {
                       type: 'function',
                       function: {
                         ...toolCall.function,
-
                         arguments: JSON.stringify(toolCall.function.arguments),
                       },
                     })
-                  ),
+                  )
+                : undefined,
           };
         }
         if (message.role === 'tool') {
@@ -75,12 +74,24 @@ app.post('/chat', async (req, res) => {
             content: message.content,
           };
         }
-        return null;
+
+        throw new Error(`Invalid message role`);
       }
     ),
-    max_tokens: max_tokens,
-    temperature: temperature,
+    max_tokens,
+    temperature,
     tools,
+    response_format: response_format
+      ? {
+          type: 'json_schema',
+          json_schema: {
+            strict: true,
+            name: 'schema',
+            description: response_format.description,
+            schema: response_format as Record<string, unknown>,
+          },
+        }
+      : undefined,
   });
 
   res.header('Content-Type', 'text/plain');
@@ -98,7 +109,7 @@ app.post('/chat', async (req, res) => {
         delta: choice.delta,
         logprobs: null,
         finish_reason: choice.finish_reason,
-      })) as any,
+      })),
     };
 
     res.write(JSON.stringify(chunkMessage));
