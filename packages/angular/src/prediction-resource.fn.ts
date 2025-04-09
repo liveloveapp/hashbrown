@@ -1,12 +1,12 @@
 import { Signal, effect, computed, Resource } from '@angular/core';
 import { chatResource } from './chat-resource.fn';
-import { SignalLike, SystemMessage } from './types';
+import { SignalLike, Chat } from './types';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
 import { s } from './schema';
 
 export function predictionResource<
   Input,
-  OutputSchema extends s.AnyType
+  OutputSchema extends s.ObjectType<Record<string, s.AnyType>>
 >(args: {
   model: string;
   temperature?: number;
@@ -64,7 +64,7 @@ export function predictionResource<
       ${definitions}
     `;
   });
-  const systemMessage = computed((): SystemMessage => {
+  const systemMessage = computed((): Chat.SystemMessage => {
     return {
       role: 'system',
       content: `

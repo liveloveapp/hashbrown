@@ -11,58 +11,61 @@ export type Tool<
   schema: Schema;
 };
 
-// Role types for messages
-export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace Chat {
+  // Role types for messages
+  export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
-// System message
-export interface SystemMessage {
-  role: 'system';
-  content: string;
+  // System message
+  export interface SystemMessage {
+    role: 'system';
+    content: string;
+  }
+
+  // User message
+  export interface UserMessage {
+    role: 'user';
+    content: string;
+  }
+
+  // Assistant message with optional tool calls
+  export interface AssistantMessage {
+    role: 'assistant';
+    content: string | null;
+    tool_calls?: {
+      index: number;
+      id: string;
+      type: string;
+      function: {
+        name: string;
+        arguments: string;
+      };
+    }[];
+  }
+
+  export type ToolCallResult =
+    | { type: 'success'; content: object }
+    | { type: 'error'; error: string };
+
+  // Tool response message
+  export interface ToolMessage {
+    role: 'tool';
+    content: ToolCallResult;
+    tool_call_id: string;
+  }
+
+  // Union type for all message types
+  export type Message =
+    | SystemMessage
+    | UserMessage
+    | AssistantMessage
+    | ToolMessage;
 }
-
-// User message
-export interface UserMessage {
-  role: 'user';
-  content: string;
-}
-
-// Assistant message with optional tool calls
-export interface AssistantMessage {
-  role: 'assistant';
-  content: string | null;
-  tool_calls?: {
-    index: number;
-    id: string;
-    type: string;
-    function: {
-      name: string;
-      arguments: string;
-    };
-  }[];
-}
-
-export type ToolCallResult =
-  | { type: 'success'; content: object }
-  | { type: 'error'; error: string };
-
-// Tool response message
-export interface ToolMessage {
-  role: 'tool';
-  content: ToolCallResult;
-  tool_call_id: string;
-}
-
-// Union type for all message types
-export type ChatMessage =
-  | SystemMessage
-  | UserMessage
-  | AssistantMessage
-  | ToolMessage;
 
 // Request configuration for chat completion with tools
 export type ChatCompletionWithToolsRequest = {
   model: string;
-  messages: ChatMessage[];
+  messages: Chat.Message[];
   tools?: OpenAI.Chat.Completions.ChatCompletionTool[];
   tool_choice?:
     | 'auto'
@@ -83,7 +86,7 @@ export type ChatCompletionWithToolsResponse = {
   object: string;
   created: number;
   choices: {
-    message: ChatMessage;
+    message: Chat.Message;
     finish_reason: string;
     index: number;
   }[];

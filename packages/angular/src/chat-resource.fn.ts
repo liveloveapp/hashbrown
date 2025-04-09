@@ -13,12 +13,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import OpenAI from 'openai';
-import {
-  ChatMessage,
-  AssistantMessage,
-  ToolMessage,
-  ChatCompletionChunk,
-} from './types';
+import { Chat, ChatCompletionChunk } from './types';
 import { FetchService } from './fetch.service';
 import {
   BehaviorSubject,
@@ -41,8 +36,8 @@ import { FunctionParameters } from 'openai/resources';
 import { BoundTool } from './create-tool.fn';
 import { s } from './schema';
 
-export interface ChatResource extends WritableResource<ChatMessage[]> {
-  sendMessage: (message: ChatMessage | ChatMessage[]) => void;
+export interface ChatResource extends WritableResource<Chat.Message[]> {
+  sendMessage: (message: Chat.Message | Chat.Message[]) => void;
 }
 
 /**
@@ -53,7 +48,7 @@ export type ChatResourceConfig = {
   temperature?: number | Signal<number>;
   tools?: BoundTool<string, any>[];
   maxTokens?: number | Signal<number>;
-  messages?: ChatMessage[];
+  messages?: Chat.Message[];
   responseFormat?: s.AnyType | Signal<s.AnyType>;
 };
 
@@ -65,9 +60,9 @@ export type ChatResourceConfig = {
  * @returns The merged array of tool calls.
  */
 function mergeToolCalls(
-  existingCalls: AssistantMessage['tool_calls'] = [],
-  newCalls: AssistantMessage['tool_calls'] = []
-): AssistantMessage['tool_calls'] {
+  existingCalls: Chat.AssistantMessage['tool_calls'] = [],
+  newCalls: Chat.AssistantMessage['tool_calls'] = []
+): Chat.AssistantMessage['tool_calls'] {
   const merged = [...existingCalls];
   newCalls.forEach((newCall) => {
     const index = merged.findIndex((call) => call.index === newCall.index);
@@ -96,16 +91,16 @@ function mergeToolCalls(
  * @returns The updated messages array.
  */
 function updateMessagesWithDelta(
-  messages: ChatMessage[],
-  delta: Partial<ChatMessage>
-): ChatMessage[] {
+  messages: Chat.Message[],
+  delta: Partial<Chat.Message>
+): Chat.Message[] {
   const lastMessage = messages[messages.length - 1];
   if (lastMessage && lastMessage.role === 'assistant') {
     const updatedToolCalls = mergeToolCalls(
       lastMessage.tool_calls,
-      (delta as AssistantMessage).tool_calls ?? []
+      (delta as Chat.AssistantMessage).tool_calls ?? []
     );
-    const updatedMessage: ChatMessage = {
+    const updatedMessage: Chat.Message = {
       ...lastMessage,
       content: (lastMessage.content ?? '') + (delta.content ?? ''),
       tool_calls: updatedToolCalls,
@@ -156,11 +151,11 @@ function createToolDefinitions(
  */
 function processChatResponse(
   response: ChatCompletionChunk,
-  messagesSignal: WritableSignal<ChatMessage[]>
+  messagesSignal: WritableSignal<Chat.Message[]>
 ): void {
   response.choices.forEach((choice: ChatCompletionChunk['choices'][number]) => {
     messagesSignal.update((currentMessages) =>
-      updateMessagesWithDelta(currentMessages, choice.delta as AssistantMessage)
+      updateMessagesWithDelta(currentMessages, choice.delta as Chat.Message)
     );
   });
 }
@@ -174,8 +169,8 @@ function processChatResponse(
  * @param isReceiving - The signal indicating receiving status.
  */
 function finalizeChat(
-  messagesSignal: WritableSignal<ChatMessage[]>,
-  toolCallSubject: Subject<AssistantMessage>,
+  messagesSignal: WritableSignal<Chat.Message[]>,
+  toolCallSubject: Subject<Chat.AssistantMessage>,
   isSending: { set(val: boolean): void },
   isReceiving: { set(val: boolean): void }
 ): void {
@@ -187,7 +182,7 @@ function finalizeChat(
     lastMessage.tool_calls &&
     lastMessage.tool_calls.length > 0
   ) {
-    toolCallSubject.next(lastMessage as AssistantMessage);
+    toolCallSubject.next(lastMessage as Chat.AssistantMessage);
   }
   isSending.set(false);
   isReceiving.set(false);
@@ -202,10 +197,10 @@ function finalizeChat(
  * @returns An observable that emits a tool message.
  */
 function processToolCallMessage(
-  message: AssistantMessage,
+  message: Chat.AssistantMessage,
   configTools: BoundTool<string, any>[] = [],
   injector: Injector
-): Observable<ToolMessage[]> {
+): Observable<Chat.ToolMessage[]> {
   const toolCalls = message.tool_calls;
 
   if (!toolCalls) return EMPTY;
@@ -229,7 +224,7 @@ function processToolCallMessage(
 
       return from(result).pipe(
         map(
-          (result): ToolMessage => ({
+          (result): Chat.ToolMessage => ({
             role: 'tool',
             content: {
               type: 'success',
@@ -242,7 +237,7 @@ function processToolCallMessage(
             tool_call_id: toolCall.id,
           })
         ),
-        catchError((err): Observable<ToolMessage> => {
+        catchError((err): Observable<Chat.ToolMessage> => {
           return of({
             role: 'tool',
             content: {
@@ -271,13 +266,13 @@ function processToolCallMessage(
 export function chatResource(config: ChatResourceConfig): ChatResource {
   const injector = inject(Injector);
   const fetchService = inject(FetchService);
-  const messagesSignal = signal<ChatMessage[]>(config.messages || []);
+  const messagesSignal = signal<Chat.Message[]>(config.messages || []);
   const isSending = signal(false);
   const isReceiving = signal(false);
   const error = signal<Error | null>(null);
 
   const toolDefinitions = createToolDefinitions(config.tools);
-  const toolCallMessages$ = new Subject<AssistantMessage>();
+  const toolCallMessages$ = new Subject<Chat.AssistantMessage>();
   const abortSignal = new Subject<void>();
   const reloadSignal = new BehaviorSubject<true>(true);
 
@@ -392,7 +387,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
       ])
     );
 
-  function sendMessage(message: ChatMessage | ChatMessage[]) {
+  function sendMessage(message: Chat.Message | Chat.Message[]) {
     if (isSending() || isReceiving()) {
       throw new Error('Cannot send message while sending or receiving');
     }
@@ -403,7 +398,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     ]);
   }
 
-  function setMessages(newMessages: ChatMessage[]) {
+  function setMessages(newMessages: Chat.Message[]) {
     abortSignal.next();
 
     // Reset all state
@@ -415,7 +410,9 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     messagesSignal.set(newMessages);
   }
 
-  function updateMessages(updater: (messages: ChatMessage[]) => ChatMessage[]) {
+  function updateMessages(
+    updater: (messages: Chat.Message[]) => Chat.Message[]
+  ) {
     abortSignal.next();
 
     // Reset all state
@@ -465,7 +462,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     error,
     hasValue: hasValue as any,
     reload,
-    asReadonly: (): Resource<ChatMessage[]> => ({
+    asReadonly: (): Resource<Chat.Message[]> => ({
       value: messagesSignal,
       status,
       isLoading,
