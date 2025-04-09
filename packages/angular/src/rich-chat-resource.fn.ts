@@ -1,11 +1,42 @@
 import { computed, Signal, Type } from '@angular/core';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
-import { ChatMessage, SystemMessage, UserMessage, ToolMessage } from './types';
+import { Chat } from './types';
 import { ChatResource, chatResource } from './chat-resource.fn';
 import { s } from './schema';
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace RichChat {
+  export type AssistantMessage = {
+    role: 'assistant';
+    content: string;
+  };
+
+  export type ComponentMessage<Name extends string, T> = {
+    role: 'component';
+    name: Name;
+    component: Type<T>;
+    inputs: Partial<SignalInputs<T>>;
+  };
+
+  export type ToolCallMessage = {
+    role: 'tool';
+    name: string;
+    callId: string;
+    isPending: boolean;
+    result?: unknown;
+    error?: string;
+  };
+
+  export type Message =
+    | RichChat.ComponentMessage<string, unknown>
+    | RichChat.ToolCallMessage
+    | RichChat.AssistantMessage
+    | Chat.UserMessage
+    | Chat.SystemMessage;
+}
+
 export interface RichChatResource extends ChatResource {
-  messages: Signal<RichChatMessage[]>;
+  messages: Signal<RichChat.Message[]>;
 }
 
 type SignalInputs<T> = {
@@ -33,40 +64,12 @@ export function exposeComponent<Name extends string, T>(config: {
   return config;
 }
 
-export type RichAssistantMessage = {
-  role: 'assistant';
-  content: string;
-};
-
-export type RichComponentMessage<Name extends string, T> = {
-  role: 'component';
-  name: Name;
-  component: Type<T>;
-  inputs: Partial<SignalInputs<T>>;
-};
-
-export type RichToolCallMessage = {
-  role: 'tool';
-  name: string;
-  callId: string;
-  isPending: boolean;
-  result?: unknown;
-  error?: string;
-};
-
-export type RichChatMessage =
-  | RichComponentMessage<string, unknown>
-  | RichToolCallMessage
-  | RichAssistantMessage
-  | UserMessage
-  | SystemMessage;
-
 export function richChatResource(args: {
   components?: ChatComponent<string, unknown>[];
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
-  messages?: ChatMessage[];
+  messages?: Chat.Message[];
   tools?: BoundTool<string, any>[];
 }): RichChatResource {
   const ui = s.object('UI', {
@@ -160,7 +163,7 @@ export function richChatResource(args: {
   const messages = computed(() => {
     const messages = chat.value();
 
-    return messages.flatMap((message): RichChatMessage[] => {
+    return messages.flatMap((message): RichChat.Message[] => {
       if (message.role === 'tool') {
         return [];
       }
@@ -168,7 +171,7 @@ export function richChatResource(args: {
         const toolCalls = message.tool_calls ?? [];
 
         if (toolCalls.length === 0) {
-          const simpleMessage: RichAssistantMessage = {
+          const simpleMessage: RichChat.AssistantMessage = {
             role: 'assistant',
             content: message.content ?? '',
           };
@@ -178,10 +181,11 @@ export function richChatResource(args: {
           (
             toolCall
           ): Array<
-            RichToolCallMessage | RichComponentMessage<string, unknown>
+            | RichChat.ToolCallMessage
+            | RichChat.ComponentMessage<string, unknown>
           > => {
             const toolCallMessage = messages.find(
-              (t): t is ToolMessage =>
+              (t): t is Chat.ToolMessage =>
                 t.role === 'tool' && t.tool_call_id === toolCall.id
             );
             const toolName = toolCall.function.name;
@@ -213,13 +217,15 @@ export function richChatResource(args: {
                 componentInputs &&
                 componentType
               ) {
-                const componentMessage: RichComponentMessage<string, unknown> =
-                  {
-                    role: 'component',
-                    name: componentName,
-                    component: componentType,
-                    inputs: componentInputs,
-                  };
+                const componentMessage: RichChat.ComponentMessage<
+                  string,
+                  unknown
+                > = {
+                  role: 'component',
+                  name: componentName,
+                  component: componentType,
+                  inputs: componentInputs,
+                };
                 return [componentMessage];
               }
             }

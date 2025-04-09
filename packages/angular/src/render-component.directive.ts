@@ -7,7 +7,7 @@ import {
   OnInit,
   OnDestroy,
 } from '@angular/core';
-import { RichComponentMessage } from './rich-chat-resource.fn';
+import { RichChat } from './rich-chat-resource.fn';
 
 @Directive({
   // eslint-disable-next-line @angular-eslint/directive-selector
@@ -17,7 +17,7 @@ import { RichComponentMessage } from './rich-chat-resource.fn';
 // eslint-disable-next-line @angular-eslint/directive-class-suffix
 export class RenderComponentMessage implements OnInit, OnDestroy {
   hshRenderComponentMessage =
-    input.required<RichComponentMessage<string, unknown>>();
+    input.required<RichChat.ComponentMessage<string, unknown>>();
   viewContainerRef = inject(ViewContainerRef);
   componentRef: ComponentRef<unknown> | null = null;
 

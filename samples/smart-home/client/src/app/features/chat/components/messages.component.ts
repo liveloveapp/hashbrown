@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import { RenderComponentMessage, RichChatMessage } from '@hashbrownai/angular';
+import { RenderComponentMessage, RichChat } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-chat-messages',
@@ -57,5 +57,5 @@ import { RenderComponentMessage, RichChatMessage } from '@hashbrownai/angular';
   ],
 })
 export class MessagesComponent {
-  messages = input.required<RichChatMessage[]>();
+  messages = input.required<RichChat.Message[]>();
 }
