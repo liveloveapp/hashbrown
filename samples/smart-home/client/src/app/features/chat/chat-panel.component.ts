@@ -41,10 +41,7 @@ import { MessagesComponent } from './components/messages.component';
     </div>
 
     <div class="chat-messages">
-      <app-chat-messages
-        [messages]="chat.value()"
-        [components]="components"
-      ></app-chat-messages>
+      <app-chat-messages [messages]="chat.messages()"></app-chat-messages>
     </div>
 
     <div class="chat-composer">
@@ -97,10 +94,6 @@ export class ChatPanelComponent {
   store = inject(Store);
   authService = inject(AuthService);
   smartHomeService = inject(SmartHomeService);
-
-  components = {
-    light: LightCardComponent,
-  };
 
   chat = richChatResource({
     model: 'gpt-4o',
