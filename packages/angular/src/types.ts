@@ -41,10 +41,14 @@ export interface AssistantMessage {
   }[];
 }
 
+export type ToolCallResult =
+  | { type: 'success'; content: object }
+  | { type: 'error'; error: string };
+
 // Tool response message
 export interface ToolMessage {
   role: 'tool';
-  content: string;
+  content: ToolCallResult;
   tool_call_id: string;
 }
 

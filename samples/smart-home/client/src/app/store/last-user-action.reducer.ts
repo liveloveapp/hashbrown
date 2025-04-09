@@ -21,13 +21,6 @@ export const lastUserActionReducer = createReducer(
       payload: action.light,
     },
   })),
-  on(LightsApiActions.updateLightSuccess, (state, action) => ({
-    ...state,
-    action: {
-      userAction: 'Update Light Success',
-      payload: action.light,
-    },
-  })),
   on(ScenesApiActions.addSceneSuccess, (state, action) => ({
     ...state,
     action: {

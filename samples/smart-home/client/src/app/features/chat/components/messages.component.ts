@@ -1,10 +1,10 @@
-import { Component, input, Type } from '@angular/core';
-import { AssistantMessageComponent, ChatMessage } from '@hashbrownai/angular';
+import { Component, input } from '@angular/core';
+import { RenderComponentMessage, RichChatMessage } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-chat-messages',
   standalone: true,
-  imports: [AssistantMessageComponent],
+  imports: [RenderComponentMessage],
   template: `
     @for (message of messages(); track $index) { @switch (message.role) { @case
     ('user') {
@@ -13,10 +13,11 @@ import { AssistantMessageComponent, ChatMessage } from '@hashbrownai/angular';
     </div>
     } @case ('assistant') {
     <div class="chat-message assistant">
-      <lib-assistant-message
-        [message]="message"
-        [components]="components()"
-      ></lib-assistant-message>
+      <p>{{ message.content }}</p>
+    </div>
+    } @case ('component') {
+    <div class="chat-message component">
+      <ng-template [hshRenderComponentMessage]="message" />
     </div>
     } } }
   `,
@@ -42,15 +43,19 @@ import { AssistantMessageComponent, ChatMessage } from '@hashbrownai/angular';
         width: 100%;
       }
 
-      lib-assistant-message {
+      .chat-message.component {
+        align-self: flex-start;
         width: 100%;
+      }
+
+      .chat-message.tool {
+        align-self: flex-start;
+        width: 100%;
+        font-style: italic;
       }
     `,
   ],
 })
 export class MessagesComponent {
-  components = input.required<{
-    [componentName: string]: Type<any>;
-  }>();
-  messages = input.required<ChatMessage[]>();
+  messages = input.required<RichChatMessage[]>();
 }

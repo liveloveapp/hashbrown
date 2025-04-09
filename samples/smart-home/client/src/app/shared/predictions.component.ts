@@ -390,15 +390,17 @@ Additional Rules:
         description: 'All scenes in the smart home',
       },
     },
-    outputSchema: s.array('The predictions', PREDICTIONS_SCHEMA),
+    outputSchema: s.object('The result', {
+      predictions: s.array('The predictions', PREDICTIONS_SCHEMA),
+    }),
   });
 
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
-      if (source === undefined || source.length === 0) return [];
+      if (source === undefined || source.predictions.length === 0) return [];
 
-      return source;
+      return source.predictions;
     },
   });
 
