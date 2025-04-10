@@ -1,4 +1,4 @@
-# Project Cassini
+# Hashbrown AI
 
 ## Getting Started
 

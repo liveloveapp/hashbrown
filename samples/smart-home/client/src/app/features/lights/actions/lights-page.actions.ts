@@ -1,5 +1,5 @@
+import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { Light } from '../../../models/light.model';
-import { createActionGroup, props, emptyProps } from '@ngrx/store';
 
 export const LightsPageActions = createActionGroup({
   source: 'Lights Page',

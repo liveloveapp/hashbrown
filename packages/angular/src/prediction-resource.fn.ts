@@ -1,8 +1,8 @@
-import { Signal, effect, computed, Resource } from '@angular/core';
+import { computed, effect, Resource, Signal } from '@angular/core';
 import { chatResource } from './chat-resource.fn';
-import { SignalLike, Chat } from './types';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
 import { s } from './schema';
+import { Chat, SignalLike } from './types';
 
 export function predictionResource<
   Input,
@@ -69,8 +69,8 @@ export function predictionResource<
       role: 'system',
       content: `
       You are an AI that predicts the output based on the input.
-      The input will be provided. Your response must match the output 
-      schema. There is no reason to include any other text in your response. 
+      The input will be provided. Your response must match the output
+      schema. There is no reason to include any other text in your response.
 
       Here's a more detailed description of what you are predicting:
       ${description()}

@@ -1,10 +1,11 @@
 import { inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { concatMap, map, catchError, of } from 'rxjs';
+import { catchError, concatMap, map, of } from 'rxjs';
 import { SmartHomeService } from '../../../services/smart-home.service';
-import { LightsPageActions, LightsApiActions } from '../actions';
 import { PredictionsAiActions } from '../../predictions/actions';
 import { ScenesPageActions } from '../../scenes/actions';
+import { LightsApiActions, LightsPageActions } from '../actions';
+
 export const loadLights$ = createEffect(
   () => {
     const actions$ = inject(Actions);

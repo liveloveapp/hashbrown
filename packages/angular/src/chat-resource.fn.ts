@@ -1,20 +1,19 @@
 import {
+  computed,
+  effect,
   inject,
   Injector,
-  runInInjectionContext,
-  Signal,
-  computed,
-  signal,
-  WritableSignal,
-  effect,
   Resource,
   ResourceStatus,
+  runInInjectionContext,
+  Signal,
+  signal,
   WritableResource,
+  WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import OpenAI from 'openai';
-import { Chat, ChatCompletionChunk } from './types';
-import { FetchService } from './fetch.service';
+import { FunctionParameters } from 'openai/resources';
 import {
   BehaviorSubject,
   catchError,
@@ -32,9 +31,10 @@ import {
   tap,
   toArray,
 } from 'rxjs';
-import { FunctionParameters } from 'openai/resources';
 import { BoundTool } from './create-tool.fn';
+import { FetchService } from './fetch.service';
 import { s } from './schema';
+import { Chat, ChatCompletionChunk } from './types';
 
 export interface ChatResource extends WritableResource<Chat.Message[]> {
   sendMessage: (message: Chat.Message | Chat.Message[]) => void;

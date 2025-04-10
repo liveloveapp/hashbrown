@@ -1,4 +1,4 @@
-import { createActionGroup, props, emptyProps } from '@ngrx/store';
+import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { Scene } from '../../../models/scene.model';
 
 export const ScenesPageActions = createActionGroup({

@@ -36,6 +36,9 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Environment
+.env
+
 # nx monorepo
 .nx/cache
 .nx/workspace-data
@@ -47,5 +50,3 @@ Thumbs.db
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
 
-# environment files
-samples/smart-home/server/src/environment.ts

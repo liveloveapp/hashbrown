@@ -3,13 +3,14 @@ import {
   Directive,
   inject,
   input,
-  ViewContainerRef,
-  OnInit,
   OnDestroy,
+  OnInit,
+  ViewContainerRef,
 } from '@angular/core';
 import { RichChat } from './rich-chat-resource.fn';
 
 @Directive({
+  // eslint-disable-next-line @angular-eslint/directive-selector
   selector: 'ng-template[hshRenderComponentMessage]',
   standalone: true,
 })

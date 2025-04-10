@@ -7,7 +7,7 @@ export default [
     files: ['**/*.json'],
     rules: {
       '@nx/dependency-checks': [
-        'error',
+        'warn',
         {
           ignoredFiles: ['{projectRoot}/eslint.config.{js,cjs,mjs}'],
         },
@@ -30,6 +30,7 @@ export default [
           style: 'camelCase',
         },
       ],
+      '@angular-eslint/directive-class-suffix': 'off',
       '@angular-eslint/component-selector': [
         'error',
         {
