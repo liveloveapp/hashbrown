@@ -1,0 +1,15 @@
+{
+  "name": "@hashbrownai/openai",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "tslib": "^2.3.0",
+    "json-schema": "0.4.0"
+  },
+  "peerDependencies": {
+    "openai": "^4.93.0"
+  }
+}

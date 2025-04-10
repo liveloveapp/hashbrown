@@ -1,6 +1,6 @@
-import { Injectable, InjectionToken, Inject } from '@angular/core';
+import { Inject, Injectable, InjectionToken } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ChatCompletionWithToolsRequest, ChatCompletionChunk } from './types';
+import { ChatCompletionChunk, ChatCompletionWithToolsRequest } from './types';
 
 export const FETCH_GLOBAL = new InjectionToken<typeof fetch>('FETCH_GLOBAL', {
   providedIn: 'root',

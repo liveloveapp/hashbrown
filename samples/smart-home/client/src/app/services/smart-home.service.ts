@@ -1,8 +1,8 @@
-import { Injectable, signal, effect } from '@angular/core';
+import { effect, Injectable, signal } from '@angular/core';
+import { Observable, of, throwError } from 'rxjs';
 import { Light } from '../models/light.model';
 import { Scene, SceneLight } from '../models/scene.model';
 import { ScheduledScene, Weekday } from '../models/scheduled-scene.model';
-import { Observable, of, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
