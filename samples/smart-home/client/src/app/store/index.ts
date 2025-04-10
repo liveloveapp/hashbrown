@@ -1,8 +1,8 @@
-import { createSelector, ActionReducerMap } from '@ngrx/store';
-import * as fromLights from './lights.reducer';
+import { ActionReducerMap, createSelector } from '@ngrx/store';
 import * as fromLastUserAction from './last-user-action.reducer';
-import * as fromScenes from './scenes.reducer';
 import * as fromLayout from './layout.reducer';
+import * as fromLights from './lights.reducer';
+import * as fromScenes from './scenes.reducer';
 
 export interface AppState {
   lights: fromLights.LightsState;

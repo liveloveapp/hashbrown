@@ -8,7 +8,6 @@ import {
   richChatResource,
   s,
 } from '@hashbrownai/angular';
-import { toolJavascript } from '@hashbrownai/tool-javascript';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
@@ -155,7 +154,6 @@ export class ChatPanelComponent {
             );
         },
       }),
-      toolJavascript,
     ],
   });
 

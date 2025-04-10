@@ -1,14 +1,14 @@
+import { CommonModule } from '@angular/common';
 import {
+  AfterViewInit,
   Component,
   computed,
   ElementRef,
   HostListener,
-  AfterViewInit,
   input,
-  viewChild,
   output,
+  viewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-predictive-textarea',

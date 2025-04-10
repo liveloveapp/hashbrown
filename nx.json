@@ -14,7 +14,6 @@
     ],
     "sharedGlobals": []
   },
-  "nxCloudId": "67d75065357f496de5e7d45a",
   "targetDefaults": {
     "@nx/angular:package": {
       "cache": true,
@@ -71,6 +70,12 @@
     }
   },
   "plugins": [
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "eslint:lint"
+      }
+    },
     {
       "plugin": "@nx/jest/plugin",
       "options": {
