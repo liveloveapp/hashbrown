@@ -25,6 +25,18 @@
         "assets": ["packages/streaming-json-parser/*.md"]
       }
     },
+    "server": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node packages/streaming-json-parser/src/server.ts"
+      }
+    },
+    "client": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node packages/streaming-json-parser/src/client.ts"
+      }
+    },
     "nx-release-publish": {
       "options": {
         "packageRoot": "dist/{projectRoot}"
