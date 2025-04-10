@@ -23,7 +23,7 @@ export const lightsReducer = createReducer(
     isLoading: true,
   })),
   on(LightsApiActions.loadLightsSuccess, (state, action) =>
-    adapter.setAll(action.lights, { ...state, isLoading: false })
+    adapter.setAll(action.lights, { ...state, isLoading: false }),
   ),
   on(LightsApiActions.loadLightsFailure, (state, action) => ({
     ...state,
@@ -31,21 +31,21 @@ export const lightsReducer = createReducer(
     error: action.error,
   })),
   on(LightsApiActions.createLightSuccess, (state, action) =>
-    adapter.addOne(action.light, state)
+    adapter.addOne(action.light, state),
   ),
   on(LightsApiActions.createLightFailure, (state, action) => ({
     ...state,
     error: action.error,
   })),
   on(LightsApiActions.updateLightSuccess, (state, action) =>
-    adapter.updateOne({ id: action.light.id, changes: action.light }, state)
+    adapter.updateOne({ id: action.light.id, changes: action.light }, state),
   ),
   on(LightsApiActions.updateLightFailure, (state, action) => ({
     ...state,
     error: action.error,
   })),
   on(LightsApiActions.deleteLightSuccess, (state, action) =>
-    adapter.removeOne(action.id, state)
+    adapter.removeOne(action.id, state),
   ),
   on(LightsApiActions.deleteLightFailure, (state, action) => ({
     ...state,
@@ -54,8 +54,8 @@ export const lightsReducer = createReducer(
   on(ChatAiActions.controlLight, (state, action) =>
     adapter.updateOne(
       { id: action.lightId, changes: { brightness: action.brightness } },
-      state
-    )
+      state,
+    ),
   ),
   on(ChatAiActions.applyScene, (state, action) =>
     adapter.updateMany(
@@ -63,9 +63,9 @@ export const lightsReducer = createReducer(
         id: light.lightId,
         changes: { brightness: light.brightness },
       })),
-      state
-    )
-  )
+      state,
+    ),
+  ),
 );
 
 export const { selectAll, selectEntities, selectIds, selectTotal } =

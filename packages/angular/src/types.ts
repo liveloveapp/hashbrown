@@ -4,7 +4,7 @@ import { Signal } from '@angular/core';
 // Tool function definition
 export type Tool<
   Name extends string = string,
-  Schema extends JSONSchema = JSONSchema
+  Schema extends JSONSchema = JSONSchema,
 > = {
   name: Name;
   description: string;

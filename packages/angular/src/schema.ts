@@ -101,11 +101,12 @@ export namespace s {
     : never;
 
   // Gets the "last" member of a union.
-  type LastOf<T> = UnionToIntersection<
-    T extends any ? (x: T) => any : never
-  > extends (x: infer L) => any
-    ? L
-    : never;
+  type LastOf<T> =
+    UnionToIntersection<T extends any ? (x: T) => any : never> extends (
+      x: infer L,
+    ) => any
+      ? L
+      : never;
 
   // Converts a union type to a tuple.
   type UnionToTuple<T, L = LastOf<T>> = [T] extends [never]
@@ -122,31 +123,32 @@ export namespace s {
   >;
 
   // --- Updated Schema mapping ---
-  export type Schema<T> = IsUnion<T> extends true
-    ? SchemaForUnion<T>
-    : T extends string[]
-    ? EnumType<T>
-    : T extends Array<infer U>
-    ? ArrayType<Schema<U>>
-    : T extends string
-    ? string extends T
-      ? StringType
-      : ConstStringType<T>
-    : T extends number
-    ? NumberType | IntegerType
-    : T extends boolean
-    ? BooleanType
-    : T extends null
-    ? NullType
-    : T extends object
-    ? ObjectType<{ [K in keyof T]: Schema<T[K]> }>
-    : never;
+  export type Schema<T> =
+    IsUnion<T> extends true
+      ? SchemaForUnion<T>
+      : T extends string[]
+        ? EnumType<T>
+        : T extends Array<infer U>
+          ? ArrayType<Schema<U>>
+          : T extends string
+            ? string extends T
+              ? StringType
+              : ConstStringType<T>
+            : T extends number
+              ? NumberType | IntegerType
+              : T extends boolean
+                ? BooleanType
+                : T extends null
+                  ? NullType
+                  : T extends object
+                    ? ObjectType<{ [K in keyof T]: Schema<T[K]> }>
+                    : never;
 }
 
 export const s = {
   object<T extends Record<string, s.AnyType>>(
     description: string,
-    properties: T
+    properties: T,
   ): s.ObjectType<T> {
     return {
       type: 'object',
@@ -165,7 +167,7 @@ export const s = {
   // New helper for constant strings
   constString<T extends string>(
     description: string,
-    value: T
+    value: T,
   ): s.ConstStringType<T> {
     return {
       type: 'const-string',
@@ -278,7 +280,7 @@ export const s = {
           type: 'array',
           description: schema.description,
           items: s.toJsonSchema(
-            (schema as unknown as s.ArrayType<s.AnyType>).items
+            (schema as unknown as s.ArrayType<s.AnyType>).items,
           ),
         };
       }
@@ -295,7 +297,7 @@ export const s = {
         return {
           description: schema.description,
           anyOf: (schema as unknown as s.AnyOfType<s.AnyType[]>).anyOf.map(
-            (subSchema) => s.toJsonSchema(subSchema)
+            (subSchema) => s.toJsonSchema(subSchema),
           ),
         };
       }
@@ -304,7 +306,7 @@ export const s = {
         throw new Error(
           `Unsupported schema type: ${
             (schema as unknown as { type: string }).type
-          }`
+          }`,
         );
     }
   },
@@ -327,7 +329,7 @@ export const s = {
       case 'const-string': {
         if (value !== schema.value) {
           throw new Error(
-            `Expected constant string ${schema.value} but got ${value}`
+            `Expected constant string ${schema.value} but got ${value}`,
           );
         }
         return schema.value as s.Infer<T>;
@@ -370,7 +372,7 @@ export const s = {
           }
           parsedObj[key] = s.parse(
             schemaObj.properties[key] as unknown as s.Schema<unknown>,
-            obj[key]
+            obj[key],
           );
         }
         return parsedObj as s.Infer<T>;
@@ -387,7 +389,7 @@ export const s = {
         const enumSchema = schema as s.EnumType<string[]>;
         if (typeof value !== 'string' || !enumSchema.enum.includes(value)) {
           throw new Error(
-            `Expected one of [${enumSchema.enum.join(', ')}] but got ${value}`
+            `Expected one of [${enumSchema.enum.join(', ')}] but got ${value}`,
           );
         }
         return value as s.Infer<T>;
@@ -405,7 +407,7 @@ export const s = {
         throw new Error(
           `Value does not match any of the provided schemas. Last error: ${
             (lastError as Error)?.message || lastError
-          }`
+          }`,
         );
       }
 
@@ -413,7 +415,7 @@ export const s = {
         throw new Error(
           `Unsupported schema type: ${
             (schema as unknown as { type: string }).type
-          }`
+          }`,
         );
     }
   },

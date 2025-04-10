@@ -10,35 +10,35 @@ export const routes: Routes = [
     path: 'lights',
     loadComponent: () =>
       import('./features/lights/lights.component').then(
-        (m) => m.LightsComponent
+        (m) => m.LightsComponent,
       ),
   },
   {
     path: 'lights/add',
     loadComponent: () =>
       import('./features/lights/light-form.component').then(
-        (m) => m.LightFormComponent
+        (m) => m.LightFormComponent,
       ),
   },
   {
     path: 'lights/:id/edit',
     loadComponent: () =>
       import('./features/lights/light-form.component').then(
-        (m) => m.LightFormComponent
+        (m) => m.LightFormComponent,
       ),
   },
   {
     path: 'scenes',
     loadComponent: () =>
       import('./features/scenes/scenes.component').then(
-        (m) => m.ScenesComponent
+        (m) => m.ScenesComponent,
       ),
   },
   {
     path: 'scheduled-scenes',
     loadComponent: () =>
       import('./pages/scheduled-scenes/scheduled-scenes.component').then(
-        (m) => m.ScheduledScenesComponent
+        (m) => m.ScheduledScenesComponent,
       ),
   },
 ];

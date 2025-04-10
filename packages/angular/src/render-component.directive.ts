@@ -10,11 +10,9 @@ import {
 import { RichChat } from './rich-chat-resource.fn';
 
 @Directive({
-  // eslint-disable-next-line @angular-eslint/directive-selector
   selector: 'ng-template[hshRenderComponentMessage]',
   standalone: true,
 })
-// eslint-disable-next-line @angular-eslint/directive-class-suffix
 export class RenderComponentMessage implements OnInit, OnDestroy {
   hshRenderComponentMessage =
     input.required<RichChat.ComponentMessage<string, unknown>>();
@@ -24,13 +22,13 @@ export class RenderComponentMessage implements OnInit, OnDestroy {
   ngOnInit() {
     const componentMessage = this.hshRenderComponentMessage();
     this.componentRef = this.viewContainerRef.createComponent(
-      componentMessage.component
+      componentMessage.component,
     );
 
     for (const input of Object.keys(componentMessage.inputs)) {
       this.componentRef.setInput(
         input,
-        componentMessage.inputs[input as keyof typeof componentMessage.inputs]
+        componentMessage.inputs[input as keyof typeof componentMessage.inputs],
       );
     }
   }

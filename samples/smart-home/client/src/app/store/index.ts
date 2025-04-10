@@ -21,48 +21,48 @@ export const reducers: ActionReducerMap<AppState> = {
 export const selectLightsState = (state: AppState) => state.lights;
 export const selectAllLights = createSelector(
   selectLightsState,
-  fromLights.selectAll
+  fromLights.selectAll,
 );
 export const selectLightEntities = createSelector(
   selectLightsState,
-  fromLights.selectEntities
+  fromLights.selectEntities,
 );
 export const selectIsLightsLoading = createSelector(
   selectLightsState,
-  fromLights.selectIsLoading
+  fromLights.selectIsLoading,
 );
 export const selectLightsError = createSelector(
   selectLightsState,
-  fromLights.selectError
+  fromLights.selectError,
 );
 
 export const selectLastUserActionState = (state: AppState) =>
   state.lastUserAction;
 export const selectLastUserAction = createSelector(
   selectLastUserActionState,
-  fromLastUserAction.selectLastUserAction
+  fromLastUserAction.selectLastUserAction,
 );
 
 export const selectScenesState = (state: AppState) => state.scenes;
 export const selectAllScenes = createSelector(
   selectScenesState,
-  fromScenes.selectAll
+  fromScenes.selectAll,
 );
 export const selectScenesEntities = createSelector(
   selectScenesState,
-  fromScenes.selectEntities
+  fromScenes.selectEntities,
 );
 export const selectScenesLoading = createSelector(
   selectScenesState,
-  fromScenes.selectLoading
+  fromScenes.selectLoading,
 );
 export const selectScenesError = createSelector(
   selectScenesState,
-  fromScenes.selectError
+  fromScenes.selectError,
 );
 
 export const selectLayoutState = (state: AppState) => state.layout;
 export const selectIsChatPanelOpen = createSelector(
   selectLayoutState,
-  fromLayout.selectIsChatPanelOpen
+  fromLayout.selectIsChatPanelOpen,
 );

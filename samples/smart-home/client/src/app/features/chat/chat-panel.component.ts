@@ -8,6 +8,7 @@ import {
   richChatResource,
   s,
 } from '@hashbrownai/angular';
+import { toolJavascript } from '@hashbrownai/tool-javascript';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
@@ -136,7 +137,7 @@ export class ChatPanelComponent {
         schema: s.object('Control light input', {
           lightId: s.string('The id of the light'),
           brightness: s.number(
-            'The brightness of the light, between 0 and 100'
+            'The brightness of the light, between 0 and 100',
           ),
         }),
         handler: (input) => {
@@ -148,12 +149,13 @@ export class ChatPanelComponent {
                   ChatAiActions.controlLight({
                     lightId: light.id,
                     brightness: light.brightness,
-                  })
-                )
-              )
+                  }),
+                ),
+              ),
             );
         },
       }),
+      toolJavascript,
     ],
   });
 

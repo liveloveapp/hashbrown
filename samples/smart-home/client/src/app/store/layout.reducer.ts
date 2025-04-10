@@ -18,7 +18,7 @@ export const layoutReducer = createReducer(
   on(ChatActions.closeChatPanel, (state) => ({
     ...state,
     isChatPanelOpen: false,
-  }))
+  })),
 );
 
 export const selectIsChatPanelOpen = (state: LayoutState) =>

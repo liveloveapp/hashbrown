@@ -30,7 +30,7 @@ import { ScheduledScene, Weekday } from '../../models/scheduled-scene.model';
             >
               <option value="">Select a scene</option>
               @for (scene of scenes(); track scene.id) {
-              <option [value]="scene.id">{{ scene.name }}</option>
+                <option [value]="scene.id">{{ scene.name }}</option>
               }
             </select>
           </div>
@@ -57,18 +57,20 @@ import { ScheduledScene, Weekday } from '../../models/scheduled-scene.model';
             </legend>
             <div class="mt-2 space-y-2">
               @for (weekday of weekdays; track weekday) {
-              <label [for]="weekday" class="inline-flex items-center">
-                <input
-                  [id]="weekday"
-                  type="checkbox"
-                  [checked]="
-                    newScheduledScene.recurrenceRule.weekdays.includes(weekday)
-                  "
-                  (change)="toggleWeekday(weekday)"
-                  class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-                <span class="ml-2">{{ weekday | titlecase }}</span>
-              </label>
+                <label [for]="weekday" class="inline-flex items-center">
+                  <input
+                    [id]="weekday"
+                    type="checkbox"
+                    [checked]="
+                      newScheduledScene.recurrenceRule.weekdays.includes(
+                        weekday
+                      )
+                    "
+                    (change)="toggleWeekday(weekday)"
+                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                  <span class="ml-2">{{ weekday | titlecase }}</span>
+                </label>
               }
             </div>
           </fieldset>
@@ -87,43 +89,43 @@ import { ScheduledScene, Weekday } from '../../models/scheduled-scene.model';
         <h2 class="text-xl font-semibold mb-4">Active Schedules</h2>
         <div class="space-y-4">
           @for (scheduledScene of scheduledScenes(); track scheduledScene.id) {
-          <div class="border rounded-lg p-4">
-            <div class="flex justify-between items-start">
-              <div>
-                <h3 class="font-medium">
-                  {{ getSceneName(scheduledScene.sceneId) }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  Starts: {{ scheduledScene.startDate | date : 'medium' }}
-                </p>
-                @if (scheduledScene.recurrenceRule?.weekdays?.length) {
-                <p class="text-sm text-gray-500">
-                  Repeats on:
-                  {{
-                    scheduledScene.recurrenceRule?.weekdays?.join(', ')
-                      | titlecase
-                  }}
-                </p>
-                }
-              </div>
-              <div class="flex space-x-2">
-                <button
-                  (click)="toggleEnabled(scheduledScene)"
-                  class="text-sm px-2 py-1 rounded"
-                  [class.bg-green-100]="scheduledScene.isEnabled"
-                  [class.bg-red-100]="!scheduledScene.isEnabled"
-                >
-                  {{ scheduledScene.isEnabled ? 'Enabled' : 'Disabled' }}
-                </button>
-                <button
-                  (click)="deleteScheduledScene(scheduledScene.id)"
-                  class="text-sm text-red-600 hover:text-red-800"
-                >
-                  Delete
-                </button>
+            <div class="border rounded-lg p-4">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="font-medium">
+                    {{ getSceneName(scheduledScene.sceneId) }}
+                  </h3>
+                  <p class="text-sm text-gray-500">
+                    Starts: {{ scheduledScene.startDate | date: 'medium' }}
+                  </p>
+                  @if (scheduledScene.recurrenceRule?.weekdays?.length) {
+                    <p class="text-sm text-gray-500">
+                      Repeats on:
+                      {{
+                        scheduledScene.recurrenceRule?.weekdays?.join(', ')
+                          | titlecase
+                      }}
+                    </p>
+                  }
+                </div>
+                <div class="flex space-x-2">
+                  <button
+                    (click)="toggleEnabled(scheduledScene)"
+                    class="text-sm px-2 py-1 rounded"
+                    [class.bg-green-100]="scheduledScene.isEnabled"
+                    [class.bg-red-100]="!scheduledScene.isEnabled"
+                  >
+                    {{ scheduledScene.isEnabled ? 'Enabled' : 'Disabled' }}
+                  </button>
+                  <button
+                    (click)="deleteScheduledScene(scheduledScene.id)"
+                    class="text-sm text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
           }
         </div>
       </div>

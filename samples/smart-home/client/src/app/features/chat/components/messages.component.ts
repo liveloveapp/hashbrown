@@ -6,20 +6,25 @@ import { RenderComponentMessage, RichChat } from '@hashbrownai/angular';
   standalone: true,
   imports: [RenderComponentMessage],
   template: `
-    @for (message of messages(); track $index) { @switch (message.role) { @case
-    ('user') {
-    <div class="chat-message user">
-      <p>{{ message.content }}</p>
-    </div>
-    } @case ('assistant') {
-    <div class="chat-message assistant">
-      <p>{{ message.content }}</p>
-    </div>
-    } @case ('component') {
-    <div class="chat-message component">
-      <ng-template [hshRenderComponentMessage]="message" />
-    </div>
-    } } }
+    @for (message of messages(); track $index) {
+      @switch (message.role) {
+        @case ('user') {
+          <div class="chat-message user">
+            <p>{{ message.content }}</p>
+          </div>
+        }
+        @case ('assistant') {
+          <div class="chat-message assistant">
+            <p>{{ message.content }}</p>
+          </div>
+        }
+        @case ('component') {
+          <div class="chat-message component">
+            <ng-template [hshRenderComponentMessage]="message" />
+          </div>
+        }
+      }
+    }
   `,
   styles: [
     `

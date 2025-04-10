@@ -9,23 +9,24 @@ import { selectLightEntities } from '../../../store';
   standalone: true,
   imports: [MatCardModule, MatSliderModule],
   template: `
-    @let light = maybeLight(); @if (light) {
-    <mat-card>
-      <mat-card-header>
-        <mat-card-subtitle>{{ light.name }}</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="light-card-content">
-          <mat-slider min="0" max="100" step="1">
-            <input
-              matSliderThumb
-              [value]="light.brightness"
-              (valueChange)="onBrightnessChange($event)"
-            />
-          </mat-slider>
-        </div>
-      </mat-card-content>
-    </mat-card>
+    @let light = maybeLight();
+    @if (light) {
+      <mat-card>
+        <mat-card-header>
+          <mat-card-subtitle>{{ light.name }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="light-card-content">
+            <mat-slider min="0" max="100" step="1">
+              <input
+                matSliderThumb
+                [value]="light.brightness"
+                (valueChange)="onBrightnessChange($event)"
+              />
+            </mat-slider>
+          </div>
+        </mat-card-content>
+      </mat-card>
     }
   `,
   styles: [

@@ -40,27 +40,31 @@ import { selectAllLights } from '../../store';
           </button>
 
           @for (light of lights(); track light.id) {
-          <div class="light-item">
-            <h3>{{ light.name }}</h3>
-            <mat-slider [min]="0" [max]="100" [step]="1">
-              <input
-                matSliderThumb
-                [value]="light.brightness"
-                (valueChange)="updateBrightness(light.id, $event)"
-              />
-            </mat-slider>
-            <div class="light-actions">
-              <button
-                mat-icon-button
-                [routerLink]="['/lights', light.id, 'edit']"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button color="warn" (click)="deleteLight(light)">
-                <mat-icon>delete</mat-icon>
-              </button>
+            <div class="light-item">
+              <h3>{{ light.name }}</h3>
+              <mat-slider [min]="0" [max]="100" [step]="1">
+                <input
+                  matSliderThumb
+                  [value]="light.brightness"
+                  (valueChange)="updateBrightness(light.id, $event)"
+                />
+              </mat-slider>
+              <div class="light-actions">
+                <button
+                  mat-icon-button
+                  [routerLink]="['/lights', light.id, 'edit']"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="deleteLight(light)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
             </div>
-          </div>
           }
         </mat-card-content>
       </mat-card>
@@ -95,7 +99,7 @@ export class LightsComponent {
 
   updateBrightness(id: string, brightness: number) {
     this.store.dispatch(
-      LightsPageActions.updateLight({ id, changes: { brightness } })
+      LightsPageActions.updateLight({ id, changes: { brightness } }),
     );
   }
 

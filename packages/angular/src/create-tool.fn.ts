@@ -4,15 +4,15 @@ import { s } from './schema';
 
 export class BoundTool<
   Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.AnyType>>
+  InputSchema extends s.ObjectType<Record<string, s.AnyType>>,
 > {
   constructor(
     readonly name: Name,
     readonly description: string,
     readonly schema: InputSchema,
     readonly handler: (
-      input: s.Infer<InputSchema>
-    ) => Promise<unknown> | Observable<unknown>
+      input: s.Infer<InputSchema>,
+    ) => Promise<unknown> | Observable<unknown>,
   ) {}
 
   toTool(): Tool<Name> {
@@ -26,20 +26,20 @@ export class BoundTool<
 
 export function createToolWithArgs<
   Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.AnyType>>
+  InputSchema extends s.ObjectType<Record<string, s.AnyType>>,
 >(input: {
   name: Name;
   description: string;
   schema: InputSchema;
   handler: (
-    input: s.Infer<InputSchema>
+    input: s.Infer<InputSchema>,
   ) => Promise<unknown> | Observable<unknown>;
 }): BoundTool<Name, InputSchema> {
   return new BoundTool(
     input.name,
     input.description,
     input.schema,
-    input.handler
+    input.handler,
   );
 }
 

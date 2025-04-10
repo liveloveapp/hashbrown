@@ -27,7 +27,7 @@ export const lastUserActionReducer = createReducer(
       userAction: 'Add Scene Success',
       payload: action.scene,
     },
-  }))
+  })),
 );
 
 export const selectLastUserAction = (state: LastUserActionState) =>

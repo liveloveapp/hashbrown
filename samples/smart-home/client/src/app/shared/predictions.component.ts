@@ -28,7 +28,7 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
       s.object('A light in the scene', {
         lightId: s.string('The ID of the light'),
         brightness: s.integer('A number between 0-100'),
-      })
+      }),
     ),
   }),
   s.object('Suggest scheduling a scene to the system', {
@@ -47,7 +47,7 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
   s.object('Suggest removing a light from a scene', {
     type: s.constString(
       'MUST BE "Remove Light from Scene"',
-      'Remove Light from Scene'
+      'Remove Light from Scene',
     ),
     reasonForSuggestion: s.string('Why do you think this should come next?'),
     lightId: s.string('The ID of the light'),
@@ -60,158 +60,186 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
   standalone: true,
   template: `
     <!-- Loop over predictions and display according to type -->
-    @for (prediction of output(); track $index) { @switch (prediction.type) {
-    @case ('Add Light') {
-    <div class="prediction">
-      <div class="predictionIcon">
-        <mat-icon inline>bolt</mat-icon>
-      </div>
-      <p>
-        Add Light called "<span class="predictionValue">{{
-          prediction.name
-        }}</span
-        >" with brightness
-        <span class="predictionValue">{{ prediction.brightness }}</span>
-      </p>
-      <div class="predictionActions">
-        <button class="rejectPrediction" (click)="removePrediction($index)">
-          Dismiss
-        </button>
-        <button
-          class="acceptPrediction"
-          (click)="
-            addLight($index, {
-              name: prediction.name,
-              brightness: prediction.brightness
-            })
-          "
-        >
-          Accept
-        </button>
-      </div>
-    </div>
-    } @case ('Add Scene') {
-    <div class="prediction">
-      <div class="predictionIcon">
-        <mat-icon inline>bolt</mat-icon>
-      </div>
-      <p>
-        Add Scene called "<span class="predictionValue">{{
-          prediction.name
-        }}</span
-        >" with
-        <span class="predictionValue">{{ prediction.lights.length }}</span>
-        lights
-      </p>
-      <div class="predictionActions">
-        <button class="rejectPrediction" (click)="removePrediction($index)">
-          Dismiss
-        </button>
-        <button
-          class="acceptPrediction"
-          (click)="
-            addScene($index, {
-              name: prediction.name,
-              lights: prediction.lights
-            })
-          "
-        >
-          Accept
-        </button>
-      </div>
-    </div>
-    } @case ('Schedule Scene') {
-    <div class="prediction">
-      <div class="predictionIcon">
-        <mat-icon inline>bolt</mat-icon>
-      </div>
-      <p>
-        Schedule Scene "<span class="predictionValue">{{
-          prediction.sceneId
-        }}</span
-        >" at
-        <span class="predictionValue">{{ prediction.datetime }}</span>
-      </p>
-      <div class="predictionActions">
-        <button class="rejectPrediction" (click)="removePrediction($index)">
-          Dismiss
-        </button>
-        <button
-          class="acceptPrediction"
-          (click)="
-            scheduleScene($index, {
-              sceneId: prediction.sceneId,
-              datetime: prediction.datetime
-            })
-          "
-        >
-          Accept
-        </button>
-      </div>
-    </div>
-    } @case ('Add Light to Scene') { @let light =
-    lightEntities()[prediction.lightId]; @let scene =
-    sceneEntities()[prediction.sceneId];
+    @for (prediction of output(); track $index) {
+      @switch (prediction.type) {
+        @case ('Add Light') {
+          <div class="prediction">
+            <div class="predictionIcon">
+              <mat-icon inline>bolt</mat-icon>
+            </div>
+            <p>
+              Add Light called "<span class="predictionValue">{{
+                prediction.name
+              }}</span
+              >" with brightness
+              <span class="predictionValue">{{ prediction.brightness }}</span>
+            </p>
+            <div class="predictionActions">
+              <button
+                class="rejectPrediction"
+                (click)="removePrediction($index)"
+              >
+                Dismiss
+              </button>
+              <button
+                class="acceptPrediction"
+                (click)="
+                  addLight($index, {
+                    name: prediction.name,
+                    brightness: prediction.brightness,
+                  })
+                "
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        }
+        @case ('Add Scene') {
+          <div class="prediction">
+            <div class="predictionIcon">
+              <mat-icon inline>bolt</mat-icon>
+            </div>
+            <p>
+              Add Scene called "<span class="predictionValue">{{
+                prediction.name
+              }}</span
+              >" with
+              <span class="predictionValue">{{
+                prediction.lights.length
+              }}</span>
+              lights
+            </p>
+            <div class="predictionActions">
+              <button
+                class="rejectPrediction"
+                (click)="removePrediction($index)"
+              >
+                Dismiss
+              </button>
+              <button
+                class="acceptPrediction"
+                (click)="
+                  addScene($index, {
+                    name: prediction.name,
+                    lights: prediction.lights,
+                  })
+                "
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        }
+        @case ('Schedule Scene') {
+          <div class="prediction">
+            <div class="predictionIcon">
+              <mat-icon inline>bolt</mat-icon>
+            </div>
+            <p>
+              Schedule Scene "<span class="predictionValue">{{
+                prediction.sceneId
+              }}</span
+              >" at
+              <span class="predictionValue">{{ prediction.datetime }}</span>
+            </p>
+            <div class="predictionActions">
+              <button
+                class="rejectPrediction"
+                (click)="removePrediction($index)"
+              >
+                Dismiss
+              </button>
+              <button
+                class="acceptPrediction"
+                (click)="
+                  scheduleScene($index, {
+                    sceneId: prediction.sceneId,
+                    datetime: prediction.datetime,
+                  })
+                "
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        }
+        @case ('Add Light to Scene') {
+          @let light = lightEntities()[prediction.lightId];
+          @let scene = sceneEntities()[prediction.sceneId];
 
-    <div class="prediction">
-      <div class="predictionIcon">
-        <mat-icon inline>bolt</mat-icon>
-      </div>
-      <p>
-        Add Light "<span class="predictionValue">{{ light?.name }}</span
-        >" to Scene "<span class="predictionValue">{{ scene?.name }}</span
-        >" with brightness
-        <span class="predictionValue">{{ prediction.brightness }}</span>
-      </p>
-      <div class="predictionActions">
-        <button class="rejectPrediction" (click)="removePrediction($index)">
-          Dismiss
-        </button>
-        <button
-          class="acceptPrediction"
-          (click)="
-            addLightToScene($index, {
-              lightId: prediction.lightId,
-              sceneId: prediction.sceneId,
-              brightness: prediction.brightness
-            })
-          "
-        >
-          Accept
-        </button>
-      </div>
-    </div>
-    } @case ('Remove Light from Scene') { @let light =
-    lightEntities()[prediction.lightId]; @let scene =
-    sceneEntities()[prediction.sceneId];
+          <div class="prediction">
+            <div class="predictionIcon">
+              <mat-icon inline>bolt</mat-icon>
+            </div>
+            <p>
+              Add Light "<span class="predictionValue">{{ light?.name }}</span
+              >" to Scene "<span class="predictionValue">{{ scene?.name }}</span
+              >" with brightness
+              <span class="predictionValue">{{ prediction.brightness }}</span>
+            </p>
+            <div class="predictionActions">
+              <button
+                class="rejectPrediction"
+                (click)="removePrediction($index)"
+              >
+                Dismiss
+              </button>
+              <button
+                class="acceptPrediction"
+                (click)="
+                  addLightToScene($index, {
+                    lightId: prediction.lightId,
+                    sceneId: prediction.sceneId,
+                    brightness: prediction.brightness,
+                  })
+                "
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        }
+        @case ('Remove Light from Scene') {
+          @let light = lightEntities()[prediction.lightId];
+          @let scene = sceneEntities()[prediction.sceneId];
 
-    <div class="prediction">
-      <div class="predictionIcon">
-        <mat-icon inline>remove_circle</mat-icon>
-      </div>
-      <p>
-        Remove Light "<span class="predictionValue">{{ light?.name }}</span
-        >" from Scene "<span class="predictionValue">{{ scene?.name }}</span
-        >"
-      </p>
-      <div class="predictionActions">
-        <button class="rejectPrediction" (click)="removePrediction($index)">
-          Dismiss
-        </button>
-        <button
-          class="acceptPrediction"
-          (click)="
-            removeLightFromScene($index, {
-              lightId: prediction.lightId,
-              sceneId: prediction.sceneId
-            })
-          "
-        >
-          Accept
-        </button>
-      </div>
-    </div>
-    } } }
+          <div class="prediction">
+            <div class="predictionIcon">
+              <mat-icon inline>remove_circle</mat-icon>
+            </div>
+            <p>
+              Remove Light "<span class="predictionValue">{{
+                light?.name
+              }}</span
+              >" from Scene "<span class="predictionValue">{{
+                scene?.name
+              }}</span
+              >"
+            </p>
+            <div class="predictionActions">
+              <button
+                class="rejectPrediction"
+                (click)="removePrediction($index)"
+              >
+                Dismiss
+              </button>
+              <button
+                class="acceptPrediction"
+                (click)="
+                  removeLightFromScene($index, {
+                    lightId: prediction.lightId,
+                    sceneId: prediction.sceneId,
+                  })
+                "
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        }
+      }
+    }
   `,
   styles: [
     `
@@ -407,7 +435,7 @@ Additional Rules:
   // Dispatch actions for different predictions
   addLight(
     predictionIndex: number,
-    light: { name: string; brightness: number }
+    light: { name: string; brightness: number },
   ) {
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.addLight({ light }));
@@ -418,7 +446,7 @@ Additional Rules:
     scene: {
       name: string;
       lights: { lightId: string; brightness: number }[];
-    }
+    },
   ) {
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.addScene({ scene }));
@@ -426,13 +454,13 @@ Additional Rules:
 
   scheduleScene(
     predictionIndex: number,
-    scene: { sceneId: string; datetime: string }
+    scene: { sceneId: string; datetime: string },
   ) {
     this.store.dispatch(
       PredictionsAiActions.scheduleScene({
         sceneId: scene.sceneId,
         datetime: scene.datetime,
-      })
+      }),
     );
   }
 
@@ -442,7 +470,7 @@ Additional Rules:
       lightId: string;
       sceneId: string;
       brightness: number;
-    }
+    },
   ) {
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.addLightToScene(sceneLight));
@@ -450,7 +478,7 @@ Additional Rules:
 
   removeLightFromScene(
     predictionIndex: number,
-    sceneLight: { lightId: string; sceneId: string }
+    sceneLight: { lightId: string; sceneId: string },
   ) {
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.removeLightFromScene(sceneLight));

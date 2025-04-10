@@ -23,7 +23,7 @@ export const scenesReducer = createReducer(
     error: null,
   })),
   on(ScenesApiActions.loadScenesSuccess, (state, { scenes }) =>
-    adapter.setAll(scenes, { ...state, loading: false })
+    adapter.setAll(scenes, { ...state, loading: false }),
   ),
   on(ScenesApiActions.loadScenesFailure, (state, { error }) => ({
     ...state,
@@ -31,13 +31,13 @@ export const scenesReducer = createReducer(
     error,
   })),
   on(ScenesApiActions.addSceneSuccess, (state, { scene }) =>
-    adapter.addOne(scene, state)
+    adapter.addOne(scene, state),
   ),
   on(ScenesApiActions.updateSceneSuccess, (state, { scene }) =>
-    adapter.updateOne({ id: scene.id, changes: scene }, state)
+    adapter.updateOne({ id: scene.id, changes: scene }, state),
   ),
   on(ScenesApiActions.deleteSceneSuccess, (state, { id }) =>
-    adapter.removeOne(id, state)
+    adapter.removeOne(id, state),
   ),
   on(
     ScenesApiActions.addLightToSceneSuccess,
@@ -52,10 +52,10 @@ export const scenesReducer = createReducer(
             lights: [...scene.lights, sceneLight],
           },
         },
-        state
+        state,
       );
-    }
-  )
+    },
+  ),
 );
 
 export const { selectAll, selectEntities, selectIds, selectTotal } =

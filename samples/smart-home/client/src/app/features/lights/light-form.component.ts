@@ -36,9 +36,11 @@ import { Store } from '@ngrx/store';
             <mat-form-field appearance="fill">
               <mat-label>Name</mat-label>
               <input matInput formControlName="name" />
-              @if (form.get('name')?.errors?.['required'] &&
-              form.get('name')?.touched) {
-              <mat-error>Name is required</mat-error>
+              @if (
+                form.get('name')?.errors?.['required'] &&
+                form.get('name')?.touched
+              ) {
+                <mat-error>Name is required</mat-error>
               }
             </mat-form-field>
 
@@ -90,7 +92,7 @@ export class LightFormComponent {
   });
 
   protected isEditing = toSignal(
-    this.route.params.pipe(map((params) => Boolean(params['id'])))
+    this.route.params.pipe(map((params) => Boolean(params['id']))),
   );
 
   constructor() {
@@ -122,7 +124,7 @@ export class LightFormComponent {
             changes: {
               name,
             },
-          })
+          }),
         );
       } else {
         this.store.dispatch(
@@ -130,7 +132,7 @@ export class LightFormComponent {
             light: {
               name,
             },
-          })
+          }),
         );
       }
     }

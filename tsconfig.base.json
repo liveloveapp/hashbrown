@@ -16,7 +16,8 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@hashbrownai/angular": ["packages/angular/src/index.ts"]
+      "@hashbrownai/angular": ["packages/angular/src/index.ts"],
+      "@hashbrownai/tool-javascript": ["packages/tool-javascript/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

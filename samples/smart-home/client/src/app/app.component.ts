@@ -47,7 +47,7 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
     <app-predictions></app-predictions>
 
     @if (isChatPanelOpen()) {
-    <app-chat-panel></app-chat-panel>
+      <app-chat-panel></app-chat-panel>
     }
   `,
   styles: [

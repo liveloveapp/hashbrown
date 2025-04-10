@@ -15,7 +15,7 @@ export class FetchService {
 
   streamChatCompletionWithTools(
     url: string,
-    request: ChatCompletionWithToolsRequest
+    request: ChatCompletionWithToolsRequest,
   ): Observable<ChatCompletionChunk> {
     return new Observable<ChatCompletionChunk>((observer) => {
       const abortController = new AbortController();

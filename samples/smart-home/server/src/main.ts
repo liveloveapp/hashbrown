@@ -48,7 +48,7 @@ app.post('/chat', async (req, res) => {
               message.tool_calls && message.tool_calls.length > 0
                 ? message.tool_calls.map(
                     (
-                      toolCall
+                      toolCall,
                     ): OpenAI.Chat.Completions.ChatCompletionMessageToolCall => ({
                       ...toolCall,
                       type: 'function',
@@ -56,7 +56,7 @@ app.post('/chat', async (req, res) => {
                         ...toolCall.function,
                         arguments: JSON.stringify(toolCall.function.arguments),
                       },
-                    })
+                    }),
                   )
                 : undefined,
           };
@@ -76,7 +76,7 @@ app.post('/chat', async (req, res) => {
         }
 
         throw new Error(`Invalid message role`);
-      }
+      },
     ),
     max_tokens,
     temperature,

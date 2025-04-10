@@ -18,13 +18,13 @@ export const loadScenes$ = createEffect(
         of(smartHome.scenes()).pipe(
           map((scenes) => ScenesApiActions.loadScenesSuccess({ scenes })),
           catchError((error) =>
-            of(ScenesApiActions.loadScenesFailure({ error: error.message }))
-          )
-        )
-      )
+            of(ScenesApiActions.loadScenesFailure({ error: error.message })),
+          ),
+        ),
+      ),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const addScene$ = createEffect(
@@ -41,19 +41,19 @@ export const addScene$ = createEffect(
           return of(
             ScenesApiActions.addSceneFailure({
               error: 'Failed to create scene',
-            })
+            }),
           );
         }
         return of(newScene).pipe(
           map((scene) => ScenesApiActions.addSceneSuccess({ scene })),
           catchError((error) =>
-            of(ScenesApiActions.addSceneFailure({ error: error.message }))
-          )
+            of(ScenesApiActions.addSceneFailure({ error: error.message })),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const addLightToScene$ = createEffect(
@@ -69,18 +69,18 @@ export const addLightToScene$ = createEffect(
             ScenesApiActions.addLightToSceneSuccess({
               sceneLight,
               sceneId,
-            })
+            }),
           ),
           catchError((error) =>
             of(
-              ScenesApiActions.addLightToSceneFailure({ error: error.message })
-            )
-          )
+              ScenesApiActions.addLightToSceneFailure({ error: error.message }),
+            ),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const updateScene$ = createEffect(
@@ -93,16 +93,16 @@ export const updateScene$ = createEffect(
       mergeMap(({ id, scene }) => {
         return smartHome.updateScene(id, scene).pipe(
           map((updatedScene) =>
-            ScenesApiActions.updateSceneSuccess({ scene: updatedScene })
+            ScenesApiActions.updateSceneSuccess({ scene: updatedScene }),
           ),
           catchError((error) =>
-            of(ScenesApiActions.updateSceneFailure({ error: error.message }))
-          )
+            of(ScenesApiActions.updateSceneFailure({ error: error.message })),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const deleteScene$ = createEffect(
@@ -116,13 +116,13 @@ export const deleteScene$ = createEffect(
         return smartHome.deleteScene(id).pipe(
           map((id) => ScenesApiActions.deleteSceneSuccess({ id })),
           catchError((error) =>
-            of(ScenesApiActions.deleteSceneFailure({ error: error.message }))
-          )
+            of(ScenesApiActions.deleteSceneFailure({ error: error.message })),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const applyScene$ = createEffect(
@@ -136,11 +136,11 @@ export const applyScene$ = createEffect(
         return smartHome.applyScene(id).pipe(
           map((scene) => ScenesApiActions.applySceneSuccess({ scene })),
           catchError((error) =>
-            of(ScenesApiActions.applySceneFailure({ error: error.message }))
-          )
+            of(ScenesApiActions.applySceneFailure({ error: error.message })),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );

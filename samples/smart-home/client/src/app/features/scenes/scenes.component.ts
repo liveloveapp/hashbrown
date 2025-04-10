@@ -33,24 +33,28 @@ import { selectAllScenes } from '../../store';
           </button>
 
           @for (scene of scenes(); track scene.id) {
-          <div class="scene-item">
-            <h3>{{ scene.name }}</h3>
-            <div class="scene-actions">
-              <button
-                mat-raised-button
-                color="primary"
-                (click)="applyScene(scene.id)"
-              >
-                Apply
-              </button>
-              <button mat-icon-button (click)="openSceneDialog(scene)">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button color="warn" (click)="deleteScene(scene)">
-                <mat-icon>delete</mat-icon>
-              </button>
+            <div class="scene-item">
+              <h3>{{ scene.name }}</h3>
+              <div class="scene-actions">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="applyScene(scene.id)"
+                >
+                  Apply
+                </button>
+                <button mat-icon-button (click)="openSceneDialog(scene)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="deleteScene(scene)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
             </div>
-          </div>
           }
         </mat-card-content>
       </mat-card>
@@ -95,7 +99,7 @@ export class ScenesComponent {
 
       if (scene) {
         this.store.dispatch(
-          ScenesPageActions.updateScene({ id: scene.id, scene: result })
+          ScenesPageActions.updateScene({ id: scene.id, scene: result }),
         );
       } else {
         this.store.dispatch(ScenesPageActions.addScene({ scene: result }));

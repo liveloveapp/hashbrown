@@ -16,13 +16,13 @@ export const loadLights$ = createEffect(
         return smartHome.loadLights().pipe(
           map((lights) => LightsApiActions.loadLightsSuccess({ lights })),
           catchError((error) =>
-            of(LightsApiActions.loadLightsFailure({ error }))
-          )
+            of(LightsApiActions.loadLightsFailure({ error })),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const createLight$ = createEffect(
@@ -41,13 +41,13 @@ export const createLight$ = createEffect(
           .pipe(
             map((light) => LightsApiActions.createLightSuccess({ light })),
             catchError((error) =>
-              of(LightsApiActions.createLightFailure({ error }))
-            )
+              of(LightsApiActions.createLightFailure({ error })),
+            ),
           );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const updateLight$ = createEffect(
@@ -61,13 +61,13 @@ export const updateLight$ = createEffect(
         return smartHome.updateLight(action.id, action.changes).pipe(
           map((light) => LightsApiActions.updateLightSuccess({ light })),
           catchError((error) =>
-            of(LightsApiActions.updateLightFailure({ error }))
-          )
+            of(LightsApiActions.updateLightFailure({ error })),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );
 
 export const deleteLight$ = createEffect(
@@ -81,11 +81,11 @@ export const deleteLight$ = createEffect(
         return smartHome.deleteLight(action.id).pipe(
           map(() => LightsApiActions.deleteLightSuccess({ id: action.id })),
           catchError((error) =>
-            of(LightsApiActions.deleteLightFailure({ error }))
-          )
+            of(LightsApiActions.deleteLightFailure({ error })),
+          ),
         );
-      })
+      }),
     );
   },
-  { functional: true }
+  { functional: true },
 );

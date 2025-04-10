@@ -61,7 +61,7 @@ export type ChatResourceConfig = {
  */
 function mergeToolCalls(
   existingCalls: Chat.AssistantMessage['tool_calls'] = [],
-  newCalls: Chat.AssistantMessage['tool_calls'] = []
+  newCalls: Chat.AssistantMessage['tool_calls'] = [],
 ): Chat.AssistantMessage['tool_calls'] {
   const merged = [...existingCalls];
   newCalls.forEach((newCall) => {
@@ -92,13 +92,13 @@ function mergeToolCalls(
  */
 function updateMessagesWithDelta(
   messages: Chat.Message[],
-  delta: Partial<Chat.Message>
+  delta: Partial<Chat.Message>,
 ): Chat.Message[] {
   const lastMessage = messages[messages.length - 1];
   if (lastMessage && lastMessage.role === 'assistant') {
     const updatedToolCalls = mergeToolCalls(
       lastMessage.tool_calls,
-      (delta as Chat.AssistantMessage).tool_calls ?? []
+      (delta as Chat.AssistantMessage).tool_calls ?? [],
     );
     const updatedMessage: Chat.Message = {
       ...lastMessage,
@@ -126,7 +126,7 @@ function updateMessagesWithDelta(
  * @returns An array of tool definitions for the chat completion.
  */
 function createToolDefinitions(
-  tools: BoundTool<string, s.ObjectType<Record<string, s.AnyType>>>[] = []
+  tools: BoundTool<string, s.ObjectType<Record<string, s.AnyType>>>[] = [],
 ): OpenAI.Chat.Completions.ChatCompletionTool[] {
   return tools.map((boundTool): OpenAI.Chat.Completions.ChatCompletionTool => {
     const tool = boundTool.toTool();
@@ -151,11 +151,11 @@ function createToolDefinitions(
  */
 function processChatResponse(
   response: ChatCompletionChunk,
-  messagesSignal: WritableSignal<Chat.Message[]>
+  messagesSignal: WritableSignal<Chat.Message[]>,
 ): void {
   response.choices.forEach((choice: ChatCompletionChunk['choices'][number]) => {
     messagesSignal.update((currentMessages) =>
-      updateMessagesWithDelta(currentMessages, choice.delta as Chat.Message)
+      updateMessagesWithDelta(currentMessages, choice.delta as Chat.Message),
     );
   });
 }
@@ -172,7 +172,7 @@ function finalizeChat(
   messagesSignal: WritableSignal<Chat.Message[]>,
   toolCallSubject: Subject<Chat.AssistantMessage>,
   isSending: { set(val: boolean): void },
-  isReceiving: { set(val: boolean): void }
+  isReceiving: { set(val: boolean): void },
 ): void {
   const currentMessages = messagesSignal();
   const lastMessage = currentMessages[currentMessages.length - 1];
@@ -199,7 +199,7 @@ function finalizeChat(
 function processToolCallMessage(
   message: Chat.AssistantMessage,
   configTools: BoundTool<string, any>[] = [],
-  injector: Injector
+  injector: Injector,
 ): Observable<Chat.ToolMessage[]> {
   const toolCalls = message.tool_calls;
 
@@ -217,9 +217,9 @@ function processToolCallMessage(
         tool.handler(
           s.parse(
             tool.schema,
-            s.parse(tool.schema, JSON.parse(toolCall.function.arguments))
-          )
-        )
+            s.parse(tool.schema, JSON.parse(toolCall.function.arguments)),
+          ),
+        ),
       );
 
       return from(result).pipe(
@@ -235,7 +235,7 @@ function processToolCallMessage(
               content: result as object,
             },
             tool_call_id: toolCall.id,
-          })
+          }),
         ),
         catchError((err): Observable<Chat.ToolMessage> => {
           return of({
@@ -250,10 +250,10 @@ function processToolCallMessage(
             },
             tool_call_id: toolCall.id,
           });
-        })
+        }),
       );
     }),
-    toArray()
+    toArray(),
   );
 }
 
@@ -277,7 +277,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
   const reloadSignal = new BehaviorSubject<true>(true);
 
   const computedModel = computed(() =>
-    typeof config.model === 'string' ? config.model : config.model()
+    typeof config.model === 'string' ? config.model : config.model(),
   );
   const computedTemperature = computed(() => {
     if (typeof config.temperature === 'number') {
@@ -302,7 +302,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
   const computedResponseFormat = computed(() =>
     typeof config.responseFormat === 'function'
       ? config.responseFormat()
-      : config.responseFormat
+      : config.responseFormat,
   );
   const serializedResponseFormat = computed(() => {
     const currentFormat = computedResponseFormat();
@@ -361,14 +361,14 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
                   messagesSignal,
                   toolCallMessages$,
                   isSending,
-                  isReceiving
+                  isReceiving,
                 );
               },
             }),
-            takeUntil(abortSignal)
+            takeUntil(abortSignal),
           );
       }),
-      takeUntilDestroyed()
+      takeUntilDestroyed(),
     )
     .subscribe();
 
@@ -377,14 +377,14 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     .pipe(
       takeUntilDestroyed(),
       concatMap((message) =>
-        processToolCallMessage(message, config.tools, injector)
-      )
+        processToolCallMessage(message, config.tools, injector),
+      ),
     )
     .subscribe((toolMessages) =>
       messagesSignal.update((currentMessages) => [
         ...currentMessages,
         ...toolMessages,
-      ])
+      ]),
     );
 
   function sendMessage(message: Chat.Message | Chat.Message[]) {
@@ -411,7 +411,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
   }
 
   function updateMessages(
-    updater: (messages: Chat.Message[]) => Chat.Message[]
+    updater: (messages: Chat.Message[]) => Chat.Message[],
   ) {
     abortSignal.next();
 

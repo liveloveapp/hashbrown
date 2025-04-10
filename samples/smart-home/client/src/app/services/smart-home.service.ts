@@ -9,13 +9,13 @@ import { Observable, of, throwError } from 'rxjs';
 })
 export class SmartHomeService {
   private readonly lightsSignal = signal<Light[]>(
-    this.loadFromLocalStorage('lights') || []
+    this.loadFromLocalStorage('lights') || [],
   );
   private readonly scenesSignal = signal<Scene[]>(
-    this.loadFromLocalStorage('scenes') || []
+    this.loadFromLocalStorage('scenes') || [],
   );
   private readonly scheduledScenesSignal = signal<ScheduledScene[]>(
-    this.loadFromLocalStorage('scheduledScenes') || []
+    this.loadFromLocalStorage('scheduledScenes') || [],
   );
 
   readonly lights = this.lightsSignal.asReadonly();
@@ -80,7 +80,7 @@ export class SmartHomeService {
     };
 
     this.lightsSignal.update((lights) =>
-      lights.map((light) => (light.id === id ? updatedLight : light))
+      lights.map((light) => (light.id === id ? updatedLight : light)),
     );
 
     return of(updatedLight);
@@ -88,7 +88,7 @@ export class SmartHomeService {
 
   deleteLight(id: string): Observable<string> {
     this.lightsSignal.update((lights) =>
-      lights.filter((light) => light.id !== id)
+      lights.filter((light) => light.id !== id),
     );
 
     return of(id);
@@ -107,7 +107,7 @@ export class SmartHomeService {
 
   updateScene(
     id: string,
-    updates: Partial<Omit<Scene, 'id'>>
+    updates: Partial<Omit<Scene, 'id'>>,
   ): Observable<Scene> {
     const scene = this.scenes().find((s) => s.id === id);
 
@@ -119,7 +119,7 @@ export class SmartHomeService {
     };
 
     this.scenesSignal.update((scenes) =>
-      scenes.map((scene) => (scene.id === id ? updatedScene : scene))
+      scenes.map((scene) => (scene.id === id ? updatedScene : scene)),
     );
 
     return of(scene);
@@ -127,7 +127,7 @@ export class SmartHomeService {
 
   deleteScene(id: string): Observable<string> {
     this.scenesSignal.update((scenes) =>
-      scenes.filter((scene) => scene.id !== id)
+      scenes.filter((scene) => scene.id !== id),
     );
 
     return of(id);
@@ -148,7 +148,7 @@ export class SmartHomeService {
   }
 
   addScheduledScene(
-    scheduledScene: Omit<ScheduledScene, 'id'>
+    scheduledScene: Omit<ScheduledScene, 'id'>,
   ): Observable<ScheduledScene> {
     const newScheduledScene: ScheduledScene = {
       ...scheduledScene,
@@ -165,10 +165,10 @@ export class SmartHomeService {
 
   updateScheduledScene(
     id: string,
-    updates: Partial<Omit<ScheduledScene, 'id'>>
+    updates: Partial<Omit<ScheduledScene, 'id'>>,
   ): Observable<ScheduledScene> {
     const scheduledScene = this.scheduledScenes().find(
-      (scheduledScene) => scheduledScene.id === id
+      (scheduledScene) => scheduledScene.id === id,
     );
 
     if (!scheduledScene) {
@@ -182,8 +182,8 @@ export class SmartHomeService {
 
     this.scheduledScenesSignal.update((scheduledScenes) =>
       scheduledScenes.map((scheduledScene) =>
-        scheduledScene.id === id ? updatedScheduledScene : scheduledScene
-      )
+        scheduledScene.id === id ? updatedScheduledScene : scheduledScene,
+      ),
     );
 
     return of(updatedScheduledScene);
@@ -191,7 +191,7 @@ export class SmartHomeService {
 
   deleteScheduledScene(id: string): Observable<string> {
     this.scheduledScenesSignal.update((scheduledScenes) =>
-      scheduledScenes.filter((scheduledScene) => scheduledScene.id !== id)
+      scheduledScenes.filter((scheduledScene) => scheduledScene.id !== id),
     );
 
     return of(id);
@@ -200,14 +200,14 @@ export class SmartHomeService {
   addLightToScene(
     lightId: string,
     sceneId: string,
-    brightness: number
+    brightness: number,
   ): Observable<SceneLight> {
     this.scenesSignal.update((scenes) =>
       scenes.map((scene) =>
         scene.id === sceneId
           ? { ...scene, lights: [...scene.lights, { lightId, brightness }] }
-          : scene
-      )
+          : scene,
+      ),
     );
 
     return of({ lightId, sceneId, brightness });

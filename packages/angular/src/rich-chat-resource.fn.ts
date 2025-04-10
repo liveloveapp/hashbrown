@@ -79,10 +79,13 @@ export function richChatResource(args: {
           name: s.string(`Must be ${component.name}`),
           inputs: s.object(
             'Values to pass to the component',
-            Object.keys(component.inputs).reduce((acc, key) => {
-              (acc as any)[key] = (component.inputs as any)[key];
-              return acc;
-            }, {} as Record<string, s.AnyType>)
+            Object.keys(component.inputs).reduce(
+              (acc, key) => {
+                (acc as any)[key] = (component.inputs as any)[key];
+                return acc;
+              },
+              {} as Record<string, s.AnyType>,
+            ),
           ),
         });
       }),
@@ -179,14 +182,14 @@ export function richChatResource(args: {
         }
         const toolCallMessages = toolCalls.flatMap(
           (
-            toolCall
+            toolCall,
           ): Array<
             | RichChat.ToolCallMessage
             | RichChat.ComponentMessage<string, unknown>
           > => {
             const toolCallMessage = messages.find(
               (t): t is Chat.ToolMessage =>
-                t.role === 'tool' && t.tool_call_id === toolCall.id
+                t.role === 'tool' && t.tool_call_id === toolCall.id,
             );
             const toolName = toolCall.function.name;
             const content = toolCallMessage?.content;
@@ -208,7 +211,7 @@ export function richChatResource(args: {
               const componentName = uiValue.ui.name;
               const componentInputs = uiValue.ui.inputs;
               const componentType = args.components?.find(
-                (c) => c.name === componentName
+                (c) => c.name === componentName,
               )?.component;
 
               if (
@@ -240,7 +243,7 @@ export function richChatResource(args: {
                 isPending: result === undefined,
               },
             ];
-          }
+          },
         );
 
         return toolCallMessages;

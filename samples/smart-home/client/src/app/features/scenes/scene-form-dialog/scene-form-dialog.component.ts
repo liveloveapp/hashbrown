@@ -44,62 +44,66 @@ import { selectAllLights, selectLightEntities } from '../../../store';
         <mat-form-field appearance="fill">
           <mat-label>Name</mat-label>
           <input matInput formControlName="name" />
-          @if (form.get('name')?.errors?.['required'] &&
-          form.get('name')?.touched) {
-          <mat-error>Name is required</mat-error>
+          @if (
+            form.get('name')?.errors?.['required'] && form.get('name')?.touched
+          ) {
+            <mat-error>Name is required</mat-error>
           }
         </mat-form-field>
 
         <div formArrayName="lights">
           @for (light of lightsFormArray.controls; track $index) {
-          <div [formGroupName]="$index" class="light-config">
-            <mat-form-field>
-              <mat-label>Light</mat-label>
-              <mat-select formControlName="lightId">
-                @for (availableLight of lights(); track availableLight.id) {
-                <mat-option [value]="availableLight.id">
-                  {{ availableLight.name }}
-                </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+            <div [formGroupName]="$index" class="light-config">
+              <mat-form-field>
+                <mat-label>Light</mat-label>
+                <mat-select formControlName="lightId">
+                  @for (availableLight of lights(); track availableLight.id) {
+                    <mat-option [value]="availableLight.id">
+                      {{ availableLight.name }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
 
-            <mat-slider [min]="0" [max]="100" [step]="1">
-              <input matSliderThumb formControlName="brightness" />
-            </mat-slider>
+              <mat-slider [min]="0" [max]="100" [step]="1">
+                <input matSliderThumb formControlName="brightness" />
+              </mat-slider>
 
-            <button
-              mat-icon-button
-              color="warn"
-              type="button"
-              (click)="removeLight($index)"
-            >
-              <mat-icon>remove_circle</mat-icon>
-            </button>
-          </div>
+              <button
+                mat-icon-button
+                color="warn"
+                type="button"
+                (click)="removeLight($index)"
+              >
+                <mat-icon>remove_circle</mat-icon>
+              </button>
+            </div>
           }
         </div>
 
-        @let prediction = predictedLights.value(); @if (prediction) {
+        @let prediction = predictedLights.value();
+        @if (prediction) {
+          <h5>
+            <mat-icon aria-hidden="true" inline>bolt</mat-icon> Suggestions
+          </h5>
+          @for (light of prediction.lights; track light.lightId) {
+            @let suggestedLight = lightEntities()[light.lightId];
 
-        <h5><mat-icon aria-hidden="true" inline>bolt</mat-icon> Suggestions</h5>
-        @for (light of prediction.lights; track light.lightId) { @let
-        suggestedLight = lightEntities()[light.lightId];
-
-        <div class="predicted-light">
-          <span
-            >{{ suggestedLight?.name }} - Brightness:
-            {{ light.brightness }}%</span
-          >
-          <button
-            mat-mini-button
-            type="button"
-            (click)="addPredictedLightToScene(light)"
-          >
-            Add
-          </button>
-        </div>
-        } }
+            <div class="predicted-light">
+              <span
+                >{{ suggestedLight?.name }} - Brightness:
+                {{ light.brightness }}%</span
+              >
+              <button
+                mat-mini-button
+                type="button"
+                (click)="addPredictedLightToScene(light)"
+              >
+                Add
+              </button>
+            </div>
+          }
+        }
 
         <button mat-button type="button" (click)="addLight()">Add Light</button>
       </form>
@@ -162,7 +166,7 @@ export class SceneFormDialogComponent {
       ${this.lights()
         .map((light) => `${light.id}: ${light.name}`)
         .join('\n')}
-    `
+    `,
     ),
     outputSchema: s.object('Your response', {
       lights: s.array(
@@ -170,7 +174,7 @@ export class SceneFormDialogComponent {
         s.object('A join between a light and a scene', {
           lightId: s.string('the ID of the light to add'),
           brightness: s.number('the brightness of the light'),
-        })
+        }),
       ),
     }),
     model: 'gpt-4o-mini',
@@ -218,7 +222,7 @@ export class SceneFormDialogComponent {
       this.fb.group({
         lightId: [light.lightId, Validators.required],
         brightness: [light.brightness, Validators.required],
-      })
+      }),
     );
   }
 }
