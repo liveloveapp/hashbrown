@@ -18,6 +18,7 @@
     "paths": {
       "@hashbrownai/angular": ["packages/angular/src/index.ts"],
       "@hashbrownai/openai": ["packages/openai/src/index.ts"],
+      "@hashbrownai/react": ["packages/react/src/index.ts"],
       "@hashbrownai/tool-javascript": ["packages/tool-javascript/src/index.ts"]
     }
   },
