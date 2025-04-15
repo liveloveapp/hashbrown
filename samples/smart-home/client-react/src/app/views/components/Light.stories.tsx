@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { PredictiveTextArea } from './PredictiveTextArea';
+import { Light } from './Light';
 
 const meta = {
-  title: 'Shared/PredictiveTextArea',
-  component: PredictiveTextArea,
+  title: 'Views/LightsView/Light',
+  component: Light,
   parameters: {
     layout: 'centered',
   },
@@ -15,11 +15,16 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof PredictiveTextArea>;
+} satisfies Meta<typeof Light>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: {},
+  args: {
+    light: {
+      name: 'Living Room',
+      brightness: 75,
+    },
+  },
 };
