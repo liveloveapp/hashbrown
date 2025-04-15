@@ -61,7 +61,8 @@
       },
       "defaultConfiguration": "development",
       "options": {
-        "proxyConfig": "samples/smart-home/client/proxy.conf.json"
+        "proxyConfig": "samples/smart-home/client/proxy.conf.json",
+        "host": "0.0.0.0"
       }
     },
     "extract-i18n": {
