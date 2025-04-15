@@ -1,24 +1,20 @@
 // Uncomment this line to use CSS modules
 // import styles from './app.module.css';
-import { React } from '@hashbrownai/react';
-import { Link, Route, Routes } from 'react-router-dom';
-import NxWelcome from './nx-welcome';
-import { PredictiveTextArea } from './shared/PredictiveTextArea';
+import { ChatProvider } from '@hashbrownai/react';
+import { ChatPanel } from './shared/ChatPanel';
+
 export function App() {
   return (
-    <div>
-      asdf
-      <PredictiveTextArea />
-      asdf
-      <NxWelcome title="client-react" />
-      <React />
-      {/* START: routes */}
-      {/* These routes and navigation have been generated for you */}
-      {/* Feel free to move and update them to fit your needs */}
-      <br />
-      <hr />
-      <br />
-      <div role="navigation">
+    <div className="flex flex-col p-4">
+      <ChatProvider
+        model="gpt-4o-mini"
+        temperature={0.5}
+        tools={[]}
+        maxTokens={1000}
+      >
+        <ChatPanel />
+      </ChatProvider>
+      {/* <div role="navigation">
         <ul>
           <li>
             <Link to="/">Home</Link>
@@ -27,8 +23,8 @@ export function App() {
             <Link to="/page-2">Page 2</Link>
           </li>
         </ul>
-      </div>
-      <Routes>
+      </div> */}
+      {/* <Routes>
         <Route
           path="/"
           element={
@@ -46,7 +42,7 @@ export function App() {
             </div>
           }
         />
-      </Routes>
+      </Routes> */}
       {/* END: routes */}
     </div>
   );

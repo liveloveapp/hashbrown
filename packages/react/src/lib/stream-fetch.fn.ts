@@ -12,9 +12,11 @@ export interface StreamChatCompletionOptions {
   callbacks: StreamChatCompletionCallbacks;
 }
 
+export type StreamChatCompletionCleanup = () => void;
+
 export const streamChatCompletionWithTools = (
   streamChatCompletionOptions: StreamChatCompletionOptions,
-): ChatCompletionChunk => {
+): StreamChatCompletionCleanup => {
   const { url, request, callbacks } = streamChatCompletionOptions;
 
   const abortController = new AbortController();

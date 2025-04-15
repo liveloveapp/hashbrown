@@ -1,8 +1,15 @@
+import { useState } from 'react';
 import { Textarea } from './textarea';
 
-import { streamChatCompletionWithTools } from '@hashbrownai/react';
+import {
+  ChatCompletionChunk,
+  streamChatCompletionWithTools,
+} from '@hashbrownai/react';
+import { Button } from './button';
 
 export const PredictiveTextArea = () => {
+  const [message, setMessage] = useState('');
+
   const onChunk = (chunk: ChatCompletionChunk) => {
     console.log(chunk);
   };
@@ -15,7 +22,7 @@ export const PredictiveTextArea = () => {
     console.error(error);
   };
 
-  streamChatCompletionWithTools({
+  const wat = streamChatCompletionWithTools({
     url: 'http://localhost:3000/chat',
     request: {
       model: 'gpt-4o-mini',
@@ -28,5 +35,14 @@ export const PredictiveTextArea = () => {
     },
   });
 
-  return <Textarea />;
+  console.log('wat', wat);
+
+  console.log('blocked?');
+
+  return (
+    <div className="flex">
+      <Textarea />
+      <Button variant="icon">Send</Button>
+    </div>
+  );
 };
