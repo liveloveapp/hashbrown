@@ -3,14 +3,15 @@
 import { React } from '@hashbrownai/react';
 import { Link, Route, Routes } from 'react-router-dom';
 import NxWelcome from './nx-welcome';
-
+import { PredictiveTextArea } from './shared/PredictiveTextArea';
 export function App() {
   return (
     <div>
+      asdf
+      <PredictiveTextArea />
+      asdf
       <NxWelcome title="client-react" />
-
       <React />
-
       {/* START: routes */}
       {/* These routes and navigation have been generated for you */}
       {/* Feel free to move and update them to fit your needs */}

@@ -19,6 +19,7 @@ export class FetchService {
   ): Observable<ChatCompletionChunk> {
     return new Observable<ChatCompletionChunk>((observer) => {
       const abortController = new AbortController();
+
       const fetchData = async () => {
         try {
           const response = await this._fetch(url, {
