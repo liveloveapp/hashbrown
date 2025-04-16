@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Button } from '../../shared/button';
 import {
   Dialog,
@@ -11,10 +13,25 @@ import {
 } from '../../shared/dialog';
 import { Input } from '../../shared/input';
 import { Label } from '../../shared/label';
+import { useSmartHomeStore } from '../../store/smart-home.store';
 
 export const AddLightDialogForm = () => {
+  const addLight = useSmartHomeStore((state) => state.addLight);
+
+  const [lightName, setLightName] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = () => {
+    addLight({
+      id: uuidv4(),
+      name: lightName,
+      brightness: 100,
+    });
+    setOpen(false);
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">Add Light</Button>
       </DialogTrigger>
@@ -28,11 +45,18 @@ export const AddLightDialogForm = () => {
             <Label htmlFor="link" className="sr-only">
               Light Name
             </Label>
-            <Input id="link" placeholder="Light Name" />
+            <Input
+              id="link"
+              placeholder="Light Name"
+              value={lightName}
+              onChange={(e) => setLightName(e.target.value)}
+            />
           </div>
         </div>
         <DialogFooter className="sm:justify-start">
-          <Button type="submit">Add</Button>
+          <Button type="submit" onClick={handleSubmit}>
+            Add
+          </Button>
           <DialogClose asChild>
             <Button type="button" variant="secondary">
               Cancel

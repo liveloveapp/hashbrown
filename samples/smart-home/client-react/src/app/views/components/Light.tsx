@@ -2,12 +2,24 @@ import { Pencil, Trash } from 'lucide-react';
 import { Light as LightModel } from '../../models/light.model';
 import { Button } from '../../shared/button';
 import { Slider } from '../../shared/slider';
+import { useSmartHomeStore } from '../../store/smart-home.store';
 
 export interface LightProps {
   light: LightModel;
 }
 
 export const Light = ({ light }: LightProps) => {
+  const updateLight = useSmartHomeStore((state) => state.updateLight);
+  const deleteLight = useSmartHomeStore((state) => state.deleteLight);
+
+  const handleBrightnessChange = (value: number[]) => {
+    updateLight(light.id, { brightness: value[0] });
+  };
+
+  const handleDelete = () => {
+    deleteLight(light.id);
+  };
+
   return (
     <div
       className="grid gap-2 items-center"
@@ -19,10 +31,10 @@ export const Light = ({ light }: LightProps) => {
       <div className="flex items-center w-full px-2">
         <Slider
           className="w-full"
-          defaultValue={[50]}
           max={100}
           step={1}
           value={[light.brightness]}
+          onValueChange={handleBrightnessChange}
         />
       </div>
       <div className="flex items-center justify-end">
@@ -36,7 +48,7 @@ export const Light = ({ light }: LightProps) => {
         </Button>
       </div>
       <div className="flex items-center justify-center w-10">
-        <Button size="icon" variant="destructive">
+        <Button size="icon" variant="destructive" onClick={handleDelete}>
           <Trash className="h-4 w-4" />
         </Button>
       </div>

@@ -40,6 +40,7 @@ export const ChatProvider = (
   const onChunk = (chunk: ChatCompletionChunk) => {
     console.log(chunk);
     setMessages((prevMessages) =>
+      //TODO: iterate choice -- actually just use what Mike wrote for Angular and break it to a shared package.
       updateMessagesWithDelta(prevMessages, chunk.choices[0].delta),
     );
   };
