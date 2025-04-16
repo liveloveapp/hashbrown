@@ -38,6 +38,11 @@ export const Default: Story = {
         name: 'Bathroom',
         brightness: 25,
       },
+      {
+        id: '4',
+        name: 'That Tiny Light in the Bathroom',
+        brightness: 100,
+      },
     ],
   },
 };

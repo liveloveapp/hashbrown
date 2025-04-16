@@ -34,22 +34,21 @@ export const ChatPanel = () => {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col border-b">
-        <p className="text-lg font-bold">Assistant Chat</p>
-      </div>
+    <div className="flex flex-col">
       <div className="flex flex-col gap-2 py-2">
         {messages.map((message, index) => (
           <Message key={index} message={message} />
         ))}
       </div>
-      <Textarea
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Type your message..."
-      />
-      <Button onClick={onSubmit}>Send</Button>
+      <div className="flex flex-col gap-2">
+        <Textarea
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type your message..."
+        />
+        <Button onClick={onSubmit}>Send</Button>
+      </div>
     </div>
   );
 };
