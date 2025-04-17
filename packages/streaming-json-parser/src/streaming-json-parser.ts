@@ -1,3 +1,5 @@
+import { Stream } from 'stream';
+
 export function parse(data: string) {
   return JSON.parse(data);
 }
@@ -19,50 +21,34 @@ TODO:
   - TransformStream to wrap a returned stream?
 */
 
-/*
-Custom parsing example from Gemini:
-import { Readable } from 'stream';
+// Just pass data straight through for now
+export const ParseStream = new TransformStream({
+  transform(chunk, controller) {
+    console.log(chunk);
+    controller.enqueue(chunk);
+  },
+});
 
-async function findSchemaCustom(stream: Readable): Promise<any> {
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk);
-    const schemaMatch = buffer.match(/"definitions":\s*\{.*?"schema":\s*(\{.*?\})\s*}/);
-
-    if (schemaMatch) {
-      try {
-        return JSON.parse(schemaMatch[1]);
-      } catch (e) {
-        throw new Error("Error parsing schema: " + e);
-      }
-    }
+export class ParserTransform extends Stream.Transform {
+  constructor() {
+    super();
   }
-  throw new Error("Schema not found");
+  override _transform(chunk: any, encoding: any, callback: any) {
+    // var obj = this;
+    // obj.hash.update(chunk); //this is synchronous.
+    // obj.push(chunk);
+    console.log('Transform: ' + chunk);
+    callback();
+  }
 }
 
+export async function* AsyncParserIterable(
+  iterable: AsyncIterable<string>,
+): AsyncIterableIterator<string> {
+  for await (const item of iterable) {
+    // TODO: add more complex parsing here
+    const parsed = JSON.parse(item);
 
-const byteStream2 = Readable.from(JSON.stringify({
-    "definitions": {
-        "schema": {
-            "type": "object",
-            "properties": {
-                "name": { "type": "string" },
-                "age": { "type": "number" }
-            },
-            "required": ["name", "age"]
-        },
-        "other": "value"
-    },
-    "data": []
-}));
-
-findSchemaCustom(byteStream2)
-  .then(schema => {
-    console.log('Found schema:', schema);
-  })
-  .catch(error => {
-    console.error('Error finding schema:', error);
-  });
-*/
+    yield parsed;
+  }
+}
