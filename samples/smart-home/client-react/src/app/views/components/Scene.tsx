@@ -1,10 +1,10 @@
 import { Pencil, Play, Trash } from 'lucide-react';
 import { Scene as SceneModel } from '../../models/scene.model';
 import { Button } from '../../shared/button';
+import { SceneDialogForm } from './SceneDialogForm';
 
 export interface SceneProps {
   scene: SceneModel;
-  onEdit?: () => void;
 }
 
 export const Scene = ({ scene, onEdit }: SceneProps) => {
@@ -27,9 +27,11 @@ export const Scene = ({ scene, onEdit }: SceneProps) => {
         </Button>
       </div>
       <div className="flex items-center justify-center w-10">
-        <Button size="icon" variant="secondary" onClick={onEdit}>
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <SceneDialogForm scene={scene}>
+          <Button size="icon" variant="secondary">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </SceneDialogForm>
       </div>
       <div className="flex items-center justify-center w-10">
         <Button size="icon" variant="destructive">

@@ -3,6 +3,7 @@ import { Light as LightModel } from '../../models/light.model';
 import { Button } from '../../shared/button';
 import { Slider } from '../../shared/slider';
 import { useSmartHomeStore } from '../../store/smart-home.store';
+import { LightDialogForm } from './LightDialogForm';
 
 export interface LightProps {
   light: LightModel;
@@ -43,9 +44,11 @@ export const Light = ({ light }: LightProps) => {
         </p>
       </div>
       <div className="flex items-center justify-center w-10">
-        <Button size="icon" variant="secondary">
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <LightDialogForm light={light}>
+          <Button size="icon" variant="secondary">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </LightDialogForm>
       </div>
       <div className="flex items-center justify-center w-10">
         <Button size="icon" variant="destructive" onClick={handleDelete}>

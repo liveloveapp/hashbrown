@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { Light as LightModel } from '../../models/light.model';
 import { Button } from '../../shared/button';
 import {
   Dialog,
@@ -15,26 +16,40 @@ import { Input } from '../../shared/input';
 import { Label } from '../../shared/label';
 import { useSmartHomeStore } from '../../store/smart-home.store';
 
-export const AddLightDialogForm = () => {
-  const addLight = useSmartHomeStore((state) => state.addLight);
+interface LightDialogFormProps {
+  light?: LightModel;
+}
 
-  const [lightName, setLightName] = useState('');
+export const LightDialogForm = (
+  props: LightDialogFormProps & {
+    children: React.ReactNode;
+  },
+) => {
+  const { light, children } = props;
+  const addLight = useSmartHomeStore((state) => state.addLight);
+  const updateLight = useSmartHomeStore((state) => state.updateLight);
+
+  const [lightName, setLightName] = useState(light?.name || '');
   const [open, setOpen] = useState(false);
 
   const handleSubmit = () => {
-    addLight({
-      id: uuidv4(),
-      name: lightName,
-      brightness: 100,
-    });
+    if (light) {
+      updateLight(light.id, {
+        name: lightName,
+      });
+    } else {
+      addLight({
+        id: uuidv4(),
+        name: lightName,
+        brightness: 100,
+      });
+    }
     setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">Add Light</Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Light</DialogTitle>

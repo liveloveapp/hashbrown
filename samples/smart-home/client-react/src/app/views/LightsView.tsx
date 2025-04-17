@@ -1,6 +1,7 @@
 import { Light as LightModel } from '../models/light.model';
-import { AddLightDialogForm } from './components/AddLightDialogForm';
+import { Button } from '../shared/button';
 import { Light } from './components/Light';
+import { LightDialogForm } from './components/LightDialogForm';
 
 interface LightsViewProps {
   lights: LightModel[];
@@ -12,7 +13,9 @@ export const LightsView = ({ lights }: LightsViewProps) => {
       <div className="flex justify-between py-2">
         <p className="text-lg font-bold">Lights</p>
         <div className="flex justify-end">
-          <AddLightDialogForm />
+          <LightDialogForm>
+            <Button variant="outline">Add Light</Button>
+          </LightDialogForm>
         </div>
       </div>
       <div className="flex flex-col gap-4">
