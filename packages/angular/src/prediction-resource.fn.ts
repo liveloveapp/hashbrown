@@ -6,7 +6,7 @@ import { Chat, SignalLike } from './types';
 
 export function predictionResource<
   Input,
-  OutputSchema extends s.ObjectType<Record<string, s.AnyType>>
+  OutputSchema extends s.ObjectType<Record<string, s.AnyType>>,
 >(args: {
   model: string;
   temperature?: number;
@@ -83,7 +83,7 @@ export function predictionResource<
           (example: { input: object; output: object }) => `
         Input: ${JSON.stringify(example.input)}
         Output: ${JSON.stringify(example.output)}
-      `
+      `,
         )
         .join('\n')}
     `,
@@ -93,8 +93,8 @@ export function predictionResource<
     Array.isArray(args.tools)
       ? args.tools
       : args.tools === undefined
-      ? []
-      : args.tools()
+        ? []
+        : args.tools(),
   );
   const chat = chatResource({
     model: args.model,
@@ -119,7 +119,7 @@ export function predictionResource<
     try {
       return (s.parse as any)(
         args.outputSchema as unknown,
-        JSON.parse(lastMessage.content ?? '{}')
+        JSON.parse(lastMessage.content ?? '{}'),
       );
     } catch (error) {
       return undefined;

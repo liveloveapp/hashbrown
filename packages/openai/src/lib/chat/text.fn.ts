@@ -6,7 +6,7 @@ import { getParam, Params } from '../utils/env.utils';
 import { getOpenAiApiKey } from '../utils/openai.utils';
 
 export function text(
-  request: TextGenerationWithToolsRequest
+  request: TextGenerationWithToolsRequest,
 ): TextGenerationCompletion {
   const openai = new OpenAI({
     apiKey: getOpenAiApiKey(),
@@ -37,7 +37,7 @@ export function text(
               message.tool_calls && message.tool_calls.length > 0
                 ? message.tool_calls.map(
                     (
-                      toolCall
+                      toolCall,
                     ): OpenAI.Chat.Completions.ChatCompletionMessageToolCall => ({
                       ...toolCall,
                       type: 'function',
@@ -45,7 +45,7 @@ export function text(
                         ...toolCall.function,
                         arguments: JSON.stringify(toolCall.function.arguments),
                       },
-                    })
+                    }),
                   )
                 : undefined,
           };
@@ -65,7 +65,7 @@ export function text(
         }
 
         throw new Error(`Invalid message role`);
-      }
+      },
     ),
     max_tokens,
     temperature,

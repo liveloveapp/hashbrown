@@ -1,0 +1,46 @@
+{
+  "name": "streaming-json-parser",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/streaming-json-parser/src",
+  "projectType": "library",
+  "release": {
+    "version": {
+      "generatorOptions": {
+        "packageRoot": "dist/{projectRoot}",
+        "currentVersionResolver": "git-tag",
+        "fallbackCurrentVersionResolver": "disk"
+      }
+    }
+  },
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/streaming-json-parser",
+        "tsConfig": "packages/streaming-json-parser/tsconfig.lib.json",
+        "packageJson": "packages/streaming-json-parser/package.json",
+        "main": "packages/streaming-json-parser/src/index.ts",
+        "assets": ["packages/streaming-json-parser/*.md"]
+      }
+    },
+    "server": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node packages/streaming-json-parser/src/server.ts"
+      }
+    },
+    "client": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node packages/streaming-json-parser/src/client.ts"
+      }
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    }
+  }
+}

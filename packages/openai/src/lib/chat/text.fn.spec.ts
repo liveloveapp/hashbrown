@@ -19,7 +19,7 @@ function setup(
     maxTokens: 100,
     messages: [],
     model: 'gpt-4o',
-  }
+  },
 ) {
   const stream = jest.fn();
   (OpenAI as unknown as jest.Mock).mockImplementation(() => ({
@@ -57,7 +57,7 @@ describe('text', () => {
     expect(stream).toHaveBeenCalledWith(
       expect.objectContaining({
         messages,
-      })
+      }),
     );
   });
 });
