@@ -45,8 +45,30 @@ const TEST_JSON = {
 };
 
 const server = createServer(function (socket) {
-  // TODO: add more json, break it into pieces and send small (perhaps varyingly sized chunks)
-  socket.write(`${JSON.stringify(TEST_JSON)}\r\n`);
+  const TEST_STRING = JSON.stringify(TEST_JSON);
+
+  console.log(`Test string length: ${TEST_STRING.length}`);
+
+  const MAX_SIZE = 20;
+  const MIN_SIZE = 10;
+
+  let cursor = 0;
+
+  while (cursor < TEST_STRING.length) {
+    const chunkLength =
+      Math.floor(Math.random() * (MAX_SIZE - MIN_SIZE + 1)) + MIN_SIZE;
+
+    console.log(`Cursor: ${cursor}`);
+    console.log(`Chunk Length: ${chunkLength}`);
+    const chunk = TEST_STRING.slice(cursor, cursor + chunkLength);
+
+    console.log(`Chunk: ${chunk}`);
+
+    socket.write(chunk);
+
+    cursor += chunkLength;
+  }
+
   socket.pipe(socket);
 });
 
