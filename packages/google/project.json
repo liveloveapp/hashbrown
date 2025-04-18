@@ -1,7 +1,7 @@
 {
-  "name": "openai",
+  "name": "google",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "packages/openai/src",
+  "sourceRoot": "packages/google/src",
   "projectType": "library",
   "release": {
     "version": {
@@ -18,22 +18,24 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/openai",
-        "tsConfig": "packages/openai/tsconfig.lib.json",
-        "packageJson": "packages/openai/package.json",
-        "main": "packages/openai/src/index.ts",
-        "assets": ["packages/openai/*.md"]
+        "outputPath": "dist/packages/google",
+        "tsConfig": "packages/google/tsconfig.lib.json",
+        "packageJson": "packages/google/package.json",
+        "main": "packages/google/src/index.ts",
+        "assets": ["packages/google/*.md"]
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"]
+      "options": {
+        "lintFilePatterns": ["packages/google/**/*.ts"]
+      }
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "outputs": ["{workspaceRoot}/coverage/packages/google"],
       "options": {
-        "jestConfig": "packages/openai/jest.config.ts",
+        "jestConfig": "packages/google/jest.config.ts",
         "passWithNoTests": true
       }
     },

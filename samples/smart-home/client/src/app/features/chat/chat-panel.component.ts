@@ -96,7 +96,8 @@ export class ChatPanelComponent {
   smartHomeService = inject(SmartHomeService);
 
   chat = richChatResource({
-    model: 'gpt-4o',
+    model: 'gemini-2.0-flash',
+    // model: 'gpt-4o',
     messages: [
       {
         role: 'system',

@@ -1,5 +1,5 @@
 import * as stream from './stream';
 
-export const HashbrownOpenAI = {
+export const HashbrownGoogle = {
   stream,
 };

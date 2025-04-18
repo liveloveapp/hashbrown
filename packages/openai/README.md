@@ -1,6 +1,4 @@
-# openai
-
-This library was generated with [Nx](https://nx.dev).
+# Hashbrown OpenAI
 
 ## Building
 

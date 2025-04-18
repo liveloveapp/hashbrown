@@ -1,6 +1,6 @@
 export interface AssistantMessage {
   role: 'assistant';
-  content: string | null;
+  content?: string;
   tool_calls?: {
     index: number;
     id: string;

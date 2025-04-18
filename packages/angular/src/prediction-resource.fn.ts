@@ -1,8 +1,9 @@
 import { computed, effect, Resource, Signal } from '@angular/core';
+import { Chat } from '@hashbrownai/core';
 import { chatResource } from './chat-resource.fn';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
 import { s } from './schema';
-import { Chat, SignalLike } from './types';
+import { SignalLike } from './types';
 
 export function predictionResource<
   Input,

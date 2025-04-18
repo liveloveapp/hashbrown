@@ -32,7 +32,7 @@ export interface FunctionDefinition {
   strict?: boolean | null;
 }
 
-export interface TextGenerationTool {
+export interface CompletionToolChoiceFunctionOption {
   function: FunctionDefinition;
 
   /**
@@ -40,3 +40,8 @@ export interface TextGenerationTool {
    */
   type: 'function';
 }
+
+export type CompletionToolChoiceOption =
+  | 'auto'
+  | 'none'
+  | CompletionToolChoiceFunctionOption;
