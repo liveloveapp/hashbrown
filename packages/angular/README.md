@@ -1,6 +1,4 @@
-# angular
-
-This library was generated with [Nx](https://nx.dev).
+# Hashbrown Angular
 
 ## Running unit tests
 

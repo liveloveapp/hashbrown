@@ -1,6 +1,6 @@
 import { Inject, Injectable, InjectionToken } from '@angular/core';
+import { Chat } from '@hashbrownai/core';
 import { Observable } from 'rxjs';
-import { ChatCompletionChunk, ChatCompletionWithToolsRequest } from './types';
 
 export const FETCH_GLOBAL = new InjectionToken<typeof fetch>('FETCH_GLOBAL', {
   providedIn: 'root',
@@ -15,9 +15,9 @@ export class FetchService {
 
   streamChatCompletionWithTools(
     url: string,
-    request: ChatCompletionWithToolsRequest,
-  ): Observable<ChatCompletionChunk> {
-    return new Observable<ChatCompletionChunk>((observer) => {
+    request: Chat.CompletionCreateParams,
+  ): Observable<Chat.CompletionChunk> {
+    return new Observable<Chat.CompletionChunk>((observer) => {
       const abortController = new AbortController();
       const fetchData = async () => {
         try {
@@ -56,7 +56,9 @@ export class FetchService {
 
               for (const jsonChunk of jsonChunks) {
                 if (jsonChunk.trim()) {
-                  const jsonData = JSON.parse(jsonChunk) as ChatCompletionChunk;
+                  const jsonData = JSON.parse(
+                    jsonChunk,
+                  ) as Chat.CompletionChunk;
                   observer.next(jsonData);
                 }
               }

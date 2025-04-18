@@ -1,7 +1,7 @@
 import { computed, Signal, Type } from '@angular/core';
-import { BoundTool, createToolWithArgs } from './create-tool.fn';
-import { Chat } from './types';
+import { Chat } from '@hashbrownai/core';
 import { ChatResource, chatResource } from './chat-resource.fn';
+import { BoundTool, createToolWithArgs } from './create-tool.fn';
 import { s } from './schema';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -103,15 +103,15 @@ export function richChatResource(args: {
         provided you with a list of components that can be used to convey
         information to the user.
 
-        If you want to show a component to the user, you can use the 
+        If you want to show a component to the user, you can use the
         \`showComponent\` tool.
 
         The \`showComponent\` tool takes two arguments:
         - The name of the component to show
         - The inputs to pass to the component
-        
-        The inputs must match the expected inputs for the component.        
-        
+
+        The inputs must match the expected inputs for the component.
+
         Here is the description of each component:
         ${args.components
           .map((c) => `- ${c.name}: ${c.description}`)
@@ -128,15 +128,15 @@ export function richChatResource(args: {
       {
         role: 'system',
         content: `
-        You are chatbot chatting with a human on my web app. Please be 
-        curteuous, helpful, and friendly. Try to answer all questions 
+        You are chatbot chatting with a human on my web app. Please be
+        curteuous, helpful, and friendly. Try to answer all questions
         to the best of your ability. Keep answers concise and to the point.
 
         Today's date is ${new Date().toLocaleDateString()}.
 
         # Tools
         ${showComponentInstruction()}
-       
+
         `,
       },
     ],

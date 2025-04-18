@@ -1,5 +1,5 @@
+import { Chat } from '@hashbrownai/core';
 import { Observable } from 'rxjs';
-import { Tool } from './types';
 import { s } from './schema';
 
 export class BoundTool<
@@ -15,11 +15,11 @@ export class BoundTool<
     ) => Promise<unknown> | Observable<unknown>,
   ) {}
 
-  toTool(): Tool<Name> {
+  toTool(): Chat.Tool<Name> {
     return {
       name: this.name,
       description: this.description,
-      schema: s.toJsonSchema(this.schema),
+      schema: s.toOpenApiSchema(this.schema),
     };
   }
 }
