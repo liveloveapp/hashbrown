@@ -48,4 +48,4 @@ jobs:
         run: npm ci
 
       - name: Lint, test, and build affected.
-        run: npx nx affected -t lint,test,build --parallel=3
+        run: npx nx affected -t lint,test,build --parallel=3 --verbose
