@@ -18,6 +18,9 @@ export async function* AsyncParserIterable(
 
   const validate = ajv.compile(schema);
 
+  // Track the close index of matches so we can avoid checking any open/close indices before it
+  let lastMatchedCloseIndex = 0;
+
   for await (const item of iterable) {
     // Add item to rest of data
     dataString += item;
@@ -31,14 +34,23 @@ export async function* AsyncParserIterable(
       }
     }
 
-    // TODO: probably some optimizations possible around not checking
-    //       combinations that overlap (especially if matches were found)
-
     for (let j = 0; j < openBracketIndices.length; j++) {
-      // TODO: initialize k based on j's value to avoid extra iterations
+      // If we know we've matched past this point, go ahead and skip it
+      if (
+        lastMatchedCloseIndex !== 0 &&
+        openBracketIndices[j] < lastMatchedCloseIndex
+      ) {
+        continue;
+      }
+
       for (let k = 0; k < closeBracketIndices.length; k++) {
         const openIndex = openBracketIndices[j];
         const closeIndex = closeBracketIndices[k];
+
+        // If we know we've matched past this point, go ahead and skip it
+        if (closeIndex <= lastMatchedCloseIndex) {
+          continue;
+        }
 
         if (closeIndex < openIndex) {
           continue;
@@ -56,14 +68,10 @@ export async function* AsyncParserIterable(
         // Test with ajv against schema
         const valid = validate(json);
 
-        if (!valid) {
-          // TODO: if no matches found in chunk, keep it in a buffer and use with
-          // next chunk
-        } else {
+        if (valid) {
           // Found a match
-          // console.log(json);
 
-          // TODO: drop chunks up to where we found match since we don't need them anymore
+          lastMatchedCloseIndex = closeIndex;
 
           yield json;
         }

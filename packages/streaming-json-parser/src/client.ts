@@ -27,6 +27,9 @@ import { SocketAsyncIterable } from './socket-async-iterable';
     required: ['para', 'GlossSeeAlso'],
   };
 
+  console.log('Searching for objects like:');
+  console.log(JSON.stringify(schema, null, 4));
+
   const iterable = new SocketAsyncIterable(client);
   const parserIterable = AsyncParserIterable(iterable, schema);
   try {
