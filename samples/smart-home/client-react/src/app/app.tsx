@@ -36,6 +36,13 @@ export function App() {
         url: 'http://localhost:3000/chat',
       }}
       model="gpt-4o-mini"
+      messages={[
+        {
+          role: 'system',
+          content:
+            'You are a helpful assistant that can answer questions and help with tasks.',
+        },
+      ]}
       temperature={0.5}
       tools={[
         createTool({
