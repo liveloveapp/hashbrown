@@ -56,7 +56,6 @@ export type ChatResourceConfig = {
  * @param existingCalls - The existing tool calls.
  * @param newCalls - The new tool calls to merge.
  * @returns The merged array of tool calls.
- * TODO: Use the shared version of this function in the @hashbrownai/utilities package.
  */
 function mergeToolCalls(
   existingCalls: Chat.AssistantMessage['tool_calls'] = [],
@@ -88,7 +87,6 @@ function mergeToolCalls(
  * @param messages - The current messages array.
  * @param delta - The incoming message delta.
  * @returns The updated messages array.
- * TODO: Use the shared version of this function in the @hashbrownai/utilities package.
  */
 function updateMessagesWithDelta(
   messages: Chat.Message[],
