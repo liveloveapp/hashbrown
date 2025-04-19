@@ -4,8 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { BoundTool } from './create-tool.fn';
 import { s } from './schema';
 import { streamChatCompletionWithTools } from './stream-fetch.fn';
-
-// TODO: Handling isSending and isReceiving.
+import { createToolDefinitions } from './utilities';
 
 export interface ChatProviderProps {
   model: string;
@@ -19,18 +18,8 @@ export interface ChatProviderProps {
 export interface ChatProviderContext {
   messages: Chat.Message[];
   sendMessage: (message: Chat.Message) => void;
-}
-
-/**
- * Creates OpenAI tool definitions from the provided tools.
- *
- * @param tools - The list of tools from configuration.
- * @returns An array of tool definitions for the chat completion.
- */
-function createToolDefinitions(
-  tools: BoundTool<string, s.ObjectType<Record<string, s.AnyType>>>[] = [],
-): Chat.Tool[] {
-  return tools.map((boundTool): Chat.Tool => boundTool.toTool());
+  isThinking: boolean;
+  stop: () => void;
 }
 
 const ChatContext = createContext<ChatProviderContext | undefined>(undefined);
@@ -51,10 +40,12 @@ export const ChatProvider = (
   const { model, temperature, tools, maxTokens, responseFormat, messages } =
     props;
 
-  // TODO: Probably swap this to a reducer; it's working for now.
   const [prevMessages, setPrevMessages] = useState<Chat.Message[]>(
     messages ?? [],
   );
+
+  const [isThinking, setIsThinking] = useState<boolean>(false);
+  const [abortFn, setAbortFn] = useState<(() => void) | null>(null);
 
   const processToolCallMessage = async (message: Chat.AssistantMessage) => {
     if (!message || !message.tool_calls) return;
@@ -110,6 +101,8 @@ export const ChatProvider = (
   }, [prevMessages]);
 
   const onChunk = (chunk: Chat.CompletionChunk) => {
+    setIsThinking(true);
+
     setPrevMessages((prevMessages) => {
       const updatedMessages = chunk.choices
         .map((choice: Chat.CompletionChunk['choices'][number]) =>
@@ -121,15 +114,20 @@ export const ChatProvider = (
   };
 
   const onError = (error: Error) => {
+    setIsThinking(false);
     // TODO: fill this out via callbacks or otherwise look up how a react package would handles
     console.error(error);
   };
 
+  const onComplete = () => {
+    setIsThinking(false);
+  };
+
   const sendMessages = (messages: Chat.Message[]) => {
+    setIsThinking(true);
     setPrevMessages((prevMessages) => [...prevMessages, ...messages]);
 
-    // TODO: Catch the abort and expose it for stopping the stream.
-    streamChatCompletionWithTools({
+    const abort = streamChatCompletionWithTools({
       url: 'http://localhost:3000/chat',
       request: {
         model,
@@ -142,16 +140,29 @@ export const ChatProvider = (
       callbacks: {
         onChunk,
         onError,
+        onComplete,
       },
     });
+
+    setAbortFn(() => abort);
   };
 
   const sendMessage = (message: Chat.Message) => {
     sendMessages([message]);
   };
 
+  const stop = () => {
+    if (abortFn) {
+      abortFn();
+      setAbortFn(null);
+      setIsThinking(false);
+    }
+  };
+
   return (
-    <ChatContext.Provider value={{ messages: prevMessages, sendMessage }}>
+    <ChatContext.Provider
+      value={{ messages: prevMessages, sendMessage, isThinking, stop }}
+    >
       {props.children}
     </ChatContext.Provider>
   );
