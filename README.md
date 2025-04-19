@@ -19,11 +19,7 @@
 
 2. **Create the environment configuration:**
 
-   Create a file named `environment.ts` in the `samples/smart-home/server/src` directory with the following content:
-
-   ```ts
-   export const OPEN_AI_API_KEY = 'SOME_API_KEY';
-   ```
+   Copy the .env.test to .env and fill in the api key(s).
 
 3. **Install dependencies:**
 
@@ -36,6 +32,8 @@
 ### Running the Project
 
 1. **Start the backend server:**
+
+   Comment / uncomment out the relevant AI provider in the `samples/smart-home/server/src/main.ts` file.
 
    Run the following command to start the backend server:
 
@@ -51,4 +49,26 @@
    npx nx s client
    ```
 
+   If you want to run the react client, start it using:
+
+   ```sh
+   npx nx s client-react
+   ```
+
 Now, you should have both the backend server and the frontend application running. You can access the application in your browser.
+
+### Optional Dev Container
+
+Open the project in VSCode / Cursor and install the Dev Container extension.
+
+Then, open the command palette and select `Reopen in Container`.
+
+This will start the development environment inside a container.
+
+```bash
+nvm install
+nvm use
+npm install
+```
+
+Run the rest of the commands as described above.

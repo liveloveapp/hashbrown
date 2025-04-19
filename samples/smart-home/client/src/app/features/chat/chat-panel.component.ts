@@ -97,7 +97,7 @@ export class ChatPanelComponent {
 
   chat = richChatResource({
     model: 'gemini-2.0-flash',
-    // model: 'gpt-4o',
+    //model: 'gpt-4o',
     messages: [
       {
         role: 'system',

@@ -1,0 +1,14 @@
+{
+  "name": "Node.js & TypeScript",
+  "dockerFile": "Dockerfile",
+  "customizations": {
+    "vscode": {
+      "extensions": ["esbenp.prettier-vscode", "dbaeumer.vscode-eslint"]
+    }
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": ".devcontainer/scripts/post-create.sh",
+  "forwardPorts": []
+}
