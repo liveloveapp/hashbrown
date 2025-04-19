@@ -42,6 +42,7 @@
     "@ngrx/effects": "^19.1.0",
     "@ngrx/entity": "^19.1.0",
     "@ngrx/store": "^19.1.0",
+    "ajv": "8.17.1",
     "express": "^4.21.2",
     "front-matter": "^4.0.2",
     "marked": "^15.0.8",
