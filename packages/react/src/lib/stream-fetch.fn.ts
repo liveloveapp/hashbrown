@@ -1,14 +1,14 @@
-import { ChatCompletionChunk, ChatCompletionWithToolsRequest } from './types';
+import { Chat } from '@hashbrownai/core';
 
 export interface StreamChatCompletionCallbacks {
-  onChunk: (chunk: ChatCompletionChunk) => void;
+  onChunk: (chunk: Chat.CompletionChunk) => void;
   onComplete: () => void;
   onError: (error: Error) => void;
 }
 
 export interface StreamChatCompletionOptions {
   url: string;
-  request: ChatCompletionWithToolsRequest;
+  request: Chat.CompletionCreateParams;
   callbacks: StreamChatCompletionCallbacks;
 }
 
@@ -64,7 +64,7 @@ export const streamChatCompletionWithTools = (
 
           for (const jsonChunk of jsonChunks) {
             if (jsonChunk.trim()) {
-              const jsonData = JSON.parse(jsonChunk) as ChatCompletionChunk;
+              const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
               callbacks.onChunk(jsonData);
             }
           }

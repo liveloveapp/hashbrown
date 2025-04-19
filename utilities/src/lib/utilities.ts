@@ -1,4 +1,4 @@
-import { Chat } from './types';
+import { Chat } from '@hashbrownai/core';
 
 /**
  * Merges existing and new tool calls.
@@ -38,7 +38,7 @@ function mergeToolCalls(
  * @param delta - The incoming message delta.
  * @returns The updated messages array.
  */
-function updateMessagesWithDelta(
+export function updateMessagesWithDelta(
   messages: Chat.Message[],
   delta: Partial<Chat.Message>,
 ): Chat.Message[] {
@@ -66,5 +66,3 @@ function updateMessagesWithDelta(
   }
   return messages;
 }
-
-export { updateMessagesWithDelta };

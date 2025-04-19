@@ -1,9 +1,9 @@
+import { Chat } from '@hashbrownai/core';
+import { updateMessagesWithDelta } from '@hashbrownai/utilities';
 import { createContext, useContext, useState } from 'react';
 import { BoundTool } from './create-tool.fn';
 import { s } from './schema';
 import { streamChatCompletionWithTools } from './stream-fetch.fn';
-import { Chat, ChatCompletionChunk } from './types';
-import { updateMessagesWithDelta } from './utils';
 
 export interface ChatProviderProps {
   model: string;
@@ -37,12 +37,16 @@ export const ChatProvider = (
 
   const [messages, setMessages] = useState<Chat.Message[]>([]);
 
-  const onChunk = (chunk: ChatCompletionChunk) => {
+  const onChunk = (chunk: Chat.CompletionChunk) => {
     console.log(chunk);
-    setMessages((prevMessages) =>
-      //TODO: iterate choice -- actually just use what Mike wrote for Angular and break it to a shared package.
-      updateMessagesWithDelta(prevMessages, chunk.choices[0].delta),
-    );
+    setMessages((prevMessages) => {
+      const updatedMessages = chunk.choices
+        .map((choice: Chat.CompletionChunk['choices'][number]) =>
+          updateMessagesWithDelta(prevMessages, choice.delta as Chat.Message),
+        )
+        .flat();
+      return updatedMessages;
+    });
   };
 
   const onComplete = () => {
@@ -62,7 +66,7 @@ export const ChatProvider = (
         model,
         temperature,
         max_tokens: maxTokens,
-        response_format: responseFormat,
+        response_format: responseFormat as Chat.ResponseFormat,
         messages: [...messages, message],
       },
       callbacks: {
