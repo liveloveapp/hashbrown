@@ -12,8 +12,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import OpenAI from 'openai';
-import { FunctionParameters } from 'openai/resources';
+import { Chat } from '@hashbrownai/core';
 import {
   BehaviorSubject,
   catchError,
@@ -34,7 +33,6 @@ import {
 import { BoundTool } from './create-tool.fn';
 import { FetchService } from './fetch.service';
 import { s } from './schema';
-import { Chat, ChatCompletionChunk } from './types';
 
 export interface ChatResource extends WritableResource<Chat.Message[]> {
   sendMessage: (message: Chat.Message | Chat.Message[]) => void;
@@ -127,43 +125,33 @@ function updateMessagesWithDelta(
  */
 function createToolDefinitions(
   tools: BoundTool<string, s.ObjectType<Record<string, s.AnyType>>>[] = [],
-): OpenAI.Chat.Completions.ChatCompletionTool[] {
-  return tools.map((boundTool): OpenAI.Chat.Completions.ChatCompletionTool => {
-    const tool = boundTool.toTool();
-
-    return {
-      type: 'function',
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.schema as unknown as FunctionParameters,
-        strict: true,
-      },
-    };
-  });
+): Chat.Tool[] {
+  return tools.map((boundTool): Chat.Tool => boundTool.toTool());
 }
 
 /**
  * Processes a chat completion response by updating the messages.
  *
  * @param response - The response from the chat completion stream.
- * @param messages - The signal holding the messages array.
+ * @param messagesSignal
  */
 function processChatResponse(
-  response: ChatCompletionChunk,
+  response: Chat.CompletionChunk,
   messagesSignal: WritableSignal<Chat.Message[]>,
 ): void {
-  response.choices.forEach((choice: ChatCompletionChunk['choices'][number]) => {
-    messagesSignal.update((currentMessages) =>
-      updateMessagesWithDelta(currentMessages, choice.delta as Chat.Message),
-    );
-  });
+  response.choices.forEach(
+    (choice: Chat.CompletionChunk['choices'][number]) => {
+      messagesSignal.update((currentMessages) =>
+        updateMessagesWithDelta(currentMessages, choice.delta as Chat.Message),
+      );
+    },
+  );
 }
 
 /**
  * Finalizes a chat session by checking for tool calls.
  *
- * @param messages - The signal holding the messages array.
+ * @param messagesSignal
  * @param toolCallSubject - The subject to emit tool call messages.
  * @param isSending - The signal indicating sending status.
  * @param isReceiving - The signal indicating receiving status.
@@ -235,6 +223,7 @@ function processToolCallMessage(
               content: result as object,
             },
             tool_call_id: toolCall.id,
+            tool_name: toolCall.function.name,
           }),
         ),
         catchError((err): Observable<Chat.ToolMessage> => {
@@ -249,6 +238,7 @@ function processToolCallMessage(
               error: err.message,
             },
             tool_call_id: toolCall.id,
+            tool_name: toolCall.function.name,
           });
         }),
       );
@@ -308,7 +298,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     const currentFormat = computedResponseFormat();
 
     if (currentFormat) {
-      return s.toJsonSchema(currentFormat);
+      return s.toOpenApiSchema(currentFormat);
     }
 
     return undefined;

@@ -79,7 +79,7 @@
     "@nx/eslint-plugin": "20.6.0",
     "@nx/jest": "20.6.0",
     "@nx/js": "20.7.2",
-    "@nx/node": "^20.6.0",
+    "@nx/node": "20.7.2",
     "@nx/react": "^20.7.2",
     "@nx/storybook": "^20.6.0",
     "@nx/vite": "20.6.0",

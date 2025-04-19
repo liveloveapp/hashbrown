@@ -3,7 +3,7 @@ import { SystemMessage } from './SystemMessage';
 import { ToolMessage } from './ToolMessage';
 import { UserMessage } from './UserMessage';
 
-export type ChatMessage =
+export type Message =
   | SystemMessage
   | UserMessage
   | AssistantMessage

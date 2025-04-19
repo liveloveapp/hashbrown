@@ -235,8 +235,7 @@ export const s = {
       [output]: null,
     };
   },
-  toJsonSchema(schema: s.AnyType): object {
-    // Recursively convert our custom schema to a valid JSON Schema.
+  toJsonSchema(schema: s.AnyType): Record<string, unknown> {
     switch (schema.type) {
       case 'string':
         return {
@@ -308,6 +307,81 @@ export const s = {
             (schema as unknown as { type: string }).type
           }`,
         );
+    }
+  },
+  toOpenApiSchema(schema: s.AnyType): Record<string, unknown> {
+    switch (schema.type) {
+      case 'string':
+        return {
+          type: 'string',
+          description: schema.description,
+        };
+
+      case 'const-string':
+        return {
+          type: 'string',
+          description: schema.description,
+          enum: [schema.value],
+        };
+
+      case 'number':
+      case 'boolean':
+      case 'integer':
+      case 'null':
+        // note: OpenAPI 3.0 uses "integer" for whole numbers; "null" isn't a type but you can allow it via nullable
+        if (schema.type === 'null') {
+          return {
+            nullable: true,
+            description: schema.description,
+          };
+        }
+        return {
+          type: schema.type,
+          description: schema.description,
+          nullable: false,
+        };
+
+      case 'object': {
+        const properties: Record<string, object> = {};
+        const required: string[] = [];
+        for (const key in schema.properties) {
+          properties[key] = s.toOpenApiSchema(schema.properties[key]);
+          required.push(key);
+        }
+        return {
+          type: 'object',
+          description: schema.description,
+          properties: properties,
+          required: required,
+        };
+      }
+
+      case 'array':
+        return {
+          type: 'array',
+          description: schema.description,
+          items: s.toOpenApiSchema(
+            (schema as unknown as s.ArrayType<s.AnyType>).items,
+          ),
+        };
+
+      case 'enum':
+        return {
+          type: 'string',
+          description: schema.description,
+          enum: schema.enum,
+        };
+
+      case 'anyOf':
+        return {
+          description: schema.description,
+          anyOf: (schema as unknown as s.AnyOfType<s.AnyType[]>).anyOf.map(
+            (sub: s.AnyType) => s.toOpenApiSchema(sub),
+          ),
+        };
+
+      default:
+        throw new Error(`Unsupported schema type: ${(schema as any).type}`);
     }
   },
   /**

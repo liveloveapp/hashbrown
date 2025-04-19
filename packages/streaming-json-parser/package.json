@@ -1,15 +1,11 @@
 {
-  "name": "@hashbrownai/openai",
+  "name": "tater-js",
   "version": "0.0.1",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "dotenv": "^16.0.3",
     "tslib": "^2.3.0",
-    "@hashbrownai/core": "0.0.1"
-  },
-  "peerDependencies": {
-    "openai": "^4.93.0"
+    "ajv": "8.17.1"
   }
 }

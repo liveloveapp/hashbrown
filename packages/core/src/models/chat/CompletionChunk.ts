@@ -1,10 +1,4 @@
-export type ChatCompletionChunk = {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  service_tier: 'default' | 'scale' | null | undefined;
-  system_fingerprint?: string;
+export type CompletionChunk = {
   choices: {
     index: number;
     delta: {
@@ -20,7 +14,6 @@ export type ChatCompletionChunk = {
         };
       }[];
     };
-    logprobs: null;
     finish_reason: string | null;
   }[];
 };
