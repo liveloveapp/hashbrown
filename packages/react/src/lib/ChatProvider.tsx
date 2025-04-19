@@ -57,9 +57,9 @@ export const ChatProvider = (
   );
 
   const processToolCallMessage = async (message: Chat.AssistantMessage) => {
-    const toolCalls = message.tool_calls;
+    if (!message || !message.tool_calls) return;
 
-    if (!toolCalls) return;
+    const toolCalls = message.tool_calls;
 
     // @todo U.G. Wilson - there is next to zero error handling here nor
     // validation that this is a json serializable object.
@@ -78,23 +78,35 @@ export const ChatProvider = (
       );
     });
 
-    /// !!!!!!!!!!!!!!!!!!!!!
-    // PICKUP HERE!!!!
-    // The tool information is being stored in results.
-    // Need to push it onto the message list and get the answer back from the LLM to
-    // continue the conversation.
-    // There are reactivity challenges here that need to be overcome correctly.
-    // !!!!!!!!!!!!!!!!!!!!!
-
     const results = await Promise.all(toolCallResults);
-    console.log('processToolCallMessage', results);
-    return results;
+
+    // @todo U.G. Wilson - there is next to zero error handling here nor
+    const toolMessages: Chat.ToolMessage[] = toolCalls.map(
+      (toolCall, index) => ({
+        role: 'tool',
+        content: {
+          type: 'success',
+          content: results[index] as object,
+        },
+        tool_call_id: toolCall.id,
+        tool_name: toolCall.function.name,
+      }),
+    );
+
+    sendMessages([...toolMessages]);
   };
 
   useEffect(() => {
-    processToolCallMessage(
-      prevMessages[prevMessages.length - 1] as Chat.AssistantMessage,
-    );
+    const lastMessage = prevMessages[prevMessages.length - 1];
+
+    if (
+      lastMessage &&
+      lastMessage.role === 'assistant' &&
+      lastMessage.tool_calls &&
+      lastMessage.tool_calls.length > 0
+    ) {
+      processToolCallMessage(lastMessage as Chat.AssistantMessage);
+    }
   }, [prevMessages]);
 
   const onChunk = (chunk: Chat.CompletionChunk) => {
@@ -113,8 +125,8 @@ export const ChatProvider = (
     console.error(error);
   };
 
-  const sendMessage = (message: Chat.Message) => {
-    setPrevMessages((prevMessages) => [...prevMessages, message]);
+  const sendMessages = (messages: Chat.Message[]) => {
+    setPrevMessages((prevMessages) => [...prevMessages, ...messages]);
 
     // TODO: Catch the abort and expose it for stopping the stream.
     streamChatCompletionWithTools({
@@ -125,13 +137,17 @@ export const ChatProvider = (
         tools: createToolDefinitions(tools),
         max_tokens: maxTokens,
         response_format: responseFormat as Chat.ResponseFormat,
-        messages: [...prevMessages, message],
+        messages: [...prevMessages, ...messages],
       },
       callbacks: {
         onChunk,
         onError,
       },
     });
+  };
+
+  const sendMessage = (message: Chat.Message) => {
+    sendMessages([message]);
   };
 
   return (

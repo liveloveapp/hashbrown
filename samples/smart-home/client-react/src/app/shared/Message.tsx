@@ -3,8 +3,9 @@ import { Chat } from '@hashbrownai/react';
 export const Message = ({ message }: { message: Chat.Message }) => {
   const isAssistant = message.role === 'assistant';
   const isSystem = message.role === 'system';
+  const isTool = message.role === 'tool';
 
-  if (isSystem) {
+  if (isSystem || isTool || (isAssistant && !message.content)) {
     return;
   }
 
