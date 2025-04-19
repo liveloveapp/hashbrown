@@ -2,6 +2,11 @@ import { Chat } from '@hashbrownai/react';
 
 export const Message = ({ message }: { message: Chat.Message }) => {
   const isAssistant = message.role === 'assistant';
+  const isSystem = message.role === 'system';
+
+  if (isSystem) {
+    return;
+  }
 
   return (
     <div

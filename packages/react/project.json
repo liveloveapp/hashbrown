@@ -2,8 +2,42 @@
   "name": "react",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/react/src",
+  "prefix": "lib",
   "projectType": "library",
+  "release": {
+    "version": {
+      "generatorOptions": {
+        "packageRoot": "dist/{projectRoot}",
+        "currentVersionResolver": "git-tag",
+        "fallbackCurrentVersionResolver": "disk"
+      }
+    }
+  },
   "tags": [],
-  "// targets": "to see all targets run: nx show project react --web",
-  "targets": {}
+  "targets": {
+    "build": {
+      "executor": "@nx/react:package",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
+      "options": {
+        "project": "packages/react/ng-package.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "packages/react/tsconfig.lib.prod.json"
+        },
+        "development": {
+          "tsConfig": "packages/react/tsconfig.lib.json"
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
 }

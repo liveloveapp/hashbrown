@@ -2,7 +2,6 @@ import { Chat } from '@hashbrownai/core';
 
 export interface StreamChatCompletionCallbacks {
   onChunk: (chunk: Chat.CompletionChunk) => void;
-  onComplete: () => void;
   onError: (error: Error) => void;
 }
 
@@ -23,8 +22,6 @@ export const streamChatCompletionWithTools = (
 
   const fetchData = async () => {
     try {
-      console.log('fetching data');
-
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -33,8 +30,6 @@ export const streamChatCompletionWithTools = (
         body: JSON.stringify(request),
         signal: abortController.signal,
       });
-
-      console.log('fetching data 2');
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -46,8 +41,6 @@ export const streamChatCompletionWithTools = (
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-
-      console.log('fetching data 3');
 
       while (true) {
         const { done, value } = await reader.read();
@@ -72,8 +65,6 @@ export const streamChatCompletionWithTools = (
           console.error('Error parsing JSON chunk:', error);
         }
       }
-
-      callbacks.onComplete();
     } catch (error) {
       callbacks.onError(error as Error);
     }

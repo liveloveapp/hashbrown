@@ -1,6 +1,6 @@
 // Uncomment this line to use CSS modules
 // import styles from './app.module.css';
-import { ChatProvider } from '@hashbrownai/react';
+import { ChatProvider, createTool } from '@hashbrownai/react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { StoreInitializer } from './components/StoreInitializer';
 import { ChatPanel } from './shared/ChatPanel';
@@ -28,7 +28,13 @@ export function App() {
     <ChatProvider
       model="gpt-4o-mini"
       temperature={0.5}
-      tools={[]}
+      tools={[
+        createTool({
+          name: 'getLights',
+          description: 'Get the current lights',
+          handler: () => Promise.resolve(lights),
+        }),
+      ]}
       maxTokens={1000}
     >
       <StoreInitializer />

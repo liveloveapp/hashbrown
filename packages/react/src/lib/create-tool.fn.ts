@@ -1,5 +1,5 @@
+import { Chat } from '@hashbrownai/core';
 import { s } from './schema';
-import { Tool } from './types';
 
 export class BoundTool<
   Name extends string,
@@ -12,11 +12,12 @@ export class BoundTool<
     readonly handler: (input: s.Infer<InputSchema>) => Promise<unknown>,
   ) {}
 
-  toTool(): Tool<Name> {
+  toTool(): Chat.Tool<Name> {
     return {
       name: this.name,
       description: this.description,
-      schema: s.toJsonSchema(this.schema),
+      schema: s.toJsonSchema(this.schema), // GPT-4o
+      //schema: s.toOpenApiSchema(this.schema), // Gemini
     };
   }
 }
