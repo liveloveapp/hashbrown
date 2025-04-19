@@ -32,6 +32,9 @@ export function App() {
 
   return (
     <ChatProvider
+      endpoint={{
+        url: 'http://localhost:3000/chat',
+      }}
       model="gpt-4o-mini"
       temperature={0.5}
       tools={[

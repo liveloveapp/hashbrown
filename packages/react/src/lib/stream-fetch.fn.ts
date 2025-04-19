@@ -8,6 +8,7 @@ export interface StreamChatCompletionCallbacks {
 
 export interface StreamChatCompletionOptions {
   url: string;
+  headers?: Record<string, string>;
   request: Chat.CompletionCreateParams;
   callbacks: StreamChatCompletionCallbacks;
 }
@@ -17,7 +18,7 @@ export type StreamChatCompletionCleanup = () => void;
 export const streamChatCompletionWithTools = (
   streamChatCompletionOptions: StreamChatCompletionOptions,
 ): StreamChatCompletionCleanup => {
-  const { url, request, callbacks } = streamChatCompletionOptions;
+  const { url, headers, request, callbacks } = streamChatCompletionOptions;
 
   const abortController = new AbortController();
 
@@ -27,6 +28,7 @@ export const streamChatCompletionWithTools = (
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...headers,
         },
         body: JSON.stringify(request),
         signal: abortController.signal,

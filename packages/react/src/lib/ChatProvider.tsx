@@ -6,7 +6,13 @@ import { s } from './schema';
 import { streamChatCompletionWithTools } from './stream-fetch.fn';
 import { createToolDefinitions } from './utilities';
 
+export interface ChatProviderEndpoint {
+  url: string;
+  headers?: Record<string, string>;
+}
+
 export interface ChatProviderProps {
+  endpoint: ChatProviderEndpoint;
   model: string;
   temperature?: number;
   tools?: BoundTool<string, any>[];
@@ -37,8 +43,15 @@ export const ChatProvider = (
     children: React.ReactNode;
   },
 ) => {
-  const { model, temperature, tools, maxTokens, responseFormat, messages } =
-    props;
+  const {
+    endpoint,
+    model,
+    temperature,
+    tools,
+    maxTokens,
+    responseFormat,
+    messages,
+  } = props;
 
   const [prevMessages, setPrevMessages] = useState<Chat.Message[]>(
     messages ?? [],
@@ -144,7 +157,8 @@ export const ChatProvider = (
     setPrevMessages((prevMessages) => [...prevMessages, ...messages]);
 
     const abort = streamChatCompletionWithTools({
-      url: 'http://localhost:3000/chat',
+      url: endpoint.url,
+      headers: endpoint.headers,
       request: {
         model,
         temperature,
