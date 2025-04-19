@@ -1,6 +1,11 @@
 // Uncomment this line to use CSS modules
 // import styles from './app.module.css';
-import { ChatProvider, createTool } from '@hashbrownai/react';
+import {
+  ChatProvider,
+  createTool,
+  createToolWithArgs,
+  s,
+} from '@hashbrownai/react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { StoreInitializer } from './components/StoreInitializer';
 import { ChatPanel } from './shared/ChatPanel';
@@ -21,6 +26,7 @@ import { ScheduledScenesView } from './views/ScheduledScenesView';
 export function App() {
   const { toast } = useToast();
   const lights = useSmartHomeStore((state) => state.lights);
+  const updateLight = useSmartHomeStore((state) => state.updateLight);
   const scenes = useSmartHomeStore((state) => state.scenes);
   const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
 
@@ -33,6 +39,21 @@ export function App() {
           name: 'getLights',
           description: 'Get the current lights',
           handler: () => Promise.resolve(lights),
+        }),
+        createToolWithArgs({
+          name: 'controlLight',
+          description:
+            'Control the light. Brightness is a number between 0 and 100.',
+          schema: s.object('Control light input', {
+            lightId: s.string('The id of the light'),
+            brightness: s.number(
+              'The brightness of the light, between 0 and 100',
+            ),
+          }),
+          handler: (input) => {
+            updateLight(input.lightId, { brightness: input.brightness });
+            return Promise.resolve(true);
+          },
         }),
       ]}
       maxTokens={1000}
