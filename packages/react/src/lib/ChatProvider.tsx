@@ -52,11 +52,14 @@ export const ChatProvider = (
 
     const toolCalls = message.tool_calls;
 
+    console.log('toolCalls', toolCalls);
+
     // @todo U.G. Wilson - there is next to zero error handling here nor
     // validation that this is a json serializable object.
     // Cheat off Mike's homework when he's done.
     const toolCallResults = toolCalls.map((toolCall) => {
       const tool = tools?.find((t) => t.name === toolCall.function.name);
+
       if (!tool) {
         throw new Error(`Tool ${toolCall.function.name} not found`);
       }
@@ -64,6 +67,13 @@ export const ChatProvider = (
       return tool.handler(
         s.parse(
           tool.schema,
+          // @todo U.G. Wilson - as the tool message is built off the stream
+          // we get SyntaxError: Unexpected end of JSON input errors
+          // until the tool message is completely composed.
+          // This happens because onChunk is setting prevMessages as the
+          // tool message is being composed instead of waiting for the
+          // tool message to be completely composed.  This is slightly desired
+          // because it allows the assistant text to respond as a stream.
           s.parse(tool.schema, JSON.parse(toolCall.function.arguments)),
         ),
       );
@@ -71,18 +81,22 @@ export const ChatProvider = (
 
     const results = await Promise.all(toolCallResults);
 
-    // @todo U.G. Wilson - there is next to zero error handling here nor
     const toolMessages: Chat.ToolMessage[] = toolCalls.map(
       (toolCall, index) => ({
         role: 'tool',
         content: {
           type: 'success',
+          // @todo U.G. Wilson - Make sure this object can be serialized to JSON.
           content: results[index] as object,
         },
         tool_call_id: toolCall.id,
         tool_name: toolCall.function.name,
       }),
     );
+
+    // @todo U.G. Wilson - implement the error serialization implied by the
+    // angular implementation to feed back tool calls with error results
+    // back to the LLM.
 
     sendMessages([...toolMessages]);
   };
@@ -115,7 +129,9 @@ export const ChatProvider = (
 
   const onError = (error: Error) => {
     setIsThinking(false);
-    // TODO: fill this out via callbacks or otherwise look up how a react package would handles
+    // @todo U.G. Wilson - figure out the interaction modality here. Should I let
+    // the error escape for ErrorBoundaries to handle or should I provide a callback
+    // to the developer or is there another preferred pattern?
     console.error(error);
   };
 
