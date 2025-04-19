@@ -1,13 +1,23 @@
 import { Pencil, Play, Trash } from 'lucide-react';
 import { Scene as SceneModel } from '../../models/scene.model';
 import { Button } from '../../shared/button';
+import { useSmartHomeStore } from '../../store/smart-home.store';
 import { SceneDialogForm } from './SceneDialogForm';
 
 export interface SceneProps {
   scene: SceneModel;
 }
 
-export const Scene = ({ scene, onEdit }: SceneProps) => {
+export const Scene = ({ scene }: SceneProps) => {
+  const updateLight = useSmartHomeStore((state) => state.updateLight);
+
+  const handleApplyScene = () => {
+    // Apply each light's brightness from the scene to the corresponding light in the store
+    scene.lights.forEach((sceneLight) => {
+      updateLight(sceneLight.lightId, { brightness: sceneLight.brightness });
+    });
+  };
+
   return (
     <div
       className="grid gap-2 items-center"
@@ -22,7 +32,7 @@ export const Scene = ({ scene, onEdit }: SceneProps) => {
         </p>
       </div>
       <div className="flex items-center justify-center w-10">
-        <Button size="icon" variant="default">
+        <Button size="icon" variant="default" onClick={handleApplyScene}>
           <Play className="h-4 w-4" />
         </Button>
       </div>
