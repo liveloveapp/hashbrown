@@ -171,7 +171,18 @@
     "vitest": "^3.0.0",
     "zustand": "^5.0.3"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.9.5",
+    "@rollup/rollup-linux-x64-musl": "4.9.5",
+    "@rollup/rollup-linux-arm64-gnu": "4.9.5",
+    "@rollup/rollup-darwin-x64": "4.9.5",
+    "@rollup/rollup-darwin-arm64": "4.9.5"
+  },
   "nx": {
     "includedScripts": []
+  },
+  "overrides": {
+    "@swc/core": "~1.5.7",
+    "rollup": "4.9.5"
   }
 }
