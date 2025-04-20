@@ -2,9 +2,12 @@ import { Socket } from 'net';
 
 export class SocketAsyncIterable {
   socket: Socket;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   buffer: any;
   isDone: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pending: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error: any;
 
   constructor(socket: Socket) {
@@ -12,6 +15,7 @@ export class SocketAsyncIterable {
     this.buffer = Buffer.alloc(0);
     this.isDone = false;
     this.pending = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.socket.on('data', (data: any) => {
       this.buffer = Buffer.concat([this.buffer, data]);
       this.dispatch();
@@ -44,8 +48,9 @@ export class SocketAsyncIterable {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   next(): Promise<{ value: any; done: boolean }> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.pending.push(resolve);
       this.dispatch();
     });
