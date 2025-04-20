@@ -13,3 +13,70 @@ export function createToolDefinitions(
 ): Chat.Tool[] {
   return tools.map((boundTool): Chat.Tool => boundTool.toTool());
 }
+
+/**
+ * Merges existing and new tool calls.
+ *
+ * @param existingCalls - The existing tool calls.
+ * @param newCalls - The new tool calls to merge.
+ * @returns The merged array of tool calls.
+ */
+function mergeToolCalls(
+  existingCalls: Chat.AssistantMessage['tool_calls'] = [],
+  newCalls: Chat.AssistantMessage['tool_calls'] = [],
+): Chat.AssistantMessage['tool_calls'] {
+  const merged = [...existingCalls];
+  newCalls.forEach((newCall) => {
+    const index = merged.findIndex((call) => call.index === newCall.index);
+    if (index !== -1) {
+      const existing = merged[index];
+      merged[index] = {
+        ...existing,
+        function: {
+          ...existing.function,
+          arguments:
+            existing.function.arguments + (newCall.function.arguments ?? ''),
+        },
+      };
+    } else {
+      merged.push(newCall);
+    }
+  });
+  return merged;
+}
+
+/**
+ * Updates the messages array with an incoming assistant delta.
+ *
+ * @param messages - The current messages array.
+ * @param delta - The incoming message delta.
+ * @returns The updated messages array.
+ */
+export function updateMessagesWithDelta(
+  messages: Chat.Message[],
+  delta: Partial<Chat.Message>,
+): Chat.Message[] {
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage && lastMessage.role === 'assistant') {
+    const updatedToolCalls = mergeToolCalls(
+      lastMessage.tool_calls,
+      (delta as Chat.AssistantMessage).tool_calls ?? [],
+    );
+    const updatedMessage: Chat.Message = {
+      ...lastMessage,
+      content: (lastMessage.content ?? '') + (delta.content ?? ''),
+      tool_calls: updatedToolCalls,
+    };
+    return [...messages.slice(0, -1), updatedMessage];
+  } else if (delta.role === 'assistant') {
+    return [
+      ...messages,
+      {
+        role: 'assistant',
+        content: delta.content ?? '',
+        tool_calls: delta.tool_calls ?? [],
+      },
+    ];
+  }
+  return messages;
+}

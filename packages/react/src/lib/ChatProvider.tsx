@@ -1,10 +1,9 @@
 import { Chat } from '@hashbrownai/core';
-import { updateMessagesWithDelta } from '@hashbrownai/utilities';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { BoundTool } from './create-tool.fn';
 import { s } from './schema';
 import { streamChatCompletionWithTools } from './stream-fetch.fn';
-import { createToolDefinitions } from './utilities';
+import { createToolDefinitions, updateMessagesWithDelta } from './utilities';
 
 export interface ChatProviderEndpoint {
   url: string;
@@ -30,6 +29,13 @@ export interface ChatProviderContext {
   stop: () => void;
 }
 
+// @todo U.G. Wilson - break this provider into two pieces. ChatProvider should
+// turn into HashbrownProvider (or something) that should hold and share endpoint,
+// model, temperature, maxTokens, etc.
+// useChat should be broken out to a generalized hook like usePrediction but it holds
+// the baseline state for usePrediction, useRichChat, etc.
+// The Provider should hold global configuration and the hook should hold
+// applications-level configurations and message state.
 const ChatContext = createContext<ChatProviderContext | undefined>(undefined);
 
 export const useChat = () => {

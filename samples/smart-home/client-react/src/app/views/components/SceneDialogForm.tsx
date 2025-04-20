@@ -172,7 +172,7 @@ export const SceneDialogForm = (
             )}
             <div className="flex flex-col gap-2">
               <Label>Recommendations</Label>
-              {!isThinking && (
+              {isThinking && (
                 <p className="text-sm text-muted-foreground">Thinking...</p>
               )}
               {predictionComponents}
