@@ -1,5 +1,5 @@
 import { Chat } from '@hashbrownai/core';
-import { ReactNode, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useChat } from './ChatProvider';
 import { BoundTool } from './create-tool.fn';
 import { s } from './schema';
@@ -7,10 +7,10 @@ type ResponseSchema = s.ObjectType<Record<string, s.AnyType>>;
 
 export const usePrediction = (
   predictionPrompt: string,
+  Component: React.ComponentType<any>,
   tools?: BoundTool<string, any>[],
   //outputSchema: ResponseSchema,
   examples?: { input: string; output: s.Infer<ResponseSchema> }[],
-  componentBuilder?: (props: { text: string }) => ReactNode,
 ) => {
   const { messages, setMessages, sendMessage, isThinking, stop } = useChat();
 
@@ -42,25 +42,60 @@ ${examples ? examplesSection : ''}
   };
 
   useEffect(() => {
-    console.log('input', input);
+    if (!input) return;
+
     stop();
 
     setMessages([systemMessage as Chat.Message]);
     sendMessage({ role: 'user', content: input });
   }, [input]);
 
-  const predictionComponents = componentBuilder ? (
+  const parseOutput = () => {
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage || lastMessage.role !== 'assistant') {
+      return undefined;
+    }
+
+    try {
+      return (s.parse as any)(
+        s.object('Your response', {
+          lights: s.array(
+            'The lights to add to the scene',
+            s.object('A join between a light and a scene', {
+              lightId: s.string('the ID of the light to add'),
+              brightness: s.number('the brightness of the light'),
+            }),
+          ),
+        }) as unknown,
+        JSON.parse(lastMessage.content ?? '{}'),
+      );
+    } catch (error) {
+      return undefined;
+    }
+  };
+
+  const output = parseOutput();
+
+  const predictionComponents = (
     <>
-      {componentBuilder({ text: 'First prediction' })}
-      {componentBuilder({ text: 'Second prediction' })}
-      {componentBuilder({ text: 'Third prediction' })}
+      {output?.lights?.map(
+        (light: { lightId: string; brightness: number }, index: number) => (
+          <Component
+            key={index}
+            lightId={light.lightId}
+            brightness={light.brightness}
+          />
+        ),
+      )}
     </>
-  ) : null;
+  );
 
   return {
     setInput,
     predictionComponents,
     isThinking,
     stop,
+    output,
   };
 };

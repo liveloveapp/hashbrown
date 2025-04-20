@@ -63,8 +63,6 @@ export const ChatProvider = (
 
     const toolCalls = message.tool_calls;
 
-    console.log('toolCalls', toolCalls);
-
     // @todo U.G. Wilson - there is next to zero error handling here nor
     // validation that this is a json serializable object.
     // Cheat off Mike's homework when he's done.
@@ -134,7 +132,7 @@ export const ChatProvider = (
           updateMessagesWithDelta(prevMessages, choice.delta as Chat.Message),
         )
         .flat();
-      console.log('updatedMessages', updatedMessages);
+
       return updatedMessages;
     });
   };
@@ -152,6 +150,7 @@ export const ChatProvider = (
   };
 
   const sendMessages = (messages: Chat.Message[]) => {
+    console.log('Sending messages');
     setIsThinking(true);
     setPrevMessages((prevMessages) => [...prevMessages, ...messages]);
 

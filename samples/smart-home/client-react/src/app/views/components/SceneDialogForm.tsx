@@ -29,6 +29,7 @@ import {
 } from '../../shared/select';
 import { useSmartHomeStore } from '../../store/smart-home.store';
 import { SceneLight } from './SceneLight';
+import { SceneLightRecommendation } from './SceneLightRecommendation';
 interface SceneDialogFormProps {
   scene?: SceneModel;
 }
@@ -57,6 +58,7 @@ export const SceneDialogForm = (
 
     Here's the list of lights:
     ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}`,
+    SceneLightRecommendation,
   );
 
   // Get available lights that aren't already in the scene
