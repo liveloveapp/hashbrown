@@ -44,6 +44,18 @@
       "options": {
         "packageRoot": "dist/{projectRoot}"
       }
+    },
+    "parser-test-server": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node packages/core/src/streaming-json-parser/test/server.ts"
+      }
+    },
+    "parser-test-client": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node packages/core/src/streaming-json-parser/test/client.ts"
+      }
     }
   }
 }

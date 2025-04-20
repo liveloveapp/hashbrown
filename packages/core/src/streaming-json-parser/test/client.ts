@@ -1,5 +1,5 @@
 import { Socket } from 'net';
-import { AsyncParserIterable } from './streaming-json-parser';
+import { AsyncParserIterable } from '../streaming-json-parser';
 import { SocketAsyncIterable } from './socket-async-iterable';
 
 (async () => {
