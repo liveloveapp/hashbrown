@@ -6,8 +6,10 @@ import Ajv from 'ajv';
 export async function* AsyncParserIterable(
   iterable: AsyncIterable<string>,
   // TODO: need better type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   schema: any,
   // TODO: need better return type - could it be T of schema-defined type?
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): AsyncIterableIterator<any> {
   const ajv = new Ajv();
 
@@ -60,7 +62,7 @@ export async function* AsyncParserIterable(
 
         try {
           json = JSON.parse(dataString.substring(openIndex, closeIndex + 1));
-        } catch (e) {
+        } catch {
           // console.log('invalid json chunk');
           continue;
         }
