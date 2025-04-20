@@ -31,43 +31,7 @@ export function App() {
   const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
 
   return (
-    <ChatProvider
-      endpoint={{
-        url: 'http://localhost:3000/chat',
-      }}
-      model="gpt-4o-mini"
-      messages={[
-        {
-          role: 'system',
-          content:
-            'You are a helpful assistant that can answer questions and help with tasks.',
-        },
-      ]}
-      temperature={0.5}
-      tools={[
-        createTool({
-          name: 'getLights',
-          description: 'Get the current lights',
-          handler: () => Promise.resolve(lights),
-        }),
-        createToolWithArgs({
-          name: 'controlLight',
-          description:
-            'Control the light. Brightness is a number between 0 and 100.',
-          schema: s.object('Control light input', {
-            lightId: s.string('The id of the light'),
-            brightness: s.number(
-              'The brightness of the light, between 0 and 100',
-            ),
-          }),
-          handler: (input) => {
-            updateLight(input.lightId, { brightness: input.brightness });
-            return Promise.resolve(true);
-          },
-        }),
-      ]}
-      maxTokens={1000}
-    >
+    <>
       <StoreInitializer />
       <div className="flex justify-between py-2 items-center border-b">
         <p className="text-xl font-bold p-2">Smart Home</p>
@@ -118,11 +82,49 @@ export function App() {
           {/* END: routes */}
         </div>
         <div className="col-span-1 border-l p-2">
-          <ChatPanel />
+          <ChatProvider
+            endpoint={{
+              url: 'http://localhost:3000/chat',
+            }}
+            model="gpt-4o-mini"
+            messages={[
+              {
+                role: 'system',
+                content:
+                  'You are a helpful assistant that can answer questions and help with tasks.',
+              },
+            ]}
+            temperature={0.5}
+            tools={[
+              createTool({
+                name: 'getLights',
+                description: 'Get the current lights',
+                handler: () => Promise.resolve(lights),
+              }),
+              createToolWithArgs({
+                name: 'controlLight',
+                description:
+                  'Control the light. Brightness is a number between 0 and 100.',
+                schema: s.object('Control light input', {
+                  lightId: s.string('The id of the light'),
+                  brightness: s.number(
+                    'The brightness of the light, between 0 and 100',
+                  ),
+                }),
+                handler: (input) => {
+                  updateLight(input.lightId, { brightness: input.brightness });
+                  return Promise.resolve(true);
+                },
+              }),
+            ]}
+            maxTokens={1000}
+          >
+            <ChatPanel />
+          </ChatProvider>
         </div>
       </div>
       <Toaster />
-    </ChatProvider>
+    </>
   );
 }
 

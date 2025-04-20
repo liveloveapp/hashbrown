@@ -298,7 +298,8 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     const currentFormat = computedResponseFormat();
 
     if (currentFormat) {
-      return s.toOpenApiSchema(currentFormat);
+      // return s.toOpenApiSchema(currentFormat);
+      return s.toJsonSchema(currentFormat);
     }
 
     return undefined;

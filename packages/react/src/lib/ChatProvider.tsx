@@ -23,6 +23,8 @@ export interface ChatProviderProps {
 
 export interface ChatProviderContext {
   messages: Chat.Message[];
+  setMessages: (messages: Chat.Message[]) => void;
+  setTools: (tools: BoundTool<string, any>[]) => void;
   sendMessage: (message: Chat.Message) => void;
   isThinking: boolean;
   stop: () => void;
@@ -43,18 +45,14 @@ export const ChatProvider = (
     children: React.ReactNode;
   },
 ) => {
-  const {
-    endpoint,
-    model,
-    temperature,
-    tools,
-    maxTokens,
-    responseFormat,
-    messages,
-  } = props;
+  const { endpoint, model, temperature, maxTokens, messages, responseFormat } =
+    props;
 
   const [prevMessages, setPrevMessages] = useState<Chat.Message[]>(
     messages ?? [],
+  );
+  const [tools, setTools] = useState<BoundTool<string, any>[]>(
+    props.tools ?? [],
   );
 
   const [isThinking, setIsThinking] = useState<boolean>(false);
@@ -136,6 +134,7 @@ export const ChatProvider = (
           updateMessagesWithDelta(prevMessages, choice.delta as Chat.Message),
         )
         .flat();
+      console.log('updatedMessages', updatedMessages);
       return updatedMessages;
     });
   };
@@ -164,7 +163,9 @@ export const ChatProvider = (
         temperature,
         tools: createToolDefinitions(tools),
         max_tokens: maxTokens,
-        response_format: responseFormat as Chat.ResponseFormat,
+        response_format: responseFormat
+          ? s.toJsonSchema(responseFormat as s.AnyType)
+          : undefined,
         messages: [...prevMessages, ...messages],
       },
       callbacks: {
@@ -191,7 +192,14 @@ export const ChatProvider = (
 
   return (
     <ChatContext.Provider
-      value={{ messages: prevMessages, sendMessage, isThinking, stop }}
+      value={{
+        messages: prevMessages,
+        setMessages: setPrevMessages,
+        setTools,
+        sendMessage,
+        isThinking,
+        stop,
+      }}
     >
       {props.children}
     </ChatContext.Provider>

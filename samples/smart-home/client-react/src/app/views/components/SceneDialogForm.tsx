@@ -1,3 +1,4 @@
+import { usePrediction } from '@hashbrownai/react';
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -28,7 +29,6 @@ import {
 } from '../../shared/select';
 import { useSmartHomeStore } from '../../store/smart-home.store';
 import { SceneLight } from './SceneLight';
-
 interface SceneDialogFormProps {
   scene?: SceneModel;
 }
@@ -39,6 +39,7 @@ export const SceneDialogForm = (
   },
 ) => {
   const { scene, children } = props;
+
   const addScene = useSmartHomeStore((state) => state.addScene);
   const updateScene = useSmartHomeStore((state) => state.updateScene);
   const lights = useSmartHomeStore((state) => state.lights);
@@ -48,6 +49,15 @@ export const SceneDialogForm = (
     scene?.lights || [],
   );
   const [open, setOpen] = useState(false);
+
+  const { setInput, predictionComponents, isThinking, stop } = usePrediction(
+    `Predict the lights that will be added to the scene based on the name. For example,
+    if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
+    be in the bedroom at a lower brightness.
+
+    Here's the list of lights:
+    ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}`,
+  );
 
   // Get available lights that aren't already in the scene
   const availableLights = lights.filter(
@@ -109,7 +119,10 @@ export const SceneDialogForm = (
               id="sceneName"
               placeholder="Enter scene name"
               value={sceneName}
-              onChange={(e) => setSceneName(e.target.value)}
+              onChange={(e) => {
+                setSceneName(e.target.value);
+                setInput(e.target.value);
+              }}
             />
           </div>
 
@@ -155,6 +168,13 @@ export const SceneDialogForm = (
                 </Select>
               </div>
             )}
+            <div className="flex flex-col gap-2">
+              <Label>Recommendations</Label>
+              {!isThinking && (
+                <p className="text-sm text-muted-foreground">Thinking...</p>
+              )}
+              {predictionComponents}
+            </div>
           </div>
         </div>
 
