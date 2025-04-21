@@ -1,5 +1,5 @@
 // import Ajv from 'ajv';
-// eslint-disable-next-line @nx/enforce-module-boundaries
+
 import { s } from '../schema';
 
 import Ajv from 'ajv/dist/jtd';

@@ -6,7 +6,7 @@ import { SignalLike } from './types';
 
 export function predictionResource<
   Input,
-  OutputSchema extends s.ObjectType<Record<string, s.AnyType>>,
+  OutputSchema extends Chat.ResponseFormat,
 >(args: {
   model: string;
   temperature?: number;
@@ -66,6 +66,21 @@ export function predictionResource<
       ${definitions}
     `;
   });
+  const examplesInstructions =
+    args.examples && args.examples.length > 0
+      ? `
+    Here are examples of the input and output:
+
+    ${(args.examples as unknown as { input: object; output: object }[])
+      ?.map(
+        (example: { input: object; output: object }) => `
+        Input: ${JSON.stringify(example.input)}
+        Output: ${JSON.stringify(example.output)}
+      `,
+      )
+      .join('\n')}
+  `
+      : ``;
   const systemMessage = computed((): Chat.SystemMessage => {
     return {
       role: 'system',
@@ -79,15 +94,7 @@ export function predictionResource<
 
       ${signalsInstructions()}
 
-      Here are examples:
-      ${(args.examples as unknown as { input: object; output: object }[])
-        ?.map(
-          (example: { input: object; output: object }) => `
-        Input: ${JSON.stringify(example.input)}
-        Output: ${JSON.stringify(example.output)}
-      `,
-        )
-        .join('\n')}
+      ${examplesInstructions}
     `,
     };
   });
@@ -119,9 +126,8 @@ export function predictionResource<
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (s.parse as any)(
-        args.outputSchema as unknown,
+      return s.parse(
+        args.outputSchema,
         JSON.parse(lastMessage.content ?? '{}'),
       );
     } catch {
@@ -146,6 +152,7 @@ export function predictionResource<
   });
 
   function hasValue() {
+    console.log('hasValue', output());
     return output() !== undefined;
   }
 

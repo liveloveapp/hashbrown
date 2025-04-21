@@ -5,9 +5,9 @@ import { newQuickJSWASMModuleFromVariant } from 'quickjs-emscripten-core';
 export const toolJavascript = createToolWithArgs({
   name: 'javascript',
   description: `
-    Whenever you send a message containing JavaScript code to javascript, it will be 
-    executed in a stateful QuickJS environment. javascript will respond with the output 
-    of the execution or time out after 60.0 seconds. Internet access for this session is 
+    Whenever you send a message containing JavaScript code to javascript, it will be
+    executed in a stateful QuickJS environment. javascript will respond with the output
+    of the execution or time out after 60.0 seconds. Internet access for this session is
     disabled. Do not make external web requests or API calls as they will fail.
   `,
   schema: s.object('The result', {

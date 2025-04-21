@@ -1,8 +1,10 @@
-import { ToolSchema } from './ToolSchema';
+import { s } from '../../schema/s';
 
 export type Tool<
   Name extends string = string,
-  Schema extends ToolSchema = ToolSchema,
+  Schema extends s.ObjectType<Record<string, s.AnyType>> = s.ObjectType<
+    Record<string, s.AnyType>
+  >,
 > = {
   name: Name;
   description: string;

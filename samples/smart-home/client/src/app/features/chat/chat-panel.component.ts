@@ -7,6 +7,7 @@ import {
   exposeComponent,
   richChatResource,
 } from '@hashbrownai/angular';
+import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
@@ -16,7 +17,6 @@ import { ChatAiActions } from './actions/chat-ai.actions';
 import { ComposerComponent } from './components/composer.component';
 import { LightCardComponent } from './components/light-card.component';
 import { MessagesComponent } from './components/messages.component';
-import { s } from '@hashbrownai/core';
 
 @Component({
   selector: 'app-chat-panel',
@@ -96,7 +96,7 @@ export class ChatPanelComponent {
   smartHomeService = inject(SmartHomeService);
 
   chat = richChatResource({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-pro-exp-03-25',
     //model: 'gpt-4o',
     messages: [
       {

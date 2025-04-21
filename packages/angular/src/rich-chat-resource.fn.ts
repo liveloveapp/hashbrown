@@ -59,7 +59,6 @@ export function exposeComponent<Name extends string, T>(config: {
     [P in keyof SignalInputs<T>]: s.Schema<SignalInputs<T>[P]>;
   }>;
 }): ChatComponent<Name, T> {
-  console.log(config);
   return config;
 }
 
@@ -155,7 +154,7 @@ export function richChatResource(args: {
         `,
               schema: ui,
               handler: async (input) => {
-                console.log(input);
+                console.log('Component handler invoked', input);
                 return {};
               },
             }),

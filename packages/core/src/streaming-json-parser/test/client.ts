@@ -2,7 +2,6 @@ import { Socket } from 'net';
 import { AsyncParserIterable } from '../streaming-json-parser';
 import { SocketAsyncIterable } from './socket-async-iterable';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import { s } from '../../schema';
 
 (async () => {
