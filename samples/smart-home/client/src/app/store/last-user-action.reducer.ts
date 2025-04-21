@@ -1,6 +1,7 @@
 import { createReducer, on } from '@ngrx/store';
 import { LightsApiActions } from '../features/lights/actions/lights-api.actions';
 import { ScenesApiActions } from '../features/scenes/actions/scenes-api.actions';
+
 export interface LastUserActionState {
   action: {
     userAction: string;

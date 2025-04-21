@@ -47,7 +47,7 @@ export type ChatResourceConfig = {
   tools?: BoundTool<string, any>[];
   maxTokens?: number | Signal<number>;
   messages?: Chat.Message[];
-  responseFormat?: s.AnyType | Signal<s.AnyType>;
+  responseFormat?: Chat.ResponseFormat | Signal<Chat.ResponseFormat>;
 };
 
 /**
@@ -295,15 +295,6 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
       ? config.responseFormat()
       : config.responseFormat,
   );
-  const serializedResponseFormat = computed(() => {
-    const currentFormat = computedResponseFormat();
-
-    if (currentFormat) {
-      return s.toOpenApiSchema(currentFormat);
-    }
-
-    return undefined;
-  });
 
   effect(() => {
     console.log('Current Messages', messagesSignal());
@@ -331,7 +322,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
             tools: toolDefinitions,
             max_tokens: computedMaxTokens(),
             temperature: computedTemperature(),
-            response_format: serializedResponseFormat(),
+            response_format: computedResponseFormat(),
           })
           .pipe(
             catchError((err) => {

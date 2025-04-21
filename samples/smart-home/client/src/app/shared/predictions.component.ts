@@ -1,6 +1,7 @@
 import { Component, inject, linkedSignal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { predictionResource } from '@hashbrownai/angular';
+import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { PredictionsAiActions } from '../features/predictions/actions';
 import { SmartHomeService } from '../services/smart-home.service';
@@ -11,7 +12,6 @@ import {
   selectLightEntities,
   selectScenesEntities,
 } from '../store';
-import { s } from '@hashbrownai/core';
 
 const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
   s.object('Suggests adding a light to the system', {
@@ -297,7 +297,6 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
       .predictionActions {
         grid-area: actions;
         display: flex;
-        align-items: row-reverse;
         align-self: end;
         justify-self: end;
         gap: 8px;
@@ -334,9 +333,9 @@ export class PredictionsComponent {
   lightEntities = this.store.selectSignal(selectLightEntities);
   sceneEntities = this.store.selectSignal(selectScenesEntities);
 
-  // Revised prompt with detailed examples
   predictions = predictionResource({
-    model: 'gpt-4o',
+    // model: 'gpt-4o',
+    model: 'gemini-2.0-flash',
     input: this.lastAction,
     description: `
 You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
@@ -427,6 +426,7 @@ Additional Rules:
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
+      console.log(source);
       if (source === undefined || source.predictions.length === 0) return [];
 
       return source.predictions;

@@ -1,3 +1,3 @@
-import { JSONSchema7 } from 'json-schema';
+import { s } from '../../schema/s';
 
-export type ResponseFormat = JSONSchema7;
+export type ResponseFormat = s.AnyType;
