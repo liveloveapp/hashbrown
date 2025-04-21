@@ -1,11 +1,6 @@
 // Uncomment this line to use CSS modules
 // import styles from './app.module.css';
-import {
-  ChatProvider,
-  createTool,
-  createToolWithArgs,
-  s,
-} from '@hashbrownai/react';
+import { HashbrownProvider } from '@hashbrownai/react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { StoreInitializer } from './components/StoreInitializer';
 import { ChatPanel } from './shared/ChatPanel';
@@ -83,7 +78,7 @@ export function App() {
           {/* END: routes */}
         </div>
         <div className="col-span-1 border-l p-2">
-          <ChatProvider
+          {/* <ChatProvider
             endpoint={{
               url: 'http://localhost:3000/chat',
             }}
@@ -124,9 +119,11 @@ export function App() {
               }),
             ]}
             maxTokens={1000}
-          >
+          > */}
+          <HashbrownProvider url="http://localhost:3000/chat">
             <ChatPanel />
-          </ChatProvider>
+          </HashbrownProvider>
+          {/* </ChatProvider> */}
         </div>
       </div>
       <Toaster />
