@@ -1,8 +1,7 @@
 import { computed, Signal, Type } from '@angular/core';
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { ChatResource, chatResource } from './chat-resource.fn';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
-import { s } from './schema';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace RichChat {
@@ -70,6 +69,7 @@ export function richChatResource(args: {
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
   messages?: Chat.Message[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: BoundTool<string, any>[];
 }): RichChatResource {
   const ui = s.object('UI', {
@@ -81,6 +81,7 @@ export function richChatResource(args: {
             'Values to pass to the component',
             Object.keys(component.inputs).reduce(
               (acc, key) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (acc as any)[key] = (component.inputs as any)[key];
                 return acc;
               },

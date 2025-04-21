@@ -6,7 +6,6 @@ import {
   createToolWithArgs,
   exposeComponent,
   richChatResource,
-  s,
 } from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
@@ -17,6 +16,7 @@ import { ChatAiActions } from './actions/chat-ai.actions';
 import { ComposerComponent } from './components/composer.component';
 import { LightCardComponent } from './components/light-card.component';
 import { MessagesComponent } from './components/messages.component';
+import { s } from '@hashbrownai/core';
 
 @Component({
   selector: 'app-chat-panel',
