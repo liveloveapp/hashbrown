@@ -195,6 +195,8 @@ export const ChatProvider = (
     }
   };
 
+  // console.log('messages', prevMessages);
+
   return (
     <ChatContext.Provider
       value={{
