@@ -3,12 +3,17 @@ import { useEffect, useState } from 'react';
 import { useChat } from './ChatProvider';
 import { BoundTool } from './create-tool.fn';
 import { s } from './schema';
+
 type ResponseSchema = s.ObjectType<Record<string, s.AnyType>>;
 
 export const usePrediction = (
   predictionPrompt: string,
   Component: React.ComponentType<any>,
   tools?: BoundTool<string, any>[],
+  // @todo U.G. Wilson - get the responseFormat lowered to be configurable
+  // by the usePrediction hook without causing an infinite loop.
+  // Preferably, get to where you can hand in a Props interface for the
+  // Component and have the responseFormat be derived from the Props.
   //outputSchema: ResponseSchema,
   examples?: { input: string; output: s.Infer<ResponseSchema> }[],
 ) => {
@@ -77,18 +82,14 @@ ${examples ? examplesSection : ''}
 
   const output = parseOutput();
 
-  const predictionComponents = (
-    <>
-      {output?.lights?.map(
-        (light: { lightId: string; brightness: number }, index: number) => (
-          <Component
-            key={index}
-            lightId={light.lightId}
-            brightness={light.brightness}
-          />
-        ),
-      )}
-    </>
+  const predictionComponents = output?.lights?.map(
+    (light: { lightId: string; brightness: number }, index: number) => (
+      <Component
+        key={index}
+        lightId={light.lightId}
+        brightness={light.brightness}
+      />
+    ),
   );
 
   return {

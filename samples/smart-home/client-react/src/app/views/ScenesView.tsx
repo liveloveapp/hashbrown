@@ -16,6 +16,8 @@ export const ScenesView = ({ scenes }: ScenesViewProps) => {
       }}
       model="gpt-4o-mini"
       temperature={0.5}
+      // @todo U.G. Wilson - get the responseFormat lowered to be configurable
+      // by the usePrediction hook without causing an infinite loop
       responseFormat={s.object('Your response', {
         lights: s.array(
           'The lights to add to the scene',
