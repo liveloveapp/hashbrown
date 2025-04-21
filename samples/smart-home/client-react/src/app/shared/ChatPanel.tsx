@@ -1,59 +1,50 @@
 import { Chat } from '@hashbrownai/core';
-import {
-  createTool,
-  createToolWithArgs,
-  exposeComponent,
-  s,
-  useRichChat,
-} from '@hashbrownai/react';
+import { useChat } from '@hashbrownai/react';
 import { useEffect, useRef, useState } from 'react';
-import { useSmartHomeStore } from '../store/smart-home.store';
-import { Light } from '../views/components/Light';
 import { Button } from './button';
 import { Message } from './Message';
 import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const ChatPanel = () => {
-  const lights = useSmartHomeStore((state) => state.lights);
-  const updateLight = useSmartHomeStore((state) => state.updateLight);
+  // const { messages, sendMessage, isThinking, stop } = useRichChat({
+  //   predictionPrompt:
+  //     'You are a helpful assistant that can answer questions and help with tasks.',
+  //   components: [
+  //     exposeComponent(
+  //       'Light',
+  //       'A component that lets you configure and control a light.',
+  //       Light,
+  //       {
+  //         lightId: s.string('The id of the light'),
+  //       },
+  //     ),
+  //   ],
+  //   tools: [
+  //     createTool({
+  //       name: 'getLights',
+  //       description: 'Get the current lights',
+  //       handler: () => Promise.resolve(lights),
+  //     }),
+  //     createToolWithArgs({
+  //       name: 'controlLight',
+  //       description:
+  //         'Control the light. Brightness is a number between 0 and 100.',
+  //       schema: s.object('Control light input', {
+  //         lightId: s.string('The id of the light'),
+  //         brightness: s.number(
+  //           'The brightness of the light, between 0 and 100',
+  //         ),
+  //       }),
+  //       handler: (input) => {
+  //         updateLight(input.lightId, { brightness: input.brightness });
+  //         return Promise.resolve(true);
+  //       },
+  //     }),
+  //   ],
+  // });
 
-  const { messages, sendMessage, isThinking, stop } = useRichChat({
-    predictionPrompt:
-      'You are a helpful assistant that can answer questions and help with tasks.',
-    components: [
-      exposeComponent(
-        'Light',
-        'A component that lets you configure and control a light.',
-        Light,
-        {
-          lightId: s.string('The id of the light'),
-        },
-      ),
-    ],
-    tools: [
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: () => Promise.resolve(lights),
-      }),
-      createToolWithArgs({
-        name: 'controlLight',
-        description:
-          'Control the light. Brightness is a number between 0 and 100.',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number(
-            'The brightness of the light, between 0 and 100',
-          ),
-        }),
-        handler: (input) => {
-          updateLight(input.lightId, { brightness: input.brightness });
-          return Promise.resolve(true);
-        },
-      }),
-    ],
-  });
+  const { messages, sendMessage, isThinking, stop } = useChat();
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 

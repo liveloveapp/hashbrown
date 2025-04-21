@@ -33,6 +33,7 @@ export function App() {
   return (
     <>
       <StoreInitializer />
+
       <div className="flex justify-between py-2 items-center border-b">
         <p className="text-xl font-bold p-2">Smart Home</p>
         <NavigationMenu>
@@ -99,7 +100,8 @@ export function App() {
               createTool({
                 name: 'getLights',
                 description: 'Get the current lights',
-                handler: () => Promise.resolve(lights),
+                handler: () =>
+                  Promise.resolve(useSmartHomeStore.getState().lights),
               }),
               createToolWithArgs({
                 name: 'controlLight',
@@ -112,7 +114,11 @@ export function App() {
                   ),
                 }),
                 handler: (input) => {
-                  updateLight(input.lightId, { brightness: input.brightness });
+                  useSmartHomeStore
+                    .getState()
+                    .updateLight(input.lightId, {
+                      brightness: input.brightness,
+                    });
                   return Promise.resolve(true);
                 },
               }),
