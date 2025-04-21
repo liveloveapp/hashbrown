@@ -1,8 +1,7 @@
 import { computed, effect, Resource, Signal } from '@angular/core';
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { chatResource } from './chat-resource.fn';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
-import { s } from './schema';
 import { SignalLike } from './types';
 
 export function predictionResource<
@@ -16,9 +15,11 @@ export function predictionResource<
   description: SignalLike<string>;
   outputSchema: OutputSchema;
   examples?: { input: Input; output: s.Infer<OutputSchema> }[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: SignalLike<BoundTool<string, any>[]>;
   signals?: {
     [key: string]: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       signal: Signal<any>;
       description: string;
     };
@@ -118,11 +119,12 @@ export function predictionResource<
     }
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (s.parse as any)(
         args.outputSchema as unknown,
         JSON.parse(lastMessage.content ?? '{}'),
       );
-    } catch (error) {
+    } catch {
       return undefined;
     }
   });
@@ -149,6 +151,7 @@ export function predictionResource<
 
   const resource = {
     error: chat.error,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hasValue: hasValue as any,
     isLoading: chat.isLoading,
     status: chat.status,

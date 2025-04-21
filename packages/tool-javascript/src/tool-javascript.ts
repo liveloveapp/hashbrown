@@ -1,4 +1,5 @@
-import { createToolWithArgs, s } from '@hashbrownai/angular';
+import { createToolWithArgs } from '@hashbrownai/angular';
+import { s } from '@hashbrownai/core';
 import { newQuickJSWASMModuleFromVariant } from 'quickjs-emscripten-core';
 
 export const toolJavascript = createToolWithArgs({

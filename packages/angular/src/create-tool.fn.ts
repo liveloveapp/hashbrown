@@ -1,6 +1,5 @@
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { Observable } from 'rxjs';
-import { s } from './schema';
 
 export class BoundTool<
   Name extends string,

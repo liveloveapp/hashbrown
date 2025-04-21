@@ -18,10 +18,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
-import { predictionResource, s } from '@hashbrownai/angular';
+import { predictionResource } from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
 import { Scene } from '../../../models/scene.model';
 import { selectAllLights, selectLightEntities } from '../../../store';
+import { s } from '@hashbrownai/core';
 
 @Component({
   selector: 'app-scene-form-dialog',

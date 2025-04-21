@@ -2,6 +2,9 @@ import { Socket } from 'net';
 import { AsyncParserIterable } from '../streaming-json-parser';
 import { SocketAsyncIterable } from './socket-async-iterable';
 
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { s } from '../../schema';
+
 (async () => {
   console.log('Connecting...');
   const client = new Socket();
@@ -18,20 +21,13 @@ import { SocketAsyncIterable } from './socket-async-iterable';
     }, 
   */
 
-  const schema = {
-    type: 'object',
-    properties: {
-      para: { type: 'string' },
-      GlossSeeAlso: { type: 'array', items: { type: 'string' } },
-    },
-    required: ['para', 'GlossSeeAlso'],
-  };
-
-  console.log('Searching for objects like:');
-  console.log(JSON.stringify(schema, null, 4));
+  const pattyCakerSchema = s.object('', {
+    para: s.string(''),
+    GlossSeeAlso: s.array('', s.string('')),
+  });
 
   const iterable = new SocketAsyncIterable(client);
-  const parserIterable = AsyncParserIterable(iterable, schema);
+  const parserIterable = AsyncParserIterable(iterable, pattyCakerSchema);
   try {
     for await (const data of parserIterable) {
       console.log('Received data:', data);
