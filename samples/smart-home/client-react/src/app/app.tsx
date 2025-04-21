@@ -26,8 +26,9 @@ export function App() {
 
   return (
     <ChatProvider
-      model="gpt-4o-mini"
-      temperature={0.5}
+      // model='gemini-2.5-pro-exp-03-25'
+      model="o4-mini"
+      temperature={1}
       tools={[
         createTool({
           name: 'getLights',

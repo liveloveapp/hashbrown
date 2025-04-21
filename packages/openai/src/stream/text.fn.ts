@@ -55,7 +55,7 @@ export async function* text(
 
       throw new Error(`Invalid message role`);
     }),
-    max_tokens,
+    max_completion_tokens: max_tokens,
     temperature,
     tools:
       tools && tools.length > 0

@@ -3,6 +3,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatSliderModule } from '@angular/material/slider';
 import { Store } from '@ngrx/store';
 import { selectLightEntities } from '../../../store';
+import { ChatAiActions } from '../actions';
 
 @Component({
   selector: 'app-light-card',
@@ -60,6 +61,11 @@ export class LightCardComponent {
   brightnessChange = output<number>();
 
   onBrightnessChange(newValue: number) {
-    this.brightnessChange.emit(newValue);
+    this.store.dispatch(
+      ChatAiActions.controlLight({
+        lightId: this.lightId(),
+        brightness: newValue,
+      }),
+    );
   }
 }

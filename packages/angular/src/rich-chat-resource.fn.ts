@@ -1,5 +1,5 @@
 import { computed, Signal, Type } from '@angular/core';
-import { Chat, s } from '@hashbrownai/core';
+import { Chat, ExposedComponent, s } from '@hashbrownai/core';
 import { ChatResource, chatResource } from './chat-resource.fn';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
 
@@ -14,7 +14,7 @@ export namespace RichChat {
     role: 'component';
     name: Name;
     component: Type<T>;
-    inputs: Partial<SignalInputs<T>>;
+    inputs: object;
   };
 
   export type ToolCallMessage = {
@@ -38,32 +38,8 @@ export interface RichChatResource extends ChatResource {
   messages: Signal<RichChat.Message[]>;
 }
 
-type SignalInputs<T> = {
-  [K in keyof T]: T[K] extends Signal<infer U> ? U : never;
-};
-
-export type ChatComponent<Name extends string, T> = {
-  name: Name;
-  description: string;
-  component: Type<T>;
-  inputs: Partial<{
-    [P in keyof SignalInputs<T>]: s.Schema<SignalInputs<T>[P]>;
-  }>;
-};
-
-export function exposeComponent<Name extends string, T>(config: {
-  name: Name;
-  description: string;
-  component: Type<T>;
-  inputs: Partial<{
-    [P in keyof SignalInputs<T>]: s.Schema<SignalInputs<T>[P]>;
-  }>;
-}): ChatComponent<Name, T> {
-  return config;
-}
-
 export function richChatResource(args: {
-  components?: ChatComponent<string, unknown>[];
+  components?: ExposedComponent<any>[];
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
@@ -78,10 +54,10 @@ export function richChatResource(args: {
           name: s.string(`Must be ${component.name}`),
           inputs: s.object(
             'Values to pass to the component',
-            Object.keys(component.inputs).reduce(
+            Object.keys(component.props ?? {}).reduce(
               (acc, key) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (acc as any)[key] = (component.inputs as any)[key];
+                (acc as any)[key] = (component.props as any)[key];
                 return acc;
               },
               {} as Record<string, s.AnyType>,
@@ -226,7 +202,7 @@ export function richChatResource(args: {
                 > = {
                   role: 'component',
                   name: componentName,
-                  component: componentType,
+                  component: componentType as Type<unknown>,
                   inputs: componentInputs,
                 };
                 return [componentMessage];

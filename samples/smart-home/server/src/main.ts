@@ -1,5 +1,5 @@
 import { Chat } from '@hashbrownai/core';
-// import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { HashbrownGoogle } from '@hashbrownai/google';
 import cors from 'cors';
 import express from 'express';
@@ -21,10 +21,10 @@ app.post('/chat', async (req, res) => {
   const request = req.body as Chat.CompletionCreateParams;
 
   // Google Gemini
-  const stream = HashbrownGoogle.stream.text(request);
+  // const stream = HashbrownGoogle.stream.text(request);
 
   // OpenAI
-  // const stream = HashbrownOpenAI.stream.text(request);
+  const stream = HashbrownOpenAI.stream.text(request);
 
   res.header('Content-Type', 'text/plain');
   for await (const chunk of stream) {

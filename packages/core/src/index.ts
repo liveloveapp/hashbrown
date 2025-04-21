@@ -1,4 +1,4 @@
-export * as Chat from './models/chat';
-export { s } from './schema/s';
-
+export * from './models';
+export * from './schema';
 export * as Tater from './streaming-json-parser';
+export { exposeComponent } from './utils';

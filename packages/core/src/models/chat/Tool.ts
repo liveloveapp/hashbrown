@@ -1,4 +1,4 @@
-import { s } from '../../schema/s';
+import { s } from '../../schema';
 
 export type Tool<
   Name extends string = string,
