@@ -20,6 +20,8 @@ app.listen(port, host, () => {
 app.post('/chat', async (req, res) => {
   const request = req.body as Chat.CompletionCreateParams;
 
+  console.log('request', JSON.stringify(request, null, 2));
+
   // Google Gemini
   // const stream = HashbrownGoogle.stream.text(request);
 

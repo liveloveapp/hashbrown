@@ -13,6 +13,8 @@ export async function* text(
   const { messages, model, max_tokens, temperature, tools, response_format } =
     request;
 
+  console.log('request', JSON.stringify(request, null, 2));
+
   const stream = openai.beta.chat.completions.stream({
     model: model,
     messages: messages.map((message): OpenAI.ChatCompletionMessageParam => {
