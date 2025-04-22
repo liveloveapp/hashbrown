@@ -26,7 +26,7 @@ export function App() {
   const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
 
   return (
-    <>
+    <HashbrownProvider url="http://localhost:3000/chat">
       <StoreInitializer />
 
       <div className="flex justify-between py-2 items-center border-b">
@@ -120,14 +120,12 @@ export function App() {
             ]}
             maxTokens={1000}
           > */}
-          <HashbrownProvider url="http://localhost:3000/chat">
-            <ChatPanel />
-          </HashbrownProvider>
+          <ChatPanel />
           {/* </ChatProvider> */}
         </div>
       </div>
       <Toaster />
-    </>
+    </HashbrownProvider>
   );
 }
 

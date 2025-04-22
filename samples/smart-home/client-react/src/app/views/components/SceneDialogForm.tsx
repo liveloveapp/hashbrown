@@ -1,3 +1,4 @@
+import { s } from '@hashbrownai/core';
 import { usePrediction } from '@hashbrownai/react';
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
@@ -51,15 +52,27 @@ export const SceneDialogForm = (
   );
   const [open, setOpen] = useState(false);
 
-  const { setInput, predictionComponents, isThinking, stop } = usePrediction(
-    `Predict the lights that will be added to the scene based on the name. For example,
+  const [input, setInput] = useState('');
+
+  const { predictions } = usePrediction({
+    input: input,
+    details: `Predict the lights that will be added to the scene based on the name. For example,
     if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
     be in the bedroom at a lower brightness.
 
     Here's the list of lights:
     ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}`,
-    SceneLightRecommendation,
-  );
+    model: 'gpt-4o-mini',
+    outputSchema: s.object('Your response', {
+      lights: s.array(
+        'The lights to add to the scene',
+        s.object('A join between a light and a scene', {
+          lightId: s.string('the ID of the light to add'),
+          brightness: s.number('the brightness of the light'),
+        }),
+      ),
+    }),
+  });
 
   // Get available lights that aren't already in the scene
   const availableLights = lights.filter(
@@ -172,10 +185,14 @@ export const SceneDialogForm = (
             )}
             <div className="flex flex-col gap-2">
               <Label>Recommendations</Label>
-              {isThinking && (
-                <p className="text-sm text-muted-foreground">Thinking...</p>
-              )}
-              {predictionComponents}
+              {predictions &&
+                predictions.lights.map((prediction) => (
+                  <SceneLightRecommendation
+                    key={prediction.lightId}
+                    lightId={prediction.lightId}
+                    brightness={prediction.brightness}
+                  />
+                ))}
             </div>
           </div>
         </div>
