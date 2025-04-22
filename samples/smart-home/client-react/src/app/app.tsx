@@ -78,7 +78,6 @@ export function App() {
               <Route path="/" element={<p>Home</p>} />
             </Routes>
           </div>
-          {/* END: routes */}
         </div>
         <div className="col-span-1 border-l p-2">
           <ChatPanel />

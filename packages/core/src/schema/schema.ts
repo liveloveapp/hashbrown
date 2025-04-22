@@ -346,8 +346,7 @@ export const s = {
         const properties: Record<string, object> = {};
         const required: string[] = [];
         for (const key in schema.properties) {
-          // properties[key] = s.toOpenApiSchema(schema.properties[key]);
-          properties[key] = s.toJsonSchema(schema.properties[key]);
+          properties[key] = s.toOpenApiSchema(schema.properties[key]);
           required.push(key);
         }
         return {
@@ -362,10 +361,7 @@ export const s = {
         return {
           type: 'array',
           description: schema.description,
-          //items: s.toOpenApiSchema(
-          //  (schema as unknown as s.ArrayType<s.AnyType>).items,
-          //),
-          items: s.toJsonSchema(
+          items: s.toOpenApiSchema(
             (schema as unknown as s.ArrayType<s.AnyType>).items,
           ),
         };
