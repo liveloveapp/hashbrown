@@ -1,8 +1,7 @@
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { useEffect, useState } from 'react';
 import { useChat } from './ChatProvider';
 import { BoundTool } from './create-tool.fn';
-import { s } from './schema';
 
 type ResponseSchema = s.ObjectType<Record<string, s.AnyType>>;
 

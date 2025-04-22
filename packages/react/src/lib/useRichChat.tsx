@@ -1,7 +1,8 @@
+import { s } from '@hashbrownai/core';
 import React from 'react';
 import { useChat } from './ChatProvider';
 import { BoundTool } from './create-tool.fn';
-import { s } from './schema';
+
 export type ChatComponent = {
   name: string;
   description: string;

@@ -1,4 +1,4 @@
-import { s } from './schema';
+import { s } from '@hashbrownai/core';
 import { ChatInterface, ChatOptions, useChat } from './use-chat';
 
 export interface StructuredChatOptions extends ChatOptions {

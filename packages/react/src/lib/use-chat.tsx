@@ -1,8 +1,7 @@
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { useContext, useEffect, useState } from 'react';
 import { BoundTool } from './create-tool.fn';
 import { HashbrownContext } from './hashbrown-provider';
-import { s } from './schema';
 import { streamChatCompletionWithTools } from './stream-fetch.fn';
 import { createToolDefinitions, updateMessagesWithDelta } from './utilities';
 
