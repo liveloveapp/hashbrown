@@ -99,7 +99,7 @@ export class ChatPanelComponent {
 
   chat = richChatResource({
     // model: 'gemini-2.5-pro-exp-03-25',
-    model: 'o4-mini',
+    model: 'gpt-4o',
     messages: [
       {
         role: 'system',

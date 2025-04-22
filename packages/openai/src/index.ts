@@ -1,5 +1,7 @@
-import * as stream from './stream';
+import { text } from './stream/text.fn';
 
 export const HashbrownOpenAI = {
-  stream,
+  stream: {
+    text,
+  },
 };

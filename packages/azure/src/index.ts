@@ -1,6 +1,6 @@
 import { text } from './stream/text.fn';
 
-export const HashbrownGoogle = {
+export const HashbrownAzure = {
   stream: {
     text,
   },
