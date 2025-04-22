@@ -4,10 +4,9 @@ import { MatIconModule } from '@angular/material/icon';
 import {
   createTool,
   createToolWithArgs,
-  exposeComponent,
   richChatResource,
-  s,
 } from '@hashbrownai/angular';
+import { ComponentPropSchema, exposeComponent, s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
@@ -17,6 +16,8 @@ import { ChatAiActions } from './actions/chat-ai.actions';
 import { ComposerComponent } from './components/composer.component';
 import { LightCardComponent } from './components/light-card.component';
 import { MessagesComponent } from './components/messages.component';
+
+type Result = ComponentPropSchema<typeof LightCardComponent>;
 
 @Component({
   selector: 'app-chat-panel',
@@ -96,8 +97,8 @@ export class ChatPanelComponent {
   smartHomeService = inject(SmartHomeService);
 
   chat = richChatResource({
-    //model: 'gemini-2.0-flash',
-    model: 'gpt-4o',
+    // model: 'gemini-2.5-pro-exp-03-25',
+    model: 'o4-mini',
     messages: [
       {
         role: 'system',
@@ -106,11 +107,10 @@ export class ChatPanelComponent {
       },
     ],
     components: [
-      exposeComponent({
+      exposeComponent(LightCardComponent, {
         name: 'light',
         description: 'Show a light to the user',
-        component: LightCardComponent,
-        inputs: {
+        props: {
           lightId: s.string('The id of the light'),
         },
       }),

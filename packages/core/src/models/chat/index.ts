@@ -4,7 +4,6 @@ export * from './CompletionCreateParams';
 export * from './CompletionChunkResponse';
 export * from './Message';
 export * from './MessageRole';
-export * from './Options';
 export * from './ResponseFormat';
 export * from './SystemMessage';
 export * from './Tool';

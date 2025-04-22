@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import OpenAI from 'openai';
 import { getParam, Params } from '../utils/env.utils';
 import { getOpenAiApiKey } from '../utils/openai.utils';
@@ -13,10 +13,7 @@ export async function* text(
   const { messages, model, max_tokens, temperature, tools, response_format } =
     request;
 
-  if (getParam(Params.NODE_ENV) === 'development') {
-    console.log('messages', JSON.stringify(messages, null, 2));
-    console.log('tools', JSON.stringify(tools, null, 2));
-  }
+  console.log('request', JSON.stringify(request, null, 2));
 
   const stream = openai.beta.chat.completions.stream({
     model: model,
@@ -60,7 +57,7 @@ export async function* text(
 
       throw new Error(`Invalid message role`);
     }),
-    max_tokens,
+    max_completion_tokens: max_tokens,
     temperature,
     tools:
       tools && tools.length > 0
@@ -69,7 +66,7 @@ export async function* text(
             function: {
               name: tool.name,
               description: tool.description,
-              parameters: tool.schema,
+              parameters: s.toJsonSchema(tool.schema),
               strict: true,
             },
           }))
@@ -80,8 +77,8 @@ export async function* text(
           json_schema: {
             strict: true,
             name: 'schema',
-            description: response_format.description,
-            schema: response_format as Record<string, unknown>,
+            description: response_format['description'] as string,
+            schema: s.toJsonSchema(response_format),
           },
         }
       : undefined,

@@ -7,8 +7,8 @@ import { of } from 'rxjs';
 export class AuthService {
   getUser() {
     return of({
-      name: 'Mike Ryan',
-      email: 'mike@liveloveapp.com.com',
+      name: 'Brian Love',
+      email: 'brian@liveloveapp.com',
     });
   }
 }

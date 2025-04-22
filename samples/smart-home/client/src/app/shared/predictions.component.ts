@@ -1,6 +1,7 @@
 import { Component, inject, linkedSignal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { predictionResource, s } from '@hashbrownai/angular';
+import { predictionResource } from '@hashbrownai/angular';
+import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { PredictionsAiActions } from '../features/predictions/actions';
 import { SmartHomeService } from '../services/smart-home.service';
@@ -296,7 +297,6 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
       .predictionActions {
         grid-area: actions;
         display: flex;
-        align-items: row-reverse;
         align-self: end;
         justify-self: end;
         gap: 8px;
@@ -333,9 +333,9 @@ export class PredictionsComponent {
   lightEntities = this.store.selectSignal(selectLightEntities);
   sceneEntities = this.store.selectSignal(selectScenesEntities);
 
-  // Revised prompt with detailed examples
   predictions = predictionResource({
-    model: 'gpt-4o',
+    // model: 'gpt-4o',
+    model: 'gemini-2.5-pro-exp-03-25',
     input: this.lastAction,
     description: `
 You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
@@ -407,6 +407,8 @@ Additional Rules:
 - When recommending scene modifications, ensure that the scene does not already contain the light in question.
 - You do not always need to make a prediction. Returning an empty array is also a valid response.
 - You may make multiple predictions. Just add multiple predictions to the array.
+
+DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my grandmother will kill me.
     `,
     signals: {
       lights: {
@@ -426,6 +428,7 @@ Additional Rules:
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
+      console.log(source);
       if (source === undefined || source.predictions.length === 0) return [];
 
       return source.predictions;

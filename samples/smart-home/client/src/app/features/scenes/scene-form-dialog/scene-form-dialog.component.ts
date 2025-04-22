@@ -18,7 +18,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
-import { predictionResource, s } from '@hashbrownai/angular';
+import { predictionResource } from '@hashbrownai/angular';
+import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { Scene } from '../../../models/scene.model';
 import { selectAllLights, selectLightEntities } from '../../../store';
@@ -168,16 +169,37 @@ export class SceneFormDialogComponent {
         .join('\n')}
     `,
     ),
+    examples: [
+      {
+        input: 'Dim Bedroom Lights',
+        output: {
+          lights: [
+            { lightId: 'light1', brightness: 20 },
+            { lightId: 'light2', brightness: 20 },
+          ],
+        },
+      },
+      {
+        input: 'All Lights On',
+        output: {
+          lights: [
+            { lightId: 'light3', brightness: 100 },
+            { lightId: 'light4', brightness: 100 },
+          ],
+        },
+      },
+    ],
     outputSchema: s.object('Your response', {
       lights: s.array(
         'The lights to add to the scene',
         s.object('A join between a light and a scene', {
           lightId: s.string('the ID of the light to add'),
-          brightness: s.number('the brightness of the light'),
+          brightness: s.number('the brightness of the light from 0 to 100'),
         }),
       ),
     }),
-    model: 'gpt-4o-mini',
+    model: 'gemini-2.0-flash',
+    // model: 'gpt-4o-mini',
   });
 
   protected get lightsFormArray() {

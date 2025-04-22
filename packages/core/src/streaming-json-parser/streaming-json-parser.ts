@@ -1,13 +1,16 @@
-import Ajv from 'ajv';
+// import Ajv from 'ajv';
 
-// TODO: how to convert from any given otherwise-valid schema to ajv's JTD (JSON Type Definition) format?
-// -- to allow use of compiled parsers via ajv.compileParser which requires a JTD schema argument
+import { s } from '../schema';
+
+import Ajv from 'ajv/dist/jtd';
+
+// TODO: need to detect if schema is JSON Schema or JTD (which allows for custom parser)
 
 export async function* AsyncParserIterable(
   iterable: AsyncIterable<string>,
   // TODO: need better type
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schema: any,
+
+  schema: s.ObjectType<Record<string, s.AnyType>>,
   // TODO: need better return type - could it be T of schema-defined type?
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): AsyncIterableIterator<any> {
@@ -18,7 +21,9 @@ export async function* AsyncParserIterable(
   const openBracketIndices: number[] = [];
   const closeBracketIndices: number[] = [];
 
-  const validate = ajv.compile(schema);
+  console.log(s.toJsonTypeDefinition(schema));
+
+  const customParser = ajv.compileParser(s.toJsonTypeDefinition(schema));
 
   // Track the close index of matches so we can avoid checking any open/close indices before it
   let lastMatchedCloseIndex = 0;
@@ -58,24 +63,17 @@ export async function* AsyncParserIterable(
           continue;
         }
 
-        let json;
-
-        try {
-          json = JSON.parse(dataString.substring(openIndex, closeIndex + 1));
-        } catch {
-          // console.log('invalid json chunk');
-          continue;
-        }
-
         // Test with ajv against schema
-        const valid = validate(json);
+        const data = customParser(
+          dataString.substring(openIndex, closeIndex + 1),
+        );
 
-        if (valid) {
+        if (data === undefined) {
+          // data didn't parse
+        } else {
           // Found a match
-
           lastMatchedCloseIndex = closeIndex;
-
-          yield json;
+          yield data;
         }
       }
     }

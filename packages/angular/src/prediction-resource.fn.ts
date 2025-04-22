@@ -1,13 +1,12 @@
 import { computed, effect, Resource, Signal } from '@angular/core';
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { chatResource } from './chat-resource.fn';
 import { BoundTool, createToolWithArgs } from './create-tool.fn';
-import { s } from './schema';
 import { SignalLike } from './types';
 
 export function predictionResource<
   Input,
-  OutputSchema extends s.ObjectType<Record<string, s.AnyType>>,
+  OutputSchema extends Chat.ResponseFormat,
 >(args: {
   model: string;
   temperature?: number;
@@ -16,9 +15,11 @@ export function predictionResource<
   description: SignalLike<string>;
   outputSchema: OutputSchema;
   examples?: { input: Input; output: s.Infer<OutputSchema> }[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: SignalLike<BoundTool<string, any>[]>;
   signals?: {
     [key: string]: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       signal: Signal<any>;
       description: string;
     };
@@ -65,6 +66,21 @@ export function predictionResource<
       ${definitions}
     `;
   });
+  const examplesInstructions =
+    args.examples && args.examples.length > 0
+      ? `
+    Here are examples of the input and output:
+
+    ${(args.examples as unknown as { input: object; output: object }[])
+      ?.map(
+        (example: { input: object; output: object }) => `
+        Input: ${JSON.stringify(example.input)}
+        Output: ${JSON.stringify(example.output)}
+      `,
+      )
+      .join('\n')}
+  `
+      : ``;
   const systemMessage = computed((): Chat.SystemMessage => {
     return {
       role: 'system',
@@ -78,15 +94,7 @@ export function predictionResource<
 
       ${signalsInstructions()}
 
-      Here are examples:
-      ${(args.examples as unknown as { input: object; output: object }[])
-        ?.map(
-          (example: { input: object; output: object }) => `
-        Input: ${JSON.stringify(example.input)}
-        Output: ${JSON.stringify(example.output)}
-      `,
-        )
-        .join('\n')}
+      ${examplesInstructions}
     `,
     };
   });
@@ -118,11 +126,11 @@ export function predictionResource<
     }
 
     try {
-      return (s.parse as any)(
-        args.outputSchema as unknown,
+      return s.parse(
+        args.outputSchema,
         JSON.parse(lastMessage.content ?? '{}'),
       );
-    } catch (error) {
+    } catch {
       return undefined;
     }
   });
@@ -144,11 +152,13 @@ export function predictionResource<
   });
 
   function hasValue() {
+    console.log('hasValue', output());
     return output() !== undefined;
   }
 
   const resource = {
     error: chat.error,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hasValue: hasValue as any,
     isLoading: chat.isLoading,
     status: chat.status,

@@ -1,15 +1,20 @@
 import 'dotenv/config';
-import { Content, GoogleGenAI, Part, Type } from '@google/genai';
-import { Chat } from '@hashbrownai/core';
+import {
+  Content,
+  GenerateContentParameters,
+  GoogleGenAI,
+  Part,
+} from '@google/genai';
+import { Chat, s } from '@hashbrownai/core';
 
 export async function* text(
   request: Chat.CompletionCreateParams,
 ): Chat.CompletionChunkResponse {
+  const { messages, model, response_format, tools } = request;
   const ai = new GoogleGenAI({
     apiKey: process.env['GOOGLE_API_KEY'],
   });
-
-  const contents = request.messages.map((message): Content => {
+  const contents = messages.map((message): Content => {
     switch (message.role) {
       case 'system':
       case 'user':
@@ -54,25 +59,32 @@ export async function* text(
     }
   });
 
-  console.log(JSON.stringify(contents, null, 2));
+  const config: GenerateContentParameters['config'] = {
+    tools:
+      tools && tools.length
+        ? [
+            {
+              functionDeclarations: tools?.map((tool) => ({
+                name: tool.name,
+                description: tool.description,
+                parameters: s.toOpenApiSchema(tool.schema),
+              })),
+            },
+          ]
+        : undefined,
+    /**
+     * @todo Mike Ryan, Brian Love - how do we emulate structured outputs
+     * with tool calls when dealing with Google models?
+     */
+    // responseMimeType: response_format ? 'application/json' : 'text/plain',
+    // responseSchema: response_format
+    //   ? s.toOpenApiSchema(response_format)
+    //   : undefined,
+  };
 
   const response = await ai.models.generateContentStream({
-    model: request.model,
-    config: {
-      tools: [
-        {
-          functionDeclarations: request.tools?.map((tool) => ({
-            name: tool.name,
-            description: tool.description,
-            parameters: {
-              type: Type.OBJECT,
-              properties: tool.schema['properties'] as any,
-              required: tool.schema['required'] as string[],
-            },
-          })),
-        },
-      ],
-    },
+    model,
+    config,
     contents,
   });
 

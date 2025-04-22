@@ -12,7 +12,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import {
   BehaviorSubject,
   catchError,
@@ -32,7 +32,6 @@ import {
 } from 'rxjs';
 import { BoundTool } from './create-tool.fn';
 import { FetchService } from './fetch.service';
-import { s } from './schema';
 
 export interface ChatResource extends WritableResource<Chat.Message[]> {
   sendMessage: (message: Chat.Message | Chat.Message[]) => void;
@@ -44,10 +43,11 @@ export interface ChatResource extends WritableResource<Chat.Message[]> {
 export type ChatResourceConfig = {
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: BoundTool<string, any>[];
   maxTokens?: number | Signal<number>;
   messages?: Chat.Message[];
-  responseFormat?: s.AnyType | Signal<s.AnyType>;
+  responseFormat?: Chat.ResponseFormat | Signal<Chat.ResponseFormat>;
 };
 
 /**
@@ -186,6 +186,7 @@ function finalizeChat(
  */
 function processToolCallMessage(
   message: Chat.AssistantMessage,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   configTools: BoundTool<string, any>[] = [],
   injector: Injector,
 ): Observable<Chat.ToolMessage[]> {
@@ -294,16 +295,6 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
       ? config.responseFormat()
       : config.responseFormat,
   );
-  const serializedResponseFormat = computed(() => {
-    const currentFormat = computedResponseFormat();
-
-    if (currentFormat) {
-      // return s.toOpenApiSchema(currentFormat);
-      return s.toJsonSchema(currentFormat);
-    }
-
-    return undefined;
-  });
 
   effect(() => {
     console.log('Current Messages', messagesSignal());
@@ -331,7 +322,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
             tools: toolDefinitions,
             max_tokens: computedMaxTokens(),
             temperature: computedTemperature(),
-            response_format: serializedResponseFormat(),
+            response_format: computedResponseFormat(),
           })
           .pipe(
             catchError((err) => {
@@ -451,6 +442,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     set: setMessages,
     update: updateMessages,
     error,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hasValue: hasValue as any,
     reload,
     asReadonly: (): Resource<Chat.Message[]> => ({
@@ -458,6 +450,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
       status,
       isLoading,
       error,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hasValue: hasValue as any,
       reload,
     }),

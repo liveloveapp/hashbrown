@@ -16,7 +16,6 @@
         "bundle": false,
         "main": "samples/smart-home/server/src/main.ts",
         "tsConfig": "samples/smart-home/server/tsconfig.app.json",
-        "assets": ["samples/smart-home/server/src/assets"],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,

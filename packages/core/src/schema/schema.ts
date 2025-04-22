@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const output = Symbol('output');
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -386,6 +387,75 @@ export const s = {
 
       default:
         throw new Error(`Unsupported schema type: ${(schema as any).type}`);
+    }
+  },
+  toJsonTypeDefinition(schema: s.AnyType): any {
+    switch (schema.type) {
+      case 'string':
+      case 'const-string': {
+        return {
+          type: 'string',
+        };
+      }
+      case 'number': {
+        return {
+          type: 'float32',
+        };
+      }
+      case 'boolean': {
+        return {
+          type: 'boolean',
+        };
+      }
+      case 'integer': {
+        return {
+          type: 'int32',
+        };
+      }
+      case 'null':
+        return {
+          type: schema.type,
+        };
+
+      case 'object': {
+        const properties: Record<string, object> = {};
+        for (const key in schema.properties) {
+          properties[key] = s.toJsonTypeDefinition(schema.properties[key]);
+        }
+        return {
+          properties,
+          additionalProperties: false,
+        };
+      }
+
+      case 'array': {
+        return {
+          elements: s.toJsonTypeDefinition(
+            (schema as unknown as s.ArrayType<s.AnyType>).items,
+          ),
+        };
+      }
+
+      case 'enum': {
+        return {
+          enum: schema.enum,
+        };
+      }
+
+      case 'anyOf': {
+        return {
+          anyOf: (schema as unknown as s.AnyOfType<s.AnyType[]>).anyOf.map(
+            (subSchema) => s.toJsonTypeDefinition(subSchema),
+          ),
+        };
+      }
+
+      default:
+        throw new Error(
+          `Unsupported schema type: ${
+            (schema as unknown as { type: string }).type
+          }`,
+        );
     }
   },
   /**
