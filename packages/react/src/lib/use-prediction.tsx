@@ -5,6 +5,7 @@ import {
   StructuredChatOptions,
   useStructuredChat,
 } from './use-structured-chat';
+
 export interface PredictionOptions<OutputSchema extends Chat.ResponseFormat>
   extends StructuredChatOptions<OutputSchema> {
   /**

@@ -1,5 +1,10 @@
 import { Chat, s } from '@hashbrownai/core';
-import { createTool, createToolWithArgs, useChat } from '@hashbrownai/react';
+import {
+  ChatStatus,
+  createTool,
+  createToolWithArgs,
+  useUiChat,
+} from '@hashbrownai/react';
 import { useEffect, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { Button } from './button';
@@ -45,7 +50,7 @@ export const ChatPanel = () => {
   //   ],
   // });
 
-  const { messages, sendMessage, isThinking, stop } = useChat({
+  const { messages, sendMessage, status, stop } = useUiChat({
     model: 'gpt-4o-mini',
     messages: [
       {
@@ -80,6 +85,7 @@ export const ChatPanel = () => {
       }),
     ],
     maxTokens: 1000,
+    components: [],
   });
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -118,7 +124,7 @@ export const ChatPanel = () => {
     // Submit on Enter (but not on Shift+Enter)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent default behavior (new line)
-      if (isThinking) {
+      if (status !== ChatStatus.Idle) {
         stop();
       } else {
         onSubmit();
@@ -138,7 +144,7 @@ export const ChatPanel = () => {
         </ScrollArea>
       </div>
       <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end">
-        {isThinking && <p>Thinking...</p>}
+        {status !== ChatStatus.Idle && <p>Thinking...</p>}
       </div>
       <div className="flex flex-col gap-2">
         <Textarea
@@ -147,7 +153,7 @@ export const ChatPanel = () => {
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
-        {!isThinking ? (
+        {status === ChatStatus.Idle ? (
           <Button onClick={onSubmit}>Send</Button>
         ) : (
           <Button variant="outline" onClick={stop}>
