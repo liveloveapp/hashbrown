@@ -25,8 +25,11 @@ export function App() {
   const scenes = useSmartHomeStore((state) => state.scenes);
   const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
 
+  const url = 'http://localhost:3000/chat';
+  //const url = 'https://hashbrownai-dev.openai.azure.com/';
+
   return (
-    <HashbrownProvider url="http://localhost:3000/chat">
+    <HashbrownProvider url={url}>
       <StoreInitializer />
 
       <div className="flex justify-between py-2 items-center border-b">
@@ -78,50 +81,7 @@ export function App() {
           {/* END: routes */}
         </div>
         <div className="col-span-1 border-l p-2">
-          {/* <ChatProvider
-            endpoint={{
-              url: 'http://localhost:3000/chat',
-            }}
-            model="gpt-4o-mini"
-            messages={[
-              {
-                role: 'system',
-                content:
-                  'You are a helpful assistant that can answer questions and help with tasks.',
-              },
-            ]}
-            temperature={0.5}
-            tools={[
-              createTool({
-                name: 'getLights',
-                description: 'Get the current lights',
-                handler: () =>
-                  Promise.resolve(useSmartHomeStore.getState().lights),
-              }),
-              createToolWithArgs({
-                name: 'controlLight',
-                description:
-                  'Control the light. Brightness is a number between 0 and 100.',
-                schema: s.object('Control light input', {
-                  lightId: s.string('The id of the light'),
-                  brightness: s.number(
-                    'The brightness of the light, between 0 and 100',
-                  ),
-                }),
-                handler: (input) => {
-                  useSmartHomeStore
-                    .getState()
-                    .updateLight(input.lightId, {
-                      brightness: input.brightness,
-                    });
-                  return Promise.resolve(true);
-                },
-              }),
-            ]}
-            maxTokens={1000}
-          > */}
           <ChatPanel />
-          {/* </ChatProvider> */}
         </div>
       </div>
       <Toaster />
