@@ -10,12 +10,17 @@ export interface SceneProps {
 
 export const Scene = ({ scene }: SceneProps) => {
   const updateLight = useSmartHomeStore((state) => state.updateLight);
+  const deleteScene = useSmartHomeStore((state) => state.deleteScene);
 
   const handleApplyScene = () => {
     // Apply each light's brightness from the scene to the corresponding light in the store
     scene.lights.forEach((sceneLight) => {
       updateLight(sceneLight.lightId, { brightness: sceneLight.brightness });
     });
+  };
+
+  const handleDeleteScene = () => {
+    deleteScene(scene.id);
   };
 
   return (
@@ -44,7 +49,7 @@ export const Scene = ({ scene }: SceneProps) => {
         </SceneDialogForm>
       </div>
       <div className="flex items-center justify-center w-10">
-        <Button size="icon" variant="destructive">
+        <Button size="icon" variant="destructive" onClick={handleDeleteScene}>
           <Trash className="h-4 w-4" />
         </Button>
       </div>

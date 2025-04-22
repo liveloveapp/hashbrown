@@ -3,10 +3,12 @@ import { Chat } from '@hashbrownai/core';
 export interface StreamChatCompletionCallbacks {
   onChunk: (chunk: Chat.CompletionChunk) => void;
   onError: (error: Error) => void;
+  onComplete: () => void;
 }
 
 export interface StreamChatCompletionOptions {
   url: string;
+  headers?: Record<string, string>;
   request: Chat.CompletionCreateParams;
   callbacks: StreamChatCompletionCallbacks;
 }
@@ -16,7 +18,7 @@ export type StreamChatCompletionCleanup = () => void;
 export const streamChatCompletionWithTools = (
   streamChatCompletionOptions: StreamChatCompletionOptions,
 ): StreamChatCompletionCleanup => {
-  const { url, request, callbacks } = streamChatCompletionOptions;
+  const { url, headers, request, callbacks } = streamChatCompletionOptions;
 
   const abortController = new AbortController();
 
@@ -26,6 +28,7 @@ export const streamChatCompletionWithTools = (
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...headers,
         },
         body: JSON.stringify(request),
         signal: abortController.signal,
@@ -46,6 +49,10 @@ export const streamChatCompletionWithTools = (
         const { done, value } = await reader.read();
 
         if (done) {
+          // Call onComplete when the stream is finished
+          if (callbacks.onComplete) {
+            callbacks.onComplete();
+          }
           break;
         }
 
@@ -66,7 +73,16 @@ export const streamChatCompletionWithTools = (
         }
       }
     } catch (error) {
-      callbacks.onError(error as Error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        // @todo U.G. Wilson - Make sure calling abort is the only way this can happen.
+        // If not, need to decide when to stop it (user aborts) and when to let the
+        // error through.
+        if (callbacks.onComplete) {
+          callbacks.onComplete();
+        }
+      } else {
+        callbacks.onError(error as Error);
+      }
     }
   };
 

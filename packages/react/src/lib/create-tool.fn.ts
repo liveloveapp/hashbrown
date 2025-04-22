@@ -1,5 +1,4 @@
-import { Chat } from '@hashbrownai/core';
-import { s } from './schema';
+import { Chat, s } from '@hashbrownai/core';
 
 export class BoundTool<
   Name extends string,

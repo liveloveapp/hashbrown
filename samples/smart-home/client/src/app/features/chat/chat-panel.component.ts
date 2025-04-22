@@ -1,13 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { ComponentPropSchema, exposeComponent } from '@hashbrownai/core';
 import {
   createTool,
   createToolWithArgs,
   richChatResource,
 } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
+import { ComponentPropSchema, exposeComponent, s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
