@@ -7,7 +7,7 @@ import {
 } from './use-structured-chat';
 
 export interface PredictionOptions<OutputSchema extends Chat.ResponseFormat>
-  extends StructuredChatOptions<OutputSchema> {
+  extends Omit<StructuredChatOptions<OutputSchema>, 'messages'> {
   /**
    * The input string to predict from.
    */

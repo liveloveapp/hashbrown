@@ -15,8 +15,7 @@ export class BoundTool<
     return {
       name: this.name,
       description: this.description,
-      schema: s.toJsonSchema(this.schema), // GPT-4o
-      //schema: s.toOpenApiSchema(this.schema), // Gemini
+      schema: this.schema,
     };
   }
 }

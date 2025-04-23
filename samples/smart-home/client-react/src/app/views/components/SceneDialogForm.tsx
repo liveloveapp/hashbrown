@@ -1,5 +1,4 @@
-import { s } from '@hashbrownai/core';
-import { usePrediction } from '@hashbrownai/react';
+import { ChatStatus, s, usePrediction } from '@hashbrownai/react';
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -54,7 +53,7 @@ export const SceneDialogForm = (
 
   const [input, setInput] = useState('');
 
-  const { predictions } = usePrediction({
+  const { predictions, status } = usePrediction({
     input: input,
     details: `Predict the lights that will be added to the scene based on the name. For example,
     if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
@@ -185,6 +184,11 @@ export const SceneDialogForm = (
             )}
             <div className="flex flex-col gap-2">
               <Label>Recommendations</Label>
+              {status !== ChatStatus.Idle && (
+                <p className="text-sm text-muted-foreground">
+                  Generating recommendations...
+                </p>
+              )}
               {predictions &&
                 predictions.lights.map((prediction) => (
                   <SceneLightRecommendation
