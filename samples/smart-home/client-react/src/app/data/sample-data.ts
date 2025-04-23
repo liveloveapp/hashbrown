@@ -7,6 +7,9 @@ export const sampleLights: Light[] = [
   { id: '2', name: 'Kitchen Light', brightness: 60 },
   { id: '3', name: 'Bedroom Light', brightness: 40 },
   { id: '4', name: 'Bathroom Light', brightness: 100 },
+  { id: '5', name: 'Office Light', brightness: 50 },
+  { id: '7', name: 'Kitchen Sink', brightness: 100 },
+  { id: '8', name: 'Kitchenette Light', brightness: 50 },
 ];
 
 export const sampleScenes: Scene[] = [

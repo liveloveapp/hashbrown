@@ -4,11 +4,11 @@ import { ResponseFormat } from './ResponseFormat';
 import { Tool } from './Tool';
 
 export type CompletionCreateParams = {
-  model: string;
-  messages: Message[];
-  tools?: Tool[];
-  tool_choice?: CompletionToolChoiceOption;
-  temperature?: number;
   max_tokens?: number;
+  messages: Message[];
+  model: string;
   response_format?: ResponseFormat;
+  temperature?: number;
+  tool_choice?: CompletionToolChoiceOption;
+  tools?: Tool[];
 };

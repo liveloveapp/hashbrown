@@ -1,6 +1,5 @@
-import 'dotenv/config';
 import { Chat, s } from '@hashbrownai/core';
-import OpenAI from 'openai';
+import OpenAI, { AzureOpenAI } from 'openai';
 
 export async function* text(
   request: Chat.CompletionCreateParams,
@@ -8,11 +7,21 @@ export async function* text(
   const { messages, model, max_tokens, temperature, tools, response_format } =
     request;
 
-  const openai = new OpenAI({
-    apiKey: process.env['OPENAI_API_KEY'],
+  if (!process.env['AZURE_API_KEY']) {
+    throw new Error('AZURE_API_KEY is not set');
+  }
+  if (!model) {
+    throw new Error('Model is not set');
+  }
+
+  const client = new AzureOpenAI({
+    apiKey: process.env['AZURE_API_KEY'],
+    endpoint: 'https://ai-hashbrowndev507071463475.openai.azure.com/',
+    apiVersion: '2024-04-01-preview',
+    deployment: model,
   });
 
-  const stream = openai.beta.chat.completions.stream({
+  const stream = await client.chat.completions.create({
     model: model,
     messages: messages.map((message): OpenAI.ChatCompletionMessageParam => {
       if (message.role === 'user') {
@@ -79,6 +88,7 @@ export async function* text(
           },
         }
       : undefined,
+    stream: true,
   });
 
   for await (const chunk of stream) {

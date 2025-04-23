@@ -3,26 +3,21 @@ import {
   ChatStatus,
   createTool,
   createToolWithArgs,
+  exposeComponent,
   s,
-  useChat,
+  useUiChat,
 } from '@hashbrownai/react';
 import { useEffect, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
+import { LightChatComponent } from '../views/components/LightChatComponent';
 import { Button } from './button';
-import { Message } from './Message';
+import { RichMessage } from './RichMessage';
 import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
-export const ChatPanel = () => {
-  const { messages, sendMessage, status, stop } = useChat({
+export const RichChatPanel = () => {
+  const { messages, sendMessage, status, stop } = useUiChat({
     model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a helpful assistant that can answer questions and help with tasks.',
-      },
-    ],
     tools: [
       createTool({
         name: 'getLights',
@@ -44,6 +39,15 @@ export const ChatPanel = () => {
             brightness: input.brightness,
           });
           return Promise.resolve(true);
+        },
+      }),
+    ],
+    components: [
+      exposeComponent(LightChatComponent, {
+        name: 'LightChatComponent',
+        description: 'A component that lets you configure and control a light.',
+        props: {
+          lightId: s.string('The id of the light'),
         },
       }),
     ],
@@ -99,7 +103,7 @@ export const ChatPanel = () => {
         <ScrollArea className="h-[600px]" ref={scrollAreaRef}>
           <div className="flex flex-col gap-2">
             {messages.map((message, index) => (
-              <Message key={index} message={message} />
+              <RichMessage key={index} message={message} />
             ))}
           </div>
         </ScrollArea>

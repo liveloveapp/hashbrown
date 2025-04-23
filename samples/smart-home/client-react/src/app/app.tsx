@@ -1,9 +1,10 @@
 // Uncomment this line to use CSS modules
 // import styles from './app.module.css';
-import { ChatProvider, createTool } from '@hashbrownai/react';
+import { HashbrownProvider } from '@hashbrownai/react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { StoreInitializer } from './components/StoreInitializer';
-import { ChatPanel } from './shared/ChatPanel';
+//import { ChatPanel } from './shared/ChatPanel';
+import { RichChatPanel } from './shared/RichChatPanel';
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -21,24 +22,17 @@ import { ScheduledScenesView } from './views/ScheduledScenesView';
 export function App() {
   const { toast } = useToast();
   const lights = useSmartHomeStore((state) => state.lights);
+  const updateLight = useSmartHomeStore((state) => state.updateLight);
   const scenes = useSmartHomeStore((state) => state.scenes);
   const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
 
+  const url = 'http://localhost:3000/chat';
+  //const url = 'https://hashbrownai-dev.openai.azure.com/';
+
   return (
-    <ChatProvider
-      // model='gemini-2.5-pro-exp-03-25'
-      model="o4-mini"
-      temperature={1}
-      tools={[
-        createTool({
-          name: 'getLights',
-          description: 'Get the current lights',
-          handler: () => Promise.resolve(lights),
-        }),
-      ]}
-      maxTokens={1000}
-    >
+    <HashbrownProvider url={url}>
       <StoreInitializer />
+
       <div className="flex justify-between py-2 items-center border-b">
         <p className="text-xl font-bold p-2">Smart Home</p>
         <NavigationMenu>
@@ -70,7 +64,7 @@ export function App() {
           </NavigationMenuList>
         </NavigationMenu>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3">
           <div className="p-2">
             <Routes>
@@ -85,14 +79,14 @@ export function App() {
               <Route path="/" element={<p>Home</p>} />
             </Routes>
           </div>
-          {/* END: routes */}
         </div>
-        <div className="col-span-1 border-l p-2">
-          <ChatPanel />
+        <div className="col-span-2 border-l p-2">
+          {/* <ChatPanel /> */}
+          <RichChatPanel />
         </div>
       </div>
       <Toaster />
-    </ChatProvider>
+    </HashbrownProvider>
   );
 }
 

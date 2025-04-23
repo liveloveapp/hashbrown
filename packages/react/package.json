@@ -12,7 +12,6 @@
   "peerDependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@hashbrownai/core": "0.0.1",
-    "@hashbrownai/utilities": "0.0.1"
+    "@hashbrownai/core": "0.0.1"
   }
 }

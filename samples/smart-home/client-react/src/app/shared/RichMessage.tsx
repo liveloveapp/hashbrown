@@ -1,7 +1,8 @@
-import { Chat } from '@hashbrownai/react';
+import { UiChat } from '@hashbrownai/react';
 
-export const Message = ({ message }: { message: Chat.Message }) => {
+export const RichMessage = ({ message }: { message: UiChat.Message }) => {
   const isAssistant = message.role === 'assistant';
+  const isComponent = message.role === 'component';
   const isSystem = message.role === 'system';
   const isTool = message.role === 'tool';
 
@@ -16,7 +17,11 @@ export const Message = ({ message }: { message: Chat.Message }) => {
   }
 
   if (isSystem || isTool || (isAssistant && !message.content)) {
-    return;
+    return null;
+  }
+
+  if (isComponent) {
+    return message.component;
   }
 
   return (

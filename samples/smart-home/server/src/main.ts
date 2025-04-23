@@ -1,6 +1,6 @@
 import { Chat } from '@hashbrownai/core';
+import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
-import { HashbrownGoogle } from '@hashbrownai/google';
 import cors from 'cors';
 import express from 'express';
 
@@ -20,13 +20,14 @@ app.listen(port, host, () => {
 app.post('/chat', async (req, res) => {
   const request = req.body as Chat.CompletionCreateParams;
 
-  console.log('request', JSON.stringify(request, null, 2));
+  // Azure OpenAI Service
+  const stream = HashbrownAzure.stream.text(request);
 
   // Google Gemini
   // const stream = HashbrownGoogle.stream.text(request);
 
   // OpenAI
-  const stream = HashbrownOpenAI.stream.text(request);
+  // const stream = HashbrownOpenAI.stream.text(request);
 
   res.header('Content-Type', 'text/plain');
   for await (const chunk of stream) {
