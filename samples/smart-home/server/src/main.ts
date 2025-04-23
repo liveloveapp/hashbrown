@@ -1,5 +1,6 @@
-import { HashbrownAzure } from '@hashbrownai/azure';
 import { Chat } from '@hashbrownai/core';
+import { HashbrownAzure } from '@hashbrownai/azure';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
 import cors from 'cors';
 import express from 'express';
 
