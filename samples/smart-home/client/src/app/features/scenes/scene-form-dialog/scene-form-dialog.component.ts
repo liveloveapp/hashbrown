@@ -198,8 +198,8 @@ export class SceneFormDialogComponent {
         }),
       ),
     }),
-    model: 'gemini-2.0-flash',
-    // model: 'gpt-4o-mini',
+    // model: 'gemini-2.0-flash',
+    model: 'gpt-4o-mini',
   });
 
   protected get lightsFormArray() {

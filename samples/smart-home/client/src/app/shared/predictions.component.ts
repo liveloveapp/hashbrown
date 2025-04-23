@@ -334,8 +334,8 @@ export class PredictionsComponent {
   sceneEntities = this.store.selectSignal(selectScenesEntities);
 
   predictions = predictionResource({
-    // model: 'gpt-4o',
-    model: 'gemini-2.5-pro-exp-03-25',
+    model: 'gpt-4o',
+    // model: 'gemini-2.5-pro-exp-03-25',
     input: this.lastAction,
     description: `
 You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.

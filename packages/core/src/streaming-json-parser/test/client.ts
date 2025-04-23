@@ -20,13 +20,49 @@ import { s } from '../../schema';
     }, 
   */
 
-  const pattyCakerSchema = s.object('', {
-    para: s.string(''),
-    GlossSeeAlso: s.array('', s.string('')),
+  const responseSchema = s.object('', {
+    glossary: s.object('', {
+      title: s.string(''),
+      GlossDiv: s.object('', {
+        title: s.string(''),
+        GlossList: s.array(
+          '',
+          s.object('', {
+            ID: s.string(''),
+            SortAs: s.string(''),
+            GlossTerm: s.string(''),
+            Acronym: s.string(''),
+            GlossDef: s.object('', {
+              para: s.string(''),
+              GlossSeeAlso: s.array('', s.string('')),
+            }),
+            GlossSee: s.string(''),
+          }),
+        ),
+        SynonymList: s.array(
+          '',
+          s.object('', {
+            ID: s.string(''),
+            GlossTerm: s.string(''),
+            Acronym: s.string(''),
+            SynonymDef: s.object('', {
+              word: s.string(''),
+              meaning: s.string(''),
+            }),
+          }),
+        ),
+      }),
+    }),
   });
 
+  // const pattyCakerSchema = s.object('', {
+  //   para: s.string(''),
+  //   GlossSeeAlso: s.array('', s.string('')),
+  // });
+
   const iterable = new SocketAsyncIterable(client);
-  const parserIterable = AsyncParserIterable(iterable, pattyCakerSchema);
+  const parserIterable = AsyncParserIterable(iterable, responseSchema);
+
   try {
     for await (const data of parserIterable) {
       console.log('Received data:', data);
