@@ -6,6 +6,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideEffects } from '@ngrx/effects';
 import { provideStore } from '@ngrx/store';
+import { provideMarkdown } from 'ngx-markdown';
 // import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { routes } from './app.routes';
 import * as lightApiEffects from './features/lights/effects/light-api.effects';
@@ -23,5 +24,6 @@ export const appConfig: ApplicationConfig = {
     //   autoPause: true,
     // }),
     provideEffects([lightApiEffects, scenesApiEffects]),
+    provideMarkdown(),
   ],
 };

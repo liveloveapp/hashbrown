@@ -6,7 +6,7 @@ import {
   createToolWithArgs,
   richChatResource,
 } from '@hashbrownai/angular';
-import { ComponentPropSchema, exposeComponent, s } from '@hashbrownai/core';
+import { exposeComponent, s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
@@ -16,8 +16,9 @@ import { ChatAiActions } from './actions/chat-ai.actions';
 import { ComposerComponent } from './components/composer.component';
 import { LightCardComponent } from './components/light-card.component';
 import { MessagesComponent } from './components/messages.component';
-
-type Result = ComponentPropSchema<typeof LightCardComponent>;
+import { MarkdownComponent } from './components/markdown.component';
+import { CardComponent } from './components/card.component';
+import { toolJavascript } from '@hashbrownai/tool-javascript';
 
 @Component({
   selector: 'app-chat-panel',
@@ -107,11 +108,26 @@ export class ChatPanelComponent {
       },
     ],
     components: [
+      exposeComponent(MarkdownComponent, {
+        name: 'markdown',
+        description: 'Show markdown to the user',
+        props: {
+          data: s.string('The markdown content'),
+        },
+      }),
       exposeComponent(LightCardComponent, {
         name: 'light',
         description: 'Show a light to the user',
         props: {
           lightId: s.string('The id of the light'),
+        },
+      }),
+      exposeComponent(CardComponent, {
+        name: 'card',
+        description: 'Show a card to the user',
+        children: 'any',
+        props: {
+          title: s.string('The title of the card'),
         },
       }),
     ],
@@ -155,6 +171,7 @@ export class ChatPanelComponent {
             );
         },
       }),
+      toolJavascript,
     ],
   });
 

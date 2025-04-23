@@ -50,6 +50,7 @@
     "marked-highlight": "^2.2.1",
     "marked-mangle": "^1.1.10",
     "mermaid": "^10.2.4",
+    "ngx-markdown": "^19.1.1",
     "prismjs": "^1.29.0",
     "quickjs-emscripten": "^0.31.0",
     "react": "18.3.1",

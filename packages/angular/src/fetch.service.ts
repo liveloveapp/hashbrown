@@ -31,6 +31,7 @@ export class FetchService {
           // @todo: add middleware
           middleware: [],
           abortSignal: abortController.signal,
+          responseFormat: request.response_format,
         })) {
           observer.next(chunk);
         }

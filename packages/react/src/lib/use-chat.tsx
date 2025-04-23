@@ -31,7 +31,7 @@ export interface ChatOptions {
    * The output schema for the chat.
    * default: undefined
    */
-  outputSchema?: s.AnyType;
+  outputSchema?: s.HashbrownType;
   /**
    * The temperature for the chat.
    */
@@ -81,7 +81,7 @@ export const useChat = ({
   const [tools, setTools] = useState<BoundTool<string, any>[]>(
     initialTools ?? [],
   );
-  const [outputSchema, setOutputSchema] = useState<s.AnyType | undefined>(
+  const [outputSchema, setOutputSchema] = useState<s.HashbrownType | undefined>(
     initialOutputSchema,
   );
 
@@ -128,7 +128,7 @@ export const useChat = ({
         tools: createToolDefinitions(tools),
         max_tokens: maxTokens,
         response_format: outputSchema
-          ? s.toJsonSchema(outputSchema as s.AnyType)
+          ? s.toJsonSchema(outputSchema)
           : undefined,
         messages: [...messages, ...newMessages],
       },

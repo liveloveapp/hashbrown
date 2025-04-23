@@ -7,7 +7,7 @@ export type CompletionCreateParams = {
   max_tokens?: number;
   messages: Message[];
   model: string;
-  response_format?: ResponseFormat;
+  response_format?: object;
   temperature?: number;
   tool_choice?: CompletionToolChoiceOption;
   tools?: Tool[];

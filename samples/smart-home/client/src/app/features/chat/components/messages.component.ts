@@ -1,10 +1,10 @@
 import { Component, input } from '@angular/core';
-import { RenderComponentMessage, RichChat } from '@hashbrownai/angular';
+import { RenderMessageComponent, RichChat } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-chat-messages',
   standalone: true,
-  imports: [RenderComponentMessage],
+  imports: [RenderMessageComponent],
   template: `
     @for (message of messages(); track $index) {
       @switch (message.role) {
@@ -14,14 +14,7 @@ import { RenderComponentMessage, RichChat } from '@hashbrownai/angular';
           </div>
         }
         @case ('assistant') {
-          <div class="chat-message assistant">
-            <p>{{ message.content }}</p>
-          </div>
-        }
-        @case ('component') {
-          <div class="chat-message component">
-            <ng-template [hshRenderComponentMessage]="message" />
-          </div>
+          <hb-render-message [message]="message" />
         }
       }
     }

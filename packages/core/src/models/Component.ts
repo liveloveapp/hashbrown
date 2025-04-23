@@ -34,6 +34,6 @@ export interface ExposedComponent<T extends Component<unknown>> {
   component: T;
   name: string;
   description: string;
-  children?: 'any' | Component<unknown>[] | false;
+  children?: 'any' | ExposedComponent<any>[] | false;
   props?: ComponentPropSchema<T>;
 }

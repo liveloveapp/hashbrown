@@ -10,7 +10,7 @@ export async function* AsyncParserIterable(
   iterable: AsyncIterable<string>,
   // TODO: need better type
 
-  schema: s.ObjectType<Record<string, s.AnyType>>,
+  schema: s.ObjectType<any>,
   // TODO: need better return type - could it be T of schema-defined type?
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): AsyncIterableIterator<any> {

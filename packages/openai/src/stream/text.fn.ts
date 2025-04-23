@@ -74,8 +74,8 @@ export async function* text(
           json_schema: {
             strict: true,
             name: 'schema',
-            description: response_format['description'] as string,
-            schema: s.toJsonSchema(response_format),
+            description: '',
+            schema: response_format as Record<string, unknown>,
           },
         }
       : undefined,

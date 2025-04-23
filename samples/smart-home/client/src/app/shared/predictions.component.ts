@@ -15,13 +15,13 @@ import {
 
 const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
   s.object('Suggests adding a light to the system', {
-    type: s.constString('MUST BE "Add Light"', 'Add Light'),
+    type: s.constString('Add Light'),
     reasonForSuggestion: s.string('Why do you think this should come next?'),
     name: s.string('The suggested name of the light'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest adding a scene to the system', {
-    type: s.constString('MUST BE "Add Scene"', 'Add Scene'),
+    type: s.constString('Add Scene'),
     reasonForSuggestion: s.string('Why do you think this should come next?'),
     name: s.string('The suggested name of the scene'),
     lights: s.array(
@@ -33,23 +33,20 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
     ),
   }),
   s.object('Suggest scheduling a scene to the system', {
-    type: s.constString('MUST BE "Schedule Scene"', 'Schedule Scene'),
+    type: s.constString('Schedule Scene'),
     reasonForSuggestion: s.string('Why do you think this should come next?'),
     sceneId: s.string('The ID of the scene'),
     datetime: s.string('The datetime of the scene'),
   }),
   s.object('Suggest adding a light to a scene', {
-    type: s.constString('MUST BE "Add Light to Scene"', 'Add Light to Scene'),
+    type: s.constString('Add Light to Scene'),
     reasonForSuggestion: s.string('Why do you think this should come next?'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest removing a light from a scene', {
-    type: s.constString(
-      'MUST BE "Remove Light from Scene"',
-      'Remove Light from Scene',
-    ),
+    type: s.constString('Remove Light from Scene'),
     reasonForSuggestion: s.string('Why do you think this should come next?'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
@@ -335,7 +332,7 @@ export class PredictionsComponent {
 
   predictions = predictionResource({
     // model: 'gpt-4o',
-    model: 'gemini-2.5-pro-exp-03-25',
+    model: 'gpt-4o',
     input: this.lastAction,
     description: `
 You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
