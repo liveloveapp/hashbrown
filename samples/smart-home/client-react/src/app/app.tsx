@@ -3,7 +3,8 @@
 import { HashbrownProvider } from '@hashbrownai/react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { StoreInitializer } from './components/StoreInitializer';
-import { ChatPanel } from './shared/ChatPanel';
+//import { ChatPanel } from './shared/ChatPanel';
+import { RichChatPanel } from './shared/RichChatPanel';
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -63,7 +64,7 @@ export function App() {
           </NavigationMenuList>
         </NavigationMenu>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3">
           <div className="p-2">
             <Routes>
@@ -79,8 +80,9 @@ export function App() {
             </Routes>
           </div>
         </div>
-        <div className="col-span-1 border-l p-2">
-          <ChatPanel />
+        <div className="col-span-2 border-l p-2">
+          {/* <ChatPanel /> */}
+          <RichChatPanel />
         </div>
       </div>
       <Toaster />

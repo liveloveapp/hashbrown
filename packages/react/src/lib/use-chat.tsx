@@ -221,6 +221,8 @@ export const useChat = ({
     }
   };
 
+  console.debug('messages', messages);
+
   return {
     messages,
     setMessages,

@@ -1,3 +1,4 @@
+export { Chat, exposeComponent, s } from '@hashbrownai/core';
 export * from './lib/create-tool.fn';
 export * from './lib/hashbrown-provider';
 export * from './lib/use-chat';
