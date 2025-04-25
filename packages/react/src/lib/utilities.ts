@@ -8,7 +8,10 @@ import { BoundTool } from './create-tool.fn';
  * @returns An array of tool definitions for the chat completion.
  */
 export function createToolDefinitions(
-  tools: BoundTool<string, s.ObjectType<Record<string, s.AnyType>>>[] = [],
+  tools: BoundTool<
+    string,
+    s.ObjectType<Record<string, s.HashbrownType>>
+  >[] = [],
 ): Chat.Tool[] {
   return tools.map((boundTool): Chat.Tool => boundTool.toTool());
 }

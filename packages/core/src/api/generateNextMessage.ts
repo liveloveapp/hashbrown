@@ -31,7 +31,7 @@ export async function* generateNextMessage(config: {
   tools?: Chat.Tool[];
   maxTokens?: number;
   temperature?: number;
-  responseFormat?: Chat.ResponseFormat;
+  responseFormat?: object;
   abortSignal?: AbortSignal;
   middleware: Array<(requestInit: RequestInit) => RequestInit>;
 }): AsyncGenerator<Chat.CompletionChunk> {

@@ -21,13 +21,13 @@ app.post('/chat', async (req, res) => {
   const request = req.body as Chat.CompletionCreateParams;
 
   // Azure OpenAI Service
-  const stream = HashbrownAzure.stream.text(request);
+  // const stream = HashbrownAzure.stream.text(request);
 
   // Google Gemini
   // const stream = HashbrownGoogle.stream.text(request);
 
   // OpenAI
-  // const stream = HashbrownOpenAI.stream.text(request);
+  const stream = HashbrownOpenAI.stream.text(request);
 
   res.header('Content-Type', 'text/plain');
   for await (const chunk of stream) {

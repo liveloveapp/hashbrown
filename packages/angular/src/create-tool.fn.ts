@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 
 export class BoundTool<
   Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.AnyType>>,
+  InputSchema extends s.ObjectType<any>,
 > {
   constructor(
     readonly name: Name,
@@ -25,7 +25,7 @@ export class BoundTool<
 
 export function createToolWithArgs<
   Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.AnyType>>,
+  InputSchema extends s.ObjectType<any>,
 >(input: {
   name: Name;
   description: string;
@@ -46,7 +46,7 @@ export function createTool<Name extends string>(input: {
   name: Name;
   description: string;
   handler: () => Promise<unknown> | Observable<unknown>;
-}): BoundTool<Name, s.ObjectType<Record<string, s.AnyType>>> {
+}): BoundTool<Name, s.ObjectType<any>> {
   return createToolWithArgs({
     name: input.name,
     description: input.description,

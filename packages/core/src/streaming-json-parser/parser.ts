@@ -1,20 +1,28 @@
+import { s } from '../schema';
+import { internal } from '../schema/internal/base';
+
 class PartialJSON extends Error {}
 
 class MalformedJSON extends Error {}
 
-function parseJSON(jsonString: string, streamablePaths: string[]): any {
+function parseJSON(jsonString: string, schema: s.HashbrownType): any {
   if (typeof jsonString !== 'string') {
     throw new TypeError(`expecting str, got ${typeof jsonString}`);
   }
   if (!jsonString.trim()) {
     throw new Error(`${jsonString} is empty`);
   }
-  return _parseJSON(jsonString.trim(), streamablePaths);
+  return _parseJSON(jsonString.trim(), schema);
 }
 
-const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
+const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   const length = jsonString.length;
   let index = 0;
+
+  // Track current object/array so we can move up and down the document stack as we go
+  const containerStack: s.HashbrownType[] = [schema];
+
+  //   console.log(containerStack);
 
   const markPartialJSON = (msg: string) => {
     throw new PartialJSON(`${msg} at position ${index}`);
@@ -24,15 +32,44 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
     throw new MalformedJSON(`${msg} at position ${index}`);
   };
 
-  const parseAny: (currentPath: string) => any = () => {
+  const parseAny: (currentKey: string, allowsIncomplete: boolean) => any = (
+    currentKey,
+    allowsIncomplete,
+  ) => {
     skipBlank();
+
+    console.log('Current container stack:');
+    // console.log(JSON.stringify(containerStack, null, 4));
+    console.log(containerStack);
+
     if (index >= length) markPartialJSON('Unexpected end of input');
-    if (jsonString[index] === '"') return parseStr();
-    if (jsonString[index] === '{') return parseObj();
-    if (jsonString[index] === '[') return parseArr();
+    if (jsonString[index] === '"') return parseStr(allowsIncomplete);
+    if (jsonString[index] === '{') {
+      //   console.log(
+      //     (containerStack[containerStack.length - 1] as any).definition,
+      //   );
+      // Find key in current level of document stock, and add to stack
+      if (currentKey !== '') {
+        const nextContainer = (
+          containerStack[containerStack.length - 1][internal].definition as any
+        ).shape[currentKey];
+
+        console.log(`Starting new object with key: ${currentKey}`);
+        console.log(nextContainer);
+
+        if (nextContainer == null) {
+          throwMalformedError(`Key: ${currentKey} not expected in container`);
+        }
+
+        containerStack.push(nextContainer);
+      }
+
+      return parseObj();
+    }
+    if (jsonString[index] === '[') return parseArr(allowsIncomplete);
     if (
       jsonString.substring(index, index + 4) === 'null' ||
-      (Allow.NULL & allow &&
+      (allowsIncomplete &&
         length - index < 4 &&
         'null'.startsWith(jsonString.substring(index)))
     ) {
@@ -41,7 +78,7 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
     }
     if (
       jsonString.substring(index, index + 4) === 'true' ||
-      (Allow.BOOL & allow &&
+      (allowsIncomplete &&
         length - index < 4 &&
         'true'.startsWith(jsonString.substring(index)))
     ) {
@@ -50,7 +87,7 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
     }
     if (
       jsonString.substring(index, index + 5) === 'false' ||
-      (Allow.BOOL & allow &&
+      (allowsIncomplete &&
         length - index < 5 &&
         'false'.startsWith(jsonString.substring(index)))
     ) {
@@ -58,10 +95,12 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
       return false;
     }
 
-    return parseNum();
+    return parseNum(allowsIncomplete);
   };
 
-  const parseStr: () => string = () => {
+  const parseStr: (allowsIncomplete: boolean) => string = (
+    allowsIncomplete,
+  ) => {
     const start = index;
     let escape = false;
     index++; // skip initial quote
@@ -80,7 +119,7 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
       } catch (e) {
         throwMalformedError(String(e));
       }
-    } else if (Allow.STR & allow) {
+    } else if (allowsIncomplete) {
       try {
         return JSON.parse(
           jsonString.substring(start, index - Number(escape)) + '"',
@@ -102,41 +141,67 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
     try {
       while (jsonString[index] !== '}') {
         skipBlank();
-        if (index >= length && Allow.OBJ & allow) return obj;
-        const key = parseStr();
+        if (index >= length) return obj;
+
+        const key = parseStr(false);
+
         skipBlank();
         index++; // skip colon
         try {
-          const value = parseAny();
+          const currentContainer = containerStack[containerStack.length - 1];
+
+          const currentKeyAllowsIncomplete = s.isStreaming(
+            (currentContainer[internal].definition as any).shape[key],
+          );
+
+          console.log(
+            (currentContainer[internal].definition as any).shape[key],
+          );
+
+          console.log(
+            `Key: ${key} allows streaming: ${currentKeyAllowsIncomplete}`,
+          );
+
+          const value = parseAny(key, currentKeyAllowsIncomplete);
+
+          console.log(value);
           obj[key] = value;
         } catch (e) {
-          if (Allow.OBJ & allow) return obj;
-          else throw e;
+          console.error(e);
+          return obj;
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
       }
     } catch (e) {
-      if (Allow.OBJ & allow) return obj;
-      else markPartialJSON("Expected '}' at end of object");
+      console.log(e);
+      return obj;
     }
     index++; // skip final brace
+
+    // Done with this container, so pop off stack
+    const completedContainer = containerStack.pop();
+    console.log(
+      `Completed container: ${completedContainer?.[internal].definition.description}`,
+    );
     return obj;
   };
 
-  const parseArr = () => {
+  const parseArr = (allowsIncomplete: boolean) => {
     index++; // skip initial bracket
     const arr = [];
     try {
       while (jsonString[index] !== ']') {
-        arr.push(parseAny());
+        // TODO: this is almost certainly the wrong thing, but I just want to see
+        // what happens at this point in development
+        arr.push(parseAny('', false));
         skipBlank();
         if (jsonString[index] === ',') {
           index++; // skip comma
         }
       }
     } catch (e) {
-      if (Allow.ARR & allow) {
+      if (allowsIncomplete) {
         return arr;
       }
       markPartialJSON("Expected ']' at end of array");
@@ -145,13 +210,13 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
     return arr;
   };
 
-  const parseNum = () => {
+  const parseNum = (allowsIncomplete: boolean) => {
     if (index === 0) {
       if (jsonString === '-') throwMalformedError("Not sure what '-' is");
       try {
         return JSON.parse(jsonString);
       } catch (e) {
-        if (Allow.NUM & allow)
+        if (allowsIncomplete)
           try {
             return JSON.parse(
               jsonString.substring(0, jsonString.lastIndexOf('e')),
@@ -169,7 +234,7 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
     while (jsonString[index] && ',]}'.indexOf(jsonString[index]) === -1)
       index++;
 
-    if (index == length && !(Allow.NUM & allow))
+    if (index == length && !allowsIncomplete)
       markPartialJSON('Unterminated number literal');
 
     try {
@@ -192,7 +257,7 @@ const _parseJSON = (jsonString: string, streamablePaths: string[]) => {
       index++;
     }
   };
-  return parseAny('');
+  return parseAny('', true);
 };
 
 const parse = parseJSON;

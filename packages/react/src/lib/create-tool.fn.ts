@@ -2,7 +2,7 @@ import { Chat, s } from '@hashbrownai/core';
 
 export class BoundTool<
   Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.AnyType>>,
+  InputSchema extends s.ObjectType<Record<string, s.HashbrownType>>,
 > {
   constructor(
     readonly name: Name,
@@ -22,7 +22,7 @@ export class BoundTool<
 
 export function createToolWithArgs<
   Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.AnyType>>,
+  InputSchema extends s.ObjectType<Record<string, s.HashbrownType>>,
 >(input: {
   name: Name;
   description: string;
@@ -41,7 +41,7 @@ export function createTool<Name extends string>(input: {
   name: Name;
   description: string;
   handler: () => Promise<unknown>;
-}): BoundTool<Name, s.ObjectType<Record<string, s.AnyType>>> {
+}): BoundTool<Name, s.ObjectType<Record<string, s.HashbrownType>>> {
   return createToolWithArgs({
     name: input.name,
     description: input.description,

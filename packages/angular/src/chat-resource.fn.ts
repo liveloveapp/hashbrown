@@ -47,7 +47,7 @@ export type ChatResourceConfig = {
   tools?: BoundTool<string, any>[];
   maxTokens?: number | Signal<number>;
   messages?: Chat.Message[];
-  responseFormat?: Chat.ResponseFormat | Signal<Chat.ResponseFormat>;
+  responseFormat?: s.HashbrownType;
 };
 
 /**
@@ -124,7 +124,10 @@ function updateMessagesWithDelta(
  * @returns An array of tool definitions for the chat completion.
  */
 function createToolDefinitions(
-  tools: BoundTool<string, s.ObjectType<Record<string, s.AnyType>>>[] = [],
+  tools: BoundTool<
+    string,
+    s.ObjectType<Record<string, s.HashbrownType>>
+  >[] = [],
 ): Chat.Tool[] {
   return tools.map((boundTool): Chat.Tool => boundTool.toTool());
 }
@@ -204,10 +207,7 @@ function processToolCallMessage(
 
       const result = runInInjectionContext(injector, () =>
         tool.handler(
-          s.parse(
-            tool.schema,
-            s.parse(tool.schema, JSON.parse(toolCall.function.arguments)),
-          ),
+          s.parse(tool.schema, JSON.parse(toolCall.function.arguments)),
         ),
       );
 
@@ -290,11 +290,15 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
 
     return config.maxTokens();
   });
-  const computedResponseFormat = computed(() =>
-    typeof config.responseFormat === 'function'
-      ? config.responseFormat()
-      : config.responseFormat,
-  );
+  const computedResponseFormat = computed(() => {
+    const responseFormat = config.responseFormat;
+
+    if (!responseFormat) {
+      return undefined;
+    }
+
+    return s.toJsonSchema(responseFormat);
+  });
 
   effect(() => {
     console.log('Current Messages', messagesSignal());

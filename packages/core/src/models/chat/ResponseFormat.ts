@@ -1,3 +1,3 @@
 import { s } from '../../schema';
 
-export type ResponseFormat = s.AnyType;
+export type ResponseFormat = s.HashbrownType;

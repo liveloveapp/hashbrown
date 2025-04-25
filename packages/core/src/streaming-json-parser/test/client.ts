@@ -12,40 +12,38 @@ import { s } from '../../schema';
     console.log('Connected');
   });
 
-  // Streaming targets:
-  // responseSchema.glossary.GlossDiv.GlossList
-  // responseSchema.glossary.GlossDiv.GlossList.(object).ExampleSentences // nested in GlossList
-  // responseSchema.glossary.GlossDiv.SynonymList
-
-  const responseSchema = s.object('', {
-    glossary: s.object('', {
-      title: s.string(''),
-      GlossDiv: s.object('', {
-        title: s.string(''),
-        GlossList: s.array(
-          '',
+  const responseSchema = s.object('root', {
+    glossary: s.object('glossary', {
+      title: s.string('glossary.title'),
+      GlossDiv: s.object('GlossDiv', {
+        title: s.string('GlossDiv.title'),
+        GlossList: s.streaming.array(
+          'GlossDiv.GlossList',
           s.object('', {
-            ID: s.string(''),
-            SortAs: s.string(''),
-            GlossTerm: s.string(''),
-            Acronym: s.string(''),
-            GlossDef: s.object('', {
-              para: s.string(''),
-              GlossSeeAlso: s.array('', s.string('')),
+            ID: s.string('GlossList.ID'),
+            SortAs: s.string('GlossList.SortAs'),
+            GlossTerm: s.string('GlossList.GlossTerm'),
+            Acronym: s.string('GlossList.Acronym'),
+            GlossDef: s.object('GlossList.GlossDef', {
+              para: s.string('GlossDef.para'),
+              GlossSeeAlso: s.array('GlossDef.GlossSeeAlso', s.string('')),
             }),
-            GlossSee: s.string(''),
-            ExampleSentences: s.array('', s.string('')),
+            GlossSee: s.string('GlossList.GlossSee'),
+            ExampleSentences: s.streaming.array(
+              'GlossList.ExampleSentences',
+              s.string('ExampleSentence'),
+            ),
           }),
         ),
-        SynonymList: s.array(
-          '',
-          s.object('', {
-            ID: s.string(''),
-            GlossTerm: s.string(''),
-            Acronym: s.string(''),
-            SynonymDef: s.object('', {
-              word: s.string(''),
-              meaning: s.string(''),
+        SynonymList: s.streaming.array(
+          'GlossDiv.SynonymList',
+          s.object('Synonym', {
+            ID: s.string('Synonym.ID'),
+            GlossTerm: s.string('Synonym.GlossTerm'),
+            Acronym: s.string('Synonym.Acronym'),
+            SynonymDef: s.object('Synonym.SynonymDef', {
+              word: s.string('Synonym.word'),
+              meaning: s.string('SynonymDef.meaning'),
             }),
           }),
         ),
@@ -55,17 +53,12 @@ import { s } from '../../schema';
 
   const iterable = new SocketAsyncIterable(client);
 
-  // TODO: pass in schema sections for each streamable - I'll need to figure
-  // out how to change 's' to reveal that information
-  const parserIterable = AsyncParserIterable(iterable, responseSchema, [
-    'glossary.GlossDiv.GlossList',
-    'glossary.GlossDiv.GlossList.(object).ExampleSentences',
-    'glossary.GlossDiv.SynonymList',
-  ]);
+  const parserIterable = AsyncParserIterable(iterable, responseSchema);
 
   try {
     for await (const data of parserIterable) {
-      console.log('Received data:', data);
+      console.log('Received data:');
+      console.log(JSON.stringify(data, null, 4));
     }
     console.log('Socket ended.');
   } catch (err) {
