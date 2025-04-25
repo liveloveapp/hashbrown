@@ -1,4 +1,5 @@
 import { s } from '../schema';
+import { isStreaming } from '../schema/internal';
 import { internal } from '../schema/internal/base';
 
 class PartialJSON extends Error {}
@@ -22,8 +23,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   // Track current object/array so we can move up and down the document stack as we go
   const containerStack: s.HashbrownType[] = [schema];
 
-  //   console.log(containerStack);
-
   const markPartialJSON = (msg: string) => {
     throw new PartialJSON(`${msg} at position ${index}`);
   };
@@ -32,15 +31,15 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     throw new MalformedJSON(`${msg} at position ${index}`);
   };
 
-  const parseAny: (currentKey: string, allowsIncomplete: boolean) => any = (
-    currentKey,
-    allowsIncomplete,
-  ) => {
+  const parseAny: (
+    currentKey: string,
+    allowsIncomplete: boolean,
+    insideArray: boolean,
+  ) => any = (currentKey, allowsIncomplete, insideArray) => {
     skipBlank();
 
-    console.log('Current container stack:');
+    // console.log('Current container stack:');
     // console.log(JSON.stringify(containerStack, null, 4));
-    console.log(containerStack);
 
     if (index >= length) markPartialJSON('Unexpected end of input');
     if (jsonString[index] === '"') return parseStr(allowsIncomplete);
@@ -54,8 +53,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
           containerStack[containerStack.length - 1][internal].definition as any
         ).shape[currentKey];
 
-        console.log(`Starting new object with key: ${currentKey}`);
-        console.log(nextContainer);
+        // console.log(`Starting new object with key: ${currentKey}`);
+        // console.log(nextContainer);
 
         if (nextContainer == null) {
           throwMalformedError(`Key: ${currentKey} not expected in container`);
@@ -64,9 +63,10 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         containerStack.push(nextContainer);
       }
 
-      return parseObj();
+      return parseObj(insideArray);
     }
-    if (jsonString[index] === '[') return parseArr(allowsIncomplete);
+    if (jsonString[index] === '[')
+      return parseArr(currentKey, allowsIncomplete);
     if (
       jsonString.substring(index, index + 4) === 'null' ||
       (allowsIncomplete &&
@@ -134,7 +134,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     markPartialJSON('Unterminated string literal');
   };
 
-  const parseObj = () => {
+  const parseObj = (insideArray: boolean) => {
     index++; // skip initial brace
     skipBlank();
     const obj: Record<string, any> = {};
@@ -148,53 +148,110 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         skipBlank();
         index++; // skip colon
         try {
+          //   console.log(`Handling key: ${key}`);
           const currentContainer = containerStack[containerStack.length - 1];
 
           const currentKeyAllowsIncomplete = s.isStreaming(
             (currentContainer[internal].definition as any).shape[key],
           );
 
-          console.log(
-            (currentContainer[internal].definition as any).shape[key],
-          );
+          //   console.log(
+          //     (currentContainer[internal].definition as any).shape[key],
+          //   );
 
-          console.log(
-            `Key: ${key} allows streaming: ${currentKeyAllowsIncomplete}`,
-          );
+          //   console.log(
+          //     `Key: ${key} allows streaming: ${currentKeyAllowsIncomplete}`,
+          //   );
 
-          const value = parseAny(key, currentKeyAllowsIncomplete);
+          const value = parseAny(key, currentKeyAllowsIncomplete, false);
 
-          console.log(value);
+          //   console.log(value);
           obj[key] = value;
         } catch (e) {
-          console.error(e);
+          //   console.error(e);
           return obj;
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
       }
     } catch (e) {
-      console.log(e);
+      //   console.log(e);
       return obj;
     }
     index++; // skip final brace
 
-    // Done with this container, so pop off stack
-    const completedContainer = containerStack.pop();
-    console.log(
-      `Completed container: ${completedContainer?.[internal].definition.description}`,
-    );
+    // Are we inside an array?  They handle adding/removing stack containers for themselves
+    if (!insideArray) {
+      // Done with this container, so pop off stack
+      containerStack.pop();
+      //   const completedContainer = containerStack.pop();
+      //   console.log(
+      //     `Completed container: ${completedContainer?.[internal].definition.description}`,
+      //   );
+    } else {
+      //   console.log(
+      //     'Inside array. Object completed, but keeping container stack',
+      //   );
+    }
     return obj;
   };
 
-  const parseArr = (allowsIncomplete: boolean) => {
+  const parseArr = (currentKey: string, allowsIncomplete: boolean) => {
     index++; // skip initial bracket
+    // console.log('in parseArr');
     const arr = [];
+
+    // console.log(
+    //   (containerStack[containerStack.length - 1][internal].definition as any)
+    //     .shape[currentKey][internal].definition.element,
+    // );
+
+    // console.log(
+    //   s.isObjectType(
+    //     (containerStack[containerStack.length - 1][internal].definition as any)
+    //       .shape[currentKey][internal].definition.element,
+    //   ),
+    // );
+
+    let containerNeedsPopping = false;
+    let contentsAllowIncomplete = false;
+
+    // If this array is of objects, push the container onto the stack
+    if (
+      s.isObjectType(
+        (containerStack[containerStack.length - 1][internal].definition as any)
+          .shape[currentKey][internal].definition.element,
+      )
+    ) {
+      containerStack.push(
+        (containerStack[containerStack.length - 1][internal].definition as any)
+          .shape[currentKey][internal].definition.element,
+      );
+      containerNeedsPopping = true;
+    } else {
+      //   console.log(
+      //     (contentsAllowIncomplete = (
+      //       containerStack[containerStack.length - 1][internal].definition as any
+      //     ).shape[currentKey][internal].definition.element),
+      //   );
+      // It's not an object, so check if it is a streaming primitive
+      contentsAllowIncomplete = isStreaming(
+        (containerStack[containerStack.length - 1][internal].definition as any)
+          .shape[currentKey],
+      );
+
+      //   console.log(
+      //     `Array primitive content allows streaming: ${contentsAllowIncomplete}`,
+      //   );
+    }
+
+    // TODO: what if its an array of arrays?
+
     try {
       while (jsonString[index] !== ']') {
         // TODO: this is almost certainly the wrong thing, but I just want to see
         // what happens at this point in development
-        arr.push(parseAny('', false));
+        arr.push(parseAny('', contentsAllowIncomplete, true));
         skipBlank();
         if (jsonString[index] === ',') {
           index++; // skip comma
@@ -207,6 +264,12 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       markPartialJSON("Expected ']' at end of array");
     }
     index++; // skip final bracket
+
+    // Array was completed, so put container off if needed
+    if (containerNeedsPopping) {
+      containerStack.pop();
+    }
+
     return arr;
   };
 
@@ -257,7 +320,9 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       index++;
     }
   };
-  return parseAny('', true);
+
+  // TODO: what is schema is just an array?
+  return parseAny('', true, false);
 };
 
 const parse = parseJSON;
