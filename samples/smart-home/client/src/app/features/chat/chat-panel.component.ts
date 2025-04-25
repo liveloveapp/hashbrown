@@ -18,7 +18,7 @@ import { LightCardComponent } from './components/light-card.component';
 import { MessagesComponent } from './components/messages.component';
 import { MarkdownComponent } from './components/markdown.component';
 import { CardComponent } from './components/card.component';
-import { toolJavascript } from '@hashbrownai/tool-javascript';
+// import { toolJavascript } from '@hashbrownai/tool-javascript';
 
 @Component({
   selector: 'app-chat-panel',
@@ -171,7 +171,7 @@ export class ChatPanelComponent {
             );
         },
       }),
-      toolJavascript,
+      // toolJavascript,
     ],
   });
 

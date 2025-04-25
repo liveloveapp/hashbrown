@@ -1,11 +1,13 @@
 import { computed, Signal, Type } from '@angular/core';
-import { Chat, ExposedComponent, s } from '@hashbrownai/core';
-import { ChatResource, chatResource } from './chat-resource.fn';
-import { BoundTool } from './create-tool.fn';
 import {
+  Chat,
   ComponentTree,
   createComponentSchema,
-} from 'packages/core/src/utils/exposeComponent';
+  ExposedComponent,
+  s,
+} from '@hashbrownai/core';
+import { ChatResource, chatResource } from './chat-resource.fn';
+import { BoundTool } from './create-tool.fn';
 
 export type TagNameRegistry = {
   [tagName: string]: {
