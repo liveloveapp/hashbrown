@@ -47,6 +47,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       //   console.log(
       //     (containerStack[containerStack.length - 1] as any).definition,
       //   );
+
       // Find key in current level of document stock, and add to stack
       if (currentKey !== '') {
         const nextContainer = (

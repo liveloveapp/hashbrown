@@ -82,7 +82,7 @@ const TEST_JSON = {
           GlossTerm: 'Standard Generalized Markup Language',
           Acronym: 'SGML',
           SynonymDef: {
-            para: 'A markup language, used to create web pages.',
+            word: 'A markup language, used to create web pages.',
             meaning: 'SGML meaning',
           },
         },
@@ -91,7 +91,7 @@ const TEST_JSON = {
           GlossTerm: 'X Markup Language',
           Acronym: 'XML',
           SynonymDef: {
-            para: 'A markup language, used to create web pages.',
+            word: 'A markup language, used to create web pages.',
             meaning: 'XML meaning',
           },
         },
@@ -100,7 +100,7 @@ const TEST_JSON = {
           GlossTerm: 'Hypertext Markup Language',
           Acronym: 'HTML',
           SynonymDef: {
-            para: 'A markup language, used to create web pages.',
+            word: 'A markup language, used to create web pages.',
             meaning: 'HTML meaning',
           },
         },
@@ -109,12 +109,16 @@ const TEST_JSON = {
   },
 };
 
-const server = createServer(function (socket) {
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const server = createServer(async function (socket) {
   const TEST_STRING = JSON.stringify(TEST_JSON);
 
   console.log(`Test string length: ${TEST_STRING.length}`);
 
-  const MAX_SIZE = 20;
+  const MAX_SIZE = 30;
   const MIN_SIZE = 10;
 
   let cursor = 0;
@@ -132,6 +136,9 @@ const server = createServer(function (socket) {
     socket.write(chunk);
 
     cursor += chunkLength;
+
+    // Slow down data for demo purposes
+    await sleep(100);
   }
 
   socket.pipe(socket);

@@ -57,7 +57,9 @@ import { s } from '../../schema';
 
   try {
     for await (const data of parserIterable) {
-      console.log('Received data:');
+      // To see how things are changing in a dynamic way, clear the console before
+      // parsing update
+      console.clear();
       console.log(JSON.stringify(data, null, 4));
     }
     console.log('Socket ended.');
