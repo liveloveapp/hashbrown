@@ -12,13 +12,10 @@ import { s } from '../../schema';
     console.log('Connected');
   });
 
-  /* Sample target
-  
-    GlossDef: {
-      para: 'A meta-markup language, used to create markup languages such as DocBook.',
-      GlossSeeAlso: ['GML', 'XML'],
-    }, 
-  */
+  // Streaming targets:
+  // responseSchema.glossary.GlossDiv.GlossList
+  // responseSchema.glossary.GlossDiv.GlossList.(object).ExampleSentences // nested in GlossList
+  // responseSchema.glossary.GlossDiv.SynonymList
 
   const responseSchema = s.object('', {
     glossary: s.object('', {
@@ -37,6 +34,7 @@ import { s } from '../../schema';
               GlossSeeAlso: s.array('', s.string('')),
             }),
             GlossSee: s.string(''),
+            ExampleSentences: s.array('', s.string('')),
           }),
         ),
         SynonymList: s.array(
@@ -55,13 +53,15 @@ import { s } from '../../schema';
     }),
   });
 
-  // const pattyCakerSchema = s.object('', {
-  //   para: s.string(''),
-  //   GlossSeeAlso: s.array('', s.string('')),
-  // });
-
   const iterable = new SocketAsyncIterable(client);
-  const parserIterable = AsyncParserIterable(iterable, responseSchema);
+
+  // TODO: pass in schema sections for each streamable - I'll need to figure
+  // out how to change 's' to reveal that information
+  const parserIterable = AsyncParserIterable(iterable, responseSchema, [
+    'glossary.GlossDiv.GlossList',
+    'glossary.GlossDiv.GlossList.(object).ExampleSentences',
+    'glossary.GlossDiv.SynonymList',
+  ]);
 
   try {
     for await (const data of parserIterable) {

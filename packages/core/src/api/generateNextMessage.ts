@@ -73,9 +73,9 @@ export async function* generateNextMessage(config: {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
-  const streamParser = config.responseFormat
-    ? new StreamSchemaParser(config.responseFormat)
-    : undefined;
+  // const streamParser = config.responseFormat
+  //   ? new StreamSchemaParser(config.responseFormat)
+  //   : undefined;
 
   while (true) {
     if (config.abortSignal?.aborted) {
@@ -98,17 +98,17 @@ export async function* generateNextMessage(config: {
           const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
           console.log(jsonData);
 
-          try {
-            // For now, just log things
-            if (streamParser && jsonData.choices[0].delta.content) {
-              const matches = streamParser.parse(
-                jsonData.choices[0].delta.content,
-              );
-              console.log(matches);
-            }
-          } catch (e) {
-            console.error(e);
-          }
+          // try {
+          //   // For now, just log things
+          //   if (streamParser && jsonData.choices[0].delta.content) {
+          //     const matches = streamParser.parse(
+          //       jsonData.choices[0].delta.content,
+          //     );
+          //     console.log(matches);
+          //   }
+          // } catch (e) {
+          //   console.error(e);
+          // }
 
           yield jsonData;
         }

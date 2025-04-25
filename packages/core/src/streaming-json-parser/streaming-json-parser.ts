@@ -1,131 +1,58 @@
 import { s } from '../schema';
 
 import Ajv, { JTDParser } from 'ajv/dist/jtd';
+import { parseJSON } from './parser';
 
 // TODO: need to detect if schema is JSON Schema or JTD (which allows for custom parser)
-
-/*
-  TODO:
-  Need to detect and stream the streaming bits of the schema
-
-  Since I need to:
-  - return the full doc at the end
-  - return update to streaming elements after each chunk is parsed
-  - may have multiple streams
-  - may have nested elements
-
-  I need to create a doc skeleton, and scaffold out containers for
-  the streaming bits.  Then, I can return partial objects with 
-  the streamed elements in them.
-  
-  That would end up being a partial, though, which could be weird
-
-  Really, the JSON will arrive in chunks, but in order.  So I might have a series of nested 
-  streaming objects, but not things streaming parallel, right?
-
-  So, you'd be getting part of the whole, come across the beginning of a streaming object, 
-  then come upon the beginning of a nested streaming object.  But that would end before the parent, 
-  and both would end before the whole doc.
-
-  So, what then?
-
-  Mike suggested a doc skeleton, so I could do that.
-
-  
-*/
 
 export class StreamSchemaParser {
   ajv = new Ajv();
 
   dataString = '';
-  lastChunkOffset = 0;
-
-  // Track the close index of matches so we can avoid checking any open/close indices before it
-  lastMatchedCloseIndex = 0;
-  openBracketIndices: number[] = [];
-  closeBracketIndices: number[] = [];
 
   schema: s.AnyType;
-  compiledParser: JTDParser;
-  matches: any[] = [];
+  docParser: JTDParser;
 
-  constructor(schema: s.AnyType) {
+  constructor(schema: s.AnyType, streamingPathsWithTypes: string[]) {
     this.schema = schema;
-    this.compiledParser = this.ajv.compileParser(
-      s.toJsonTypeDefinition(schema),
-    );
+    this.docParser = this.ajv.compileParser(s.toJsonTypeDefinition(schema));
+
+    console.log(streamingPathsWithTypes);
   }
 
   parse(item: string) {
     this.dataString += item;
 
-    // In new string chunk, find brackets to delineate search areas
-    for (let i = 0; i < item.length; i++) {
-      if (item[i] === '{') {
-        this.openBracketIndices.push(this.lastChunkOffset + i);
-      } else if (item[i] === '}') {
-        this.closeBracketIndices.push(this.lastChunkOffset + i);
-      }
-    }
+    // TODO: What to pass in? Streaming isn't in main yet...
+    // so I can use the same things I was going to before...
+    /*
+      For now, tree anything not explicitly marked as streaming as streaming.
 
-    for (let j = 0; j < this.openBracketIndices.length; j++) {
-      // If we know we've matched past this point, go ahead and skip it
-      if (
-        this.lastMatchedCloseIndex !== 0 &&
-        this.openBracketIndices[j] < this.lastMatchedCloseIndex
-      ) {
-        continue;
-      }
+      Use the information path info I'm already passing in.
 
-      for (let k = 0; k < this.closeBracketIndices.length; k++) {
-        const openIndex = this.openBracketIndices[j];
-        const closeIndex = this.closeBracketIndices[k];
+      Work it down into the parseObj function and judge by key path.
 
-        // If we know we've matched past this point, go ahead and skip it
-        if (closeIndex <= this.lastMatchedCloseIndex) {
-          continue;
-        }
+      Remove the other Allow stuff, I guess.
+    */
+    const currResult = parseJSON(this.dataString, Allow.ALL);
 
-        if (closeIndex < openIndex) {
-          continue;
-        }
+    console.log(currResult);
 
-        // Test with ajv against schema
-        const data = this.compiledParser(
-          this.dataString.substring(openIndex, closeIndex + 1),
-        );
-
-        if (data === undefined) {
-          // data didn't parse
-        } else {
-          // Found a match
-          this.lastMatchedCloseIndex = closeIndex;
-
-          // Add to match list
-          this.matches.push(data);
-        }
-      }
-    }
-
-    this.lastChunkOffset += item.length;
-
-    // Always return all matches so reactive things will behave correctly
-    return this.matches;
+    return currResult;
   }
 }
 
 export async function* AsyncParserIterable(
   iterable: AsyncIterable<string>,
   schema: s.ObjectType<Record<string, s.AnyType>>,
+  streamingPaths: string[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): AsyncIterableIterator<any> {
-  const streamParser = new StreamSchemaParser(schema);
+  const streamParser = new StreamSchemaParser(schema, streamingPaths);
 
   for await (const item of iterable) {
-    const match = streamParser.parse(item);
+    const doc = streamParser.parse(item);
 
-    if (match != null) {
-      yield match;
-    }
+    yield doc;
   }
 }
