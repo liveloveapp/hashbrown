@@ -1,5 +1,5 @@
 import { Chat } from '../models';
-import { StreamSchemaParser } from '../streaming-json-parser';
+// import { StreamSchemaParser } from '../streaming-json-parser';
 
 /**
  * Asynchronously generates the next message in a chat conversation.
@@ -74,7 +74,7 @@ export async function* generateNextMessage(config: {
   const decoder = new TextDecoder();
 
   // const streamParser = config.responseFormat
-  //   ? new StreamSchemaParser(config.responseFormat)
+  //   ? new StreamSchemaParser(config.responseFormat as any)
   //   : undefined;
 
   while (true) {
@@ -101,10 +101,10 @@ export async function* generateNextMessage(config: {
           // try {
           //   // For now, just log things
           //   if (streamParser && jsonData.choices[0].delta.content) {
-          //     const matches = streamParser.parse(
+          //     const streamResult = streamParser.parse(
           //       jsonData.choices[0].delta.content,
           //     );
-          //     console.log(matches);
+          //     console.log(streamResult);
           //   }
           // } catch (e) {
           //   console.error(e);
