@@ -12,24 +12,55 @@ import { s } from '../../schema';
     console.log('Connected');
   });
 
-  /* Sample target
-  
-    GlossDef: {
-      para: 'A meta-markup language, used to create markup languages such as DocBook.',
-      GlossSeeAlso: ['GML', 'XML'],
-    }, 
-  */
-
-  const pattyCakerSchema = s.object('', {
-    para: s.string(''),
-    GlossSeeAlso: s.array('', s.string('')),
+  const responseSchema = s.object('root', {
+    glossary: s.object('glossary', {
+      title: s.string('glossary.title'),
+      GlossDiv: s.object('GlossDiv', {
+        title: s.string('GlossDiv.title'),
+        GlossList: s.streaming.array(
+          'GlossDiv.GlossList',
+          s.object('', {
+            ID: s.string('GlossList.ID'),
+            SortAs: s.string('GlossList.SortAs'),
+            GlossTerm: s.string('GlossList.GlossTerm'),
+            Acronym: s.string('GlossList.Acronym'),
+            GlossDef: s.object('GlossList.GlossDef', {
+              para: s.string('GlossDef.para'),
+              GlossSeeAlso: s.array('GlossDef.GlossSeeAlso', s.string('')),
+            }),
+            GlossSee: s.string('GlossList.GlossSee'),
+            ExampleSentences: s.streaming.array(
+              'GlossList.ExampleSentences',
+              s.string('ExampleSentence'),
+            ),
+          }),
+        ),
+        SynonymList: s.streaming.array(
+          'GlossDiv.SynonymList',
+          s.object('Synonym', {
+            ID: s.string('Synonym.ID'),
+            GlossTerm: s.string('Synonym.GlossTerm'),
+            Acronym: s.string('Synonym.Acronym'),
+            SynonymDef: s.object('Synonym.SynonymDef', {
+              word: s.string('Synonym.word'),
+              meaning: s.string('SynonymDef.meaning'),
+            }),
+          }),
+        ),
+      }),
+    }),
   });
 
   const iterable = new SocketAsyncIterable(client);
-  const parserIterable = AsyncParserIterable(iterable, pattyCakerSchema);
+
+  const parserIterable = AsyncParserIterable(iterable, responseSchema);
+
   try {
     for await (const data of parserIterable) {
-      console.log('Received data:', data);
+      // To see how things are changing in a dynamic way, clear the console before
+      // parsing update
+      console.clear();
+      console.log(JSON.stringify(data, null, 4));
     }
     console.log('Socket ended.');
   } catch (err) {

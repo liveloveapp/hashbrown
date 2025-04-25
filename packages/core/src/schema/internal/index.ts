@@ -37,6 +37,5 @@ export { getDescription } from './getDescription';
 export { isStreaming } from './isStreaming';
 export { parse } from './parse';
 export { toJsonSchema } from './toJsonSchema';
-export { toJsonTypeDefinition } from './toJsonTypeDefinition';
 export { toOpenApi } from './toOpenAPI';
 export * as streaming from './streaming';
