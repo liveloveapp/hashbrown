@@ -1,23 +1,24 @@
 import { Chat, s } from '@hashbrownai/core';
 import { ChatInterface, ChatOptions, useChat } from './use-chat';
 
-export interface StructuredChatOptions<OutputSchema extends Chat.ResponseFormat>
-  extends ChatOptions {
+export interface StructuredChatOptions<
+  ResponseSchema extends Chat.ResponseFormat,
+> extends ChatOptions {
   /**
    * The output schema for the predictions.
    */
-  outputSchema: OutputSchema;
+  responseSchema: ResponseSchema;
 }
 
 export interface StructuredChatInterface<
-  OutputSchema extends Chat.ResponseFormat,
+  ResponseSchema extends Chat.ResponseFormat,
 > extends ChatInterface {
-  structuredOutput: s.Infer<OutputSchema>;
+  structuredOutput: s.Infer<ResponseSchema>;
 }
 
-export const useStructuredChat = <OutputSchema extends Chat.ResponseFormat>(
-  options: StructuredChatOptions<OutputSchema>,
-): StructuredChatInterface<OutputSchema> => {
+export const useStructuredChat = <ResponseSchema extends Chat.ResponseFormat>(
+  options: StructuredChatOptions<ResponseSchema>,
+): StructuredChatInterface<ResponseSchema> => {
   const chat = useChat(options);
 
   const parseOutput = () => {
@@ -29,7 +30,7 @@ export const useStructuredChat = <OutputSchema extends Chat.ResponseFormat>(
 
     try {
       return s.parse(
-        options.outputSchema,
+        options.responseSchema,
         JSON.parse(lastMessage.content ?? '{}'),
       );
     } catch (error) {
