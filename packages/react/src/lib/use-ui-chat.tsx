@@ -1,19 +1,17 @@
-import { Chat, ExposedComponent, s } from '@hashbrownai/core';
+import {
+  Chat,
+  createComponentSchema,
+  ExposedComponent,
+  s,
+} from '@hashbrownai/core';
 import React from 'react';
-import { createToolWithArgs } from './create-tool.fn';
 import { ChatOptions, useChat } from './use-chat';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace UiChat {
   export type AssistantMessage = {
     role: 'assistant';
-    content: string;
-  };
-
-  export type ComponentMessage<Name extends string, T> = {
-    role: 'component';
-    name: Name;
-    component: React.ReactElement;
+    content: React.ReactElement | null;
   };
 
   export type ToolCallMessage = {
@@ -26,7 +24,6 @@ export namespace UiChat {
   };
 
   export type Message =
-    | UiChat.ComponentMessage<string, unknown>
     | UiChat.ToolCallMessage
     | UiChat.AssistantMessage
     | Chat.UserMessage
@@ -39,52 +36,11 @@ export interface UiChatOptions extends Omit<ChatOptions, 'messages'> {
 
 export const useUiChat = (options: UiChatOptions) => {
   const ui = s.object('UI', {
-    ui: s.anyOf('Any one of the following components', [
-      ...(options.components ?? []).map((component) => {
-        return s.object(component.name, {
-          name: s.string(`Must be ${component.name}`),
-          inputs: s.object(
-            'Values to pass to the component',
-            Object.keys(component.props ?? {}).reduce(
-              (acc, key) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (acc as any)[key] = (component.props as any)[key];
-                return acc;
-              },
-              {} as Record<string, s.AnyType>,
-            ),
-          ),
-        });
-      }),
-    ]),
+    ui: s.streaming.array(
+      'List of elements',
+      createComponentSchema(options.components),
+    ),
   });
-
-  const showComponentInstruction = () => {
-    if (!options.components || options.components.length === 0) {
-      return '';
-    }
-
-    return `
-     ## showComponent
-        This tool is running in a React app. The react app developer has
-        provided you with a list of components that can be used to convey
-        information to the user.
-
-        If you want to show a component to the user, you can use the
-        \`showComponent\` tool.
-
-        The \`showComponent\` tool takes two arguments:
-        - The name of the component to show
-        - The inputs to pass to the component
-
-        The inputs must match the expected inputs for the component.
-
-        Here is the description of each component:
-        ${options.components
-          .map((c) => `- ${c.name}: ${c.description}`)
-          .join('\n')}
-    `;
-  };
 
   const systemMessage = `
         You are chatbot chatting with a human on my web app. Please be
@@ -93,8 +49,8 @@ export const useUiChat = (options: UiChatOptions) => {
 
         Today's date is ${new Date().toLocaleDateString()}.
 
-        # Tools
-        ${showComponentInstruction()}`;
+        NEVER use ANY newline strings such as "\\n" or "\\\\n" in your response.
+        `;
 
   const chat = useChat({
     ...options,
@@ -104,26 +60,8 @@ export const useUiChat = (options: UiChatOptions) => {
         content: systemMessage,
       },
     ],
-    tools: [
-      ...(options.tools ?? []),
-      ...(options.components && options.components.length
-        ? [
-            createToolWithArgs({
-              name: 'showComponent',
-              description: `Show a component to the user.
-
-          The component must be one of the following:
-          ${options.components?.map((c) => c.name).join(', ') ?? ''}
-          `,
-              schema: ui,
-              handler: async (input) => {
-                console.log('Component handler invoked', input);
-                return {};
-              },
-            }),
-          ]
-        : []),
-    ],
+    responseSchema: ui,
+    tools: [...(options.tools ?? [])],
   });
 
   const findToolCallMessage = (toolCallId: string) => {
@@ -131,6 +69,74 @@ export const useUiChat = (options: UiChatOptions) => {
       (t): t is Chat.ToolMessage =>
         t.role === 'tool' && t.tool_call_id === toolCallId,
     );
+  };
+
+  // console.dir([toolCallMessage, toolName, toolResult, toolError], {
+  //   depth: null,
+  // });
+
+  // if (toolName === 'showComponent') {
+  //   let uiValue: s.Infer<typeof ui>;
+  //   try {
+  //     uiValue = s.parse(ui, JSON.parse(toolCall.function.arguments));
+  //   } catch (error) {
+  //     console.error(error);
+  //     return [];
+  //   }
+  //   const componentName = uiValue.ui.name;
+  //   const componentInputs = uiValue.ui.inputs;
+  //   const componentType = options.components?.find(
+  //     (c) => c.name === componentName,
+  //   )?.component;
+
+  //   if (
+  //     uiValue &&
+  //     componentName &&
+  //     componentInputs &&
+  //     componentType
+  //   ) {
+  //     const componentMessage: UiChat.ComponentMessage<
+  //       string,
+  //       unknown
+  //     > = {
+  //       role: 'component',
+  //       name: componentName,
+  //       component: React.createElement(
+  //         componentType,
+  //         componentInputs,
+  //       ),
+  //     };
+  //     return [componentMessage];
+  //   }
+  // }
+
+  const buildComponent = (
+    renderableContent: s.Infer<typeof ui>,
+  ): React.ReactElement | null => {
+    const elements = renderableContent.ui.map((element) => {
+      const componentName = element.$tagName;
+      const componentInputs = element.$props;
+      const componentType = options.components?.find(
+        (c) => c.name === componentName,
+      )?.component;
+
+      if (componentName && componentInputs && componentType) {
+        const children: React.ReactNode[] | null = element.$children
+          ? element.$children.map((child) => buildComponent({ ui: [child] }))
+          : null;
+
+        return React.createElement(componentType, {
+          ...componentInputs,
+          children,
+        });
+      }
+
+      return null;
+    });
+
+    return elements.length === 1
+      ? elements[0]
+      : React.createElement(React.Fragment, null, elements);
   };
 
   const uiChatMessages = chat.messages.flatMap(
@@ -144,21 +150,46 @@ export const useUiChat = (options: UiChatOptions) => {
       if (message.role === 'assistant') {
         const toolCalls = message.tool_calls ?? [];
 
-        const isSimpleMessage = toolCalls.length === 0;
-        if (isSimpleMessage) {
-          const simpleMessage: UiChat.AssistantMessage = {
+        const hasContent = toolCalls.length === 0;
+        if (hasContent) {
+          let renderableContent: s.Infer<typeof ui> | undefined;
+
+          try {
+            renderableContent = s.parse(ui, JSON.parse(message.content ?? ''));
+          } catch (error) {
+            if (error instanceof SyntaxError) {
+              return [];
+            }
+            throw error;
+          }
+
+          if (!renderableContent) {
+            return [];
+          }
+
+          console.log('renderableContent', renderableContent);
+
+          /* Example renderableContent:
+          {
+    "ui": [
+        {
+            "$tagName": "MarkdownComponent",
+            "$props": {
+                "content": "I'm your friendly chatbot assistant, here to help you with your questions and tasks! You can call me whatever you like."
+            }
+        }
+    ]
+}*/
+          const renderedMessage: UiChat.AssistantMessage = {
             role: 'assistant',
-            content: message.content ?? '',
+            content: buildComponent(renderableContent),
           };
-          return [simpleMessage];
+
+          return [renderedMessage];
         }
 
         const toolCallMessages = toolCalls.flatMap(
-          (
-            toolCall,
-          ): Array<
-            UiChat.ToolCallMessage | UiChat.ComponentMessage<string, unknown>
-          > => {
+          (toolCall): Array<UiChat.ToolCallMessage> => {
             const toolCallMessage = findToolCallMessage(toolCall.id);
             const toolName = toolCall.function.name;
             const toolContent = toolCallMessage?.content;
@@ -170,45 +201,6 @@ export const useUiChat = (options: UiChatOptions) => {
               toolContent && toolContent.type === 'error'
                 ? toolContent.error
                 : undefined;
-
-            console.dir([toolCallMessage, toolName, toolResult, toolError], {
-              depth: null,
-            });
-
-            if (toolName === 'showComponent') {
-              let uiValue: s.Infer<typeof ui>;
-              try {
-                uiValue = s.parse(ui, JSON.parse(toolCall.function.arguments));
-              } catch (error) {
-                console.error(error);
-                return [];
-              }
-              const componentName = uiValue.ui.name;
-              const componentInputs = uiValue.ui.inputs;
-              const componentType = options.components?.find(
-                (c) => c.name === componentName,
-              )?.component;
-
-              if (
-                uiValue &&
-                componentName &&
-                componentInputs &&
-                componentType
-              ) {
-                const componentMessage: UiChat.ComponentMessage<
-                  string,
-                  unknown
-                > = {
-                  role: 'component',
-                  name: componentName,
-                  component: React.createElement(
-                    componentType,
-                    componentInputs,
-                  ),
-                };
-                return [componentMessage];
-              }
-            }
 
             return [
               {
@@ -230,7 +222,7 @@ export const useUiChat = (options: UiChatOptions) => {
     },
   );
 
-  console.log(uiChatMessages);
+  console.debug('uiChatMessages', uiChatMessages);
 
   return {
     ...chat,

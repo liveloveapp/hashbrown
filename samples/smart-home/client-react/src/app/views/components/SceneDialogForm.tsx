@@ -62,7 +62,7 @@ export const SceneDialogForm = (
     Here's the list of lights:
     ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}`,
     model: 'gpt-4o-mini',
-    outputSchema: s.object('Your response', {
+    responseSchema: s.object('Your response', {
       lights: s.array(
         'The lights to add to the scene',
         s.object('A join between a light and a scene', {

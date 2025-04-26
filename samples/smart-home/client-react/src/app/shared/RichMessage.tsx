@@ -2,7 +2,6 @@ import { UiChat } from '@hashbrownai/react';
 
 export const RichMessage = ({ message }: { message: UiChat.Message }) => {
   const isAssistant = message.role === 'assistant';
-  const isComponent = message.role === 'component';
   const isSystem = message.role === 'system';
   const isTool = message.role === 'tool';
 
@@ -20,10 +19,6 @@ export const RichMessage = ({ message }: { message: UiChat.Message }) => {
     return null;
   }
 
-  if (isComponent) {
-    return message.component;
-  }
-
   return (
     <div
       className={`flex w-full ${isAssistant ? 'justify-start' : 'justify-end'}`}
@@ -35,9 +30,7 @@ export const RichMessage = ({ message }: { message: UiChat.Message }) => {
             : 'bg-primary/80 text-primary-foreground'
         }`}
       >
-        {typeof message.content === 'string'
-          ? message.content
-          : JSON.stringify(message.content)}
+        {message.content}
       </div>
     </div>
   );
