@@ -33,7 +33,9 @@ export namespace UiChat {
 export interface UiChatOptions extends Omit<ChatOptions, 'messages'> {
   components: ExposedComponent<any>[];
 }
-
+/**
+ * @todo U.G. Wilson - This is now actually a StructuredChat since it has a response schema. Convert it.
+ */
 export const useUiChat = (options: UiChatOptions) => {
   const ui = s.object('UI', {
     ui: s.streaming.array(
