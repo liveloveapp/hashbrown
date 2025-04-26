@@ -71,46 +71,7 @@ export const useUiChat = (options: UiChatOptions) => {
     );
   };
 
-  // console.dir([toolCallMessage, toolName, toolResult, toolError], {
-  //   depth: null,
-  // });
-
-  // if (toolName === 'showComponent') {
-  //   let uiValue: s.Infer<typeof ui>;
-  //   try {
-  //     uiValue = s.parse(ui, JSON.parse(toolCall.function.arguments));
-  //   } catch (error) {
-  //     console.error(error);
-  //     return [];
-  //   }
-  //   const componentName = uiValue.ui.name;
-  //   const componentInputs = uiValue.ui.inputs;
-  //   const componentType = options.components?.find(
-  //     (c) => c.name === componentName,
-  //   )?.component;
-
-  //   if (
-  //     uiValue &&
-  //     componentName &&
-  //     componentInputs &&
-  //     componentType
-  //   ) {
-  //     const componentMessage: UiChat.ComponentMessage<
-  //       string,
-  //       unknown
-  //     > = {
-  //       role: 'component',
-  //       name: componentName,
-  //       component: React.createElement(
-  //         componentType,
-  //         componentInputs,
-  //       ),
-  //     };
-  //     return [componentMessage];
-  //   }
-  // }
-
-  const buildComponent = (
+  const buildContent = (
     renderableContent: s.Infer<typeof ui>,
   ): React.ReactElement | null => {
     const elements = renderableContent.ui.map((element) => {
@@ -122,7 +83,7 @@ export const useUiChat = (options: UiChatOptions) => {
 
       if (componentName && componentInputs && componentType) {
         const children: React.ReactNode[] | null = element.$children
-          ? element.$children.map((child) => buildComponent({ ui: [child] }))
+          ? element.$children.map((child) => buildContent({ ui: [child] }))
           : null;
 
         return React.createElement(componentType, {
@@ -167,22 +128,9 @@ export const useUiChat = (options: UiChatOptions) => {
             return [];
           }
 
-          console.log('renderableContent', renderableContent);
-
-          /* Example renderableContent:
-          {
-    "ui": [
-        {
-            "$tagName": "MarkdownComponent",
-            "$props": {
-                "content": "I'm your friendly chatbot assistant, here to help you with your questions and tasks! You can call me whatever you like."
-            }
-        }
-    ]
-}*/
           const renderedMessage: UiChat.AssistantMessage = {
             role: 'assistant',
-            content: buildComponent(renderableContent),
+            content: buildContent(renderableContent),
           };
 
           return [renderedMessage];
