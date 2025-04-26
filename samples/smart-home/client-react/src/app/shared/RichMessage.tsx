@@ -30,7 +30,7 @@ export const RichMessage = ({ message }: { message: UiChat.Message }) => {
             : 'bg-primary/80 text-primary-foreground'
         }`}
       >
-        {message.content}
+        <div className="flex flex-col gap-2">{message.content}</div>
       </div>
     </div>
   );

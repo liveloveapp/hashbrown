@@ -120,20 +120,20 @@ export const RichChatPanel = () => {
   };
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col py-2">
-        <ScrollArea className="h-[600px]" ref={scrollAreaRef}>
-          <div className="flex flex-col gap-2">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-col flex-1 min-h-0">
+        <ScrollArea className="flex-1" ref={scrollAreaRef}>
+          <div className="flex flex-col gap-2 px-2">
             {messages.map((message, index) => (
               <RichMessage key={index} message={message} />
             ))}
           </div>
         </ScrollArea>
       </div>
-      <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end">
+      <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end px-2">
         {status !== ChatStatus.Idle && <p>Thinking...</p>}
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 px-2">
         <Textarea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}

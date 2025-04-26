@@ -47,6 +47,9 @@ export const useUiChat = (options: UiChatOptions) => {
         curteuous, helpful, and friendly. Try to answer all questions
         to the best of your ability. Keep answers concise and to the point.
 
+        If the user asks you for things, strongly prefer to provide controls 
+        components organized in cards.
+
         Today's date is ${new Date().toLocaleDateString()}.
 
         NEVER use ANY newline strings such as "\\n" or "\\\\n" in your response.
