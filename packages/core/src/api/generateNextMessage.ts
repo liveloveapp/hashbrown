@@ -1,4 +1,5 @@
-import { Chat } from '../models';
+import { Chat, ChatMiddleware } from '../models';
+import { s } from '../schema';
 // import { StreamSchemaParser } from '../streaming-json-parser';
 
 /**
@@ -31,9 +32,9 @@ export async function* generateNextMessage(config: {
   tools?: Chat.Tool[];
   maxTokens?: number;
   temperature?: number;
-  responseFormat?: object;
-  abortSignal?: AbortSignal;
-  middleware: Array<(requestInit: RequestInit) => RequestInit>;
+  responseFormat?: s.HashbrownType;
+  abortSignal: AbortSignal;
+  middleware: ChatMiddleware[];
 }): AsyncGenerator<Chat.CompletionChunk> {
   const chatCompletionParams: Chat.CompletionCreateParams = {
     model: config.model,
@@ -41,10 +42,12 @@ export async function* generateNextMessage(config: {
     tools: config.tools,
     max_tokens: config.maxTokens,
     temperature: config.temperature,
-    response_format: config.responseFormat,
+    response_format: config.responseFormat
+      ? s.toJsonSchema(config.responseFormat)
+      : undefined,
   };
 
-  const initialRequestInit: RequestInit = {
+  let requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -53,14 +56,15 @@ export async function* generateNextMessage(config: {
     signal: config.abortSignal,
   };
 
-  const resolvedRequestInit = config.middleware.reduce((requestInit, fn) => {
-    return fn(requestInit);
-  }, initialRequestInit);
+  for (const middleware of config.middleware) {
+    if (config.abortSignal?.aborted) {
+      break;
+    }
 
-  const response = await config.fetchImplementation(
-    config.apiUrl,
-    resolvedRequestInit,
-  );
+    requestInit = await middleware(requestInit, config.abortSignal);
+  }
+
+  const response = await config.fetchImplementation(config.apiUrl, requestInit);
 
   if (!response.ok) {
     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -96,7 +100,6 @@ export async function* generateNextMessage(config: {
       for (const jsonChunk of jsonChunks) {
         if (jsonChunk.trim()) {
           const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
-          console.log(jsonData);
 
           // try {
           //   // For now, just log things

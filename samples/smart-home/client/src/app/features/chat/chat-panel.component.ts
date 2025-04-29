@@ -178,11 +178,16 @@ export class ChatPanelComponent {
       }),
     ],
     tools: [
-      // createTool({
-      //   name: 'getLights',
-      //   description: 'Get the current lights',
-      //   handler: () => this.smartHomeService.loadLights(),
-      // }),
+      createTool({
+        name: 'getUser',
+        description: 'Get information about the current user',
+        handler: () => this.authService.getUser(),
+      }),
+      createTool({
+        name: 'getLights',
+        description: 'Get the current lights',
+        handler: () => this.smartHomeService.loadLights(),
+      }),
       // createToolJavaScript({
       //   loadVariant: () => Promise.resolve(variant),
       //   functions: [

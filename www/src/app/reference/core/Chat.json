@@ -20,10 +20,22 @@
           "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:interface",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "export interface AssistantMessage " }
+            {
+              "kind": "Content",
+              "text": "export interface AssistantMessage<AssistantOutput = "
+            },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": "> " }
           ],
           "fileUrlPath": "../packages/core/src/models/chat/AssistantMessage.ts",
           "releaseTag": "Public",
+          "typeParameters": [
+            {
+              "typeParameterName": "AssistantOutput",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+              "defaultTypeTokenRange": { "startIndex": 1, "endIndex": 2 }
+            }
+          ],
           "name": "AssistantMessage",
           "preserveMemberOrder": false,
           "members": [
@@ -33,7 +45,7 @@
               "docComment": "",
               "excerptTokens": [
                 { "kind": "Content", "text": "content?: " },
-                { "kind": "Content", "text": "string" },
+                { "kind": "Content", "text": "AssistantOutput" },
                 { "kind": "Content", "text": ";" }
               ],
               "isReadonly": false,
@@ -327,7 +339,12 @@
           "canonicalReference": "@hashbrownai/core!Chat.Message:type",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "export type Message = " },
+            {
+              "kind": "Content",
+              "text": "export type Message<AssistantOutput = "
+            },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": "> = " },
             {
               "kind": "Reference",
               "text": "SystemMessage",
@@ -345,7 +362,7 @@
               "text": "AssistantMessage",
               "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:interface"
             },
-            { "kind": "Content", "text": " | " },
+            { "kind": "Content", "text": "<AssistantOutput> | " },
             {
               "kind": "Reference",
               "text": "ToolMessage",
@@ -356,7 +373,14 @@
           "fileUrlPath": "../packages/core/src/models/chat/Message.ts",
           "releaseTag": "Public",
           "name": "Message",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 8 },
+          "typeParameters": [
+            {
+              "typeParameterName": "AssistantOutput",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+              "defaultTypeTokenRange": { "startIndex": 1, "endIndex": 2 }
+            }
+          ],
+          "typeTokenRange": { "startIndex": 3, "endIndex": 10 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -629,40 +653,6 @@
           }
         },
         {
-          "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.ToolCallResult:type",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "export type ToolCallResult = " },
-            {
-              "kind": "Content",
-              "text": "{\n    type: 'success';\n    content: object;\n} | {\n    type: 'error';\n    error: string;\n}"
-            },
-            { "kind": "Content", "text": ";" }
-          ],
-          "fileUrlPath": "../packages/core/src/models/chat/ToolCallResult.ts",
-          "releaseTag": "Public",
-          "name": "ToolCallResult",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
           "kind": "Interface",
           "canonicalReference": "@hashbrownai/core!Chat.ToolMessage:interface",
           "docComment": "",
@@ -682,16 +672,17 @@
                 { "kind": "Content", "text": "content: " },
                 {
                   "kind": "Reference",
-                  "text": "ToolCallResult",
-                  "canonicalReference": "@hashbrownai/core!Chat.ToolCallResult:type"
+                  "text": "PromiseSettledResult",
+                  "canonicalReference": "!PromiseSettledResult:type"
                 },
+                { "kind": "Content", "text": "<any>" },
                 { "kind": "Content", "text": ";" }
               ],
               "isReadonly": false,
               "isOptional": false,
               "releaseTag": "Public",
               "name": "content",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
               "docs": {
                 "modifiers": {
                   "isInternal": false,

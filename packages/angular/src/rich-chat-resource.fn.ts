@@ -139,11 +139,13 @@ export function uiChatResource(args: {
             );
             const content = toolCallMessage?.content;
             const result =
-              content && content.type === 'success'
-                ? content.content
+              content && content.status === 'fulfilled'
+                ? content.value
                 : undefined;
             const error =
-              content && content.type === 'error' ? content.error : undefined;
+              content && content.status === 'rejected'
+                ? content.reason
+                : undefined;
 
             return [
               {

@@ -2,17 +2,17 @@
   "name": "ChatStatus",
   "canonicalReference": "@hashbrownai/react!ChatStatus:enum",
   "kind": "Enum",
-  "fileUrlPath": "../dist/packages/react/lib/use-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Enum",
       "canonicalReference": "@hashbrownai/react!ChatStatus:enum",
-      "docComment": "",
+      "docComment": "/**\n * The status of the chat.\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "export declare enum ChatStatus " }
       ],
-      "fileUrlPath": "../dist/packages/react/lib/use-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
       "releaseTag": "Public",
       "name": "ChatStatus",
       "preserveMemberOrder": false,
@@ -20,7 +20,7 @@
         {
           "kind": "EnumMember",
           "canonicalReference": "@hashbrownai/react!ChatStatus.Error:member",
-          "docComment": "",
+          "docComment": "/**\n * An error occurred while sending or receiving a message.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "Error = " },
             { "kind": "Content", "text": "3" }
@@ -37,7 +37,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "An error occurred while sending or receiving a message.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -49,10 +49,10 @@
         {
           "kind": "EnumMember",
           "canonicalReference": "@hashbrownai/react!ChatStatus.Idle:member",
-          "docComment": "",
+          "docComment": "/**\n * The chat is idle.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "Idle = " },
-            { "kind": "Content", "text": "2" }
+            { "kind": "Content", "text": "0" }
           ],
           "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
           "releaseTag": "Public",
@@ -66,7 +66,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The chat is idle.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -78,10 +78,10 @@
         {
           "kind": "EnumMember",
           "canonicalReference": "@hashbrownai/react!ChatStatus.Receiving:member",
-          "docComment": "",
+          "docComment": "/**\n * The client is receiving a response from the server, typically while streaming.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "Receiving = " },
-            { "kind": "Content", "text": "1" }
+            { "kind": "Content", "text": "2" }
           ],
           "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
           "releaseTag": "Public",
@@ -95,7 +95,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The client is receiving a response from the server, typically while streaming.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -107,10 +107,10 @@
         {
           "kind": "EnumMember",
           "canonicalReference": "@hashbrownai/react!ChatStatus.Sending:member",
-          "docComment": "",
+          "docComment": "/**\n * The client is sending a message to the server.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "Sending = " },
-            { "kind": "Content", "text": "0" }
+            { "kind": "Content", "text": "1" }
           ],
           "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
           "releaseTag": "Public",
@@ -124,7 +124,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The client is sending a message to the server.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -143,7 +143,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "The status of the chat.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

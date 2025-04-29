@@ -2,7 +2,7 @@
   "name": "usePrediction",
   "canonicalReference": "@hashbrownai/react!usePrediction:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/lib/use-prediction.d.ts",
+  "fileUrlPath": "../dist/packages/react/hooks/use-prediction.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -20,18 +20,18 @@
         {
           "kind": "Reference",
           "text": "PredictionOptions",
-          "canonicalReference": "@hashbrownai/react!PredictionOptions:interface"
+          "canonicalReference": "@hashbrownai/react!~PredictionOptions:interface"
         },
         { "kind": "Content", "text": "<OutputSchema>" },
         { "kind": "Content", "text": ") => " },
         {
           "kind": "Reference",
           "text": "PredictionInterface",
-          "canonicalReference": "@hashbrownai/react!PredictionInterface:interface"
+          "canonicalReference": "@hashbrownai/react!~PredictionInterface:interface"
         },
         { "kind": "Content", "text": "<OutputSchema>" }
       ],
-      "fileUrlPath": "../dist/packages/react/lib/use-prediction.d.ts",
+      "fileUrlPath": "../dist/packages/react/hooks/use-prediction.d.ts",
       "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
       "releaseTag": "Public",
       "overloadIndex": 1,

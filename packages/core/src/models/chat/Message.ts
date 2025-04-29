@@ -3,8 +3,8 @@ import { SystemMessage } from './SystemMessage';
 import { ToolMessage } from './ToolMessage';
 import { UserMessage } from './UserMessage';
 
-export type Message =
+export type Message<AssistantOutput = string> =
   | SystemMessage
   | UserMessage
-  | AssistantMessage
+  | AssistantMessage<AssistantOutput>
   | ToolMessage;

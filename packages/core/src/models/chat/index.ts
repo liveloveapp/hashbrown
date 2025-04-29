@@ -8,6 +8,5 @@ export * from './MessageRole';
 export * from './ResponseFormat';
 export * from './SystemMessage';
 export * from './Tool';
-export * from './ToolCallResult';
 export * from './ToolMessage';
 export * from './UserMessage';
