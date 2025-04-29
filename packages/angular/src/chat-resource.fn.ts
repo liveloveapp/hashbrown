@@ -290,14 +290,14 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
 
     return config.maxTokens();
   });
-  const computedResponseFormat = computed(() => {
+  const computedResponseFormat = computed((): s.HashbrownType | undefined => {
     const responseFormat = config.responseFormat;
 
     if (!responseFormat) {
       return undefined;
     }
 
-    return s.toJsonSchema(responseFormat);
+    return responseFormat;
   });
 
   effect(() => {

@@ -55,30 +55,26 @@ function mergeToolCalls(
  * @returns The updated messages array.
  */
 export function updateMessagesWithDelta(
-  messages: Chat.Message[],
+  message: Chat.Message | null,
   delta: Partial<Chat.Message>,
-): Chat.Message[] {
-  const lastMessage = messages[messages.length - 1];
-  if (lastMessage && lastMessage.role === 'assistant') {
+): Chat.Message | null {
+  if (message && message.role === 'assistant') {
     const updatedToolCalls = mergeToolCalls(
-      lastMessage.tool_calls,
+      message.tool_calls,
       (delta as Chat.AssistantMessage).tool_calls ?? [],
     );
     const updatedMessage: Chat.Message = {
-      ...lastMessage,
-      content: (lastMessage.content ?? '') + (delta.content ?? ''),
+      ...message,
+      content: (message.content ?? '') + (delta.content ?? ''),
       tool_calls: updatedToolCalls,
     };
-    return [...messages.slice(0, -1), updatedMessage];
+    return updatedMessage;
   } else if (delta.role === 'assistant') {
-    return [
-      ...messages,
-      {
-        role: 'assistant',
-        content: delta.content ?? '',
-        tool_calls: delta.tool_calls ?? [],
-      },
-    ];
+    return {
+      role: 'assistant',
+      content: delta.content ?? '',
+      tool_calls: delta.tool_calls ?? [],
+    };
   }
-  return messages;
+  return message;
 }

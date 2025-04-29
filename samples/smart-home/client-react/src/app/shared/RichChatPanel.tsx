@@ -1,10 +1,8 @@
+import { Chat, exposeComponent, s } from '@hashbrownai/core';
 import {
-  Chat,
   ChatStatus,
   createTool,
   createToolWithArgs,
-  exposeComponent,
-  s,
   useUiChat,
 } from '@hashbrownai/react';
 import { useEffect, useRef, useState } from 'react';
@@ -118,6 +116,8 @@ export const RichChatPanel = () => {
       }
     }
   };
+
+  console.log(messages);
 
   return (
     <div className="flex flex-col h-full">

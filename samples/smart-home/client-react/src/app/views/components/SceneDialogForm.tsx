@@ -1,4 +1,5 @@
-import { ChatStatus, s, usePrediction } from '@hashbrownai/react';
+import { s } from '@hashbrownai/core';
+import { ChatStatus, usePrediction } from '@hashbrownai/react';
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -62,7 +63,7 @@ export const SceneDialogForm = (
     Here's the list of lights:
     ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}`,
     model: 'gpt-4o-mini',
-    responseSchema: s.object('Your response', {
+    output: s.object('Your response', {
       lights: s.array(
         'The lights to add to the scene',
         s.object('A join between a light and a scene', {
