@@ -1,5 +1,5 @@
 import { Chat } from '@hashbrownai/core';
-import { HashbrownAzure } from '@hashbrownai/azure';
+// import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import cors from 'cors';
 import express from 'express';
@@ -18,6 +18,7 @@ app.listen(port, host, () => {
 });
 
 app.post('/chat', async (req, res) => {
+  console.log('got chat request');
   const request = req.body as Chat.CompletionCreateParams;
 
   // Azure OpenAI Service
