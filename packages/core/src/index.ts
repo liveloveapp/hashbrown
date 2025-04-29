@@ -7,3 +7,4 @@ export {
   exposeComponent,
   type ComponentTree,
 } from './utils';
+export * from './vendor/vendor-client';
