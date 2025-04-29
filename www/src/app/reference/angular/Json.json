@@ -1,0 +1,61 @@
+{
+  "name": "Json",
+  "canonicalReference": "@hashbrownai/angular!Json:type",
+  "kind": "TypeAlias",
+  "fileUrlPath": "../dist/packages/angular/types.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "TypeAlias",
+      "canonicalReference": "@hashbrownai/angular!Json:type",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export type Json = " },
+        {
+          "kind": "Content",
+          "text": "string | undefined | number | boolean | null | "
+        },
+        {
+          "kind": "Reference",
+          "text": "Json",
+          "canonicalReference": "@hashbrownai/angular!Json:type"
+        },
+        { "kind": "Content", "text": "[] | {\n    [key: string]: " },
+        {
+          "kind": "Reference",
+          "text": "Json",
+          "canonicalReference": "@hashbrownai/angular!Json:type"
+        },
+        { "kind": "Content", "text": ";\n} | {\n    [key: number]: " },
+        {
+          "kind": "Reference",
+          "text": "Json",
+          "canonicalReference": "@hashbrownai/angular!Json:type"
+        },
+        { "kind": "Content", "text": ";\n}" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/angular/types.d.ts",
+      "releaseTag": "Public",
+      "name": "Json",
+      "typeTokenRange": { "startIndex": 1, "endIndex": 8 },
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

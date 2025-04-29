@@ -60,15 +60,16 @@ export interface ChatInterface {
   stop: () => void;
 }
 
-export const useChat = ({
-  model,
-  messages: initialMessages,
-  tools: initialTools,
-  responseSchema: initialResponseSchema,
-  temperature = 1.0,
-  maxTokens = 5000,
-  debounceTime = 150,
-}: ChatOptions): ChatInterface => {
+export const useChat = (chatOptions: ChatOptions): ChatInterface => {
+  const {
+    model,
+    messages: initialMessages,
+    tools: initialTools,
+    responseSchema: initialResponseSchema,
+    temperature = 1.0,
+    maxTokens = 5000,
+    debounceTime = 150,
+  } = chatOptions;
   const context = useContext(HashbrownContext);
 
   if (!context) {
