@@ -1,15 +1,15 @@
-import 'dotenv/config';
 import { Chat, s } from '@hashbrownai/core';
 import OpenAI from 'openai';
 
 export async function* text(
+  apiKey: string,
   request: Chat.CompletionCreateParams,
 ): Chat.CompletionChunkResponse {
   const { messages, model, max_tokens, temperature, tools, response_format } =
     request;
 
   const openai = new OpenAI({
-    apiKey: process.env['OPENAI_API_KEY'],
+    apiKey,
   });
 
   const stream = openai.beta.chat.completions.stream({

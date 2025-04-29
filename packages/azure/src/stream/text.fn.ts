@@ -1,23 +1,30 @@
 import { Chat, s } from '@hashbrownai/core';
 import OpenAI, { AzureOpenAI } from 'openai';
 
+export interface AzureClient {
+  stream: {
+    text: (
+      apiKey: string,
+      endpoint: string,
+      apiVersion: string,
+      request: Chat.CompletionCreateParams,
+    ) => Chat.CompletionChunkResponse;
+  };
+}
+
 export async function* text(
+  apiKey: string,
+  endpoint: string,
+  apiVersion: string,
   request: Chat.CompletionCreateParams,
 ): Chat.CompletionChunkResponse {
   const { messages, model, max_tokens, temperature, tools, response_format } =
     request;
 
-  if (!process.env['AZURE_API_KEY']) {
-    throw new Error('AZURE_API_KEY is not set');
-  }
-  if (!model) {
-    throw new Error('Model is not set');
-  }
-
   const client = new AzureOpenAI({
-    apiKey: process.env['AZURE_API_KEY'],
-    endpoint: 'https://ai-hashbrowndev507071463475.openai.azure.com/',
-    apiVersion: '2024-04-01-preview',
+    apiKey,
+    endpoint,
+    apiVersion,
     deployment: model,
   });
 

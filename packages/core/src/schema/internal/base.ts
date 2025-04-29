@@ -502,8 +502,8 @@ export function isNullType(type: HashbrownType): type is NullType {
   return type[internal].definition.type === 'null';
 }
 
-export function nullType(description: string): NullType {
-  return new NullType({ type: 'null', description, streaming: false });
+export function nullType(): NullType {
+  return new NullType({ type: 'null', description: '', streaming: false });
 }
 
 /**

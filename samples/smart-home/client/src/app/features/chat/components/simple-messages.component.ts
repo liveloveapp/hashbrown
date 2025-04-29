@@ -1,10 +1,11 @@
 import { Component, input } from '@angular/core';
-import { RenderMessageComponent, UiChat } from '@hashbrownai/angular';
+import { Chat } from '@hashbrownai/core';
+import { MarkdownComponent } from 'ngx-markdown';
 
 @Component({
-  selector: 'app-chat-messages',
+  selector: 'app-simple-chat-messages',
   standalone: true,
-  imports: [RenderMessageComponent],
+  imports: [MarkdownComponent],
   template: `
     @for (message of messages(); track $index) {
       @switch (message.role) {
@@ -14,7 +15,7 @@ import { RenderMessageComponent, UiChat } from '@hashbrownai/angular';
           </div>
         }
         @case ('assistant') {
-          <hb-render-message [message]="message" />
+          <markdown [data]="message.content" />
         }
       }
     }
@@ -54,6 +55,6 @@ import { RenderMessageComponent, UiChat } from '@hashbrownai/angular';
     `,
   ],
 })
-export class MessagesComponent {
-  messages = input.required<UiChat.Message[]>();
+export class SimpleMessagesComponent {
+  messages = input.required<Chat.Message[]>();
 }

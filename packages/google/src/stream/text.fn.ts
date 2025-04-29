@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import {
   Content,
   GenerateContentParameters,
@@ -8,11 +7,12 @@ import {
 import { Chat, s } from '@hashbrownai/core';
 
 export async function* text(
+  apiKey: string,
   request: Chat.CompletionCreateParams,
 ): Chat.CompletionChunkResponse {
   const { messages, model, response_format, tools } = request;
   const ai = new GoogleGenAI({
-    apiKey: process.env['GOOGLE_API_KEY'],
+    apiKey,
   });
   const contents = messages.map((message): Content => {
     switch (message.role) {
@@ -67,7 +67,7 @@ export async function* text(
               functionDeclarations: tools?.map((tool) => ({
                 name: tool.name,
                 description: tool.description,
-                parameters: s.toOpenApiSchema(tool.schema),
+                parameters: s.toOpenApi(tool.schema),
               })),
             },
           ]
