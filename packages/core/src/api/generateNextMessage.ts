@@ -1,4 +1,7 @@
 import { Chat } from '../models';
+import { s } from '../schema';
+import { HashbrownType } from '../schema/internal';
+import { StreamSchemaParser } from '../streaming-json-parser';
 // import { StreamSchemaParser } from '../streaming-json-parser';
 
 /**
@@ -31,7 +34,7 @@ export async function* generateNextMessage(config: {
   tools?: Chat.Tool[];
   maxTokens?: number;
   temperature?: number;
-  responseFormat?: object;
+  responseFormat?: HashbrownType;
   abortSignal?: AbortSignal;
   middleware: Array<(requestInit: RequestInit) => RequestInit>;
 }): AsyncGenerator<Chat.CompletionChunk> {
@@ -41,7 +44,9 @@ export async function* generateNextMessage(config: {
     tools: config.tools,
     max_tokens: config.maxTokens,
     temperature: config.temperature,
-    response_format: config.responseFormat,
+    response_format: config.responseFormat
+      ? s.toJsonSchema(config.responseFormat)
+      : undefined,
   };
 
   const initialRequestInit: RequestInit = {
@@ -73,6 +78,9 @@ export async function* generateNextMessage(config: {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
+  console.log('printing responseformat');
+  console.log(s.toJsonSchema(config.responseFormat!));
+
   // const streamParser = config.responseFormat
   //   ? new StreamSchemaParser(config.responseFormat as any)
   //   : undefined;
@@ -96,7 +104,7 @@ export async function* generateNextMessage(config: {
       for (const jsonChunk of jsonChunks) {
         if (jsonChunk.trim()) {
           const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
-          console.log(jsonData);
+          // console.log(jsonData);
 
           // try {
           //   // For now, just log things

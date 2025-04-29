@@ -10,6 +10,8 @@ import {
 export const internal = '~schema';
 export type internal = typeof internal;
 
+export const DISCRIMINATOR = '__discriminator';
+
 type TypeInternals = {
   definition: {
     description: string;

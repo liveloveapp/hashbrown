@@ -32,6 +32,7 @@ export {
   ArrayType,
   EnumType,
   AnyOfType,
+  DISCRIMINATOR,
 } from './base';
 export { getDescription } from './getDescription';
 export { isStreaming } from './isStreaming';
