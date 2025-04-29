@@ -1,0 +1,100 @@
+{
+  "name": "createToolWithArgs",
+  "canonicalReference": "@hashbrownai/angular!createToolWithArgs:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/angular/create-tool.fn.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/angular!createToolWithArgs:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function createToolWithArgs<Name extends "
+        },
+        { "kind": "Content", "text": "string" },
+        { "kind": "Content", "text": ", InputSchema extends " },
+        {
+          "kind": "Reference",
+          "text": "s.ObjectType",
+          "canonicalReference": "!s.ObjectType:type"
+        },
+        { "kind": "Content", "text": "<any>" },
+        { "kind": "Content", "text": ">(input: " },
+        {
+          "kind": "Content",
+          "text": "{\n    name: Name;\n    description: string;\n    schema: InputSchema;\n    handler: (input: "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<InputSchema>) => " },
+        {
+          "kind": "Reference",
+          "text": "Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": "<unknown> | " },
+        {
+          "kind": "Reference",
+          "text": "Observable",
+          "canonicalReference": "rxjs!Observable:class"
+        },
+        { "kind": "Content", "text": "<unknown>;\n}" },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "BoundTool",
+          "canonicalReference": "@hashbrownai/angular!BoundTool:class"
+        },
+        { "kind": "Content", "text": "<Name, InputSchema>" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/angular/create-tool.fn.d.ts",
+      "returnTypeTokenRange": { "startIndex": 14, "endIndex": 16 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "input",
+          "parameterTypeTokenRange": { "startIndex": 6, "endIndex": 13 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Name",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "InputSchema",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "createToolWithArgs",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

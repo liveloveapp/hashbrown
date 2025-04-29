@@ -1,0 +1,92 @@
+{
+  "name": "useUiChat",
+  "canonicalReference": "@hashbrownai/react!useUiChat:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/lib/use-ui-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useUiChat:function(1)",
+      "docComment": "/**\n * @todo U.G. Wilson - This is now actually a StructuredChat since it has a response schema. Convert it.\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "useUiChat: (options: " },
+        {
+          "kind": "Reference",
+          "text": "UiChatOptions",
+          "canonicalReference": "@hashbrownai/react!UiChatOptions:interface"
+        },
+        { "kind": "Content", "text": ") => " },
+        { "kind": "Content", "text": "{\n    messages: " },
+        {
+          "kind": "Reference",
+          "text": "UiChat.Message",
+          "canonicalReference": "@hashbrownai/react!UiChat.Message:type"
+        },
+        { "kind": "Content", "text": "[];\n    setMessages: (messages: " },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        {
+          "kind": "Content",
+          "text": "[]) => void;\n    sendMessage: (message: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        {
+          "kind": "Content",
+          "text": ") => void;\n    status: import('./use-chat')."
+        },
+        {
+          "kind": "Reference",
+          "text": "ChatStatus",
+          "canonicalReference": "@hashbrownai/react!ChatStatus:enum"
+        },
+        { "kind": "Content", "text": ";\n    error: " },
+        {
+          "kind": "Reference",
+          "text": "Error",
+          "canonicalReference": "!Error:interface"
+        },
+        {
+          "kind": "Content",
+          "text": " | null;\n    isReloading: boolean;\n    stop: () => void;\n}"
+        }
+      ],
+      "fileUrlPath": "../dist/packages/react/lib/use-ui-chat.d.ts",
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 14 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isOptional": false
+        }
+      ],
+      "name": "useUiChat",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "@todo U.G. Wilson - This is now actually a StructuredChat since it has a response schema. Convert it.\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

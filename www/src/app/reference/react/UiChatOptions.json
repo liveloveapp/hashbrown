@@ -1,0 +1,94 @@
+{
+  "name": "UiChatOptions",
+  "canonicalReference": "@hashbrownai/react!UiChatOptions:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/react/lib/use-ui-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/react!UiChatOptions:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UiChatOptions extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Omit",
+          "canonicalReference": "!Omit:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "ChatOptions",
+          "canonicalReference": "@hashbrownai/react!ChatOptions:interface"
+        },
+        { "kind": "Content", "text": ", 'messages'>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/react/lib/use-ui-chat.d.ts",
+      "releaseTag": "Public",
+      "name": "UiChatOptions",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UiChatOptions#components:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "components: " },
+            {
+              "kind": "Reference",
+              "text": "ExposedComponent",
+              "canonicalReference": "!unknown"
+            },
+            { "kind": "Content", "text": "<any>[]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "components",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 5 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

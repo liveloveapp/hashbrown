@@ -1,0 +1,75 @@
+{
+  "name": "useStructuredChat",
+  "canonicalReference": "@hashbrownai/react!useStructuredChat:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/lib/use-structured-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useStructuredChat:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "useStructuredChat: <ResponseSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.ResponseFormat",
+          "canonicalReference": "!Chat.ResponseFormat:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
+        {
+          "kind": "Reference",
+          "text": "StructuredChatOptions",
+          "canonicalReference": "@hashbrownai/react!StructuredChatOptions:interface"
+        },
+        { "kind": "Content", "text": "<ResponseSchema>" },
+        { "kind": "Content", "text": ") => " },
+        {
+          "kind": "Reference",
+          "text": "StructuredChatInterface",
+          "canonicalReference": "@hashbrownai/react!StructuredChatInterface:interface"
+        },
+        { "kind": "Content", "text": "<ResponseSchema>" }
+      ],
+      "fileUrlPath": "../dist/packages/react/lib/use-structured-chat.d.ts",
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "ResponseSchema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "useStructuredChat",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

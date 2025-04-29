@@ -1,0 +1,57 @@
+{
+  "name": "useChat",
+  "canonicalReference": "@hashbrownai/react!useChat:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/lib/use-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useChat:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "useChat: (chatOptions: " },
+        {
+          "kind": "Reference",
+          "text": "ChatOptions",
+          "canonicalReference": "@hashbrownai/react!ChatOptions:interface"
+        },
+        { "kind": "Content", "text": ") => " },
+        {
+          "kind": "Reference",
+          "text": "ChatInterface",
+          "canonicalReference": "@hashbrownai/react!ChatInterface:interface"
+        }
+      ],
+      "fileUrlPath": "../dist/packages/react/lib/use-chat.d.ts",
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "chatOptions",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isOptional": false
+        }
+      ],
+      "name": "useChat",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

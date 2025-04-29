@@ -85,7 +85,8 @@ import { selectAllLights, selectLightEntities } from '../../../store';
         @let prediction = predictedLights.value();
         @if (prediction) {
           <h5>
-            <mat-icon aria-hidden="true" inline>bolt</mat-icon> Suggestions
+            <mat-icon aria-hidden="true" inline>bolt</mat-icon>
+            Suggestions
           </h5>
           @for (light of prediction.lights; track light.lightId) {
             @let suggestedLight = lightEntities()[light.lightId];
@@ -130,11 +131,13 @@ import { selectAllLights, selectLightEntities } from '../../../store';
         min-width: 400px;
         padding: 16px 0;
       }
+
       .light-config {
         display: flex;
         gap: 16px;
         align-items: center;
       }
+
       mat-form-field {
         flex: 1;
       }
