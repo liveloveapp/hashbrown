@@ -1,53 +1,65 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '@hashbrownai/core';
 import { QuickJSAsyncContext, QuickJSHandle } from 'quickjs-emscripten';
 import { Transport } from './transport';
 
-type VMFunctionDefinition<
+export type VMFunctionDefinition<
   Output extends s.HashbrownType,
-  Args extends s.HashbrownType[],
+  Schema extends s.HashbrownType,
 > = {
   name: string;
   description: string;
-  input: [...Args];
+  schema: Schema;
   output: Output;
-  handler: (input: [...Args]) => Output | Promise<Output>;
+  handler: (
+    input?: s.Infer<Schema>,
+  ) => s.Infer<Output> | Promise<s.Infer<Output>>;
 };
 
-export function defineFunction<
+export function defineFunction<Output extends s.HashbrownType>(args: {
+  name: string;
+  description: string;
+  output: Output;
+  handler: () => s.Infer<Output> | Promise<s.Infer<Output>>;
+}): VMFunctionDefinition<Output, s.NullType> {
+  return {
+    schema: s.nullType(),
+    ...args,
+  };
+}
+
+export function defineFunctionWithArgs<
   Output extends s.HashbrownType,
-  Args extends s.HashbrownType[],
+  Schema extends s.HashbrownType,
 >(args: {
   name: string;
   description: string;
-  input: [...Args];
+  schema: Schema;
   output: Output;
-  handler: (input: [...Args]) => Output | Promise<Output>;
-}) {
+  handler: (
+    input: s.Infer<Schema>,
+  ) => s.Infer<Output> | Promise<s.Infer<Output>>;
+}): VMFunctionDefinition<Output, Schema> {
   return args;
 }
 
 export function attachFunctionToContext(
   context: QuickJSAsyncContext,
   transport: Transport,
-  definition: VMFunctionDefinition<
-    s.HashbrownType<any>,
-    s.HashbrownType<any>[]
-  >,
+  definition: VMFunctionDefinition<s.HashbrownType<any>, s.HashbrownType<any>>,
   attachTo: QuickJSHandle,
 ) {
-  const { name, input, output, handler } = definition;
+  const { name, schema: input, output, handler } = definition;
 
   const fnHandle = context.newAsyncifiedFunction(name, async (...args) => {
-    const resolvedArgs: any = args.map((arg, index) => {
-      const type = input[index];
-      const resolvedValue = transport.receiveObject(arg);
+    if (s.isNullType(input)) {
+      const result = await handler();
+      return transport.sendObject(s.parse(output, result));
+    }
 
-      return s.parse(type, resolvedValue);
-    });
-
-    // eslint-disable-next-line prefer-spread
-    const result: any = await handler.apply(null, resolvedArgs);
-
+    const resolvedInput = transport.receiveObject(args[0]);
+    const parsedInput = s.parse(input, resolvedInput);
+    const result = await handler(parsedInput);
     return transport.sendObject(s.parse(output, result));
   });
 

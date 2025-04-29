@@ -67,7 +67,7 @@ export async function* text(
               functionDeclarations: tools?.map((tool) => ({
                 name: tool.name,
                 description: tool.description,
-                parameters: s.toOpenApiSchema(tool.schema),
+                parameters: s.toOpenApi(tool.schema),
               })),
             },
           ]

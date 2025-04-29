@@ -6,19 +6,25 @@ export class Transport {
   parseHandle: QuickJSHandle;
 
   constructor(private readonly context: QuickJSContext) {
-    const jsonResult = context.evalCode('JSON');
-    const stringifyResult = context.evalCode('JSON.stringify');
-    const parseResult = context.evalCode('JSON.parse');
+    const jsonResult = context.getProp(context.global, 'JSON');
+    const stringifyResult = context.getProp(jsonResult, 'stringify');
+    const parseResult = context.getProp(jsonResult, 'parse');
 
-    this.jsonHandle = jsonResult.unwrap();
-    this.stringifyHandle = stringifyResult.unwrap();
-    this.parseHandle = parseResult.unwrap();
+    this.jsonHandle = jsonResult;
+    this.stringifyHandle = stringifyResult;
+    this.parseHandle = parseResult;
   }
 
   sendObject(object: object) {
     const asString = JSON.stringify(object);
-    const result = this.context.evalCode(asString);
-    return result.unwrap();
+    const stringHandle = this.context.newString(asString);
+    const result = this.context.callFunction(
+      this.parseHandle,
+      this.jsonHandle,
+      stringHandle,
+    );
+    stringHandle.dispose();
+    return result;
   }
 
   sendError(name: string, message: string) {
@@ -27,10 +33,13 @@ export class Transport {
 
   receiveObject(handle: QuickJSHandle) {
     const result = this.context.callFunction(
-      this.parseHandle,
+      this.stringifyHandle,
       this.jsonHandle,
       handle,
     );
-    return result.unwrap();
+    const stringHandle = result.unwrap();
+    const asString = this.context.getString(stringHandle);
+    stringHandle.dispose();
+    return JSON.parse(asString);
   }
 }
