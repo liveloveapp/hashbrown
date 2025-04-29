@@ -38,9 +38,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   ) => any = (currentKey, allowsIncomplete, insideArray) => {
     skipBlank();
 
-    console.log('Current container stack:');
-    console.log(containerStack[containerStack.length - 1]);
-    // console.log(JSON.stringify(containerStack, null, 4));
+    // console.log('Current last container:');
+    // console.log(containerStack[containerStack.length - 1]);
 
     if (index >= length) markPartialJSON('Unexpected end of input');
     if (jsonString[index] === '"') return parseStr(allowsIncomplete);
@@ -138,7 +137,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   const parseObj = (parentKey: string, insideArray: boolean) => {
-    console.log(`Parsing object with parent: ${parentKey}`);
+    // console.log(`Parsing object with parent: ${parentKey}`);
     index++; // skip initial brace
     skipBlank();
     const obj: Record<string, any> = {};
@@ -153,8 +152,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         containerStack[containerStack.length - 1][internal].definition as any
       ).shape[parentKey];
 
-      console.log(`Starting new object with key: ${parentKey}`);
-      console.log(nextContainer);
+      // console.log(`Starting new object with key: ${parentKey}`);
+      // console.log(nextContainer);
 
       if (nextContainer == null) {
         throwMalformedError(`Key: ${parentKey} not expected in container`);
@@ -178,9 +177,9 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
           (schema: HashbrownType) =>
             s.DISCRIMINATOR in (schema[internal].definition as any).shape,
         );
-        console.log(
-          `Found discriminators in schema in current container: ${allHaveDiscriminators} `,
-        );
+        // console.log(
+        //   `Found discriminators in schema in current container: ${allHaveDiscriminators} `,
+        // );
         if (!allHaveDiscriminators) {
           throwMalformedError(`All schemata in AnyOf must have discriminators`);
         }
@@ -197,24 +196,24 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         skipBlank();
         index++; // skip colon
         try {
-          console.log(`Handling key: ${key}`);
+          // console.log(`Handling key: ${key}`);
 
           if (key === s.DISCRIMINATOR) {
             const value = parseAny(key, false, false);
-            console.log(
-              `Noting discriminator key of: ${key} and value of: ${value}`,
-            );
+            // console.log(
+            //   `Noting discriminator key of: ${key} and value of: ${value}`,
+            // );
             discriminatorValue = value;
             const currentContainer = containerStack[containerStack.length - 1];
 
             const matchingSchema = (currentContainer as any).filter(
               (schema: HashbrownType) => {
-                console.log('in filter');
-                console.log(
-                  (schema[internal].definition as any).shape[s.DISCRIMINATOR][
-                    internal
-                  ].definition.value,
-                );
+                // console.log('in filter');
+                // console.log(
+                //   (schema[internal].definition as any).shape[s.DISCRIMINATOR][
+                //     internal
+                //   ].definition.value,
+                // );
                 return (
                   (schema[internal].definition as any).shape?.[s.DISCRIMINATOR][
                     internal
@@ -223,13 +222,13 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
               },
             );
 
-            console.log(
-              `Found matching schema in current container for ${discriminatorValue}: ${!!matchingSchema}`,
-            );
+            // console.log(
+            //   `Found matching schema in current container for ${discriminatorValue}: ${!!matchingSchema}`,
+            // );
 
             if (matchingSchema.length > 0) {
-              console.log('Adding schema for discriminator');
-              console.log(matchingSchema);
+              // console.log('Adding schema for discriminator');
+              // console.log(matchingSchema);
               containerStack.push(matchingSchema[0]);
               obj[key] = value;
             } else {
@@ -246,8 +245,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
             const value = parseAny(key, currentKeyAllowsIncomplete, false);
 
-            console.log('Value:');
-            console.log(value);
+            // console.log('Value:');
+            // console.log(value);
             obj[key] = value;
           }
         } catch (e) {
@@ -267,43 +266,43 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     // Unless it's an AnyOf, then go ahead and pop
     if (!insideArray || discriminatorValue) {
       // Done with this container, so pop off stack
-      //   containerStack.pop();
-      const completedContainer = containerStack.pop();
-      console.log(
-        `Completed container: ${completedContainer?.[internal].definition.description}`,
-      );
+      containerStack.pop();
+      // const completedContainer = containerStack.pop();
+      // console.log(
+      //   `Completed container: ${completedContainer?.[internal].definition.description}`,
+      // );
     } else {
-      console.log(
-        'Inside array. Object completed, but keeping container stack',
-      );
+      // console.log(
+      //   'Inside array. Object completed, but keeping container stack',
+      // );
     }
     return obj;
   };
 
   const parseArr = (currentKey: string, allowsIncomplete: boolean) => {
     index++; // skip initial bracket
-    console.log('in parseArr');
+    // console.log('in parseArr');
     const arr = [];
 
-    console.log('Array container: ');
-    console.log(
-      (containerStack[containerStack.length - 1][internal].definition as any)
-        .shape[currentKey][internal].definition.element,
-    );
+    // console.log('Array container: ');
+    // console.log(
+    //   (containerStack[containerStack.length - 1][internal].definition as any)
+    //     .shape[currentKey][internal].definition.element,
+    // );
 
-    console.log(
-      `Is object? ${s.isObjectType(
-        (containerStack[containerStack.length - 1][internal].definition as any)
-          .shape[currentKey][internal].definition.element,
-      )}`,
-    );
+    // console.log(
+    //   `Is object? ${s.isObjectType(
+    //     (containerStack[containerStack.length - 1][internal].definition as any)
+    //       .shape[currentKey][internal].definition.element,
+    //   )}`,
+    // );
 
-    console.log(
-      `Is anyOf? ${s.isAnyOfType(
-        (containerStack[containerStack.length - 1][internal].definition as any)
-          .shape[currentKey][internal].definition.element,
-      )}`,
-    );
+    // console.log(
+    //   `Is anyOf? ${s.isAnyOfType(
+    //     (containerStack[containerStack.length - 1][internal].definition as any)
+    //       .shape[currentKey][internal].definition.element,
+    //   )}`,
+    // );
 
     let containerNeedsPopping = false;
     let contentsAllowIncomplete = false;
@@ -326,7 +325,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
           .shape[currentKey][internal].definition.element,
       )
     ) {
-      console.log('pushing anyOf array to container stack');
+      // console.log('pushing anyOf array to container stack');
       containerStack.push(
         (containerStack[containerStack.length - 1][internal].definition as any)
           .shape[currentKey][internal].definition.element[internal].definition
@@ -334,20 +333,20 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       );
       containerNeedsPopping = true;
     } else {
-      console.log(
-        (contentsAllowIncomplete = (
-          containerStack[containerStack.length - 1][internal].definition as any
-        ).shape[currentKey][internal].definition.element),
-      );
+      // console.log(
+      //   (contentsAllowIncomplete = (
+      //     containerStack[containerStack.length - 1][internal].definition as any
+      //   ).shape[currentKey][internal].definition.element),
+      // );
       // It's not an object, so check if it is a streaming primitive
       contentsAllowIncomplete = isStreaming(
         (containerStack[containerStack.length - 1][internal].definition as any)
           .shape[currentKey],
       );
 
-      console.log(
-        `Array primitive content allows streaming: ${contentsAllowIncomplete}`,
-      );
+      // console.log(
+      //   `Array primitive content allows streaming: ${contentsAllowIncomplete}`,
+      // );
     }
 
     // TODO: what if its an array of arrays?
