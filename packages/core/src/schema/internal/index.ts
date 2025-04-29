@@ -39,3 +39,4 @@ export { parse } from './parse';
 export * as streaming from './streaming';
 export { toJsonSchema } from './toJsonSchema';
 export { toOpenApi } from './toOpenAPI';
+export { toTypeScript } from './toTypeScript';

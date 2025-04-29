@@ -22,7 +22,7 @@ export type RenderableMessage = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace RichChat {
+export namespace UiChat {
   export type AssistantMessage = {
     role: 'assistant';
     content: ComponentTree[];
@@ -39,17 +39,17 @@ export namespace RichChat {
   };
 
   export type Message =
-    | RichChat.ToolCallMessage
-    | RichChat.AssistantMessage
+    | UiChat.ToolCallMessage
+    | UiChat.AssistantMessage
     | Chat.UserMessage
     | Chat.SystemMessage;
 }
 
-export interface RichChatResource extends ChatResource {
-  messages: Signal<RichChat.Message[]>;
+export interface UiChatResource extends ChatResource {
+  messages: Signal<UiChat.Message[]>;
 }
 
-export function richChatResource(args: {
+export function uiChatResource(args: {
   components: ExposedComponent<any>[];
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
@@ -57,7 +57,7 @@ export function richChatResource(args: {
   messages?: Chat.Message[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: BoundTool<string, any>[];
-}): RichChatResource {
+}): UiChatResource {
   const ui = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
@@ -81,6 +81,8 @@ export function richChatResource(args: {
         Today's date is ${new Date().toLocaleDateString()}.
 
         NEVER use ANY newline strings such as "\\n" or "\\\\n" in your response.
+        In fact, avoid any non-standard whitespace characters in your response.
+        This is critically important. 
         `,
       },
     ],
@@ -90,7 +92,7 @@ export function richChatResource(args: {
   const messages = computed(() => {
     const messages = chat.value();
 
-    return messages.flatMap((message): RichChat.Message[] => {
+    return messages.flatMap((message): UiChat.Message[] => {
       if (message.role === 'tool') {
         return [];
       }
@@ -123,14 +125,14 @@ export function richChatResource(args: {
               }, {} as TagNameRegistry) ?? {},
           };
 
-          const simpleMessage: RichChat.AssistantMessage = {
+          const simpleMessage: UiChat.AssistantMessage = {
             role: 'assistant',
             ...renderableMessage,
           };
           return [simpleMessage];
         }
         const toolCallMessages = toolCalls.flatMap(
-          (toolCall): Array<RichChat.ToolCallMessage> => {
+          (toolCall): Array<UiChat.ToolCallMessage> => {
             const toolCallMessage = messages.find(
               (t): t is Chat.ToolMessage =>
                 t.role === 'tool' && t.tool_call_id === toolCall.id,
