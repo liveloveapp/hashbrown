@@ -1,8 +1,21 @@
 import { Chat, s } from '@hashbrownai/core';
 import OpenAI, { AzureOpenAI } from 'openai';
 
+export interface AzureClient {
+  stream: {
+    text: (
+      apiKey: string,
+      endpoint: string,
+      apiVersion: string,
+      request: Chat.CompletionCreateParams,
+    ) => Chat.CompletionChunkResponse;
+  };
+}
+
 export async function* text(
   apiKey: string,
+  endpoint: string,
+  apiVersion: string,
   request: Chat.CompletionCreateParams,
 ): Chat.CompletionChunkResponse {
   const { messages, model, max_tokens, temperature, tools, response_format } =
@@ -10,8 +23,8 @@ export async function* text(
 
   const client = new AzureOpenAI({
     apiKey,
-    endpoint: 'https://ai-hashbrowndev507071463475.openai.azure.com/',
-    apiVersion: '2024-04-01-preview',
+    endpoint,
+    apiVersion,
     deployment: model,
   });
 

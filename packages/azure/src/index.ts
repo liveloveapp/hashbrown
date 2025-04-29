@@ -1,7 +1,6 @@
-import { VendorClient } from '@hashbrownai/core';
-import { text } from './stream/text.fn';
+import { AzureClient, text } from './stream/text.fn';
 
-export const HashbrownAzure: VendorClient = {
+export const HashbrownAzure: AzureClient = {
   stream: {
     text,
   },
