@@ -2,28 +2,49 @@
   "name": "useUiChat",
   "canonicalReference": "@hashbrownai/react!useUiChat:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/lib/use-ui-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useUiChat:function(1)",
-      "docComment": "/**\n * @todo U.G. Wilson - This is now actually a StructuredChat since it has a response schema. Convert it.\n */\n",
+      "docComment": "",
       "excerptTokens": [
         { "kind": "Content", "text": "useUiChat: (options: " },
         {
           "kind": "Reference",
           "text": "UiChatOptions",
-          "canonicalReference": "@hashbrownai/react!UiChatOptions:interface"
+          "canonicalReference": "@hashbrownai/react!~UiChatOptions:interface"
         },
         { "kind": "Content", "text": ") => " },
         { "kind": "Content", "text": "{\n    messages: " },
         {
           "kind": "Reference",
           "text": "UiChat.Message",
-          "canonicalReference": "@hashbrownai/react!UiChat.Message:type"
+          "canonicalReference": "@hashbrownai/react!~UiChat.Message:type"
         },
-        { "kind": "Content", "text": "[];\n    setMessages: (messages: " },
+        { "kind": "Content", "text": "[];\n    setComponents: " },
+        {
+          "kind": "Reference",
+          "text": "React.Dispatch",
+          "canonicalReference": "!React.Dispatch:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "React.SetStateAction",
+          "canonicalReference": "!React.SetStateAction:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "ExposedComponent",
+          "canonicalReference": "!unknown"
+        },
+        {
+          "kind": "Content",
+          "text": "<any>[]>>;\n    setMessages: (messages: "
+        },
         {
           "kind": "Reference",
           "text": "Chat.Message",
@@ -55,11 +76,26 @@
         },
         {
           "kind": "Content",
-          "text": " | null;\n    isReloading: boolean;\n    stop: () => void;\n}"
-        }
+          "text": " | null;\n    stop: () => void;\n    reload: () => void;\n    output: "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": " | undefined;\n    setOutput: (output: "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": " | undefined) => void;\n}" }
       ],
-      "fileUrlPath": "../dist/packages/react/lib/use-ui-chat.d.ts",
-      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 14 },
+      "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 24 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
@@ -79,7 +115,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "@todo U.G. Wilson - This is now actually a StructuredChat since it has a response schema. Convert it.\n",
+        "summary": "",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

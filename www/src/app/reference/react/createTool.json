@@ -2,7 +2,7 @@
   "name": "createTool",
   "canonicalReference": "@hashbrownai/react!createTool:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/lib/create-tool.fn.d.ts",
+  "fileUrlPath": "../dist/packages/react/create-tool.fn.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -30,7 +30,7 @@
         {
           "kind": "Reference",
           "text": "BoundTool",
-          "canonicalReference": "@hashbrownai/react!BoundTool:class"
+          "canonicalReference": "@hashbrownai/react!~BoundTool:class"
         },
         { "kind": "Content", "text": "<Name, " },
         {
@@ -53,7 +53,7 @@
         { "kind": "Content", "text": ">>>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/lib/create-tool.fn.d.ts",
+      "fileUrlPath": "../dist/packages/react/create-tool.fn.d.ts",
       "returnTypeTokenRange": { "startIndex": 7, "endIndex": 15 },
       "releaseTag": "Public",
       "overloadIndex": 1,

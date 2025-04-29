@@ -37,8 +37,14 @@
         },
         {
           "kind": "Content",
-          "text": "[];\n    maxTokens?: number;\n    temperature?: number;\n    responseFormat?: object;\n    abortSignal?: "
+          "text": "[];\n    maxTokens?: number;\n    temperature?: number;\n    responseFormat?: "
         },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+        },
+        { "kind": "Content", "text": ";\n    abortSignal: " },
         {
           "kind": "Reference",
           "text": "AbortSignal",
@@ -47,22 +53,10 @@
         { "kind": "Content", "text": ";\n    middleware: " },
         {
           "kind": "Reference",
-          "text": "Array",
-          "canonicalReference": "!Array:interface"
+          "text": "ChatMiddleware",
+          "canonicalReference": "@hashbrownai/core!ChatMiddleware:interface"
         },
-        { "kind": "Content", "text": "<(requestInit: " },
-        {
-          "kind": "Reference",
-          "text": "RequestInit",
-          "canonicalReference": "!RequestInit:interface"
-        },
-        { "kind": "Content", "text": ") => " },
-        {
-          "kind": "Reference",
-          "text": "RequestInit",
-          "canonicalReference": "!RequestInit:interface"
-        },
-        { "kind": "Content", "text": ">;\n}" },
+        { "kind": "Content", "text": "[];\n}" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
@@ -79,13 +73,13 @@
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../packages/core/src/api/generateNextMessage.ts",
-      "returnTypeTokenRange": { "startIndex": 17, "endIndex": 21 },
+      "returnTypeTokenRange": { "startIndex": 15, "endIndex": 19 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "config",
-          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 16 },
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 14 },
           "isOptional": false
         }
       ],

@@ -1,5 +1,5 @@
 import { Inject, Injectable, InjectionToken } from '@angular/core';
-import { Chat } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { Observable } from 'rxjs';
 import { generateNextMessage } from '@hashbrownai/core';
 
@@ -31,7 +31,9 @@ export class FetchService {
           // @todo: add middleware
           middleware: [],
           abortSignal: abortController.signal,
-          responseFormat: request.response_format,
+          responseFormat: request.response_format as
+            | s.HashbrownType
+            | undefined,
         })) {
           observer.next(chunk);
         }

@@ -216,12 +216,12 @@ function processToolCallMessage(
           (result): Chat.ToolMessage => ({
             role: 'tool',
             content: {
-              type: 'success',
+              status: 'fulfilled',
               /**
                * @todo Mike Ryan - Make sure this is actually
                * an object that can be serialized to JSON.
                */
-              content: result as object,
+              value: result as object,
             },
             tool_call_id: toolCall.id,
             tool_name: toolCall.function.name,
@@ -231,12 +231,8 @@ function processToolCallMessage(
           return of({
             role: 'tool',
             content: {
-              type: 'error',
-              /**
-               * @todo Mike Ryan - Find a more rigid way to serialize
-               * errors back to the LLM.
-               */
-              error: err.message,
+              status: 'rejected',
+              reason: err.message,
             },
             tool_call_id: toolCall.id,
             tool_name: toolCall.function.name,
@@ -290,14 +286,14 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
 
     return config.maxTokens();
   });
-  const computedResponseFormat = computed(() => {
+  const computedResponseFormat = computed((): s.HashbrownType | undefined => {
     const responseFormat = config.responseFormat;
 
     if (!responseFormat) {
       return undefined;
     }
 
-    return s.toJsonSchema(responseFormat);
+    return responseFormat;
   });
 
   effect(() => {

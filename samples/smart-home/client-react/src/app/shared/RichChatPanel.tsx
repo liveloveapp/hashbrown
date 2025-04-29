@@ -1,13 +1,11 @@
+import { Chat, exposeComponent, s } from '@hashbrownai/core';
 import {
-  Chat,
   ChatStatus,
   createTool,
   createToolWithArgs,
-  exposeComponent,
-  s,
   useUiChat,
 } from '@hashbrownai/react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { LightChatComponent } from '../views/components/LightChatComponent';
 import { Button } from './button';
@@ -92,7 +90,11 @@ export const RichChatPanel = () => {
     }
   }, [messages]);
 
-  const onSubmit = () => {
+  useEffect(() => {
+    console.log(messages);
+  }, [messages]);
+
+  const onSubmit = useCallback(() => {
     // Only submit if there's text
     if (!inputValue.trim()) return;
 
@@ -105,19 +107,29 @@ export const RichChatPanel = () => {
     setInputValue('');
 
     sendMessage(newUserMessage);
-  };
+  }, [inputValue, sendMessage, setInputValue]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Enter (but not on Shift+Enter)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent default behavior (new line)
-      if (status !== ChatStatus.Idle) {
-        stop();
-      } else {
-        onSubmit();
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Submit on Enter (but not on Shift+Enter)
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault(); // Prevent default behavior (new line)
+        if (status !== ChatStatus.Idle) {
+          stop();
+        } else {
+          onSubmit();
+        }
       }
-    }
-  };
+    },
+    [onSubmit, status, stop],
+  );
+
+  const onInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInputValue(e.target.value);
+    },
+    [],
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -136,7 +148,7 @@ export const RichChatPanel = () => {
       <div className="flex flex-col gap-2 px-2">
         <Textarea
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={onInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
