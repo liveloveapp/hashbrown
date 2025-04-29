@@ -11,6 +11,9 @@ const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
 
+const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
+const AZURE_API_VERSION = process.env['AZURE_API_VERSION'] ?? '';
+
 if (!OPENAI_API_KEY) {
   console.warn('OPENAI_API_KEY is not set');
 }
@@ -35,7 +38,12 @@ app.post('/chat', async (req, res) => {
   const request = req.body as Chat.CompletionCreateParams;
 
   // Azure OpenAI Service
-  // const stream = HashbrownAzure.stream.text(AZURE_API_KEY, request);
+  // const stream = HashbrownAzure.stream.text(
+  //   AZURE_API_KEY,
+  //   AZURE_ENDPOINT,
+  //   AZURE_API_VERSION,
+  //   request,
+  // );
 
   // Google Gemini
   // const stream = HashbrownGoogle.stream.text(GOOGLE_API_KEY, request);
