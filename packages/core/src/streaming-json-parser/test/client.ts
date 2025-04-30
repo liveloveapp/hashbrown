@@ -12,9 +12,6 @@ import { s } from '../../schema';
     console.log('Connected');
   });
 
-  // - change parser to make a dict of discriminator values to schema for objects in element.anyOf
-  // -- then, I can find the discriminator as the first field, and figure out what schema to use
-
   const responseSchema = s.object('root', {
     glossary: s.object('glossary', {
       title: s.string('glossary.title'),

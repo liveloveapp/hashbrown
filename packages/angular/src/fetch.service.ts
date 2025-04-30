@@ -33,7 +33,6 @@ export class FetchService {
           abortSignal: abortController.signal,
           responseFormat: request.response_format as s.HashbrownType,
         })) {
-          console.log(chunk);
           observer.next(chunk);
         }
 
