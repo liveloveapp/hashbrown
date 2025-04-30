@@ -1,6 +1,8 @@
 # React Quick Start
 
-hashbrown is an open source library for building meaningful AI experiences with React.
+Hashbrown for React is an open source library for building meaningful AI experiences with React.
+
+---
 
 ## Key Concepts
 
@@ -34,7 +36,7 @@ So, grab an API key and follow along.
 ## Install
 
 ```sh
-npm install @hashbrown/core @hashbrown/angular
+npm install @hashbrownai/core @hashbrownai/react
 ```
 
 ---
@@ -44,21 +46,59 @@ npm install @hashbrown/core @hashbrown/angular
 The @hashbrownai/react!useChat:function function is the main resource for interacting with a Large Language Model (LLM) via text.
 It provides a set of methods for sending and receiving messages, as well as managing the chat state.
 
-<www-code-example header="main.ts">
+<www-code-example header="chat-component.tsx">
+
+```tsx
+import { useChat } from '@hashbrownai/react';
+import { useEffect } from 'react';
+
+export const ChatComponent = () => {
+  const { messages, sendMessage } = useChat({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a helpful assistant that can answer questions and help with tasks.',
+      },
+    ],
+  });
+
+  useEffect(() => {
+    sendMessage({
+      role: 'user',
+      content: 'Hello, how are you?',
+    });
+  }, []);
+
+  return (
+    <div>
+      <ul>
+        {messages.map((message, index) => (
+          <li key={index}>{message.content}</li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+```
+
+</www-code-example>
+
+<www-code-example header="app.tsx">
 
 ```ts
-const { sendMessage } = useChat({
-  model: 'gpt-4o',
-  messages: [
-    {
-      role: 'system',
-      content:
-        'You are a helpful assistant that can answer questions and help with tasks.',
-    },
-  ]
-});
+import { HashbrownProvider } from '@hashbrownai/react';
+import { ChatComponent } from './chat-component';
 
-sendMessage({ role: 'user ', content: 'Show all lights' });
+export const App = () => {
+  return (
+    <HashbrownProvider url="http://localhost:3000/chat">
+      <ChatComponent />
+    </HashbrownProvider>
+  );
+};
+
+export default App;
 ```
 
 </www-code-example>
