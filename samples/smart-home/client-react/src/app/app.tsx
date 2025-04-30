@@ -22,7 +22,6 @@ import { ScheduledScenesView } from './views/ScheduledScenesView';
 export function App() {
   const { toast } = useToast();
   const lights = useSmartHomeStore((state) => state.lights);
-  const updateLight = useSmartHomeStore((state) => state.updateLight);
   const scenes = useSmartHomeStore((state) => state.scenes);
   const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
 

@@ -1,0 +1,223 @@
+{
+  "name": "RichChat",
+  "canonicalReference": "@hashbrownai/angular!RichChat:namespace",
+  "kind": "Namespace",
+  "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Namespace",
+      "canonicalReference": "@hashbrownai/angular!RichChat:namespace",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export declare namespace RichChat " }
+      ],
+      "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+      "releaseTag": "Public",
+      "name": "RichChat",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/angular!RichChat.AssistantMessage:type",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "type AssistantMessage = " },
+            {
+              "kind": "Content",
+              "text": "{\n        role: 'assistant';\n        content: string;\n    }"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "releaseTag": "Public",
+          "name": "AssistantMessage",
+          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/angular!RichChat.ComponentMessage:type",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "type ComponentMessage<Name extends "
+            },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ", T> = " },
+            {
+              "kind": "Content",
+              "text": "{\n        role: 'component';\n        name: Name;\n        component: "
+            },
+            {
+              "kind": "Reference",
+              "text": "Type",
+              "canonicalReference": "@angular/core!Type$1:interface"
+            },
+            {
+              "kind": "Content",
+              "text": "<T>;\n        inputs: object;\n    }"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "releaseTag": "Public",
+          "name": "ComponentMessage",
+          "typeParameters": [
+            {
+              "typeParameterName": "Name",
+              "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+            },
+            {
+              "typeParameterName": "T",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+            }
+          ],
+          "typeTokenRange": { "startIndex": 3, "endIndex": 6 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/angular!RichChat.Message:type",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "type Message = " },
+            {
+              "kind": "Reference",
+              "text": "RichChat.ComponentMessage",
+              "canonicalReference": "@hashbrownai/angular!RichChat.ComponentMessage:type"
+            },
+            { "kind": "Content", "text": "<string, unknown> | " },
+            {
+              "kind": "Reference",
+              "text": "RichChat.ToolCallMessage",
+              "canonicalReference": "@hashbrownai/angular!RichChat.ToolCallMessage:type"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "RichChat.AssistantMessage",
+              "canonicalReference": "@hashbrownai/angular!RichChat.AssistantMessage:type"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "Chat.UserMessage",
+              "canonicalReference": "!Chat.UserMessage:type"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "Chat.SystemMessage",
+              "canonicalReference": "!Chat.SystemMessage:type"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "releaseTag": "Public",
+          "name": "Message",
+          "typeTokenRange": { "startIndex": 1, "endIndex": 10 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/angular!RichChat.ToolCallMessage:type",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "type ToolCallMessage = " },
+            {
+              "kind": "Content",
+              "text": "{\n        role: 'tool';\n        name: string;\n        callId: string;\n        isPending: boolean;\n        result?: unknown;\n        error?: string;\n    }"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "releaseTag": "Public",
+          "name": "ToolCallMessage",
+          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

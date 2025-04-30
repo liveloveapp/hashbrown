@@ -1,0 +1,156 @@
+{
+  "name": "ChatStatus",
+  "canonicalReference": "@hashbrownai/react!ChatStatus:enum",
+  "kind": "Enum",
+  "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Enum",
+      "canonicalReference": "@hashbrownai/react!ChatStatus:enum",
+      "docComment": "/**\n * The status of the chat.\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export declare enum ChatStatus " }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+      "releaseTag": "Public",
+      "name": "ChatStatus",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "EnumMember",
+          "canonicalReference": "@hashbrownai/react!ChatStatus.Error:member",
+          "docComment": "/**\n * An error occurred while sending or receiving a message.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "Error = " },
+            { "kind": "Content", "text": "3" }
+          ],
+          "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "releaseTag": "Public",
+          "name": "Error",
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "An error occurred while sending or receiving a message.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "EnumMember",
+          "canonicalReference": "@hashbrownai/react!ChatStatus.Idle:member",
+          "docComment": "/**\n * The chat is idle.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "Idle = " },
+            { "kind": "Content", "text": "0" }
+          ],
+          "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "releaseTag": "Public",
+          "name": "Idle",
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The chat is idle.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "EnumMember",
+          "canonicalReference": "@hashbrownai/react!ChatStatus.Receiving:member",
+          "docComment": "/**\n * The client is receiving a response from the server, typically while streaming.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "Receiving = " },
+            { "kind": "Content", "text": "2" }
+          ],
+          "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "releaseTag": "Public",
+          "name": "Receiving",
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The client is receiving a response from the server, typically while streaming.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "EnumMember",
+          "canonicalReference": "@hashbrownai/react!ChatStatus.Sending:member",
+          "docComment": "/**\n * The client is sending a message to the server.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "Sending = " },
+            { "kind": "Content", "text": "1" }
+          ],
+          "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "releaseTag": "Public",
+          "name": "Sending",
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The client is sending a message to the server.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "The status of the chat.\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

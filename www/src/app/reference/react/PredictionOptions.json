@@ -1,0 +1,175 @@
+{
+  "name": "PredictionOptions",
+  "canonicalReference": "@hashbrownai/react!PredictionOptions:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/react/lib/use-prediction.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/react!PredictionOptions:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface PredictionOptions<OutputSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.ResponseFormat",
+          "canonicalReference": "!Chat.ResponseFormat:type"
+        },
+        { "kind": "Content", "text": "> extends " },
+        {
+          "kind": "Reference",
+          "text": "Omit",
+          "canonicalReference": "!Omit:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "StructuredChatOptions",
+          "canonicalReference": "@hashbrownai/react!StructuredChatOptions:interface"
+        },
+        { "kind": "Content", "text": "<OutputSchema>, 'messages'>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/react/lib/use-prediction.d.ts",
+      "releaseTag": "Public",
+      "typeParameters": [
+        {
+          "typeParameterName": "OutputSchema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "PredictionOptions",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!PredictionOptions#details:member",
+          "docComment": "/**\n * A more detailed description of what is to be predicted.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "details?: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "details",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "A more detailed description of what is to be predicted.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!PredictionOptions#examples:member",
+          "docComment": "/**\n * Example input and output pairs to guide the prediction.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "examples?: " },
+            {
+              "kind": "Content",
+              "text": "{\n        input: string;\n        output: "
+            },
+            {
+              "kind": "Reference",
+              "text": "s.Infer",
+              "canonicalReference": "!s.Infer:type"
+            },
+            { "kind": "Content", "text": "<OutputSchema>;\n    }[]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "examples",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Example input and output pairs to guide the prediction.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!PredictionOptions#input:member",
+          "docComment": "/**\n * The input string to predict from.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "input: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "input",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The input string to predict from.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 7 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

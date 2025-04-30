@@ -1,0 +1,72 @@
+{
+  "name": "usePrediction",
+  "canonicalReference": "@hashbrownai/react!usePrediction:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hooks/use-prediction.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!usePrediction:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "usePrediction: <OutputSchema extends " },
+        {
+          "kind": "Reference",
+          "text": "Chat.ResponseFormat",
+          "canonicalReference": "!Chat.ResponseFormat:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
+        {
+          "kind": "Reference",
+          "text": "PredictionOptions",
+          "canonicalReference": "@hashbrownai/react!~PredictionOptions:interface"
+        },
+        { "kind": "Content", "text": "<OutputSchema>" },
+        { "kind": "Content", "text": ") => " },
+        {
+          "kind": "Reference",
+          "text": "PredictionInterface",
+          "canonicalReference": "@hashbrownai/react!~PredictionInterface:interface"
+        },
+        { "kind": "Content", "text": "<OutputSchema>" }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-prediction.d.ts",
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "OutputSchema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "usePrediction",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

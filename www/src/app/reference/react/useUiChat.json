@@ -1,0 +1,128 @@
+{
+  "name": "useUiChat",
+  "canonicalReference": "@hashbrownai/react!useUiChat:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useUiChat:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "useUiChat: (options: " },
+        {
+          "kind": "Reference",
+          "text": "UiChatOptions",
+          "canonicalReference": "@hashbrownai/react!~UiChatOptions:interface"
+        },
+        { "kind": "Content", "text": ") => " },
+        { "kind": "Content", "text": "{\n    messages: " },
+        {
+          "kind": "Reference",
+          "text": "UiChat.Message",
+          "canonicalReference": "@hashbrownai/react!~UiChat.Message:type"
+        },
+        { "kind": "Content", "text": "[];\n    setComponents: " },
+        {
+          "kind": "Reference",
+          "text": "React.Dispatch",
+          "canonicalReference": "!React.Dispatch:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "React.SetStateAction",
+          "canonicalReference": "!React.SetStateAction:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "ExposedComponent",
+          "canonicalReference": "!unknown"
+        },
+        {
+          "kind": "Content",
+          "text": "<any>[]>>;\n    setMessages: (messages: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        {
+          "kind": "Content",
+          "text": "[]) => void;\n    sendMessage: (message: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        {
+          "kind": "Content",
+          "text": ") => void;\n    status: import('./use-chat')."
+        },
+        {
+          "kind": "Reference",
+          "text": "ChatStatus",
+          "canonicalReference": "@hashbrownai/react!ChatStatus:enum"
+        },
+        { "kind": "Content", "text": ";\n    error: " },
+        {
+          "kind": "Reference",
+          "text": "Error",
+          "canonicalReference": "!Error:interface"
+        },
+        {
+          "kind": "Content",
+          "text": " | null;\n    stop: () => void;\n    reload: () => void;\n    output: "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": " | undefined;\n    setOutput: (output: "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": " | undefined) => void;\n}" }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 24 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isOptional": false
+        }
+      ],
+      "name": "useUiChat",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

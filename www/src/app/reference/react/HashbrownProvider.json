@@ -1,0 +1,65 @@
+{
+  "name": "HashbrownProvider",
+  "canonicalReference": "@hashbrownai/react!HashbrownProvider:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!HashbrownProvider:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "HashbrownProvider: (props: " },
+        {
+          "kind": "Reference",
+          "text": "HashbrownProviderOptions",
+          "canonicalReference": "@hashbrownai/react!~HashbrownProviderOptions:interface"
+        },
+        { "kind": "Content", "text": " & {\n    children: " },
+        {
+          "kind": "Reference",
+          "text": "React.ReactNode",
+          "canonicalReference": "@types/react!React.ReactNode:type"
+        },
+        { "kind": "Content", "text": ";\n}" },
+        { "kind": "Content", "text": ") => " },
+        { "kind": "Content", "text": "import(\"react/jsx-runtime\")." },
+        {
+          "kind": "Reference",
+          "text": "JSX.Element",
+          "canonicalReference": "@types/react!JSX.Element:interface"
+        }
+      ],
+      "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "props",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 5 },
+          "isOptional": false
+        }
+      ],
+      "name": "HashbrownProvider",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

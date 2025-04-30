@@ -31,7 +31,9 @@ export class FetchService {
           // @todo: add middleware
           middleware: [],
           abortSignal: abortController.signal,
-          responseFormat: request.response_format as s.HashbrownType,
+          responseFormat: request.response_format as
+            | s.HashbrownType
+            | undefined,
         })) {
           observer.next(chunk);
         }

@@ -58,24 +58,18 @@ export function updateMessagesWithDelta(
   message: Chat.Message | null,
   delta: Partial<Chat.Message>,
 ): Chat.Message | null {
-  // TODO: how much of this is still needed?
-
   if (message && message.role === 'assistant') {
-    console.log(message);
-    console.log(delta);
     const updatedToolCalls = mergeToolCalls(
       message.tool_calls,
       (delta as Chat.AssistantMessage).tool_calls ?? [],
     );
     const updatedMessage: Chat.Message = {
       ...message,
-      content: (delta.content as any) ?? message.content,
+      content: (message.content ?? '') + (delta.content ?? ''),
       tool_calls: updatedToolCalls,
     };
     return updatedMessage;
   } else if (delta.role === 'assistant') {
-    console.log(message);
-    console.log(delta);
     return {
       role: 'assistant',
       content: delta.content ?? '',

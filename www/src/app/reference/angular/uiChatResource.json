@@ -1,0 +1,93 @@
+{
+  "name": "UiChatResource",
+  "canonicalReference": "@hashbrownai/angular!UiChatResource:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/angular!UiChatResource:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UiChatResource extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "ChatResource",
+          "canonicalReference": "@hashbrownai/angular!ChatResource:interface"
+        },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+      "releaseTag": "Public",
+      "name": "UiChatResource",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!UiChatResource#messages:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "messages: " },
+            {
+              "kind": "Reference",
+              "text": "Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "UiChat.Message",
+              "canonicalReference": "@hashbrownai/angular!UiChat.Message:type"
+            },
+            { "kind": "Content", "text": "[]>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "messages",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 5 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 2 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

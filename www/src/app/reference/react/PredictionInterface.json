@@ -1,0 +1,101 @@
+{
+  "name": "PredictionInterface",
+  "canonicalReference": "@hashbrownai/react!PredictionInterface:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/react/lib/use-prediction.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/react!PredictionInterface:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface PredictionInterface<OutputSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.ResponseFormat",
+          "canonicalReference": "!Chat.ResponseFormat:type"
+        },
+        { "kind": "Content", "text": "> extends " },
+        {
+          "kind": "Reference",
+          "text": "StructuredChatInterface",
+          "canonicalReference": "@hashbrownai/react!StructuredChatInterface:interface"
+        },
+        { "kind": "Content", "text": "<OutputSchema>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/react/lib/use-prediction.d.ts",
+      "releaseTag": "Public",
+      "typeParameters": [
+        {
+          "typeParameterName": "OutputSchema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "PredictionInterface",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!PredictionInterface#predictions:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "predictions: " },
+            {
+              "kind": "Reference",
+              "text": "s.Infer",
+              "canonicalReference": "!s.Infer:type"
+            },
+            { "kind": "Content", "text": "<OutputSchema>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "predictions",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 5 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

@@ -5,8 +5,8 @@ import {
   ExposedComponent,
   s,
 } from '@hashbrownai/core';
-import React, { useCallback, useMemo } from 'react';
-import { ChatOptions } from './use-chat';
+import React, { useCallback, useMemo, useState } from 'react';
+import { UseChatOptions } from './use-chat';
 import { useStructuredChat } from './use-structured-chat';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -29,20 +29,20 @@ export namespace UiChat {
     | UiChat.ToolCallMessage
     | UiChat.AssistantMessage
     | Chat.UserMessage
+    | Chat.AssistantMessage
     | Chat.SystemMessage;
 }
 
-export interface UiChatOptions extends Omit<ChatOptions, 'messages'> {
+export interface UiChatOptions extends Omit<UseChatOptions, 'messages'> {
   components: ExposedComponent<any>[];
 }
 
-/**
- * @todo U.G. Wilson - This is now actually a StructuredChat since it has a response schema. Convert it.
- */
 export const useUiChat = (options: UiChatOptions) => {
+  const { components: initialComponents, ...chatOptions } = options;
+  const [components, setComponents] = useState(initialComponents);
   const elements = useMemo(
-    () => createComponentSchema(options.components),
-    [options.components],
+    () => createComponentSchema(components),
+    [components],
   );
   const ui = useMemo(() => {
     return s.object('UI', {
@@ -50,7 +50,8 @@ export const useUiChat = (options: UiChatOptions) => {
     });
   }, [elements]);
 
-  const systemMessage = `
+  const systemMessage = useMemo(() => {
+    return `
         You are chatbot chatting with a human on my web app. Please be
         curteuous, helpful, and friendly. Try to answer all questions
         to the best of your ability. Keep answers concise and to the point.
@@ -62,9 +63,10 @@ export const useUiChat = (options: UiChatOptions) => {
 
         NEVER use ANY newline strings such as "\\n" or "\\\\n" in your response.
         `;
+  }, []);
 
   const chat = useStructuredChat({
-    ...options,
+    ...chatOptions,
     messages: [
       {
         role: 'system',
@@ -72,30 +74,16 @@ export const useUiChat = (options: UiChatOptions) => {
       },
     ],
     output: ui,
-    tools: [...(options.tools ?? [])],
   });
-
-  const findToolCallMessage = useCallback(
-    (toolCallId: string) => {
-      return chat.messages.find(
-        (t): t is Chat.ToolMessage =>
-          t.role === 'tool' && t.tool_call_id === toolCallId,
-      );
-    },
-    [chat.messages],
-  );
-
   const buildContent = useCallback(
     (
       nodes: Array<s.Infer<typeof elements>>,
       parentKey = '',
     ): React.ReactElement[] => {
-      console.log('in buildContent');
-      console.log(nodes);
       const elements = nodes.map((element, index) => {
         const componentName = element.$tagName;
         const componentInputs = element.$props;
-        const componentType = options.components?.find(
+        const componentType = components?.find(
           (c) => c.name === componentName,
         )?.component;
         const key = `${parentKey}_${index}`;
@@ -117,12 +105,19 @@ export const useUiChat = (options: UiChatOptions) => {
 
       return elements;
     },
-    [options.components],
+    [components],
   );
 
   const uiChatMessages = useMemo(() => {
-    console.log('in uiChatMessages');
+    const findToolCallMessage = (toolCallId: string) => {
+      return chat.messages.find(
+        (t): t is Chat.ToolMessage =>
+          t.role === 'tool' && t.tool_call_id === toolCallId,
+      );
+    };
+
     return chat.messages.flatMap((message, index): UiChat.Message[] => {
+      console.log(message);
       if (message.role === 'tool' || message.role === 'system') {
         return [];
       }
@@ -130,55 +125,61 @@ export const useUiChat = (options: UiChatOptions) => {
         return [message];
       }
       if (message.role === 'assistant') {
-        console.log(message);
         const toolCalls = message.tool_calls ?? [];
 
-        if (message.content && message.content.ui) {
+        const toolCallMessages = toolCalls.map(
+          (toolCall): UiChat.ToolCallMessage => {
+            const toolCallMessage = findToolCallMessage(toolCall.id);
+            const toolName = toolCall.function.name;
+            const toolContent = toolCallMessage?.content;
+            const toolResult =
+              toolContent && toolContent.status === 'fulfilled'
+                ? toolContent.value
+                : undefined;
+            const toolError =
+              toolContent && toolContent.status === 'rejected'
+                ? toolContent.reason
+                : undefined;
+
+            return {
+              role: 'tool',
+              name: toolName,
+              callId: toolCall.id,
+              isPending: toolResult === undefined,
+              result: toolResult,
+              error: toolError,
+            };
+          },
+        );
+
+        if (
+          message.content &&
+          (message as any).content !== '' &&
+          message.content.ui
+        ) {
           const renderedMessage: UiChat.AssistantMessage = {
             role: 'assistant',
             // eslint-disable-next-line react/jsx-no-useless-fragment
             content: <>{...buildContent(message.content.ui, `${index}`)}</>,
           };
 
-          return [renderedMessage];
+          return [...toolCallMessages, renderedMessage];
         }
-
-        const toolCallMessages = toolCalls.flatMap(
-          (toolCall): Array<UiChat.ToolCallMessage> => {
-            const toolCallMessage = findToolCallMessage(toolCall.id);
-            const toolName = toolCall.function.name;
-            const toolContent = toolCallMessage?.content;
-            const toolResult =
-              toolContent && toolContent.type === 'success'
-                ? toolContent.content
-                : undefined;
-            const toolError =
-              toolContent && toolContent.type === 'error'
-                ? toolContent.error
-                : undefined;
-
-            return [
-              {
-                role: 'tool',
-                name: toolName,
-                callId: toolCall.id,
-                isPending: toolResult === undefined,
-                result: toolResult,
-                error: toolError,
-              },
-            ];
-          },
-        );
 
         return toolCallMessages;
       }
 
       throw new Error(`Unknown message role. ${(message as any).role}`);
     });
-  }, [buildContent, chat.messages, findToolCallMessage]);
+  }, [buildContent, chat.messages]);
 
-  return {
-    ...chat,
-    messages: uiChatMessages,
-  };
+  const result = useMemo(() => {
+    return {
+      ...chat,
+      messages: uiChatMessages,
+      setComponents,
+    };
+  }, [chat, uiChatMessages, setComponents]);
+
+  return result;
 };

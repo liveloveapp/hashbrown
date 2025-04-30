@@ -5,18 +5,44 @@ import { BoundTool } from '../create-tool.fn';
 import { HashbrownContext } from '../hashbrown-provider';
 import { createToolDefinitions, updateMessagesWithDelta } from '../utilities';
 
+/**
+ * The status of the chat.
+ */
 export enum ChatStatus {
-  Sending,
-  Receiving,
+  /**
+   * The chat is idle.
+   */
   Idle,
+
+  /**
+   * The client is sending a message to the
+   * server.
+   */
+  Sending,
+
+  /**
+   * The client is receiving a response from
+   * the server, typically while streaming.
+   */
+  Receiving,
+
+  /**
+   * An error occurred while sending or receiving
+   * a message.
+   */
   Error,
 }
 
-export interface ChatOptions {
+/**
+ * Options for the `useChat` hook.
+ */
+export interface UseChatOptions {
   /**
    * The LLM model to use for the chat.
+   *
    */
   model: string;
+
   /**
    * The initial messages for the chat.
    * default: 1.0
@@ -27,11 +53,14 @@ export interface ChatOptions {
    * default: []
    */
   tools?: BoundTool<string, any>[];
+
   /**
    * The output schema for the chat.
    * default: undefined
+   * @internal
    */
   θoutput?: s.HashbrownType;
+
   /**
    * The temperature for the chat.
    */
@@ -50,27 +79,115 @@ export interface ChatOptions {
   debounceTime?: number;
 }
 
-export interface ChatInterface {
+/**
+ * Represents the result of the `useChat` hook.
+ */
+export interface UseChatResult {
+  /**
+   * An array of chat messages.
+   */
   messages: Chat.Message[];
+
+  /**
+   * Function to update the chat messages.
+   * @param messages - The new array of chat messages.
+   */
   setMessages: (messages: Chat.Message[]) => void;
+
+  /**
+   * Function to send a new chat message.
+   * @param message - The chat message to send.
+   */
   sendMessage: (message: Chat.Message) => void;
+
+  /**
+   * Reload the chat, useful for retrying when an error occurs.
+   */
+  reload: () => void;
+
+  /**
+   * The current status of the chat.
+   */
   status: ChatStatus;
+
+  /**
+   * The error encountered during chat operations, if any.
+   */
   error: Error | null;
-  isReloading: boolean;
+
+  /**
+   * Function to stop the current chat operation.
+   */
   stop: () => void;
+
+  /**
+   * Function to update the tools available for the chat.
+   * @param tools - The new array of tools.
+   */
   setTools: (tools: BoundTool<string, any>[]) => void;
+
+  /**
+   * Function to set the output schema for the chat.
+   * @param output - The new output schema or undefined.
+   * @internal
+   */
   θsetOutput: (output: s.HashbrownType | undefined) => void;
+
+  /**
+   * The output schema for the chat.
+   */
+  θoutput: s.HashbrownType | undefined;
 }
 
-export const useChat = ({
-  model,
-  messages: initialMessages,
-  tools: initialTools,
-  θoutput: initialOutput,
-  temperature,
-  maxTokens,
-  debounceTime = 150,
-}: ChatOptions): ChatInterface => {
+/**
+ * Custom React hook to manage chat interactions within a HashbrownProvider context.
+ * This hook provides functionalities to send messages, handle tool calls, and manage chat status.
+ *
+ * @param {UseChatOptions} options - Configuration options for the chat.
+ * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.
+ *
+ * @example
+ * ```tsx
+ * const MyChatComponent = () => {
+ *   const { messages, sendMessage, status } = useChat({
+ *     model: 'gpt-4o',
+ *     messages: [
+ *       {
+ *         role: 'system',
+ *         content: 'You are a helpful assistant.',
+ *       },
+ *     ],
+ *     tools: [],
+ *   });
+ *
+ *   const handleSendMessage = () => {
+ *     sendMessage({ role: 'user', content: 'Hello, how are you?' });
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       <button onClick={handleSendMessage}>Send Message</button>
+ *       <div>Status: {status}</div>
+ *       <ul>
+ *         {messages.map((msg, index) => (
+ *           <li key={index}>{msg.content}</li>
+ *         ))}
+ *       </ul>
+ *     </div>
+ *   );
+ * };
+ * ```
+ */
+export const useChat = (options: UseChatOptions): UseChatResult => {
+  const {
+    model,
+    messages: initialMessages,
+    tools: initialTools,
+    θoutput: initialOutput,
+    temperature,
+    maxTokens,
+    debounceTime = 150,
+  } = options;
   const context = useContext(HashbrownContext);
 
   if (!context) {
@@ -80,13 +197,19 @@ export const useChat = ({
   const [nonStreamingMessages, setMessages] = useState<Chat.Message[]>(
     initialMessages ?? [],
   );
+  /**
+   * This is a temporary state container for the message that is currently
+   * being streamed into the chat. It's held in a container to prevent the
+   * useEffect call responsible for generating the next message from re-running
+   * when the streaming message is updated.
+   */
   const [streamingMessage, setStreamingMessage] = useState<Chat.Message | null>(
     null,
   );
   const [tools, setTools] = useState<BoundTool<string, any>[]>(
     initialTools ?? [],
   );
-  const [output, θsetOutput] = useState<s.HashbrownType | undefined>(
+  const [output, setOutput] = useState<s.HashbrownType | undefined>(
     initialOutput,
   );
   const [status, setStatus] = useState<ChatStatus>(ChatStatus.Idle);
@@ -173,7 +296,6 @@ export const useChat = ({
           responseFormat: output,
           messages: nonStreamingMessages,
         })) {
-          console.log(chunk);
           onChunk(chunk);
         }
         onComplete();
@@ -198,16 +320,10 @@ export const useChat = ({
 
   const processToolCallMessage = useCallback(
     async (message: Chat.AssistantMessage) => {
-      /**
-       * @todo U.G. Wilson - this whole function is a mess.
-       */
       if (!message || !message.tool_calls) return;
 
       const toolCalls = message.tool_calls;
 
-      // @todo U.G. Wilson - there is next to zero error handling here nor
-      // validation that this is a json serializable object.
-      // Cheat off Mike's homework when he's done.
       const toolCallResults = toolCalls.map((toolCall) => {
         const tool = tools?.find((t) => t.name === toolCall.function.name);
 
@@ -215,39 +331,26 @@ export const useChat = ({
           throw new Error(`Tool ${toolCall.function.name} not found`);
         }
 
-        return tool.handler(
-          s.parse(
-            tool.schema,
-            // @todo U.G. Wilson - as the tool message is built off the stream
-            // we get SyntaxError: Unexpected end of JSON input errors
-            // until the tool message is completely composed.
-            // This happens because onChunk is setting prevMessages as the
-            // tool message is being composed instead of waiting for the
-            // tool message to be completely composed.  This is slightly desired
-            // because it allows the assistant text to respond as a stream.
-            s.parse(tool.schema, JSON.parse(toolCall.function.arguments)),
-          ),
+        console.log(toolCall);
+
+        const args = s.parse(
+          tool.schema,
+          JSON.parse(toolCall.function.arguments),
         );
+
+        return tool.handler(args);
       });
 
-      const results = await Promise.all(toolCallResults);
+      const results = await Promise.allSettled(toolCallResults);
 
       const toolMessages: Chat.ToolMessage[] = toolCalls.map(
         (toolCall, index) => ({
           role: 'tool',
-          content: {
-            type: 'success',
-            // @todo U.G. Wilson - Make sure this object can be serialized to JSON.
-            content: results[index] as object,
-          },
+          content: results[index],
           tool_call_id: toolCall.id,
           tool_name: toolCall.function.name,
         }),
       );
-
-      // @todo U.G. Wilson - implement the error serialization implied by the
-      // angular implementation to feed back tool calls with error results
-      // back to the LLM.
 
       setMessages((messages) => [...messages, ...toolMessages]);
     },
@@ -276,9 +379,15 @@ export const useChat = ({
 
   const sendMessage = useCallback(
     (message: Chat.Message) => {
+      if (status === ChatStatus.Sending || status === ChatStatus.Receiving) {
+        throw new Error(
+          'Cannot send message while sending or receiving. If this was intentional, call chat.stop() first.',
+        );
+      }
+
       setMessages((messages) => [...messages, message]);
     },
-    [setMessages],
+    [status, setMessages],
   );
 
   const stop = useCallback(() => {
@@ -288,15 +397,32 @@ export const useChat = ({
     }
   }, [abortFn]);
 
+  const reload = useCallback(() => {
+    stop();
+
+    setMessages((messages) => {
+      if (messages.length === 0) return messages;
+
+      const lastMessage = messages[messages.length - 1];
+
+      if (lastMessage.role === 'assistant') {
+        return messages.slice(0, messages.length - 1);
+      }
+
+      return messages;
+    });
+  }, [setMessages, stop]);
+
   return {
     messages,
     setMessages,
     sendMessage,
     status,
     error,
-    isReloading: false,
+    reload,
     stop,
     setTools,
-    θsetOutput,
+    θsetOutput: setOutput,
+    θoutput: output,
   };
 };

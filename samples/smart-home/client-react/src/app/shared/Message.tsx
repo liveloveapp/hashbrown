@@ -19,6 +19,8 @@ export const Message = ({ message }: { message: Chat.Message }) => {
     return;
   }
 
+  console.log(message);
+
   return (
     <div
       className={`flex w-full ${isAssistant ? 'justify-start' : 'justify-end'}`}

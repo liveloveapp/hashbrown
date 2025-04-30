@@ -1,9 +1,9 @@
-import { Chat, s } from '@hashbrownai/core';
-import { ChatOptions, ChatStatus, useChat } from './use-chat';
+import { Chat, s, Tater } from '@hashbrownai/core';
+import { ChatStatus, useChat, UseChatOptions } from './use-chat';
 import { useMemo } from 'react';
 
 export interface StructuredChatOptions<Output extends Chat.ResponseFormat>
-  extends ChatOptions {
+  extends UseChatOptions {
   /**
    * The output schema for the predictions.
    */
@@ -16,8 +16,10 @@ export interface StructuredChatInterface<Output extends Chat.ResponseFormat> {
   sendMessage: (message: Chat.Message) => void;
   status: ChatStatus;
   error: Error | null;
-  isReloading: boolean;
   stop: () => void;
+  reload: () => void;
+  output: s.HashbrownType | undefined;
+  setOutput: (output: s.HashbrownType | undefined) => void;
 }
 
 export const useStructuredChat = <Output extends Chat.ResponseFormat>({
@@ -30,37 +32,39 @@ export const useStructuredChat = <Output extends Chat.ResponseFormat>({
   });
 
   const parsedMessages = useMemo(() => {
+    const streamParser = new Tater.StreamSchemaParser(output);
+
     return chat.messages.reduce(
       (acc, message) => {
-        if (message.role === 'assistant') {
+        if (message.role === 'assistant' && message.content) {
           try {
             console.log(message);
+            const streamResult = streamParser.parse(message.content);
+            console.log(JSON.stringify(streamResult, null, 4));
+
             // const parsedContent = s.parse(
             //   output,
-            //   message.content ? message.content : {},
+            //   JSON.parse(message.content ?? '{}'),
             // );
-
-            // console.log(parsedContent);
-            acc.push({
-              ...message,
-              content: message.content ? message.content : {},
-            });
+            acc.push({ ...message, content: streamResult });
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
-            console.log(error);
             // Do nothing for right now
           }
         } else {
+          console.log(message);
           acc.push(message);
         }
         return acc;
       },
       [] as Chat.Message<s.Infer<Output>>[],
     );
-  }, [chat.messages]);
+  }, [chat.messages, output]);
 
   return {
     ...chat,
     messages: parsedMessages,
+    output: chat.θoutput,
+    setOutput: chat.θsetOutput,
   };
 };
