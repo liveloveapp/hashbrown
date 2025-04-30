@@ -289,9 +289,9 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
   const computedResponseFormat = computed((): s.HashbrownType | undefined => {
     const responseFormat = config.responseFormat;
 
-    //   if (!responseFormat) {
-    //     return undefined;
-    //   }
+    if (!responseFormat) {
+      return undefined;
+    }
 
     return responseFormat;
   });

@@ -48,7 +48,6 @@ export function parse<T extends s.HashbrownType>(
     return object;
   }
   if (s.isObjectType(schema)) {
-    console.log(object);
     if (typeof object !== 'object' || object === null)
       throw new Error(`Expected an object at: ${path.join('.')}`);
     const { shape } = schema[s.internal].definition;
@@ -76,10 +75,6 @@ export function parse<T extends s.HashbrownType>(
         return false;
       }
     });
-
-    console.log(schema[s.internal].definition.options);
-    console.log(object);
-    console.log(path);
 
     if (!isValid) {
       throw new Error(`No matching schema found at: ${path.join('.')}`);

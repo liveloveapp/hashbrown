@@ -47,7 +47,6 @@ export const useStructuredChat = <Output extends Chat.ResponseFormat>({
             // Do nothing for right now
           }
         } else {
-          console.log(message);
           acc.push(message);
         }
         return acc;

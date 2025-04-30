@@ -80,7 +80,6 @@ export const useUiChat = (options: UiChatOptions) => {
       nodes: Array<s.Infer<typeof elements>>,
       parentKey = '',
     ): React.ReactElement[] => {
-      console.log(nodes);
       const elements = nodes.map((element, index) => {
         const key = `${parentKey}_${index}`;
 
@@ -125,7 +124,6 @@ export const useUiChat = (options: UiChatOptions) => {
     };
 
     return chat.messages.flatMap((message, index): UiChat.Message[] => {
-      console.log(message);
       if (message.role === 'tool' || message.role === 'system') {
         return [];
       }

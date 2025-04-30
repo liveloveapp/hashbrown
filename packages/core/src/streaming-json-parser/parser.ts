@@ -170,9 +170,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       // If the next container is an array, we have an AnyOf and need to figure out which schema to
       // reference (if we, in fact, can)
       if (Array.isArray(currentContainer)) {
-        // TODO: try to find and parse the discriminator first thing so we can find the matching schema
         // An array, so try to find the relevant schema by discriminator
-
         const allHaveDiscriminators = (currentContainer as any).every(
           (schema: HashbrownType) =>
             s.DISCRIMINATOR in (schema[internal].definition as any).shape,
@@ -348,8 +346,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       //   `Array primitive content allows streaming: ${contentsAllowIncomplete}`,
       // );
     }
-
-    // TODO: what if its an array of arrays?
 
     try {
       while (jsonString[index] !== ']') {

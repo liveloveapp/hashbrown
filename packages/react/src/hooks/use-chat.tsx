@@ -252,16 +252,6 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
           chunk.choices[0].delta as Chat.Message,
         );
 
-        console.log(_streamingMessage);
-
-        // if (_streamingMessage && _streamingMessage.role === 'assistant') {
-        //   // Go ahead and update the message in state
-        //   console.log('abotu to update state while streaming');
-        //   setMessages((messages) => [
-        //     ...messages.slice(0, -1),
-        //     _streamingMessage!,
-        //   ]);
-        // }
         setStreamingMessage(_streamingMessage);
       };
 
@@ -274,10 +264,7 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
         setStatus(ChatStatus.Idle);
         setMessages((messages) => {
           if (_streamingMessage) {
-            // Assistant messages are updated incrementally
-            // if (_streamingMessage.role !== 'assistant') {
             return [...messages, _streamingMessage];
-            // }
           }
           return messages;
         });
@@ -331,8 +318,6 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
         if (!tool) {
           throw new Error(`Tool ${toolCall.function.name} not found`);
         }
-
-        console.log(toolCall);
 
         const args = s.parse(
           tool.schema,
