@@ -1,10 +1,5 @@
 import { createContext } from 'react';
 
-interface Endpoint {
-  url: string;
-  headers?: Record<string, string>;
-}
-
 export interface HashbrownProviderOptions {
   /**
    * The URL of the Hashbrown server endpoint.
@@ -13,12 +8,16 @@ export interface HashbrownProviderOptions {
   /**
    * The headers to send with the POST request to the Hashbrown endpoint.
    */
-  headers?: Record<string, string>;
+  middleware?: Array<
+    (request: RequestInit) => RequestInit | Promise<RequestInit>
+  >;
 }
 
 interface HashbrownProviderContext {
   url: string;
-  headers?: Record<string, string>;
+  middleware?: Array<
+    (request: RequestInit) => RequestInit | Promise<RequestInit>
+  >;
 }
 
 export const HashbrownContext = createContext<
@@ -30,10 +29,10 @@ export const HashbrownProvider = (
     children: React.ReactNode;
   },
 ) => {
-  const { url, headers, children } = props;
+  const { url, middleware, children } = props;
 
   return (
-    <HashbrownContext.Provider value={{ url, headers }}>
+    <HashbrownContext.Provider value={{ url, middleware }}>
       {children}
     </HashbrownContext.Provider>
   );

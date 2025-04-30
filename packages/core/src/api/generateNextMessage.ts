@@ -1,8 +1,7 @@
-import { Chat } from '../models';
+import { Chat, ChatMiddleware } from '../models';
 import { s } from '../schema';
 import { HashbrownType } from '../schema/internal';
 import { StreamSchemaParser } from '../streaming-json-parser';
-// import { StreamSchemaParser } from '../streaming-json-parser';
 
 /**
  * Asynchronously generates the next message in a chat conversation.
@@ -34,9 +33,9 @@ export async function* generateNextMessage(config: {
   tools?: Chat.Tool[];
   maxTokens?: number;
   temperature?: number;
-  responseFormat?: HashbrownType;
-  abortSignal?: AbortSignal;
-  middleware: Array<(requestInit: RequestInit) => RequestInit>;
+  responseFormat?: s.HashbrownType;
+  abortSignal: AbortSignal;
+  middleware: ChatMiddleware[];
 }): AsyncGenerator<Chat.CompletionChunk> {
   const chatCompletionParams: Chat.CompletionCreateParams = {
     model: config.model,
@@ -49,7 +48,7 @@ export async function* generateNextMessage(config: {
       : undefined,
   };
 
-  const initialRequestInit: RequestInit = {
+  let requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -58,14 +57,15 @@ export async function* generateNextMessage(config: {
     signal: config.abortSignal,
   };
 
-  const resolvedRequestInit = config.middleware.reduce((requestInit, fn) => {
-    return fn(requestInit);
-  }, initialRequestInit);
+  for (const middleware of config.middleware) {
+    if (config.abortSignal?.aborted) {
+      break;
+    }
 
-  const response = await config.fetchImplementation(
-    config.apiUrl,
-    resolvedRequestInit,
-  );
+    requestInit = await middleware(requestInit, config.abortSignal);
+  }
+
+  const response = await config.fetchImplementation(config.apiUrl, requestInit);
 
   if (!response.ok) {
     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -81,9 +81,9 @@ export async function* generateNextMessage(config: {
   console.log('printing responseformat');
   console.log(s.toJsonSchema(config.responseFormat!));
 
-  // const streamParser = config.responseFormat
-  //   ? new StreamSchemaParser(config.responseFormat as any)
-  //   : undefined;
+  const streamParser = config.responseFormat
+    ? new StreamSchemaParser(config.responseFormat as any)
+    : undefined;
 
   while (true) {
     if (config.abortSignal?.aborted) {
@@ -106,17 +106,17 @@ export async function* generateNextMessage(config: {
           const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
           // console.log(jsonData);
 
-          // try {
-          //   // For now, just log things
-          //   if (streamParser && jsonData.choices[0].delta.content) {
-          //     const streamResult = streamParser.parse(
-          //       jsonData.choices[0].delta.content,
-          //     );
-          //     console.log(streamResult);
-          //   }
-          // } catch (e) {
-          //   console.error(e);
-          // }
+          try {
+            // For now, just log things
+            if (streamParser && jsonData.choices[0].delta.content) {
+              const streamResult = streamParser.parse(
+                jsonData.choices[0].delta.content,
+              );
+              console.log(streamResult);
+            }
+          } catch (e) {
+            console.error(e);
+          }
 
           yield jsonData;
         }

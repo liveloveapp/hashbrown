@@ -1,6 +1,6 @@
-export interface AssistantMessage {
+export interface AssistantMessage<AssistantOutput = string> {
   role: 'assistant';
-  content?: string;
+  content?: AssistantOutput;
   tool_calls?: {
     index: number;
     id: string;

@@ -290,15 +290,15 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
 
     return config.maxTokens();
   });
-  // const computedResponseFormat = computed(() => {
-  //   const responseFormat = config.responseFormat;
+  const computedResponseFormat = computed((): s.HashbrownType | undefined => {
+    const responseFormat = config.responseFormat;
 
-  //   if (!responseFormat) {
-  //     return undefined;
-  //   }
+    //   if (!responseFormat) {
+    //     return undefined;
+    //   }
 
-  //   return s.toJsonSchema(responseFormat);
-  // });
+    return responseFormat;
+  });
 
   effect(() => {
     console.log('Current Messages', messagesSignal());
@@ -326,8 +326,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
             tools: toolDefinitions,
             max_tokens: computedMaxTokens(),
             temperature: computedTemperature(),
-            // response_format: computedResponseFormat(),
-            response_format: config.responseFormat,
+            response_format: computedResponseFormat(),
           })
           .pipe(
             catchError((err) => {

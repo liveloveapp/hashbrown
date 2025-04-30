@@ -102,10 +102,13 @@ export function uiChatResource(args: {
         if (toolCalls.length === 0) {
           let content: s.Infer<typeof ui> | undefined;
 
+          console.log(message.content);
+
           try {
             content = s.parse(ui, JSON.parse(message.content ?? ''));
+            console.log(content);
           } catch (error) {
-            // console.error(error);
+            console.error(error);
             return [];
           }
 
