@@ -80,13 +80,21 @@ export const useUiChat = (options: UiChatOptions) => {
       nodes: Array<s.Infer<typeof elements>>,
       parentKey = '',
     ): React.ReactElement[] => {
+      console.log(nodes);
       const elements = nodes.map((element, index) => {
+        const key = `${parentKey}_${index}`;
+
+        if (!('$tagName' in element && '$props' in element)) {
+          return React.createElement(React.Fragment, {
+            key,
+          });
+        }
+
         const componentName = element.$tagName;
         const componentInputs = element.$props;
         const componentType = components?.find(
           (c) => c.name === componentName,
         )?.component;
-        const key = `${parentKey}_${index}`;
 
         if (componentName && componentInputs && componentType) {
           const children: React.ReactNode[] | null = element.$children

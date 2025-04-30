@@ -48,10 +48,6 @@ export interface UseChatOptions {
    * default: 1.0
    */
   messages?: Chat.Message[];
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
   /**
    * The tools to make available use for the chat.
    * default: []
@@ -69,20 +65,12 @@ export interface UseChatOptions {
    * The temperature for the chat.
    */
   temperature?: number;
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
   /**
    * The maximum number of tokens to allow.
    * @todo U.G. Wilson - this is unimplemented.
    * default: 5000
    */
   maxTokens?: number;
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
   /**
    * The debounce time between sends to the endpoint.
    * @todo U.G. Wilson - this is unimplemented.
@@ -266,14 +254,15 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
 
         console.log(_streamingMessage);
 
-        if (_streamingMessage && _streamingMessage.role === 'assistant') {
-          // Go ahead and update the message in state
-          console.log('abotu to update state while streaming');
-          setMessages((messages) => [
-            ...messages.slice(0, -1),
-            _streamingMessage!,
-          ]);
-        }
+        // if (_streamingMessage && _streamingMessage.role === 'assistant') {
+        //   // Go ahead and update the message in state
+        //   console.log('abotu to update state while streaming');
+        //   setMessages((messages) => [
+        //     ...messages.slice(0, -1),
+        //     _streamingMessage!,
+        //   ]);
+        // }
+        setStreamingMessage(_streamingMessage);
       };
 
       const onError = (error: Error) => {
@@ -286,9 +275,9 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
         setMessages((messages) => {
           if (_streamingMessage) {
             // Assistant messages are updated incrementally
-            if (_streamingMessage.role !== 'assistant') {
-              return [...messages, _streamingMessage];
-            }
+            // if (_streamingMessage.role !== 'assistant') {
+            return [...messages, _streamingMessage];
+            // }
           }
           return messages;
         });

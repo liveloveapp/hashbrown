@@ -33,20 +33,14 @@ export const useStructuredChat = <Output extends Chat.ResponseFormat>({
   });
 
   const parsedMessages = useMemo(() => {
-    const streamParser = new Tater.StreamSchemaParser(output);
-
     return chat.messages.reduce(
       (acc, message) => {
         if (message.role === 'assistant' && message.content) {
-          try {
-            console.log(message);
-            const streamResult = streamParser.parse(message.content);
-            console.log(JSON.stringify(streamResult, null, 4));
+          const streamParser = new Tater.StreamSchemaParser(output);
 
-            // const parsedContent = s.parse(
-            //   output,
-            //   JSON.parse(message.content ?? '{}'),
-            // );
+          try {
+            const streamResult = streamParser.parse(message.content);
+
             acc.push({ ...message, content: streamResult });
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
