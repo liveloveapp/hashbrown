@@ -48,6 +48,10 @@ export interface UseChatOptions {
    * default: 1.0
    */
   messages?: Chat.Message[];
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
   /**
    * The tools to make available use for the chat.
    * default: []
@@ -65,12 +69,20 @@ export interface UseChatOptions {
    * The temperature for the chat.
    */
   temperature?: number;
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
   /**
    * The maximum number of tokens to allow.
    * @todo U.G. Wilson - this is unimplemented.
    * default: 5000
    */
   maxTokens?: number;
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
   /**
    * The debounce time between sends to the endpoint.
    * @todo U.G. Wilson - this is unimplemented.
