@@ -1,5 +1,5 @@
 import { s } from '@hashbrownai/core';
-import { ChatStatus, usePrediction } from '@hashbrownai/react';
+import { ChatStatus, useCompletion } from '@hashbrownai/react';
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -54,7 +54,7 @@ export const SceneDialogForm = (
 
   const [input, setInput] = useState('');
 
-  const { predictions, status } = usePrediction({
+  const { predictions, status } = useCompletion({
     input: input,
     details: `Predict the lights that will be added to the scene based on the name. For example,
     if the scene name is "Dim Bedroom Lights", suggest adding any lights that might

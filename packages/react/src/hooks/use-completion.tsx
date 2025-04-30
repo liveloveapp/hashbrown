@@ -1,13 +1,8 @@
-import { Chat, s } from '@hashbrownai/core';
-import { useEffect, useMemo } from 'react';
-import {
-  StructuredChatInterface,
-  StructuredChatOptions,
-  useStructuredChat,
-} from './use-structured-chat';
+import { Chat } from '@hashbrownai/core';
+import { useEffect, useMemo, useState } from 'react';
+import { useChat, UseChatOptions, UseChatResult } from './use-chat';
 
-export interface PredictionOptions<OutputSchema extends Chat.ResponseFormat>
-  extends Omit<StructuredChatOptions<OutputSchema>, 'messages'> {
+export interface UseCompletionOptions extends Omit<UseChatOptions, 'messages'> {
   /**
    * The input string to predict from.
    */
@@ -19,18 +14,24 @@ export interface PredictionOptions<OutputSchema extends Chat.ResponseFormat>
   /**
    * Example input and output pairs to guide the prediction.
    */
-  examples?: { input: string; output: s.Infer<OutputSchema> }[];
+  examples?: { input: string; output: string }[];
 }
 
-export interface PredictionInterface<OutputSchema extends Chat.ResponseFormat>
-  extends StructuredChatInterface<OutputSchema> {
-  predictions: s.Infer<OutputSchema>;
+export interface UseCompletionResult extends UseChatResult {
+  output: string | null;
+  setExamples: (examples: { input: string; output: string }[]) => void;
 }
 
-export const usePrediction = <OutputSchema extends Chat.ResponseFormat>(
-  options: PredictionOptions<OutputSchema>,
-): PredictionInterface<OutputSchema> => {
-  const { stop, setMessages, ...chat } = useStructuredChat(options);
+export const useCompletion = (
+  options: UseCompletionOptions,
+): UseCompletionResult => {
+  const { examples: initialExamples } = options;
+  const [examples, setExamples] = useState<{ input: string; output: string }[]>(
+    initialExamples || [],
+  );
+  const { stop, setMessages, ...chat } = useChat({
+    ...options,
+  });
 
   const systemPrompt = useMemo(
     () =>
@@ -41,8 +42,8 @@ export const usePrediction = <OutputSchema extends Chat.ResponseFormat>(
         options.details
           ? `Here's a more detailed description of what you are predicting:\n ${options.details}\n`
           : '',
-        options.examples
-          ? `Here are examples:\n ${options.examples
+        examples
+          ? `Here are examples:\n ${examples
               .map((example) =>
                 [
                   `Input: ${example.input}`,
@@ -52,7 +53,7 @@ export const usePrediction = <OutputSchema extends Chat.ResponseFormat>(
               .join('\n')}`
           : '',
       ].join('\n'),
-    [options.details, options.examples],
+    [options.details, examples],
   );
 
   const systemMessage: Chat.SystemMessage = useMemo(() => {
@@ -72,12 +73,24 @@ export const usePrediction = <OutputSchema extends Chat.ResponseFormat>(
     ]);
   }, [setMessages, options.input, systemMessage]);
 
+  const output: string | null = useMemo(() => {
+    const message = chat.messages.find(
+      (message) =>
+        message.role === 'assistant' &&
+        !(message.tool_calls && message.tool_calls.length),
+    );
+
+    if (!message) return null;
+    if (typeof message.content !== 'string') return null;
+
+    return message.content;
+  }, [chat.messages]);
+
   return {
     ...chat,
     stop,
     setMessages,
-    predictions: chat.messages
-      .reverse()
-      .find((message) => message.role === 'assistant')?.content,
+    output,
+    setExamples,
   };
 };

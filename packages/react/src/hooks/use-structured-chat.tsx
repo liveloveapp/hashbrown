@@ -1,9 +1,8 @@
 import { Chat, s, Tater } from '@hashbrownai/core';
-
-import { ChatStatus, useChat, UseChatOptions } from './use-chat';
+import { useChat, UseChatOptions, UseChatResult } from './use-chat';
 import { useMemo } from 'react';
 
-export interface StructuredChatOptions<Output extends Chat.ResponseFormat>
+export interface UseStructuredChatOptions<Output extends Chat.ResponseFormat>
   extends UseChatOptions {
   /**
    * The output schema for the predictions.
@@ -11,14 +10,9 @@ export interface StructuredChatOptions<Output extends Chat.ResponseFormat>
   output: Output;
 }
 
-export interface StructuredChatInterface<Output extends Chat.ResponseFormat> {
+export interface UseStructuredChatResult<Output extends Chat.ResponseFormat>
+  extends Omit<UseChatResult, 'messages'> {
   messages: Chat.Message<s.Infer<Output>>[];
-  setMessages: (messages: Chat.Message[]) => void;
-  sendMessage: (message: Chat.Message) => void;
-  status: ChatStatus;
-  error: Error | null;
-  stop: () => void;
-  reload: () => void;
   output: s.HashbrownType | undefined;
   setOutput: (output: s.HashbrownType | undefined) => void;
 }
@@ -26,7 +20,7 @@ export interface StructuredChatInterface<Output extends Chat.ResponseFormat> {
 export const useStructuredChat = <Output extends Chat.ResponseFormat>({
   output,
   ...options
-}: StructuredChatOptions<Output>): StructuredChatInterface<Output> => {
+}: UseStructuredChatOptions<Output>): UseStructuredChatResult<Output> => {
   const chat = useChat({
     ...options,
     θoutput: output,
