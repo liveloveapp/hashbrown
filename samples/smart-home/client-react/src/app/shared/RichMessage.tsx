@@ -1,6 +1,7 @@
 import { UiChat } from '@hashbrownai/react';
 
 export const RichMessage = ({ message }: { message: UiChat.Message }) => {
+  console.log(message);
   const isAssistant = message.role === 'assistant';
   const isSystem = message.role === 'system';
   const isTool = message.role === 'tool';

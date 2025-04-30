@@ -90,8 +90,9 @@ export const useUiChat = (options: UiChatOptions) => {
       nodes: Array<s.Infer<typeof elements>>,
       parentKey = '',
     ): React.ReactElement[] => {
+      console.log('in buildContent');
+      console.log(nodes);
       const elements = nodes.map((element, index) => {
-        console.log(element);
         const componentName = element.$tagName;
         const componentInputs = element.$props;
         const componentType = options.components?.find(
@@ -120,6 +121,7 @@ export const useUiChat = (options: UiChatOptions) => {
   );
 
   const uiChatMessages = useMemo(() => {
+    console.log('in uiChatMessages');
     return chat.messages.flatMap((message, index): UiChat.Message[] => {
       if (message.role === 'tool' || message.role === 'system') {
         return [];
@@ -128,10 +130,10 @@ export const useUiChat = (options: UiChatOptions) => {
         return [message];
       }
       if (message.role === 'assistant') {
+        console.log(message);
         const toolCalls = message.tool_calls ?? [];
 
-        if (message.content) {
-          console.log(message.content);
+        if (message.content && message.content.ui) {
           const renderedMessage: UiChat.AssistantMessage = {
             role: 'assistant',
             // eslint-disable-next-line react/jsx-no-useless-fragment

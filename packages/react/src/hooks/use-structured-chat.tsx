@@ -34,13 +34,20 @@ export const useStructuredChat = <Output extends Chat.ResponseFormat>({
       (acc, message) => {
         if (message.role === 'assistant') {
           try {
-            const parsedContent = s.parse(
-              output,
-              JSON.parse(message.content ?? '{}'),
-            );
-            acc.push({ ...message, content: parsedContent });
+            console.log(message);
+            // const parsedContent = s.parse(
+            //   output,
+            //   message.content ? message.content : {},
+            // );
+
+            // console.log(parsedContent);
+            acc.push({
+              ...message,
+              content: message.content ? message.content : {},
+            });
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
+            console.log(error);
             // Do nothing for right now
           }
         } else {
@@ -50,7 +57,7 @@ export const useStructuredChat = <Output extends Chat.ResponseFormat>({
       },
       [] as Chat.Message<s.Infer<Output>>[],
     );
-  }, [chat.messages, output]);
+  }, [chat.messages]);
 
   return {
     ...chat,

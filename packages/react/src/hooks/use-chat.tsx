@@ -128,6 +128,17 @@ export const useChat = ({
           _streamingMessage,
           chunk.choices[0].delta as Chat.Message,
         );
+
+        console.log(_streamingMessage);
+
+        if (_streamingMessage && _streamingMessage.role === 'assistant') {
+          // Go ahead and update the message in state
+          console.log('abotu to update state while streaming');
+          setMessages((messages) => [
+            ...messages.slice(0, -1),
+            _streamingMessage!,
+          ]);
+        }
       };
 
       const onError = (error: Error) => {
@@ -139,7 +150,10 @@ export const useChat = ({
         setStatus(ChatStatus.Idle);
         setMessages((messages) => {
           if (_streamingMessage) {
-            return [...messages, _streamingMessage];
+            // Assistant messages are updated incrementally
+            if (_streamingMessage.role !== 'assistant') {
+              return [...messages, _streamingMessage];
+            }
           }
           return messages;
         });
@@ -159,6 +173,7 @@ export const useChat = ({
           responseFormat: output,
           messages: nonStreamingMessages,
         })) {
+          console.log(chunk);
           onChunk(chunk);
         }
         onComplete();

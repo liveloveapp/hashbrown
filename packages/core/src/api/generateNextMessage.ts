@@ -104,7 +104,7 @@ export async function* generateNextMessage(config: {
       for (const jsonChunk of jsonChunks) {
         if (jsonChunk.trim()) {
           const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
-          // console.log(jsonData);
+          console.log(jsonData);
 
           try {
             // For now, just log things
@@ -113,6 +113,8 @@ export async function* generateNextMessage(config: {
                 jsonData.choices[0].delta.content,
               );
               console.log(streamResult);
+
+              jsonData.choices[0].delta.content = streamResult;
             }
           } catch (e) {
             console.error(e);

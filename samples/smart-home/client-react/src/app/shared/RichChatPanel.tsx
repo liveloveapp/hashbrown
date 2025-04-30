@@ -73,6 +73,8 @@ export const RichChatPanel = () => {
     ],
   });
 
+  console.log(messages);
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Add state for the textarea input
@@ -116,8 +118,6 @@ export const RichChatPanel = () => {
       }
     }
   };
-
-  console.log(messages);
 
   return (
     <div className="flex flex-col h-full">
