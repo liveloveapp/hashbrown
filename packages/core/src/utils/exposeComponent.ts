@@ -45,10 +45,15 @@ export function createComponentSchema(
 
   const elements = s.anyOf(
     'Elements',
-    components.map((component) => createSchema(component)),
+    components.map((component, discriminator) =>
+      createSchema(component, discriminator.toString()),
+    ),
   );
 
-  function createSchema(component: ExposedComponent<any>): s.HashbrownType {
+  function createSchema(
+    component: ExposedComponent<any>,
+    discriminator: string,
+  ): s.HashbrownType {
     if (weakMap.has(component.component)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return weakMap.get(component.component)!;
@@ -58,6 +63,7 @@ export function createComponentSchema(
 
     if (children === 'any') {
       const schema = s.object(component.description, {
+        __discriminator: s.constString(discriminator),
         $tagName: s.constString(component.name),
         $props: s.object('Props', component.props ?? {}),
         get $children(): any {
@@ -68,6 +74,7 @@ export function createComponentSchema(
       return schema;
     } else if (children && Array.isArray(children)) {
       const schema = s.object(component.description, {
+        __discriminator: s.constString(discriminator),
         $tagName: s.constString(component.name),
         $props: s.object('Props', component.props ?? {}),
         get $children(): any {
@@ -75,7 +82,9 @@ export function createComponentSchema(
             'Child Elements',
             s.anyOf(
               'Child Element',
-              children.map((child) => createSchema(child)),
+              children.map((child, innerDiscriminator) =>
+                createSchema(child, innerDiscriminator.toString()),
+              ),
             ),
           );
         },
@@ -85,6 +94,7 @@ export function createComponentSchema(
     }
 
     const schema = s.object(component.description, {
+      __discriminator: s.constString(discriminator),
       $tagName: s.constString(component.name),
       $props: s.object('Props', component.props ?? {}),
     });

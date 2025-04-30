@@ -29,6 +29,7 @@ export namespace UiChat {
     | UiChat.ToolCallMessage
     | UiChat.AssistantMessage
     | Chat.UserMessage
+    | Chat.AssistantMessage
     | Chat.SystemMessage;
 }
 
@@ -80,12 +81,19 @@ export const useUiChat = (options: UiChatOptions) => {
       parentKey = '',
     ): React.ReactElement[] => {
       const elements = nodes.map((element, index) => {
+        const key = `${parentKey}_${index}`;
+
+        if (!('$tagName' in element && '$props' in element)) {
+          return React.createElement(React.Fragment, {
+            key,
+          });
+        }
+
         const componentName = element.$tagName;
         const componentInputs = element.$props;
         const componentType = components?.find(
           (c) => c.name === componentName,
         )?.component;
-        const key = `${parentKey}_${index}`;
 
         if (componentName && componentInputs && componentType) {
           const children: React.ReactNode[] | null = element.$children
@@ -150,7 +158,11 @@ export const useUiChat = (options: UiChatOptions) => {
           },
         );
 
-        if (message.content) {
+        if (
+          message.content &&
+          (message as any).content !== '' &&
+          message.content.ui
+        ) {
           const renderedMessage: UiChat.AssistantMessage = {
             role: 'assistant',
             // eslint-disable-next-line react/jsx-no-useless-fragment

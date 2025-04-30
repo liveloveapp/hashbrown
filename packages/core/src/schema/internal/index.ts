@@ -32,6 +32,7 @@ export {
   StringType,
   type Infer,
   type Schema,
+  DISCRIMINATOR,
 } from './base';
 export { getDescription } from './getDescription';
 export { isStreaming } from './isStreaming';

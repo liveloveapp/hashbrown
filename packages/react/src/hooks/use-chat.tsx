@@ -48,7 +48,6 @@ export interface UseChatOptions {
    * default: 1.0
    */
   messages?: Chat.Message[];
-
   /**
    * The tools to make available use for the chat.
    * default: []
@@ -66,14 +65,12 @@ export interface UseChatOptions {
    * The temperature for the chat.
    */
   temperature?: number;
-
   /**
    * The maximum number of tokens to allow.
    * @todo U.G. Wilson - this is unimplemented.
    * default: 5000
    */
   maxTokens?: number;
-
   /**
    * The debounce time between sends to the endpoint.
    * @todo U.G. Wilson - this is unimplemented.
@@ -254,6 +251,8 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
           _streamingMessage,
           chunk.choices[0].delta as Chat.Message,
         );
+
+        setStreamingMessage(_streamingMessage);
       };
 
       const onError = (error: Error) => {
@@ -361,7 +360,6 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
     if (streamingMessage) {
       return [...nonStreamingMessages, streamingMessage];
     }
-
     return nonStreamingMessages;
   }, [nonStreamingMessages, streamingMessage]);
 

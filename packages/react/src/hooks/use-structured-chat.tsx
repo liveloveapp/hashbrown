@@ -1,4 +1,5 @@
-import { Chat, s } from '@hashbrownai/core';
+import { Chat, s, Tater } from '@hashbrownai/core';
+
 import { ChatStatus, useChat, UseChatOptions } from './use-chat';
 import { useMemo } from 'react';
 
@@ -35,12 +36,12 @@ export const useStructuredChat = <Output extends Chat.ResponseFormat>({
     return chat.messages.reduce(
       (acc, message) => {
         if (message.role === 'assistant' && message.content) {
+          const streamParser = new Tater.StreamSchemaParser(output);
+
           try {
-            const parsedContent = s.parse(
-              output,
-              JSON.parse(message.content ?? '{}'),
-            );
-            acc.push({ ...message, content: parsedContent });
+            const streamResult = streamParser.parse(message.content);
+
+            acc.push({ ...message, content: streamResult });
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
             // Do nothing for right now

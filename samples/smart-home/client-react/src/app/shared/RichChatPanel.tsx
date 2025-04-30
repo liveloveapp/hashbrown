@@ -17,7 +17,7 @@ import { Textarea } from './textarea';
 
 export const RichChatPanel = () => {
   const { messages, sendMessage, status, stop } = useUiChat({
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     tools: [
       createTool({
         name: 'getLights',
@@ -58,7 +58,7 @@ export const RichChatPanel = () => {
         name: 'MarkdownComponent',
         description: 'Show markdown content to the user',
         props: {
-          content: s.string('The content of the markdown'),
+          content: s.streaming.string('The content of the markdown'),
         },
       }),
       exposeComponent(CardComponent, {
@@ -67,7 +67,7 @@ export const RichChatPanel = () => {
         children: 'any',
         props: {
           title: s.string('The title of the card'),
-          description: s.string('The description of the card'),
+          description: s.streaming.string('The description of the card'),
         },
       }),
     ],

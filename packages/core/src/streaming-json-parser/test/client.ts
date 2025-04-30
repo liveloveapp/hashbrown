@@ -47,9 +47,37 @@ import { s } from '../../schema';
             }),
           }),
         ),
+        anyOfListWithDiscriminator: s.streaming.array(
+          'GlossDiv.anyOfListDiscriminator',
+          s.anyOf('anyOfListWithDiscriminator', [
+            // No streaming
+            s.object('7th Grade Teacher', {
+              __discriminator: s.constString('seventh'),
+              firstName: s.string('7th.firstName'),
+              lastName: s.string('7th.lastName'),
+              birthDate: s.object('7th.birthDate', {
+                year: s.string('7th.birthDate.year'),
+                month: s.string('7th.birthDate.month'),
+                day: s.string('7th.birthDate.day'),
+                time: s.object('7th.birthData.time', {
+                  hour: s.number('hour'),
+                  minute: s.number('minute'),
+                }),
+              }),
+            }),
+            // Will stream
+            s.object('8th Grade Teacher', {
+              __discriminator: s.constString('eighth'),
+              firstName: s.streaming.string('8th.firstName'),
+              lastName: s.streaming.string('8th.lastName'),
+            }),
+          ]),
+        ),
       }),
     }),
   });
+
+  // TODO: get a schema that's an array at the top level working
 
   const iterable = new SocketAsyncIterable(client);
 
@@ -59,7 +87,7 @@ import { s } from '../../schema';
     for await (const data of parserIterable) {
       // To see how things are changing in a dynamic way, clear the console before
       // parsing update
-      console.clear();
+      // console.clear();
       console.log(JSON.stringify(data, null, 4));
     }
     console.log('Socket ended.');

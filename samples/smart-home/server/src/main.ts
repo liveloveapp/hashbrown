@@ -1,4 +1,5 @@
 import { Chat } from '@hashbrownai/core';
+// import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import cors from 'cors';
 import 'dotenv/config';
@@ -11,8 +12,8 @@ const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
 
-const AZURE_ENDPOINT = 'https://ai-hashbrowndev507071463475.openai.azure.com/';
-const AZURE_API_VERSION = '2024-04-01-preview';
+// const AZURE_ENDPOINT = 'https://ai-hashbrowndev507071463475.openai.azure.com/';
+// const AZURE_API_VERSION = '2024-04-01-preview';
 
 if (!OPENAI_API_KEY) {
   console.warn('OPENAI_API_KEY is not set');

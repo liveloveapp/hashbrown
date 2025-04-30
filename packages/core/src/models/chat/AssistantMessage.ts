@@ -1,4 +1,4 @@
-export interface AssistantMessage<AssistantOutput = string> {
+export interface AssistantMessage<AssistantOutput = string | object> {
   role: 'assistant';
   content?: AssistantOutput;
   tool_calls?: {
