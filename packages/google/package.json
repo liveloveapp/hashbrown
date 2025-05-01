@@ -9,6 +9,6 @@
   },
   "peerDependencies": {
     "@google/genai": "^0.8.0",
-    "@hashbrownai/core": "^0.0.1"
+    "@hashbrownai/core": "*"
   }
 }
