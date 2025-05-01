@@ -53,7 +53,7 @@
     }
   },
   "release": {
-    "projects": ["core", "react", "azure", "tool-javascript"],
+    "projects": ["core", "react", "azure", "tool-javascript", "openai"],
     "version": {
       "preVersionCommand": "npx nx run-many -t build"
     }
