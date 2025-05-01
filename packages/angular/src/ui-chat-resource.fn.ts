@@ -6,8 +6,11 @@ import {
   ExposedComponent,
   s,
 } from '@hashbrownai/core';
-import { ChatResource, chatResource } from './chat-resource.fn';
 import { BoundTool } from './create-tool.fn';
+import {
+  structuredChatResource,
+  StructuredChatResourceRef,
+} from './structured-chat-resource.fn';
 
 export type TagNameRegistry = {
   [tagName: string]: {
@@ -45,7 +48,8 @@ export namespace UiChat {
     | Chat.SystemMessage;
 }
 
-export interface UiChatResource extends ChatResource {
+export interface UiChatResourceRef
+  extends StructuredChatResourceRef<s.HashbrownType> {
   messages: Signal<UiChat.Message[]>;
 }
 
@@ -57,8 +61,7 @@ export function uiChatResource(args: {
   messages?: Chat.Message[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: BoundTool<string, any>[];
-  url?: string | Signal<string>;
-}): UiChatResource {
+}): UiChatResourceRef {
   const ui = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
@@ -66,9 +69,8 @@ export function uiChatResource(args: {
     ),
   });
 
-  const chat = chatResource({
+  const chat = structuredChatResource({
     model: args.model,
-    url: args.url,
     temperature: args.temperature,
     maxTokens: args.maxTokens,
     responseFormat: ui,
@@ -105,7 +107,7 @@ export function uiChatResource(args: {
           let content: s.Infer<typeof ui> | undefined;
 
           try {
-            content = s.parse(ui, JSON.parse(message.content ?? ''));
+            content = s.parse(ui, message.content ?? '');
           } catch (error) {
             // console.error(error);
             return [];

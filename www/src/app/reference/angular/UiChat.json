@@ -2,7 +2,7 @@
   "name": "UiChat",
   "canonicalReference": "@hashbrownai/angular!UiChat:namespace",
   "kind": "Namespace",
-  "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+  "fileUrlPath": "../dist/packages/angular/ui-chat-resource.fn.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -12,7 +12,7 @@
       "excerptTokens": [
         { "kind": "Content", "text": "export declare namespace UiChat " }
       ],
-      "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+      "fileUrlPath": "../dist/packages/angular/ui-chat-resource.fn.d.ts",
       "releaseTag": "Public",
       "name": "UiChat",
       "preserveMemberOrder": false,

@@ -1,55 +1,41 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   computed,
   effect,
   inject,
   Injector,
+  isSignal,
+  linkedSignal,
   Resource,
   ResourceStatus,
   runInInjectionContext,
   Signal,
   signal,
-  WritableResource,
-  WritableSignal,
+  untracked,
 } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { Chat, s } from '@hashbrownai/core';
-import {
-  BehaviorSubject,
-  catchError,
-  combineLatest,
-  concatMap,
-  debounceTime,
-  EMPTY,
-  filter,
-  from,
-  map,
-  Observable,
-  of,
-  Subject,
-  takeUntil,
-  tap,
-  toArray,
-} from 'rxjs';
+import { Chat, generateNextMessage, s } from '@hashbrownai/core';
 import { BoundTool } from './create-tool.fn';
-import { FetchService } from './fetch.service';
+import { injectHashbrownConfig } from './provide-hashbrown.fn';
 
-export interface ChatResource extends WritableResource<Chat.Message[]> {
-  sendMessage: (message: Chat.Message | Chat.Message[]) => void;
+export interface ChatResourceRef extends Resource<Chat.Message[]> {
+  sendMessage: (message: Chat.UserMessage | Chat.UserMessage[]) => void;
 }
 
 /**
  * Chat resource configuration.
  */
-export type ChatResourceConfig = {
+export interface ChatResourceOptions {
   model: string | Signal<string>;
   temperature?: number | Signal<number>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools?: BoundTool<string, any>[];
+  tools?: BoundTool<string, any>[] | Signal<BoundTool<string, any>[]>;
   maxTokens?: number | Signal<number>;
-  messages?: Chat.Message[];
-  responseFormat?: s.HashbrownType;
-  url?: string | Signal<string>;
-};
+  messages?: Chat.Message[] | Signal<Chat.Message[]>;
+  debounceTime?: number;
+  /**
+   * @internal
+   */
+  θresponseFormat?: s.HashbrownType | Signal<s.HashbrownType>;
+}
 
 /**
  * Merges existing and new tool calls.
@@ -89,33 +75,29 @@ function mergeToolCalls(
  * @param delta - The incoming message delta.
  * @returns The updated messages array.
  */
-function updateMessagesWithDelta(
-  messages: Chat.Message[],
+export function updateMessagesWithDelta(
+  message: Chat.Message | null,
   delta: Partial<Chat.Message>,
-): Chat.Message[] {
-  const lastMessage = messages[messages.length - 1];
-  if (lastMessage && lastMessage.role === 'assistant') {
+): Chat.Message | null {
+  if (message && message.role === 'assistant') {
     const updatedToolCalls = mergeToolCalls(
-      lastMessage.tool_calls,
+      message.tool_calls,
       (delta as Chat.AssistantMessage).tool_calls ?? [],
     );
     const updatedMessage: Chat.Message = {
-      ...lastMessage,
-      content: (lastMessage.content ?? '') + (delta.content ?? ''),
+      ...message,
+      content: (message.content ?? '') + (delta.content ?? ''),
       tool_calls: updatedToolCalls,
     };
-    return [...messages.slice(0, -1), updatedMessage];
+    return updatedMessage;
   } else if (delta.role === 'assistant') {
-    return [
-      ...messages,
-      {
-        role: 'assistant',
-        content: delta.content ?? '',
-        tool_calls: delta.tool_calls ?? [],
-      },
-    ];
+    return {
+      role: 'assistant',
+      content: delta.content ?? '',
+      tool_calls: delta.tool_calls ?? [],
+    };
   }
-  return messages;
+  return message;
 }
 
 /**
@@ -134,290 +116,236 @@ function createToolDefinitions(
 }
 
 /**
- * Processes a chat completion response by updating the messages.
- *
- * @param response - The response from the chat completion stream.
- * @param messagesSignal
- */
-function processChatResponse(
-  response: Chat.CompletionChunk,
-  messagesSignal: WritableSignal<Chat.Message[]>,
-): void {
-  response.choices.forEach(
-    (choice: Chat.CompletionChunk['choices'][number]) => {
-      messagesSignal.update((currentMessages) =>
-        updateMessagesWithDelta(currentMessages, choice.delta as Chat.Message),
-      );
-    },
-  );
-}
-
-/**
- * Finalizes a chat session by checking for tool calls.
- *
- * @param messagesSignal
- * @param toolCallSubject - The subject to emit tool call messages.
- * @param isSending - The signal indicating sending status.
- * @param isReceiving - The signal indicating receiving status.
- */
-function finalizeChat(
-  messagesSignal: WritableSignal<Chat.Message[]>,
-  toolCallSubject: Subject<Chat.AssistantMessage>,
-  isSending: { set(val: boolean): void },
-  isReceiving: { set(val: boolean): void },
-): void {
-  const currentMessages = messagesSignal();
-  const lastMessage = currentMessages[currentMessages.length - 1];
-  if (
-    lastMessage &&
-    lastMessage.role === 'assistant' &&
-    lastMessage.tool_calls &&
-    lastMessage.tool_calls.length > 0
-  ) {
-    toolCallSubject.next(lastMessage as Chat.AssistantMessage);
-  }
-  isSending.set(false);
-  isReceiving.set(false);
-}
-
-/**
- * Processes an assistant message containing a tool call.
- *
- * @param message - The assistant message with a tool call.
- * @param configTools - The list of tools from configuration.
- * @param injector - The Angular injector.
- * @returns An observable that emits a tool message.
- */
-function processToolCallMessage(
-  message: Chat.AssistantMessage,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  configTools: BoundTool<string, any>[] = [],
-  injector: Injector,
-): Observable<Chat.ToolMessage[]> {
-  const toolCalls = message.tool_calls;
-
-  if (!toolCalls) return EMPTY;
-
-  return from(toolCalls).pipe(
-    concatMap((toolCall) => {
-      const tool = configTools.find((t) => t.name === toolCall.function.name);
-
-      if (!tool) {
-        throw new Error(`Tool ${toolCall.function.name} not found`);
-      }
-
-      const result = runInInjectionContext(injector, () =>
-        tool.handler(
-          s.parse(tool.schema, JSON.parse(toolCall.function.arguments)),
-        ),
-      );
-
-      return from(result).pipe(
-        map(
-          (result): Chat.ToolMessage => ({
-            role: 'tool',
-            content: {
-              status: 'fulfilled',
-              /**
-               * @todo Mike Ryan - Make sure this is actually
-               * an object that can be serialized to JSON.
-               */
-              value: result as object,
-            },
-            tool_call_id: toolCall.id,
-            tool_name: toolCall.function.name,
-          }),
-        ),
-        catchError((err): Observable<Chat.ToolMessage> => {
-          return of({
-            role: 'tool',
-            content: {
-              status: 'rejected',
-              reason: err.message,
-            },
-            tool_call_id: toolCall.id,
-            tool_name: toolCall.function.name,
-          });
-        }),
-      );
-    }),
-    toArray(),
-  );
-}
-
-/**
  * Creates and returns a chat resource with reactive signals and message-handling functions.
  *
- * @param config - The chat resource configuration.
+ * @param options - The chat resource configuration.
  * @returns An object with reactive signals and a sendMessage function.
  */
-export function chatResource(config: ChatResourceConfig): ChatResource {
+export function chatResource(options: ChatResourceOptions): ChatResourceRef {
   const injector = inject(Injector);
-  const fetchService = inject(FetchService);
-  const messagesSignal = signal<Chat.Message[]>(config.messages || []);
+  const config = injectHashbrownConfig();
+  const debounceTime = options.debounceTime ?? 150;
+  const providedMessages = computed((): Chat.Message[] => {
+    if (isSignal(options.messages)) {
+      return options.messages() ?? [];
+    }
+    return options.messages ?? [];
+  });
+  const providedTools = computed((): BoundTool<string, any>[] => {
+    if (isSignal(options.tools)) {
+      return options.tools() ?? [];
+    }
+    return options.tools ?? [];
+  });
+  const toolDefinitions = computed((): Chat.Tool[] =>
+    createToolDefinitions(providedTools()),
+  );
+  const nonStreamingMessages = linkedSignal(providedMessages);
+  const streamingMessages = signal<Chat.Message | null>(null);
+  const lastNonStreamingMessage = computed(
+    () => nonStreamingMessages()[nonStreamingMessages().length - 1],
+  );
+  const messages = computed((): Chat.Message[] => {
+    const _streamingMessage = streamingMessages();
+    const _nonStreamingMessages = nonStreamingMessages();
+
+    return [
+      ..._nonStreamingMessages,
+      ...(_streamingMessage ? [_streamingMessage] : []),
+    ];
+  });
   const isSending = signal(false);
   const isReceiving = signal(false);
   const error = signal<Error | null>(null);
-
-  const toolDefinitions = createToolDefinitions(config.tools);
-  const toolCallMessages$ = new Subject<Chat.AssistantMessage>();
-  const abortSignal = new Subject<void>();
-  const reloadSignal = new BehaviorSubject<true>(true);
-
-  const computedModel = computed(() =>
-    typeof config.model === 'string' ? config.model : config.model(),
+  const model = computed(() =>
+    typeof options.model === 'string' ? options.model : options.model(),
   );
-  const computedTemperature = computed(() => {
-    if (typeof config.temperature === 'number') {
-      return config.temperature;
-    }
-    if (!config.temperature) {
-      return undefined;
+  const temperature = computed(() => {
+    if (isSignal(options.temperature)) {
+      return options.temperature();
     }
 
-    return config.temperature();
+    return options.temperature;
   });
-  const computedMaxTokens = computed(() => {
-    if (typeof config.maxTokens === 'number') {
-      return config.maxTokens;
-    }
-    if (!config.maxTokens) {
-      return undefined;
+  const maxTokens = computed(() => {
+    if (isSignal(options.maxTokens)) {
+      return options.maxTokens();
     }
 
-    return config.maxTokens();
+    return options.maxTokens;
   });
-  const computedResponseFormat = computed((): s.HashbrownType | undefined => {
-    const responseFormat = config.responseFormat;
+  const responseFormat = computed((): s.HashbrownType | undefined => {
+    const responseFormat = options.θresponseFormat;
 
-    if (!responseFormat) {
-      return undefined;
+    if (isSignal(responseFormat)) {
+      return responseFormat();
     }
 
     return responseFormat;
   });
-  const computedUrl = computed(() => {
-    if (typeof config.url === 'string') {
-      return config.url;
-    }
-    if (!config.url) {
-      return 'http://localhost:3000/chat';
-    }
+  let abortFn: (() => void) | null = null;
 
-    return config.url();
+  effect((onCleanup) => {
+    const _messages = nonStreamingMessages();
+    const lastMessage = _messages[_messages.length - 1];
+    const needsToSendMessage =
+      lastMessage &&
+      (lastMessage.role === 'user' || lastMessage.role === 'tool');
+    const needsToBeDebounced = lastMessage && lastMessage.role === 'user';
+
+    if (!needsToSendMessage) return;
+
+    const abortController = new AbortController();
+
+    abortFn = () => {
+      streamingMessages.set(null);
+      abortController.abort();
+    };
+
+    onCleanup(abortFn);
+
+    (async () => {
+      isSending.set(true);
+
+      if (needsToBeDebounced) {
+        await new Promise((resolve) => {
+          const timeoutId = setTimeout(() => {
+            resolve(undefined);
+          }, debounceTime);
+
+          abortController.signal.addEventListener('abort', () =>
+            clearTimeout(timeoutId),
+          );
+        });
+      }
+
+      if (abortController.signal.aborted) return;
+
+      let _streamingMessage: Chat.Message | null = null;
+
+      const onChunk = (chunk: Chat.CompletionChunk) => {
+        if (abortController.signal.aborted) return;
+
+        isReceiving.set(true);
+        isSending.set(false);
+
+        if (!chunk.choices || !chunk.choices[0]) {
+          return;
+        }
+
+        _streamingMessage = updateMessagesWithDelta(
+          _streamingMessage,
+          chunk.choices[0].delta as Chat.Message,
+        );
+
+        streamingMessages.set(_streamingMessage);
+      };
+
+      const onError = (err: Error) => {
+        if (abortController.signal.aborted) return;
+
+        isSending.set(false);
+        isReceiving.set(false);
+        error.set(err);
+      };
+
+      const onComplete = () => {
+        if (abortController.signal.aborted) return;
+
+        isSending.set(false);
+        isReceiving.set(false);
+        nonStreamingMessages.update((currentMessages) => {
+          if (_streamingMessage) {
+            return [...currentMessages, _streamingMessage];
+          }
+          return currentMessages;
+        });
+        streamingMessages.set(null);
+      };
+
+      try {
+        for await (const chunk of generateNextMessage({
+          apiUrl: config.baseUrl,
+          middleware: [],
+          abortSignal: abortController.signal,
+          fetchImplementation: window.fetch.bind(window),
+          model: untracked(model),
+          temperature: untracked(temperature),
+          tools: untracked(toolDefinitions),
+          maxTokens: untracked(maxTokens),
+          responseFormat: untracked(responseFormat),
+          messages: nonStreamingMessages(),
+        })) {
+          onChunk(chunk);
+        }
+        onComplete();
+      } catch (err) {
+        onError(err as Error);
+      }
+    })();
   });
 
   effect(() => {
-    console.log('Current Messages', messagesSignal());
-  });
+    const lastMessage = lastNonStreamingMessage();
 
-  // Handle client messages and stream chat responses.
-  combineLatest([toObservable(messagesSignal), reloadSignal.asObservable()])
-    .pipe(
-      debounceTime(150),
-      filter(([messages]) => {
-        const hasMessages = messages.length > 0;
-        const lastMessageNeedsToBeSent =
-          messages[messages.length - 1]?.role !== 'assistant' &&
-          messages[messages.length - 1]?.role !== 'system';
-        return hasMessages && lastMessageNeedsToBeSent;
-      }),
-      concatMap(([messages]) => {
-        isSending.set(true);
-        isReceiving.set(false);
-        console.log('sending these messages', messages);
-        return fetchService
-          .streamChatCompletionWithTools(computedUrl(), {
-            model: computedModel(),
-            messages: messages,
-            tools: toolDefinitions,
-            max_tokens: computedMaxTokens(),
-            temperature: computedTemperature(),
-            response_format: computedResponseFormat(),
-          })
-          .pipe(
-            catchError((err) => {
-              error.set(err);
-              return EMPTY;
-            }),
-            tap({
-              next: (response) => {
-                isSending.set(false);
-                isReceiving.set(true);
-                processChatResponse(response, messagesSignal);
-              },
-              error: (err) => {
-                error.set(err);
-              },
-              complete: () => {
-                finalizeChat(
-                  messagesSignal,
-                  toolCallMessages$,
-                  isSending,
-                  isReceiving,
-                );
-              },
-            }),
-            takeUntil(abortSignal),
-          );
-      }),
-      takeUntilDestroyed(),
-    )
-    .subscribe();
+    if (!lastMessage || lastMessage.role !== 'assistant') {
+      return;
+    }
 
-  // Process tool call messages.
-  toolCallMessages$
-    .pipe(
-      takeUntilDestroyed(),
-      concatMap((message) =>
-        processToolCallMessage(message, config.tools, injector),
-      ),
-    )
-    .subscribe((toolMessages) =>
-      messagesSignal.update((currentMessages) => [
+    const toolCalls = lastMessage.tool_calls;
+
+    if (!toolCalls || toolCalls.length === 0) {
+      return;
+    }
+
+    const toolCallResults = toolCalls.map((toolCall) => {
+      const tool = providedTools().find(
+        (t) => t.name === toolCall.function.name,
+      );
+
+      if (!tool) {
+        return Promise.reject(
+          new Error(`Tool ${toolCall.function.name} not found`),
+        );
+      }
+
+      const args = s.parse(
+        tool.schema,
+        JSON.parse(toolCall.function.arguments),
+      );
+
+      return runInInjectionContext(injector, () => tool.handler(args));
+    });
+
+    Promise.allSettled(toolCallResults).then((result) => {
+      const toolMessages: Chat.ToolMessage[] = toolCalls.map(
+        (toolCall, index) => ({
+          role: 'tool',
+          content: result[index],
+          tool_call_id: toolCall.id,
+          tool_name: toolCall.function.name,
+        }),
+      );
+
+      nonStreamingMessages.update((currentMessages) => [
         ...currentMessages,
         ...toolMessages,
-      ]),
-    );
+      ]);
+    });
+  });
 
   function sendMessage(message: Chat.Message | Chat.Message[]) {
     if (isSending() || isReceiving()) {
       throw new Error('Cannot send message while sending or receiving');
     }
 
-    messagesSignal.update((currentMessages) => [
+    nonStreamingMessages.update((currentMessages) => [
       ...currentMessages,
       ...(Array.isArray(message) ? message : [message]),
     ]);
   }
 
-  function setMessages(newMessages: Chat.Message[]) {
-    abortSignal.next();
-
-    // Reset all state
-    error.set(null);
-    isSending.set(false);
-    isReceiving.set(false);
-
-    // Clear existing messages and set new ones
-    messagesSignal.set(newMessages);
-  }
-
-  function updateMessages(
-    updater: (messages: Chat.Message[]) => Chat.Message[],
-  ) {
-    abortSignal.next();
-
-    // Reset all state
-    error.set(null);
-    isSending.set(false);
-    isReceiving.set(false);
-
-    // Update messages
-    messagesSignal.update(updater);
-  }
-
-  function hasValue(this: ChatResource) {
+  function hasValue(this: ChatResourceRef) {
     return true;
   }
 
@@ -436,8 +364,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
 
   function reload() {
     if (isLoading()) {
-      abortSignal.next();
-      reloadSignal.next(true);
+      abortFn?.();
 
       return true;
     }
@@ -445,25 +372,17 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
     return false;
   }
 
+  effect(() => {
+    console.log('Current Messages', messages());
+  });
+
   return {
-    value: messagesSignal,
+    value: messages,
     status,
     isLoading,
     sendMessage,
-    set: setMessages,
-    update: updateMessages,
     error,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     hasValue: hasValue as any,
     reload,
-    asReadonly: (): Resource<Chat.Message[]> => ({
-      value: messagesSignal,
-      status,
-      isLoading,
-      error,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      hasValue: hasValue as any,
-      reload,
-    }),
   };
 }

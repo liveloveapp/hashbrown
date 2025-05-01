@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import { ComponentTree } from '@hashbrownai/core';
-import { RenderableMessage } from './rich-chat-resource.fn';
+import { RenderableMessage } from './ui-chat-resource.fn';
 
 @Component({
   selector: 'hb-render-message',

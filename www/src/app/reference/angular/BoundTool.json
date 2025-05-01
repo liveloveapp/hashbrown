@@ -66,13 +66,7 @@
               "text": "Promise",
               "canonicalReference": "!Promise:interface"
             },
-            { "kind": "Content", "text": "<unknown> | " },
-            {
-              "kind": "Reference",
-              "text": "Observable",
-              "canonicalReference": "rxjs!Observable:class"
-            },
-            { "kind": "Content", "text": "<unknown>" },
+            { "kind": "Content", "text": "<any>" },
             { "kind": "Content", "text": ");" }
           ],
           "releaseTag": "Public",
@@ -96,7 +90,7 @@
             },
             {
               "parameterName": "handler",
-              "parameterTypeTokenRange": { "startIndex": 7, "endIndex": 14 },
+              "parameterTypeTokenRange": { "startIndex": 7, "endIndex": 12 },
               "isOptional": false
             }
           ],
@@ -171,20 +165,14 @@
               "text": "Promise",
               "canonicalReference": "!Promise:interface"
             },
-            { "kind": "Content", "text": "<unknown> | " },
-            {
-              "kind": "Reference",
-              "text": "Observable",
-              "canonicalReference": "rxjs!Observable:class"
-            },
-            { "kind": "Content", "text": "<unknown>" },
+            { "kind": "Content", "text": "<any>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": true,
           "isOptional": false,
           "releaseTag": "Public",
           "name": "handler",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 8 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
           "isStatic": false,
           "isProtected": false,
           "isAbstract": false,

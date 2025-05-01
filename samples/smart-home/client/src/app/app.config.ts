@@ -12,7 +12,7 @@ import { routes } from './app.routes';
 import * as lightApiEffects from './features/lights/effects/light-api.effects';
 import * as scenesApiEffects from './features/scenes/effects/scenes-api.effects';
 import { reducers } from './store';
-
+import { provideHashbrown } from '@hashbrownai/angular';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideExperimentalZonelessChangeDetection(),
@@ -25,5 +25,8 @@ export const appConfig: ApplicationConfig = {
     // }),
     provideEffects([lightApiEffects, scenesApiEffects]),
     provideMarkdown(),
+    provideHashbrown({
+      baseUrl: 'http://localhost:3000/chat',
+    }),
   ],
 };

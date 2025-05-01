@@ -1,16 +1,25 @@
 import { Component, input } from '@angular/core';
+import { MatCardModule } from '@angular/material/card';
 
 @Component({
   selector: 'app-card',
   template: `
-    <div class="header">
-      {{ title() }}
-    </div>
-    <div class="body">
-      <ng-content></ng-content>
-    </div>
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>{{ title() }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <ng-content></ng-content>
+      </mat-card-content>
+    </mat-card>
   `,
-  standalone: true,
+  imports: [MatCardModule],
+  styles: `
+    :host {
+      display: block;
+      margin-bottom: 8px;
+    }
+  `,
 })
 export class CardComponent {
   title = input.required<string>();
