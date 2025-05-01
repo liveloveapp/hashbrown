@@ -15,7 +15,7 @@ export const UiCompletionView = () => {
     createTool({
       name: 'getLights',
       description: 'Get the current lights',
-      handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+      handler: async () => useSmartHomeStore.getState().lights,
     }),
     createToolWithArgs({
       name: 'controlLight',

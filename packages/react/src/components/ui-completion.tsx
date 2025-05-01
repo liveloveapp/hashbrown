@@ -88,7 +88,7 @@ export const UiCompletion = ({
         content: prompt,
       });
     }
-  }, [sendMessage, prompt, messages]);
+  }, [sendMessage, prompt, messages.length]);
 
   const ui = useMemo(() => {
     const lastMessage = messages[messages.length - 1];
