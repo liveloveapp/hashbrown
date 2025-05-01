@@ -1,3 +1,13 @@
+## 0.0.2-3 (2025-05-01)
+
+### 🚀 Features
+
+- www theme ([e95c430](https://github.com/liveloveapp/project-cassini/commit/e95c430))
+
+### ❤️ Thank You
+
+- Brian Love
+
 ## 0.0.2-2 (2025-05-01)
 
 This was a version bump only, there were no code changes.
