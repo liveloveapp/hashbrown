@@ -52,6 +52,7 @@ vitest.config.*.timestamp*
 
 # npm cache
 .npm-cache
+.npmrc
 
 # Storybook
 storybook-static
