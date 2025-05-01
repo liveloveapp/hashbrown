@@ -247,6 +247,10 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
       const onChunk = (chunk: Chat.CompletionChunk) => {
         setStatus(ChatStatus.Receiving);
 
+        if (!chunk.choices || !chunk.choices[0]) {
+          return;
+        }
+
         _streamingMessage = updateMessagesWithDelta(
           _streamingMessage,
           chunk.choices[0].delta as Chat.Message,
