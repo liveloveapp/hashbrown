@@ -68,7 +68,6 @@ interface UiCompletionOptions {
  * };
  * ```
  */
-
 export const UiCompletion = ({
   model,
   prompt,
