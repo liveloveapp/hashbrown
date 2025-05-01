@@ -1,3 +1,4 @@
+import { NgClass } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 import {
@@ -9,26 +10,42 @@ import {
 import { SymbolExcerpt } from './SymbolExcerpt';
 import { SymbolExcerptGroup } from './SymbolExcerptGroup';
 
+export const SymbolApiDensity = {
+  0: '0',
+  '-1': '-1',
+};
+
 @Component({
   selector: 'www-symbol-api',
-  imports: [SymbolExcerpt, SymbolExcerptGroup],
+  imports: [SymbolExcerpt, SymbolExcerptGroup, NgClass],
   template: `
-    <www-symbol-excerpt-group>
+    <www-symbol-excerpt-group [ngClass]="'d' + density()">
       <www-symbol-excerpt
         [excerptTokens]="headerExcerptTokens()"
         class="header"
       />
       @for (member of bodyMembers(); track $index) {
-        <a
-          [href]="currentUrlWithoutHash() + '#' + member.name"
-          (click)="navigateToMethod($event, member.name)"
-        >
-          <www-symbol-excerpt
-            [excerptTokens]="member.excerptTokens"
-            [deprecated]="!!member.docs.deprecated"
-            class="member"
-          />
-        </a>
+        @switch (density()) {
+          @case ('0') {
+            <a
+              [href]="currentUrlWithoutHash() + '#' + member.name"
+              (click)="navigateToMethod($event, member.name)"
+            >
+              <www-symbol-excerpt
+                [excerptTokens]="member.excerptTokens"
+                [deprecated]="!!member.docs.deprecated"
+                class="member"
+              />
+            </a>
+          }
+          @case ('-1') {
+            <www-symbol-excerpt
+              [excerptTokens]="member.excerptTokens"
+              [deprecated]="!!member.docs.deprecated"
+              class="member"
+            />
+          }
+        }
       }
       @if (footerExcerptTokens().length) {
         <www-symbol-excerpt
@@ -47,19 +64,29 @@ import { SymbolExcerptGroup } from './SymbolExcerptGroup';
       }
 
       www-symbol-excerpt-group {
-        padding: 16px 0;
-      }
+        padding: 8px 0;
 
-      a {
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.08);
+        > a {
+          &:hover {
+            background-color: rgba(47, 47, 43, 0.08);
+          }
         }
-      }
 
-      .header,
-      .member,
-      .footer {
-        padding: 8px 16px;
+        &.d0 {
+          .header,
+          .member,
+          .footer {
+            padding: 8px 16px;
+          }
+        }
+
+        &.d-1 {
+          .header,
+          .member,
+          .footer {
+            padding: 2px 8px;
+          }
+        }
       }
 
       .member {
@@ -71,6 +98,7 @@ import { SymbolExcerptGroup } from './SymbolExcerptGroup';
 export class SymbolApi {
   router = inject(Router);
   symbol = input.required<ApiMember>();
+  density = input<string>(SymbolApiDensity[0]);
   headerExcerptTokens = computed((): ApiExcerptToken[] => {
     const symbol = this.symbol();
 

@@ -23,9 +23,13 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       analog({
+        apiPrefix: '_',
         content: {
           highlighter: 'shiki',
           shikiOptions: {
+            highlight: {
+              theme: 'github-light',
+            },
             highlighter: {
               additionalLangs: ['sh'],
             },

@@ -9,10 +9,9 @@ export class HighlighterService {
 
   async loadHighlighter() {
     this.highlighter = await createHighlighter({
-      themes: ['github-dark'],
+      themes: ['github-light'],
       langs: ['typescript'],
     });
-    await this.highlighter.loadTheme('github-dark');
   }
 
   getHighlighter() {

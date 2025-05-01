@@ -54,22 +54,22 @@ type Heading = { level: number; text: string; id: string; url: string };
         right: 32px;
         margin: 0;
         padding: 0;
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        border-left: 1px solid #f9bd3f;
       }
 
       menu a {
-        color: rgba(255, 255, 255, 0.56);
+        color: rgba(47, 47, 43, 0.88);
         font-size: 13px;
         border-left: 2px solid transparent;
       }
 
       menu a:hover {
-        color: rgba(255, 255, 255, 0.86);
+        color: rgb(47, 47, 43);
       }
 
       menu a.active {
-        color: rgba(255, 255, 255, 0.86);
-        border-color: #ff9e3e;
+        color: rgb(47, 47, 43);
+        border-left: 4px solid #f9bd3f;
       }
 
       article ::ng-deep analog-markdown-route > div {
@@ -91,7 +91,7 @@ type Heading = { level: number; text: string; id: string; url: string };
 
         hr {
           border: 0;
-          border-top: 1px solid rgba(255, 255, 255, 0.12);
+          border-top: 1px solid rgba(47, 47, 43, 0.24);
           margin: 32px 0;
         }
 

@@ -86,7 +86,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
           align-items: stretch;
           gap: 16px;
           padding: 32px;
-          background-color: rgba(255, 255, 255, 0.08);
+          background-color: rgba(47, 47, 43, 0.08);
         }
       }
 

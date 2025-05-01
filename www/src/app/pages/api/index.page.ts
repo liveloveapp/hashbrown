@@ -1,18 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { KindChip } from '../../components/KindChip';
 import { SymbolChip } from '../../components/SymbolChip';
 import { Search } from '../../icons/Search';
 import { MinimizedApiMemberSummary } from '../../models/api-report.models';
 import { ReferenceService } from '../../services/ReferenceService';
 
 @Component({
-  imports: [SymbolChip, Search],
+  imports: [SymbolChip, Search, KindChip],
   template: `
     <div class="controls">
       <h1>API Reference</h1>
       <!--<div class="deprecated">
         <mat-slide-toggle>Hide Deprecated</mat-slide-toggle>
       </div>-->
-      <div class="filter">
+      <div class="search">
         <label>
           <www-search height="16px" width="16px" />
         </label>
@@ -23,6 +24,19 @@ import { ReferenceService } from '../../services/ReferenceService';
         />
       </div>
     </div>
+    <div class="filters">
+      <p>Filter by identifier type</p>
+      <div class="kinds">
+        @for (kind of kinds(); track kind) {
+          <www-kind-chip
+            [kind]="kind"
+            [selected]="kind === selectedKind()"
+            (change)="onFilterKind($event)"
+          />
+        }
+      </div>
+    </div>
+    <hr />
     <div class="packages">
       @for (pkg of filteredPackages(); track pkg.packageName) {
         <h2>{{ pkg.packageName }}</h2>
@@ -48,32 +62,48 @@ import { ReferenceService } from '../../services/ReferenceService';
         padding: 32px;
         width: 100%;
         justify-content: space-between;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 
         > h1 {
           font: 500 32px/40px sans-serif;
         }
 
-        .filter {
+        > .search {
           position: relative;
 
           > label {
             position: absolute;
             top: 10px;
             left: 8px;
-            color: rgba(255, 255, 255, 0.54);
           }
 
           > input {
             background-color: transparent;
-            color: white;
             font-size: 16px;
             padding: 8px 0 8px 38px;
             width: 100%;
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(47, 47, 43, 0.24);
             border-radius: 4px;
           }
         }
+      }
+
+      .filters {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 32px;
+
+        .kinds {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+        }
+      }
+
+      hr {
+        border: 0;
+        border-top: 1px solid rgba(47, 47, 43, 0.24);
+        margin: 32px 32px;
       }
 
       .packages {
@@ -86,7 +116,7 @@ import { ReferenceService } from '../../services/ReferenceService';
 
         > h2 {
           font: 700 14px/18px monospace;
-          color: #ffd866;
+          color: #586b2d;
           margin-top: 32px;
 
           &:first-child {
@@ -112,12 +142,14 @@ import { ReferenceService } from '../../services/ReferenceService';
     `,
   ],
 })
-export default class RefIndexPage {
+export default class ApiIndexPage {
   referenceService = inject(ReferenceService);
+  selectedKind = signal<string>('');
   searchTerm = signal<string>('');
   filteredPackages = computed(() => {
     const packageReport = this.referenceService.getMinifiedApiReport();
     const term = this.searchTerm();
+    const selectedKind = this.selectedKind();
 
     if (!packageReport) return [];
 
@@ -127,27 +159,56 @@ export default class RefIndexPage {
         const symbols = pkg.symbolNames.map(
           (symbolName) => pkg.symbols[symbolName],
         );
-        const filteredSymbols = symbols.filter(
-          (symbol) =>
-            !symbol.isDeprecated &&
-            (!term ||
-              (term &&
-                symbol.name
-                  .toLocaleLowerCase()
-                  .includes(term.toLocaleLowerCase()))),
-        );
+        const filteredSymbols = symbols
+          .filter((symbol) => {
+            return !selectedKind || symbol.kind === selectedKind;
+          })
+          .filter((symbol) => {
+            const matchesTerm =
+              !term ||
+              symbol.name
+                .toLocaleLowerCase()
+                .includes(term.toLocaleLowerCase());
+            return !symbol.isDeprecated && matchesTerm;
+          });
 
         return filteredSymbols.length > 0
-          ? [...packages, { packageName, symbols }]
+          ? [...packages, { packageName, symbols: filteredSymbols }]
           : packages;
       },
       [] as { packageName: string; symbols: MinimizedApiMemberSummary[] }[],
     );
   });
 
+  kinds = computed(() => {
+    const packageReport = this.referenceService.getMinifiedApiReport();
+    if (!packageReport) return [];
+
+    const uniqueKinds = Object.values(packageReport.packages).reduce(
+      (prev, pkg) => {
+        return Object.values(pkg.symbols).reduce((kinds, summary) => {
+          if (summary.kind && !kinds.has(summary.kind)) {
+            kinds.add(summary.kind);
+          }
+          return kinds;
+        }, prev);
+      },
+      new Set<string>(),
+    );
+
+    return Array.from(uniqueKinds);
+  });
+
+  onFilterKind(kind: string) {
+    if (this.selectedKind() === kind) {
+      this.selectedKind.set('');
+      return;
+    }
+    this.selectedKind.set(kind);
+  }
+
   onSearch(event: Event) {
     const input = event.target as HTMLInputElement;
-
     this.searchTerm.set(input.value);
   }
 }

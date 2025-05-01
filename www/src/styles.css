@@ -110,10 +110,10 @@ html {
 }
 
 body {
-  background: #fff;
-  color: #000;
+  background: #f8f8e7;
+  color: #2f2f2b;
   font-family: sans-serif;
-  font-weight: 300;
+  font-weight: 400;
   font-style: normal;
   font-size: 1rem;
   line-height: 1.5rem;
@@ -156,7 +156,7 @@ a.underline {
 }
 
 a.underline:hover {
-  text-decoration-color: #fff;
+  text-decoration-color: #2f2f2b;
 }
 
 button {
@@ -173,13 +173,56 @@ pre {
   font-family: 'Operator Mono', monospace;
 }
 
-pre.shiki.github-dark {
+pre.shiki.github-light {
   background: none !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #000;
-    color: rgba(255, 255, 255, 0.86);
-  }
+.kind.EntryPoint {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.kind.Function {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.kind.Class {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.kind.TypeAlias {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.kind.Interface {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.kind.Namespace {
+  background-color: #eae6ff;
+  color: #403294;
+}
+
+.kind.Enum {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.kind.Variable {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.kind.Property {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.kind.Method {
+  background-color: #d4edda;
+  color: #155724;
 }

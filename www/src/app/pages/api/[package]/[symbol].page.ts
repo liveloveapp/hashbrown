@@ -26,7 +26,7 @@ import { ReferenceService } from '../../../services/ReferenceService';
     }
   `,
 })
-export default class PackageSymbolPageComponent {
+export default class PackageSymbolPage {
   referenceService = inject(ReferenceService);
   package = input.required<string>();
   symbol = input.required<string>();
