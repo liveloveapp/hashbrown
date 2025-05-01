@@ -1,3 +1,13 @@
+## 0.0.2-5 (2025-05-01)
+
+### 🩹 Fixes
+
+- **azure:** Handle situations where the LLM emits a chunk without any choices ([1f3a3f0](https://github.com/liveloveapp/project-cassini/commit/1f3a3f0))
+
+### ❤️ Thank You
+
+- Mike Ryan @MikeRyanDev
+
 ## 0.0.2-4 (2025-05-01)
 
 This was a version bump only, there were no code changes.
