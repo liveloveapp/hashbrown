@@ -1,6 +1,7 @@
-export { useChat, ChatStatus } from './hooks/use-chat';
+export { UiCompletion } from './components/ui-completion';
+export { createTool, createToolWithArgs } from './create-tool.fn';
+export { HashbrownProvider } from './hashbrown-provider';
+export { ChatStatus, useChat } from './hooks/use-chat';
 export { usePrediction } from './hooks/use-prediction';
 export { useStructuredChat } from './hooks/use-structured-chat';
 export { useUiChat } from './hooks/use-ui-chat';
-export { createTool, createToolWithArgs } from './create-tool.fn';
-export { HashbrownProvider } from './hashbrown-provider';

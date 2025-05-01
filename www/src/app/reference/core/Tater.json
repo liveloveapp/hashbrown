@@ -173,6 +173,45 @@
               }
             },
             {
+              "kind": "Property",
+              "canonicalReference": "@hashbrownai/core!Tater.StreamSchemaParser#logger:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "logger: " },
+                {
+                  "kind": "Reference",
+                  "text": "Logger",
+                  "canonicalReference": "@hashbrownai/core!~Logger:class"
+                },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "logger",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "isStatic": false,
+              "isProtected": false,
+              "isAbstract": false,
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
               "kind": "Method",
               "canonicalReference": "@hashbrownai/core!Tater.StreamSchemaParser#parse:member(1)",
               "docComment": "",
