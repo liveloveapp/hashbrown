@@ -53,6 +53,7 @@
     }
   },
   "release": {
+    "projects": ["core", "react", "azure", "tool-javascript"],
     "version": {
       "preVersionCommand": "npx nx run-many -t build"
     }
