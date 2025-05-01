@@ -17,45 +17,46 @@ import { s } from '../../schema';
       title: s.string('glossary.title'),
       GlossDiv: s.object('GlossDiv', {
         title: s.string('GlossDiv.title'),
-        GlossList: s.streaming.array(
-          'GlossDiv.GlossList',
-          s.object('', {
-            ID: s.string('GlossList.ID'),
-            SortAs: s.string('GlossList.SortAs'),
-            GlossTerm: s.string('GlossList.GlossTerm'),
-            Acronym: s.string('GlossList.Acronym'),
-            GlossDef: s.object('GlossList.GlossDef', {
-              para: s.string('GlossDef.para'),
-              GlossSeeAlso: s.array('GlossDef.GlossSeeAlso', s.string('')),
-            }),
-            GlossSee: s.string('GlossList.GlossSee'),
-            ExampleSentences: s.streaming.array(
-              'GlossList.ExampleSentences',
-              s.string('ExampleSentence'),
-            ),
-          }),
-        ),
-        SynonymList: s.streaming.array(
-          'GlossDiv.SynonymList',
-          s.object('Synonym', {
-            ID: s.string('Synonym.ID'),
-            GlossTerm: s.string('Synonym.GlossTerm'),
-            Acronym: s.string('Synonym.Acronym'),
-            SynonymDef: s.object('Synonym.SynonymDef', {
-              word: s.string('Synonym.word'),
-              meaning: s.string('SynonymDef.meaning'),
-            }),
-          }),
-        ),
+        // GlossList: s.streaming.array(
+        //   'GlossDiv.GlossList',
+        //   s.object('', {
+        //     ID: s.string('GlossList.ID'),
+        //     SortAs: s.string('GlossList.SortAs'),
+        //     GlossTerm: s.string('GlossList.GlossTerm'),
+        //     Acronym: s.string('GlossList.Acronym'),
+        //     GlossDef: s.object('GlossList.GlossDef', {
+        //       para: s.string('GlossDef.para'),
+        //       GlossSeeAlso: s.array('GlossDef.GlossSeeAlso', s.string('')),
+        //     }),
+        //     GlossSee: s.string('GlossList.GlossSee'),
+        //     ExampleSentences: s.streaming.array(
+        //       'GlossList.ExampleSentences',
+        //       s.string('ExampleSentence'),
+        //     ),
+        //   }),
+        // ),
+        // SynonymList: s.streaming.array(
+        //   'GlossDiv.SynonymList',
+        //   s.object('Synonym', {
+        //     ID: s.string('Synonym.ID'),
+        //     GlossTerm: s.string('Synonym.GlossTerm'),
+        //     Acronym: s.string('Synonym.Acronym'),
+        //     SynonymDef: s.object('Synonym.SynonymDef', {
+        //       word: s.string('Synonym.word'),
+        //       meaning: s.string('SynonymDef.meaning'),
+        //     }),
+        //   }),
+        // ),
         anyOfListWithDiscriminator: s.streaming.array(
           'GlossDiv.anyOfListDiscriminator',
           s.anyOf('anyOfListWithDiscriminator', [
             // No streaming
             s.object('7th Grade Teacher', {
               __discriminator: s.constString('seventh'),
-              firstName: s.string('7th.firstName'),
-              lastName: s.string('7th.lastName'),
-              birthDate: s.object('7th.birthDate', {
+              // Expectation: this will be moved to end of properties list
+              birthDate: s.streaming.object('7th.birthDate', {
+                // Expectation: property order won't change, but incremental updates
+                // will occur
                 year: s.string('7th.birthDate.year'),
                 month: s.string('7th.birthDate.month'),
                 day: s.string('7th.birthDate.day'),
@@ -64,6 +65,8 @@ import { s } from '../../schema';
                   minute: s.number('minute'),
                 }),
               }),
+              firstName: s.string('7th.firstName'),
+              lastName: s.string('7th.lastName'),
             }),
             // Will stream
             s.object('8th Grade Teacher', {
@@ -87,7 +90,7 @@ import { s } from '../../schema';
     for await (const data of parserIterable) {
       // To see how things are changing in a dynamic way, clear the console before
       // parsing update
-      // console.clear();
+      console.clear();
       console.log(JSON.stringify(data, null, 4));
     }
     console.log('Socket ended.');

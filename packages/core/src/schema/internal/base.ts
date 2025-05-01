@@ -6,6 +6,7 @@ import {
   IsUnion,
   UnionToTuple,
 } from '../../utils/types';
+import { isStreaming } from './isStreaming';
 
 export const internal = '~schema';
 export type internal = typeof internal;
@@ -325,11 +326,34 @@ export function object<Shape extends Record<string, any>>(
   description: string,
   shape: Shape,
 ): ObjectType<CleanInterfaceShape<Shape>> {
+  // Sort streaming properties to the end so that non-streaming objects with
+  // streaming properties can have the non-streaming properties populated when
+  // they are all completed
+  const shapeWithStreamingAtEnd = Object.entries(shape)
+    .sort((a, b) => {
+      if (!isStreaming(a[1]) && isStreaming(b[1])) {
+        return -1;
+      }
+      if (isStreaming(a[1]) && !isStreaming(b[1])) {
+        return 1;
+      }
+
+      return 0;
+    })
+    .reduce(
+      (acc, curr) => {
+        acc[curr[0]] = curr[1];
+
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
+
   return new ObjectType({
     type: 'object',
     description,
     streaming: false,
-    shape,
+    shape: shapeWithStreamingAtEnd,
   }) as any;
 }
 
