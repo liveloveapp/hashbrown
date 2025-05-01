@@ -1,12 +1,12 @@
+import { NgClass } from '@angular/common';
 import { Component, computed, forwardRef, input } from '@angular/core';
-import { AsyncPipe, NgClass } from '@angular/common';
 import { ApiExcerptToken } from '../models/api-report.models';
 import { CodeHighlight } from '../pipes/CodeHighlight';
 import { SymbolLink } from './SymbolLink';
 
 @Component({
   selector: 'www-symbol-excerpt',
-  imports: [AsyncPipe, CodeHighlight, NgClass, forwardRef(() => SymbolLink)],
+  imports: [CodeHighlight, NgClass, forwardRef(() => SymbolLink)],
   template: `
     <div class="links">
       <!-- prettier-ignore -->

@@ -8,20 +8,26 @@ import { ConfigService } from '../services/ConfigService';
   imports: [RouterLink, KeyboardIcon],
   template: `
     <header>
-      <a routerLink="/">Hashbrown 🥔</a>
-      <nav>
-        <ul>
-          <li>
-            <button (click)="onSearch()">
-              <www-keyboard-icon />
-            </button>
-          </li>
-          <li><a routerLink="/ref" class="underline">api</a></li>
-          <li>
-            <a [routerLink]="docsUrl()" class="underline">docs</a>
-          </li>
-        </ul>
-      </nav>
+      <div class="left">
+        <a routerLink="/">Hashbrown 🥔</a>
+        <nav>
+          <ul>
+            <li>
+              <a [routerLink]="docsUrl()" class="underline">Docs</a>
+            </li>
+            <li><a routerLink="/api" class="underline">API</a></li>
+            <li>
+              <a routerLink="/enterprise" class="underline">Enterprise</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+      <div class="right">
+        <input placeholder="Search" />
+        <label>
+          <www-keyboard-icon />
+        </label>
+      </div>
     </header>
   `,
   styles: [
@@ -30,21 +36,63 @@ import { ConfigService } from '../services/ConfigService';
         display: flex;
         justify-content: space-between;
         padding: 32px;
-        border-bottom: 1px solid #f4f4f41f;
-      }
 
-      nav {
-        > ul {
+        > .left {
           display: flex;
+          gap: 32px;
           align-items: center;
-          gap: 24px;
 
-          > li {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+          nav {
+            > ul {
+              display: flex;
+              align-items: center;
+              gap: 24px;
 
-            > button {
+              > li {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+              }
+            }
+          }
+        }
+
+        > .right {
+          position: relative;
+
+          > label {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+          }
+
+          > input {
+            background-color: transparent;
+            font-size: 16px;
+            padding: 8px 48px 8px 8px;
+            width: 100%;
+            border: 1px solid rgba(47, 47, 43, 0.24);
+            border-radius: 4px;
+            transition:
+              border-color ease-in-out 0.15s,
+              box-shadow ease-in-out 0.15s;
+
+            &:focus,
+            &:active,
+            &:focus-visible,
+            &:hover {
+              border-color: rgba(47, 47, 43, 0.88);
+              outline: none;
+
+              &::placeholder {
+                opacity: 1;
+              }
+            }
+
+            &::placeholder {
+              color: rgba(47, 47, 43, 0.24);
+              opacity: 0.4;
+              transition: opacity 0.2s ease-in-out;
             }
           }
         }

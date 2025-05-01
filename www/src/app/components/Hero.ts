@@ -6,31 +6,40 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
   selector: 'www-hero',
   imports: [RouterLink, ArrowUpRight],
   template: `
-    <div class="container">
-      <h1>Open source TypeScript library for building intelligent web apps</h1>
-      <p>
-        Add intelligence to your Angular or React web apps using our free, open
-        source, headless TypeScript library.
-      </p>
-      <div class="actions">
-        <a routerLink="/docs/angular/start/quick">
-          Angular
-          <www-arrow-up-right />
-        </a>
-        <a routerLink="/docs/start/quick">
-          React
-          <www-arrow-up-right />
-        </a>
+    <div class="bleed">
+      <div class="container">
+        <h1>
+          Open source TypeScript library for building intelligent web apps
+        </h1>
+        <p>
+          Add intelligence to your Angular or React web apps using our free,
+          open source, headless TypeScript library.
+        </p>
+        <div class="actions">
+          <a routerLink="/docs/angular/start/quick">
+            Angular
+            <www-arrow-up-right />
+          </a>
+          <a routerLink="/docs/react/start/quick">
+            React
+            <www-arrow-up-right />
+          </a>
+        </div>
       </div>
     </div>
   `,
   styles: `
     :host {
       display: flex;
+      justify-content: center;
+      background: #f9bd3f;
+    }
+
+    .bleed {
+      display: flex;
       flex-direction: column;
-      padding: 64px;
+      padding: 128px 64px;
       max-width: 960px;
-      margin: 0 auto;
     }
 
     .container {
@@ -38,6 +47,7 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
       flex-direction: column;
       align-items: center;
       gap: 32px;
+      color: #7d542f;
     }
 
     h1,
@@ -58,12 +68,20 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
         display: flex;
         align-items: center;
         gap: 8px;
-        color: rgba(255, 255, 255, 0.86);
+        color: rgba(125, 84, 47, 0.88);
         text-transform: uppercase;
-        font: 500 12px/16px sans-serif;
-        background: rgba(255, 255, 255, 0.08);
+        font: 600 12px/16px sans-serif;
         padding: 12px 24px;
+        border: 2px solid rgba(125, 84, 47, 0.56);
         border-radius: 9999px;
+        transition:
+          color 0.2s ease-in-out,
+          border 0.2s ease-in-out;
+
+        &:hover {
+          color: rgb(125, 84, 47);
+          border-color: rgb(125, 84, 47);
+        }
       }
     }
   `,

@@ -19,21 +19,27 @@ export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
         [symbol]="symbol"
       />
       <www-symbol-summary [symbol]="symbol" />
-      <www-symbol-api [symbol]="symbol" />
+      <www-symbol-api [density]="'-1'" [symbol]="symbol" />
     </div>
   `,
   styles: [
     `
+      :host {
+        display: flex;
+        padding: 16px;
+      }
+
       .popover {
         display: flex;
         flex-direction: column;
         width: 500px;
-        background-color: rgba(16, 8, 20, 0.72);
-        border-radius: 4px;
-        box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        backdrop-filter: blur(8px);
         overflow-y: hidden;
+        background: #f8f8e7;
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow:
+          0 10px 15px -3px rgba(0, 0, 0, 0.16),
+          0 4px 6px -4px rgba(0, 0, 0, 0.16);
       }
     `,
   ],

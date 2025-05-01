@@ -50,7 +50,7 @@ import { PageLink } from './PageLink';
       }
 
       :host(.collapsible) .section-content {
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        border-left: 1px solid #7d542f;
         padding: 4px 16px;
         margin-left: 12px;
       }
@@ -60,12 +60,11 @@ import { PageLink } from './PageLink';
       }
 
       :host(.hasActiveUrl) > section > .section-content {
-        border-color: #ff9e3e;
+        border-color: #7d542f;
       }
 
       section header button {
-        font-family: 'Oxanium', sans-serif;
-        font-weight: 600;
+        font: 600 14px/16px sans-serif;
         margin: 6px 0 3px;
         font-size: 16px;
         display: flex;
@@ -75,7 +74,6 @@ import { PageLink } from './PageLink';
         outline: none;
         border: none;
         background: none;
-        color: rgba(255, 255, 255, 0.72);
         cursor: pointer;
         width: 100%;
       }
@@ -86,13 +84,7 @@ import { PageLink } from './PageLink';
       }
 
       :host(.hasActiveUrl) > section > header > button {
-        color: #ff9e3e;
-      }
-
-      section header mat-icon {
-        opacity: 0.56;
-        position: relative;
-        top: -2px;
+        color: #f9bd3f;
       }
 
       section :host {
@@ -106,7 +98,7 @@ import { PageLink } from './PageLink';
 
       hr {
         border: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border-top: 1px solid rgba(47, 47, 43, 0.88);
         margin: 16px 0;
         width: 100%;
       }

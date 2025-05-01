@@ -22,7 +22,6 @@ import { RouterLink } from '@angular/router';
       display: flex;
       justify-content: space-between;
       padding: 32px;
-      border-top: 1px solid #f4f4f41f;
     }
   `,
 })
