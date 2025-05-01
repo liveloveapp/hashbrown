@@ -112,7 +112,7 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    model: 'gpt-4o',
+    model: 'gemini-2.5-pro-exp-03-25',
     messages: [
       {
         role: 'system',
@@ -125,12 +125,20 @@ export class ChatPanelComponent {
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
-        handler: () => this.authService.getUser(),
+        handler: () => {
+          const auth = inject(AuthService);
+
+          return auth.getUser();
+        },
       }),
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
-        handler: () => this.smartHomeService.loadLights(),
+        handler: () => {
+          const smartHome = inject(SmartHomeService);
+
+          return smartHome.loadLights();
+        },
       }),
     ],
   });
