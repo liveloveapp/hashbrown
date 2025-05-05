@@ -15,6 +15,7 @@ import {
 import { provideClientHydration } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { withComponentInputBinding } from '@angular/router';
+import { provideMarkdown } from 'ngx-markdown';
 import { HighlighterService } from './services/HighlighterService';
 
 export const appConfig: ApplicationConfig = {
@@ -32,5 +33,6 @@ export const appConfig: ApplicationConfig = {
       const highlighter = inject(HighlighterService);
       return highlighter.loadHighlighter();
     }),
+    provideMarkdown(),
   ],
 };

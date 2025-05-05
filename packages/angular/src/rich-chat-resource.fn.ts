@@ -57,6 +57,7 @@ export function uiChatResource(args: {
   messages?: Chat.Message[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: BoundTool<string, any>[];
+  url?: string | Signal<string>;
 }): UiChatResource {
   const ui = s.object('UI', {
     ui: s.streaming.array(
@@ -67,6 +68,7 @@ export function uiChatResource(args: {
 
   const chat = chatResource({
     model: args.model,
+    url: args.url,
     temperature: args.temperature,
     maxTokens: args.maxTokens,
     responseFormat: ui,
@@ -82,7 +84,7 @@ export function uiChatResource(args: {
 
         NEVER use ANY newline strings such as "\\n" or "\\\\n" in your response.
         In fact, avoid any non-standard whitespace characters in your response.
-        This is critically important. 
+        This is critically important.
         `,
       },
     ],

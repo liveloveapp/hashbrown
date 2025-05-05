@@ -34,7 +34,7 @@ export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
         flex-direction: column;
         width: 500px;
         overflow-y: hidden;
-        background: #f8f8e7;
+        background: #fff;
         padding: 16px;
         border-radius: 8px;
         box-shadow:

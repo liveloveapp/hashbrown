@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { ApiMenu } from '../components/ApiMenu';
 
 @Component({
-  imports: [RouterOutlet, Footer, Header, ApiMenu],
+  imports: [RouterOutlet, Footer, Header, ApiMenu, EnterpriseProducts],
   template: `
     <www-header />
     <main>
@@ -14,6 +15,7 @@ import { ApiMenu } from '../components/ApiMenu';
         <router-outlet></router-outlet>
       </div>
     </main>
+    <www-enterprise-products />
     <www-footer />
   `,
   styles: `
@@ -23,14 +25,12 @@ import { ApiMenu } from '../components/ApiMenu';
       height: 100%;
     }
 
-    www-header {
-      border-bottom: 1px solid rgba(47, 47, 43, 0.24);
-    }
-
     main {
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
+      border-top: 1px solid rgba(47, 47, 43, 0.24);
+      border-bottom: 1px solid rgba(47, 47, 43, 0.24);
 
       > www-ref-menu {
         display: none;

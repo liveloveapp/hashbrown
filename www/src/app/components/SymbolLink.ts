@@ -50,7 +50,14 @@ export class SymbolLink {
    * to use a traditional input to set the reference.
    */
   @Input({ required: true }) set reference(ref: CanonicalReference) {
-    const parsed = new ParsedCanonicalReference(ref);
+    let parsed: ParsedCanonicalReference;
+    try {
+      parsed = new ParsedCanonicalReference(ref);
+    } catch (e) {
+      console.warn(`Invalid reference: ${ref}`, e);
+      return;
+    }
+
     this.isPrivate = parsed.isPrivate;
     this.shouldUseExternalLink =
       parsed.package.startsWith('@angular') || parsed.package === 'rxjs';
@@ -67,15 +74,11 @@ export class SymbolLink {
     } else if (parsed.package === 'rxjs') {
       this.url = `https://rxjs.dev/api/index/${parsed.kind}/${parsed.name}`;
     } else {
-      throw new Error(`Unknown package: ${parsed.package}`);
+      console.warn(`Unknown package: ${parsed.package}`);
     }
   }
 
   get name() {
-    if (this.parsedReference.isPrivate) {
-      return this.parsedReference.name.slice(1);
-    }
-
     return this.parsedReference.name;
   }
 

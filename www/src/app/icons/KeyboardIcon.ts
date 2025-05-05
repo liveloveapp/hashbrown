@@ -26,7 +26,7 @@ import { Component, Input } from '@angular/core';
         background-color: rgba(166, 216, 210, 0.24);
         padding: 4px 6px;
         font: 400 11px/12px sans-serif;
-        border-radius: 4px;
+        border-radius: 24px;
         text-decoration-line: underline;
         text-decoration-color: transparent;
         transition:

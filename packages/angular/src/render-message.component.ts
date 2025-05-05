@@ -29,7 +29,12 @@ import { RenderableMessage } from './rich-chat-resource.fn';
       ></ng-container>
     }
   `,
-  standalone: true,
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+    }
+  `,
 })
 export class RenderMessageComponent {
   viewContainerRef = inject(ViewContainerRef);

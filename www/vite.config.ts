@@ -1,8 +1,9 @@
 /// <reference types="vitest" />
 
 import analog from '@analogjs/platform';
-import { defineConfig } from 'vite';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import { join } from 'path';
+import { defineConfig } from 'vite';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
 
 // https://vitejs.dev/config/
@@ -41,6 +42,9 @@ export default defineConfig(({ mode }) => {
               },
             ],
           },
+        },
+        nitro: {
+          compatibilityDate: '2024-05-07',
         },
       }),
       nxViteTsPaths(),

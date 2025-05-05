@@ -82,7 +82,7 @@ import { ReferenceService } from '../../services/ReferenceService';
             padding: 8px 0 8px 38px;
             width: 100%;
             border: 1px solid rgba(47, 47, 43, 0.24);
-            border-radius: 4px;
+            border-radius: 8px;
           }
         }
       }

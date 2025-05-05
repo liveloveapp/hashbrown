@@ -110,7 +110,7 @@ html {
 }
 
 body {
-  background: #f8f8e7;
+  background: #fff;
   color: #2f2f2b;
   font-family: sans-serif;
   font-weight: 400;
@@ -175,6 +175,11 @@ pre {
 
 pre.shiki.github-light {
   background: none !important;
+}
+
+code {
+  font: 500 14px/1.5rem monospace;
+  font-variant-ligatures: none;
 }
 
 .kind.EntryPoint {

@@ -68,7 +68,7 @@ export const SymbolApiDensity = {
 
         > a {
           &:hover {
-            background-color: rgba(47, 47, 43, 0.08);
+            background-color: rgba(47, 47, 43, 0.04);
           }
         }
 
