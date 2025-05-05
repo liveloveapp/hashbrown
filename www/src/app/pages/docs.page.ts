@@ -4,13 +4,21 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { map, tap } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { DocsHeader } from '../components/DocsHeader';
+import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
 import { MarkdownPage } from '../components/MarkdownPage';
 import { DocsMenu } from '../components/DocsMenu';
 import { ConfigService, SdkConfig } from '../services/ConfigService';
 
 @Component({
-  imports: [RouterOutlet, Footer, DocsHeader, DocsMenu, MarkdownPage],
+  imports: [
+    DocsHeader,
+    DocsMenu,
+    EnterpriseProducts,
+    Footer,
+    MarkdownPage,
+    RouterOutlet,
+  ],
   template: `
     <www-docs-header />
     <main>
@@ -19,6 +27,7 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
         <router-outlet></router-outlet>
       </www-markdown-page>
     </main>
+    <www-enterprise-products />
     <www-footer />
   `,
   styles: `
@@ -32,6 +41,8 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
+      border-top: 1px solid rgba(47, 47, 43, 0.24);
+      border-bottom: 1px solid rgba(47, 47, 43, 0.24);
 
       > www-docs-menu {
         display: none;

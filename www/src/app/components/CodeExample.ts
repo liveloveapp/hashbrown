@@ -22,7 +22,9 @@ import { Copy } from '../icons/Copy';
         display: flex;
         flex-direction: column;
         border: 1px solid rgba(47, 47, 43, 0.24);
+        border-radius: 12px;
         margin: 14px 0 24px;
+        overflow: hidden;
       }
 
       .header {
@@ -43,7 +45,7 @@ import { Copy } from '../icons/Copy';
       }
 
       .content {
-        background: rgba(252, 252, 252, 0.16);
+        background: rgba(47, 47, 43, 0.04);
         padding: 16px;
         overflow-x: scroll;
       }

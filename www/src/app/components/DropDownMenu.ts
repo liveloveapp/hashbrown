@@ -52,7 +52,7 @@ import { ChevronDown } from '../icons/ChevronDown';
 
       .dropdown-panel {
         max-width: 280px;
-        background: #f8f8e7;
+        background: #fff;
         display: flex;
         gap: 4px;
         padding: 16px;

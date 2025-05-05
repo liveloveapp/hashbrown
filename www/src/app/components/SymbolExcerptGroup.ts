@@ -8,7 +8,8 @@ import { Component } from '@angular/core';
       :host {
         display: flex;
         flex-direction: column;
-        background-color: rgba(47, 47, 43, 0.08);
+        background-color: rgba(47, 47, 43, 0.04);
+        border-radius: 12px;
         min-width: 100%;
         width: auto;
         overflow-x: auto;

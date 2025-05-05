@@ -67,7 +67,8 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
       .method {
         display: flex;
         flex-direction: column;
-        background-color: rgba(47, 47, 43, 0.08);
+        border-radius: 12px;
+        background-color: rgba(47, 47, 43, 0.04);
 
         > .header {
           padding: 16px;
@@ -79,7 +80,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
             'summary summary';
 
           > div {
-            background-color: rgba(166, 216, 210, 0.8);
+            background-color: rgba(166, 216, 210, 0.24);
             padding: 4px 8px;
             border-radius: 4px;
           }

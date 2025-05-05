@@ -29,7 +29,7 @@ import { Component, computed, input, output } from '@angular/core';
         border-radius: 8px;
 
         &.selected {
-          background: rgba(47, 47, 43, 0.08);
+          background: rgba(47, 47, 43, 0.04);
         }
 
         &:hover {

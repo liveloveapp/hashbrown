@@ -9,7 +9,7 @@ import { ConfigService } from '../services/ConfigService';
   template: `
     <header>
       <div class="left">
-        <a routerLink="/">Hashbrown 🥔</a>
+        <a routerLink="/">hashbrown</a>
         <nav>
           <ul>
             <li>
@@ -32,6 +32,11 @@ import { ConfigService } from '../services/ConfigService';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        background: #fff;
+      }
+
       header {
         display: flex;
         justify-content: space-between;
@@ -39,8 +44,20 @@ import { ConfigService } from '../services/ConfigService';
 
         > .left {
           display: flex;
-          gap: 32px;
+          gap: 24px;
           align-items: center;
+
+          > a {
+            font: 600 16px/24px sans-serif;
+            color: rgba(47, 47, 43, 0.88);
+            text-decoration: none;
+            transition: color ease-in-out 0.15s;
+
+            &:hover {
+              color: rgba(47, 47, 43, 0.88);
+              text-decoration: underline;
+            }
+          }
 
           nav {
             > ul {
@@ -62,17 +79,17 @@ import { ConfigService } from '../services/ConfigService';
 
           > label {
             position: absolute;
-            top: 6px;
+            top: 11px;
             right: 8px;
           }
 
           > input {
             background-color: transparent;
             font-size: 16px;
-            padding: 8px 48px 8px 8px;
+            padding: 12px 48px 12px 12px;
             width: 100%;
             border: 1px solid rgba(47, 47, 43, 0.24);
-            border-radius: 4px;
+            border-radius: 24px;
             transition:
               border-color ease-in-out 0.15s,
               box-shadow ease-in-out 0.15s;

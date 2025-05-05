@@ -27,7 +27,7 @@ import { SymbolLink } from './SymbolLink';
       .links,
       code {
         display: block;
-        font: 500 14px/18px monospace;
+        font: 500 14px/1.5rem monospace;
         font-variant-ligatures: none;
       }
 
