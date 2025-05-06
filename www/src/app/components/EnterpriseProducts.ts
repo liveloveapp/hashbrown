@@ -2,16 +2,20 @@ import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { CircleCheck } from '../icons/CircleCheck';
+import { LiveLoveApp } from '../icons/LiveLoveApp';
 import { BrainComponent } from './Brain';
 
 @Component({
   selector: 'www-enterprise-products',
-  imports: [BrainComponent, ArrowUpRight, CircleCheck, RouterLink],
+  imports: [BrainComponent, ArrowUpRight, CircleCheck, RouterLink, LiveLoveApp],
   template: `
     <div class="bleed">
       <www-brain />
       <div class="info">
-        <h2><span>Enterprise support</span><span>by LiveLoveApp</span></h2>
+        <h2>
+          <span>Enterprise support</span>
+          <span>by <www-liveloveapp height="32px" width="196px" /></span>
+        </h2>
         <p>
           We can't stop thinking about how AI changes the way people explore,
           visualize, and act on complex information - all through the power of
@@ -71,6 +75,13 @@ import { BrainComponent } from './Brain';
       display: none;
     }
 
+    p {
+      color: #774625;
+      font:
+        400 16px/18px Poppins,
+        sans-serif;
+    }
+
     .info {
       display: flex;
       flex-direction: column;
@@ -79,14 +90,29 @@ import { BrainComponent } from './Brain';
       > h2 {
         display: flex;
         flex-direction: column;
-        gap: 8px;
         color: #5e5c5a;
-        font: 400 32px/40px sans-serif;
+        font:
+          400 32px/40px Fredoka,
+          sans-serif;
+
+        > span {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          > www-liveloveapp {
+            height: 32px;
+            width: 196px;
+            margin-top: 2px;
+          }
+        }
       }
 
       > p {
         color: #774625;
-        font: 500 16px/24px sans-serif;
+        font:
+          500 16px/24px Poppins,
+          sans-serif;
       }
 
       > ul {
@@ -94,7 +120,9 @@ import { BrainComponent } from './Brain';
         flex-direction: column;
         gap: 16px;
         color: #774625;
-        font: 500 16px/24px sans-serif;
+        font:
+          500 16px/24px Poppins,
+          sans-serif;
 
         > li {
           display: grid;
@@ -104,11 +132,15 @@ import { BrainComponent } from './Brain';
           align-items: center;
 
           > strong {
-            font: 700 16px/24px sans-serif;
+            font:
+              500 18px/24px Fredoka,
+              sans-serif;
           }
 
           > p {
-            font: 400 14px/18px sans-serif;
+            font:
+              400 14px/18px Poppins,
+              sans-serif;
           }
         }
       }
@@ -120,7 +152,9 @@ import { BrainComponent } from './Brain';
         gap: 8px;
         color: rgba(125, 84, 47, 0.88);
         text-transform: uppercase;
-        font: 600 12px/16px sans-serif;
+        font:
+          600 12px/16px Poppins,
+          sans-serif;
         padding: 12px 24px;
         border: 2px solid rgba(125, 84, 47, 0.56);
         border-radius: 9999px;
