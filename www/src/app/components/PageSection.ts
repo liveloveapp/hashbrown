@@ -84,7 +84,7 @@ import { PageLink } from './PageLink';
       }
 
       :host(.hasActiveUrl) > section > header > button {
-        color: #f9bd3f;
+        color: #fbbb52;
       }
 
       section :host {

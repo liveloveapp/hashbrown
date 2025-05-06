@@ -41,8 +41,6 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
-      border-top: 1px solid rgba(47, 47, 43, 0.24);
-      border-bottom: 1px solid rgba(47, 47, 43, 0.24);
 
       > www-docs-menu {
         display: none;
