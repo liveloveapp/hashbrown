@@ -54,7 +54,7 @@ type Heading = { level: number; text: string; id: string; url: string };
         right: 32px;
         margin: 0;
         padding: 0;
-        border-left: 1px solid #f9bd3f;
+        border-left: 1px solid #fbbb52;
       }
 
       menu a {
@@ -69,7 +69,7 @@ type Heading = { level: number; text: string; id: string; url: string };
 
       menu a.active {
         color: rgb(47, 47, 43);
-        border-left: 4px solid #f9bd3f;
+        border-left: 6px solid #fbbb52;
       }
 
       article ::ng-deep analog-markdown-route > div {

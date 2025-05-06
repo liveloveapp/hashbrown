@@ -1,32 +1,30 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { KeyboardIcon } from '../icons/KeyboardIcon';
+import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-header',
-  imports: [RouterLink, KeyboardIcon],
+  imports: [RouterLink, Hashbrown],
   template: `
     <header>
       <div class="left">
-        <a routerLink="/">hashbrown</a>
+        <a routerLink="/">
+          <www-hashbrown height="24" width="137.91" />
+        </a>
+      </div>
+      <div class="right">
         <nav>
           <ul>
             <li>
-              <a [routerLink]="docsUrl()" class="underline">Docs</a>
+              <a [routerLink]="docsUrl()" class="underline">docs</a>
             </li>
-            <li><a routerLink="/api" class="underline">API</a></li>
+            <li><a routerLink="/api" class="underline">api</a></li>
             <li>
-              <a routerLink="/enterprise" class="underline">Enterprise</a>
+              <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
           </ul>
         </nav>
-      </div>
-      <div class="right">
-        <input placeholder="Search" />
-        <label>
-          <www-keyboard-icon />
-        </label>
       </div>
     </header>
   `,
@@ -34,32 +32,23 @@ import { ConfigService } from '../services/ConfigService';
     `
       :host {
         display: block;
-        background: #fff;
+        background: #e8a23d;
       }
 
       header {
         display: flex;
         justify-content: space-between;
-        padding: 32px;
+        align-items: center;
+        padding: 24px 32px;
 
         > .left {
           display: flex;
           gap: 24px;
           align-items: center;
+        }
 
-          > a {
-            font: 600 16px/24px sans-serif;
-            color: rgba(47, 47, 43, 0.88);
-            text-decoration: none;
-            transition: color ease-in-out 0.15s;
-
-            &:hover {
-              color: rgba(47, 47, 43, 0.88);
-              text-decoration: underline;
-            }
-          }
-
-          nav {
+        > .right {
+          > nav {
             > ul {
               display: flex;
               align-items: center;
@@ -69,47 +58,19 @@ import { ConfigService } from '../services/ConfigService';
                 display: flex;
                 justify-content: center;
                 align-items: center;
+
+                > a {
+                  font: 600 16px/24px sans-serif;
+                  color: #774625;
+                  text-decoration: underline;
+                  text-decoration-color: transparent;
+                  transition: text-decoration-color ease-in-out 0.2s;
+
+                  &:hover {
+                    text-decoration-color: #774625;
+                  }
+                }
               }
-            }
-          }
-        }
-
-        > .right {
-          position: relative;
-
-          > label {
-            position: absolute;
-            top: 11px;
-            right: 8px;
-          }
-
-          > input {
-            background-color: transparent;
-            font-size: 16px;
-            padding: 12px 48px 12px 12px;
-            width: 100%;
-            border: 1px solid rgba(47, 47, 43, 0.24);
-            border-radius: 24px;
-            transition:
-              border-color ease-in-out 0.15s,
-              box-shadow ease-in-out 0.15s;
-
-            &:focus,
-            &:active,
-            &:focus-visible,
-            &:hover {
-              border-color: rgba(47, 47, 43, 0.88);
-              outline: none;
-
-              &::placeholder {
-                opacity: 1;
-              }
-            }
-
-            &::placeholder {
-              color: rgba(47, 47, 43, 0.24);
-              opacity: 0.4;
-              transition: opacity 0.2s ease-in-out;
             }
           }
         }

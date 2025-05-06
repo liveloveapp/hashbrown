@@ -116,7 +116,7 @@ import { ReferenceService } from '../../services/ReferenceService';
 
         > h2 {
           font: 700 14px/18px monospace;
-          color: #586b2d;
+          color: #774625;
           margin-top: 32px;
 
           &:first-child {

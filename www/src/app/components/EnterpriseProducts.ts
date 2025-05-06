@@ -1,22 +1,52 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ArrowUpRight } from '../icons/ArrowUpRight';
+import { CircleCheck } from '../icons/CircleCheck';
 import { BrainComponent } from './Brain';
 
 @Component({
   selector: 'www-enterprise-products',
-  imports: [BrainComponent, ArrowUpRight, RouterLink],
+  imports: [BrainComponent, ArrowUpRight, CircleCheck, RouterLink],
   template: `
     <div class="bleed">
       <www-brain />
       <div class="info">
-        <h2>AI does that</h2>
+        <h2><span>Enterprise support</span><span>by LiveLoveApp</span></h2>
         <p>
           We can't stop thinking about how AI changes the way people explore,
           visualize, and act on complex information - all through the power of
           natural language.
         </p>
-        <span class="gap"></span>
+        <ul>
+          <li>
+            <www-circle-check />
+            <strong>AI Engineering</strong>
+            <div></div>
+            <p>
+              From concept to launch, our engineering approach is fast and
+              high-quality. We can deliver top-tier AI engineering for your
+              product.
+            </p>
+          </li>
+          <li>
+            <www-circle-check />
+            <strong>Workshops</strong>
+            <div></div>
+            <p>
+              Learn how to build and deploy AI into your organization's web app
+              with our hands-on workshops.
+            </p>
+          </li>
+          <li>
+            <www-circle-check />
+            <strong>Design</strong>
+            <div></div>
+            <p>
+              Turn massive data into actionable insights. We understand big
+              data, and how best to communicate data visually.
+            </p>
+          </li>
+        </ul>
         <a routerLink="/enterprise">
           Enterprise Services <www-arrow-up-right />
         </a>
@@ -27,7 +57,7 @@ import { BrainComponent } from './Brain';
     :host {
       display: flex;
       justify-content: center;
-      background: rgba(47, 47, 43, 0.04);
+      background: #faf9f0;
     }
 
     .bleed {
@@ -42,19 +72,45 @@ import { BrainComponent } from './Brain';
     }
 
     .info {
-      background: #fff;
-      border-radius: 12px;
-      padding: 48px 32px;
       display: flex;
       flex-direction: column;
       gap: 32px;
 
       > h2 {
-        font: 32px/48px sans-serif;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        color: #5e5c5a;
+        font: 400 32px/40px sans-serif;
       }
 
-      > .gap {
-        flex: 1 auto;
+      > p {
+        color: #774625;
+        font: 500 16px/24px sans-serif;
+      }
+
+      > ul {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        color: #774625;
+        font: 500 16px/24px sans-serif;
+
+        > li {
+          display: grid;
+          grid-template-columns: 24px auto;
+          row-gap: 8px;
+          column-gap: 16px;
+          align-items: center;
+
+          > strong {
+            font: 700 16px/24px sans-serif;
+          }
+
+          > p {
+            font: 400 14px/18px sans-serif;
+          }
+        }
       }
 
       > a {
