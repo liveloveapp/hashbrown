@@ -22,18 +22,18 @@ import { Component, computed, input, output } from '@angular/core';
         display: flex;
         align-items: center;
         cursor: pointer;
-        color: rgba(47, 47, 43, 0.72);
+        color: rgba(61, 60, 58, 0.72);
         transition: all 0.2s ease-in-out;
         padding: 8px 16px;
         border: 1px solid transparent;
         border-radius: 8px;
 
         &.selected {
-          background: rgba(47, 47, 43, 0.04);
+          background: rgba(61, 60, 58, 0.04);
         }
 
         &:hover {
-          border-color: rgba(47, 47, 43, 0.24);
+          border-color: rgba(61, 60, 58, 0.24);
         }
       }
 

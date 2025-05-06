@@ -81,7 +81,7 @@ import { ReferenceService } from '../../services/ReferenceService';
             font-size: 16px;
             padding: 8px 0 8px 38px;
             width: 100%;
-            border: 1px solid rgba(47, 47, 43, 0.24);
+            border: 1px solid rgba(61, 60, 58, 0.24);
             border-radius: 8px;
           }
         }
@@ -102,7 +102,7 @@ import { ReferenceService } from '../../services/ReferenceService';
 
       hr {
         border: 0;
-        border-top: 1px solid rgba(47, 47, 43, 0.24);
+        border-top: 1px solid rgba(61, 60, 58, 0.24);
         margin: 32px 32px;
       }
 

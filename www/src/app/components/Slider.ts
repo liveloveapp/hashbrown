@@ -18,7 +18,7 @@ import { Component, input, output } from '@angular/core';
         -webkit-appearance: none;
         appearance: none;
         height: 4px;
-        background: rgba(47, 47, 43, 0.24);
+        background: rgba(61, 60, 58, 0.24);
         border-radius: 2px;
         outline: none;
       }

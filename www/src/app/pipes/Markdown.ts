@@ -49,7 +49,7 @@ export class Markdown implements PipeTransform {
       highlight: (code, lang, info) => {
         return this.highlighterService.getHighlighter().codeToHtml(code, {
           lang: 'typescript',
-          theme: 'github-light',
+          theme: 'hashbrown',
         });
       },
     }),

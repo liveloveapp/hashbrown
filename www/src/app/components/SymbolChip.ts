@@ -21,11 +21,11 @@ import {
         display: flex;
         align-items: center;
         cursor: pointer;
-        color: rgba(47, 47, 43, 0.72);
+        color: rgba(61, 60, 58, 0.72);
         transition: all 0.2s ease-in-out;
 
         &:hover {
-          color: rgb(47, 47, 43);
+          color: rgb(61, 60, 58);
         }
       }
 

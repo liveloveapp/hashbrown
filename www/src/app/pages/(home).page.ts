@@ -4,9 +4,10 @@ import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { Hero } from '../components/Hero';
 import { LightsDemo } from '../components/LightsDemo';
+import { LdpTour } from '../components/lpd/LdpTour';
 
 @Component({
-  imports: [Header, Footer, Hero, EnterpriseProducts, LightsDemo],
+  imports: [Header, Footer, Hero, EnterpriseProducts, LightsDemo, LdpTour],
   template: `
     <www-header />
     <main>
@@ -48,6 +49,7 @@ import { LightsDemo } from '../components/LightsDemo';
           </p>
         </div>
       </section>
+      <www-lpd-tour />
       <www-enterprise-products />
     </main>
     <www-footer />
@@ -72,6 +74,7 @@ import { LightsDemo } from '../components/LightsDemo';
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      background-color: #faf9f0;
 
       > .content {
         display: flex;

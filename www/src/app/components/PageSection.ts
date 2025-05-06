@@ -98,7 +98,7 @@ import { PageLink } from './PageLink';
 
       hr {
         border: none;
-        border-top: 1px solid rgba(47, 47, 43, 0.88);
+        border-top: 1px solid rgba(61, 60, 58, 0.88);
         margin: 16px 0;
         width: 100%;
       }

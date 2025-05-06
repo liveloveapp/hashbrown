@@ -31,7 +31,7 @@ import { Chat } from '@hashbrownai/core';
         padding: 16px;
         border-radius: 16px;
         width: 80%;
-        background-color: rgba(47, 47, 43, 0.24);
+        background-color: rgba(61, 60, 58, 0.24);
         align-self: flex-end;
         margin-bottom: 16px;
       }
