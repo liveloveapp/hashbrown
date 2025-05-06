@@ -2,17 +2,19 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BrandBlueSky } from '../icons/BrandBlueSky';
 import { BrandLinkedIn } from '../icons/BrandLinkedIn';
+import { LiveLoveApp } from '../icons/LiveLoveApp';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-footer',
-  imports: [RouterLink, BrandBlueSky, BrandLinkedIn],
+  imports: [RouterLink, BrandBlueSky, BrandLinkedIn, LiveLoveApp],
   template: `
     <footer>
       <div class="links">
         <div class="brand">
           <div class="title">
-            Cooked up by <a href="https://liveloveapp.com">LiveLoveApp</a>
+            <span>Cooked up by</span>
+            <a href="https://liveloveapp.com"><www-liveloveapp /></a>
           </div>
           <small>
             LiveLoveApp is a team of engineers who bring data to life on the web
@@ -34,9 +36,9 @@ import { ConfigService } from '../services/ConfigService';
           <div class="title">Enterprise</div>
           <ul>
             <li>
-              <a routerLink="/enterprise" class="underline"
-                >Enterprise Support</a
-              >
+              <a routerLink="/enterprise" class="underline">
+                Enterprise Support
+              </a>
             </li>
           </ul>
         </div>
@@ -45,7 +47,7 @@ import { ConfigService } from '../services/ConfigService';
         <span></span>
         <ul>
           <li>
-            <a href="https://twitter.com/liveloveappdev" target="_blank">
+            <a href="https://bsky.app/profile/liveloveapp.dev" target="_blank">
               <www-brand-blue-sky />
             </a>
           </li>
@@ -86,25 +88,28 @@ import { ConfigService } from '../services/ConfigService';
           gap: 8px;
 
           > .title {
-            display: inline-block;
-            font: 600 18px/24px sans-serif;
-            color: #7d542f;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font:
+              500 24px/32px Fredoka,
+              sans-serif;
+            color: #5e5c5a;
 
             > a {
-              color: #ef7b89;
-              text-decoration-line: underline;
-              text-decoration-color: transparent;
-              transition: text-decoration-color 0.2s ease-in-out;
+              display: flex;
+              align-items: center;
 
-              &.active,
-              &:hover {
-                text-decoration-color: #ef7b89;
+              > www-liveloveapp {
+                margin-top: 4px;
               }
             }
           }
 
           > small {
-            font: 400 14px/20px sans-serif;
+            font:
+              400 14px/20px Poppins,
+              sans-serif;
             color: rgba(47, 47, 43, 0.72);
           }
         }
@@ -124,11 +129,15 @@ import { ConfigService } from '../services/ConfigService';
           gap: 8px;
 
           > .title {
-            font: 600 14px/18px sans-serif;
+            font:
+              600 14px/18px Poppins,
+              sans-serif;
           }
 
           > ul {
-            font: 400 14px/18px sans-serif;
+            font:
+              400 14px/18px Poppins,
+              sans-serif;
             display: flex;
             flex-direction: column;
             gap: 4px;

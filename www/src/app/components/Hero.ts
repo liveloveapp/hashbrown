@@ -50,7 +50,9 @@ import { ConfigService } from '../services/ConfigService';
 
         > p {
           color: #3d3c3a;
-          font: 400 24px/28px sans-serif;
+          font:
+            400 24px/28px Poppins,
+            sans-serif;
           text-align: center;
         }
       }
@@ -66,7 +68,9 @@ import { ConfigService } from '../services/ConfigService';
           justify-content: center;
           align-items: center;
           color: rgba(255, 255, 255, 0.88);
-          font: 400 18px/24px sans-serif;
+          font:
+            500 18px/24px 'Fredoka',
+            sans-serif;
           padding: 12px 24px;
           border-radius: 48px;
           border: 6px solid #e8a23d;
@@ -82,7 +86,9 @@ import { ConfigService } from '../services/ConfigService';
 
         > p {
           color: #774625;
-          font: 700 10px/16px sans-serif;
+          font:
+            700 10px/16px Poppins,
+            sans-serif;
           text-align: center;
         }
       }

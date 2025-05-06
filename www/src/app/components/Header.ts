@@ -60,7 +60,9 @@ import { ConfigService } from '../services/ConfigService';
                 align-items: center;
 
                 > a {
-                  font: 600 16px/24px sans-serif;
+                  font:
+                    600 16px/24px Poppins,
+                    sans-serif;
                   color: #774625;
                   text-decoration: underline;
                   text-decoration-color: transparent;
