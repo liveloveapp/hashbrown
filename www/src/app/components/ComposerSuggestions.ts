@@ -18,7 +18,7 @@ import { Component, output, signal } from '@angular/core';
     button {
       padding: 16px;
       border-radius: 24px;
-      border: 1px solid rgba(47, 47, 43, 0.88);
+      border: 1px solid rgba(61, 60, 58, 0.88);
       background-color: #fff;
       cursor: pointer;
     }

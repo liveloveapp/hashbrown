@@ -39,7 +39,7 @@ import { Messages } from './Messages';
       display: grid;
       grid-template-columns: 1fr;
       gap: 16px;
-      background: rgba(47, 47, 43, 0.04);
+      background: rgba(61, 60, 58, 0.04);
       padding: 64px 32px;
     }
 
@@ -54,7 +54,7 @@ import { Messages } from './Messages';
       width: 100%;
 
       > h3 {
-        color: rgba(47, 47, 43, 0.88);
+        color: rgba(61, 60, 58, 0.88);
         font: 600 12px/18px sans-serif;
         text-transform: uppercase;
       }

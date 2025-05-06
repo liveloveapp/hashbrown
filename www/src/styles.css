@@ -111,8 +111,8 @@ html {
 
 body {
   background: #fff;
-  color: #3D3C3A;
-  font-family: Poppins, sans-serif;
+  color: rgba(61, 60, 58, 1);
+  font-family: 'Poppins', sans-serif;
   font-weight: 400;
   font-style: normal;
   font-size: 1rem;
@@ -173,7 +173,7 @@ pre {
   font-family: 'Operator Mono', monospace;
 }
 
-pre.shiki.github-light {
+pre.shiki.hashbrown {
   background: none !important;
 }
 

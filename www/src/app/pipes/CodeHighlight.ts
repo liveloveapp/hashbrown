@@ -14,7 +14,7 @@ export class CodeHighlight implements PipeTransform {
     return this.domSanitizer.bypassSecurityTrustHtml(
       this.highlighterService.getHighlighter().codeToHtml(code, {
         lang: 'typescript',
-        theme: 'github-light',
+        theme: 'hashbrown',
       }),
     );
   }

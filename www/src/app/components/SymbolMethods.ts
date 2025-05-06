@@ -68,7 +68,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
         display: flex;
         flex-direction: column;
         border-radius: 12px;
-        background-color: rgba(47, 47, 43, 0.04);
+        background-color: rgba(61, 60, 58, 0.04);
 
         > .header {
           padding: 16px;

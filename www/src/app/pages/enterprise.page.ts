@@ -22,11 +22,11 @@ import { Header } from '../components/Header';
     }
 
     www-header {
-      border-bottom: 1px solid rgba(47, 47, 43, 0.24);
+      border-bottom: 1px solid rgba(61, 60, 58, 0.24);
     }
 
     www-footer {
-      border-top: 1px solid rgba(47, 47, 43, 0.24);
+      border-top: 1px solid rgba(61, 60, 58, 0.24);
     }
   `,
 })

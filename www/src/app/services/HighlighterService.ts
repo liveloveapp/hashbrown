@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { createHighlighter, HighlighterGeneric } from 'shiki';
+import shikiHashbrown from '../themes/shiki-hashbrown';
 
 @Injectable({
   providedIn: 'root',
@@ -9,7 +10,7 @@ export class HighlighterService {
 
   async loadHighlighter() {
     this.highlighter = await createHighlighter({
-      themes: ['github-light'],
+      themes: [shikiHashbrown as any],
       langs: ['typescript'],
     });
   }

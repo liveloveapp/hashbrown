@@ -107,10 +107,8 @@ import { ConfigService } from '../services/ConfigService';
           }
 
           > small {
-            font:
-              400 14px/20px Poppins,
-              sans-serif;
-            color: rgba(47, 47, 43, 0.72);
+            font: 400 14px/20px sans-serif;
+            color: rgba(61, 60, 58, 0.72);
           }
         }
 
