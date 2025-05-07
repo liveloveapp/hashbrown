@@ -9,6 +9,8 @@ class PartialJSON extends Error {}
 
 class MalformedJSON extends Error {}
 
+class IncompleteNonStreamingObject extends Error {}
+
 function parseJSON(jsonString: string, schema: s.HashbrownType): any {
   if (typeof jsonString !== 'string') {
     throw new TypeError(`expecting str, got ${typeof jsonString}`);
@@ -21,6 +23,11 @@ function parseJSON(jsonString: string, schema: s.HashbrownType): any {
 
 const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   const logger = new Logger(ENABLE_LOGGING);
+
+  logger.log('In _parseJson');
+  // Since each parse run is effectively starting over, this string should indicate
+  // how far we can expect to get this time
+  logger.log(jsonString);
 
   const length = jsonString.length;
   let index = 0;
@@ -143,34 +150,50 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       }
 
       containerStack.push(nextContainer);
-    } else {
-      // If we are in an array, it may be a direct object or an array of objects (if AnyOf)
-      // If it's an AnyOf array, check that all objects defined discriminators or we will
-      // not be able to continue parsing.
-
-      const currentContainer = containerStack[containerStack.length - 1];
-      // Array handling will have pushed the "direct object" already, so in that case we are done.
-      // If the next container is an array, we have an AnyOf and need to figure out which schema to
-      // reference (if we, in fact, can)
-      if (Array.isArray(currentContainer)) {
-        // An array, so try to find the relevant schema by discriminator
-        const allHaveDiscriminators = (currentContainer as any).every(
-          (schema: HashbrownType) =>
-            s.DISCRIMINATOR in (schema[internal].definition as any).shape,
-        );
-        logger.log(
-          `Found discriminators in schema in current container: ${allHaveDiscriminators} `,
-        );
-        if (!allHaveDiscriminators) {
-          throwMalformedError(`All schemata in AnyOf must have discriminators`);
-        }
-      }
     }
+
+    let currentContainerStackIndex = containerStack.length - 1;
 
     try {
       while (jsonString[index] !== '}') {
         skipBlank();
-        if (index >= length) return obj;
+        if (index >= length) {
+          const currentContainer = containerStack[currentContainerStackIndex];
+
+          if (
+            !Array.isArray(currentContainer) &&
+            s.isStreaming(currentContainer)
+          ) {
+            logger.log('Index >= length: returning partial object');
+            return obj;
+          } else {
+            logger.log(
+              'Index >= length: opting not to return partial obj if non-streaming properties are missing',
+            );
+
+            // Are all non-streaming fields present?
+            if (
+              Object.entries(
+                (currentContainer[internal].definition as any).shape,
+              ).every(([key, subSchema]) => {
+                logger.log(
+                  `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
+                );
+                if (s.isStreaming(subSchema as any) || key in obj) {
+                  return true;
+                }
+
+                return false;
+              })
+            ) {
+              return obj;
+            }
+
+            throw new IncompleteNonStreamingObject(
+              'Incomplete but non-streaming object found',
+            );
+          }
+        }
 
         const key = parseStr(false);
 
@@ -207,6 +230,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
               logger.log('Adding schema for discriminator');
               logger.log(matchingSchema);
               containerStack.push(matchingSchema[0]);
+              currentContainerStackIndex = containerStack.length - 1;
+
               obj[key] = value;
             } else {
               throwMalformedError(
@@ -215,12 +240,16 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             }
           } else {
             const schemaFragmentForKey = (
-              containerStack[containerStack.length - 1][internal]
+              containerStack[currentContainerStackIndex][internal]
                 .definition as any
             ).shape[key];
 
             const currentKeyAllowsIncomplete =
               s.isStreaming(schemaFragmentForKey);
+
+            logger.log(
+              `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
+            );
 
             const value = parseAny(key, currentKeyAllowsIncomplete, false);
 
@@ -229,15 +258,99 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             obj[key] = value;
           }
         } catch (e) {
+          // console.log(e);
           logger.error(e);
-          return obj;
+
+          // return obj;
+
+          /*
+            We'll get here if a value or the object is not complete.
+
+            We'll either be:
+            - in an object that is or is not streaming
+            - in an array for AnyOf, which means we aren't streaming
+          */
+          const currentContainer = containerStack[currentContainerStackIndex];
+
+          if (
+            !Array.isArray(currentContainer) &&
+            s.isStreaming(currentContainer)
+          ) {
+            logger.log('Inner: returning partial object');
+            return obj;
+          } else {
+            logger.log(
+              'Inner: opting not to return partial obj if non-streaming properties are missing',
+            );
+
+            // Are all non-streaming fields present?
+            if (
+              Object.entries(
+                (currentContainer[internal].definition as any).shape,
+              ).every(([key, subSchema]) => {
+                logger.log(
+                  `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
+                );
+                if (s.isStreaming(subSchema as any) || key in obj) {
+                  return true;
+                }
+
+                return false;
+              })
+            ) {
+              return obj;
+            }
+
+            throw new IncompleteNonStreamingObject(
+              'Incomplete but non-streaming object found',
+            );
+          }
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
       }
     } catch (e) {
       logger.log(e);
-      return obj;
+      // return obj;
+
+      // /*
+      //   We'll get here if a key is not completes
+
+      //   We'll either be:
+      //   - in an object that is or is not streaming
+      //   - in an array for AnyOf, which means we aren't streaming
+      // */
+      const currentContainer = containerStack[currentContainerStackIndex];
+
+      if (!Array.isArray(currentContainer) && s.isStreaming(currentContainer)) {
+        logger.log('Outer: returning partial object');
+        return obj;
+      } else {
+        logger.log(
+          'Outer: opting not to return partial obj if non-streaming properties are missing',
+        );
+        // Are all non-streaming fields present?
+        if (
+          Object.entries(
+            (currentContainer[internal].definition as any).shape,
+          ).every(([key, subSchema]) => {
+            logger.log(
+              `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
+            );
+            if (s.isStreaming(subSchema as any) || key in obj) {
+              return true;
+            }
+
+            return false;
+          })
+        ) {
+          return obj;
+        }
+
+        throw new IncompleteNonStreamingObject(
+          'Incomplete but non-streaming object found',
+        );
+      }
     }
     index++; // skip final brace
 
@@ -298,6 +411,9 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
     try {
       while (jsonString[index] !== ']') {
+        logger.log(
+          `Array content allows incomplete: ${contentsAllowIncomplete}`,
+        );
         arr.push(parseAny('', contentsAllowIncomplete, true));
         skipBlank();
         if (jsonString[index] === ',') {
@@ -305,6 +421,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         }
       }
     } catch (e) {
+      // console.log(e);
       if (allowsIncomplete) {
         return arr;
       }
@@ -369,7 +486,15 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   // TODO: what is schema is just an array?
-  return parseAny('', true, false);
+  try {
+    return parseAny('', true, false);
+  } catch (e) {
+    if (e instanceof IncompleteNonStreamingObject) {
+      logger.log('Got incomplete object error at top level');
+    }
+
+    return '';
+  }
 };
 
 const parse = parseJSON;
