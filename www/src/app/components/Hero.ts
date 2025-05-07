@@ -34,7 +34,7 @@ import { ConfigService } from '../services/ConfigService';
       display: flex;
       flex-direction: column;
       padding: 128px 64px;
-      max-width: 960px;
+      max-width: 1024px;
     }
 
     .container {

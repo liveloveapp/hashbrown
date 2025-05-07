@@ -47,6 +47,7 @@
     "@ngrx/signals": "^19.1.0",
     "@ngrx/store": "^19.1.0",
     "express": "^4.21.2",
+    "firebase": "^11.6.1",
     "front-matter": "^4.0.2",
     "highlight.js": "^11.11.1",
     "marked": "^15.0.8",
