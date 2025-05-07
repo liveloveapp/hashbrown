@@ -13,7 +13,7 @@ import { BrainComponent } from './Brain';
       <www-brain />
       <div class="info">
         <h2>
-          <span>Enterprise support</span>
+          <span>Enterprise services</span>
           <span>by <www-liveloveapp height="32px" width="196px" /></span>
         </h2>
         <p>
@@ -22,6 +22,15 @@ import { BrainComponent } from './Brain';
           natural language.
         </p>
         <ul>
+          <li>
+            <www-circle-check />
+            <strong>Enterprise Support</strong>
+            <div></div>
+            <p>
+              LiveLoveApp provides dedicated support via email and collaborates
+              with your team via GitHub.
+            </p>
+          </li>
           <li>
             <www-circle-check />
             <strong>AI Engineering</strong>
@@ -73,6 +82,8 @@ import { BrainComponent } from './Brain';
 
     www-brain {
       display: none;
+      align-self: center;
+      align-self: center;
     }
 
     p {
