@@ -827,6 +827,38 @@
           }
         },
         {
+          "kind": "Variable",
+          "canonicalReference": "@hashbrownai/core!s.DISCRIMINATOR:var",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "DISCRIMINATOR = " },
+            { "kind": "Content", "text": "\"__discriminator\"" }
+          ],
+          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isReadonly": true,
+          "releaseTag": "Public",
+          "name": "DISCRIMINATOR",
+          "variableTypeTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
           "kind": "Function",
           "canonicalReference": "@hashbrownai/core!s.enumType:function(1)",
           "docComment": "",

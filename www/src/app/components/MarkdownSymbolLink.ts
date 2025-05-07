@@ -8,12 +8,12 @@ import { SymbolLink } from './SymbolLink';
   encapsulation: ViewEncapsulation.None,
   styles: [
     `
-      www-markdown-symbol-link {
-        color: #ffdcbe;
-      }
-
       www-markdown-symbol-link a {
-        font-family: 'Space Mono', monospace;
+        background: #9ecfd7;
+        color: #fff;
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-family: monospace;
         font-variant-ligatures: none;
         font-weight: 600;
         text-decoration: none;

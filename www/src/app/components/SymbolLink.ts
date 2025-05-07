@@ -50,7 +50,14 @@ export class SymbolLink {
    * to use a traditional input to set the reference.
    */
   @Input({ required: true }) set reference(ref: CanonicalReference) {
-    const parsed = new ParsedCanonicalReference(ref);
+    let parsed: ParsedCanonicalReference;
+    try {
+      parsed = new ParsedCanonicalReference(ref);
+    } catch (e) {
+      console.warn(`Invalid reference: ${ref}`, e);
+      return;
+    }
+
     this.isPrivate = parsed.isPrivate;
     this.shouldUseExternalLink =
       parsed.package.startsWith('@angular') || parsed.package === 'rxjs';
@@ -60,22 +67,18 @@ export class SymbolLink {
       this.url = '';
     } else if (parsed.package.startsWith('@hashbrownai')) {
       const [hashbrown, ...rest] = parsed.package.split('/');
-      this.url = `/ref/${rest.join('/')}/${parsed.name}`;
+      this.url = `/api/${rest.join('/')}/${parsed.name}`;
     } else if (parsed.package.startsWith('@angular')) {
       const [, packageName] = parsed.package.split('/');
       this.url = `https://angular.dev/api/${packageName}/${parsed.name}`;
     } else if (parsed.package === 'rxjs') {
       this.url = `https://rxjs.dev/api/index/${parsed.kind}/${parsed.name}`;
     } else {
-      throw new Error(`Unknown package: ${parsed.package}`);
+      console.warn(`Unknown package: ${parsed.package}`);
     }
   }
 
   get name() {
-    if (this.parsedReference.isPrivate) {
-      return this.parsedReference.name.slice(1);
-    }
-
     return this.parsedReference.name;
   }
 
@@ -127,8 +130,53 @@ export class SymbolLink {
               return new Observable(() => {
                 overlay.attach(componentPortal);
 
-                return () => overlay.detach();
-              }).pipe(takeUntil(fromEvent(link, 'mouseleave')));
+                let isOverLink = true;
+                let isOverPopover = false;
+
+                const onMouseLeave = () => {
+                  if (!isOverLink && !isOverPopover) {
+                    overlay.detach();
+                  }
+                };
+
+                const linkLeaveSub = fromEvent(link, 'mouseleave').subscribe(
+                  () => {
+                    isOverLink = false;
+                    setTimeout(onMouseLeave, 500);
+                  },
+                );
+
+                const linkEnterSub = fromEvent(link, 'mouseenter').subscribe(
+                  () => {
+                    isOverLink = true;
+                  },
+                );
+
+                const popover = overlay.overlayElement;
+
+                const popoverEnterSub = fromEvent(
+                  popover,
+                  'mouseenter',
+                ).subscribe(() => {
+                  isOverPopover = true;
+                });
+
+                const popoverLeaveSub = fromEvent(
+                  popover,
+                  'mouseleave',
+                ).subscribe(() => {
+                  isOverPopover = false;
+                  setTimeout(onMouseLeave, 0);
+                });
+
+                return () => {
+                  overlay.detach();
+                  linkLeaveSub.unsubscribe();
+                  linkEnterSub.unsubscribe();
+                  popoverEnterSub.unsubscribe();
+                  popoverLeaveSub.unsubscribe();
+                };
+              });
             }),
           );
         }),

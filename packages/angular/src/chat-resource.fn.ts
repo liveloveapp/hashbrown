@@ -48,6 +48,7 @@ export type ChatResourceConfig = {
   maxTokens?: number | Signal<number>;
   messages?: Chat.Message[];
   responseFormat?: s.HashbrownType;
+  url?: string | Signal<string>;
 };
 
 /**
@@ -295,6 +296,16 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
 
     return responseFormat;
   });
+  const computedUrl = computed(() => {
+    if (typeof config.url === 'string') {
+      return config.url;
+    }
+    if (!config.url) {
+      return 'http://localhost:3000/chat';
+    }
+
+    return config.url();
+  });
 
   effect(() => {
     console.log('Current Messages', messagesSignal());
@@ -316,7 +327,7 @@ export function chatResource(config: ChatResourceConfig): ChatResource {
         isReceiving.set(false);
         console.log('sending these messages', messages);
         return fetchService
-          .streamChatCompletionWithTools('http://localhost:3000/chat', {
+          .streamChatCompletionWithTools(computedUrl(), {
             model: computedModel(),
             messages: messages,
             tools: toolDefinitions,

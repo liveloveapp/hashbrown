@@ -23,7 +23,7 @@ import { Markdown } from '../pipes/Markdown';
 
       h2 {
         font: 700 14px/18px monospace;
-        color: rgba(255, 255, 255, 0.86);
+        color: rgba(255, 255, 255, 0.88);
       }
 
       code {

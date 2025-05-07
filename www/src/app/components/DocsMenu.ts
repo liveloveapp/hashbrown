@@ -18,7 +18,7 @@ import { PageSection } from './PageSection';
       gap: 24px;
       height: 100%;
       padding: 32px;
-      border-right: 1px solid #f4f4f41f;
+      border-right: 1px solid rgba(61, 60, 58, 0.24);
     }
   `,
 })

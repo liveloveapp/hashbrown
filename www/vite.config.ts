@@ -1,9 +1,11 @@
 /// <reference types="vitest" />
 
 import analog from '@analogjs/platform';
-import { defineConfig } from 'vite';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import { join } from 'path';
+import { defineConfig } from 'vite';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
+import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -23,9 +25,13 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       analog({
+        apiPrefix: '_',
         content: {
           highlighter: 'shiki',
           shikiOptions: {
+            highlight: {
+              theme: shikiHashbrown as any,
+            },
             highlighter: {
               additionalLangs: ['sh'],
             },
@@ -37,6 +43,9 @@ export default defineConfig(({ mode }) => {
               },
             ],
           },
+        },
+        nitro: {
+          compatibilityDate: '2024-05-07',
         },
       }),
       nxViteTsPaths(),

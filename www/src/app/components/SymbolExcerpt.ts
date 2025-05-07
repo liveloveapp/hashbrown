@@ -1,12 +1,12 @@
+import { NgClass } from '@angular/common';
 import { Component, computed, forwardRef, input } from '@angular/core';
-import { AsyncPipe, NgClass } from '@angular/common';
 import { ApiExcerptToken } from '../models/api-report.models';
 import { CodeHighlight } from '../pipes/CodeHighlight';
 import { SymbolLink } from './SymbolLink';
 
 @Component({
   selector: 'www-symbol-excerpt',
-  imports: [AsyncPipe, CodeHighlight, NgClass, forwardRef(() => SymbolLink)],
+  imports: [CodeHighlight, NgClass, forwardRef(() => SymbolLink)],
   template: `
     <div class="links">
       <!-- prettier-ignore -->
@@ -27,7 +27,7 @@ import { SymbolLink } from './SymbolLink';
       .links,
       code {
         display: block;
-        font: 500 14px/18px monospace;
+        font: 500 14px/1.5rem monospace;
         font-variant-ligatures: none;
       }
 

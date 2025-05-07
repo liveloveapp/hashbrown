@@ -32,7 +32,7 @@ export class ReferenceService {
           Object.entries(api.symbols).map(([name]) => {
             return link(
               name,
-              `/ref/${pkg.replace(/^@hashbrownai/, '')}/${name}`,
+              `/api/${pkg.replace(/^@hashbrownai/, '')}/${name}`,
             );
           }),
         );

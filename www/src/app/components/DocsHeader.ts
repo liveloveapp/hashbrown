@@ -1,105 +1,135 @@
-import { Component, inject, viewChild } from '@angular/core';
+import { Component, computed, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Angular } from '../icons/Angular';
-import { KeyboardIcon } from '../icons/KeyboardIcon';
+import { Hashbrown } from '../icons/Hashbrown';
 import { React } from '../icons/React';
-import { Search } from '../icons/Search';
 import { ConfigService } from '../services/ConfigService';
 import { DropdownMenu } from './DropDownMenu';
 
 @Component({
   selector: 'www-docs-header',
-  imports: [RouterLink, Search, DropdownMenu, Angular, React, KeyboardIcon],
+  imports: [RouterLink, DropdownMenu, Angular, React, Hashbrown],
   template: `
     <header>
-      <a routerLink="/">Hashbrown 🥔</a>
-      <nav>
-        <ul>
-          <li>
-            <button>
-              <www-keyboard-icon />
-            </button>
-          </li>
-          <li><a routerLink="/ref" class="underline">api</a></li>
-          <li>
-            <www-dropdown-menu [placement]="['right', 'bottom']">
-              @switch (config().sdk) {
-                @case ('angular') {
-                  <label>
-                    <www-angular height="16px" width="16px" />
+      <div class="left">
+        <a routerLink="/">
+          <www-hashbrown height="24" width="137.91" />
+        </a>
+      </div>
+      <div class="right">
+        <nav>
+          <ul>
+            <li><a routerLink="/api" class="underline">api</a></li>
+            <li>
+              <a routerLink="/enterprise" class="underline">enterprise</a>
+            </li>
+            <li>
+              <www-dropdown-menu [placement]="['right', 'bottom']">
+                @switch (config().sdk) {
+                  @case ('angular') {
+                    <label>
+                      <www-angular height="16px" width="16px" />
+                      Angular
+                    </label>
+                  }
+                  @case ('react') {
+                    <label>
+                      <www-react height="16px" width="16px" />
+                      React
+                    </label>
+                  }
+                }
+                <div content>
+                  <a routerLink="/docs/angular/start/quick" (click)="close()">
+                    <www-angular />
                     Angular
-                  </label>
-                }
-                @case ('react') {
-                  <label>
-                    <www-react height="16px" width="16px" />
+                  </a>
+                  <a routerLink="/docs/react/start/quick" (click)="close()">
+                    <www-react />
                     React
-                  </label>
-                }
-              }
-              <div content>
-                <a routerLink="/docs/angular/start/quick" (click)="close()">
-                  <www-angular />
-                  Angular
-                </a>
-                <a routerLink="/docs/react/start/quick" (click)="close()">
-                  <www-react />
-                  React
-                </a>
-              </div>
-            </www-dropdown-menu>
-          </li>
-        </ul>
-      </nav>
+                  </a>
+                </div>
+              </www-dropdown-menu>
+            </li>
+          </ul>
+        </nav>
+      </div>
     </header>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        background: #e8a23d;
+      }
+
       header {
         display: flex;
         justify-content: space-between;
-        padding: 32px;
-        border-bottom: 1px solid #f4f4f41f;
-      }
+        align-items: center;
+        padding: 24px 32px;
 
-      nav {
-        > ul {
+        > .left {
           display: flex;
-          align-items: center;
           gap: 24px;
+          align-items: center;
+        }
 
-          > li {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        > .right {
+          > nav {
+            > ul {
+              display: flex;
+              align-items: center;
+              gap: 32px;
 
-            www-dropdown-menu {
-              label {
+              > li {
                 display: flex;
+                justify-content: center;
                 align-items: center;
-                gap: 8px;
-                text-decoration-line: underline;
-                text-decoration-color: transparent;
-                transition: text-decoration-color 0.2s ease-in-out;
-
-                &:hover {
-                  text-decoration-color: #fff;
-                }
-              }
-
-              [content] {
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
 
                 > a {
-                  padding: 16px;
-                  display: flex;
-                  gap: 8px;
+                  font: 600 16px/24px sans-serif;
+                  color: #774625;
+                  text-decoration: underline;
+                  text-decoration-color: transparent;
+                  transition: text-decoration-color ease-in-out 0.2s;
 
                   &:hover {
-                    background: rgba(255, 255, 255, 0.08);
-                    border-radius: 8px;
+                    text-decoration-color: #774625;
+                  }
+                }
+
+                > www-dropdown-menu {
+                  label {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font: 600 16px/24px sans-serif;
+                    color: #774625;
+                    text-decoration-line: underline;
+                    text-decoration-color: transparent;
+                    transition: text-decoration-color 0.2s ease-in-out;
+
+                    &:hover {
+                      text-decoration-color: #774625;
+                    }
+                  }
+
+                  [content] {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+
+                    > a {
+                      padding: 16px;
+                      display: flex;
+                      gap: 8px;
+                      border-radius: 8px;
+
+                      &:hover {
+                        background: rgba(47, 47, 43, 0.08);
+                      }
+                    }
                   }
                 }
               }
@@ -119,6 +149,9 @@ import { DropdownMenu } from './DropDownMenu';
 export class DocsHeader {
   configService = inject(ConfigService);
   config = this.configService.config;
+  docsUrl = computed(() => {
+    return `/docs/${this.configService.config().sdk}/start/quick`;
+  });
   dropdownMenu = viewChild.required(DropdownMenu);
 
   close() {

@@ -24,7 +24,7 @@
               "kind": "Content",
               "text": "export interface AssistantMessage<AssistantOutput = "
             },
-            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": "string | object" },
             { "kind": "Content", "text": "> " }
           ],
           "fileUrlPath": "../packages/core/src/models/chat/AssistantMessage.ts",
@@ -257,7 +257,16 @@
             },
             {
               "kind": "Content",
-              "text": "[];\n    model: string;\n    response_format?: object;\n    temperature?: number;\n    tool_choice?: "
+              "text": "[];\n    model: string;\n    response_format?: "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " | object;\n    temperature?: number;\n    tool_choice?: "
             },
             {
               "kind": "Reference",
@@ -276,7 +285,7 @@
           "fileUrlPath": "../packages/core/src/models/chat/CompletionCreateParams.ts",
           "releaseTag": "Public",
           "name": "CompletionCreateParams",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 8 },
+          "typeTokenRange": { "startIndex": 1, "endIndex": 10 },
           "docs": {
             "modifiers": {
               "isInternal": false,

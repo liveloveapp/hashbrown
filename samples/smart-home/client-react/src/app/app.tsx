@@ -18,6 +18,7 @@ import { useSmartHomeStore } from './store/smart-home.store';
 import { LightsView } from './views/LightsView';
 import { ScenesView } from './views/ScenesView';
 import { ScheduledScenesView } from './views/ScheduledScenesView';
+import { UiCompletionView } from './views/UiCompletionView';
 
 export function App() {
   const { toast } = useToast();
@@ -61,6 +62,16 @@ export function App() {
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      to="/ui-completion"
+                      className={navigationMenuTriggerStyle()}
+                    >
+                      UI Completion
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
           </div>
@@ -82,6 +93,7 @@ export function App() {
                       <ScheduledScenesView scheduledScenes={scheduledScenes} />
                     }
                   />
+                  <Route path="/ui-completion" element={<UiCompletionView />} />
                   <Route path="/" element={<p>Home</p>} />
                 </Routes>
               </div>

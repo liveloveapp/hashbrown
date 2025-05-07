@@ -13,10 +13,12 @@ import { BrandGitHub } from '../icons/BrandGitHub';
 export class SymbolCodeLink {
   fileUrlPath = input.required<string>();
   url = computed(() => {
+    console.log(this.fileUrlPath());
     const [, fileName] = this.fileUrlPath().split('dist/');
-    const actualFileName = fileName
-      .replace('.d.ts', '.ts')
-      .replace('packages/angular/', 'packages/angular/src/');
+    if (!fileName) {
+      return '';
+    }
+    const actualFileName = fileName.replace('.d.ts', '.ts');
 
     return `https://github.com/liveloveapp/hashbrown/blob/main/${actualFileName}`;
   });

@@ -29,7 +29,7 @@ import { ApiMember } from '../models/api-report.models';
         > code {
           grid-area: returns;
           font: 700 14px/18px monospace;
-          color: #ffd866;
+          color: #7d542f;
         }
 
         > div {
