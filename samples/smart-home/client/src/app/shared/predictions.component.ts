@@ -14,7 +14,7 @@ import {
 } from '../store';
 import { createTool, structuredCompletionResource } from '@hashbrownai/angular';
 
-const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
+const PREDICTIONS_SCHEMA = s.anyOf([
   s.object('Suggests adding a light to the system', {
     __discriminator: s.constString('Add Light'),
     name: s.string('The suggested name of the light'),

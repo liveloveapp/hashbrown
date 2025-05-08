@@ -49,7 +49,7 @@ import { s } from '../../schema';
         ),
         anyOfListWithDiscriminator: s.streaming.array(
           'GlossDiv.anyOfListDiscriminator',
-          s.anyOf('anyOfListWithDiscriminator', [
+          s.anyOf([
             // No streaming
             s.object('7th Grade Teacher', {
               __discriminator: s.constString('seventh'),

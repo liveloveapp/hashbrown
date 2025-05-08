@@ -151,7 +151,6 @@ export function toJsonSchema(schema: HashbrownType) {
         anyOf: n[internal].definition.options.map((opt) =>
           printNode(opt, false, inDef, pathSeen),
         ),
-        description: n[internal].definition.description,
       };
     } else if (s.isEnumType(n)) {
       result = {
