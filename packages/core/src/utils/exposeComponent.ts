@@ -44,7 +44,6 @@ export function createComponentSchema(
   const weakMap = new WeakMap<Component<any>, s.HashbrownType>();
 
   const elements = s.anyOf(
-    'Elements',
     components.map((component, discriminator) =>
       createSchema(component, discriminator.toString()),
     ),
@@ -81,7 +80,6 @@ export function createComponentSchema(
           return s.streaming.array(
             'Child Elements',
             s.anyOf(
-              'Child Element',
               children.map((child, innerDiscriminator) =>
                 createSchema(child, innerDiscriminator.toString()),
               ),

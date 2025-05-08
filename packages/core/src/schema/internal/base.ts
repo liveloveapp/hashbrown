@@ -419,12 +419,11 @@ export function isAnyOfType(type: HashbrownType): type is AnyOfType {
 }
 
 export function anyOf<const Options extends readonly HashbrownType[]>(
-  description: string,
   options: Options,
 ): AnyOfType<Options> {
   return new AnyOfType({
     type: 'any-of',
-    description,
+    description: 'any-of',
     options,
     streaming: false,
   }) as any;
