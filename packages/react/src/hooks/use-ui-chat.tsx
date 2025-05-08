@@ -75,6 +75,9 @@ export const useUiChat = (options: UiChatOptions) => {
     ],
     output: ui,
   });
+
+  // TODO: see if I can go with fewer guards on message content now
+
   const buildContent = useCallback(
     (
       nodes: Array<s.Infer<typeof elements>>,
