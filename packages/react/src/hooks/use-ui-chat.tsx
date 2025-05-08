@@ -76,8 +76,6 @@ export const useUiChat = (options: UiChatOptions) => {
     output: ui,
   });
 
-  // TODO: see if I can go with fewer guards on message content now
-
   const buildContent = useCallback(
     (
       nodes: Array<s.Infer<typeof elements>>,
@@ -85,12 +83,6 @@ export const useUiChat = (options: UiChatOptions) => {
     ): React.ReactElement[] => {
       const elements = nodes.map((element, index) => {
         const key = `${parentKey}_${index}`;
-
-        if (!('$tagName' in element && '$props' in element)) {
-          return React.createElement(React.Fragment, {
-            key,
-          });
-        }
 
         const componentName = element.$tagName;
         const componentInputs = element.$props;

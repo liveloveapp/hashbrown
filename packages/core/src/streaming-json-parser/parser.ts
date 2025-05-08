@@ -258,10 +258,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             obj[key] = value;
           }
         } catch (e) {
-          // console.log(e);
           logger.error(e);
-
-          // return obj;
 
           /*
             We'll get here if a value or the object is not complete.
@@ -311,7 +308,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       }
     } catch (e) {
       logger.log(e);
-      // return obj;
 
       // /*
       //   We'll get here if a key is not completes
