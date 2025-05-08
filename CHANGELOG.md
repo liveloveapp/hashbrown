@@ -1,3 +1,21 @@
+## v0.0.2-6 (2025-05-08)
+
+### 🚀 Features
+
+- www homepage sdk mockup ([#62](https://github.com/liveloveapp/project-cassini/pull/62))
+- www branding ([#63](https://github.com/liveloveapp/project-cassini/pull/63))
+- www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
+- **www:** Add a feature tour to the landing page ([#65](https://github.com/liveloveapp/project-cassini/pull/65))
+
+### 🩹 Fixes
+
+- **azure:** Handle situations where the LLM emits a chunk without any choices ([1f3a3f0](https://github.com/liveloveapp/project-cassini/commit/1f3a3f0))
+
+### ❤️ Thank You
+
+- Brian Love @blove
+- Mike Ryan @MikeRyanDev
+
 ## 0.0.2-5 (2025-05-01)
 
 ### 🩹 Fixes
