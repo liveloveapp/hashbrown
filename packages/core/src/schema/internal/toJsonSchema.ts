@@ -1,5 +1,6 @@
 import * as s from './base';
 import { HashbrownType, internal } from './base';
+import { isStreaming } from './isStreaming';
 
 /**
  * Convert an arbitrary description into a camelCase identifier.
@@ -109,8 +110,22 @@ export function toJsonSchema(schema: HashbrownType) {
     let result: any;
 
     if (s.isObjectType(n)) {
+      // Sort props so that streaming ones are at the end
+      const shapeWithStreamingAtEnd = Object.entries(
+        n[internal].definition.shape,
+      ).sort((a, b) => {
+        if (!isStreaming(a[1]) && isStreaming(b[1])) {
+          return -1;
+        }
+        if (isStreaming(a[1]) && !isStreaming(b[1])) {
+          return 1;
+        }
+
+        return 0;
+      });
+
       const props: Record<string, any> = {};
-      for (const [k, child] of Object.entries(n[internal].definition.shape)) {
+      for (const [k, child] of shapeWithStreamingAtEnd) {
         props[k] = printNode(child, false, inDef, pathSeen);
       }
       result = {

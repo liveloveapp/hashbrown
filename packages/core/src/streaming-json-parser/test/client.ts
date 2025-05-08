@@ -53,9 +53,10 @@ import { s } from '../../schema';
             // No streaming
             s.object('7th Grade Teacher', {
               __discriminator: s.constString('seventh'),
-              firstName: s.string('7th.firstName'),
-              lastName: s.string('7th.lastName'),
-              birthDate: s.object('7th.birthDate', {
+              // Expectation: this will be moved to end of properties list
+              birthDate: s.streaming.object('7th.birthDate', {
+                // Expectation: property order won't change, but incremental updates
+                // will occur
                 year: s.string('7th.birthDate.year'),
                 month: s.string('7th.birthDate.month'),
                 day: s.string('7th.birthDate.day'),
@@ -64,6 +65,8 @@ import { s } from '../../schema';
                   minute: s.number('minute'),
                 }),
               }),
+              firstName: s.string('7th.firstName'),
+              lastName: s.string('7th.lastName'),
             }),
             // Will stream
             s.object('8th Grade Teacher', {
@@ -87,7 +90,8 @@ import { s } from '../../schema';
     for await (const data of parserIterable) {
       // To see how things are changing in a dynamic way, clear the console before
       // parsing update
-      // console.clear();
+      console.clear();
+      console.log('new chunk');
       console.log(JSON.stringify(data, null, 4));
     }
     console.log('Socket ended.');

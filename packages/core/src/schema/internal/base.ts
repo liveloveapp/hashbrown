@@ -6,6 +6,7 @@ import {
   IsUnion,
   UnionToTuple,
 } from '../../utils/types';
+import { isStreaming } from './isStreaming';
 
 export const internal = '~schema';
 export type internal = typeof internal;
