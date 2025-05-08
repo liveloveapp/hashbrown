@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { chatResource, createTool, uiChatResource } from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
-import { lastValueFrom, tap } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 import { exposeComponent, s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
@@ -90,6 +90,11 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
 
       .chat-messages {
         grid-area: messages;
+        flex-grow: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
       }
 
       .chat-composer {
@@ -125,12 +130,12 @@ export class ChatPanelComponent {
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
-        handler: () => this.authService.getUser(),
+        handler: () => lastValueFrom(this.authService.getUser()),
       }),
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
-        handler: () => this.smartHomeService.loadLights(),
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
       }),
     ],
   });
@@ -142,14 +147,12 @@ export class ChatPanelComponent {
    */
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-exp-03-25',
-    model: 'o4-mini',
+    model: 'gpt-4o',
     messages: [
       {
         role: 'system',
         content: `
           You are a helpful assistant that can answer questions and help with tasks.
-
-          If the user asks for lights, show them the light card for each light.
         `,
       },
     ],
@@ -173,7 +176,7 @@ export class ChatPanelComponent {
         description: 'Show a card to the user',
         children: 'any',
         props: {
-          title: s.string('The title of the card'),
+          title: s.streaming.string('The title of the card'),
         },
       }),
     ],
@@ -181,12 +184,12 @@ export class ChatPanelComponent {
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
-        handler: () => this.authService.getUser(),
+        handler: () => lastValueFrom(this.authService.getUser()),
       }),
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
-        handler: () => this.smartHomeService.loadLights(),
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
       }),
       // createToolJavaScript({
       //   loadVariant: () => Promise.resolve(variant),

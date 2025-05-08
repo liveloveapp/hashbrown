@@ -2,7 +2,7 @@
   "name": "RenderableMessage",
   "canonicalReference": "@hashbrownai/angular!RenderableMessage:type",
   "kind": "TypeAlias",
-  "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+  "fileUrlPath": "../dist/packages/angular/ui-chat-resource.fn.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -26,7 +26,7 @@
         { "kind": "Content", "text": ";\n}" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+      "fileUrlPath": "../dist/packages/angular/ui-chat-resource.fn.d.ts",
       "releaseTag": "Public",
       "name": "RenderableMessage",
       "typeTokenRange": { "startIndex": 1, "endIndex": 6 },

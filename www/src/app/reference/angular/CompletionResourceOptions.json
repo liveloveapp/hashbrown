@@ -1,0 +1,197 @@
+{
+  "name": "CompletionResourceOptions",
+  "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/angular/completion-resource.fn.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface CompletionResourceOptions<Input> "
+        }
+      ],
+      "fileUrlPath": "../dist/packages/angular/completion-resource.fn.d.ts",
+      "releaseTag": "Public",
+      "typeParameters": [
+        {
+          "typeParameterName": "Input",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "CompletionResourceOptions",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#examples:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "examples?: " },
+            {
+              "kind": "Content",
+              "text": "{\n        input: Input;\n        output: string;\n    }[]"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "examples",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#input:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "input: " },
+            {
+              "kind": "Reference",
+              "text": "Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            { "kind": "Content", "text": "<Input | null | undefined>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "input",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#model:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "model: " },
+            {
+              "kind": "Reference",
+              "text": "SignalLike",
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
+            },
+            { "kind": "Content", "text": "<string>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "model",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#system:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "system: " },
+            {
+              "kind": "Reference",
+              "text": "SignalLike",
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
+            },
+            { "kind": "Content", "text": "<string>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "system",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

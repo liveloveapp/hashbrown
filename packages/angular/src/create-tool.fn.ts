@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat, s } from '@hashbrownai/core';
-import { Observable } from 'rxjs';
 
 export class BoundTool<
   Name extends string,
@@ -9,9 +9,7 @@ export class BoundTool<
     readonly name: Name,
     readonly description: string,
     readonly schema: InputSchema,
-    readonly handler: (
-      input: s.Infer<InputSchema>,
-    ) => Promise<unknown> | Observable<unknown>,
+    readonly handler: (input: s.Infer<InputSchema>) => Promise<any>,
   ) {}
 
   toTool(): Chat.Tool<Name, InputSchema> {
@@ -30,9 +28,7 @@ export function createToolWithArgs<
   name: Name;
   description: string;
   schema: InputSchema;
-  handler: (
-    input: s.Infer<InputSchema>,
-  ) => Promise<unknown> | Observable<unknown>;
+  handler: (input: s.Infer<InputSchema>) => Promise<any>;
 }): BoundTool<Name, InputSchema> {
   return new BoundTool(
     input.name,
@@ -45,7 +41,7 @@ export function createToolWithArgs<
 export function createTool<Name extends string>(input: {
   name: Name;
   description: string;
-  handler: () => Promise<unknown> | Observable<unknown>;
+  handler: () => Promise<any>;
 }): BoundTool<Name, s.ObjectType<any>> {
   return createToolWithArgs({
     name: input.name,

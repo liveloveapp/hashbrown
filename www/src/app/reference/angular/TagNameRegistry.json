@@ -2,7 +2,7 @@
   "name": "TagNameRegistry",
   "canonicalReference": "@hashbrownai/angular!TagNameRegistry:type",
   "kind": "TypeAlias",
-  "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+  "fileUrlPath": "../dist/packages/angular/ui-chat-resource.fn.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -35,7 +35,7 @@
         { "kind": "Content", "text": "<object>;\n    };\n}" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/angular/rich-chat-resource.fn.d.ts",
+      "fileUrlPath": "../dist/packages/angular/ui-chat-resource.fn.d.ts",
       "releaseTag": "Public",
       "name": "TagNameRegistry",
       "typeTokenRange": { "startIndex": 1, "endIndex": 8 },

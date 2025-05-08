@@ -1,0 +1,69 @@
+{
+  "name": "StructuredCompletionResourceRef",
+  "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/angular/structured-completion-resource.fn.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface StructuredCompletionResourceRef<Output extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": "> extends " },
+        {
+          "kind": "Reference",
+          "text": "Resource",
+          "canonicalReference": "@angular/core!Resource:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Output> | null>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/angular/structured-completion-resource.fn.d.ts",
+      "releaseTag": "Public",
+      "typeParameters": [
+        {
+          "typeParameterName": "Output",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "StructuredCompletionResourceRef",
+      "preserveMemberOrder": false,
+      "members": [],
+      "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 7 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

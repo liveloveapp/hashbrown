@@ -104,7 +104,6 @@ export class LightsDemo {
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-exp-03-25',
     model: 'o4-mini',
-    url: '/_/v1/chat',
     messages: [
       {
         role: 'system',
