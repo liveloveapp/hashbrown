@@ -311,7 +311,11 @@ export function chatResource(options: ChatResourceOptions): ChatResourceRef {
 
       const args = s.parse(
         tool.schema,
-        JSON.parse(toolCall.function.arguments),
+        JSON.parse(
+          toolCall.function.arguments === ''
+            ? '{}'
+            : toolCall.function.arguments,
+        ),
       );
 
       return runInInjectionContext(injector, () => tool.handler(args));

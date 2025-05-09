@@ -326,7 +326,7 @@ export class PredictionsComponent {
   lightEntities = this.store.selectSignal(selectLightEntities);
   sceneEntities = this.store.selectSignal(selectScenesEntities);
   predictions = structuredCompletionResource({
-    model: 'o4-mini',
+    model: 'palmyra-x5',
     input: this.lastAction,
     system: `
   You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
