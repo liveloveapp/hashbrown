@@ -369,9 +369,15 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     logger.log('parseArr: Start');
     const arr = [];
 
-    const arrayContainer = (
+    let arrayContainer = (
       containerStack[containerStack.length - 1][internal].definition as any
-    ).shape[currentKey][internal].definition.element;
+    ).element;
+
+    if (currentKey) {
+      arrayContainer = (
+        containerStack[containerStack.length - 1][internal].definition as any
+      ).shape[currentKey][internal].definition.element;
+    }
 
     logger.log('Array container: ');
     logger.log(arrayContainer);
@@ -393,12 +399,9 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       containerStack.push((arrayContainer as any)[internal].definition.options);
       containerNeedsPopping = true;
     } else {
-      logger.log('Array container is primitve');
+      logger.log('Array container is primitive');
       // It's not an object, so check if it is a streaming primitive
-      contentsAllowIncomplete = isStreaming(
-        (containerStack[containerStack.length - 1][internal].definition as any)
-          .shape[currentKey],
-      );
+      contentsAllowIncomplete = isStreaming(arrayContainer);
 
       logger.log(
         `Array primitive content allows streaming: ${contentsAllowIncomplete}`,
@@ -481,7 +484,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     }
   };
 
-  // TODO: what is schema is just an array?
   try {
     return parseAny('', true, false);
   } catch (e) {
