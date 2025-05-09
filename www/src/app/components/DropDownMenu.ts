@@ -52,15 +52,14 @@ import { ChevronDown } from '../icons/ChevronDown';
 
       .dropdown-panel {
         max-width: 280px;
-        background: #000;
+        background: #fff;
         display: flex;
         gap: 4px;
         padding: 16px;
         border-radius: 8px;
         box-shadow:
-          0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -4px rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+          0 10px 15px -3px rgba(0, 0, 0, 0.16),
+          0 4px 6px -4px rgba(0, 0, 0, 0.16);
       }
     `,
   ],

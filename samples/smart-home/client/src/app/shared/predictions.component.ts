@@ -1,6 +1,6 @@
 import { Component, inject, linkedSignal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { predictionResource } from '@hashbrownai/angular';
+// import { predictionResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { PredictionsAiActions } from '../features/predictions/actions';
@@ -12,17 +12,16 @@ import {
   selectLightEntities,
   selectScenesEntities,
 } from '../store';
+import { createTool, structuredCompletionResource } from '@hashbrownai/angular';
 
-const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
+const PREDICTIONS_SCHEMA = s.anyOf([
   s.object('Suggests adding a light to the system', {
-    type: s.constString('Add Light'),
-    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    __discriminator: s.constString('Add Light'),
     name: s.string('The suggested name of the light'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest adding a scene to the system', {
-    type: s.constString('Add Scene'),
-    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    __discriminator: s.constString('Add Scene'),
     name: s.string('The suggested name of the scene'),
     lights: s.array(
       'The lights in the scene',
@@ -33,21 +32,18 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
     ),
   }),
   s.object('Suggest scheduling a scene to the system', {
-    type: s.constString('Schedule Scene'),
-    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    __discriminator: s.constString('Schedule Scene'),
     sceneId: s.string('The ID of the scene'),
     datetime: s.string('The datetime of the scene'),
   }),
   s.object('Suggest adding a light to a scene', {
-    type: s.constString('Add Light to Scene'),
-    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    __discriminator: s.constString('Add Light to Scene'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest removing a light from a scene', {
-    type: s.constString('Remove Light from Scene'),
-    reasonForSuggestion: s.string('Why do you think this should come next?'),
+    __discriminator: s.constString('Remove Light from Scene'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
   }),
@@ -59,7 +55,7 @@ const PREDICTIONS_SCHEMA = s.anyOf('You can predict any of these actions', [
   template: `
     <!-- Loop over predictions and display according to type -->
     @for (prediction of output(); track $index) {
-      @switch (prediction.type) {
+      @switch (prediction.__discriminator) {
         @case ('Add Light') {
           <div class="prediction">
             <div class="predictionIcon">
@@ -329,109 +325,108 @@ export class PredictionsComponent {
   scenes = this.store.selectSignal(selectAllScenes);
   lightEntities = this.store.selectSignal(selectLightEntities);
   sceneEntities = this.store.selectSignal(selectScenesEntities);
-
-  predictions = predictionResource({
-    model: 'gpt-4o',
-    // model: 'gemini-2.5-pro-exp-03-25',
+  predictions = structuredCompletionResource({
+    model: 'o4-mini',
     input: this.lastAction,
-    description: `
-You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
-
-Important Guidelines:
-- The user already owns all necessary hardware. Do not suggest purchasing hardware.
-- Every prediction must include a concise 'reasonForSuggestion' that explains the suggestion in one sentence.
-- Each prediction must be fully detailed with all required fields based on its type.
-
-Prediction Types:
-
-1. Add Light
-   - Required fields: name (string), brightness (number)
-   - Example:
-     {
-       "type": "Add Light",
-       "reasonForSuggestion": "Enhance room ambience with additional lighting",
-       "name": "Living Room Lamp",
-       "brightness": 75
-     }
-
-2. Add Scene
-   - Required fields: name (string), lights (array of objects with lightId (string) and brightness (number))
-   - Example:
-     {
-       "type": "Add Scene",
-       "reasonForSuggestion": "Create a cozy evening scene",
-       "name": "Evening Relaxation",
-       "lights": [
-         { "lightId": "light-101", "brightness": 60 },
-         { "lightId": "light-102", "brightness": 40 }
-       ]
-     }
-
-3. Schedule Scene
-   - Required fields: sceneId (string), datetime (string in ISO format)
-   - Example:
-     {
-       "type": "Schedule Scene",
-       "reasonForSuggestion": "Prepare a morning wake-up routine",
-       "sceneId": "scene-201",
-       "datetime": "2025-04-03T07:00:00Z"
-     }
-
-4. Add Light to Scene
-   - Required fields: lightId (string), sceneId (string), brightness (number)
-   - Example:
-     {
-       "type": "Add Light to Scene",
-       "reasonForSuggestion": "Integrate the new light into your dinner scene",
-       "lightId": "light-303",
-       "sceneId": "scene-404",
-       "brightness": 80
-     }
-
-5. Remove Light from Scene
-   - Required fields: lightId (string), sceneId (string)
-   - Example:
-     {
-       "type": "Remove Light from Scene",
-       "reasonForSuggestion": "Remove redundant lighting from your scene",
-       "lightId": "light-505",
-       "sceneId": "scene-606"
-     }
-
-Additional Rules:
-- Always check the current lights and scenes states to avoid suggesting duplicates.
-- If a new light has just been added, consider suggesting complementary lights or adding it to an existing scene.
-- When recommending scene modifications, ensure that the scene does not already contain the light in question.
-- You do not always need to make a prediction. Returning an empty array is also a valid response.
-- You may make multiple predictions. Just add multiple predictions to the array.
-
-DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my grandmother will kill me.
-    `,
-    signals: {
-      lights: {
-        signal: this.lights,
-        description: 'All lights in the smart home',
-      },
-      scenes: {
-        signal: this.scenes,
-        description: 'All scenes in the smart home',
-      },
-    },
-    outputSchema: s.object('The result', {
-      predictions: s.array('The predictions', PREDICTIONS_SCHEMA),
+    system: `
+  You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
+  Important Guidelines:
+  - The user already owns all necessary hardware. Do not suggest purchasing hardware.
+  - Every prediction must include a concise 'reasonForSuggestion' that explains the suggestion in one sentence.
+  - Each prediction must be fully detailed with all required fields based on its type.
+  Prediction Types:
+  1. Add Light
+     - Required fields: name (string), brightness (number)
+     - Example:
+       {
+         "type": "Add Light",
+         "reasonForSuggestion": "Enhance room ambience with additional lighting",
+         "name": "Living Room Lamp",
+         "brightness": 75
+       }
+  2. Add Scene
+     - Required fields: name (string), lights (array of objects with lightId (string) and brightness (number))
+     - Example:
+       {
+         "type": "Add Scene",
+         "reasonForSuggestion": "Create a cozy evening scene",
+         "name": "Evening Relaxation",
+         "lights": [
+           { "lightId": "light-101", "brightness": 60 },
+           { "lightId": "light-102", "brightness": 40 }
+         ]
+       }
+  3. Schedule Scene
+     - Required fields: sceneId (string), datetime (string in ISO format)
+     - Example:
+       {
+         "type": "Schedule Scene",
+         "reasonForSuggestion": "Prepare a morning wake-up routine",
+         "sceneId": "scene-201",
+         "datetime": "2025-04-03T07:00:00Z"
+       }
+  4. Add Light to Scene
+     - Required fields: lightId (string), sceneId (string), brightness (number)
+     - Example:
+       {
+         "type": "Add Light to Scene",
+         "reasonForSuggestion": "Integrate the new light into your dinner scene",
+         "lightId": "light-303",
+         "sceneId": "scene-404",
+         "brightness": 80
+       }
+  5. Remove Light from Scene
+     - Required fields: lightId (string), sceneId (string)
+     - Example:
+       {
+         "type": "Remove Light from Scene",
+         "reasonForSuggestion": "Remove redundant lighting from your scene",
+         "lightId": "light-505",
+         "sceneId": "scene-606"
+       }
+  Additional Rules:
+  - Always check the current lights and scenes states to avoid suggesting duplicates.
+  - If a new light has just been added, consider suggesting complementary lights or adding it to an existing scene.
+  - When recommending scene modifications, ensure that the scene does not already contain the light in question.
+  - You do not always need to make a prediction. Returning an empty array is also a valid response.
+  - You may make multiple predictions. Just add multiple predictions to the array.
+  DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my grandmother will kill me.
+      `,
+    // signals: {
+    //   lights: {
+    //     signal: this.lights,
+    //     description: 'All lights in the smart home',
+    //   },
+    //   scenes: {
+    //     signal: this.scenes,
+    //     description: 'All scenes in the smart home',
+    //   },
+    // },
+    tools: [
+      createTool({
+        name: 'getLights',
+        description: 'Get all lights in the smart home',
+        handler: () => Promise.resolve(this.lights()),
+      }),
+      createTool({
+        name: 'getScenes',
+        description: 'Get all scenes in the smart home',
+        handler: () => Promise.resolve(this.scenes()),
+      }),
+    ],
+    output: s.object('The result', {
+      predictions: s.streaming.array('The predictions', PREDICTIONS_SCHEMA),
     }),
   });
-
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
       console.log(source);
-      if (source === undefined || source.predictions.length === 0) return [];
+      if (source === undefined || source === null) return [];
 
       return source.predictions;
     },
   });
-
   // Dispatch actions for different predictions
   addLight(
     predictionIndex: number,
@@ -440,7 +435,6 @@ DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my 
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.addLight({ light }));
   }
-
   addScene(
     predictionIndex: number,
     scene: {
@@ -451,7 +445,6 @@ DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my 
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.addScene({ scene }));
   }
-
   scheduleScene(
     predictionIndex: number,
     scene: { sceneId: string; datetime: string },
@@ -463,7 +456,6 @@ DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my 
       }),
     );
   }
-
   addLightToScene(
     predictionIndex: number,
     sceneLight: {
@@ -475,7 +467,6 @@ DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my 
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.addLightToScene(sceneLight));
   }
-
   removeLightFromScene(
     predictionIndex: number,
     sceneLight: { lightId: string; sceneId: string },
@@ -483,12 +474,10 @@ DO NOT wrap the JSON in a markdown code block. Just return the pure JSON, or my 
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.removeLightFromScene(sceneLight));
   }
-
   applyScene(predictionIndex: number, sceneId: string) {
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.applyScene({ sceneId }));
   }
-
   removePrediction(index: number) {
     this.output.update((predictions) => {
       predictions.splice(index, 1);

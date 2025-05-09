@@ -1,14 +1,21 @@
+import { Logger } from '../logger/logger';
 import { s } from '../schema';
 
 import { parseJSON } from './parser';
 
+const ENABLE_LOGGING = false;
+
 export class StreamSchemaParser {
+  logger: Logger;
+
   dataString = '';
 
   schema: s.HashbrownType;
 
   constructor(schema: s.HashbrownType) {
     this.schema = schema;
+
+    this.logger = new Logger(ENABLE_LOGGING);
   }
 
   parse(item: string) {
@@ -16,7 +23,7 @@ export class StreamSchemaParser {
 
     const currResult = parseJSON(this.dataString, this.schema);
 
-    console.log(currResult);
+    this.logger.log(currResult);
 
     return currResult;
   }

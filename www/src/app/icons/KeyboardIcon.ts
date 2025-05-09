@@ -22,19 +22,20 @@ import { Component, Input } from '@angular/core';
       }
 
       .keyboard-icon {
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        background-color: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(166, 216, 210, 0.88);
+        background-color: rgba(166, 216, 210, 0.24);
         padding: 4px 6px;
         font: 400 11px/12px sans-serif;
-        color: rgba(255, 255, 255, 0.6);
-        border-radius: 4px;
+        border-radius: 24px;
+        text-decoration-line: underline;
+        text-decoration-color: transparent;
         transition:
           color 0.2s ease-in-out,
-          background-color 0.2s ease-in-out;
+          text-decoration-color 0.2s ease-in-out;
       }
 
       .keyboard-icon:hover {
-        color: #94a3b8;
+        text-decoration-color: #2f2f2b;
       }
 
       .visually-hidden {

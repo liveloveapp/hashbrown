@@ -18,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
-import { predictionResource } from '@hashbrownai/angular';
+import { structuredCompletionResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
 import { Scene } from '../../../models/scene.model';
@@ -158,9 +158,10 @@ export class SceneFormDialogComponent {
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   sceneNameSignal = toSignal(this.form.get('name')!.valueChanges);
-  predictedLights = predictionResource({
+  predictedLights = structuredCompletionResource({
+    model: 'gpt-4.1',
     input: this.sceneNameSignal,
-    description: computed(
+    system: computed(
       () => `
       Predict the lights that will be added to the scene based on the name. For example,
       if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
@@ -192,8 +193,8 @@ export class SceneFormDialogComponent {
         },
       },
     ],
-    outputSchema: s.object('Your response', {
-      lights: s.array(
+    output: s.object('Your response', {
+      lights: s.streaming.array(
         'The lights to add to the scene',
         s.object('A join between a light and a scene', {
           lightId: s.string('the ID of the light to add'),
@@ -201,8 +202,6 @@ export class SceneFormDialogComponent {
         }),
       ),
     }),
-    // model: 'gemini-2.0-flash',
-    model: 'gpt-4o-mini',
   });
 
   protected get lightsFormArray() {

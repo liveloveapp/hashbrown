@@ -38,13 +38,7 @@
           "text": "Promise",
           "canonicalReference": "!Promise:interface"
         },
-        { "kind": "Content", "text": "<unknown> | " },
-        {
-          "kind": "Reference",
-          "text": "Observable",
-          "canonicalReference": "rxjs!Observable:class"
-        },
-        { "kind": "Content", "text": "<unknown>;\n}" },
+        { "kind": "Content", "text": "<any>;\n}" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
@@ -55,13 +49,13 @@
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/create-tool.fn.d.ts",
-      "returnTypeTokenRange": { "startIndex": 14, "endIndex": 16 },
+      "returnTypeTokenRange": { "startIndex": 12, "endIndex": 14 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "input",
-          "parameterTypeTokenRange": { "startIndex": 6, "endIndex": 13 },
+          "parameterTypeTokenRange": { "startIndex": 6, "endIndex": 11 },
           "isOptional": false
         }
       ],

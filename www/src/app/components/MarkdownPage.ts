@@ -20,7 +20,11 @@ type Heading = { level: number; text: string; id: string; url: string };
     <article #article>
       <ng-content></ng-content>
     </article>
-    <menu>
+    <div
+      #bottomSentinel
+      style="position:absolute;bottom:0;width:1px;height:1px;"
+    ></div>
+    <menu #menu>
       @for (heading of headings(); track $index) {
         <a
           [href]="heading.url"
@@ -54,22 +58,28 @@ type Heading = { level: number; text: string; id: string; url: string };
         right: 32px;
         margin: 0;
         padding: 0;
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        border-left: 1px solid #fbbb52;
+        opacity: 1;
+        transition: opacity 0.3s ease-in-out;
+      }
+
+      menu.fade-out {
+        opacity: 0;
       }
 
       menu a {
-        color: rgba(255, 255, 255, 0.56);
+        color: rgba(47, 47, 43, 0.88);
         font-size: 13px;
         border-left: 2px solid transparent;
       }
 
       menu a:hover {
-        color: rgba(255, 255, 255, 0.86);
+        color: rgb(47, 47, 43);
       }
 
       menu a.active {
-        color: rgba(255, 255, 255, 0.86);
-        border-color: #ff9e3e;
+        color: rgb(47, 47, 43);
+        border-left: 6px solid #fbbb52;
       }
 
       article ::ng-deep analog-markdown-route > div {
@@ -78,20 +88,26 @@ type Heading = { level: number; text: string; id: string; url: string };
         gap: 32px;
 
         h1 {
-          font: 500 32px/40px sans-serif;
+          font:
+            500 32px/40px Fredoka,
+            sans-serif;
         }
 
         h2 {
-          font: 500 24px/32px sans-serif;
+          font:
+            500 24px/32px Fredoka,
+            sans-serif;
         }
 
         h3 {
-          font: 500 20px/28px sans-serif;
+          font:
+            500 20px/28px Fredoka,
+            sans-serif;
         }
 
         hr {
           border: 0;
-          border-top: 1px solid rgba(255, 255, 255, 0.12);
+          border-top: 1px solid rgba(47, 47, 43, 0.24);
           margin: 32px 0;
         }
 
@@ -159,10 +175,14 @@ export class MarkdownPage implements AfterViewInit, OnDestroy {
   router = inject(Router);
   platformId = inject(PLATFORM_ID);
   articleRef: Signal<ElementRef<HTMLElement>> = viewChild.required('article');
+  private menuRef: Signal<ElementRef<HTMLElement>> = viewChild.required('menu');
+  private bottomSentinelRef: Signal<ElementRef<HTMLElement>> =
+    viewChild.required('bottomSentinel');
   headings = signal<Heading[]>([]);
   activeHeadingId = signal<string | null>(null);
   mutationObserver?: MutationObserver;
   intersectionObserver?: IntersectionObserver;
+  private fadeObserver?: IntersectionObserver;
 
   ngAfterViewInit(): void {
     this.collectHeadings();
@@ -176,12 +196,31 @@ export class MarkdownPage implements AfterViewInit, OnDestroy {
         subtree: true,
       });
       this.watchHeadings();
+      this.fadeObserver = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          const menuEl = this.menuRef().nativeElement;
+          if (entry.isIntersecting) {
+            menuEl.classList.add('fade-out');
+          } else {
+            const bounding = entry.boundingClientRect;
+            const rootBounds = entry.rootBounds!;
+            // If sentinel exited viewport at bottom, show menu; if exited at top, keep hidden
+            if (bounding.top > rootBounds.bottom) {
+              menuEl.classList.remove('fade-out');
+            }
+          }
+        },
+        { root: null, threshold: 0 },
+      );
+      this.fadeObserver.observe(this.bottomSentinelRef().nativeElement);
     }
   }
 
   ngOnDestroy(): void {
     this.mutationObserver?.disconnect();
     this.intersectionObserver?.disconnect();
+    this.fadeObserver?.disconnect();
   }
 
   navigateToHeading($event: MouseEvent, heading: Heading) {

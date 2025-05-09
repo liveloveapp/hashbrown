@@ -1,36 +1,40 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ArrowUpRight } from '../icons/ArrowUpRight';
+import { Hashbrown } from '../icons/Hashbrown';
+import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-hero',
-  imports: [RouterLink, ArrowUpRight],
+  imports: [RouterLink, ArrowUpRight, Hashbrown],
   template: `
-    <div class="container">
-      <h1>Open source TypeScript library for building intelligent web apps</h1>
-      <p>
-        Add intelligence to your Angular or React web apps using our free, open
-        source, headless TypeScript library.
-      </p>
-      <div class="actions">
-        <a routerLink="/docs/angular/start/quick">
-          Angular
-          <www-arrow-up-right />
-        </a>
-        <a routerLink="/docs/start/quick">
-          React
-          <www-arrow-up-right />
-        </a>
+    <div class="bleed">
+      <div class="container">
+        <div class="logo">
+          <www-hashbrown />
+          <p>
+            a framework for building joyful,<br />AI-powered user experiences
+          </p>
+        </div>
+        <div class="cta">
+          <a [routerLink]="docsUrl()"> read the documentation </a>
+          <p>100% free, open-source, and MIT-Licensed</p>
+        </div>
       </div>
     </div>
   `,
   styles: `
     :host {
       display: flex;
+      justify-content: center;
+      background: #fbbb52;
+    }
+
+    .bleed {
+      display: flex;
       flex-direction: column;
-      padding: 64px;
-      max-width: 960px;
-      margin: 0 auto;
+      padding: 128px 64px;
+      max-width: 1024px;
     }
 
     .container {
@@ -38,34 +42,62 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
       flex-direction: column;
       align-items: center;
       gap: 32px;
-    }
 
-    h1,
-    p {
-      text-align: center;
-    }
-
-    h1 {
-      font: 48px/56px sans-serif;
-    }
-
-    .actions {
-      display: flex;
-      align-content: center;
-      gap: 16px;
-
-      a {
+      > .logo {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        color: rgba(255, 255, 255, 0.86);
-        text-transform: uppercase;
-        font: 500 12px/16px sans-serif;
-        background: rgba(255, 255, 255, 0.08);
-        padding: 12px 24px;
-        border-radius: 9999px;
+        flex-direction: column;
+        gap: 16px;
+
+        > p {
+          color: #3d3c3a;
+          font:
+            400 24px/28px Poppins,
+            sans-serif;
+          text-align: center;
+        }
+      }
+
+      > .cta {
+        display: flex;
+        flex-direction: column;
+        align-content: center;
+        gap: 16px;
+
+        a {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          color: rgba(255, 255, 255, 0.88);
+          font:
+            500 18px/24px 'Fredoka',
+            sans-serif;
+          padding: 12px 24px;
+          border-radius: 48px;
+          border: 6px solid #e8a23d;
+          background: #e88c4d;
+          transition:
+            color 0.2s ease-in-out,
+            border 0.2s ease-in-out;
+
+          &:hover {
+            color: #fff;
+          }
+        }
+
+        > p {
+          color: #774625;
+          font:
+            700 10px/16px Poppins,
+            sans-serif;
+          text-align: center;
+        }
       }
     }
   `,
 })
-export class Hero {}
+export class Hero {
+  configService = inject(ConfigService);
+  docsUrl = computed(() => {
+    return `/docs/${this.configService.config().sdk}/start/quick`;
+  });
+}

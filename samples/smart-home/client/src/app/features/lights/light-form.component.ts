@@ -1,4 +1,10 @@
-import { Component, inject } from '@angular/core';
+import {
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,6 +17,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { LightsPageActions } from './actions/lights-page.actions';
 import { Store } from '@ngrx/store';
+import { completionResource } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-light-form',
@@ -33,9 +40,18 @@ import { Store } from '@ngrx/store';
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="form" (ngSubmit)="onSubmit()">
-            <mat-form-field appearance="fill">
+            <mat-form-field appearance="fill" class="autocomplete-container">
               <mat-label>Name</mat-label>
-              <input matInput formControlName="name" />
+              <div class="ghost-input">
+                <span class="current-input">{{ form.get('name')?.value }}</span>
+                <span class="completion">{{ nameCompletion.value() }}</span>
+              </div>
+              <input
+                matInput
+                formControlName="name"
+                (keydown.tab)="completeName($event)"
+                #nameInput
+              />
               @if (
                 form.get('name')?.errors?.['required'] &&
                 form.get('name')?.touched
@@ -77,6 +93,35 @@ import { Store } from '@ngrx/store';
         gap: 8px;
         justify-content: flex-end;
       }
+
+      .autocomplete-container .mat-form-field-wrapper {
+        position: relative;
+      }
+
+      .autocomplete-container .ghost-input {
+        position: absolute;
+        bottom: 8px;
+        left: 0;
+        width: 100%;
+        border: none;
+        background: transparent;
+        pointer-events: none;
+        padding: 0;
+      }
+
+      .ghost-input .current-input {
+        color: transparent;
+      }
+
+      .ghost-input .completion {
+        color: rgba(255, 255, 255, 0.5);
+        font-style: italic;
+      }
+
+      .autocomplete-container input.mat-input-element {
+        position: relative;
+        background: transparent;
+      }
     `,
   ],
 })
@@ -90,6 +135,31 @@ export class LightFormComponent {
   protected form = this.fb.group({
     name: ['', Validators.required],
   });
+
+  protected nameSignal = toSignal(this.form.get('name')!.valueChanges);
+  protected lightNames = this.smartHome.lights().map((l) => l.name);
+  readonly nameCompletion = completionResource({
+    model: 'gpt-4o-mini',
+    input: this.nameSignal,
+    system: computed(
+      () => `
+      Help the user generate a name for a light. The input will be what
+      they have typed so far, and the output should be a prediction for
+      the name of the light. Just give me the next bit of text to add to
+      the name. Don't include any other text.
+      
+      If the name looks complete or sounds like a good name, just return
+      an empty string.
+
+      Never include quote marks around your prediction.
+      
+      The user already has these lights in their home:
+      ${this.lightNames.join(', ')}
+    `,
+    ),
+  });
+
+  readonly nameInputRef = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
   protected isEditing = toSignal(
     this.route.params.pipe(map((params) => Boolean(params['id']))),
@@ -135,6 +205,27 @@ export class LightFormComponent {
           }),
         );
       }
+    }
+  }
+
+  protected completeName(_event: Event): void {
+    const event = _event as KeyboardEvent;
+    event.preventDefault();
+    const suggestion = this.nameCompletion.value();
+    if (suggestion) {
+      const control = this.form.get('name');
+      const current = control?.value || '';
+      const updated = current + suggestion;
+      control?.setValue(updated);
+      // reposition cursor at end and maintain focus
+      Promise.resolve().then(() => {
+        const inputElRef = this.nameInputRef();
+        if (inputElRef) {
+          const inputEl = inputElRef.nativeElement;
+          inputEl.focus();
+          inputEl.setSelectionRange(updated.length, updated.length);
+        }
+      });
     }
   }
 }

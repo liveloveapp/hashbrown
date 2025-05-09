@@ -1,0 +1,101 @@
+{
+  "name": "ChatResourceRef",
+  "canonicalReference": "@hashbrownai/angular!ChatResourceRef:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/angular/chat-resource.fn.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/angular!ChatResourceRef:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface ChatResourceRef extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Resource",
+          "canonicalReference": "@angular/core!Resource:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        { "kind": "Content", "text": "[]>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/angular/chat-resource.fn.d.ts",
+      "releaseTag": "Public",
+      "name": "ChatResourceRef",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!ChatResourceRef#sendMessage:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "sendMessage: " },
+            { "kind": "Content", "text": "(message: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.UserMessage",
+              "canonicalReference": "!Chat.UserMessage:type"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "Chat.UserMessage",
+              "canonicalReference": "!Chat.UserMessage:type"
+            },
+            { "kind": "Content", "text": "[]) => void" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "sendMessage",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 5 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

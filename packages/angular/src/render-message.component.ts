@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import { ComponentTree } from '@hashbrownai/core';
-import { RenderableMessage } from './rich-chat-resource.fn';
+import { RenderableMessage } from './ui-chat-resource.fn';
 
 @Component({
   selector: 'hb-render-message',
@@ -29,7 +29,12 @@ import { RenderableMessage } from './rich-chat-resource.fn';
       ></ng-container>
     }
   `,
-  standalone: true,
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+    }
+  `,
 })
 export class RenderMessageComponent {
   viewContainerRef = inject(ViewContainerRef);

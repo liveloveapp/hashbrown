@@ -50,13 +50,19 @@
           "text": "s.HashbrownType",
           "canonicalReference": "!s.HashbrownType:type"
         },
-        { "kind": "Content", "text": ";\n}" },
+        { "kind": "Content", "text": ";\n    url?: string | " },
+        {
+          "kind": "Reference",
+          "text": "Signal",
+          "canonicalReference": "@angular/core!Signal:type"
+        },
+        { "kind": "Content", "text": "<string>;\n}" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/chat-resource.fn.d.ts",
       "releaseTag": "Public",
       "name": "ChatResourceConfig",
-      "typeTokenRange": { "startIndex": 1, "endIndex": 14 },
+      "typeTokenRange": { "startIndex": 1, "endIndex": 16 },
       "docs": {
         "modifiers": {
           "isInternal": false,

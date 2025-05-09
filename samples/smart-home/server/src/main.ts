@@ -10,6 +10,8 @@ const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
+// const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
+// const AZURE_API_VERSION = process.env['AZURE_API_VERSION'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
 
 // const AZURE_ENDPOINT = 'https://ai-hashbrowndev507071463475.openai.azure.com/';
@@ -37,6 +39,7 @@ app.listen(port, host, () => {
 
 app.post('/chat', async (req, res) => {
   const request = req.body as Chat.CompletionCreateParams;
+  console.log(JSON.stringify(request, null, 4));
 
   // Azure OpenAI Service
   // const stream = HashbrownAzure.stream.text(

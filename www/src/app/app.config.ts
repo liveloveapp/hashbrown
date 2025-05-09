@@ -14,13 +14,24 @@ import {
 } from '@angular/core';
 import { provideClientHydration } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { withComponentInputBinding } from '@angular/router';
+import {
+  withComponentInputBinding,
+  withInMemoryScrolling,
+} from '@angular/router';
+import { provideMarkdown } from 'ngx-markdown';
 import { HighlighterService } from './services/HighlighterService';
+import { provideHashbrown } from '@hashbrownai/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideExperimentalZonelessChangeDetection(),
-    provideFileRouter(withComponentInputBinding()),
+    provideFileRouter(
+      withComponentInputBinding(),
+      withInMemoryScrolling({
+        scrollPositionRestoration: 'top',
+        anchorScrolling: 'enabled',
+      }),
+    ),
     provideClientHydration(),
     provideHttpClient(
       withFetch(),
@@ -29,8 +40,12 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     provideContent(withMarkdownRenderer(), withShikiHighlighter()),
     provideAppInitializer(() => {
-      const highlighter = inject(HighlighterService);
-      return highlighter.loadHighlighter();
+      const highlighterService = inject(HighlighterService);
+      return highlighterService.loadHighlighter();
+    }),
+    provideMarkdown(),
+    provideHashbrown({
+      baseUrl: '/_/v1/chat',
     }),
   ],
 };
