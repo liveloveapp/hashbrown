@@ -1,6 +1,7 @@
 import { Chat } from '@hashbrownai/core';
 // import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { HashbrownWriter } from '@hashbrownai/writer';
 import cors from 'cors';
 import 'dotenv/config';
 import express from 'express';
@@ -13,7 +14,7 @@ const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 // const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
 // const AZURE_API_VERSION = process.env['AZURE_API_VERSION'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
-
+const WRITER_API_KEY = process.env['WRITER_API_KEY'] ?? '';
 // const AZURE_ENDPOINT = 'https://ai-hashbrowndev507071463475.openai.azure.com/';
 // const AZURE_API_VERSION = '2024-04-01-preview';
 
@@ -25,6 +26,9 @@ if (!AZURE_API_KEY) {
 }
 if (!GOOGLE_API_KEY) {
   console.warn('GOOGLE_API_KEY is not set');
+}
+if (!WRITER_API_KEY) {
+  console.warn('WRITER_API_KEY is not set');
 }
 
 const app = express();
@@ -53,7 +57,10 @@ app.post('/chat', async (req, res) => {
   // const stream = HashbrownGoogle.stream.text(GOOGLE_API_KEY, request);
 
   // OpenAI
-  const stream = HashbrownOpenAI.stream.text(OPENAI_API_KEY, request);
+  // const stream = HashbrownOpenAI.stream.text(OPENAI_API_KEY, request);
+
+  // Writer
+  const stream = HashbrownWriter.stream.text(WRITER_API_KEY, request);
 
   res.header('Content-Type', 'text/plain');
   for await (const chunk of stream) {

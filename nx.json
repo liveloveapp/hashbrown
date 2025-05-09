@@ -59,7 +59,8 @@
       "azure",
       "tool-javascript",
       "openai",
-      "angular"
+      "angular",
+      "writer"
     ],
     "version": {
       "preVersionCommand": "npx nx run-many -t build"

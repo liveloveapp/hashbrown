@@ -1,7 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { chatResource, createTool, uiChatResource } from '@hashbrownai/angular';
+import {
+  chatResource,
+  createTool,
+  createToolWithArgs,
+  uiChatResource,
+} from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
 import { lastValueFrom } from 'rxjs';
 import { exposeComponent, s } from '@hashbrownai/core';
@@ -109,7 +114,7 @@ export class ChatPanelComponent {
   authService = inject(AuthService);
   smartHomeService = inject(SmartHomeService);
 
-  simpleDemo = false;
+  simpleDemo = true;
 
   /**
    * --------------------------------------------------------------------------
@@ -117,7 +122,7 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    model: 'gpt-4o',
+    model: 'palmyra-x5',
     messages: [
       {
         role: 'system',
@@ -137,6 +142,18 @@ export class ChatPanelComponent {
         description: 'Get the current lights',
         handler: () => lastValueFrom(this.smartHomeService.loadLights()),
       }),
+      createToolWithArgs({
+        name: 'controlLight',
+        description: 'Create a new scene',
+        schema: s.object('Control light input', {
+          lightId: s.string('The id of the light'),
+          brightness: s.number('The brightness of the light'),
+        }),
+        handler: (input) =>
+          lastValueFrom(
+            this.smartHomeService.controlLight(input.lightId, input.brightness),
+          ),
+      }),
     ],
   });
 
@@ -147,7 +164,7 @@ export class ChatPanelComponent {
    */
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-exp-03-25',
-    model: 'gpt-4o',
+    model: 'palmyra-x5',
     messages: [
       {
         role: 'system',

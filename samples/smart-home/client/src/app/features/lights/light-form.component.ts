@@ -139,7 +139,7 @@ export class LightFormComponent {
   protected nameSignal = toSignal(this.form.get('name')!.valueChanges);
   protected lightNames = this.smartHome.lights().map((l) => l.name);
   readonly nameCompletion = completionResource({
-    model: 'gpt-4o-mini',
+    model: 'palmyra-x5',
     input: this.nameSignal,
     system: computed(
       () => `
