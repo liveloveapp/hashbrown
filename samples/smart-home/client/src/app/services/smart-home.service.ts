@@ -49,7 +49,6 @@ export class SmartHomeService {
   }
 
   loadLights(): Observable<Light[]> {
-    console.log('in load lights');
     return of(this.lights());
   }
 
