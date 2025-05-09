@@ -323,6 +323,8 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
           throw new Error(`Tool ${toolCall.function.name} not found`);
         }
 
+        console.log(toolCall.function.arguments);
+
         const args = s.parse(
           tool.schema,
           JSON.parse(toolCall.function.arguments),

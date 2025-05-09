@@ -33,6 +33,13 @@ export const RichChatPanel = () => {
           brightness: s.number(
             'The brightness of the light, between 0 and 100',
           ),
+          index: s.array(
+            'light name and brightness',
+            s.anyOf([
+              s.string('light name as string'),
+              s.string('brightness but as a string'),
+            ]),
+          ),
         }) as unknown as s.ObjectType<Record<string, s.HashbrownType<unknown>>>,
         handler: (input: object) => {
           const { lightId, brightness } = input as {

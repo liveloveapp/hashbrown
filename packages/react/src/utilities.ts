@@ -44,6 +44,8 @@ function mergeToolCalls(
       merged.push(newCall);
     }
   });
+
+  console.log(merged);
   return merged;
 }
 

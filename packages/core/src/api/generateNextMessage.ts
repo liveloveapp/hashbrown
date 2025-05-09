@@ -96,6 +96,7 @@ export async function* generateNextMessage(config: {
         if (jsonChunk.trim()) {
           const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
 
+          // console.log(jsonData);
           yield jsonData;
         }
       }

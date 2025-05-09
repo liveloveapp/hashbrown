@@ -40,6 +40,7 @@ export class Transport {
     const stringHandle = result.unwrap();
     const asString = this.context.getString(stringHandle);
     stringHandle.dispose();
+    console.log('in tool javascript');
     return JSON.parse(asString);
   }
 }
