@@ -1,9 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { chatResource, createTool, uiChatResource } from '@hashbrownai/angular';
+import {
+  chatResource,
+  createTool,
+  createToolWithArgs,
+  uiChatResource,
+} from '@hashbrownai/angular';
 import { Store } from '@ngrx/store';
-import { lastValueFrom } from 'rxjs';
 import { exposeComponent, s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
@@ -21,7 +25,7 @@ import { MessagesComponent } from './components/messages.component';
 import { MarkdownComponent } from './components/markdown.component';
 import { CardComponent } from './components/card.component';
 import { SimpleMessagesComponent } from './components/simple-messages.component';
-
+import { lastValueFrom, tap } from 'rxjs';
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
@@ -109,7 +113,7 @@ export class ChatPanelComponent {
   authService = inject(AuthService);
   smartHomeService = inject(SmartHomeService);
 
-  simpleDemo = false;
+  simpleDemo = true;
 
   /**
    * --------------------------------------------------------------------------
@@ -117,7 +121,7 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     messages: [
       {
         role: 'system',
@@ -130,12 +134,35 @@ export class ChatPanelComponent {
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
-        handler: () => lastValueFrom(this.authService.getUser()),
+        handler: () => this.authService.getUser(),
       }),
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
         handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      }),
+      createToolWithArgs({
+        name: 'controlLight',
+        description: 'Control a light',
+        schema: s.object('Control light input', {
+          lightId: s.string('The id of the light'),
+          brightness: s.number('The brightness of the light'),
+        }),
+        handler: (input) =>
+          lastValueFrom(
+            this.smartHomeService
+              .controlLight(input.lightId, input.brightness)
+              .pipe(
+                tap((light) => {
+                  this.store.dispatch(
+                    ChatAiActions.controlLight({
+                      lightId: light.id,
+                      brightness: light.brightness,
+                    }),
+                  );
+                }),
+              ),
+          ),
       }),
     ],
   });
@@ -147,7 +174,7 @@ export class ChatPanelComponent {
    */
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-exp-03-25',
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     messages: [
       {
         role: 'system',
@@ -184,27 +211,39 @@ export class ChatPanelComponent {
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
-        handler: () => lastValueFrom(this.authService.getUser()),
+        handler: () => this.authService.getUser(),
       }),
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
         handler: () => lastValueFrom(this.smartHomeService.loadLights()),
       }),
+      createToolWithArgs({
+        name: 'controlLight',
+        description: 'Control a light',
+        schema: s.object('Control light input', {
+          lightId: s.string('The id of the light'),
+          brightness: s.number('The brightness of the light'),
+        }),
+        handler: (input) =>
+          lastValueFrom(
+            this.smartHomeService
+              .controlLight(input.lightId, input.brightness)
+              .pipe(
+                tap((light) => {
+                  this.store.dispatch(
+                    ChatAiActions.controlLight({
+                      lightId: light.id,
+                      brightness: light.brightness,
+                    }),
+                  );
+                }),
+              ),
+          ),
+      }),
       // createToolJavaScript({
       //   loadVariant: () => Promise.resolve(variant),
       //   functions: [
-      //     defineFunction({
-      //       name: 'getUser',
-      //       description: 'Get information about the current user',
-      //       output: s.object('User', {
-      //         name: s.string('The name of the user'),
-      //         email: s.string('The email of the user'),
-      //       }),
-      //       handler: () => {
-      //         return lastValueFrom(this.authService.getUser());
-      //       },
-      //     }),
       //     defineFunction({
       //       name: 'getLights',
       //       description: 'Get the current lights',
@@ -216,67 +255,6 @@ export class ChatPanelComponent {
       //         }),
       //       ),
       //       handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-      //     }),
-      //     defineFunctionWithArgs({
-      //       name: 'createScene',
-      //       description: 'Create a new scene',
-      //       schema: s.object('Create scene input', {
-      //         name: s.string('The name of the scene'),
-      //         lights: s.array(
-      //           'The lights to add to the scene',
-      //           s.object('A light/scene', {
-      //             id: s.string('The id of the light/scene'),
-      //             brightness: s.number('The brightness of the light/scene'),
-      //           }),
-      //         ),
-      //       }),
-      //       output: s.object('Scene', {
-      //         id: s.string('The id of the scene'),
-      //         name: s.string('The name of the scene'),
-      //       }),
-      //       handler: (input) => {
-      //         return lastValueFrom(
-      //           this.smartHomeService.addScene({
-      //             name: input.name,
-      //             lights: input.lights.map((light) => ({
-      //               lightId: light.id,
-      //               brightness: light.brightness,
-      //             })),
-      //           }),
-      //         );
-      //       },
-      //     }),
-      //     defineFunctionWithArgs({
-      //       name: 'controlLight',
-      //       description:
-      //         'Control the light. Brightness is a number between 0 and 100.',
-      //       schema: s.object('Control light input', {
-      //         lightId: s.string('The id of the light'),
-      //         brightness: s.number(
-      //           'The brightness of the light, between 0 and 100',
-      //         ),
-      //       }),
-      //       output: s.object('Control light output', {
-      //         id: s.string('The id of the light'),
-      //         name: s.string('The name of the light'),
-      //         brightness: s.number('The brightness of the light'),
-      //       }),
-      //       handler: (input) => {
-      //         return lastValueFrom(
-      //           this.smartHomeService
-      //             .controlLight(input.lightId, input.brightness)
-      //             .pipe(
-      //               tap((light) =>
-      //                 this.store.dispatch(
-      //                   ChatAiActions.controlLight({
-      //                     lightId: light.id,
-      //                     brightness: light.brightness,
-      //                   }),
-      //                 ),
-      //               ),
-      //             ),
-      //         );
-      //       },
       //     }),
       //   ],
       // }),
