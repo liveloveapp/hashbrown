@@ -182,9 +182,11 @@ export class ChatPanelComponent {
    */
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-exp-03-25',
-    model: 'gpt-4.1',
+    model: 'palmyra-x5',
     prompt: `
       You are a helpful assistant that can answer questions and help with tasks.
+
+      NEVER output content. Only call tools. 
     `,
     components: [
       exposeComponent(MarkdownComponent, {
@@ -201,14 +203,14 @@ export class ChatPanelComponent {
           lightId: s.string('The id of the light'),
         },
       }),
-      exposeComponent(CardComponent, {
-        name: 'card',
-        description: 'Show a card to the user',
-        children: 'any',
-        props: {
-          title: s.streaming.string('The title of the card'),
-        },
-      }),
+      // exposeComponent(CardComponent, {
+      //   name: 'card',
+      //   description: 'Show a card to the user',
+      //   children: 'any',
+      //   props: {
+      //     title: s.streaming.string('The title of the card'),
+      //   },
+      // }),
     ],
     tools: [
       createTool({
@@ -216,11 +218,11 @@ export class ChatPanelComponent {
         description: 'Get information about the current user',
         handler: () => this.authService.getUser(),
       }),
-      // createTool({
-      //   name: 'getLights',
-      //   description: 'Get the current lights',
-      //   handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-      // }),
+      createTool({
+        name: 'getLights',
+        description: 'Get the current lights',
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      }),
       createToolWithArgs({
         name: 'controlLight',
         description: 'Control a light',

@@ -227,7 +227,9 @@ export function toInternalToolCallsFromApi(
     {
       id: toolCall.id,
       name: toolCall.function.name,
-      arguments: JSON.parse(toolCall.function.arguments),
+      arguments: toolCall.function.arguments
+        ? JSON.parse(toolCall.function.arguments)
+        : {},
       status: 'pending',
     },
   ];

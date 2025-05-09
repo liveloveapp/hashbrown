@@ -11,7 +11,7 @@ import { isStreaming } from './isStreaming';
 export const internal = '~schema';
 export type internal = typeof internal;
 
-export const DISCRIMINATOR = '__discriminator';
+export const DISCRIMINATOR = '!';
 
 type TypeInternals = {
   definition: {

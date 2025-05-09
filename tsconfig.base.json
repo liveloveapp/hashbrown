@@ -23,6 +23,7 @@
       "@hashbrownai/openai": ["packages/openai/src/index.ts"],
       "@hashbrownai/react": ["packages/react/src/index.ts"],
       "@hashbrownai/tool-javascript": ["packages/tool-javascript/src/index.ts"],
+      "@hashbrownai/writer": ["packages/writer/src/index.ts"],
       "tater-js": ["packages/streaming-json-parser/index.ts"]
     }
   },

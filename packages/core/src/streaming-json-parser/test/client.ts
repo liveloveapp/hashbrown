@@ -59,7 +59,7 @@ import { s } from '../../schema';
             s.anyOf([
               // No streaming
               s.object('7th Grade Teacher', {
-                __discriminator: s.constString('seventh'),
+                '!': s.constString('seventh'),
                 // Expectation: this will be moved to end of properties list
                 birthDate: s.streaming.object('7th.birthDate', {
                   // Expectation: property order won't change, but incremental updates
@@ -77,7 +77,7 @@ import { s } from '../../schema';
               }),
               // Will stream
               s.object('8th Grade Teacher', {
-                __discriminator: s.constString('eighth'),
+                '!': s.constString('eighth'),
                 firstName: s.streaming.string('8th.firstName'),
                 lastName: s.streaming.string('8th.lastName'),
               }),

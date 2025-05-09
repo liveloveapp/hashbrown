@@ -110,7 +110,7 @@ const TEST_JSON = [
         ],
         anyOfListWithDiscriminator: [
           {
-            __discriminator: 'seventh',
+            '!': 'seventh',
             firstName: '7th',
             lastName:
               'It is a simplified subset of SGML, designed to be easier to use and more web-friendly.',
@@ -125,13 +125,13 @@ const TEST_JSON = [
             },
           },
           {
-            __discriminator: 'eighth',
+            '!': 'eighth',
             firstName: '8th',
             lastName:
               'XML documents must be well-formed, meaning they follow strict syntax rules such as properly nested tags.',
           },
           {
-            __discriminator: 'seventh',
+            '!': 'seventh',
             firstName: '7th',
             lastName:
               'XML helped pave the way for structured data on the internet and continues to influence modern data formats',
@@ -146,7 +146,7 @@ const TEST_JSON = [
             },
           },
           {
-            __discriminator: 'eighth',
+            '!': 'eighth',
             firstName: '8th',
             lastName:
               'Although not as widely used today, SGML laid the groundwork for modern web technologies and markup standards.',
@@ -262,7 +262,7 @@ const TEST_JSON = [
         ],
         anyOfListWithDiscriminator: [
           {
-            __discriminator: 'seventh',
+            '!': 'seventh',
             firstName: '7th',
             lastName:
               'It is a simplified subset of SGML, designed to be easier to use and more web-friendly.',
@@ -277,13 +277,13 @@ const TEST_JSON = [
             },
           },
           {
-            __discriminator: 'eighth',
+            '!': 'eighth',
             firstName: '8th',
             lastName:
               'XML documents must be well-formed, meaning they follow strict syntax rules such as properly nested tags.',
           },
           {
-            __discriminator: 'seventh',
+            '!': 'seventh',
             firstName: '7th',
             lastName:
               'XML helped pave the way for structured data on the internet and continues to influence modern data formats',
@@ -298,7 +298,7 @@ const TEST_JSON = [
             },
           },
           {
-            __discriminator: 'eighth',
+            '!': 'eighth',
             firstName: '8th',
             lastName:
               'Although not as widely used today, SGML laid the groundwork for modern web technologies and markup standards.',
