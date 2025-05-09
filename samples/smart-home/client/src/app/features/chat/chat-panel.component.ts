@@ -12,9 +12,9 @@ import { exposeComponent, s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
   defineFunction,
-  defineFunctionWithArgs,
 } from '@hashbrownai/tool-javascript';
-// import variant from '@jitl/quickjs-singlefile-mjs-debug-asyncify';
+// import variant from '@jitl/quickjs-singlefile-browser-release-asyncify';
+import variant from '@jitl/quickjs-singlefile-browser-debug-asyncify';
 import { SmartHomeService } from '../../services/smart-home.service';
 import { AuthService } from '../../shared/auth.service';
 import { ChatActions } from './actions';
@@ -113,7 +113,7 @@ export class ChatPanelComponent {
   authService = inject(AuthService);
   smartHomeService = inject(SmartHomeService);
 
-  simpleDemo = true;
+  simpleDemo = false;
 
   /**
    * --------------------------------------------------------------------------
@@ -213,11 +213,11 @@ export class ChatPanelComponent {
         description: 'Get information about the current user',
         handler: () => this.authService.getUser(),
       }),
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-      }),
+      // createTool({
+      //   name: 'getLights',
+      //   description: 'Get the current lights',
+      //   handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      // }),
       createToolWithArgs({
         name: 'controlLight',
         description: 'Control a light',
@@ -241,23 +241,23 @@ export class ChatPanelComponent {
               ),
           ),
       }),
-      // createToolJavaScript({
-      //   loadVariant: () => Promise.resolve(variant),
-      //   functions: [
-      //     defineFunction({
-      //       name: 'getLights',
-      //       description: 'Get the current lights',
-      //       output: s.array(
-      //         'The lights',
-      //         s.object('A light', {
-      //           id: s.string('The id of the light'),
-      //           brightness: s.number('The brightness of the light'),
-      //         }),
-      //       ),
-      //       handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-      //     }),
-      //   ],
-      // }),
+      createToolJavaScript({
+        loadVariant: () => Promise.resolve(variant),
+        functions: [
+          defineFunction({
+            name: 'getLights',
+            description: 'Get the current lights',
+            output: s.array(
+              'The lights',
+              s.object('A light', {
+                id: s.string('The id of the light'),
+                brightness: s.number('The brightness of the light'),
+              }),
+            ),
+            handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+          }),
+        ],
+      }),
     ],
   });
 
