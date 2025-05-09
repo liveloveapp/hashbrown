@@ -159,6 +159,7 @@ export class SceneFormDialogComponent {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   sceneNameSignal = toSignal(this.form.get('name')!.valueChanges);
   predictedLights = structuredCompletionResource({
+    model: 'gpt-4.1',
     input: this.sceneNameSignal,
     system: computed(
       () => `
@@ -201,7 +202,6 @@ export class SceneFormDialogComponent {
         }),
       ),
     }),
-    model: 'gpt-4o-mini',
   });
 
   protected get lightsFormArray() {

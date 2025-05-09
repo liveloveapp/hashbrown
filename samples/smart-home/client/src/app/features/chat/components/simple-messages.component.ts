@@ -26,6 +26,7 @@ import { MarkdownComponent } from 'ngx-markdown';
         display: flex;
         flex-direction: column;
         padding: 16px;
+        gap: 16px;
       }
 
       .chat-message.user {
@@ -34,7 +35,6 @@ import { MarkdownComponent } from 'ngx-markdown';
         width: 80%;
         background-color: var(--mat-sys-surface-container-highest);
         align-self: flex-end;
-        margin-bottom: 16px;
       }
 
       .chat-message.assistant {

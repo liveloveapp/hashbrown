@@ -142,9 +142,6 @@ export function chatResource(options: ChatResourceOptions): ChatResourceRef {
   );
   const nonStreamingMessages = linkedSignal(providedMessages);
   const streamingMessages = signal<Chat.Message | null>(null);
-  const lastNonStreamingMessage = computed(
-    () => nonStreamingMessages()[nonStreamingMessages().length - 1],
-  );
   const messages = computed((): Chat.Message[] => {
     const _streamingMessage = streamingMessages();
     const _nonStreamingMessages = nonStreamingMessages();
@@ -186,8 +183,8 @@ export function chatResource(options: ChatResourceOptions): ChatResourceRef {
   let abortFn: (() => void) | null = null;
 
   effect((onCleanup) => {
-    const _messages = nonStreamingMessages();
-    const lastMessage = _messages[_messages.length - 1];
+    const lastMessage =
+      nonStreamingMessages()[nonStreamingMessages().length - 1];
     const needsToSendMessage =
       lastMessage &&
       (lastMessage.role === 'user' || lastMessage.role === 'tool');
@@ -285,54 +282,67 @@ export function chatResource(options: ChatResourceOptions): ChatResourceRef {
     })();
   });
 
-  effect(() => {
-    const lastMessage = lastNonStreamingMessage();
+  effect(
+    () => {
+      const lastMessage =
+        nonStreamingMessages()[nonStreamingMessages().length - 1];
 
-    if (!lastMessage || lastMessage.role !== 'assistant') {
-      return;
-    }
-
-    const toolCalls = lastMessage.tool_calls;
-
-    if (!toolCalls || toolCalls.length === 0) {
-      return;
-    }
-
-    const toolCallResults = toolCalls.map((toolCall) => {
-      const tool = providedTools().find(
-        (t) => t.name === toolCall.function.name,
-      );
-
-      if (!tool) {
-        return Promise.reject(
-          new Error(`Tool ${toolCall.function.name} not found`),
-        );
+      if (!lastMessage || lastMessage.role !== 'assistant') {
+        return;
       }
 
-      const args = s.parse(
-        tool.schema,
-        JSON.parse(toolCall.function.arguments),
-      );
+      const toolCalls = lastMessage.tool_calls;
 
-      return runInInjectionContext(injector, () => tool.handler(args));
-    });
+      if (!toolCalls || toolCalls.length === 0) {
+        return;
+      }
 
-    Promise.allSettled(toolCallResults).then((result) => {
-      const toolMessages: Chat.ToolMessage[] = toolCalls.map(
-        (toolCall, index) => ({
-          role: 'tool',
-          content: result[index],
-          tool_call_id: toolCall.id,
-          tool_name: toolCall.function.name,
-        }),
-      );
+      const toolCallResults = untracked(() => {
+        const tools = providedTools();
 
-      nonStreamingMessages.update((currentMessages) => [
-        ...currentMessages,
-        ...toolMessages,
-      ]);
-    });
-  });
+        return toolCalls.map((toolCall) => {
+          const tool = tools.find((t) => t.name === toolCall.function.name);
+
+          if (!tool) {
+            return Promise.reject(
+              new Error(`Tool ${toolCall.function.name} not found`),
+            );
+          }
+
+          try {
+            const args = s.parse(
+              tool.schema,
+              JSON.parse(toolCall.function.arguments),
+            );
+
+            return Promise.resolve(
+              runInInjectionContext(injector, () => tool.handler(args)),
+            );
+          } catch (error) {
+            return Promise.reject(error);
+          }
+        });
+      });
+
+      Promise.allSettled(toolCallResults).then((result) => {
+        const toolMessages: Chat.ToolMessage[] = toolCalls.map(
+          (toolCall, index) => ({
+            role: 'tool',
+            content: result[index],
+            tool_call_id: toolCall.id,
+            tool_name: toolCall.function.name,
+          }),
+        );
+        nonStreamingMessages.update((currentMessages) => [
+          ...currentMessages,
+          ...toolMessages,
+        ]);
+      });
+    },
+    {
+      debugName: 'tool-call-effect',
+    },
+  );
 
   function sendMessage(message: Chat.Message | Chat.Message[]) {
     if (isSending() || isReceiving()) {
