@@ -59,7 +59,7 @@ export interface UseChatOptions {
    * default: undefined
    * @internal
    */
-  θoutput?: s.HashbrownType;
+  θschema?: s.HashbrownType;
 
   /**
    * The temperature for the chat.
@@ -128,15 +128,15 @@ export interface UseChatResult {
 
   /**
    * Function to set the output schema for the chat.
-   * @param output - The new output schema or undefined.
+   * @param schema - The new output schema or undefined.
    * @internal
    */
-  θsetOutput: (output: s.HashbrownType | undefined) => void;
+  θsetSchema: (schema: s.HashbrownType | undefined) => void;
 
   /**
    * The output schema for the chat.
    */
-  θoutput: s.HashbrownType | undefined;
+  θschema: s.HashbrownType | undefined;
 }
 
 /**
@@ -183,7 +183,7 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
     model,
     messages: initialMessages,
     tools: initialTools,
-    θoutput: initialOutput,
+    θschema: initialSchema,
     temperature,
     maxTokens,
     debounceTime = 150,
@@ -209,8 +209,8 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
   const [tools, setTools] = useState<BoundTool<string, any>[]>(
     initialTools ?? [],
   );
-  const [output, setOutput] = useState<s.HashbrownType | undefined>(
-    initialOutput,
+  const [schema, setSchema] = useState<s.HashbrownType | undefined>(
+    initialSchema,
   );
   const [status, setStatus] = useState<ChatStatus>(ChatStatus.Idle);
   const [error, setError] = useState<Error | null>(null);
@@ -285,7 +285,7 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
           temperature,
           tools: createToolDefinitions(tools),
           maxTokens,
-          responseFormat: output,
+          responseFormat: schema,
           messages: nonStreamingMessages,
         })) {
           onChunk(chunk);
@@ -304,7 +304,7 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
     maxTokens,
     nonStreamingMessages,
     model,
-    output,
+    schema,
     temperature,
     tools,
     debounceTime,
@@ -403,6 +403,10 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
     });
   }, [setMessages, stop]);
 
+  // useEffect(() => {
+  //   console.log('messages', messages);
+  // }, [messages]);
+
   return {
     messages,
     setMessages,
@@ -412,7 +416,7 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
     reload,
     stop,
     setTools,
-    θsetOutput: setOutput,
-    θoutput: output,
+    θsetSchema: setSchema,
+    θschema: schema,
   };
 };

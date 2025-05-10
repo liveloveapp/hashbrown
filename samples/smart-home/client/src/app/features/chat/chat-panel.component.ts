@@ -13,24 +13,24 @@ import {
   createToolWithArgs,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { Store } from '@ngrx/store';
 import { exposeComponent, s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
   defineFunction,
 } from '@hashbrownai/tool-javascript';
+import { Store } from '@ngrx/store';
 // import variant from '@jitl/quickjs-singlefile-browser-release-asyncify';
 import variant from '@jitl/quickjs-singlefile-browser-debug-asyncify';
+import { lastValueFrom, tap } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
 import { AuthService } from '../../shared/auth.service';
 import { ChatAiActions } from './actions/chat-ai.actions';
+import { CardComponent } from './components/card.component';
 import { ComposerComponent } from './components/composer.component';
 import { LightCardComponent } from './components/light-card.component';
-import { MessagesComponent } from './components/messages.component';
 import { MarkdownComponent } from './components/markdown.component';
-import { CardComponent } from './components/card.component';
+import { MessagesComponent } from './components/messages.component';
 import { SimpleMessagesComponent } from './components/simple-messages.component';
-import { lastValueFrom, tap } from 'rxjs';
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
@@ -144,7 +144,11 @@ export class ChatPanelComponent {
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
-        handler: () => this.authService.getUser(),
+        handler: () => {
+          const auth = inject(AuthService);
+
+          return auth.getUser();
+        },
       }),
       createTool({
         name: 'getLights',

@@ -183,4 +183,4 @@ export const ChatComponent = () => {
 
 With the above setup, you have a basic chat application. We will have more documentation and examples soon.
 
-You can begin to explore tool and component integrations or prediction capabilities by extending @hashbrownai/react!useChat:function through the other hooks such as @hashbrownai/react!useUiChat:function and @hashbrownai/react!usePrediction:function.
+You can begin to explore tool and component integrations or prediction capabilities by extending @hashbrownai/react!useChat:function through the other hooks such as @hashbrownai/react!useUiChat:function and @hashbrownai/react!useCompletion:function.

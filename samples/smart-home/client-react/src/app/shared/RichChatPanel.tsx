@@ -90,9 +90,9 @@ export const RichChatPanel = () => {
     }
   }, [messages]);
 
-  useEffect(() => {
-    console.log(messages);
-  }, [messages]);
+  // useEffect(() => {
+  //   console.log(messages);
+  // }, [messages]);
 
   const onSubmit = useCallback(() => {
     // Only submit if there's text

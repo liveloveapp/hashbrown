@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCompletion } from '@hashbrownai/react';
+import { useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Light as LightModel } from '../../models/light.model';
 import { Button } from '../../shared/button';
@@ -28,9 +29,37 @@ export const LightDialogForm = (
   const { light, children } = props;
   const addLight = useSmartHomeStore((state) => state.addLight);
   const updateLight = useSmartHomeStore((state) => state.updateLight);
+  const lights = useSmartHomeStore((state) => state.lights);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [lightName, setLightName] = useState(light?.name || '');
   const [open, setOpen] = useState(false);
+
+  const { output: nameCompletion } = useCompletion({
+    model: 'gpt-4o-mini',
+    input: open ? lightName : '',
+    system: `
+      Help the user generate a name for a light. The input will be what
+      they have typed so far, and the output should be a prediction for
+      the name of the light. Just give me the next bit of text to add to
+      the name. Don't include any other text.
+      
+      If the name looks complete or sounds like a good name, just return
+      an empty string.
+
+      Never include quote marks around your prediction.
+
+      Put a leading space if necessary.
+      
+      The user already has these lights in their home:
+      ${lights.map((l) => l.name).join(', ')}
+    `,
+    examples: [
+      { input: 'Garage Flo', output: 'odlight' },
+      { input: 'Table L', output: 'amp' },
+      { input: 'Attic', output: 'Light' },
+    ],
+  });
 
   const handleSubmit = () => {
     if (light) {
@@ -47,30 +76,64 @@ export const LightDialogForm = (
     setOpen(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Tab' && nameCompletion) {
+      e.preventDefault();
+      const updated = lightName + nameCompletion;
+      setLightName(updated);
+      // Reposition cursor at end and maintain focus
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(updated.length, updated.length);
+        }
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Light</DialogTitle>
-          <DialogDescription>Add a new light to your system.</DialogDescription>
+          <DialogTitle>{light ? 'Edit' : 'Add'} Light</DialogTitle>
+          <DialogDescription>
+            {light
+              ? 'Edit your light settings.'
+              : 'Add a new light to your system.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex items-center space-x-2">
           <div className="grid flex-1 gap-2">
-            <Label htmlFor="link" className="sr-only">
+            <Label htmlFor="light-name" className="sr-only">
               Light Name
             </Label>
-            <Input
-              id="link"
-              placeholder="Light Name"
-              value={lightName}
-              onChange={(e) => setLightName(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                ref={inputRef}
+                id="light-name"
+                placeholder="Light Name"
+                value={lightName}
+                onChange={(e) => setLightName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="bg-transparent"
+              />
+              {nameCompletion && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="px-3 py-1">
+                    <span className="invisible">{lightName}</span>
+                    <span className="text-sm text-gray-400 italic">
+                      {nameCompletion}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <DialogFooter className="sm:justify-start">
           <Button type="submit" onClick={handleSubmit}>
-            Add
+            {light ? 'Save' : 'Add'}
           </Button>
           <DialogClose asChild>
             <Button type="button" variant="secondary">
