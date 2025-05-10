@@ -11,7 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SmartHomeService } from '../../services/smart-home.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
@@ -29,6 +29,7 @@ import { completionResource } from '@hashbrownai/angular';
     MatInputModule,
     MatButtonModule,
     MatCardModule,
+    RouterModule,
   ],
   template: `
     <div class="form-container">
@@ -61,7 +62,7 @@ import { completionResource } from '@hashbrownai/angular';
             </mat-form-field>
 
             <div class="actions">
-              <button mat-button type="button" routerLink="/lights">
+              <button mat-button type="button" [routerLink]="['/lights']">
                 Cancel
               </button>
               <button
@@ -88,6 +89,7 @@ import { completionResource } from '@hashbrownai/angular';
         flex-direction: column;
         gap: 16px;
       }
+
       .actions {
         display: flex;
         gap: 8px;
@@ -96,6 +98,10 @@ import { completionResource } from '@hashbrownai/angular';
 
       .autocomplete-container .mat-form-field-wrapper {
         position: relative;
+      }
+
+      mat-card-title {
+        margin-bottom: 8px;
       }
 
       .autocomplete-container .ghost-input {
@@ -187,6 +193,9 @@ export class LightFormComponent {
         throw new Error('Name is required');
       }
 
+      console.log(name);
+      console.log(id);
+
       if (id) {
         this.store.dispatch(
           LightsPageActions.updateLight({
@@ -205,6 +214,8 @@ export class LightFormComponent {
           }),
         );
       }
+
+      this.router.navigate(['/lights']);
     }
   }
 

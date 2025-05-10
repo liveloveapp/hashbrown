@@ -13,6 +13,7 @@ export interface RecurrenceRule {
 
 export interface ScheduledScene {
   id: string;
+  name: string;
   sceneId: string;
   startDate: Date;
   recurrenceRule?: RecurrenceRule;

@@ -26,12 +26,11 @@ import { selectAllScenes } from '../../store';
       <mat-card>
         <mat-card-header>
           <mat-card-title>Scenes</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
           <button mat-raised-button color="primary" (click)="openSceneDialog()">
             Add Scene
           </button>
-
+        </mat-card-header>
+        <mat-card-content>
           @for (scene of scenes(); track scene.id) {
             <div class="scene-item">
               <h3>{{ scene.name }}</h3>
@@ -74,6 +73,12 @@ import { selectAllScenes } from '../../store';
       .scene-actions {
         display: flex;
         gap: 8px;
+      }
+
+      mat-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
     `,
   ],
