@@ -29,8 +29,6 @@ import { selectAllLights } from '../../store';
       <mat-card>
         <mat-card-header>
           <mat-card-title>Lights</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
           <button
             mat-raised-button
             color="primary"
@@ -38,31 +36,34 @@ import { selectAllLights } from '../../store';
           >
             Add Light
           </button>
-
+        </mat-card-header>
+        <mat-card-content>
           @for (light of lights(); track light.id) {
             <div class="light-item">
               <h3>{{ light.name }}</h3>
-              <mat-slider [min]="0" [max]="100" [step]="1">
-                <input
-                  matSliderThumb
-                  [value]="light.brightness"
-                  (valueChange)="updateBrightness(light.id, $event)"
-                />
-              </mat-slider>
-              <div class="light-actions">
-                <button
-                  mat-icon-button
-                  [routerLink]="['/lights', light.id, 'edit']"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="deleteLight(light)"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
+              <div class="light-interactions">
+                <mat-slider [min]="0" [max]="100" [step]="1">
+                  <input
+                    matSliderThumb
+                    [value]="light.brightness"
+                    (valueChange)="updateBrightness(light.id, $event)"
+                  />
+                </mat-slider>
+                <div class="light-actions">
+                  <button
+                    mat-icon-button
+                    [routerLink]="['/lights', light.id, 'edit']"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="deleteLight(light)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
               </div>
             </div>
           }
@@ -80,10 +81,32 @@ import { selectAllLights } from '../../store';
         align-items: center;
         gap: 16px;
         margin: 16px 0;
+        justify-content: space-between;
       }
       .light-actions {
         display: flex;
         gap: 8px;
+      }
+
+      .light-interactions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      h3 {
+        min-width: 150px;
+      }
+
+      mat-slider {
+        width: 100%;
+      }
+
+      mat-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
     `,
   ],

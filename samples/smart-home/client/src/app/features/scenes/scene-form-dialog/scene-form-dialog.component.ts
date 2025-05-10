@@ -55,7 +55,7 @@ import { selectAllLights, selectLightEntities } from '../../../store';
         <div formArrayName="lights">
           @for (light of lightsFormArray.controls; track $index) {
             <div [formGroupName]="$index" class="light-config">
-              <mat-form-field>
+              <mat-form-field subscriptSizing="dynamic">
                 <mat-label>Light</mat-label>
                 <mat-select formControlName="lightId">
                   @for (availableLight of lights(); track availableLight.id) {
@@ -76,7 +76,7 @@ import { selectAllLights, selectLightEntities } from '../../../store';
                 type="button"
                 (click)="removeLight($index)"
               >
-                <mat-icon>remove_circle</mat-icon>
+                <mat-icon>delete</mat-icon>
               </button>
             </div>
           }
@@ -92,10 +92,8 @@ import { selectAllLights, selectLightEntities } from '../../../store';
             @let suggestedLight = lightEntities()[light.lightId];
 
             <div class="predicted-light">
-              <span
-                >{{ suggestedLight?.name }} - Brightness:
-                {{ light.brightness }}%</span
-              >
+              <span>{{ suggestedLight?.name }}</span>
+              <span>Brightness: {{ light.brightness }}%</span>
               <button
                 mat-mini-button
                 type="button"
@@ -124,6 +122,11 @@ import { selectAllLights, selectLightEntities } from '../../../store';
   `,
   styles: [
     `
+      h5 {
+        display: flex;
+        align-items: center;
+      }
+
       form {
         display: flex;
         flex-direction: column;
@@ -136,6 +139,17 @@ import { selectAllLights, selectLightEntities } from '../../../store';
         display: flex;
         gap: 16px;
         align-items: center;
+      }
+
+      .light-config:not(:last-child) {
+        margin-bottom: 8px;
+      }
+
+      .predicted-light {
+        display: grid;
+        gap: 8px;
+        grid-template-areas: 'a a a';
+        grid-auto-columns: auto 120px 50px;
       }
 
       mat-form-field {

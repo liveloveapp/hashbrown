@@ -3,11 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SmartHomeService } from '../../services/smart-home.service';
 import { ScheduledScene, Weekday } from '../../models/scheduled-scene.model';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { ScheduleSceneFormDialogComponent } from './schedule-scene-form-dialog/schedule-scene-form-dialog.component';
+import { Store } from '@ngrx/store';
+import { ScheduledScenesPageActions } from './actions';
 
 @Component({
   selector: 'app-scheduled-scenes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatDialogModule],
   template: `
     <div class="container mx-auto p-4">
       <h1 class="text-2xl font-bold mb-4">Scheduled Scenes</h1>
@@ -132,6 +136,8 @@ import { ScheduledScene, Weekday } from '../../models/scheduled-scene.model';
   `,
 })
 export class ScheduledScenesComponent {
+  private dialog = inject(MatDialog);
+  private store = inject(Store);
   private smartHomeService = inject(SmartHomeService);
 
   readonly scenes = this.smartHomeService.scenes;
@@ -148,6 +154,7 @@ export class ScheduledScenesComponent {
   ];
 
   newScheduledScene = {
+    name: '',
     sceneId: '',
     startDate: '',
     recurrenceRule: {
@@ -155,6 +162,32 @@ export class ScheduledScenesComponent {
     },
     isEnabled: true,
   };
+
+  protected openScheduleSceneDialog(scheduledScene?: ScheduledScene) {
+    const dialogRef = this.dialog.open(ScheduleSceneFormDialogComponent, {
+      width: '500px',
+      data: scheduledScene,
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (!result) return;
+
+      if (scheduledScene) {
+        this.store.dispatch(
+          ScheduledScenesPageActions.updateScheduledScene({
+            id: scheduledScene.id,
+            scheduledScene: result,
+          }),
+        );
+      } else {
+        this.store.dispatch(
+          ScheduledScenesPageActions.addScheduledScene({
+            scheduledScene: result,
+          }),
+        );
+      }
+    });
+  }
 
   addScheduledScene() {
     if (!this.newScheduledScene.sceneId || !this.newScheduledScene.startDate) {
@@ -168,6 +201,7 @@ export class ScheduledScenesComponent {
 
     // Reset form
     this.newScheduledScene = {
+      name: '',
       sceneId: '',
       startDate: '',
       recurrenceRule: {

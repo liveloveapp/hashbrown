@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { AfterViewInit, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -37,7 +37,6 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
       >
         Scheduled Scenes
       </button>
-      <button mat-button (click)="openChatPanel()">Chat</button>
     </mat-toolbar>
 
     <main [class.chatPanelOpen]="isChatPanelOpen()">
@@ -67,7 +66,7 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
       }
 
       .chatPanelOpen {
-        margin-right: 400px;
+        margin-right: 40%;
       }
 
       .active {
@@ -76,11 +75,11 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
     `,
   ],
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
   store = inject(Store);
   isChatPanelOpen = this.store.selectSignal(selectIsChatPanelOpen);
 
-  openChatPanel() {
+  ngAfterViewInit() {
     this.store.dispatch(ChatActions.openChatPanel());
   }
 }
