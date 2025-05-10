@@ -1,6 +1,6 @@
 import { Chat, s, Tater } from '@hashbrownai/core';
-import { useChat, UseChatOptions, UseChatResult } from './use-chat';
 import { useMemo } from 'react';
+import { useChat, UseChatOptions, UseChatResult } from './use-chat';
 
 export interface UseStructuredChatOptions<Output extends Chat.ResponseFormat>
   extends UseChatOptions {

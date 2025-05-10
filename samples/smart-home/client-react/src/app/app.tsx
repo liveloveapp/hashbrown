@@ -16,6 +16,7 @@ import { Toaster } from './shared/toaster';
 import { useToast } from './shared/use-toast';
 import { useSmartHomeStore } from './store/smart-home.store';
 import { LightsView } from './views/LightsView';
+import { LiveTranslationView } from './views/LiveTranslationView';
 import { ScenesView } from './views/ScenesView';
 import { ScheduledScenesView } from './views/ScheduledScenesView';
 import { UiCompletionView } from './views/UiCompletionView';
@@ -65,6 +66,16 @@ export function App() {
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild>
                     <Link
+                      to="/live-translation"
+                      className={navigationMenuTriggerStyle()}
+                    >
+                      Live Translation
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild>
+                    <Link
                       to="/ui-completion"
                       className={navigationMenuTriggerStyle()}
                     >
@@ -92,6 +103,10 @@ export function App() {
                     element={
                       <ScheduledScenesView scheduledScenes={scheduledScenes} />
                     }
+                  />
+                  <Route
+                    path="/live-translation"
+                    element={<LiveTranslationView />}
                   />
                   <Route path="/ui-completion" element={<UiCompletionView />} />
                   <Route path="/" element={<p>Home</p>} />

@@ -76,8 +76,8 @@ export const SceneDialogForm = (
         input: 'Dim Bedroom Lights',
         output: {
           lights: [
-            { lightId: 'light1', brightness: 20 },
-            { lightId: 'light2', brightness: 20 },
+            { lightId: '1', brightness: 20 },
+            { lightId: '2', brightness: 20 },
           ],
         },
       },
@@ -85,8 +85,8 @@ export const SceneDialogForm = (
         input: 'All Lights On',
         output: {
           lights: [
-            { lightId: 'light3', brightness: 100 },
-            { lightId: 'light4', brightness: 100 },
+            { lightId: '3', brightness: 100 },
+            { lightId: '4', brightness: 100 },
           ],
         },
       },
@@ -133,8 +133,6 @@ export const SceneDialogForm = (
     }
     setOpen(false);
   };
-
-  console.table(output);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
