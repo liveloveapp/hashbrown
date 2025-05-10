@@ -6,15 +6,15 @@ export interface UseCompletionOptions extends Omit<UseChatOptions, 'messages'> {
   /**
    * The input string to predict from.
    */
-  input: string;
-  /**
-   * A more detailed description of what is to be predicted.
-   */
-  details?: string;
+  input: string | null | undefined;
   /**
    * Example input and output pairs to guide the prediction.
    */
   examples?: { input: string; output: string }[];
+  /**
+   * The system prompt to use for the completion task.
+   */
+  system: string;
 }
 
 export interface UseCompletionResult extends UseChatResult {
@@ -33,28 +33,22 @@ export const useCompletion = (
     ...options,
   });
 
-  const systemPrompt = useMemo(
-    () =>
-      [
-        'You are an AI that predicts the output based on the input.',
-        'The input will be provided. Your response must match the output schema.',
-        'There is no reason to include any other text in your response.\n',
-        options.details
-          ? `Here's a more detailed description of what you are predicting:\n ${options.details}\n`
-          : '',
-        examples
-          ? `Here are examples:\n ${examples
-              .map((example) =>
-                [
-                  `Input: ${example.input}`,
-                  `Output: ${JSON.stringify(example.output)}`,
-                ].join('\n'),
-              )
-              .join('\n')}`
-          : '',
-      ].join('\n'),
-    [options.details, examples],
-  );
+  const systemPrompt = useMemo(() => {
+    const _system = options.system;
+    return `
+      ${_system}
+
+      ## Examples
+      ${examples
+        .map(
+          (example) => `
+        Input: ${JSON.stringify(example.input)}
+        Output: ${example.output}
+      `,
+        )
+        .join('\n')}
+    `;
+  }, [options.system, examples]);
 
   const systemMessage: Chat.SystemMessage = useMemo(() => {
     return {

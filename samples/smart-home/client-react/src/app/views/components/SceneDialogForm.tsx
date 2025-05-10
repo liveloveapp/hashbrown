@@ -1,5 +1,5 @@
 import { s } from '@hashbrownai/core';
-import { ChatStatus, useCompletion } from '@hashbrownai/react';
+import { ChatStatus, useStructuredCompletion } from '@hashbrownai/react';
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -31,6 +31,7 @@ import {
 import { useSmartHomeStore } from '../../store/smart-home.store';
 import { SceneLight } from './SceneLight';
 import { SceneLightRecommendation } from './SceneLightRecommendation';
+
 interface SceneDialogFormProps {
   scene?: SceneModel;
 }
@@ -52,17 +53,15 @@ export const SceneDialogForm = (
   );
   const [open, setOpen] = useState(false);
 
-  const [input, setInput] = useState('');
-
-  const { predictions, status } = useCompletion({
-    input: input,
-    details: `Predict the lights that will be added to the scene based on the name. For example,
+  const { output, status } = useStructuredCompletion({
+    input: open ? sceneName : null,
+    model: 'gpt-4o-mini',
+    system: `Predict the lights that will be added to the scene based on the name. For example,
     if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
     be in the bedroom at a lower brightness.
 
     Here's the list of lights:
     ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}`,
-    model: 'gpt-4o-mini',
     output: s.object('Your response', {
       lights: s.array(
         'The lights to add to the scene',
@@ -72,6 +71,26 @@ export const SceneDialogForm = (
         }),
       ),
     }),
+    examples: [
+      {
+        input: 'Dim Bedroom Lights',
+        output: {
+          lights: [
+            { lightId: 'light1', brightness: 20 },
+            { lightId: 'light2', brightness: 20 },
+          ],
+        },
+      },
+      {
+        input: 'All Lights On',
+        output: {
+          lights: [
+            { lightId: 'light3', brightness: 100 },
+            { lightId: 'light4', brightness: 100 },
+          ],
+        },
+      },
+    ],
   });
 
   // Get available lights that aren't already in the scene
@@ -115,6 +134,8 @@ export const SceneDialogForm = (
     setOpen(false);
   };
 
+  console.table(output);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -134,10 +155,7 @@ export const SceneDialogForm = (
               id="sceneName"
               placeholder="Enter scene name"
               value={sceneName}
-              onChange={(e) => {
-                setSceneName(e.target.value);
-                setInput(e.target.value);
-              }}
+              onChange={(e) => setSceneName(e.target.value)}
             />
           </div>
 
@@ -190,14 +208,13 @@ export const SceneDialogForm = (
                   Generating recommendations...
                 </p>
               )}
-              {predictions &&
-                predictions.lights.map((prediction) => (
-                  <SceneLightRecommendation
-                    key={prediction.lightId}
-                    lightId={prediction.lightId}
-                    brightness={prediction.brightness}
-                  />
-                ))}
+              {output?.lights.map((prediction) => (
+                <SceneLightRecommendation
+                  key={prediction.lightId}
+                  lightId={prediction.lightId}
+                  brightness={prediction.brightness}
+                />
+              ))}
             </div>
           </div>
         </div>

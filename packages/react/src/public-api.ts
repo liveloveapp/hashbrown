@@ -4,17 +4,22 @@ export { HashbrownProvider } from './hashbrown-provider';
 export {
   ChatStatus,
   useChat,
-  UseChatOptions,
-  UseChatResult,
+  type UseChatOptions,
+  type UseChatResult,
 } from './hooks/use-chat';
 export {
   useCompletion,
-  UseCompletionOptions,
-  UseCompletionResult,
+  type UseCompletionOptions,
+  type UseCompletionResult,
 } from './hooks/use-completion';
 export {
   useStructuredChat,
-  UseStructuredChatOptions,
-  UseStructuredChatResult,
+  type UseStructuredChatOptions,
+  type UseStructuredChatResult,
 } from './hooks/use-structured-chat';
+export {
+  useStructuredCompletion,
+  type UseStructuredCompletionOptions,
+  type UseStructuredCompletionResult,
+} from './hooks/use-structured-completion';
 export { useUiChat } from './hooks/use-ui-chat';
