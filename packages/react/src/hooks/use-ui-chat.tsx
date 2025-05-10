@@ -6,8 +6,10 @@ import {
   s,
 } from '@hashbrownai/core';
 import React, { useCallback, useMemo, useState } from 'react';
-import { UseChatOptions } from './use-chat';
-import { useStructuredChat } from './use-structured-chat';
+import {
+  useStructuredChat,
+  UseStructuredChatOptions,
+} from './use-structured-chat';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace UiChat {
@@ -33,7 +35,8 @@ export namespace UiChat {
     | Chat.SystemMessage;
 }
 
-export interface UiChatOptions extends Omit<UseChatOptions, 'messages'> {
+export interface UiChatOptions
+  extends Omit<UseStructuredChatOptions<any>, 'schema'> {
   components: ExposedComponent<any>[];
 }
 
@@ -56,8 +59,10 @@ export const useUiChat = (options: UiChatOptions) => {
         curteuous, helpful, and friendly. Try to answer all questions
         to the best of your ability. Keep answers concise and to the point.
 
-        If the user asks you for things, strongly prefer to provide controls 
-        components organized in cards.
+        If the user asks you for things, strongly prefer to provide control 
+        components and organize them logically if you have the opportunity.
+        
+        If the user asks you to take an action, respond simply with the action you have taken.
 
         Today's date is ${new Date().toLocaleDateString()}.
 
@@ -73,7 +78,7 @@ export const useUiChat = (options: UiChatOptions) => {
         content: systemMessage,
       },
     ],
-    output: ui,
+    schema: ui,
   });
 
   const buildContent = useCallback(

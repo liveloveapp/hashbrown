@@ -7,30 +7,30 @@ export interface UseStructuredChatOptions<Output extends Chat.ResponseFormat>
   /**
    * The output schema for the predictions.
    */
-  output: Output;
+  schema: s.HashbrownType;
 }
 
 export interface UseStructuredChatResult<Output extends Chat.ResponseFormat>
   extends Omit<UseChatResult, 'messages'> {
   messages: Chat.Message<s.Infer<Output>>[];
-  output: s.HashbrownType | undefined;
-  setOutput: (output: s.HashbrownType | undefined) => void;
+  schema: s.HashbrownType | undefined;
+  setSchema: (schema: s.HashbrownType | undefined) => void;
 }
 
 export const useStructuredChat = <Output extends Chat.ResponseFormat>({
-  output,
+  schema,
   ...options
 }: UseStructuredChatOptions<Output>): UseStructuredChatResult<Output> => {
   const chat = useChat({
     ...options,
-    θoutput: output,
+    θschema: schema,
   });
 
   const parsedMessages = useMemo(() => {
     return chat.messages.reduce(
       (acc, message) => {
         if (message.role === 'assistant' && message.content) {
-          const streamParser = new Tater.StreamSchemaParser(output);
+          const streamParser = new Tater.StreamSchemaParser(schema);
 
           try {
             const streamResult = streamParser.parse(message.content);
@@ -47,12 +47,12 @@ export const useStructuredChat = <Output extends Chat.ResponseFormat>({
       },
       [] as Chat.Message<s.Infer<Output>>[],
     );
-  }, [chat.messages, output]);
+  }, [chat.messages, schema]);
 
   return {
     ...chat,
     messages: parsedMessages,
-    output: chat.θoutput,
-    setOutput: chat.θsetOutput,
+    schema: chat.θschema,
+    setSchema: chat.θsetSchema,
   };
 };

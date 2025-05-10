@@ -17,31 +17,15 @@ export interface UseStructuredCompletionOptions<
   examples?: { input: Input; output: s.Infer<Output> }[];
 }
 
-export interface UseStructuredCompletionResult<
-  Input,
-  Output extends s.HashbrownType,
-> extends Omit<UseStructuredChatResult<Output>, 'messages'> {
+export interface UseStructuredCompletionResult<Output extends s.HashbrownType>
+  extends Omit<UseStructuredChatResult<Output>, 'messages'> {
   output: Output;
-  setOutput: (output: Output) => void;
-}
-
-function stringifyExample(example: { input: any; output: any }) {
-  return {
-    input: JSON.stringify(example.input),
-    output: JSON.stringify(example.output),
-  };
 }
 
 export const useStructuredCompletion = <Input, Output extends s.HashbrownType>(
   options: UseStructuredCompletionOptions<Input, Output>,
-): UseStructuredCompletionResult<Input, Output> => {
-  const {
-    input,
-    output: initialOutputSchema,
-    system,
-    examples,
-    ...structuredChatOptions
-  } = options;
+): UseStructuredCompletionResult<Output> => {
+  const { input, system, examples, ...structuredChatOptions } = options;
 
   const fullInstructions = useMemo(() => {
     return `
@@ -82,7 +66,6 @@ export const useStructuredCompletion = <Input, Output extends s.HashbrownType>(
 
   const structuredChat = useStructuredChat({
     ...structuredChatOptions,
-    output: initialOutputSchema,
   });
 
   useEffect(() => {

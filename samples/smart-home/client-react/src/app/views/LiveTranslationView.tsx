@@ -17,7 +17,7 @@ export const LiveTranslationView = () => {
   */
   const chat = useStructuredCompletion({
     model: 'gpt-4o',
-    output: s.object('Your response', {
+    schema: s.object('Your response', {
       translations: s.object('The translations', {
         spanish: s.string('The spanish translation'),
         french: s.string('The french translation'),
