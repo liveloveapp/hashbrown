@@ -403,6 +403,10 @@ export const useChat = (options: UseChatOptions): UseChatResult => {
     });
   }, [setMessages, stop]);
 
+  // useEffect(() => {
+  //   console.log('messages', messages);
+  // }, [messages]);
+
   return {
     messages,
     setMessages,

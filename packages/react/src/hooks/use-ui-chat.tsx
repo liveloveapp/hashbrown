@@ -60,7 +60,8 @@ export const useUiChat = (options: UiChatOptions) => {
         to the best of your ability. Keep answers concise and to the point.
 
         If the user asks you for things, strongly prefer to provide control 
-        components and organize them logically if you have the opportunity.
+        components. Organize them logically with other components if you have
+        the opportunity.
         
         If the user asks you to take an action, respond simply with the action you have taken.
 

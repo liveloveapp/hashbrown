@@ -58,7 +58,6 @@ export const useCompletion = (
   }, [systemPrompt]);
 
   useEffect(() => {
-    console.log('input', options.input);
     if (!options.input) return;
 
     setMessages([
