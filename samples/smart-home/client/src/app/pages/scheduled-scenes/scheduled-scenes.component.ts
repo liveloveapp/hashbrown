@@ -7,133 +7,108 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ScheduleSceneFormDialogComponent } from './schedule-scene-form-dialog/schedule-scene-form-dialog.component';
 import { Store } from '@ngrx/store';
 import { ScheduledScenesPageActions } from './actions';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-scheduled-scenes',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+  ],
   template: `
-    <div class="container mx-auto p-4">
-      <h1 class="text-2xl font-bold mb-4">Scheduled Scenes</h1>
-
-      <!-- Add New Scheduled Scene -->
-      <div class="bg-white p-4 rounded-lg shadow mb-6">
-        <h2 class="text-xl font-semibold mb-4">Add New Schedule</h2>
-        <form (ngSubmit)="addScheduledScene()" class="space-y-4">
-          <div>
-            <label for="sceneId" class="block text-sm font-medium text-gray-700"
-              >Scene</label
-            >
-            <select
-              id="sceneId"
-              [(ngModel)]="newScheduledScene.sceneId"
-              name="sceneId"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              required
-            >
-              <option value="">Select a scene</option>
-              @for (scene of scenes(); track scene.id) {
-                <option [value]="scene.id">{{ scene.name }}</option>
-              }
-            </select>
-          </div>
-
-          <div>
-            <label
-              for="startDate"
-              class="block text-sm font-medium text-gray-700"
-              >Start Date</label
-            >
-            <input
-              id="startDate"
-              type="datetime-local"
-              [(ngModel)]="newScheduledScene.startDate"
-              name="startDate"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              required
-            />
-          </div>
-
-          <fieldset>
-            <legend class="block text-sm font-medium text-gray-700">
-              Recurrence
-            </legend>
-            <div class="mt-2 space-y-2">
-              @for (weekday of weekdays; track weekday) {
-                <label [for]="weekday" class="inline-flex items-center">
-                  <input
-                    [id]="weekday"
-                    type="checkbox"
-                    [checked]="
-                      newScheduledScene.recurrenceRule.weekdays.includes(
-                        weekday
-                      )
-                    "
-                    (change)="toggleWeekday(weekday)"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                  <span class="ml-2">{{ weekday | titlecase }}</span>
-                </label>
-              }
-            </div>
-          </fieldset>
-
+    <div class="scheduled-scenes-container">
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Scheduled Scenes</mat-card-title>
           <button
-            type="submit"
-            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            mat-raised-button
+            color="primary"
+            (click)="openScheduledSceneDialog()"
           >
-            Add Schedule
+            Add Scheduled Scene
           </button>
-        </form>
-      </div>
-
-      <!-- List of Scheduled Scenes -->
-      <div class="bg-white p-4 rounded-lg shadow">
-        <h2 class="text-xl font-semibold mb-4">Active Schedules</h2>
-        <div class="space-y-4">
+        </mat-card-header>
+        <mat-card-content>
           @for (scheduledScene of scheduledScenes(); track scheduledScene.id) {
-            <div class="border rounded-lg p-4">
-              <div class="flex justify-between items-start">
-                <div>
-                  <h3 class="font-medium">
-                    {{ getSceneName(scheduledScene.sceneId) }}
-                  </h3>
-                  <p class="text-sm text-gray-500">
-                    Starts: {{ scheduledScene.startDate | date: 'medium' }}
-                  </p>
-                  @if (scheduledScene.recurrenceRule?.weekdays?.length) {
-                    <p class="text-sm text-gray-500">
-                      Repeats on:
-                      {{
-                        scheduledScene.recurrenceRule?.weekdays?.join(', ')
-                          | titlecase
-                      }}
-                    </p>
-                  }
-                </div>
-                <div class="flex space-x-2">
-                  <button
-                    (click)="toggleEnabled(scheduledScene)"
-                    class="text-sm px-2 py-1 rounded"
-                    [class.bg-green-100]="scheduledScene.isEnabled"
-                    [class.bg-red-100]="!scheduledScene.isEnabled"
-                  >
-                    {{ scheduledScene.isEnabled ? 'Enabled' : 'Disabled' }}
-                  </button>
-                  <button
-                    (click)="deleteScheduledScene(scheduledScene.id)"
-                    class="text-sm text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
-                </div>
+            <div class="scheduled-scene-item">
+              <h3>{{ scheduledScene.name }}</h3>
+              <h3 class="font-medium">
+                {{ getSceneName(scheduledScene.sceneId) }}
+              </h3>
+              <p class="text-sm text-gray-500">
+                Starts: {{ scheduledScene.startDate | date: 'medium' }}
+              </p>
+              @if (scheduledScene.recurrenceRule?.weekdays?.length) {
+                <p class="text-sm text-gray-500">
+                  Repeats on:
+                  {{
+                    scheduledScene.recurrenceRule?.weekdays?.join(', ')
+                      | titlecase
+                  }}
+                </p>
+              }
+              <div class="scheduled-scene-actions">
+                <button
+                  (click)="toggleEnabled(scheduledScene)"
+                  class="text-sm px-2 py-1 rounded"
+                  [class.bg-green-100]="scheduledScene.isEnabled"
+                  [class.bg-red-100]="!scheduledScene.isEnabled"
+                >
+                  {{ scheduledScene.isEnabled ? 'Enabled' : 'Disabled' }}
+                </button>
+                <button
+                  mat-icon-button
+                  (click)="openScheduledSceneDialog(scheduledScene)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="deleteScheduledScene(scheduledScene)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
               </div>
             </div>
           }
-        </div>
-      </div>
+        </mat-card-content>
+      </mat-card>
     </div>
   `,
+  styles: [
+    `
+      .scheduled-scenes-container {
+        padding: 20px;
+      }
+
+      .scheduled-scene-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 16px 0;
+      }
+
+      .scheduled-scene-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      mat-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+    `,
+  ],
 })
 export class ScheduledScenesComponent {
   private dialog = inject(MatDialog);
@@ -143,27 +118,7 @@ export class ScheduledScenesComponent {
   readonly scenes = this.smartHomeService.scenes;
   readonly scheduledScenes = this.smartHomeService.scheduledScenes;
 
-  readonly weekdays: Weekday[] = [
-    'monday',
-    'tuesday',
-    'wednesday',
-    'thursday',
-    'friday',
-    'saturday',
-    'sunday',
-  ];
-
-  newScheduledScene = {
-    name: '',
-    sceneId: '',
-    startDate: '',
-    recurrenceRule: {
-      weekdays: [] as Weekday[],
-    },
-    isEnabled: true,
-  };
-
-  protected openScheduleSceneDialog(scheduledScene?: ScheduledScene) {
+  protected openScheduledSceneDialog(scheduledScene?: ScheduledScene) {
     const dialogRef = this.dialog.open(ScheduleSceneFormDialogComponent, {
       width: '500px',
       data: scheduledScene,
@@ -189,47 +144,29 @@ export class ScheduledScenesComponent {
     });
   }
 
-  addScheduledScene() {
-    if (!this.newScheduledScene.sceneId || !this.newScheduledScene.startDate) {
-      return;
-    }
-
-    this.smartHomeService.addScheduledScene({
-      ...this.newScheduledScene,
-      startDate: new Date(this.newScheduledScene.startDate),
-    });
-
-    // Reset form
-    this.newScheduledScene = {
-      name: '',
-      sceneId: '',
-      startDate: '',
-      recurrenceRule: {
-        weekdays: [],
-      },
-      isEnabled: true,
-    };
-  }
-
-  toggleWeekday(weekday: Weekday) {
-    const weekdays = this.newScheduledScene.recurrenceRule.weekdays;
-    const index = weekdays.indexOf(weekday);
-
-    if (index === -1) {
-      weekdays.push(weekday);
-    } else {
-      weekdays.splice(index, 1);
-    }
-  }
-
   toggleEnabled(scheduledScene: ScheduledScene) {
     this.smartHomeService.updateScheduledScene(scheduledScene.id, {
       isEnabled: !scheduledScene.isEnabled,
     });
   }
 
-  deleteScheduledScene(id: string) {
-    this.smartHomeService.deleteScheduledScene(id);
+  deleteScheduledScene(scheduledScene: ScheduledScene) {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Scheduled Scene',
+        message: `Are you sure you want to delete ${scheduledScene.name}?`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.store.dispatch(
+          ScheduledScenesPageActions.deleteScheduledScene({
+            id: scheduledScene.id,
+          }),
+        );
+      }
+    });
   }
 
   getSceneName(sceneId: string): string {

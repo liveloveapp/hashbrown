@@ -1,7 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormArray,
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -16,7 +22,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { Store } from '@ngrx/store';
 import { Scene } from '../../../models/scene.model';
 import { selectAllScenes } from '../../../store';
-import { ScheduledScene } from '../../../models/scheduled-scene.model';
+import { ScheduledScene, Weekday } from '../../../models/scheduled-scene.model';
 
 @Component({
   selector: 'app-schedule-scene-form-dialog',
@@ -33,7 +39,7 @@ import { ScheduledScene } from '../../../models/scheduled-scene.model';
     MatIconModule,
   ],
   template: `
-    <h2 mat-dialog-title>{{ data ? 'Edit' : 'Add' }} Scene</h2>
+    <h2 mat-dialog-title>{{ data ? 'Edit' : 'Add' }} Scheduled Scene</h2>
     <mat-dialog-content>
       <form [formGroup]="form">
         <mat-form-field appearance="fill">
@@ -45,6 +51,33 @@ import { ScheduledScene } from '../../../models/scheduled-scene.model';
             <mat-error>Name is required</mat-error>
           }
         </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Scene</mat-label>
+          <mat-select formControlName="sceneId">
+            <mat-option value="">Select a scene</mat-option>
+            @for (scene of scenes(); track scene.id) {
+              <mat-option [value]="scene.id">{{ scene.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Start Date</mat-label>
+          <input matInput type="datetime-local" formControlName="startDate" />
+        </mat-form-field>
+
+        <span>Recurrence</span>
+        <div
+          *ngFor="let checkbox of checkboxesFormArray.controls; let i = index"
+        >
+          <input
+            type="checkbox"
+            [formControl]="checkbox"
+            id="checkbox-{{ i }}"
+          />
+          <label for="checkbox-{{ i }}">{{ weekdays[i] | titlecase }}</label>
+        </div>
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -97,7 +130,7 @@ import { ScheduledScene } from '../../../models/scheduled-scene.model';
     `,
   ],
 })
-export class ScheduleSceneFormDialogComponent {
+export class ScheduleSceneFormDialogComponent implements OnInit {
   private fb = inject(FormBuilder);
   private dialogRef = inject(MatDialogRef<ScheduleSceneFormDialogComponent>);
   protected data = inject<ScheduledScene | undefined>(MAT_DIALOG_DATA);
@@ -106,6 +139,8 @@ export class ScheduleSceneFormDialogComponent {
   protected form = this.fb.group({
     name: ['', Validators.required],
     sceneId: ['', Validators.required],
+    startDate: ['', Validators.required],
+    weekdays: this.fb.array([]),
   });
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -116,7 +151,54 @@ export class ScheduleSceneFormDialogComponent {
       this.form.patchValue({
         name: this.data.name,
         sceneId: this.data.sceneId,
+        startDate: this.data.startDate.toString(),
+        weekdays: this.data.recurrenceRule?.weekdays ?? [],
       });
     }
   }
+
+  readonly weekdays: Weekday[] = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ];
+
+  addCheckboxes() {
+    this.weekdays.forEach(() =>
+      this.checkboxesFormArray.push(new FormControl(false)),
+    );
+  }
+
+  get checkboxesFormArray() {
+    return this.form.get('weekdays') as FormArray<FormControl>;
+  }
+
+  ngOnInit() {
+    this.addCheckboxes();
+  }
+
+  newScheduledScene = {
+    name: '',
+    sceneId: '',
+    startDate: '',
+    recurrenceRule: {
+      weekdays: [] as Weekday[],
+    },
+    isEnabled: true,
+  };
+
+  // toggleWeekday(weekday: Weekday) {
+  //   const weekdays = this.newScheduledScene.recurrenceRule.weekdays;
+  //   const index = weekdays.indexOf(weekday);
+
+  //   if (index === -1) {
+  //     weekdays.push(weekday);
+  //   } else {
+  //     weekdays.splice(index, 1);
+  //   }
+  // }
 }
