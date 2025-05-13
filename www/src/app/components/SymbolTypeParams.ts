@@ -35,7 +35,12 @@ import { SymbolExcerpt } from './SymbolExcerpt';
 
         > .symbol {
           font: 700 14px/18px monospace;
-          color: #7d542f;
+          color: #fbbb52;
+        }
+
+        > .name {
+          font: 700 14px/18px monospace;
+          color: #ffa657;
         }
       }
     `,

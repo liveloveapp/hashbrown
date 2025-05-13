@@ -123,6 +123,10 @@ type Heading = { level: number; text: string; id: string; url: string };
           margin-left: 24px;
         }
 
+        pre.shiki.hashbrown {
+          background: red;
+        }
+
         code:not(pre code) {
           font-weight: 600;
         }

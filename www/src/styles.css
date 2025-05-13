@@ -173,10 +173,6 @@ pre {
   font-family: 'Operator Mono', monospace;
 }
 
-pre.shiki.hashbrown {
-  background: none !important;
-}
-
 code {
   font: 500 14px/1.5rem monospace;
   font-variant-ligatures: none;

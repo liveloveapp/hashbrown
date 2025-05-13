@@ -17,7 +17,10 @@ import { SymbolExcerpt } from './SymbolExcerpt';
           }
           <code class="name">{{ param.name }}</code>
           @if (param.description) {
-            <p [innerHtml]="param.description | inlineMarkdown"></p>
+            <p
+              class="description"
+              [innerHtml]="param.description | inlineMarkdown"
+            ></p>
           }
         </div>
         <www-symbol-excerpt [excerptTokens]="param.excerptTokens" />
@@ -44,7 +47,20 @@ import { SymbolExcerpt } from './SymbolExcerpt';
 
           > .symbol {
             font: 700 14px/18px monospace;
-            color: #7d542f;
+            color: #fbbb52;
+          }
+
+          > .name {
+            font: 700 14px/18px monospace;
+            color: #ffa657;
+          }
+
+          > .description {
+            font:
+              400 12px/16px Poppins,
+              sans-serif;
+            color: rgba(250, 249, 240, 0.8);
+            margin-left: 16px;
           }
         }
 

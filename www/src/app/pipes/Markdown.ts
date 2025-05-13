@@ -45,7 +45,6 @@ export class Markdown implements PipeTransform {
 
   marked = new Marked(
     markedHighlight({
-      langPrefix: 'language-',
       highlight: (code, lang, info) => {
         return this.highlighterService.getHighlighter().codeToHtml(code, {
           lang: 'typescript',
