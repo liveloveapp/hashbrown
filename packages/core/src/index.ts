@@ -8,3 +8,4 @@ export {
   type ComponentTree,
 } from './utils';
 export * from './vendor/vendor-client';
+export * from './chat-state/hashbrown';

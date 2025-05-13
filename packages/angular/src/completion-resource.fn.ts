@@ -1,9 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-empty-interface */
-import { computed, Resource, Signal } from '@angular/core';
+import {
+  computed,
+  effect,
+  Resource,
+  ResourceStatus,
+  Signal,
+  signal,
+} from '@angular/core';
+import { fryHashbrown } from '@hashbrownai/core';
 import { SignalLike } from './types';
-import { chatResource } from './chat-resource.fn';
+import { injectHashbrownConfig } from './provide-hashbrown.fn';
+import { readSignalLike, toSignal } from './utils';
 
 export interface CompletionResourceRef extends Resource<string | null> {}
 
@@ -14,68 +23,65 @@ export interface CompletionResourceOptions<Input> {
     input: Input;
     output: string;
   }[];
-  system: SignalLike<string>;
+  prompt: SignalLike<string>;
 }
 
 export function completionResource<Input>(
   options: CompletionResourceOptions<Input>,
 ): CompletionResourceRef {
-  const { model, input, system, examples = [] } = options;
-  const messages = computed(() => {
+  const { model, input, prompt, examples = [] } = options;
+  const config = injectHashbrownConfig();
+  const hashbrown = fryHashbrown({
+    debugName: 'completionResource',
+    apiUrl: config.baseUrl,
+    model: readSignalLike(model),
+    prompt: readSignalLike(prompt),
+    temperature: 1,
+    maxTokens: 1000,
+    messages: [],
+    tools: [],
+  });
+  const messages = toSignal(hashbrown.observeMessages);
+  const internalMessages = computed(() => {
     const _input = input();
-    const _system = typeof system === 'string' ? system : system();
-    const _fullInstructions = `
-      ${_system}
-
-      ## Examples
-      ${examples
-        .map(
-          (example) => `
-        Input: ${JSON.stringify(example.input)}
-        Output: ${example.output}
-      `,
-        )
-        .join('\n')}
-    `;
 
     if (!_input) {
-      return [
-        {
-          role: 'system' as const,
-          content: _fullInstructions,
-        },
-      ];
+      return [];
     }
 
     return [
       {
-        role: 'system' as const,
-        content: _fullInstructions,
-      },
-      {
         role: 'user' as const,
-        content: JSON.stringify(_input),
+        content: typeof _input === 'string' ? _input : JSON.stringify(_input),
       },
     ];
   });
 
-  const resource = chatResource({
-    model,
-    messages,
+  effect(() => {
+    const _messages = internalMessages();
+
+    hashbrown.setMessages(_messages);
   });
 
   const value = computed(() => {
-    const lastMessage = resource.value()[resource.value().length - 1];
-    if (lastMessage.role === 'assistant' && lastMessage.content) {
+    const lastMessage = messages()[messages().length - 1];
+    if (
+      lastMessage &&
+      lastMessage.role === 'assistant' &&
+      lastMessage.content &&
+      typeof lastMessage.content === 'string'
+    ) {
       return lastMessage.content;
     }
     return null;
   });
 
-  const status = resource.status;
-  const error = resource.error;
-  const isLoading = resource.isLoading;
-  const reload = resource.reload;
+  const status = signal(ResourceStatus.Idle);
+  const error = signal<Error | null>(null);
+  const isLoading = signal(false);
+  const reload = () => {
+    return true;
+  };
 
   function hasValue(this: CompletionResourceRef) {
     return Boolean(value());
