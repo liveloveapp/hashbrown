@@ -39,29 +39,22 @@ import { MatIconModule } from '@angular/material/icon';
         <mat-card-content>
           @for (scheduledScene of scheduledScenes(); track scheduledScene.id) {
             <div class="scheduled-scene-item">
-              <h3>{{ scheduledScene.name }}</h3>
-              <h3 class="font-medium">
-                {{ getSceneName(scheduledScene.sceneId) }}
-              </h3>
-              <p class="text-sm text-gray-500">
-                Starts: {{ scheduledScene.startDate | date: 'medium' }}
-              </p>
-              @if (scheduledScene.recurrenceRule?.weekdays?.length) {
-                <p class="text-sm text-gray-500">
+              <div class="title-block">
+                <h3 style="padding-bottom: 8px">{{ scheduledScene.name }}</h3>
+                <h3 class="">
+                  Scene: {{ getSceneName(scheduledScene.sceneId) }}
+                </h3>
+
+                <p>Starts: {{ scheduledScene.startDate | date: 'medium' }}</p>
+
+                <p class="">
                   Repeats on:
-                  {{
-                    scheduledScene.recurrenceRule?.weekdays?.join(', ')
-                      | titlecase
-                  }}
+                  {{ buildDayString(scheduledScene.weekdays) }}
                 </p>
-              }
+              </div>
+
               <div class="scheduled-scene-actions">
-                <button
-                  (click)="toggleEnabled(scheduledScene)"
-                  class="text-sm px-2 py-1 rounded"
-                  [class.bg-green-100]="scheduledScene.isEnabled"
-                  [class.bg-red-100]="!scheduledScene.isEnabled"
-                >
+                <button mat-button (click)="toggleEnabled(scheduledScene)">
                   {{ scheduledScene.isEnabled ? 'Enabled' : 'Disabled' }}
                 </button>
                 <button
@@ -102,10 +95,22 @@ import { MatIconModule } from '@angular/material/icon';
         gap: 8px;
       }
 
+      .title-block {
+        // width: 30%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-content: space-between;
+        height: 100%;
+      }
+
       mat-card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
+      }
+
+      .toggle-button {
       }
     `,
   ],
@@ -117,6 +122,36 @@ export class ScheduledScenesComponent {
 
   readonly scenes = this.smartHomeService.scenes;
   readonly scheduledScenes = this.smartHomeService.scheduledScenes;
+
+  constructor() {
+    this.store.dispatch(ScheduledScenesPageActions.enter());
+  }
+
+  weekdays = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+  ];
+
+  buildDayString(weekdays: boolean[]) {
+    const dayStrings: string[] = [];
+
+    for (let i = 0; i < this.weekdays.length; i++) {
+      if (weekdays[i]) {
+        dayStrings.push(this.weekdays[i].toLocaleUpperCase());
+      }
+    }
+
+    if (dayStrings.length === 0) {
+      return 'None';
+    }
+
+    return dayStrings.join(', ');
+  }
 
   protected openScheduledSceneDialog(scheduledScene?: ScheduledScene) {
     const dialogRef = this.dialog.open(ScheduleSceneFormDialogComponent, {

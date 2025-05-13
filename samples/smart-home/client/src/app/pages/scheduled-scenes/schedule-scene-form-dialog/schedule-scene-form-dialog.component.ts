@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { AfterViewInit, Component, inject, OnInit } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -23,6 +23,8 @@ import { Store } from '@ngrx/store';
 import { Scene } from '../../../models/scene.model';
 import { selectAllScenes } from '../../../store';
 import { ScheduledScene, Weekday } from '../../../models/scheduled-scene.model';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatTimepickerModule } from '@angular/material/timepicker';
 
 @Component({
   selector: 'app-schedule-scene-form-dialog',
@@ -37,6 +39,8 @@ import { ScheduledScene, Weekday } from '../../../models/scheduled-scene.model';
     MatSelectModule,
     MatSliderModule,
     MatIconModule,
+    MatTimepickerModule,
+    MatDatepickerModule,
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit' : 'Add' }} Scheduled Scene</h2>
@@ -62,9 +66,33 @@ import { ScheduledScene, Weekday } from '../../../models/scheduled-scene.model';
           </mat-select>
         </mat-form-field>
 
+        <!--
         <mat-form-field>
           <mat-label>Start Date</mat-label>
           <input matInput type="datetime-local" formControlName="startDate" />
+        </mat-form-field>
+        -->
+
+        <mat-form-field>
+          <mat-label>Start Day</mat-label>
+          <input
+            matInput
+            [matDatepicker]="datepicker"
+            formControlName="startDate"
+          />
+          <mat-datepicker #datepicker />
+          <mat-datepicker-toggle [for]="datepicker" matSuffix />
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Start Time</mat-label>
+          <input
+            matInput
+            [matTimepicker]="timepicker"
+            formControlName="startDate"
+          />
+          <mat-timepicker #timepicker />
+          <mat-timepicker-toggle [for]="timepicker" matSuffix />
         </mat-form-field>
 
         <span>Recurrence</span>
@@ -130,7 +158,7 @@ import { ScheduledScene, Weekday } from '../../../models/scheduled-scene.model';
     `,
   ],
 })
-export class ScheduleSceneFormDialogComponent implements OnInit {
+export class ScheduleSceneFormDialogComponent implements OnInit, AfterViewInit {
   private fb = inject(FormBuilder);
   private dialogRef = inject(MatDialogRef<ScheduleSceneFormDialogComponent>);
   protected data = inject<ScheduledScene | undefined>(MAT_DIALOG_DATA);
@@ -146,13 +174,13 @@ export class ScheduleSceneFormDialogComponent implements OnInit {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   scheduledSceneNameSignal = toSignal(this.form.get('name')!.valueChanges);
 
-  constructor() {
+  ngAfterViewInit() {
     if (this.data) {
       this.form.patchValue({
         name: this.data.name,
         sceneId: this.data.sceneId,
         startDate: this.data.startDate.toString(),
-        weekdays: this.data.recurrenceRule?.weekdays ?? [],
+        weekdays: this.data.weekdays ?? [],
       });
     }
   }
@@ -180,25 +208,4 @@ export class ScheduleSceneFormDialogComponent implements OnInit {
   ngOnInit() {
     this.addCheckboxes();
   }
-
-  newScheduledScene = {
-    name: '',
-    sceneId: '',
-    startDate: '',
-    recurrenceRule: {
-      weekdays: [] as Weekday[],
-    },
-    isEnabled: true,
-  };
-
-  // toggleWeekday(weekday: Weekday) {
-  //   const weekdays = this.newScheduledScene.recurrenceRule.weekdays;
-  //   const index = weekdays.indexOf(weekday);
-
-  //   if (index === -1) {
-  //     weekdays.push(weekday);
-  //   } else {
-  //     weekdays.splice(index, 1);
-  //   }
-  // }
 }

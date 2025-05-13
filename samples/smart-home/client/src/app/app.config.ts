@@ -11,8 +11,11 @@ import { provideMarkdown } from 'ngx-markdown';
 import { routes } from './app.routes';
 import * as lightApiEffects from './features/lights/effects/light-api.effects';
 import * as scenesApiEffects from './features/scenes/effects/scenes-api.effects';
+import * as scheduledScenesApiEffects from './pages/scheduled-scenes/effects/scheduled-scenes-api.effects';
 import { reducers } from './store';
 import { provideHashbrown } from '@hashbrownai/angular';
+import { provideNativeDateAdapter } from '@angular/material/core';
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideExperimentalZonelessChangeDetection(),
@@ -23,10 +26,15 @@ export const appConfig: ApplicationConfig = {
     //   maxAge: 25,
     //   autoPause: true,
     // }),
-    provideEffects([lightApiEffects, scenesApiEffects]),
+    provideEffects([
+      lightApiEffects,
+      scenesApiEffects,
+      scheduledScenesApiEffects,
+    ]),
     provideMarkdown(),
     provideHashbrown({
       baseUrl: 'http://localhost:3000/chat',
     }),
+    provideNativeDateAdapter(),
   ],
 };
