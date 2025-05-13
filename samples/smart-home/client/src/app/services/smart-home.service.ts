@@ -150,7 +150,6 @@ export class SmartHomeService {
   addScheduledScene(
     scheduledScene: Omit<ScheduledScene, 'id'>,
   ): Observable<ScheduledScene> {
-    console.log(scheduledScene);
     const newScheduledScene: ScheduledScene = {
       ...scheduledScene,
       id: crypto.randomUUID(),
