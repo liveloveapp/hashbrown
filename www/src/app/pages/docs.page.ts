@@ -8,7 +8,7 @@ import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
 import { MarkdownPage } from '../components/MarkdownPage';
 import { DocsMenu } from '../components/DocsMenu';
-import { ConfigService, SdkConfig } from '../services/ConfigService';
+import { ConfigService, AppConfig } from '../services/ConfigService';
 
 @Component({
   imports: [
@@ -81,7 +81,7 @@ export default class DocsPage {
       filter((matches) => matches.length > 1),
       map((matches) => matches[1]),
       tap((sdk) => {
-        this.configService.set({ sdk: sdk as SdkConfig['sdk'] });
+        this.configService.set({ sdk: sdk as AppConfig['sdk'] });
       }),
     ),
   );

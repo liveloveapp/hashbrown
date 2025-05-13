@@ -1,7 +1,7 @@
 import { Component, input } from '@angular/core';
 
 @Component({
-  selector: 'www-liveloveapp',
+  selector: 'www-brand-liveloveapp-wordmark',
   template: `
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -54,7 +54,7 @@ import { Component, input } from '@angular/core';
     }
   `,
 })
-export class LiveLoveApp {
+export class BrandLiveLoveAppWordmark {
   fill = input<string>('#ef7b89');
   height = input<string>('22px');
   width = input<string>('134px');

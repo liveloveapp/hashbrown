@@ -46,7 +46,7 @@ export default {
     'dropdown.border': '#3D3C3A',
     'dropdown.foreground': '#FAF9F0',
     'dropdown.listBackground': '#5E5C5A',
-    'editor.background': 'inherit',
+    'editor.background': 'transparent',
     'editor.findMatchBackground': '#774625',
     'editor.findMatchHighlightBackground': '#FBBB5280',
     'editor.focusedStackFrameHighlightBackground': '#A0A98566',

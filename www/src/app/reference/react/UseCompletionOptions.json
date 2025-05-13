@@ -1,0 +1,156 @@
+{
+  "name": "UseCompletionOptions",
+  "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseCompletionOptions extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Omit",
+          "canonicalReference": "!Omit:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "UseChatOptions",
+          "canonicalReference": "@hashbrownai/react!UseChatOptions:interface"
+        },
+        { "kind": "Content", "text": ", 'messages'>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+      "releaseTag": "Public",
+      "name": "UseCompletionOptions",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#examples:member",
+          "docComment": "/**\n * Example input and output pairs to guide the prediction.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "examples?: " },
+            {
+              "kind": "Content",
+              "text": "{\n        input: string;\n        output: string;\n    }[]"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "examples",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Example input and output pairs to guide the prediction.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#input:member",
+          "docComment": "/**\n * The input string to predict from.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "input: " },
+            { "kind": "Content", "text": "string | null | undefined" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "input",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The input string to predict from.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#system:member",
+          "docComment": "/**\n * The system prompt to use for the completion task.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "system: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "system",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The system prompt to use for the completion task.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 5 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

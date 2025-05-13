@@ -123,40 +123,63 @@ type Heading = { level: number; text: string; id: string; url: string };
           margin-left: 24px;
         }
 
-        pre.shiki.hashbrown {
-          background: red;
+        :not(www-symbol-link) > a {
+          text-decoration: underline;
+          text-decoration-color: #774625;
+          color: #774625;
+          font-weight: 600;
+
+          &:hover {
+            text-decoration-color: #fbbb52;
+          }
+        }
+
+        > pre.shiki.hashbrown {
+          padding: 16px;
+          border-radius: 8px;
+          background: #2b2a29 !important;
         }
 
         code:not(pre code) {
           font-weight: 600;
         }
-      }
 
-      article ::ng-deep article ::ng-deep table {
-        border-collapse: collapse;
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
-        border-right: 1px solid rgba(255, 255, 255, 0.12);
-        margin: 14px 0;
-      }
+        table {
+          border-collapse: collapse;
+          border-radius: 12px;
+          margin: 24px 0;
+          overflow: hidden;
+          box-shadow: inset 0 0 0 1px #000;
 
-      article ::ng-deep table thead {
-        background-color: rgba(0, 0, 0, 0.36);
-        font-family: 'Oxanium', sans-serif;
-      }
+          > thead {
+            padding: 8px 16px;
+            color: rgba(250, 249, 240, 0.8);
+            background: #3d3c3a;
+            border-bottom: 1px solid #000;
+            font-size: 12px;
+            font-weight: 500;
+          }
 
-      article ::ng-deep table tr {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      }
+          tr {
+            border-bottom: 1px solid #000;
+          }
 
-      article ::ng-deep table th,
-      article ::ng-deep table td {
-        padding: 16px;
-        text-align: left;
-      }
+          th,
+          td {
+            padding: 16px;
+            text-align: left;
+          }
 
-      article ::ng-deep table td code {
-        white-space: nowrap;
+          th {
+            font:
+              400 16px/24px Fredoka,
+              sans-serif;
+          }
+
+          code {
+            white-space: nowrap;
+          }
+        }
       }
 
       @media screen and (min-width: 1024px) {

@@ -9,7 +9,7 @@ import { SymbolLink } from './SymbolLink';
   styles: [
     `
       www-markdown-symbol-link a {
-        background: #9ecfd7;
+        background: rgba(158, 207, 215, 0.56);
         color: #fff;
         padding: 3px 6px;
         border-radius: 4px;

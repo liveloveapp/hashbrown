@@ -41,9 +41,30 @@
           "text": "ExposedComponent",
           "canonicalReference": "!unknown"
         },
+        { "kind": "Content", "text": "<any>[]>>;\n    schema: " },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
         {
           "kind": "Content",
-          "text": "<any>[]>>;\n    setMessages: (messages: "
+          "text": " | undefined;\n    setSchema: (schema: "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": " | undefined) => void;\n    θschema: " },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": " | undefined;\n    setMessages: (messages: "
         },
         {
           "kind": "Reference",
@@ -52,16 +73,16 @@
         },
         {
           "kind": "Content",
-          "text": "[]) => void;\n    sendMessage: (message: "
+          "text": "[]) => void;\n    setTools: (tools: import('../create-tool.fn')."
         },
         {
           "kind": "Reference",
-          "text": "Chat.Message",
-          "canonicalReference": "!Chat.Message:type"
+          "text": "BoundTool",
+          "canonicalReference": "@hashbrownai/react!~BoundTool:class"
         },
         {
           "kind": "Content",
-          "text": ") => void;\n    status: import('./use-chat')."
+          "text": "<string, any>[]) => void;\n    status: import('./use-chat')."
         },
         {
           "kind": "Reference",
@@ -74,18 +95,15 @@
           "text": "Error",
           "canonicalReference": "!Error:interface"
         },
-        {
-          "kind": "Content",
-          "text": " | null;\n    stop: () => void;\n    reload: () => void;\n    output: "
-        },
+        { "kind": "Content", "text": " | null;\n    sendMessage: (message: " },
         {
           "kind": "Reference",
-          "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
         },
         {
           "kind": "Content",
-          "text": " | undefined;\n    setOutput: (output: "
+          "text": ") => void;\n    reload: () => void;\n    stop: () => void;\n    θsetSchema: (schema: "
         },
         {
           "kind": "Reference",
@@ -95,7 +113,7 @@
         { "kind": "Content", "text": " | undefined) => void;\n}" }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
-      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 24 },
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 30 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
