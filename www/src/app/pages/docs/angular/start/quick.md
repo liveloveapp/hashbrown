@@ -47,7 +47,6 @@ It provides a set of methods for sending and receiving messages, as well as mana
 <www-code-example header="chat-panel.component.ts">
 
 ```ts
-
 @Component({
   selector: 'app-chat-panel',
   imports: [

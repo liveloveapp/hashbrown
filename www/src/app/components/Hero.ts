@@ -33,7 +33,8 @@ import { ConfigService } from '../services/ConfigService';
     .bleed {
       display: flex;
       flex-direction: column;
-      padding: 128px 64px;
+      padding: 64px 32px;
+      width: 100%;
       max-width: 1024px;
     }
 
@@ -91,6 +92,12 @@ import { ConfigService } from '../services/ConfigService';
             sans-serif;
           text-align: center;
         }
+      }
+    }
+
+    @media screen and (min-width: 1024px) {
+      .bleed {
+        padding: 128px 64px;
       }
     }
   `,

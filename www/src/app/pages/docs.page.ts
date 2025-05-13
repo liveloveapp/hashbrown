@@ -21,7 +21,7 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
   ],
   template: `
     <www-docs-header />
-    <main>
+    <main class="docs">
       <www-docs-menu />
       <www-markdown-page>
         <router-outlet></router-outlet>
@@ -37,7 +37,7 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
       height: 100%;
     }
 
-    main {
+    .docs {
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
@@ -48,7 +48,7 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
     }
 
     @media screen and (min-width: 768px) {
-      main {
+      .docs {
         grid-template-columns: 192px auto;
 
         > www-docs-menu {
@@ -58,13 +58,13 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
     }
 
     @media screen and (min-width: 1024px) {
-      main {
+      .docs {
         grid-template-columns: 256px auto;
       }
     }
 
     @media screen and (min-width: 1281px) {
-      main {
+      .docs {
         grid-template-columns: 320px auto;
       }
     }
