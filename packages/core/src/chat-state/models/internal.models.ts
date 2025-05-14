@@ -11,7 +11,6 @@ export interface Tool {
 export interface ToolCall {
   id: string;
   name: string;
-  rawArgumentString: string;
   arguments: object;
   result?: PromiseSettledResult<any>;
   progress?: number;

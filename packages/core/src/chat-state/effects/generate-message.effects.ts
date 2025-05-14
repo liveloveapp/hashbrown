@@ -13,6 +13,7 @@ import {
   selectResponseSchema,
   selectShouldGenerateMessage,
   selectTemperature,
+  selectTools,
 } from '../reducers';
 
 export const generateMessage = createEffect((store) => {
@@ -32,6 +33,7 @@ export const generateMessage = createEffect((store) => {
       const messages = store.read(selectApiMessages);
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const debounce = store.read(selectDebounce);
+      const tools = store.read(selectTools);
 
       if (!shouldGenerateMessage) {
         return;
@@ -42,6 +44,7 @@ export const generateMessage = createEffect((store) => {
         messages,
         temperature,
         max_tokens: maxTokens,
+        tools: tools.map(Chat.helpers.toApiToolFromInternal),
         response_format: responseSchema
           ? s.toJsonSchema(responseSchema)
           : undefined,

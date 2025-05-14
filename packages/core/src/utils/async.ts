@@ -19,14 +19,14 @@ export function switchAsync(
   if (outerSignal) {
     outerSignal.addEventListener('abort', () => {
       if (abortController) {
-        abortController.abort();
+        abortController.abort('cancelled');
       }
     });
   }
 
   return (): Promise<void> => {
     if (abortController) {
-      abortController.abort();
+      abortController.abort('cancelled');
     }
 
     const controller = new AbortController();

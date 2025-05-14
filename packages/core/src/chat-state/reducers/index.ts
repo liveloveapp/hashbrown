@@ -112,12 +112,22 @@ export const selectViewMessages = select(
   selectMessages,
   selectToolCallEntities,
   selectStreamingMessage,
-  (messages, toolCalls, streamingMessage): Chat.AnyMessage[] => {
+  selectResponseSchema,
+  (
+    messages,
+    toolCalls,
+    streamingMessage,
+    responseSchema,
+  ): Chat.AnyMessage[] => {
     return [
       ...messages,
       ...(streamingMessage ? [streamingMessage] : []),
     ].flatMap((message): Chat.AnyMessage[] => {
-      const result = Chat.helpers.toViewMessageFromInternal(message, toolCalls);
+      const result = Chat.helpers.toViewMessageFromInternal(
+        message,
+        toolCalls,
+        responseSchema,
+      );
 
       if (!result) {
         return [];

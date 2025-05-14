@@ -48,6 +48,14 @@ export function fryHashbrown<
     debugName: init.debugName,
     reducers,
     effects,
+    projectStateForDevtools: (state) => ({
+      messages: selectViewMessages(state),
+      isReceiving: selectIsReceiving(state),
+      isSending: selectIsSending(state),
+      isRunningToolCalls: selectIsRunningToolCalls(state),
+      error: selectError(state),
+      __internal: state,
+    }),
   });
 
   state.dispatch(

@@ -1,3 +1,3 @@
 export * from './Component';
-export * as Chat from './chat';
+export * as Chat_OLD from './chat';
 export * from './middleware';

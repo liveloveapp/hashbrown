@@ -1,5 +1,6 @@
 import * as Chat from './public_api';
 import { s } from '../../schema';
+import { StreamSchemaParser } from '../../streaming-json-parser/streaming-json-parser';
 
 /**
  * Converts a view message to an internal message.
@@ -49,9 +50,12 @@ export function toViewMessageFromInternal(
       };
     }
     case 'assistant': {
-      const content = outputSchema
+      const tater = outputSchema
+        ? new StreamSchemaParser(outputSchema)
+        : undefined;
+      const content = tater
         ? message.content
-          ? s.parse(outputSchema, message.content)
+          ? tater.parse(message.content)
           : undefined
         : message.content;
 
@@ -83,6 +87,7 @@ export function toViewMessageFromInternal(
                 name: toolCall.name,
                 toolCallId,
                 progress: toolCall.progress,
+                args: toolCall.arguments,
               };
             }
           }
@@ -150,7 +155,7 @@ export function toApiMessageFromInternal(
             type: 'function',
             function: {
               name: toolCall.name,
-              arguments: toolCall.rawArgumentString,
+              arguments: JSON.stringify(toolCall.arguments),
             },
           })),
         },
@@ -162,4 +167,69 @@ export function toApiMessageFromInternal(
       return [];
     }
   }
+}
+
+/**
+ * Converts an internal tool to an API tool.
+ *
+ * @param tool - The internal tool to convert.
+ * @returns The API tool.
+ * @internal
+ */
+export function toApiToolFromInternal(tool: Chat.Internal.Tool): Chat.Api.Tool {
+  return {
+    description: tool.description,
+    name: tool.name,
+    parameters: s.toJsonSchema(tool.schema),
+  };
+}
+
+/**
+ * Converts an API tool call to an internal tool call.
+ *
+ * @param toolCall - The API tool call to convert.
+ * @returns The internal tool call.
+ * @internal
+ */
+export function toInternalToolCallFromApi(
+  toolCall: Chat.Api.ToolCall,
+): Chat.Internal.ToolCall {
+  return {
+    id: toolCall.id,
+    name: toolCall.function.name,
+    arguments: JSON.parse(toolCall.function.arguments),
+    status: 'pending',
+  };
+}
+
+export function toInternalToolCallsFromView(
+  messages: Chat.AnyMessage[],
+): Chat.Internal.ToolCall[] {
+  return messages.flatMap((message): Chat.Internal.ToolCall[] => {
+    if (message.role !== 'assistant') {
+      return [];
+    }
+
+    return message.toolCalls.map((toolCall) => {
+      switch (toolCall.status) {
+        case 'done': {
+          return {
+            id: toolCall.toolCallId,
+            name: toolCall.name,
+            arguments: toolCall.args,
+            status: 'done',
+            result: toolCall.result,
+          };
+        }
+        case 'pending': {
+          return {
+            id: toolCall.toolCallId,
+            name: toolCall.name,
+            status: 'pending',
+            arguments: toolCall.args,
+          };
+        }
+      }
+    });
+  });
 }

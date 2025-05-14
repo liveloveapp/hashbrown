@@ -31,6 +31,7 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
             role: 'tool';
             status: 'pending';
             name: Name;
+            args: s.Infer<ArgsSchema>;
             toolCallId: string;
             progress?: number;
           }
