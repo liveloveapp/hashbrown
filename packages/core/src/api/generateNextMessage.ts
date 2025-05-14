@@ -60,7 +60,7 @@ export async function* generateNextMessage(config: {
       break;
     }
 
-    requestInit = await middleware(requestInit, config.abortSignal);
+    requestInit = await middleware(requestInit);
   }
 
   const response = await config.fetchImplementation(config.apiUrl, requestInit);

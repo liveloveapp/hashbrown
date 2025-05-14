@@ -1,6 +1,7 @@
+import { ChatMiddleware } from '../../models';
+import { s } from '../../schema';
 import { createActionGroup, props } from '../../utils/micro-ngrx';
 import { Chat } from '../models';
-import { s } from '../../schema';
 
 export default createActionGroup('dev', {
   init: props<{
@@ -13,6 +14,7 @@ export default createActionGroup('dev', {
     messages?: Chat.AnyMessage[];
     tools?: Chat.AnyTool[];
     responseSchema?: s.HashbrownType;
+    middleware?: ChatMiddleware[];
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];

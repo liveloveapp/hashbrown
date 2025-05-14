@@ -86,6 +86,10 @@ export const selectToolCallEntities = select(
  */
 export const selectConfigState = (state: State) => state.config;
 export const selectApiUrl = select(selectConfigState, fromConfig.selectApiUrl);
+export const selectMiddleware = select(
+  selectConfigState,
+  fromConfig.selectMiddleware,
+);
 export const selectModel = select(selectConfigState, fromConfig.selectModel);
 export const selectPrompt = select(selectConfigState, fromConfig.selectPrompt);
 export const selectDebounce = select(

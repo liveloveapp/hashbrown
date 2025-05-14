@@ -170,6 +170,7 @@ export function useStructuredChat<
 
     const instance = fryHashbrown<Schema, Tools>({
       apiUrl: config.url,
+      middleware: config.middleware,
       model: options.model,
       prompt: options.prompt,
       responseSchema: schema,

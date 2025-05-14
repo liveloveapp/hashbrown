@@ -9,6 +9,7 @@ import {
   selectApiUrl,
   selectDebounce,
   selectMaxTokens,
+  selectMiddleware,
   selectModel,
   selectResponseSchema,
   selectShouldGenerateMessage,
@@ -26,6 +27,7 @@ export const generateMessage = createEffect((store) => {
     internalActions.runToolCallsSuccess,
     switchAsync(async (switchSignal) => {
       const apiUrl = store.read(selectApiUrl);
+      const middleware = store.read(selectMiddleware);
       const model = store.read(selectModel);
       const temperature = store.read(selectTemperature);
       const maxTokens = store.read(selectMaxTokens);
@@ -56,14 +58,22 @@ export const generateMessage = createEffect((store) => {
         return;
       }
 
-      const response = await fetch(apiUrl, {
+      let requestInit: RequestInit = {
         method: 'POST',
         body: JSON.stringify(params),
         headers: {
           'Content-Type': 'application/json',
         },
         signal: switchSignal,
-      });
+      };
+
+      if (middleware && middleware.length) {
+        for (const m of middleware) {
+          requestInit = await m(requestInit);
+        }
+      }
+
+      const response = await fetch(apiUrl, requestInit);
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
