@@ -1,55 +1,63 @@
 {
-  "name": "useStructuredChat",
-  "canonicalReference": "@hashbrownai/react!useStructuredChat:function",
+  "name": "useStructuredCompletion",
+  "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Function",
-      "canonicalReference": "@hashbrownai/react!useStructuredChat:function(1)",
+      "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function(1)",
       "docComment": "",
       "excerptTokens": [
-        { "kind": "Content", "text": "useStructuredChat: <Output extends " },
+        {
+          "kind": "Content",
+          "text": "useStructuredCompletion: <Input, Output extends "
+        },
         {
           "kind": "Reference",
-          "text": "Chat.ResponseFormat",
-          "canonicalReference": "!Chat.ResponseFormat:type"
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
         },
-        { "kind": "Content", "text": ">({ schema, ...options }: " },
+        { "kind": "Content", "text": ">(options: " },
         {
           "kind": "Reference",
-          "text": "UseStructuredChatOptions",
-          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions:interface"
+          "text": "UseStructuredCompletionOptions",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionOptions:interface"
         },
-        { "kind": "Content", "text": "<Output>" },
+        { "kind": "Content", "text": "<Input, Output>" },
         { "kind": "Content", "text": ") => " },
         {
           "kind": "Reference",
-          "text": "UseStructuredChatResult",
-          "canonicalReference": "@hashbrownai/react!UseStructuredChatResult:interface"
+          "text": "UseStructuredCompletionResult",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionResult:interface"
         },
         { "kind": "Content", "text": "<Output>" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
       "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
-          "parameterName": "{ schema, ...options }",
+          "parameterName": "options",
           "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
         }
       ],
       "typeParameters": [
         {
+          "typeParameterName": "Input",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
           "typeParameterName": "Output",
           "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
-      "name": "useStructuredChat",
+      "name": "useStructuredCompletion",
       "docs": {
         "modifiers": {
           "isInternal": false,

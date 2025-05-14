@@ -178,6 +178,22 @@ code {
   font-variant-ligatures: none;
 }
 
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  src: url(/assets/font/poppins/normal-500.woff2) format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Wonder';
+  font-style: italic;
+  font-weight: 500;
+  src: url(/assets/font/wonder/italic-500.otf) format('opentype');
+  font-display: swap;
+}
+
 .kind.EntryPoint {
   background-color: #f8d7da;
   color: #721c24;

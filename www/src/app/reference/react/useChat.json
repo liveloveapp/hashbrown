@@ -14,13 +14,13 @@
         {
           "kind": "Reference",
           "text": "UseChatOptions",
-          "canonicalReference": "@hashbrownai/react!~UseChatOptions:interface"
+          "canonicalReference": "@hashbrownai/react!UseChatOptions:interface"
         },
         { "kind": "Content", "text": ") => " },
         {
           "kind": "Reference",
           "text": "UseChatResult",
-          "canonicalReference": "@hashbrownai/react!~UseChatResult:interface"
+          "canonicalReference": "@hashbrownai/react!UseChatResult:interface"
         }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",

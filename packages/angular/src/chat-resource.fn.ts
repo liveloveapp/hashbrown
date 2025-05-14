@@ -23,6 +23,17 @@ export interface ChatResourceRef extends Resource<Chat.Message[]> {
 
 /**
  * Chat resource configuration.
+ *
+ * @remarks The `ChatResourceOptions` interface defines the options for configuring the chat resource.
+ *
+ * @typedef {object} ChatResourceOptions
+ * @param {string | Signal<string>} model - The model to use for the chat.
+ * @param {number | Signal<number>} [temperature] - The temperature for the chat.
+ * @param {BoundTool<string, any>[] | Signal<BoundTool<string, any>[]>} [tools] - The tools to use for the chat.
+ * @param {number | Signal<number>} [maxTokens] - The maximum number of tokens for the chat.
+ * @param {Chat.Message[] | Signal<Chat.Message[]>} [messages] - The initial messages for the chat.
+ * @param {number} [debounceTime] - The debounce time for the chat.
+ * @param {s.HashbrownType | Signal<s.HashbrownType>} [θresponseFormat] - The response format for the chat.
  */
 export interface ChatResourceOptions {
   model: string | Signal<string>;
@@ -118,7 +129,44 @@ function createToolDefinitions(
 /**
  * Creates and returns a chat resource with reactive signals and message-handling functions.
  *
- * @param options - The chat resource configuration.
+ * @description
+ * The `chatResource` function creates a chat resource that manages the state of chat messages, tools, and the structured response format configurations.
+ * It provides a reactive interface for sending messages and handling responses with the LLM.
+ * The `chatResource` function is the simplest way to communicate with the LLM via text.
+ * The other resources exposed by hashbrown build on top of `chatResource` and provide additional functionality.
+ *
+ * @example
+ * ```typescript
+ * import { chatResource } from '@hashbrownai/angular';
+ *
+ * @Component({
+ *    template: `
+ *      <app-simple-chat-message [messages]="chat.value()" />
+ *      <app-chat-composer (sendMessage)="sendMessage($event)" />
+ *    `,
+ * }) export class AppComponent {
+ *   chat = chatResource({
+ *     model: 'gpt-4o',
+ *     messages: [
+ *       {
+ *         role: 'system',
+ *         content:
+ *           'You are a helpful guide for hashbrown, which enables Angular developers to build joyful and meaningful AI-powered experiences in their web apps.'
+ *        },
+ *     ]
+ *   });
+ *
+ *   sendMessage() {
+ *     this.chat.sendMessage({
+ *       role: 'user',
+ *       content: 'What is hashbrown?'
+ *     });
+ *   }
+ * }
+ * ```
+ *
+ * @param options - The configuration options for the chat resource.
+ *
  * @returns An object with reactive signals and a sendMessage function.
  */
 export function chatResource(options: ChatResourceOptions): ChatResourceRef {

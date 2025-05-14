@@ -1,0 +1,378 @@
+{
+  "name": "UseChatResult",
+  "canonicalReference": "@hashbrownai/react!UseChatResult:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/react!UseChatResult:interface",
+      "docComment": "/**\n * Represents the result of the `useChat` hook.\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export interface UseChatResult " }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+      "releaseTag": "Public",
+      "name": "UseChatResult",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#error:member",
+          "docComment": "/**\n * The error encountered during chat operations, if any.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "error: " },
+            {
+              "kind": "Reference",
+              "text": "Error",
+              "canonicalReference": "!Error:interface"
+            },
+            { "kind": "Content", "text": " | null" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "error",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The error encountered during chat operations, if any.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#messages:member",
+          "docComment": "/**\n * An array of chat messages.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "messages: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "[]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "messages",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "An array of chat messages.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#reload:member",
+          "docComment": "/**\n * Reload the chat, useful for retrying when an error occurs.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "reload: " },
+            { "kind": "Content", "text": "() => void" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "reload",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Reload the chat, useful for retrying when an error occurs.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#sendMessage:member",
+          "docComment": "/**\n * Function to send a new chat message.\n *\n * @param message - The chat message to send.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "sendMessage: " },
+            { "kind": "Content", "text": "(message: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": ") => void" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "sendMessage",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Function to send a new chat message.\n\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [
+              {
+                "name": "message",
+                "description": "The chat message to send.\n"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#setMessages:member",
+          "docComment": "/**\n * Function to update the chat messages.\n *\n * @param messages - The new array of chat messages.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "setMessages: " },
+            { "kind": "Content", "text": "(messages: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "[]) => void" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "setMessages",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Function to update the chat messages.\n\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [
+              {
+                "name": "messages",
+                "description": "The new array of chat messages.\n"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#setTools:member",
+          "docComment": "/**\n * Function to update the tools available for the chat.\n *\n * @param tools - The new array of tools.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "setTools: " },
+            { "kind": "Content", "text": "(tools: " },
+            {
+              "kind": "Reference",
+              "text": "BoundTool",
+              "canonicalReference": "@hashbrownai/react!~BoundTool:class"
+            },
+            { "kind": "Content", "text": "<string, any>[]) => void" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "setTools",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Function to update the tools available for the chat.\n\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [
+              { "name": "tools", "description": "The new array of tools.\n" }
+            ]
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#status:member",
+          "docComment": "/**\n * The current status of the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "status: " },
+            {
+              "kind": "Reference",
+              "text": "ChatStatus",
+              "canonicalReference": "@hashbrownai/react!ChatStatus:enum"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "status",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The current status of the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#stop:member",
+          "docComment": "/**\n * Function to stop the current chat operation.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "stop: " },
+            { "kind": "Content", "text": "() => void" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "stop",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Function to stop the current chat operation.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#θschema:member",
+          "docComment": "/**\n * The output schema for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "θschema: " },
+            {
+              "kind": "Reference",
+              "text": "s.HashbrownType",
+              "canonicalReference": "!s.HashbrownType:type"
+            },
+            { "kind": "Content", "text": " | undefined" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "θschema",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The output schema for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "Represents the result of the `useChat` hook.\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}
