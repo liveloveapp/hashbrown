@@ -19,17 +19,13 @@ export interface CompletionResourceRef extends Resource<string | null> {}
 export interface CompletionResourceOptions<Input> {
   model: SignalLike<string>;
   input: Signal<Input | null | undefined>;
-  examples?: {
-    input: Input;
-    output: string;
-  }[];
   prompt: SignalLike<string>;
 }
 
 export function completionResource<Input>(
   options: CompletionResourceOptions<Input>,
 ): CompletionResourceRef {
-  const { model, input, prompt, examples = [] } = options;
+  const { model, input, prompt } = options;
   const config = injectHashbrownConfig();
   const hashbrown = fryHashbrown({
     debugName: 'completionResource',

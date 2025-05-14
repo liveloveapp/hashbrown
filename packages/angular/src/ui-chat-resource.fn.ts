@@ -1,16 +1,14 @@
-import { computed, Signal, Type } from '@angular/core';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { computed, Resource, Signal, Type } from '@angular/core';
 import {
   Chat,
-  ComponentTree,
   createComponentSchema,
   ExposedComponent,
   s,
 } from '@hashbrownai/core';
-import { BoundTool } from './create-tool.fn';
-import {
-  structuredChatResource,
-  StructuredChatResourceRef,
-} from './structured-chat-resource.fn';
+import { structuredChatResource } from './structured-chat-resource.fn';
+
+export const TAG_NAME_REGISTRY = Symbol('θtagNameRegistry');
 
 export type TagNameRegistry = {
   [tagName: string]: {
@@ -20,157 +18,105 @@ export type TagNameRegistry = {
 };
 
 export type RenderableMessage = {
-  content: ComponentTree[];
-  tags: TagNameRegistry;
+  [TAG_NAME_REGISTRY]: TagNameRegistry;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace UiChat {
-  export type AssistantMessage = {
-    role: 'assistant';
-    content: ComponentTree[];
-    tags: TagNameRegistry;
+export const getTagNameRegistry = (
+  message: Chat.Message<s.HashbrownType, Chat.AnyTool>,
+): TagNameRegistry | undefined => {
+  if (TAG_NAME_REGISTRY in message) {
+    return message[TAG_NAME_REGISTRY] as TagNameRegistry;
+  }
+
+  return undefined;
+};
+
+const publicSchema = s.object('UI', {
+  ui: s.streaming.array(
+    'List of elements',
+    s.object('Component', {
+      $tagName: s.string(''),
+      $props: s.object('', {}),
+      get $children() {
+        return s.array('', publicSchema);
+      },
+    }),
+  ),
+});
+
+export type UiAssistantMessage<Tools extends Chat.AnyTool> =
+  Chat.AssistantMessage<typeof publicSchema, Tools> & {
+    [TAG_NAME_REGISTRY]: TagNameRegistry;
   };
 
-  export type ToolCallMessage = {
-    role: 'tool';
-    name: string;
-    callId: string;
-    isPending: boolean;
-    result?: unknown;
-    error?: string;
-  };
+export type UiUserMessage = Chat.UserMessage;
 
-  export type Message =
-    | UiChat.ToolCallMessage
-    | UiChat.AssistantMessage
-    | Chat.UserMessage
-    | Chat.SystemMessage;
+export type UiChatMessage<Tools extends Chat.AnyTool> =
+  | UiAssistantMessage<Tools>
+  | UiUserMessage;
+
+export interface UiChatResourceRef<Tools extends Chat.AnyTool>
+  extends Resource<UiChatMessage<Tools>[]> {
+  sendMessage: (message: Chat.UserMessage) => void;
 }
-
-export interface UiChatResourceRef
-  extends StructuredChatResourceRef<s.HashbrownType> {
-  messages: Signal<UiChat.Message[]>;
-}
-
-export function uiChatResource(args: {
+export function uiChatResource<Tools extends Chat.AnyTool>(args: {
   components: ExposedComponent<any>[];
   model: string | Signal<string>;
+  prompt: string | Signal<string>;
   temperature?: number | Signal<number>;
   maxTokens?: number | Signal<number>;
-  messages?: Chat.Message[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools?: BoundTool<string, any>[];
-}): UiChatResourceRef {
-  const ui = s.object('UI', {
+  messages?: Chat.Message<string, Tools>[];
+  tools?: Tools[];
+  debugName?: string;
+}): UiChatResourceRef<Tools> {
+  const internalSchema = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
       createComponentSchema(args.components),
     ),
   });
 
-  const chat = structuredChatResource({
+  const chat = structuredChatResource<typeof publicSchema, Tools>({
     model: args.model,
     temperature: args.temperature,
     maxTokens: args.maxTokens,
-    responseFormat: ui,
-    messages: [
-      {
-        role: 'system',
-        content: `
-        You are chatbot chatting with a human on my web app. Please be
-        curteuous, helpful, and friendly. Try to answer all questions
-        to the best of your ability. Keep answers concise and to the point.
-
-        Today's date is ${new Date().toLocaleDateString()}.
-
-        NEVER use ANY newline strings such as "\\n" or "\\\\n" in your response.
-        In fact, avoid any non-standard whitespace characters in your response.
-        This is critically important.
-        `,
-      },
-    ],
+    schema: internalSchema as s.HashbrownType as typeof publicSchema,
     tools: [...(args.tools ?? [])],
+    prompt: args.prompt,
+    debugName: args.debugName,
   });
 
-  const messages = computed(() => {
+  const value = computed(() => {
     const messages = chat.value();
 
-    return messages.flatMap((message): UiChat.Message[] => {
-      if (message.role === 'tool') {
-        return [];
-      }
+    return messages.map((message): UiChatMessage<Tools> => {
       if (message.role === 'assistant') {
-        const toolCalls = message.tool_calls ?? [];
+        const content = message.content as
+          | s.Infer<typeof internalSchema>
+          | ''
+          | undefined;
 
-        if (toolCalls.length === 0) {
-          let content: s.Infer<typeof ui> | undefined;
-
-          try {
-            content = s.parse(ui, message.content ?? '');
-          } catch (error) {
-            // console.error(error);
-            return [];
-          }
-
-          if (!content) {
-            return [];
-          }
-
-          const renderableMessage: RenderableMessage = {
-            content: content.ui,
-            tags:
-              args.components?.reduce((acc, component) => {
-                acc[component.name] = {
-                  props: component.props ?? {},
-                  component: component.component,
-                };
-                return acc;
-              }, {} as TagNameRegistry) ?? {},
+        if (!content) {
+          return {
+            ...message,
+            [TAG_NAME_REGISTRY]: {},
           };
-
-          const simpleMessage: UiChat.AssistantMessage = {
-            role: 'assistant',
-            ...renderableMessage,
-          };
-          return [simpleMessage];
         }
-        const toolCallMessages = toolCalls.flatMap(
-          (toolCall): Array<UiChat.ToolCallMessage> => {
-            const toolCallMessage = messages.find(
-              (t): t is Chat.ToolMessage =>
-                t.role === 'tool' && t.tool_call_id === toolCall.id,
-            );
-            const content = toolCallMessage?.content;
-            const result =
-              content && content.status === 'fulfilled'
-                ? content.value
-                : undefined;
-            const error =
-              content && content.status === 'rejected'
-                ? content.reason
-                : undefined;
 
-            return [
-              {
-                role: 'tool',
-                result,
-                error,
-                name: toolCall.function.name,
-                callId: toolCall.id,
-                isPending: result === undefined,
-              },
-            ];
-          },
-        );
-
-        return toolCallMessages;
+        return {
+          ...message,
+          [TAG_NAME_REGISTRY]:
+            args.components?.reduce((acc, component) => {
+              acc[component.name] = {
+                props: component.props ?? {},
+                component: component.component,
+              };
+              return acc;
+            }, {} as TagNameRegistry) ?? {},
+        };
       }
       if (message.role === 'user') {
-        return [message];
-      }
-      if (message.role === 'system') {
-        return [];
+        return message;
       }
 
       throw new Error(`Unknown message role`);
@@ -179,6 +125,7 @@ export function uiChatResource(args: {
 
   return {
     ...chat,
-    messages,
+    hasValue: chat.hasValue as any,
+    value,
   };
 }
