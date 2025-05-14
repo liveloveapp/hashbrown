@@ -1,3 +1,25 @@
+## 0.0.2-7 (2025-05-14)
+
+### 🚀 Features
+
+- www homepage sdk mockup ([#62](https://github.com/liveloveapp/project-cassini/pull/62))
+- www branding ([#63](https://github.com/liveloveapp/project-cassini/pull/63))
+- www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
+- middleware ([4733a91](https://github.com/liveloveapp/project-cassini/commit/4733a91))
+- **hashbrown:** Add internal state management to core ([#82](https://github.com/liveloveapp/project-cassini/pull/82))
+- **www:** Add a feature tour to the landing page ([#65](https://github.com/liveloveapp/project-cassini/pull/65))
+
+### 🩹 Fixes
+
+- **angular:** Remove infinite loop caused by tool dependencies ([#76](https://github.com/liveloveapp/project-cassini/pull/76))
+- **azure:** Handle situations where the LLM emits a chunk without any choices ([1f3a3f0](https://github.com/liveloveapp/project-cassini/commit/1f3a3f0))
+- **core:** Minor bug fixes and enhancements to state ([9417198](https://github.com/liveloveapp/project-cassini/commit/9417198))
+
+### ❤️ Thank You
+
+- Brian Love @blove
+- Mike Ryan @MikeRyanDev
+
 ## v0.0.2-6 (2025-05-08)
 
 ### 🚀 Features
