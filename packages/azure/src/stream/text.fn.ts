@@ -1,4 +1,4 @@
-import { Chat, s } from '@hashbrownai/core';
+import { Chat } from '@hashbrownai/core';
 import OpenAI, { AzureOpenAI } from 'openai';
 
 export interface AzureClient {
@@ -7,8 +7,8 @@ export interface AzureClient {
       apiKey: string,
       endpoint: string,
       apiVersion: string,
-      request: Chat.CompletionCreateParams,
-    ) => Chat.CompletionChunkResponse;
+      request: Chat.Api.CompletionCreateParams,
+    ) => AsyncIterable<Chat.Api.CompletionChunk>;
   };
 }
 
@@ -16,8 +16,8 @@ export async function* text(
   apiKey: string,
   endpoint: string,
   apiVersion: string,
-  request: Chat.CompletionCreateParams,
-): Chat.CompletionChunkResponse {
+  request: Chat.Api.CompletionCreateParams,
+): AsyncIterable<Chat.Api.CompletionChunk> {
   const { messages, model, max_tokens, temperature, tools, response_format } =
     request;
 
@@ -79,7 +79,7 @@ export async function* text(
             function: {
               name: tool.name,
               description: tool.description,
-              parameters: s.toJsonSchema(tool.schema),
+              parameters: tool.parameters as Record<string, object>,
               strict: true,
             },
           }))
@@ -99,7 +99,7 @@ export async function* text(
   });
 
   for await (const chunk of stream) {
-    const chunkMessage: Chat.CompletionChunk = {
+    const chunkMessage: Chat.Api.CompletionChunk = {
       choices: chunk.choices.map((choice) => ({
         index: choice.index,
         delta: choice.delta,
