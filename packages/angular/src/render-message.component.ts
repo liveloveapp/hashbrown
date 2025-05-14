@@ -1,74 +1,68 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @angular-eslint/component-selector */
 import {
+  ApplicationRef,
   Component,
+  computed,
   EmbeddedViewRef,
   inject,
   input,
   TemplateRef,
   ViewContainerRef,
 } from '@angular/core';
-import { NgComponentOutlet } from '@angular/common';
-import { ComponentTree } from '@hashbrownai/core';
-import { RenderableMessage } from './ui-chat-resource.fn';
+import { NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
+import { getTagNameRegistry, UiAssistantMessage } from './ui-chat-resource.fn';
 
 @Component({
   selector: 'hb-render-message',
-  imports: [NgComponentOutlet],
+  imports: [NgComponentOutlet, NgTemplateOutlet],
   template: `
-    @for (node of message().content; track $index) {
-      <ng-template #content>
-        <hb-render-message [message]="getChildMessage(node)" />
+    <ng-template #nodeTemplateRef let-node="node">
+      <ng-template #childrenTemplateRef>
+        @for (child of node.$children; track $index) {
+          <ng-container
+            *ngTemplateOutlet="nodeTemplateRef; context: { node: child }"
+          />
+        }
       </ng-template>
 
-      <ng-container
-        *ngComponentOutlet="
-          getTagComponent(node.$tagName);
-          inputs: getInputs(node);
-          content: getRootNodes(content)
-        "
-      ></ng-container>
-    }
-  `,
-  styles: `
-    :host {
-      display: flex;
-      flex-direction: column;
+      @if (node) {
+        <ng-container
+          *ngComponentOutlet="
+            getTagComponent(node.$tagName);
+            inputs: node.$props;
+            content: getRootNodes(childrenTemplateRef)
+          "
+        ></ng-container>
+      }
+    </ng-template>
+
+    @if (content()) {
+      @for (node of content(); track $index) {
+        <ng-template
+          [ngTemplateOutlet]="nodeTemplateRef"
+          [ngTemplateOutletContext]="node"
+        >
+        </ng-template>
+        <ng-container
+          *ngTemplateOutlet="nodeTemplateRef; context: { node: node }"
+        />
+      }
     }
   `,
 })
 export class RenderMessageComponent {
+  appRef = inject(ApplicationRef);
+  message = input.required<UiAssistantMessage<any>>();
+  content = computed(() => this.message().content?.ui ?? []);
+  tagNameRegistry = computed(() => getTagNameRegistry(this.message()));
   viewContainerRef = inject(ViewContainerRef);
-  inputsWeakMap = new WeakMap<ComponentTree, Record<string, unknown>>();
-  childrenWeakMap = new WeakMap<ComponentTree, RenderableMessage>();
+  rootNodesWeakMap = new WeakMap<TemplateRef<any>, any[]>();
   embeddedViewsWeakMap = new WeakMap<TemplateRef<any>, EmbeddedViewRef<any>>();
-  rootNodesWeakMap = new WeakMap<TemplateRef<any>, Node[][]>();
-  message = input.required<RenderableMessage>();
 
   getTagComponent(tagName: string) {
-    return this.message().tags[tagName].component;
-  }
-
-  getInputs(node: ComponentTree) {
-    if (this.inputsWeakMap.has(node)) {
-      return this.inputsWeakMap.get(node);
-    }
-
-    const { $tagName, $children, $props } = node;
-    this.inputsWeakMap.set(node, $props);
-    return $props;
-  }
-
-  getChildMessage(node: ComponentTree): RenderableMessage {
-    if (this.childrenWeakMap.has(node)) {
-      return this.childrenWeakMap.get(node)!;
-    }
-
-    const message = {
-      content: node.$children ?? [],
-      tags: this.message().tags,
-    };
-    this.childrenWeakMap.set(node, message);
-    return message;
+    return this.tagNameRegistry()?.[tagName]?.component ?? null;
   }
 
   getEmbeddedView(tpl: TemplateRef<any>) {
