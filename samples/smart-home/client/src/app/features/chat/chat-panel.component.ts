@@ -31,6 +31,7 @@ import { LightCardComponent } from './components/light-card.component';
 import { MarkdownComponent } from './components/markdown.component';
 import { MessagesComponent } from './components/messages.component';
 import { SimpleMessagesComponent } from './components/simple-messages.component';
+
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
@@ -50,7 +51,7 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
       @if (simpleDemo) {
         <app-simple-chat-messages [messages]="simpleChat.value()" />
       } @else {
-        <app-chat-messages [messages]="chat.messages()" />
+        <app-chat-messages [messages]="chat.value()" />
       }
     </div>
 
@@ -117,7 +118,7 @@ export class ChatPanelComponent {
   constructor() {
     effect(() => {
       // React when messages change
-      this.chat.messages();
+      this.chat.value();
       if (this.contentDiv.nativeElement) {
         this.contentDiv.nativeElement.scrollTop =
           this.contentDiv.nativeElement.scrollHeight;
@@ -132,14 +133,7 @@ export class ChatPanelComponent {
    */
   simpleChat = chatResource({
     model: 'gpt-4.1',
-    messages: [
-      {
-        role: 'system',
-        content: `
-          You are a helpful assistant that can answer questions and help with tasks.
-        `,
-      },
-    ],
+    prompt: `You are a helpful assistant that can answer questions and help with tasks.`,
     tools: [
       createTool({
         name: 'getUser',
@@ -189,14 +183,9 @@ export class ChatPanelComponent {
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-exp-03-25',
     model: 'gpt-4.1',
-    messages: [
-      {
-        role: 'system',
-        content: `
-          You are a helpful assistant that can answer questions and help with tasks.
-        `,
-      },
-    ],
+    prompt: `
+      You are a helpful assistant that can answer questions and help with tasks.
+    `,
     components: [
       exposeComponent(MarkdownComponent, {
         name: 'markdown',
@@ -273,6 +262,7 @@ export class ChatPanelComponent {
         ],
       }),
     ],
+    debugName: 'ui-chat',
   });
 
   sendMessage(message: string) {

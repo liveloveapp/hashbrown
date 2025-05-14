@@ -15,7 +15,7 @@ import { MarkdownComponent } from 'ngx-markdown';
           </div>
         }
         @case ('assistant') {
-          <markdown [data]="message.content" />
+          <markdown [data]="'' + message.content" />
         }
       }
     }
@@ -56,5 +56,5 @@ import { MarkdownComponent } from 'ngx-markdown';
   ],
 })
 export class SimpleMessagesComponent {
-  messages = input.required<Chat.Message[]>();
+  messages = input.required<Chat.AnyMessage[]>();
 }

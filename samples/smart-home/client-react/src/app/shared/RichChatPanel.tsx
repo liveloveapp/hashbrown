@@ -1,10 +1,5 @@
 import { Chat, exposeComponent, s } from '@hashbrownai/core';
-import {
-  ChatStatus,
-  createTool,
-  createToolWithArgs,
-  useUiChat,
-} from '@hashbrownai/react';
+import { createTool, createToolWithArgs, useUiChat } from '@hashbrownai/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { LightChatComponent } from '../views/components/LightChatComponent';
@@ -16,8 +11,10 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const RichChatPanel = () => {
-  const { messages, sendMessage, status, stop } = useUiChat({
+  const { messages, sendMessage, isSending } = useUiChat({
     model: 'gpt-4o',
+    prompt:
+      'You are a smart home assistant. You can control the lights in the house.',
     tools: [
       createTool({
         name: 'getLights',
@@ -99,7 +96,7 @@ export const RichChatPanel = () => {
     if (!inputValue.trim()) return;
 
     // Add the user message to the messages list
-    const newUserMessage: Chat.Message = {
+    const newUserMessage: Chat.UserMessage = {
       role: 'user',
       content: inputValue,
     };
@@ -114,14 +111,10 @@ export const RichChatPanel = () => {
       // Submit on Enter (but not on Shift+Enter)
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault(); // Prevent default behavior (new line)
-        if (status !== ChatStatus.Idle) {
-          stop();
-        } else {
-          onSubmit();
-        }
+        onSubmit();
       }
     },
-    [onSubmit, status, stop],
+    [onSubmit],
   );
 
   const onInputChange = useCallback(
@@ -143,7 +136,7 @@ export const RichChatPanel = () => {
         </ScrollArea>
       </div>
       <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end px-2">
-        {status !== ChatStatus.Idle && <p>Thinking...</p>}
+        {isSending && <p>Thinking...</p>}
       </div>
       <div className="flex flex-col gap-2 px-2">
         <Textarea
@@ -152,10 +145,15 @@ export const RichChatPanel = () => {
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
-        {status === ChatStatus.Idle ? (
+        {isSending ? (
           <Button onClick={onSubmit}>Send</Button>
         ) : (
-          <Button variant="outline" onClick={stop}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              console.log('stop');
+            }}
+          >
             Stop
           </Button>
         )}

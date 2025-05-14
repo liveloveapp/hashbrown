@@ -22,5 +22,5 @@ import { MatCardModule } from '@angular/material/card';
   `,
 })
 export class CardComponent {
-  title = input.required<string>();
+  title = input<string>('');
 }
