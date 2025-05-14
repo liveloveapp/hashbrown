@@ -34,6 +34,7 @@ export function structuredChatResource<
   const config = injectHashbrownConfig();
   const hashbrown = fryHashbrown<Schema, Tools>({
     apiUrl: config.baseUrl,
+    middleware: config.middleware,
     prompt: readSignalLike(options.prompt),
     model: readSignalLike(options.model),
     temperature: options.temperature && readSignalLike(options.temperature),

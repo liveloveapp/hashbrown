@@ -1,3 +1,4 @@
+import { ChatMiddleware } from '../models';
 import { createStore } from '../utils/micro-ngrx';
 import {
   reducers,
@@ -43,6 +44,7 @@ export function fryHashbrown<
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
   responseSchema?: s.HashbrownType;
+  middleware?: ChatMiddleware[];
 }): Hashbrown<Output, Tools> {
   const state = createStore({
     debugName: init.debugName,
@@ -68,6 +70,7 @@ export function fryHashbrown<
       messages: init.messages as Chat.AnyMessage[],
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
+      middleware: init.middleware,
     }),
   );
 

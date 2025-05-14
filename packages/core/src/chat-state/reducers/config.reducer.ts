@@ -1,6 +1,7 @@
-import { devActions } from '../actions';
-import { createReducer, on } from '../../utils/micro-ngrx';
+import { ChatMiddleware } from '../../models';
 import { s } from '../../schema';
+import { createReducer, on } from '../../utils/micro-ngrx';
+import { devActions } from '../actions';
 
 export interface ConfigState {
   apiUrl: string;
@@ -10,6 +11,7 @@ export interface ConfigState {
   temperature?: number;
   maxTokens?: number;
   responseSchema?: s.HashbrownType;
+  middleware?: ChatMiddleware[];
 }
 
 const initialState: ConfigState = {
@@ -31,6 +33,7 @@ export const reducer = createReducer(
       temperature: action.payload.temperature,
       maxTokens: action.payload.maxTokens,
       responseSchema: action.payload.responseSchema,
+      middleware: action.payload.middleware,
     };
   }),
 );
@@ -43,3 +46,4 @@ export const selectTemperature = (state: ConfigState) => state.temperature;
 export const selectMaxTokens = (state: ConfigState) => state.maxTokens;
 export const selectResponseSchema = (state: ConfigState) =>
   state.responseSchema;
+export const selectMiddleware = (state: ConfigState) => state.middleware;

@@ -30,6 +30,7 @@ export function completionResource<Input>(
   const hashbrown = fryHashbrown({
     debugName: 'completionResource',
     apiUrl: config.baseUrl,
+    middleware: config.middleware,
     model: readSignalLike(model),
     prompt: readSignalLike(prompt),
     temperature: 1,

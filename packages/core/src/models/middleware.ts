@@ -1,6 +1,3 @@
 export interface ChatMiddleware {
-  (
-    requestInit: RequestInit,
-    abortSignal: AbortSignal,
-  ): RequestInit | Promise<RequestInit>;
+  (requestInit: RequestInit): RequestInit | Promise<RequestInit>;
 }

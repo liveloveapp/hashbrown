@@ -152,6 +152,7 @@ export function useChat<Tools extends Chat.AnyTool>(
 
     const instance = fryHashbrown<string, Tools>({
       apiUrl: config.url,
+      middleware: config.middleware,
       debugName: options.debugName,
       maxTokens: options.maxTokens,
       model: options.model,

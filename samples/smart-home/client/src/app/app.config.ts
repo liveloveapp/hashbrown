@@ -34,6 +34,20 @@ export const appConfig: ApplicationConfig = {
     provideMarkdown(),
     provideHashbrown({
       baseUrl: 'http://localhost:3000/chat',
+      middleware: [
+        function (request) {
+          return {
+            ...request,
+            headers: {
+              ...request.headers,
+              'x-hashbrown': JSON.stringify({
+                provider: 'openai',
+                apiKey: 'sk-',
+              }),
+            },
+          };
+        },
+      ],
     }),
     provideNativeDateAdapter(),
   ],
