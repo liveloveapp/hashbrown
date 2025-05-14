@@ -1,4 +1,3 @@
-import { Chat } from '../models';
 import {
   createEntityAdapter,
   createReducer,
@@ -7,7 +6,12 @@ import {
   on,
   select,
 } from '../../utils/micro-ngrx';
-import { apiActions, internalActions } from '../actions';
+import { Chat } from '../models';
+import { apiActions, devActions, internalActions } from '../actions';
+import {
+  toInternalToolCallFromApi,
+  toInternalToolCallsFromView,
+} from '../models/internal_helpers';
 
 export type ToolCallsState = EntityState<Chat.Internal.ToolCall>;
 
@@ -22,6 +26,15 @@ const initialState: ToolCallsState = {
 
 export const reducer = createReducer(
   initialState,
+  on(devActions.init, devActions.setMessages, (state, action) => {
+    const messages = action.payload.messages;
+
+    if (!messages) {
+      return initialState;
+    }
+
+    return adapter.addMany(initialState, toInternalToolCallsFromView(messages));
+  }),
   on(apiActions.generateMessageSuccess, (state, action) => {
     const message = action.payload;
 
@@ -29,22 +42,10 @@ export const reducer = createReducer(
       return state;
     }
 
-    return {
-      ...state,
-      ids: message.tool_calls.map((toolCall) => toolCall.id),
-      entities: message.tool_calls.reduce(
-        (acc, toolCall) => ({
-          ...acc,
-          [toolCall.id]: {
-            id: toolCall.id,
-            name: toolCall.function.name,
-            arguments: toolCall.function.arguments,
-            status: 'pending',
-          },
-        }),
-        {},
-      ),
-    };
+    return adapter.addMany(
+      state,
+      message.tool_calls.map(toInternalToolCallFromApi),
+    );
   }),
   on(internalActions.runToolCallsSuccess, (state, action) => {
     const { toolMessages } = action.payload;

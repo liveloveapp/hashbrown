@@ -53,6 +53,15 @@ export const reducer = createReducer(
       messages: internalMessages,
     };
   }),
+  on(devActions.sendMessage, (state, action) => {
+    const message = action.payload.message;
+    const internalMessage = Chat.helpers.toInternalMessageFromView(message);
+
+    return {
+      ...state,
+      messages: [...state.messages, internalMessage],
+    };
+  }),
 );
 
 function toInternalMessage(

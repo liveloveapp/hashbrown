@@ -350,6 +350,7 @@ export function createStore<
   debugName?: string;
   reducers: Reducers;
   effects: EffectFn[];
+  projectStateForDevtools?: (state: State) => object;
 }): Store<State> {
   const devtools = config.debugName
     ? connectToChromeExtension({ name: config.debugName })
@@ -371,7 +372,7 @@ export function createStore<
   const effectCleanupFns: (() => void)[] = [];
   let state = reducerFn(undefined, { type: '@@init' });
 
-  devtools?.init(state);
+  devtools?.init(config.projectStateForDevtools?.(state) ?? state);
 
   function dispatch(action: AnyAction) {
     state = reducerFn(state, action);
@@ -380,7 +381,7 @@ export function createStore<
     whenCallbackFns.forEach((callback) => callback(action));
     selectCallbackFns.forEach((callback) => callback());
 
-    devtools?.send(action, state);
+    devtools?.send(action, config.projectStateForDevtools?.(state) ?? state);
   }
 
   function when<
