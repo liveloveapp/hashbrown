@@ -1,9 +1,5 @@
 import { exposeComponent, s } from '@hashbrownai/core';
-import {
-  createTool,
-  createToolWithArgs,
-  UiCompletion,
-} from '@hashbrownai/react';
+import { createTool, createToolWithArgs } from '@hashbrownai/react';
 import { CardComponent } from '../shared/CardComponent';
 import { MarkdownComponent } from '../shared/MarkdownComponent';
 import { useSmartHomeStore } from '../store/smart-home.store';
@@ -65,12 +61,12 @@ export const UiCompletionView = () => {
 
   return (
     <div className="flex flex-col gap-2">
-      <UiCompletion
+      {/* <UiCompletion
         model={model}
         prompt="Can you generate me a light control card for each of my rooms? Use my light names to decide which rooms exist. For example, grouping all the kitchen related lights."
         tools={tools}
         components={components}
-      />
+      /> */}
     </div>
   );
 };

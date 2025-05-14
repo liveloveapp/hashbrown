@@ -1,11 +1,5 @@
-import {
-  Chat,
-  ChatStatus,
-  createTool,
-  createToolWithArgs,
-  s,
-  useChat,
-} from '@hashbrownai/react';
+import { Chat, s } from '@hashbrownai/core';
+import { createTool, createToolWithArgs, useChat } from '@hashbrownai/react';
 import { useEffect, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { Button } from './button';
@@ -14,15 +8,10 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const ChatPanel = () => {
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, isSending } = useChat({
     model: 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a helpful assistant that can answer questions and help with tasks.',
-      },
-    ],
+    prompt:
+      'You are a helpful assistant that can answer questions and help with tasks.',
     tools: [
       createTool({
         name: 'getLights',
@@ -71,7 +60,7 @@ export const ChatPanel = () => {
     if (!inputValue.trim()) return;
 
     // Add the user message to the messages list
-    const newUserMessage: Chat.Message = {
+    const newUserMessage: Chat.UserMessage = {
       role: 'user',
       content: inputValue,
     };
@@ -85,8 +74,8 @@ export const ChatPanel = () => {
     // Submit on Enter (but not on Shift+Enter)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent default behavior (new line)
-      if (status !== ChatStatus.Idle) {
-        stop();
+      if (isSending) {
+        // stop();
       } else {
         onSubmit();
       }
@@ -105,7 +94,7 @@ export const ChatPanel = () => {
         </ScrollArea>
       </div>
       <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end">
-        {status !== ChatStatus.Idle && <p>Thinking...</p>}
+        {isSending && <p>Thinking...</p>}
       </div>
       <div className="flex flex-col gap-2">
         <Textarea
@@ -114,10 +103,15 @@ export const ChatPanel = () => {
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
-        {status === ChatStatus.Idle ? (
+        {isSending ? (
           <Button onClick={onSubmit}>Send</Button>
         ) : (
-          <Button variant="outline" onClick={stop}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              console.log('stop');
+            }}
+          >
             Stop
           </Button>
         )}

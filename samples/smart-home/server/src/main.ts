@@ -38,7 +38,7 @@ app.listen(port, host, () => {
 });
 
 app.post('/chat', async (req, res) => {
-  const request = req.body as Chat.CompletionCreateParams;
+  const request = req.body as Chat.Api.CompletionCreateParams;
   console.log(JSON.stringify(request, null, 4));
 
   // Azure OpenAI Service

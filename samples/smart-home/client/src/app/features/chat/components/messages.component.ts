@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import { RenderMessageComponent, UiChat } from '@hashbrownai/angular';
+import { RenderMessageComponent, UiChatMessage } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-chat-messages',
@@ -14,7 +14,9 @@ import { RenderMessageComponent, UiChat } from '@hashbrownai/angular';
           </div>
         }
         @case ('assistant') {
-          <hb-render-message [message]="message" />
+          @if (message.content) {
+            <hb-render-message [message]="message" />
+          }
         }
       }
     }
@@ -55,5 +57,5 @@ import { RenderMessageComponent, UiChat } from '@hashbrownai/angular';
   ],
 })
 export class MessagesComponent {
-  messages = input.required<UiChat.Message[]>();
+  messages = input.required<UiChatMessage<any>[]>();
 }
