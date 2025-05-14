@@ -4,13 +4,13 @@ import {
   GoogleGenAI,
   Part,
 } from '@google/genai';
-import { Chat, s } from '@hashbrownai/core';
+import { Chat } from '@hashbrownai/core';
 
 export async function* text(
   apiKey: string,
-  request: Chat.CompletionCreateParams,
-): Chat.CompletionChunkResponse {
-  const { messages, model, response_format, tools } = request;
+  request: Chat.Api.CompletionCreateParams,
+): AsyncIterable<Chat.Api.CompletionChunk> {
+  const { messages, model, tools } = request;
   const ai = new GoogleGenAI({
     apiKey,
   });
@@ -67,7 +67,7 @@ export async function* text(
               functionDeclarations: tools?.map((tool) => ({
                 name: tool.name,
                 description: tool.description,
-                parameters: s.toOpenApi(tool.schema),
+                parameters: tool.parameters as Record<string, object>,
               })),
             },
           ]
@@ -91,7 +91,7 @@ export async function* text(
   for await (const chunk of await response) {
     const firstPart = chunk.candidates?.[0]?.content?.parts?.[0];
     if (firstPart && firstPart.functionCall) {
-      const chunkMessage: Chat.CompletionChunk = {
+      const chunkMessage: Chat.Api.CompletionChunk = {
         choices: [
           {
             index: 0,
@@ -117,7 +117,7 @@ export async function* text(
       yield chunkMessage;
     }
 
-    const chunkMessage: Chat.CompletionChunk = {
+    const chunkMessage: Chat.Api.CompletionChunk = {
       choices:
         chunk.candidates?.map((candidate, index) => ({
           index: candidate.index ?? index,
