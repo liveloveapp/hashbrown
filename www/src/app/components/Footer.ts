@@ -3,20 +3,12 @@ import { RouterLink } from '@angular/router';
 import { BrandBlueSky } from '../icons/BrandBlueSky';
 import { BrandGitHub } from '../icons/BrandGitHub';
 import { BrandLinkedIn } from '../icons/BrandLinkedIn';
-import { BrandLiveLoveAppWordmark } from '../icons/BrandLiveLoveAppWordmark';
 import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-footer',
-  imports: [
-    RouterLink,
-    BrandBlueSky,
-    BrandLinkedIn,
-    BrandLiveLoveAppWordmark,
-    Hashbrown,
-    BrandGitHub,
-  ],
+  imports: [BrandBlueSky, BrandGitHub, BrandLinkedIn, Hashbrown, RouterLink],
   template: `
     <footer>
       <div class="links">

@@ -1,7 +1,7 @@
 import { Component, input, output } from '@angular/core';
 
 @Component({
-  selector: 'www-slider',
+  selector: 'app-slider',
   template: `
     <input
       type="range"
@@ -30,7 +30,7 @@ import { Component, input, output } from '@angular/core';
     `,
   ],
 })
-export class Slider {
+export class SliderComponent {
   change = output<Event>();
   value = input.required<number>();
 }

@@ -21,6 +21,9 @@ import { ConfigService } from '../services/ConfigService';
             </li>
             <li><a routerLink="/api" class="underline">api</a></li>
             <li>
+              <a [routerLink]="examplesUrl()" class="underline">examples</a>
+            </li>
+            <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
           </ul>
@@ -90,6 +93,9 @@ export class Header {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
     return `/docs/${this.configService.config().sdk}/start/quick`;
+  });
+  examplesUrl = computed(() => {
+    return `/examples/${this.configService.config().sdk}/chat`;
   });
 
   onSearch() {

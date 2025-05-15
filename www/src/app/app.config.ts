@@ -20,7 +20,6 @@ import {
 } from '@angular/router';
 import { provideMarkdown } from 'ngx-markdown';
 import { HighlighterService } from './services/HighlighterService';
-import { provideHashbrown } from '@hashbrownai/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -44,8 +43,5 @@ export const appConfig: ApplicationConfig = {
       return highlighterService.loadHighlighter();
     }),
     provideMarkdown(),
-    provideHashbrown({
-      baseUrl: '/_/v1/chat',
-    }),
   ],
 };

@@ -1,19 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { BrandLiveLoveApp } from '../icons/BrandLiveLoveApp';
-import { CircleCheck } from '../icons/CircleCheck';
 import { LiveLoveAppButton } from './LiveLoveAppButton';
 
 @Component({
   selector: 'www-enterprise-products',
-  imports: [
-    ArrowUpRight,
-    CircleCheck,
-    RouterLink,
-    BrandLiveLoveApp,
-    LiveLoveAppButton,
-  ],
+  imports: [RouterLink, BrandLiveLoveApp, LiveLoveAppButton],
   template: `
     <div class="bleed">
       <div class="brand">

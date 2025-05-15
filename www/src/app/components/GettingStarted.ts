@@ -6,7 +6,7 @@ import {
   signal,
   Type,
 } from '@angular/core';
-import { ButtonGroup } from '../ButtonGroup';
+import { ButtonGroup } from './ButtonGroup';
 import { Angular } from '../icons/Angular';
 import { BrandGoogle } from '../icons/BrandGoogle';
 import { BrandOpenAi } from '../icons/BrandOpenAi';

@@ -21,6 +21,9 @@ import { DropdownMenu } from './DropDownMenu';
           <ul>
             <li><a routerLink="/api" class="underline">api</a></li>
             <li>
+              <a [routerLink]="examplesUrl()" class="underline">examples</a>
+            </li>
+            <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
             <li>
@@ -149,8 +152,8 @@ import { DropdownMenu } from './DropDownMenu';
 export class DocsHeader {
   configService = inject(ConfigService);
   config = this.configService.config;
-  docsUrl = computed(() => {
-    return `/docs/${this.configService.config().sdk}/start/quick`;
+  examplesUrl = computed(() => {
+    return `/examples/${this.configService.config().sdk}/chat`;
   });
   dropdownMenu = viewChild.required(DropdownMenu);
 

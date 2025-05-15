@@ -182,7 +182,7 @@ code {
   font-family: 'Poppins';
   font-style: normal;
   font-weight: 500;
-  src: url(/assets/font/poppins/normal-500.woff2) format('woff2');
+  src: url(/font/poppins/normal-500.woff2) format('woff2');
   font-display: swap;
 }
 
@@ -190,7 +190,7 @@ code {
   font-family: 'Wonder';
   font-style: italic;
   font-weight: 500;
-  src: url(/assets/font/wonder/italic-500.otf) format('opentype');
+  src: url(/font/wonder/italic-500.otf) format('opentype');
   font-display: swap;
 }
 

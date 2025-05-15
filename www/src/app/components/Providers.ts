@@ -1,14 +1,13 @@
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Angular } from '../icons/Angular';
-import { BrandOpenAi } from '../icons/BrandOpenAi';
-import { React } from '../icons/React';
 import { BrandGoogle } from '../icons/BrandGoogle';
+import { BrandOpenAi } from '../icons/BrandOpenAi';
 import { BrandWriter } from '../icons/BrandWriter';
+import { React } from '../icons/React';
 
 @Component({
   selector: 'www-providers',
-  imports: [RouterLink, Angular, React, BrandOpenAi, BrandGoogle, BrandWriter],
+  imports: [Angular, React, BrandOpenAi, BrandGoogle, BrandWriter],
   template: `
     <div class="bleed">
       <div class="banner">

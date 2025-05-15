@@ -3,7 +3,7 @@ import { ConfigService } from './ConfigService';
 import { ReferenceService } from './ReferenceService';
 import { link, Section, section } from '../models/menu.models';
 
-const ANGULAR_LINKS = section('Docs', [
+const DOCS_ANGULAR = section('Docs', [
   section('Start', [
     link('Quick Start', '/docs/angular/start/quick'),
     link('Platforms', '/docs/angular/start/platforms'),
@@ -33,7 +33,7 @@ const ANGULAR_LINKS = section('Docs', [
   ]),
 ]);
 
-const REACT_LINKS = section('Docs', [
+const DOCS_REACT = section('Docs', [
   section('Start', [
     link('Quick Start', '/docs/react/start/quick'),
     link('Platforms', '/docs/react/start/platforms'),
@@ -67,8 +67,8 @@ export class MenuService {
   referenceService = inject(ReferenceService);
   docs = computed(() => {
     return this.configService.config().sdk === 'angular'
-      ? ANGULAR_LINKS
-      : REACT_LINKS;
+      ? DOCS_ANGULAR
+      : DOCS_REACT;
   });
   refs = signal<Section>(this.referenceService.getSection());
 }

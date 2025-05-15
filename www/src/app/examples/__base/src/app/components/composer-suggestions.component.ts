@@ -1,7 +1,7 @@
 import { Component, output, signal } from '@angular/core';
 
 @Component({
-  selector: 'www-composer-suggestions',
+  selector: 'app-composer-suggestions',
   template: `
     @for (suggestion of suggestions(); track $index) {
       <button (click)="onSuggestionClick(suggestion)">
@@ -24,7 +24,7 @@ import { Component, output, signal } from '@angular/core';
     }
   `,
 })
-export class ComposerSuggestions {
+export class ComposerSuggestionsComponent {
   sendMessage = output<string>();
 
   suggestions = signal([
