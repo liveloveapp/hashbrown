@@ -102,6 +102,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     temperature: options.temperature && readSignalLike(options.temperature),
     tools: options.tools,
     maxTokens: options.maxTokens && readSignalLike(options.maxTokens),
+    emulateStructuredOutput: config.emulateStructuredOutput,
   });
   const value = toSignal(hashbrown.observeMessages);
   const isReceiving = toSignal(hashbrown.observeIsReceiving);

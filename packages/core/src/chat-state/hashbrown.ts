@@ -45,7 +45,19 @@ export function fryHashbrown<
   tools?: Tools[];
   responseSchema?: s.HashbrownType;
   middleware?: ChatMiddleware[];
+  emulateStructuredOutput?: boolean;
+  debounce?: number;
 }): Hashbrown<Output, Tools> {
+  const hasIllegalOutputTool = init.tools?.some(
+    (tool) => tool.name === 'output',
+  );
+
+  if (hasIllegalOutputTool) {
+    throw new Error(
+      'The "output" tool name is a reserved tool name and cannot be used.',
+    );
+  }
+
   const state = createStore({
     debugName: init.debugName,
     reducers,
@@ -71,6 +83,8 @@ export function fryHashbrown<
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
       middleware: init.middleware,
+      emulateStructuredOutput: init.emulateStructuredOutput,
+      debounce: init.debounce,
     }),
   );
 

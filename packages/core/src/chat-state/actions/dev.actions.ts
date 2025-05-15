@@ -15,6 +15,7 @@ export default createActionGroup('dev', {
     tools?: Chat.AnyTool[];
     responseSchema?: s.HashbrownType;
     middleware?: ChatMiddleware[];
+    emulateStructuredOutput?: boolean;
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];

@@ -31,6 +31,7 @@ export interface StructuredChatResourceOptions<
   maxTokens?: number | Signal<number>;
   messages?: Chat.Message<Schema, Tools>[];
   debugName?: string;
+  debounce?: number;
 }
 
 export function structuredChatResource<
@@ -54,6 +55,8 @@ export function structuredChatResource<
     maxTokens: options.maxTokens && readSignalLike(options.maxTokens),
     responseSchema: options.schema,
     debugName: options.debugName,
+    emulateStructuredOutput: config.emulateStructuredOutput,
+    debounce: options.debounce,
   });
   const value = toSignal(hashbrown.observeMessages);
   const isReceiving = toSignal(hashbrown.observeIsReceiving);

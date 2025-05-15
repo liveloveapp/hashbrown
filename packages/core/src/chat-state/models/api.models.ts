@@ -60,7 +60,7 @@ export interface CompletionChunk {
   choices: CompletionChunkChoice[];
 }
 
-export type CompletionToolChoiceOption = 'auto' | 'none';
+export type CompletionToolChoiceOption = 'auto' | 'none' | 'required';
 
 export interface CompletionCreateParams {
   model: string;

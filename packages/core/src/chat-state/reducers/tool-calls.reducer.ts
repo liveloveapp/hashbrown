@@ -9,7 +9,7 @@ import {
 import { Chat } from '../models';
 import { apiActions, devActions, internalActions } from '../actions';
 import {
-  toInternalToolCallFromApi,
+  toInternalToolCallsFromApi,
   toInternalToolCallsFromView,
 } from '../models/internal_helpers';
 
@@ -44,7 +44,7 @@ export const reducer = createReducer(
 
     return adapter.addMany(
       state,
-      message.tool_calls.map(toInternalToolCallFromApi),
+      message.tool_calls.flatMap(toInternalToolCallsFromApi),
     );
   }),
   on(internalActions.runToolCallsSuccess, (state, action) => {
@@ -68,4 +68,8 @@ export const selectToolCalls = select(
   selectToolCallIds,
   selectToolCallEntities,
   (ids, entities) => ids.map((id) => entities[id]),
+);
+
+export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) =>
+  toolCalls.filter((toolCall) => toolCall.status === 'pending'),
 );

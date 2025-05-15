@@ -1,10 +1,9 @@
 import { createReducer, on, select } from '../../utils/micro-ngrx';
 import { Chat } from '../models';
 import { apiActions } from '../actions';
-import { DeepPartial } from '../../utils/types';
 
 export interface StreamingMessageState {
-  message: DeepPartial<Chat.Internal.AssistantMessage> | null;
+  message: Chat.Internal.AssistantMessage | null;
 }
 
 export const initialState: StreamingMessageState = {
@@ -14,9 +13,20 @@ export const initialState: StreamingMessageState = {
 export const reducer = createReducer(
   initialState,
   on(apiActions.generateMessageChunk, (state, action) => {
+    const apiMessage = action.payload;
+    const [internalMessage] = Chat.helpers.toInternalMessagesFromApi({
+      role: apiMessage.role ?? 'assistant',
+      content: apiMessage.content ?? '',
+      tool_calls: apiMessage.tool_calls ?? [],
+    });
+
+    if (!internalMessage) {
+      return state;
+    }
+
     return {
       ...state,
-      message: action.payload,
+      message: internalMessage.role === 'assistant' ? internalMessage : null,
     };
   }),
   on(apiActions.generateMessageSuccess, (state) => {

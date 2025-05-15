@@ -2,35 +2,28 @@ import { s } from '../../schema';
 import { createEffect } from '../../utils/micro-ngrx';
 import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';
-import { selectToolEntities } from '../reducers';
+import { selectPendingToolCalls, selectToolEntities } from '../reducers';
 
 export const runTools = createEffect((store) => {
   const abortController = new AbortController();
 
-  store.when(apiActions.generateMessageSuccess, async (action) => {
-    const message = action.payload;
+  store.when(apiActions.generateMessageSuccess, async () => {
+    const toolCalls = store.read(selectPendingToolCalls);
+    const toolEntities = store.read(selectToolEntities);
 
-    if (!message.tool_calls || message.tool_calls.length === 0) {
+    if (toolCalls.length === 0) {
       return;
     }
 
-    const toolEntities = store.read(selectToolEntities);
-    const toolCalls = message.tool_calls;
-
     const toolCallResults = toolCalls.map((toolCall) => {
-      const tool = toolEntities[toolCall.function.name];
+      const tool = toolEntities[toolCall.name];
 
       if (!tool) {
-        return Promise.reject(
-          new Error(`Tool ${toolCall.function.name} not found`),
-        );
+        return Promise.reject(new Error(`Tool ${toolCall.name} not found`));
       }
 
       try {
-        const args = s.parse(
-          tool.schema,
-          JSON.parse(toolCall.function.arguments),
-        );
+        const args = s.parse(tool.schema, toolCall.arguments);
 
         return Promise.resolve(tool.handler(args, abortController.signal));
       } catch (error) {
@@ -44,7 +37,7 @@ export const runTools = createEffect((store) => {
         role: 'tool',
         content: results[index],
         tool_call_id: toolCall.id,
-        tool_name: toolCall.function.name,
+        tool_name: toolCall.name,
       }),
     );
 

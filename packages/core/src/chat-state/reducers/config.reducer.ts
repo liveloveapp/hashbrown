@@ -12,6 +12,7 @@ export interface ConfigState {
   maxTokens?: number;
   responseSchema?: s.HashbrownType;
   middleware?: ChatMiddleware[];
+  emulateStructuredOutput: boolean;
 }
 
 const initialState: ConfigState = {
@@ -19,6 +20,7 @@ const initialState: ConfigState = {
   model: '',
   prompt: '',
   debounce: 150,
+  emulateStructuredOutput: false,
 };
 
 export const reducer = createReducer(
@@ -34,6 +36,8 @@ export const reducer = createReducer(
       maxTokens: action.payload.maxTokens,
       responseSchema: action.payload.responseSchema,
       middleware: action.payload.middleware,
+      emulateStructuredOutput:
+        action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
     };
   }),
 );
@@ -47,3 +51,5 @@ export const selectMaxTokens = (state: ConfigState) => state.maxTokens;
 export const selectResponseSchema = (state: ConfigState) =>
   state.responseSchema;
 export const selectMiddleware = (state: ConfigState) => state.middleware;
+export const selectEmulateStructuredOutput = (state: ConfigState) =>
+  state.emulateStructuredOutput;
