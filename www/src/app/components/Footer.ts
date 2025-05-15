@@ -14,7 +14,7 @@ import { ConfigService } from '../services/ConfigService';
       <div class="links">
         <div class="brand">
           <div class="title">
-            <www-hashbrown height="24" width="137.91" />
+            <www-hashbrown height="24" width="137.91" stroke="#fff" />
           </div>
           <small>© LiveLoveApp, LLC 2025.<br />Based in Oregon.</small>
         </div>
