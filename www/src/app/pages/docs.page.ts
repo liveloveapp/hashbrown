@@ -4,11 +4,11 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { map, tap } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { DocsHeader } from '../components/DocsHeader';
+import { DocsMenu } from '../components/DocsMenu';
 import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
 import { MarkdownPage } from '../components/MarkdownPage';
-import { DocsMenu } from '../components/DocsMenu';
-import { ConfigService, AppConfig } from '../services/ConfigService';
+import { AppConfig, ConfigService } from '../services/ConfigService';
 
 @Component({
   imports: [

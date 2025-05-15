@@ -2,12 +2,11 @@
 
 import analog from '@analogjs/platform';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
-import { join } from 'path';
 import { defineConfig } from 'vite';
-import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
+import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
+import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   return {
     root: __dirname,
@@ -49,6 +48,7 @@ export default defineConfig(({ mode }) => {
         },
       }),
       nxViteTsPaths(),
+      hashbrownStackblitzPlugin(),
     ],
     test: {
       globals: true,

@@ -1,12 +1,11 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-hero',
-  imports: [RouterLink, ArrowUpRight, Hashbrown],
+  imports: [RouterLink, Hashbrown],
   template: `
     <div class="bleed">
       <div class="container">

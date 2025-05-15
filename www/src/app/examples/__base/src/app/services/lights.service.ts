@@ -1,30 +1,40 @@
 import { isPlatformBrowser, isPlatformServer } from '@angular/common';
 import { effect, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
-import { Light } from '../models/light.model';
+import { Light } from '../models/light';
+
+const DEFAULT_LIGHTS: Light[] = [
+  {
+    id: crypto.randomUUID(),
+    name: 'Living Room - Couch Left',
+    brightness: 50,
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Living Room - Couch Right',
+    brightness: 50,
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Living Room - Ceiling Light',
+    brightness: 75,
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Bedroom - Left Bedside',
+    brightness: 35,
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Bedroom - Right Bedside',
+    brightness: 35,
+  },
+];
 
 @Injectable({ providedIn: 'root' })
 export class LightsService {
   platformId = inject(PLATFORM_ID);
 
-  private readonly lightsSignal = signal<Light[]>(
-    this.loadFromLocalStorage('lights') ?? [
-      {
-        id: '1',
-        name: 'Living Room',
-        brightness: 50,
-      },
-      {
-        id: '2',
-        name: 'Bedroom',
-        brightness: 75,
-      },
-      {
-        id: '3',
-        name: 'Kitchen',
-        brightness: 100,
-      },
-    ],
-  );
+  private readonly lightsSignal = signal<Light[]>(DEFAULT_LIGHTS);
 
   readonly lights = this.lightsSignal.asReadonly();
 
@@ -37,7 +47,7 @@ export class LightsService {
     });
   }
 
-  private saveToLocalStorage(key: string, data: unknown) {
+  saveToLocalStorage<T>(key: string, data: T | null) {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem(key, JSON.stringify(data));
     }

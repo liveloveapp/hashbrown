@@ -1,9 +1,7 @@
 import { Component, output } from '@angular/core';
-import { CircleArrowUp } from '../icons/CircleArrowUp';
 
 @Component({
-  selector: 'www-composer',
-  imports: [CircleArrowUp],
+  selector: 'app-composer',
   template: `
     <textarea
       class="chat-composer"
@@ -16,7 +14,22 @@ import { CircleArrowUp } from '../icons/CircleArrowUp';
       aria-label="Send"
       (click)="onSendMessage(textarea)"
     >
-      <www-circle-arrow-up />
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        height="24"
+        width="24"
+      >
+        <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path>
+        <path d="M12 8l-4 4"></path>
+        <path d="M12 8v8"></path>
+        <path d="M16 12l-4 -4"></path>
+      </svg>
     </button>
   `,
   styles: [
@@ -42,7 +55,7 @@ import { CircleArrowUp } from '../icons/CircleArrowUp';
     `,
   ],
 })
-export class Composer {
+export class ComposerComponent {
   sendMessage = output<string>();
 
   onHitEnter(textarea: HTMLTextAreaElement, $event: Event) {

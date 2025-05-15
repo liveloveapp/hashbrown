@@ -1,11 +1,13 @@
 {
   "name": "@hashbrownai/source",
-  "version": "0.0.0",
+  "version": "0.0.2-7",
   "license": "MIT",
   "author": "LiveLoveApp <hello@liveloveapp.com>",
   "keywords": [
+    "ai",
     "angular",
-    "ai"
+    "react",
+    "hashbrown"
   ],
   "scripts": {
     "build": "npx nx run-many -t build",
@@ -45,6 +47,7 @@
     "@ngrx/entity": "^19.1.0",
     "@ngrx/signals": "^19.1.0",
     "@ngrx/store": "^19.1.0",
+    "@stackblitz/sdk": "^1.11.0",
     "express": "^4.21.2",
     "firebase": "^11.6.1",
     "front-matter": "^4.0.2",
