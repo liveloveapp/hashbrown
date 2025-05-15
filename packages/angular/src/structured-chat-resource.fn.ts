@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computed, Resource, ResourceStatus, Signal } from '@angular/core';
-import { Chat, fryHashbrown, s } from '@hashbrownai/core';
+import {
+  computed,
+  inject,
+  Injector,
+  Resource,
+  ResourceStatus,
+  runInInjectionContext,
+  Signal,
+} from '@angular/core';
+import { Chat, ChatMiddleware, fryHashbrown, s } from '@hashbrownai/core';
 import { injectHashbrownConfig } from './provide-hashbrown.fn';
 import { readSignalLike, toSignal } from './utils';
 
@@ -32,9 +40,13 @@ export function structuredChatResource<
   options: StructuredChatResourceOptions<Schema, Tools>,
 ): StructuredChatResourceRef<Schema, Tools> {
   const config = injectHashbrownConfig();
+  const injector = inject(Injector);
   const hashbrown = fryHashbrown<Schema, Tools>({
     apiUrl: config.baseUrl,
-    middleware: config.middleware,
+    middleware: config.middleware?.map((m): ChatMiddleware => {
+      return (requestInit) =>
+        runInInjectionContext(injector, () => m(requestInit));
+    }),
     prompt: readSignalLike(options.prompt),
     model: readSignalLike(options.model),
     temperature: options.temperature && readSignalLike(options.temperature),

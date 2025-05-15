@@ -4,14 +4,17 @@
 import {
   computed,
   effect,
+  inject,
+  Injector,
   Resource,
   ResourceStatus,
+  runInInjectionContext,
   Signal,
   signal,
 } from '@angular/core';
-import { fryHashbrown } from '@hashbrownai/core';
-import { SignalLike } from './types';
+import { ChatMiddleware, fryHashbrown } from '@hashbrownai/core';
 import { injectHashbrownConfig } from './provide-hashbrown.fn';
+import { SignalLike } from './types';
 import { readSignalLike, toSignal } from './utils';
 
 export interface CompletionResourceRef extends Resource<string | null> {}
@@ -26,11 +29,15 @@ export function completionResource<Input>(
   options: CompletionResourceOptions<Input>,
 ): CompletionResourceRef {
   const { model, input, prompt } = options;
+  const injector = inject(Injector);
   const config = injectHashbrownConfig();
   const hashbrown = fryHashbrown({
     debugName: 'completionResource',
     apiUrl: config.baseUrl,
-    middleware: config.middleware,
+    middleware: config.middleware?.map((m): ChatMiddleware => {
+      return (requestInit) =>
+        runInInjectionContext(injector, () => m(requestInit));
+    }),
     model: readSignalLike(model),
     prompt: readSignalLike(prompt),
     temperature: 1,
