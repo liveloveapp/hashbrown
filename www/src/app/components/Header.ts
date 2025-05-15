@@ -10,6 +10,12 @@ import { ConfigService } from '../services/ConfigService';
     <header>
       <div class="left">
         <a routerLink="/">
+          <img
+            src="/logo/hashbrown.png"
+            alt="our friendly logo that looks like a hashbrown character from an animated tv show"
+            height="50"
+            width="68"
+          />
           <www-hashbrown height="24" width="137.91" />
         </a>
       </div>
@@ -46,8 +52,13 @@ import { ConfigService } from '../services/ConfigService';
 
         > .left {
           display: flex;
-          gap: 24px;
           align-items: center;
+
+          > a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
         }
 
         > .right {

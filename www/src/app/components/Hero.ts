@@ -10,6 +10,12 @@ import { ConfigService } from '../services/ConfigService';
     <div class="bleed">
       <div class="container">
         <div class="logo">
+          <img
+            src="/logo/hashbrown.png"
+            alt="our friendly logo that looks like a hashbrown character from an animated tv show"
+            height="158"
+            width="214"
+          />
           <www-hashbrown />
           <p>
             a framework for building joyful,<br />AI-powered user experiences
@@ -46,6 +52,7 @@ import { ConfigService } from '../services/ConfigService';
       > .logo {
         display: flex;
         flex-direction: column;
+        align-items: center;
         gap: 16px;
 
         > p {
