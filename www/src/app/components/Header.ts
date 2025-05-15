@@ -13,10 +13,10 @@ import { ConfigService } from '../services/ConfigService';
           <img
             src="/logo/hashbrown.png"
             alt="our friendly logo that looks like a hashbrown character from an animated tv show"
-            height="50"
-            width="68"
+            height="47"
+            width="48"
           />
-          <www-hashbrown height="24" width="137.91" />
+          <www-hashbrown height="24" width="137.91" stroke="#e8a23d" />
         </a>
       </div>
       <div class="right">
