@@ -1,6 +1,6 @@
 import { Chat, s } from '@hashbrownai/core';
 import { createTool, createToolWithArgs, useChat } from '@hashbrownai/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { Button } from './button';
 import { Message } from './Message';
@@ -8,35 +8,40 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const ChatPanel = () => {
-  const { messages, sendMessage, isSending } = useChat({
-    model: 'gpt-4o-mini',
-    prompt:
-      'You are a helpful assistant that can answer questions and help with tasks.',
-    tools: [
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-      }),
-      createToolWithArgs({
-        name: 'controlLight',
-        description:
-          'Control the light. Brightness is a number between 0 and 100.',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number(
-            'The brightness of the light, between 0 and 100',
-          ),
+  const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
+    useChat({
+      model: 'gpt-4o-mini',
+      prompt:
+        'You are a helpful assistant that can answer questions and help with tasks.',
+      tools: [
+        createTool({
+          name: 'getLights',
+          description: 'Get the current lights',
+          handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
         }),
-        handler: (input) => {
-          useSmartHomeStore.getState().updateLight(input.lightId, {
-            brightness: input.brightness,
-          });
-          return Promise.resolve(true);
-        },
-      }),
-    ],
-  });
+        createToolWithArgs({
+          name: 'controlLight',
+          description:
+            'Control the light. Brightness is a number between 0 and 100.',
+          schema: s.object('Control light input', {
+            lightId: s.string('The id of the light'),
+            brightness: s.number(
+              'The brightness of the light, between 0 and 100',
+            ),
+          }),
+          handler: (input) => {
+            useSmartHomeStore.getState().updateLight(input.lightId, {
+              brightness: input.brightness,
+            });
+            return Promise.resolve(true);
+          },
+        }),
+      ],
+    });
+
+  const isWorking = useMemo(() => {
+    return isSending || isReceiving || isRunningToolCalls;
+  }, [isSending, isReceiving, isRunningToolCalls]);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +79,7 @@ export const ChatPanel = () => {
     // Submit on Enter (but not on Shift+Enter)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent default behavior (new line)
-      if (isSending) {
+      if (isWorking) {
         // stop();
       } else {
         onSubmit();
@@ -94,7 +99,7 @@ export const ChatPanel = () => {
         </ScrollArea>
       </div>
       <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end">
-        {isSending && <p>Thinking...</p>}
+        {isWorking && <p>Thinking...</p>}
       </div>
       <div className="flex flex-col gap-2">
         <Textarea
@@ -103,7 +108,7 @@ export const ChatPanel = () => {
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
-        {isSending ? (
+        {!isWorking ? (
           <Button onClick={onSubmit}>Send</Button>
         ) : (
           <Button

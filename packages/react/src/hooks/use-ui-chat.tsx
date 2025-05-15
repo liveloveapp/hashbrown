@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  Chat,
-  createComponentSchema,
-  ExposedComponent,
-  s,
-} from '@hashbrownai/core';
+import { Chat, createComponentSchema, s } from '@hashbrownai/core';
 import React, { useCallback, useMemo, useState } from 'react';
+import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
 
 const publicSchema = s.object('UI', {

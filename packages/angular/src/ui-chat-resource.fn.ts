@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal, Type } from '@angular/core';
-import {
-  Chat,
-  createComponentSchema,
-  ExposedComponent,
-  s,
-} from '@hashbrownai/core';
+import { Chat, createComponentSchema, s } from '@hashbrownai/core';
+import { ExposedComponent } from './expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
 export const TAG_NAME_REGISTRY = Symbol('θtagNameRegistry');

@@ -1,13 +1,11 @@
-import { Light as LightModel } from '../models/light.model';
 import { Button } from '../shared/button';
+import { useSmartHomeStore } from '../store/smart-home.store';
 import { Light } from './components/Light';
 import { LightDialogForm } from './components/LightDialogForm';
 
-interface LightsViewProps {
-  lights: LightModel[];
-}
+export const LightsView = () => {
+  const lights = useSmartHomeStore((state) => state.lights);
 
-export const LightsView = ({ lights }: LightsViewProps) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between py-2">

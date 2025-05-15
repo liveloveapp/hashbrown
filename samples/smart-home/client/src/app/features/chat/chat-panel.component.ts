@@ -11,9 +11,10 @@ import {
   chatResource,
   createTool,
   createToolWithArgs,
+  exposeComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { exposeComponent, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
   defineFunction,

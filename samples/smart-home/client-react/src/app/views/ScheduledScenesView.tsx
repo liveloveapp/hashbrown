@@ -1,14 +1,6 @@
-import {
-  ScheduledScene as ScheduledSceneModel,
-  Weekday,
-} from '../models/scheduled-scene.model';
-import { type ComboboxOption } from '../shared/combobox';
+import { Weekday } from '../models/scheduled-scene.model';
+import { useSmartHomeStore } from '../store/smart-home.store';
 import { ScheduledScene } from './components/ScheduledScene';
-
-interface ScheduledScenesViewProps {
-  scheduledScenes: ScheduledSceneModel[];
-  scenes?: ComboboxOption[];
-}
 
 const WEEKDAYS: Weekday[] = [
   'monday',
@@ -20,10 +12,9 @@ const WEEKDAYS: Weekday[] = [
   'sunday',
 ];
 
-export const ScheduledScenesView = ({
-  scheduledScenes,
-  scenes = [],
-}: ScheduledScenesViewProps) => {
+export const ScheduledScenesView = () => {
+  const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between py-2">
