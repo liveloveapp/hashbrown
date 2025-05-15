@@ -6,8 +6,15 @@ export async function* text(
   apiKey: string,
   request: Chat.Api.CompletionCreateParams,
 ): AsyncIterable<Chat.Api.CompletionChunk> {
-  const { messages, model, max_tokens, temperature, tools, response_format } =
-    request;
+  const {
+    messages,
+    model,
+    max_tokens,
+    temperature,
+    tools,
+    response_format,
+    tool_choice,
+  } = request;
 
   const openai = new OpenAI({
     apiKey,
@@ -69,6 +76,7 @@ export async function* text(
             },
           }))
         : undefined,
+    tool_choice: tool_choice,
     response_format: response_format
       ? {
           type: 'json_schema',

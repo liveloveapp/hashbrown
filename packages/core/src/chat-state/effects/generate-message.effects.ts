@@ -6,15 +6,16 @@ import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import {
   selectApiMessages,
+  selectApiTools,
   selectApiUrl,
   selectDebounce,
+  selectEmulateStructuredOutput,
   selectMaxTokens,
   selectMiddleware,
   selectModel,
   selectResponseSchema,
   selectShouldGenerateMessage,
   selectTemperature,
-  selectTools,
 } from '../reducers';
 
 export const generateMessage = createEffect((store) => {
@@ -35,7 +36,8 @@ export const generateMessage = createEffect((store) => {
       const messages = store.read(selectApiMessages);
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const debounce = store.read(selectDebounce);
-      const tools = store.read(selectTools);
+      const tools = store.read(selectApiTools);
+      const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
 
       if (!shouldGenerateMessage) {
         return;
@@ -45,11 +47,13 @@ export const generateMessage = createEffect((store) => {
         model,
         messages,
         temperature,
+        tools,
         max_tokens: maxTokens,
-        tools: tools.map(Chat.helpers.toApiToolFromInternal),
-        response_format: responseSchema
-          ? s.toJsonSchema(responseSchema)
-          : undefined,
+        tool_choice: emulateStructuredOutput ? 'required' : undefined,
+        response_format:
+          !emulateStructuredOutput && responseSchema
+            ? s.toJsonSchema(responseSchema)
+            : undefined,
       };
 
       await sleep(debounce, switchSignal);
@@ -115,8 +119,10 @@ export const generateMessage = createEffect((store) => {
 
               // We just made it non-null on the line above, so we can safely
               // assert it here.
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              store.dispatch(apiActions.generateMessageChunk(message!));
+
+              if (message) {
+                store.dispatch(apiActions.generateMessageChunk(message));
+              }
             }
           }
         } catch (error) {

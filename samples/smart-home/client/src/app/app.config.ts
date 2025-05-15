@@ -34,6 +34,7 @@ export const appConfig: ApplicationConfig = {
     provideMarkdown(),
     provideHashbrown({
       baseUrl: 'http://localhost:3000/chat',
+      emulateStructuredOutput: true,
     }),
     provideNativeDateAdapter(),
   ],

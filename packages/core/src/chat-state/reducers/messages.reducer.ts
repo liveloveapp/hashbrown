@@ -22,31 +22,23 @@ export const reducer = createReducer(
     return {
       ...state,
       messages: messages.flatMap((message) =>
-        Chat.helpers.toInternalMessageFromView(message),
+        Chat.helpers.toInternalMessagesFromView(message),
       ),
     };
   }),
   on(apiActions.generateMessageSuccess, (state, action) => {
     const message = action.payload;
-    const internalMessage = toInternalMessage(message);
-
-    if (!message.tool_calls) {
-      return state;
-    }
-
-    if (!internalMessage) {
-      return state;
-    }
+    const internalMessages = Chat.helpers.toInternalMessagesFromApi(message);
 
     return {
       ...state,
-      messages: [...state.messages, internalMessage],
+      messages: [...state.messages, ...internalMessages],
     };
   }),
   on(devActions.setMessages, (state, action) => {
     const messages = action.payload.messages;
     const internalMessages = messages.flatMap((message) =>
-      Chat.helpers.toInternalMessageFromView(message),
+      Chat.helpers.toInternalMessagesFromView(message),
     );
     return {
       ...state,
@@ -55,33 +47,13 @@ export const reducer = createReducer(
   }),
   on(devActions.sendMessage, (state, action) => {
     const message = action.payload.message;
-    const internalMessage = Chat.helpers.toInternalMessageFromView(message);
+    const internalMessages = Chat.helpers.toInternalMessagesFromView(message);
 
     return {
       ...state,
-      messages: [...state.messages, internalMessage],
+      messages: [...state.messages, ...internalMessages],
     };
   }),
 );
-
-function toInternalMessage(
-  message: Chat.Api.Message,
-): Chat.Internal.Message | undefined {
-  switch (message.role) {
-    case 'assistant':
-      return {
-        role: 'assistant',
-        content: message.content,
-        toolCallIds: message.tool_calls?.map((toolCall) => toolCall.id) || [],
-      };
-    case 'user':
-      return {
-        role: 'user',
-        content: message.content,
-      };
-    default:
-      return undefined;
-  }
-}
 
 export const selectMessages = (state: MessagesState) => state.messages;

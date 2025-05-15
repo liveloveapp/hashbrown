@@ -9,23 +9,31 @@ import { StreamSchemaParser } from '../../streaming-json-parser/streaming-json-p
  * @returns The internal message.
  * @internal
  */
-export function toInternalMessageFromView(
+export function toInternalMessagesFromView(
   message: Chat.AnyMessage,
-): Chat.Internal.Message {
+): Chat.Internal.Message[] {
   switch (message.role) {
     case 'user': {
-      return {
-        role: 'user',
-        content: message.content,
-      };
+      return [
+        {
+          role: 'user',
+          content: message.content,
+        },
+      ];
     }
 
     case 'assistant': {
-      return {
-        role: 'assistant',
-        content: message.content as string | undefined,
-        toolCallIds: message.toolCalls.map((toolCall) => toolCall.toolCallId),
-      };
+      return [
+        {
+          role: 'assistant',
+          content: message.content as string | undefined,
+          toolCallIds: message.toolCalls.map((toolCall) => toolCall.toolCallId),
+        },
+      ];
+    }
+
+    default: {
+      return [];
     }
   }
 }
@@ -37,17 +45,19 @@ export function toInternalMessageFromView(
  * @returns The view message.
  * @internal
  */
-export function toViewMessageFromInternal(
+export function toViewMessagesFromInternal(
   message: Chat.Internal.Message,
   toolCalls: Record<string, Chat.Internal.ToolCall>,
   outputSchema?: s.HashbrownType,
-): Chat.AnyMessage {
+): Chat.AnyMessage[] {
   switch (message.role) {
     case 'user': {
-      return {
-        role: 'user',
-        content: message.content,
-      };
+      return [
+        {
+          role: 'user',
+          content: message.content,
+        },
+      ];
     }
     case 'assistant': {
       const tater = outputSchema
@@ -59,40 +69,46 @@ export function toViewMessageFromInternal(
           : undefined
         : message.content;
 
-      return {
-        role: 'assistant',
-        content,
-        toolCalls: message.toolCallIds.map((toolCallId): Chat.AnyToolCall => {
-          const toolCall = toolCalls[toolCallId];
+      return [
+        {
+          role: 'assistant',
+          content,
+          toolCalls: message.toolCallIds.map((toolCallId): Chat.AnyToolCall => {
+            const toolCall = toolCalls[toolCallId];
 
-          switch (toolCall.status) {
-            case 'done': {
-              return {
-                role: 'tool',
-                status: 'done',
-                name: toolCall.name,
-                toolCallId,
-                args: toolCall.arguments,
-                // The internal models don't use a union, since that tends to
-                // complicate reducer logic. This is necessary to uplift our
-                // internal model into the view union.
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                result: toolCall.result!,
-              };
+            switch (toolCall.status) {
+              case 'done': {
+                return {
+                  role: 'tool',
+                  status: 'done',
+                  name: toolCall.name,
+                  toolCallId,
+                  args: toolCall.arguments,
+                  // The internal models don't use a union, since that tends to
+                  // complicate reducer logic. This is necessary to uplift our
+                  // internal model into the view union.
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                  result: toolCall.result!,
+                };
+              }
+              case 'pending': {
+                return {
+                  role: 'tool',
+                  status: 'pending',
+                  name: toolCall.name,
+                  toolCallId,
+                  progress: toolCall.progress,
+                  args: toolCall.arguments,
+                };
+              }
             }
-            case 'pending': {
-              return {
-                role: 'tool',
-                status: 'pending',
-                name: toolCall.name,
-                toolCallId,
-                progress: toolCall.progress,
-                args: toolCall.arguments,
-              };
-            }
-          }
-        }),
-      };
+          }),
+        },
+      ];
+    }
+
+    default: {
+      return [];
     }
   }
 }
@@ -105,7 +121,7 @@ export function toViewMessageFromInternal(
  * @returns The API message.
  * @internal
  */
-export function toApiMessageFromInternal(
+export function toApiMessagesFromInternal(
   message: Chat.Internal.Message,
   toolCalls: Chat.Internal.ToolCall[],
 ): Chat.Api.Message[] {
@@ -125,20 +141,14 @@ export function toApiMessageFromInternal(
       );
       const toolMessages = toolCallsForMessage.flatMap(
         (toolCall): Chat.Api.ToolMessage[] => {
-          if (toolCall.status !== 'done') {
-            return [];
-          }
-
-          const result = toolCall.result;
-
-          if (!result) {
+          if (toolCall.status !== 'done' || !toolCall.result) {
             return [];
           }
 
           return [
             {
               role: 'tool',
-              content: result,
+              content: toolCall.result,
               tool_call_id: toolCall.id,
               tool_name: toolCall.name,
             },
@@ -176,32 +186,60 @@ export function toApiMessageFromInternal(
  * @returns The API tool.
  * @internal
  */
-export function toApiToolFromInternal(tool: Chat.Internal.Tool): Chat.Api.Tool {
-  return {
+export function toApiToolsFromInternal(
+  tools: Chat.Internal.Tool[],
+  emulateStructuredOutput: boolean,
+  outputSchema: s.HashbrownType,
+): Chat.Api.Tool[] {
+  const apiTools = tools.map((tool) => ({
     description: tool.description,
     name: tool.name,
     parameters: s.toJsonSchema(tool.schema),
-  };
+  }));
+
+  if (emulateStructuredOutput) {
+    apiTools.push({
+      description:
+        'This should be your final tool call. Generate a response that matches the provided schema.',
+      name: 'output',
+      parameters: s.toJsonSchema(outputSchema),
+    });
+  }
+
+  return apiTools;
 }
 
 /**
  * Converts an API tool call to an internal tool call.
  *
  * @param toolCall - The API tool call to convert.
- * @returns The internal tool call.
+ * @returns The internal tool calls.
  * @internal
  */
-export function toInternalToolCallFromApi(
+export function toInternalToolCallsFromApi(
   toolCall: Chat.Api.ToolCall,
-): Chat.Internal.ToolCall {
-  return {
-    id: toolCall.id,
-    name: toolCall.function.name,
-    arguments: JSON.parse(toolCall.function.arguments),
-    status: 'pending',
-  };
+): Chat.Internal.ToolCall[] {
+  if (toolCall.function.name === 'output') {
+    return [];
+  }
+
+  return [
+    {
+      id: toolCall.id,
+      name: toolCall.function.name,
+      arguments: JSON.parse(toolCall.function.arguments),
+      status: 'pending',
+    },
+  ];
 }
 
+/**
+ * Converts a view message to an internal tool call.
+ *
+ * @param message - The view message to convert.
+ * @returns The internal tool calls.
+ * @internal
+ */
 export function toInternalToolCallsFromView(
   messages: Chat.AnyMessage[],
 ): Chat.Internal.ToolCall[] {
@@ -232,4 +270,45 @@ export function toInternalToolCallsFromView(
       }
     });
   });
+}
+
+/**
+ * Converts an API assistant message to an internal assistant message.
+ *
+ * @param message - The API assistant message to convert.
+ * @returns The internal assistant message.
+ * @internal
+ */
+export function toInternalMessagesFromApi(
+  message: Chat.Api.Message,
+): Chat.Internal.Message[] {
+  if (message.role === 'tool' || message.role === 'system') {
+    return [];
+  }
+
+  if (message.role === 'user') {
+    return [
+      {
+        role: 'user',
+        content: message.content,
+      },
+    ];
+  }
+
+  const output = message.tool_calls?.find(
+    (toolCall) => toolCall.function.name === 'output',
+  );
+
+  const content = output ? output.function.arguments : message.content;
+
+  return [
+    {
+      role: 'assistant',
+      content,
+      toolCallIds:
+        message.tool_calls
+          ?.filter((toolCall) => toolCall.function.name !== 'output')
+          .map((toolCall) => toolCall.id) || [],
+    },
+  ];
 }

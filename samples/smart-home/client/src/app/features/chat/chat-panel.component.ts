@@ -263,6 +263,7 @@ export class ChatPanelComponent {
       }),
     ],
     debugName: 'ui-chat',
+    // debounce: 10000,
   });
 
   sendMessage(message: string) {

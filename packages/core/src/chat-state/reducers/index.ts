@@ -1,12 +1,13 @@
-import { select } from '../../utils/micro-ngrx';
+import { Chat } from '../models';
 import { Prettify } from '../../utils/types';
+import { s } from '../../schema';
+import { select } from '../../utils/micro-ngrx';
 import * as fromConfig from './config.reducer';
 import * as fromMessages from './messages.reducer';
 import * as fromStatus from './status.reducer';
 import * as fromStreamingMessage from './streaming-message.reducer';
 import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
-import { Chat } from '../models';
 
 export const reducers = {
   config: fromConfig.reducer,
@@ -80,6 +81,10 @@ export const selectToolCallEntities = select(
   selectToolCallsState,
   fromToolCalls.selectToolCallEntities,
 );
+export const selectPendingToolCalls = select(
+  selectToolCallsState,
+  fromToolCalls.selectPendingToolCalls,
+);
 
 /**
  * Config
@@ -108,6 +113,10 @@ export const selectResponseSchema = select(
   selectConfigState,
   fromConfig.selectResponseSchema,
 );
+export const selectEmulateStructuredOutput = select(
+  selectConfigState,
+  fromConfig.selectEmulateStructuredOutput,
+);
 
 /**
  * Top-level selectors
@@ -126,19 +135,13 @@ export const selectViewMessages = select(
     return [
       ...messages,
       ...(streamingMessage ? [streamingMessage] : []),
-    ].flatMap((message): Chat.AnyMessage[] => {
-      const result = Chat.helpers.toViewMessageFromInternal(
+    ].flatMap((message): Chat.AnyMessage[] =>
+      Chat.helpers.toViewMessagesFromInternal(
         message,
         toolCalls,
         responseSchema,
-      );
-
-      if (!result) {
-        return [];
-      }
-
-      return [result];
-    });
+      ),
+    );
   },
 );
 
@@ -152,9 +155,9 @@ export const selectApiMessages = select(
         role: 'system',
         content: prompt,
       },
-      ...messages.flatMap((message): Chat.Api.Message[] => {
-        return Chat.helpers.toApiMessageFromInternal(message, toolCalls);
-      }),
+      ...messages.flatMap((message): Chat.Api.Message[] =>
+        Chat.helpers.toApiMessagesFromInternal(message, toolCalls),
+      ),
     ];
   },
 );
@@ -169,5 +172,18 @@ export const selectShouldGenerateMessage = select(
     }
 
     return lastMessage.role === 'user' || lastMessage.role === 'tool';
+  },
+);
+
+export const selectApiTools = select(
+  selectTools,
+  selectResponseSchema,
+  selectEmulateStructuredOutput,
+  (tools, responseSchema, emulateStructuredOutput) => {
+    return Chat.helpers.toApiToolsFromInternal(
+      tools,
+      emulateStructuredOutput,
+      responseSchema ?? s.nullType(),
+    );
   },
 );

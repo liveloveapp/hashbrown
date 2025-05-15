@@ -68,6 +68,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
   debugName?: string;
+  debounce?: number;
 }): UiChatResourceRef<Tools> {
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(
@@ -84,6 +85,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
     tools: [...(args.tools ?? [])],
     prompt: args.prompt,
     debugName: args.debugName,
+    debounce: args.debounce,
   });
 
   const value = computed(() => {
