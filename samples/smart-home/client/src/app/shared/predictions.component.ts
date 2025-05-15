@@ -421,7 +421,6 @@ export class PredictionsComponent {
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
-      console.log(source);
       if (source === undefined || source === null) return [];
 
       return source.predictions;
