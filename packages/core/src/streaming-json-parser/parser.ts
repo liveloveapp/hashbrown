@@ -29,7 +29,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   logger.log('In _parseJson');
   // Since each parse run is effectively starting over, this string should indicate
   // how far we can expect to get this time
-  console.log(jsonString);
+  logger.log(jsonString);
 
   const length = jsonString.length;
   let index = 0;
@@ -174,8 +174,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             );
 
             // Are all non-streaming fields present?
-
-            // TODO: add "empty" streaming properties
             if (
               Object.entries(
                 (currentContainer[internal].definition as any).shape,
