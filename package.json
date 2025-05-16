@@ -98,6 +98,7 @@
     "@nx/vite": "20.6.0",
     "@nx/web": "20.6.0",
     "@nx/workspace": "20.6.0",
+    "@openapi-contrib/json-schema-to-openapi-schema": "^3.0.3",
     "@radix-ui/react-checkbox": "^1.1.5",
     "@radix-ui/react-dialog": "^1.1.7",
     "@radix-ui/react-label": "^2.1.3",

@@ -132,16 +132,28 @@ export const selectViewMessages = select(
     streamingMessage,
     responseSchema,
   ): Chat.AnyMessage[] => {
-    return [
-      ...messages,
-      ...(streamingMessage ? [streamingMessage] : []),
-    ].flatMap((message): Chat.AnyMessage[] =>
+    const nonStreamingMessages = messages.flatMap(
+      (message): Chat.AnyMessage[] =>
+        Chat.helpers.toViewMessagesFromInternal(
+          message,
+          toolCalls,
+          false,
+          responseSchema,
+        ),
+    );
+
+    const streamingMessages = (
+      streamingMessage ? [streamingMessage] : []
+    ).flatMap((message): Chat.AnyMessage[] =>
       Chat.helpers.toViewMessagesFromInternal(
         message,
         toolCalls,
+        true,
         responseSchema,
       ),
     );
+
+    return [...nonStreamingMessages, ...streamingMessages];
   },
 );
 
@@ -182,7 +194,7 @@ export const selectApiTools = select(
   (tools, responseSchema, emulateStructuredOutput) => {
     return Chat.helpers.toApiToolsFromInternal(
       tools,
-      emulateStructuredOutput,
+      emulateStructuredOutput && !!responseSchema,
       responseSchema ?? s.nullType(),
     );
   },
