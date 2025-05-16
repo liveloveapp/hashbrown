@@ -11,9 +11,10 @@ import {
   chatResource,
   createTool,
   createToolWithArgs,
+  exposeComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { exposeComponent, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
   defineFunction,
@@ -188,24 +189,21 @@ export class ChatPanelComponent {
     `,
     components: [
       exposeComponent(MarkdownComponent, {
-        name: 'markdown',
         description: 'Show markdown to the user',
-        props: {
+        input: {
           data: s.streaming.string('The markdown content'),
         },
       }),
       exposeComponent(LightCardComponent, {
-        name: 'light',
         description: 'Show a light to the user',
-        props: {
+        input: {
           lightId: s.string('The id of the light'),
         },
       }),
       exposeComponent(CardComponent, {
-        name: 'card',
         description: 'Show a card to the user',
         children: 'any',
-        props: {
+        input: {
           title: s.streaming.string('The title of the card'),
         },
       }),

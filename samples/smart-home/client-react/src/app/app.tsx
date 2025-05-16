@@ -14,18 +14,12 @@ import {
 } from './shared/navigation-menu';
 import { Toaster } from './shared/toaster';
 import { useToast } from './shared/use-toast';
-import { useSmartHomeStore } from './store/smart-home.store';
 import { LightsView } from './views/LightsView';
-import { LiveTranslationView } from './views/LiveTranslationView';
 import { ScenesView } from './views/ScenesView';
 import { ScheduledScenesView } from './views/ScheduledScenesView';
-import { UiCompletionView } from './views/UiCompletionView';
 
 export function App() {
   const { toast } = useToast();
-  const lights = useSmartHomeStore((state) => state.lights);
-  const scenes = useSmartHomeStore((state) => state.scenes);
-  const scheduledScenes = useSmartHomeStore((state) => state.scheduledScenes);
 
   const url = 'http://localhost:3000/chat';
   //const url = 'https://hashbrownai-dev.openai.azure.com/';
@@ -63,26 +57,6 @@ export function App() {
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      to="/live-translation"
-                      className={navigationMenuTriggerStyle()}
-                    >
-                      Live Translation
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      to="/ui-completion"
-                      className={navigationMenuTriggerStyle()}
-                    >
-                      UI Completion
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
           </div>
@@ -90,25 +64,12 @@ export function App() {
             <div className="col-span-3">
               <div className="p-2">
                 <Routes>
-                  <Route
-                    path="/lights"
-                    element={<LightsView lights={lights} />}
-                  />
-                  <Route
-                    path="/scenes"
-                    element={<ScenesView scenes={scenes} />}
-                  />
+                  <Route path="/lights" element={<LightsView />} />
+                  <Route path="/scenes" element={<ScenesView />} />
                   <Route
                     path="/scheduled-scenes"
-                    element={
-                      <ScheduledScenesView scheduledScenes={scheduledScenes} />
-                    }
+                    element={<ScheduledScenesView />}
                   />
-                  <Route
-                    path="/live-translation"
-                    element={<LiveTranslationView />}
-                  />
-                  <Route path="/ui-completion" element={<UiCompletionView />} />
                   <Route path="/" element={<p>Home</p>} />
                 </Routes>
               </div>
