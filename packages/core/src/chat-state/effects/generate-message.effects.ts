@@ -49,7 +49,8 @@ export const generateMessage = createEffect((store) => {
         temperature,
         tools,
         max_tokens: maxTokens,
-        tool_choice: emulateStructuredOutput ? 'required' : undefined,
+        tool_choice:
+          emulateStructuredOutput && responseSchema ? 'required' : undefined,
         response_format:
           !emulateStructuredOutput && responseSchema
             ? s.toJsonSchema(responseSchema)

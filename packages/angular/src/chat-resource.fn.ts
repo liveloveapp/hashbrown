@@ -41,6 +41,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
     | Chat.Message<string, Tools>[]
     | Signal<Chat.Message<string, Tools>[]>;
   debounce?: number;
+  debugName?: string;
 }
 
 /**
@@ -103,6 +104,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     tools: options.tools,
     maxTokens: options.maxTokens && readSignalLike(options.maxTokens),
     emulateStructuredOutput: config.emulateStructuredOutput,
+    debugName: options.debugName,
   });
   const value = toSignal(hashbrown.observeMessages);
   const isReceiving = toSignal(hashbrown.observeIsReceiving);

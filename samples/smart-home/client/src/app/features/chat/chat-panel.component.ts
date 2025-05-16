@@ -133,6 +133,8 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
+    debugName: 'simple-chat',
+    // model: 'gemini-2.5-flash-preview-04-17',
     model: 'gpt-4.1',
     prompt: `You are a helpful assistant that can answer questions and help with tasks.`,
     tools: [
@@ -182,7 +184,7 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   chat = uiChatResource({
-    // model: 'gemini-2.5-pro-exp-03-25',
+    // model: 'gemini-2.5-pro-preview-05-06',
     model: 'gpt-4.1',
     prompt: `
       You are a helpful assistant that can answer questions and help with tasks.
@@ -195,7 +197,8 @@ export class ChatPanelComponent {
         },
       }),
       exposeComponent(LightCardComponent, {
-        description: 'Show a light to the user',
+        description: `This option shows a light to the user, with a dimmer for them to control the light.
+          Always prefer this option over printing a light's name.`,
         input: {
           lightId: s.string('The id of the light'),
         },
@@ -214,11 +217,11 @@ export class ChatPanelComponent {
         description: 'Get information about the current user',
         handler: () => this.authService.getUser(),
       }),
-      // createTool({
-      //   name: 'getLights',
-      //   description: 'Get the current lights',
-      //   handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-      // }),
+      createTool({
+        name: 'getLights',
+        description: 'Get the current lights',
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      }),
       createToolWithArgs({
         name: 'controlLight',
         description: 'Control a light',
