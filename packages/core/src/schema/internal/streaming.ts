@@ -2,9 +2,12 @@
 import {
   AnyOfType,
   ArrayType,
+  BooleanType,
   ConstStringType,
   EnumType,
   HashbrownType,
+  IntegerType,
+  NumberType,
   ObjectType,
   StringType,
 } from './base';
@@ -21,6 +24,18 @@ export function constString<T extends string>(value: T): ConstStringType<T> {
     value,
     streaming: true,
   }) as any;
+}
+
+export function number(description: string) {
+  return new NumberType({ type: 'number', description, streaming: true });
+}
+
+export function boolean(description: string) {
+  return new BooleanType({ type: 'boolean', description, streaming: true });
+}
+
+export function integer(description: string) {
+  return new IntegerType({ type: 'integer', description, streaming: true });
 }
 
 export function object<Shape extends Record<string, any>>(
