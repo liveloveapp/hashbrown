@@ -11,6 +11,8 @@ class MalformedJSON extends Error {}
 
 class IncompleteNonStreamingObject extends Error {}
 
+class UnexpectedStreamingType extends Error {}
+
 function parseJSON(jsonString: string, schema: s.HashbrownType): any {
   if (typeof jsonString !== 'string') {
     throw new TypeError(`expecting str, got ${typeof jsonString}`);
@@ -27,7 +29,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   logger.log('In _parseJson');
   // Since each parse run is effectively starting over, this string should indicate
   // how far we can expect to get this time
-  logger.log(jsonString);
+  console.log(jsonString);
 
   const length = jsonString.length;
   let index = 0;
@@ -172,6 +174,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             );
 
             // Are all non-streaming fields present?
+
+            // TODO: add "empty" streaming properties
             if (
               Object.entries(
                 (currentContainer[internal].definition as any).shape,
@@ -179,7 +183,30 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
                 logger.log(
                   `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
                 );
-                if (s.isStreaming(subSchema as any) || key in obj) {
+
+                // if this key is streaming and not present, add an "empty" value
+                if (s.isStreaming(subSchema as any)) {
+                  if (!(key in obj)) {
+                    if (
+                      s.isStringType(subSchema as any) ||
+                      s.isConstStringType(subSchema as any) ||
+                      s.isEnumType(subSchema as any)
+                    ) {
+                      obj[key] = '';
+                    } else if (s.isArrayType(subSchema as any)) {
+                      obj[key] = [];
+                    } else if (s.isObjectType(subSchema as any)) {
+                      obj[key] = {};
+                    } else {
+                      throw new UnexpectedStreamingType(
+                        'Unexpected schema type for a streaming prop',
+                      );
+                    }
+                  }
+                  return true;
+                }
+
+                if (key in obj) {
                   return true;
                 }
 
@@ -288,7 +315,29 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
                 logger.log(
                   `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
                 );
-                if (s.isStreaming(subSchema as any) || key in obj) {
+                // if this key is streaming and not present, add an "empty" value
+                if (s.isStreaming(subSchema as any)) {
+                  if (!(key in obj)) {
+                    if (
+                      s.isStringType(subSchema as any) ||
+                      s.isConstStringType(subSchema as any) ||
+                      s.isEnumType(subSchema as any)
+                    ) {
+                      obj[key] = '';
+                    } else if (s.isArrayType(subSchema as any)) {
+                      obj[key] = [];
+                    } else if (s.isObjectType(subSchema as any)) {
+                      obj[key] = {};
+                    } else {
+                      throw new UnexpectedStreamingType(
+                        'Unexpected schema type for a streaming prop',
+                      );
+                    }
+                  }
+                  return true;
+                }
+
+                if (key in obj) {
                   return true;
                 }
 
@@ -333,7 +382,29 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             logger.log(
               `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
             );
-            if (s.isStreaming(subSchema as any) || key in obj) {
+            // if this key is streaming and not present, add an "empty" value
+            if (s.isStreaming(subSchema as any)) {
+              if (!(key in obj)) {
+                if (
+                  s.isStringType(subSchema as any) ||
+                  s.isConstStringType(subSchema as any) ||
+                  s.isEnumType(subSchema as any)
+                ) {
+                  obj[key] = '';
+                } else if (s.isArrayType(subSchema as any)) {
+                  obj[key] = [];
+                } else if (s.isObjectType(subSchema as any)) {
+                  obj[key] = {};
+                } else {
+                  throw new UnexpectedStreamingType(
+                    'Unexpected schema type for a streaming prop',
+                  );
+                }
+              }
+              return true;
+            }
+
+            if (key in obj) {
               return true;
             }
 
