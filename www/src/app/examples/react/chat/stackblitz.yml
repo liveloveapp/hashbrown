@@ -1,0 +1,5 @@
+name: 'Chat Example'
+description: 'Basic demonstration of hashbrown chat'
+extends: '../__base/stackblitz.yml'
+files:
+  src/App.tsx: './src/App.tsx'

@@ -1,0 +1,15 @@
+name: Base
+description: Base React template
+extends: '../../__base/stackblitz.yml'
+open: src/App.tsx
+files:
+  src/App.tsx: './src/App.tsx'
+  src/main.tsx: './src/main.tsx'
+  src/vite-env.d.ts: './src/vite-env.d.ts'
+  index.html: './index.html'
+  package.json: './package.json'
+  package-lock.json: './package-lock.json'
+  tsconfig.app.json: './tsconfig.app.json'
+  tsconfig.json: './tsconfig.json'
+  tsconfig.node.json: './tsconfig.node.json'
+  vite.config.ts: './vite.config.ts'

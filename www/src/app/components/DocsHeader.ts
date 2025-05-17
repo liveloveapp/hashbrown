@@ -13,12 +13,22 @@ import { DropdownMenu } from './DropDownMenu';
     <header>
       <div class="left">
         <a routerLink="/">
-          <www-hashbrown height="24" width="137.91" />
+          <img
+            class="shake"
+            src="/logo/hashbrown.png"
+            alt="our friendly logo that looks like a hashbrown character from an animated tv show"
+            height="47"
+            width="48"
+          />
+          <www-hashbrown height="24" width="137.91" stroke="#e8a23d" />
         </a>
       </div>
       <div class="right">
         <nav>
           <ul>
+            <li>
+              <a [routerLink]="docsUrl()" class="underline">docs</a>
+            </li>
             <li><a routerLink="/api" class="underline">api</a></li>
             <li>
               <a [routerLink]="examplesUrl()" class="underline">examples</a>
@@ -70,12 +80,17 @@ import { DropdownMenu } from './DropDownMenu';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 24px 32px;
+        padding: 12px 32px;
 
         > .left {
           display: flex;
-          gap: 24px;
           align-items: center;
+
+          > a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
         }
 
         > .right {
@@ -152,6 +167,9 @@ import { DropdownMenu } from './DropDownMenu';
 export class DocsHeader {
   configService = inject(ConfigService);
   config = this.configService.config;
+  docsUrl = computed(() => {
+    return `/docs/${this.configService.config().sdk}/start/quick`;
+  });
   examplesUrl = computed(() => {
     return `/examples/${this.configService.config().sdk}/chat`;
   });

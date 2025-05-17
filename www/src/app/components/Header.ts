@@ -11,6 +11,7 @@ import { ConfigService } from '../services/ConfigService';
       <div class="left">
         <a routerLink="/">
           <img
+            class="shake"
             src="/logo/hashbrown.png"
             alt="our friendly logo that looks like a hashbrown character from an animated tv show"
             height="47"
@@ -48,7 +49,7 @@ import { ConfigService } from '../services/ConfigService';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 24px 32px;
+        padding: 12px 32px;
 
         > .left {
           display: flex;

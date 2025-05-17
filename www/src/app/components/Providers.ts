@@ -177,7 +177,6 @@ import { React } from '../icons/React';
         display: flex;
         justify-content: center;
         width: 100%;
-        border-top: 8px solid #e88c4d;
         background: #faf9f0;
       }
 
