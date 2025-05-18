@@ -8,7 +8,7 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import { Chat, ChatMiddleware, fryHashbrown, s } from '@hashbrownai/core';
+import { Chat, fryHashbrown, s } from '@hashbrownai/core';
 import { injectHashbrownConfig } from './provide-hashbrown.fn';
 import { readSignalLike, toSignal } from './utils';
 
@@ -44,7 +44,7 @@ export function structuredChatResource<
   const injector = inject(Injector);
   const hashbrown = fryHashbrown<Schema, Tools>({
     apiUrl: config.baseUrl,
-    middleware: config.middleware?.map((m): ChatMiddleware => {
+    middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),

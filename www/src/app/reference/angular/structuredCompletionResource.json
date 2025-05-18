@@ -12,7 +12,7 @@
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "export declare function structuredCompletionResource<Input, Output extends "
+          "text": "export declare function structuredCompletionResource<Input, Schema extends "
         },
         {
           "kind": "Reference",
@@ -25,14 +25,14 @@
           "text": "StructuredCompletionResourceOptions",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions:interface"
         },
-        { "kind": "Content", "text": "<Input, Output>" },
+        { "kind": "Content", "text": "<Input, Schema>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "StructuredCompletionResourceRef",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef:interface"
         },
-        { "kind": "Content", "text": "<Output>" },
+        { "kind": "Content", "text": "<Schema>" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/structured-completion-resource.fn.d.ts",
@@ -53,7 +53,7 @@
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         },
         {
-          "typeParameterName": "Output",
+          "typeParameterName": "Schema",
           "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }

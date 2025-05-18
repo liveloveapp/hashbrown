@@ -15,7 +15,7 @@
           "text": "export declare function createTool<Name extends "
         },
         { "kind": "Content", "text": "string" },
-        { "kind": "Content", "text": ">(input: " },
+        { "kind": "Content", "text": ", Output>(input: " },
         {
           "kind": "Content",
           "text": "{\n    name: Name;\n    description: string;\n    handler: () => "
@@ -25,12 +25,12 @@
           "text": "Promise",
           "canonicalReference": "!Promise:interface"
         },
-        { "kind": "Content", "text": "<unknown>;\n}" },
+        { "kind": "Content", "text": "<Output>;\n}" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
-          "text": "BoundTool",
-          "canonicalReference": "@hashbrownai/react!~BoundTool:class"
+          "text": "Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
         },
         { "kind": "Content", "text": "<Name, " },
         {
@@ -50,7 +50,7 @@
           "text": "s.HashbrownType",
           "canonicalReference": "!s.HashbrownType:type"
         },
-        { "kind": "Content", "text": ">>>" },
+        { "kind": "Content", "text": ">>, Output>" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/react/create-tool.fn.d.ts",
@@ -68,6 +68,11 @@
         {
           "typeParameterName": "Name",
           "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Output",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],

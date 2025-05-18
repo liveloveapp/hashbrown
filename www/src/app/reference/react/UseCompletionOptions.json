@@ -8,47 +8,44 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface",
-      "docComment": "",
+      "docComment": "/**\n * Options for the `useCompletion` hook.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "export interface UseCompletionOptions extends "
+          "text": "export interface UseCompletionOptions<Tools extends "
         },
         {
           "kind": "Reference",
-          "text": "Omit",
-          "canonicalReference": "!Omit:type"
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
         },
-        { "kind": "Content", "text": "<" },
-        {
-          "kind": "Reference",
-          "text": "UseChatOptions",
-          "canonicalReference": "@hashbrownai/react!UseChatOptions:interface"
-        },
-        { "kind": "Content", "text": ", 'messages'>" },
-        { "kind": "Content", "text": " " }
+        { "kind": "Content", "text": "> " }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
       "releaseTag": "Public",
+      "typeParameters": [
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
       "name": "UseCompletionOptions",
       "preserveMemberOrder": false,
       "members": [
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#examples:member",
-          "docComment": "/**\n * Example input and output pairs to guide the prediction.\n */\n",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#debounceTime:member",
+          "docComment": "/**\n * The debounce time between sends to the endpoint. default: 150\n */\n",
           "excerptTokens": [
-            { "kind": "Content", "text": "examples?: " },
-            {
-              "kind": "Content",
-              "text": "{\n        input: string;\n        output: string;\n    }[]"
-            },
+            { "kind": "Content", "text": "debounceTime?: " },
+            { "kind": "Content", "text": "number" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": true,
           "releaseTag": "Public",
-          "name": "examples",
+          "name": "debounceTime",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
@@ -59,7 +56,39 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "Example input and output pairs to guide the prediction.\n",
+            "summary": "The debounce time between sends to the endpoint. default: 150\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#debugName:member",
+          "docComment": "/**\n * The name of the hook, useful for debugging.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "debugName?: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "debugName",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The name of the hook, useful for debugging.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -102,17 +131,17 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#system:member",
-          "docComment": "/**\n * The system prompt to use for the completion task.\n */\n",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#maxTokens:member",
+          "docComment": "/**\n * The maximum number of tokens to allow. default: 5000\n */\n",
           "excerptTokens": [
-            { "kind": "Content", "text": "system: " },
-            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": "maxTokens?: " },
+            { "kind": "Content", "text": "number" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
-          "isOptional": false,
+          "isOptional": true,
           "releaseTag": "Public",
-          "name": "system",
+          "name": "maxTokens",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
@@ -123,7 +152,135 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The system prompt to use for the completion task.\n",
+            "summary": "The maximum number of tokens to allow. default: 5000\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#model:member",
+          "docComment": "/**\n * The LLM model to use for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "model",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The LLM model to use for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#prompt:member",
+          "docComment": "/**\n * The prompt to use for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "prompt: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "prompt",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The prompt to use for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#temperature:member",
+          "docComment": "/**\n * The temperature for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "temperature?: " },
+            { "kind": "Content", "text": "number" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "temperature",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The temperature for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#tools:member",
+          "docComment": "/**\n * The tools to make available use for the chat. default: []\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "tools?: " },
+            { "kind": "Content", "text": "Tools[]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "tools",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The tools to make available use for the chat. default: []\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -133,7 +290,7 @@
           }
         }
       ],
-      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 5 }],
+      "extendsTokenRanges": [],
       "docs": {
         "modifiers": {
           "isInternal": false,
@@ -143,7 +300,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Options for the `useCompletion` hook.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

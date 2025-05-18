@@ -22,7 +22,14 @@
           "canonicalReference": "!s.ObjectType:type"
         },
         { "kind": "Content", "text": "<any>" },
-        { "kind": "Content", "text": "> " }
+        { "kind": "Content", "text": ", Result> implements " },
+        {
+          "kind": "Reference",
+          "text": "Chat.Tool",
+          "canonicalReference": "!unknown"
+        },
+        { "kind": "Content", "text": "<Name, InputSchema, Result>" },
+        { "kind": "Content", "text": " " }
       ],
       "fileUrlPath": "../dist/packages/angular/create-tool.fn.d.ts",
       "releaseTag": "Public",
@@ -35,6 +42,11 @@
         {
           "typeParameterName": "InputSchema",
           "constraintTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Result",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
@@ -66,7 +78,7 @@
               "text": "Promise",
               "canonicalReference": "!Promise:interface"
             },
-            { "kind": "Content", "text": "<any>" },
+            { "kind": "Content", "text": "<Result>" },
             { "kind": "Content", "text": ");" }
           ],
           "releaseTag": "Public",
@@ -165,7 +177,7 @@
               "text": "Promise",
               "canonicalReference": "!Promise:interface"
             },
-            { "kind": "Content", "text": "<any>" },
+            { "kind": "Content", "text": "<Result>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": true,
@@ -263,50 +275,9 @@
             "see": [],
             "params": []
           }
-        },
-        {
-          "kind": "Method",
-          "canonicalReference": "@hashbrownai/angular!BoundTool#toTool:member(1)",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "toTool(): " },
-            {
-              "kind": "Reference",
-              "text": "Chat.Tool",
-              "canonicalReference": "!Chat.Tool:type"
-            },
-            { "kind": "Content", "text": "<Name, InputSchema>" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isStatic": false,
-          "returnTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
-          "releaseTag": "Public",
-          "isProtected": false,
-          "overloadIndex": 1,
-          "parameters": [],
-          "isOptional": false,
-          "isAbstract": false,
-          "name": "toTool",
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
         }
       ],
-      "implementsTokenRanges": [],
+      "implementsTokenRanges": [{ "startIndex": 6, "endIndex": 8 }],
       "docs": {
         "modifiers": {
           "isInternal": false,

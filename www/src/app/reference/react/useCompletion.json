@@ -10,12 +10,19 @@
       "canonicalReference": "@hashbrownai/react!useCompletion:function(1)",
       "docComment": "",
       "excerptTokens": [
-        { "kind": "Content", "text": "useCompletion: (options: " },
+        { "kind": "Content", "text": "useCompletion: <Tools extends " },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
         {
           "kind": "Reference",
           "text": "UseCompletionOptions",
           "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface"
         },
+        { "kind": "Content", "text": "<Tools>" },
         { "kind": "Content", "text": ") => " },
         {
           "kind": "Reference",
@@ -24,14 +31,21 @@
         }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
-      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 7 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "options",
-          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
       "name": "useCompletion",
