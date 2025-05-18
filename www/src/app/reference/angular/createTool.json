@@ -12,10 +12,10 @@
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "export declare function createTool<Name extends "
+          "text": "export declare function createTool<const Name extends "
         },
         { "kind": "Content", "text": "string" },
-        { "kind": "Content", "text": ">(input: " },
+        { "kind": "Content", "text": ", Result>(input: " },
         {
           "kind": "Content",
           "text": "{\n    name: Name;\n    description: string;\n    handler: () => "
@@ -25,12 +25,12 @@
           "text": "Promise",
           "canonicalReference": "!Promise:interface"
         },
-        { "kind": "Content", "text": "<any>;\n}" },
+        { "kind": "Content", "text": "<Result>;\n}" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
-          "text": "BoundTool",
-          "canonicalReference": "@hashbrownai/angular!BoundTool:class"
+          "text": "Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
         },
         { "kind": "Content", "text": "<Name, " },
         {
@@ -38,7 +38,7 @@
           "text": "s.ObjectType",
           "canonicalReference": "!s.ObjectType:type"
         },
-        { "kind": "Content", "text": "<any>>" },
+        { "kind": "Content", "text": "<object>, Result>" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/create-tool.fn.d.ts",
@@ -56,6 +56,11 @@
         {
           "typeParameterName": "Name",
           "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Result",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],

@@ -29,23 +29,29 @@
             },
             {
               "kind": "Reference",
-              "text": "Chat.CompletionCreateParams",
-              "canonicalReference": "@hashbrownai/core!Chat.CompletionCreateParams:type"
+              "text": "Chat.Api.CompletionCreateParams",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Api.CompletionCreateParams:interface"
             },
             { "kind": "Content", "text": ") => " },
             {
               "kind": "Reference",
-              "text": "Chat.CompletionChunkResponse",
-              "canonicalReference": "@hashbrownai/core!Chat.CompletionChunkResponse:type"
+              "text": "AsyncIterable",
+              "canonicalReference": "!AsyncIterable:interface"
             },
-            { "kind": "Content", "text": ";\n    }" },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "Chat.Api.CompletionChunk",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Api.CompletionChunk:interface"
+            },
+            { "kind": "Content", "text": ">;\n    }" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
           "name": "stream",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 8 },
           "docs": {
             "modifiers": {
               "isInternal": false,

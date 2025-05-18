@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, createComponentSchema, s } from '@hashbrownai/core';
+import { Chat, s, θcomponents } from '@hashbrownai/core';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
@@ -82,7 +82,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
   const elements = useMemo(
-    () => createComponentSchema(components),
+    () => θcomponents.createComponentSchema(components),
     [components],
   );
   const ui = useMemo(() => {

@@ -1,9 +1,9 @@
 import { inject, InjectionToken } from '@angular/core';
-import { ChatMiddleware } from '@hashbrownai/core';
+import { Chat } from '@hashbrownai/core';
 
 export interface ProvideHashbrownOptions {
   baseUrl: string;
-  middleware?: ChatMiddleware[];
+  middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
 }
 

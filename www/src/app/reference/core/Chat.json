@@ -16,208 +16,112 @@
       "preserveMemberOrder": false,
       "members": [
         {
-          "kind": "Interface",
-          "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:interface",
-          "docComment": "",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export interface AssistantMessage<AssistantOutput = "
-            },
-            { "kind": "Content", "text": "string | object" },
-            { "kind": "Content", "text": "> " }
-          ],
-          "fileUrlPath": "../packages/core/src/models/chat/AssistantMessage.ts",
-          "releaseTag": "Public",
-          "typeParameters": [
-            {
-              "typeParameterName": "AssistantOutput",
-              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
-              "defaultTypeTokenRange": { "startIndex": 1, "endIndex": 2 }
-            }
-          ],
-          "name": "AssistantMessage",
-          "preserveMemberOrder": false,
-          "members": [
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage#content:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "content?: " },
-                { "kind": "Content", "text": "AssistantOutput" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": true,
-              "releaseTag": "Public",
-              "name": "content",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage#role:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "role: " },
-                { "kind": "Content", "text": "'assistant'" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "role",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage#tool_calls:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "tool_calls?: " },
-                {
-                  "kind": "Content",
-                  "text": "{\n        index: number;\n        id: string;\n        type: string;\n        function: {\n            name: string;\n            arguments: string;\n        };\n    }[]"
-                },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": true,
-              "releaseTag": "Public",
-              "name": "tool_calls",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            }
-          ],
-          "extendsTokenRanges": [],
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.CompletionChunk:type",
+          "canonicalReference": "@hashbrownai/core!Chat.AnyMessage:type",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "export type CompletionChunk = " },
-            {
-              "kind": "Content",
-              "text": "{\n    choices: {\n        index: number;\n        delta: {\n            content?: string | null;\n            role?: string;\n            tool_calls?: {\n                index: number;\n                id?: string;\n                type?: string;\n                function?: {\n                    name?: string;\n                    arguments?: string;\n                };\n            }[];\n        };\n        finish_reason: string | null;\n    }[];\n}"
-            },
-            { "kind": "Content", "text": ";" }
-          ],
-          "fileUrlPath": "../packages/core/src/models/chat/CompletionChunk.ts",
-          "releaseTag": "Public",
-          "name": "CompletionChunk",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.CompletionChunkResponse:type",
-          "docComment": "",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export type CompletionChunkResponse = "
-            },
+            { "kind": "Content", "text": "export type AnyMessage = " },
             {
               "kind": "Reference",
-              "text": "AsyncIterable",
-              "canonicalReference": "!AsyncIterable:interface"
+              "text": "Message",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Message_3:type"
             },
-            { "kind": "Content", "text": "<" },
+            { "kind": "Content", "text": "<string | " },
             {
               "kind": "Reference",
-              "text": "CompletionChunk",
-              "canonicalReference": "@hashbrownai/core!Chat.CompletionChunk:type"
+              "text": "s.HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ", " },
+            {
+              "kind": "Reference",
+              "text": "AnyTool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
             },
             { "kind": "Content", "text": ">" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/models/chat/CompletionChunkResponse.ts",
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
-          "name": "CompletionChunkResponse",
+          "name": "AnyMessage",
+          "typeTokenRange": { "startIndex": 1, "endIndex": 7 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/core!Chat.AnyTool:type",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "export type AnyTool = " },
+            {
+              "kind": "Reference",
+              "text": "Tool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Tool_3:type"
+            },
+            { "kind": "Content", "text": "<any, any, any>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
+          "releaseTag": "Public",
+          "name": "AnyTool",
+          "typeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/core!Chat.AnyToolCall:type",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "export type AnyToolCall = " },
+            {
+              "kind": "Reference",
+              "text": "ToolCall",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "AnyTool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": ">" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
+          "releaseTag": "Public",
+          "name": "AnyToolCall",
           "typeTokenRange": { "startIndex": 1, "endIndex": 5 },
           "docs": {
             "modifiers": {
@@ -238,54 +142,1378 @@
           }
         },
         {
-          "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.CompletionCreateParams:type",
+          "kind": "Namespace",
+          "canonicalReference": "@hashbrownai/core!Chat.Api:namespace",
           "docComment": "",
-          "excerptTokens": [
+          "excerptTokens": [],
+          "fileUrlPath": "../packages/core/src/models/public_api.ts",
+          "releaseTag": "None",
+          "name": "Api",
+          "preserveMemberOrder": false,
+          "members": [
             {
-              "kind": "Content",
-              "text": "export type CompletionCreateParams = "
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.AssistantMessage:interface",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface AssistantMessage "
+                }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "AssistantMessage",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.AssistantMessage#content:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "content?: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "content",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.AssistantMessage#role:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "role: " },
+                    { "kind": "Content", "text": "'assistant'" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "role",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.AssistantMessage#tool_calls:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "tool_calls?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "ToolCall",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.ToolCall:interface"
+                    },
+                    { "kind": "Content", "text": "[]" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "tool_calls",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
             {
-              "kind": "Content",
-              "text": "{\n    max_tokens?: number;\n    messages: "
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunk:interface",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface CompletionChunk "
+                }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "CompletionChunk",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunk#choices:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "choices: " },
+                    {
+                      "kind": "Reference",
+                      "text": "CompletionChunkChoice",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.CompletionChunkChoice:interface"
+                    },
+                    { "kind": "Content", "text": "[]" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "choices",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
             {
-              "kind": "Reference",
-              "text": "Message",
-              "canonicalReference": "@hashbrownai/core!Chat.Message:type"
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunkChoice:interface",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface CompletionChunkChoice "
+                }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "CompletionChunkChoice",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunkChoice#delta:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "delta: " },
+                    {
+                      "kind": "Content",
+                      "text": "{\n        content?: string | null;\n        role?: string;\n        tool_calls?: "
+                    },
+                    {
+                      "kind": "Reference",
+                      "text": "DeepPartial",
+                      "canonicalReference": "@hashbrownai/core!θtypes.DeepPartial:type"
+                    },
+                    { "kind": "Content", "text": "<" },
+                    {
+                      "kind": "Reference",
+                      "text": "ToolCall",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.ToolCall:interface"
+                    },
+                    { "kind": "Content", "text": ">[];\n    }" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "delta",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunkChoice#finish_reason:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "finish_reason: " },
+                    { "kind": "Content", "text": "string | null" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "finish_reason",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunkChoice#index:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "index: " },
+                    { "kind": "Content", "text": "number" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "index",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
             {
-              "kind": "Content",
-              "text": "[];\n    model: string;\n    response_format?: "
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams:interface",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface CompletionCreateParams "
+                }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "CompletionCreateParams",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams#max_tokens:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "max_tokens?: " },
+                    { "kind": "Content", "text": "number" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "max_tokens",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams#messages:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "messages: " },
+                    {
+                      "kind": "Reference",
+                      "text": "Message",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.Message:type"
+                    },
+                    { "kind": "Content", "text": "[]" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "messages",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams#model:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "model: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "model",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams#response_format:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "response_format?: " },
+                    { "kind": "Content", "text": "object" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "response_format",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams#temperature:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "temperature?: " },
+                    { "kind": "Content", "text": "number" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "temperature",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams#tool_choice:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "tool_choice?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "CompletionToolChoiceOption",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.CompletionToolChoiceOption:type"
+                    },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "tool_choice",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams#tools:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "tools?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "Tool",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.Tool:interface"
+                    },
+                    { "kind": "Content", "text": "[]" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "tools",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
             {
-              "kind": "Reference",
-              "text": "HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+              "kind": "TypeAlias",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionToolChoiceOption:type",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export type CompletionToolChoiceOption = "
+                },
+                { "kind": "Content", "text": "'auto' | 'none' | 'required'" },
+                { "kind": "Content", "text": ";" }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "CompletionToolChoiceOption",
+              "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
             {
-              "kind": "Content",
-              "text": " | object;\n    temperature?: number;\n    tool_choice?: "
+              "kind": "TypeAlias",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.Message:type",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export type Message = " },
+                {
+                  "kind": "Reference",
+                  "text": "UserMessage",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.UserMessage:interface"
+                },
+                { "kind": "Content", "text": " | " },
+                {
+                  "kind": "Reference",
+                  "text": "AssistantMessage",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.AssistantMessage:interface"
+                },
+                { "kind": "Content", "text": " | " },
+                {
+                  "kind": "Reference",
+                  "text": "SystemMessage",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.SystemMessage:interface"
+                },
+                { "kind": "Content", "text": " | " },
+                {
+                  "kind": "Reference",
+                  "text": "ToolMessage",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.ToolMessage:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "Message",
+              "typeTokenRange": { "startIndex": 1, "endIndex": 8 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
             {
-              "kind": "Reference",
-              "text": "CompletionToolChoiceOption",
-              "canonicalReference": "@hashbrownai/core!Chat.CompletionToolChoiceOption:type"
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.SystemMessage:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface SystemMessage " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "SystemMessage",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.SystemMessage#content:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "content: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "content",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.SystemMessage#role:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "role: " },
+                    { "kind": "Content", "text": "'system'" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "role",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
-            { "kind": "Content", "text": ";\n    tools?: " },
             {
-              "kind": "Reference",
-              "text": "Tool",
-              "canonicalReference": "@hashbrownai/core!Chat.Tool:type"
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.Tool:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface Tool " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "Tool",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.Tool#description:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "description: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "description",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.Tool#name:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "name: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "name",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.Tool#parameters:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "parameters: " },
+                    { "kind": "Content", "text": "object" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "parameters",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
             },
-            { "kind": "Content", "text": "[];\n}" },
-            { "kind": "Content", "text": ";" }
+            {
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.ToolCall:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface ToolCall " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "ToolCall",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolCall#function:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "function: " },
+                    {
+                      "kind": "Content",
+                      "text": "{\n        name: string;\n        arguments: string;\n    }"
+                    },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "function",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolCall#id:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "id: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "id",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolCall#index:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "index: " },
+                    { "kind": "Content", "text": "number" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "index",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolCall#type:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "type: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "type",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.ToolMessage:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface ToolMessage " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "ToolMessage",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolMessage#content:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "content: " },
+                    {
+                      "kind": "Reference",
+                      "text": "PromiseSettledResult",
+                      "canonicalReference": "!PromiseSettledResult:type"
+                    },
+                    { "kind": "Content", "text": "<any>" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "content",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolMessage#role:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "role: " },
+                    { "kind": "Content", "text": "'tool'" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "role",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolMessage#tool_call_id:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "tool_call_id: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "tool_call_id",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.ToolMessage#tool_name:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "tool_name: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "tool_name",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Api.UserMessage:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface UserMessage " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/api.models.ts",
+              "releaseTag": "Public",
+              "name": "UserMessage",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.UserMessage#content:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "content: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "content",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Api.UserMessage#role:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "role: " },
+                    { "kind": "Content", "text": "'user'" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "role",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            }
           ],
-          "fileUrlPath": "../packages/core/src/models/chat/CompletionCreateParams.ts",
-          "releaseTag": "Public",
-          "name": "CompletionCreateParams",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 10 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -306,25 +1534,829 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.CompletionToolChoiceOption:type",
+          "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:type",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export type CompletionToolChoiceOption = "
+              "text": "export type AssistantMessage<OutputSchemaOrString extends "
             },
-            { "kind": "Content", "text": "'auto' | 'none' | " },
+            { "kind": "Content", "text": "string | " },
             {
               "kind": "Reference",
-              "text": "CompletionToolChoiceFunctionOption",
-              "canonicalReference": "@hashbrownai/core!~CompletionToolChoiceFunctionOption:interface"
+              "text": "s.HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
             },
+            { "kind": "Content", "text": ", ToolUnion extends " },
+            {
+              "kind": "Reference",
+              "text": "AnyTool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": "> = " },
+            {
+              "kind": "Reference",
+              "text": "Prettify",
+              "canonicalReference": "@hashbrownai/core!θtypes.Prettify:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<OutputSchemaOrString extends string ? {\n    role: 'assistant';\n    content?: OutputSchemaOrString;\n    toolCalls: "
+            },
+            {
+              "kind": "Reference",
+              "text": "ToolCall",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<ToolUnion>[];\n} : OutputSchemaOrString extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "s.HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " ? {\n    role: 'assistant';\n    content?: "
+            },
+            {
+              "kind": "Reference",
+              "text": "s.Infer",
+              "canonicalReference": "@hashbrownai/core!s.Infer:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<OutputSchemaOrString>;\n    toolCalls: "
+            },
+            {
+              "kind": "Reference",
+              "text": "ToolCall",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
+            },
+            { "kind": "Content", "text": "<ToolUnion>[];\n} : never>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/models/chat/CompletionToolChoiceOption.ts",
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
-          "name": "CompletionToolChoiceOption",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "name": "AssistantMessage",
+          "typeParameters": [
+            {
+              "typeParameterName": "OutputSchemaOrString",
+              "constraintTokenRange": { "startIndex": 1, "endIndex": 3 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+            },
+            {
+              "typeParameterName": "ToolUnion",
+              "constraintTokenRange": { "startIndex": 4, "endIndex": 5 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+            }
+          ],
+          "typeTokenRange": { "startIndex": 6, "endIndex": 16 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "Namespace",
+          "canonicalReference": "@hashbrownai/core!Chat.helpers:namespace",
+          "docComment": "",
+          "excerptTokens": [],
+          "fileUrlPath": "../packages/core/src/models/public_api.ts",
+          "releaseTag": "None",
+          "name": "helpers",
+          "preserveMemberOrder": false,
+          "members": [],
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "Namespace",
+          "canonicalReference": "@hashbrownai/core!Chat.Internal:namespace",
+          "docComment": "",
+          "excerptTokens": [],
+          "fileUrlPath": "../packages/core/src/models/public_api.ts",
+          "releaseTag": "None",
+          "name": "Internal",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Internal.AssistantMessage:interface",
+              "docComment": "",
+              "excerptTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface AssistantMessage "
+                }
+              ],
+              "fileUrlPath": "../packages/core/src/models/internal.models.ts",
+              "releaseTag": "Public",
+              "name": "AssistantMessage",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.AssistantMessage#content:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "content?: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "content",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.AssistantMessage#role:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "role: " },
+                    { "kind": "Content", "text": "'assistant'" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "role",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.AssistantMessage#toolCallIds:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "toolCallIds: " },
+                    { "kind": "Content", "text": "string[]" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "toolCallIds",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "TypeAlias",
+              "canonicalReference": "@hashbrownai/core!Chat.Internal.Message:type",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export type Message = " },
+                {
+                  "kind": "Reference",
+                  "text": "AssistantMessage",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Internal.AssistantMessage_2:interface"
+                },
+                { "kind": "Content", "text": " | " },
+                {
+                  "kind": "Reference",
+                  "text": "UserMessage",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Internal.UserMessage_2:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ],
+              "fileUrlPath": "../packages/core/src/models/internal.models.ts",
+              "releaseTag": "Public",
+              "name": "Message",
+              "typeTokenRange": { "startIndex": 1, "endIndex": 4 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Internal.Tool:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface Tool " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/internal.models.ts",
+              "releaseTag": "Public",
+              "name": "Tool",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.Tool#description:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "description: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "description",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.Tool#handler:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "handler: " },
+                    { "kind": "Content", "text": "(input: any, abortSignal: " },
+                    {
+                      "kind": "Reference",
+                      "text": "AbortSignal",
+                      "canonicalReference": "!AbortSignal:interface"
+                    },
+                    { "kind": "Content", "text": ") => " },
+                    {
+                      "kind": "Reference",
+                      "text": "Promise",
+                      "canonicalReference": "!Promise:interface"
+                    },
+                    { "kind": "Content", "text": "<any>" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "handler",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.Tool#name:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "name: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "name",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.Tool#schema:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "schema: " },
+                    {
+                      "kind": "Reference",
+                      "text": "s.ObjectType",
+                      "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
+                    },
+                    { "kind": "Content", "text": "<" },
+                    {
+                      "kind": "Reference",
+                      "text": "Record",
+                      "canonicalReference": "!Record:type"
+                    },
+                    { "kind": "Content", "text": "<string, " },
+                    {
+                      "kind": "Reference",
+                      "text": "s.HashbrownType",
+                      "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+                    },
+                    { "kind": "Content", "text": ">>" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "schema",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface ToolCall " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/internal.models.ts",
+              "releaseTag": "Public",
+              "name": "ToolCall",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall#arguments:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "arguments: " },
+                    { "kind": "Content", "text": "object" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "arguments",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall#id:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "id: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "id",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall#name:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "name: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "name",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall#progress:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "progress?: " },
+                    { "kind": "Content", "text": "number" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "progress",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall#result:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "result?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "PromiseSettledResult",
+                      "canonicalReference": "!PromiseSettledResult:type"
+                    },
+                    { "kind": "Content", "text": "<any>" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": true,
+                  "releaseTag": "Public",
+                  "name": "result",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall#status:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "status: " },
+                    { "kind": "Content", "text": "'pending' | 'done'" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "status",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "Interface",
+              "canonicalReference": "@hashbrownai/core!Chat.Internal.UserMessage:interface",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "export interface UserMessage " }
+              ],
+              "fileUrlPath": "../packages/core/src/models/internal.models.ts",
+              "releaseTag": "Public",
+              "name": "UserMessage",
+              "preserveMemberOrder": false,
+              "members": [
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.UserMessage#content:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "content: " },
+                    { "kind": "Content", "text": "string" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "content",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                },
+                {
+                  "kind": "PropertySignature",
+                  "canonicalReference": "@hashbrownai/core!Chat.Internal.UserMessage#role:member",
+                  "docComment": "",
+                  "excerptTokens": [
+                    { "kind": "Content", "text": "role: " },
+                    { "kind": "Content", "text": "'user'" },
+                    { "kind": "Content", "text": ";" }
+                  ],
+                  "isReadonly": false,
+                  "isOptional": false,
+                  "releaseTag": "Public",
+                  "name": "role",
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "docs": {
+                    "modifiers": {
+                      "isInternal": false,
+                      "isPublic": false,
+                      "isAlpha": false,
+                      "isBeta": false,
+                      "isOverride": false,
+                      "isExperimental": false
+                    },
+                    "summary": "",
+                    "usageNotes": "",
+                    "remarks": "",
+                    "deprecated": "",
+                    "returns": "",
+                    "see": [],
+                    "params": []
+                  }
+                }
+              ],
+              "extendsTokenRanges": [],
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            }
+          ],
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -350,115 +2382,51 @@
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export type Message<AssistantOutput = "
+              "text": "export type Message<OutputSchemaOrString extends "
             },
-            { "kind": "Content", "text": "string" },
-            { "kind": "Content", "text": "> = " },
-            {
-              "kind": "Reference",
-              "text": "SystemMessage",
-              "canonicalReference": "@hashbrownai/core!Chat.SystemMessage:interface"
-            },
-            { "kind": "Content", "text": " | " },
-            {
-              "kind": "Reference",
-              "text": "UserMessage",
-              "canonicalReference": "@hashbrownai/core!Chat.UserMessage:interface"
-            },
-            { "kind": "Content", "text": " | " },
-            {
-              "kind": "Reference",
-              "text": "AssistantMessage",
-              "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:interface"
-            },
-            { "kind": "Content", "text": "<AssistantOutput> | " },
-            {
-              "kind": "Reference",
-              "text": "ToolMessage",
-              "canonicalReference": "@hashbrownai/core!Chat.ToolMessage:interface"
-            },
-            { "kind": "Content", "text": ";" }
-          ],
-          "fileUrlPath": "../packages/core/src/models/chat/Message.ts",
-          "releaseTag": "Public",
-          "name": "Message",
-          "typeParameters": [
-            {
-              "typeParameterName": "AssistantOutput",
-              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
-              "defaultTypeTokenRange": { "startIndex": 1, "endIndex": 2 }
-            }
-          ],
-          "typeTokenRange": { "startIndex": 3, "endIndex": 10 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.MessageRole:type",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "export type MessageRole = " },
-            {
-              "kind": "Content",
-              "text": "'system' | 'user' | 'assistant' | 'tool'"
-            },
-            { "kind": "Content", "text": ";" }
-          ],
-          "fileUrlPath": "../packages/core/src/models/chat/MessageRole.ts",
-          "releaseTag": "Public",
-          "name": "MessageRole",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.ResponseFormat:type",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "export type ResponseFormat = " },
+            { "kind": "Content", "text": "string | " },
             {
               "kind": "Reference",
               "text": "s.HashbrownType",
               "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
             },
+            { "kind": "Content", "text": ", Tools extends " },
+            {
+              "kind": "Reference",
+              "text": "AnyTool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": "> = " },
+            {
+              "kind": "Reference",
+              "text": "UserMessage",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.UserMessage_3:type"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "AssistantMessage",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AssistantMessage_3:type"
+            },
+            { "kind": "Content", "text": "<OutputSchemaOrString, Tools>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/models/chat/ResponseFormat.ts",
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
-          "name": "ResponseFormat",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "name": "Message",
+          "typeParameters": [
+            {
+              "typeParameterName": "OutputSchemaOrString",
+              "constraintTokenRange": { "startIndex": 1, "endIndex": 3 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+            },
+            {
+              "typeParameterName": "Tools",
+              "constraintTokenRange": { "startIndex": 4, "endIndex": 5 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+            }
+          ],
+          "typeTokenRange": { "startIndex": 6, "endIndex": 10 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -478,83 +2446,42 @@
           }
         },
         {
-          "kind": "Interface",
-          "canonicalReference": "@hashbrownai/core!Chat.SystemMessage:interface",
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/core!Chat.Middleware:type",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "export interface SystemMessage " }
-          ],
-          "fileUrlPath": "../packages/core/src/models/chat/SystemMessage.ts",
-          "releaseTag": "Public",
-          "name": "SystemMessage",
-          "preserveMemberOrder": false,
-          "members": [
+            { "kind": "Content", "text": "export type Middleware = " },
+            { "kind": "Content", "text": "(fetchInit: " },
             {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.SystemMessage#content:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "content: " },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "content",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
             },
+            { "kind": "Content", "text": ") => " },
             {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.SystemMessage#role:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "role: " },
-                { "kind": "Content", "text": "'system'" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "role",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            }
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": ">" },
+            { "kind": "Content", "text": ";" }
           ],
-          "extendsTokenRanges": [],
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
+          "releaseTag": "Public",
+          "name": "Middleware",
+          "typeTokenRange": { "startIndex": 1, "endIndex": 10 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -578,71 +2505,55 @@
           "canonicalReference": "@hashbrownai/core!Chat.Tool:type",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "export type Tool<Name extends " },
-            { "kind": "Content", "text": "string" },
-            { "kind": "Content", "text": " = " },
-            { "kind": "Content", "text": "string" },
-            { "kind": "Content", "text": ", Schema extends " },
-            {
-              "kind": "Reference",
-              "text": "s.ObjectType",
-              "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
-            },
-            { "kind": "Content", "text": "<" },
-            {
-              "kind": "Reference",
-              "text": "Record",
-              "canonicalReference": "!Record:type"
-            },
-            { "kind": "Content", "text": "<string, " },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": ">>" },
-            { "kind": "Content", "text": " = " },
-            {
-              "kind": "Reference",
-              "text": "s.ObjectType",
-              "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
-            },
-            { "kind": "Content", "text": "<" },
-            {
-              "kind": "Reference",
-              "text": "Record",
-              "canonicalReference": "!Record:type"
-            },
-            { "kind": "Content", "text": "<string, " },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": ">>" },
-            { "kind": "Content", "text": "> = " },
             {
               "kind": "Content",
-              "text": "{\n    name: Name;\n    description: string;\n    schema: Schema;\n}"
+              "text": "export type Tool<Name, ArgsSchema extends "
             },
+            {
+              "kind": "Reference",
+              "text": "s.HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ", Result> = " },
+            {
+              "kind": "Content",
+              "text": "{\n    name: Name;\n    description: string;\n    schema: ArgsSchema;\n    handler: (input: ArgsSchema, abortSignal: "
+            },
+            {
+              "kind": "Reference",
+              "text": "AbortSignal",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ") => " },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": "<Result>;\n}" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/models/chat/Tool.ts",
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
           "name": "Tool",
           "typeParameters": [
             {
               "typeParameterName": "Name",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+            },
+            {
+              "typeParameterName": "ArgsSchema",
               "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "defaultTypeTokenRange": { "startIndex": 3, "endIndex": 4 }
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             },
             {
-              "typeParameterName": "Schema",
-              "constraintTokenRange": { "startIndex": 5, "endIndex": 11 },
-              "defaultTypeTokenRange": { "startIndex": 12, "endIndex": 18 }
+              "typeParameterName": "Result",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "typeTokenRange": { "startIndex": 19, "endIndex": 20 },
+          "typeTokenRange": { "startIndex": 3, "endIndex": 8 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -662,152 +2573,72 @@
           }
         },
         {
-          "kind": "Interface",
-          "canonicalReference": "@hashbrownai/core!Chat.ToolMessage:interface",
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/core!Chat.ToolCall:type",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "export interface ToolMessage " }
+            {
+              "kind": "Content",
+              "text": "export type ToolCall<ToolUnion extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "AnyTool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": "> = " },
+            {
+              "kind": "Reference",
+              "text": "Prettify",
+              "canonicalReference": "@hashbrownai/core!θtypes.Prettify:type"
+            },
+            { "kind": "Content", "text": "<ToolUnion extends " },
+            {
+              "kind": "Reference",
+              "text": "Tool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Tool_3:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<infer Name, infer ArgsSchema, infer Result> ? {\n    role: 'tool';\n    status: 'done';\n    name: Name;\n    args: "
+            },
+            {
+              "kind": "Reference",
+              "text": "s.Infer",
+              "canonicalReference": "@hashbrownai/core!s.Infer:type"
+            },
+            { "kind": "Content", "text": "<ArgsSchema>;\n    result: " },
+            {
+              "kind": "Reference",
+              "text": "PromiseSettledResult",
+              "canonicalReference": "!PromiseSettledResult:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<Result>;\n    toolCallId: string;\n} | {\n    role: 'tool';\n    status: 'pending';\n    name: Name;\n    args: "
+            },
+            {
+              "kind": "Reference",
+              "text": "s.Infer",
+              "canonicalReference": "@hashbrownai/core!s.Infer:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<ArgsSchema>;\n    toolCallId: string;\n    progress?: number;\n} : never>"
+            },
+            { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/models/chat/ToolMessage.ts",
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
-          "name": "ToolMessage",
-          "preserveMemberOrder": false,
-          "members": [
+          "name": "ToolCall",
+          "typeParameters": [
             {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.ToolMessage#content:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "content: " },
-                {
-                  "kind": "Reference",
-                  "text": "PromiseSettledResult",
-                  "canonicalReference": "!PromiseSettledResult:type"
-                },
-                { "kind": "Content", "text": "<any>" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "content",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.ToolMessage#role:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "role: " },
-                { "kind": "Content", "text": "'tool'" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "role",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.ToolMessage#tool_call_id:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "tool_call_id: " },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "tool_call_id",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.ToolMessage#tool_name:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "tool_name: " },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "tool_name",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
+              "typeParameterName": "ToolUnion",
+              "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "extendsTokenRanges": [],
+          "typeTokenRange": { "startIndex": 3, "endIndex": 13 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -827,83 +2658,21 @@
           }
         },
         {
-          "kind": "Interface",
-          "canonicalReference": "@hashbrownai/core!Chat.UserMessage:interface",
+          "kind": "TypeAlias",
+          "canonicalReference": "@hashbrownai/core!Chat.UserMessage:type",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "export interface UserMessage " }
+            { "kind": "Content", "text": "export type UserMessage = " },
+            {
+              "kind": "Content",
+              "text": "{\n    role: 'user';\n    content: string;\n}"
+            },
+            { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/models/chat/UserMessage.ts",
+          "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
           "name": "UserMessage",
-          "preserveMemberOrder": false,
-          "members": [
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.UserMessage#content:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "content: " },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "content",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "PropertySignature",
-              "canonicalReference": "@hashbrownai/core!Chat.UserMessage#role:member",
-              "docComment": "",
-              "excerptTokens": [
-                { "kind": "Content", "text": "role: " },
-                { "kind": "Content", "text": "'user'" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "isReadonly": false,
-              "isOptional": false,
-              "releaseTag": "Public",
-              "name": "role",
-              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            }
-          ],
-          "extendsTokenRanges": [],
+          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
               "isInternal": false,
