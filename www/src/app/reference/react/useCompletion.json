@@ -1,0 +1,57 @@
+{
+  "name": "useCompletion",
+  "canonicalReference": "@hashbrownai/react!useCompletion:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useCompletion:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "useCompletion: (options: " },
+        {
+          "kind": "Reference",
+          "text": "UseCompletionOptions",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface"
+        },
+        { "kind": "Content", "text": ") => " },
+        {
+          "kind": "Reference",
+          "text": "UseCompletionResult",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult:interface"
+        }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isOptional": false
+        }
+      ],
+      "name": "useCompletion",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

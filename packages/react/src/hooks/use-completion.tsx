@@ -1,76 +1,107 @@
 import { Chat } from '@hashbrownai/core';
-import { useEffect, useMemo, useState } from 'react';
-import { useChat, UseChatOptions, UseChatResult } from './use-chat';
+import { useEffect, useMemo } from 'react';
+import { useChat } from './use-chat';
 
-export interface UseCompletionOptions extends Omit<UseChatOptions, 'messages'> {
+/**
+ * Options for the `useCompletion` hook.
+ */
+export interface UseCompletionOptions<Tools extends Chat.AnyTool> {
   /**
    * The input string to predict from.
    */
   input: string | null | undefined;
+
   /**
-   * Example input and output pairs to guide the prediction.
+   * The LLM model to use for the chat.
+   *
    */
-  examples?: { input: string; output: string }[];
+  model: string;
+
   /**
-   * The system prompt to use for the completion task.
+   * The prompt to use for the chat.
    */
-  system: string;
+  prompt: string;
+
+  /**
+   * The tools to make available use for the chat.
+   * default: []
+   */
+  tools?: Tools[];
+
+  /**
+   * The temperature for the chat.
+   */
+  temperature?: number;
+
+  /**
+   * The maximum number of tokens to allow.
+   * default: 5000
+   */
+  maxTokens?: number;
+
+  /**
+   * The debounce time between sends to the endpoint.
+   * default: 150
+   */
+  debounceTime?: number;
+
+  /**
+   * The name of the hook, useful for debugging.
+   */
+  debugName?: string;
 }
 
-export interface UseCompletionResult extends UseChatResult {
+/**
+ * The result of the `useCompletion` hook.
+ */
+export interface UseCompletionResult {
   output: string | null;
-  setExamples: (examples: { input: string; output: string }[]) => void;
+
+  /**
+   * Reload the chat, useful for retrying when an error occurs.
+   */
+  reload: () => void;
+
+  /**
+   * The error encountered during chat operations, if any.
+   */
+  error: Error | null;
+
+  /**
+   * Whether the chat is receiving a response.
+   */
+  isReceiving: boolean;
+
+  /**
+   * Whether the chat is sending a response.
+   */
+  isSending: boolean;
+
+  /**
+   * Whether the chat is running tool calls.
+   */
+  isRunningToolCalls: boolean;
 }
 
-export const useCompletion = (
-  options: UseCompletionOptions,
+export const useCompletion = <Tools extends Chat.AnyTool>(
+  options: UseCompletionOptions<Tools>,
 ): UseCompletionResult => {
-  const { examples: initialExamples } = options;
-  const [examples, setExamples] = useState<{ input: string; output: string }[]>(
-    initialExamples || [],
-  );
-  const { stop, setMessages, ...chat } = useChat({
+  const { setMessages, ...chat } = useChat({
     ...options,
   });
-
-  const systemPrompt = useMemo(() => {
-    const _system = options.system;
-    return `
-      ${_system}
-
-      ## Examples
-      ${examples
-        .map(
-          (example) => `
-        Input: ${JSON.stringify(example.input)}
-        Output: ${example.output}
-      `,
-        )
-        .join('\n')}
-    `;
-  }, [options.system, examples]);
-
-  const systemMessage: Chat.SystemMessage = useMemo(() => {
-    return {
-      role: 'system',
-      content: systemPrompt,
-    };
-  }, [systemPrompt]);
 
   useEffect(() => {
     if (!options.input) return;
 
-    setMessages([
-      systemMessage as Chat.Message,
-      { role: 'user', content: options.input },
-    ]);
-  }, [setMessages, options.input, systemMessage]);
+    setMessages([{ role: 'user', content: options.input }]);
+  }, [setMessages, options.input]);
 
   const output: string | null = useMemo(() => {
     const message = chat.messages.find(
       (message) =>
         message.role === 'assistant' &&
-        !(message.tool_calls && message.tool_calls.length),
+        !(message.toolCalls && message.toolCalls.length) &&
+        message.content,
     );
 
     if (!message) return null;
@@ -80,10 +111,11 @@ export const useCompletion = (
   }, [chat.messages]);
 
   return {
-    ...chat,
-    stop,
-    setMessages,
     output,
-    setExamples,
+    reload: chat.reload,
+    error: chat.error,
+    isReceiving: chat.isReceiving,
+    isSending: chat.isSending,
+    isRunningToolCalls: chat.isRunningToolCalls,
   };
 };

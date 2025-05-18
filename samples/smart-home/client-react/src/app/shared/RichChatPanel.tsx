@@ -1,11 +1,11 @@
-import { Chat, exposeComponent, s } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import {
-  ChatStatus,
   createTool,
   createToolWithArgs,
+  exposeComponent,
   useUiChat,
 } from '@hashbrownai/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { LightChatComponent } from '../views/components/LightChatComponent';
 import { Button } from './button';
@@ -16,62 +16,71 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const RichChatPanel = () => {
-  const { messages, sendMessage, status, stop } = useUiChat({
-    model: 'gpt-4o',
-    tools: [
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-      }),
-      createToolWithArgs({
-        name: 'controlLight',
-        description:
-          'Control the light. Brightness is a number between 0 and 100.',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number(
-            'The brightness of the light, between 0 and 100',
-          ),
-        }) as unknown as s.ObjectType<Record<string, s.HashbrownType<unknown>>>,
-        handler: (input: object) => {
-          const { lightId, brightness } = input as {
-            lightId: string;
-            brightness: number;
-          };
-          useSmartHomeStore.getState().updateLight(lightId, {
-            brightness,
-          });
-          return Promise.resolve(true);
-        },
-      }),
-    ],
-    components: [
-      exposeComponent(LightChatComponent, {
-        name: 'LightChatComponent',
-        description: 'A component that lets the user control a light',
-        props: {
-          lightId: s.string('The id of the light'),
-        },
-      }),
-      exposeComponent(MarkdownComponent, {
-        name: 'MarkdownComponent',
-        description: 'Show markdown content to the user',
-        props: {
-          content: s.streaming.string('The content of the markdown'),
-        },
-      }),
-      exposeComponent(CardComponent, {
-        name: 'CardComponent',
-        description: 'Show a card with children components to the user',
-        children: 'any',
-        props: {
-          title: s.string('The title of the card'),
-          description: s.streaming.string('The description of the card'),
-        },
-      }),
-    ],
-  });
+  const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
+    useUiChat({
+      model: 'gpt-4o',
+      prompt:
+        'You are a smart home assistant. You can control the lights in the house.',
+      tools: [
+        createTool({
+          name: 'getLights',
+          description: 'Get the current lights',
+          handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+        }),
+        createToolWithArgs({
+          name: 'controlLight',
+          description:
+            'Control the light. Brightness is a number between 0 and 100.',
+          schema: s.object('Control light input', {
+            lightId: s.string('The id of the light'),
+            brightness: s.number(
+              'The brightness of the light, between 0 and 100',
+            ),
+          }) as unknown as s.ObjectType<
+            Record<string, s.HashbrownType<unknown>>
+          >,
+          handler: (input: object) => {
+            const { lightId, brightness } = input as {
+              lightId: string;
+              brightness: number;
+            };
+            useSmartHomeStore.getState().updateLight(lightId, {
+              brightness,
+            });
+            return Promise.resolve(true);
+          },
+        }),
+      ],
+      components: [
+        exposeComponent(LightChatComponent, {
+          name: 'LightChatComponent',
+          description: 'A component that lets the user control a light',
+          props: {
+            lightId: s.string('The id of the light'),
+          },
+        }),
+        exposeComponent(MarkdownComponent, {
+          name: 'MarkdownComponent',
+          description: 'Show markdown content to the user',
+          props: {
+            content: s.streaming.string('The content of the markdown'),
+          },
+        }),
+        exposeComponent(CardComponent, {
+          name: 'CardComponent',
+          description: 'Show a card with children components to the user',
+          children: 'any',
+          props: {
+            title: s.string('The title of the card'),
+            description: s.streaming.string('The description of the card'),
+          },
+        }),
+      ],
+    });
+
+  const isWorking = useMemo(() => {
+    return isSending || isReceiving || isRunningToolCalls;
+  }, [isSending, isReceiving, isRunningToolCalls]);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -99,7 +108,7 @@ export const RichChatPanel = () => {
     if (!inputValue.trim()) return;
 
     // Add the user message to the messages list
-    const newUserMessage: Chat.Message = {
+    const newUserMessage: Chat.UserMessage = {
       role: 'user',
       content: inputValue,
     };
@@ -114,14 +123,10 @@ export const RichChatPanel = () => {
       // Submit on Enter (but not on Shift+Enter)
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault(); // Prevent default behavior (new line)
-        if (status !== ChatStatus.Idle) {
-          stop();
-        } else {
-          onSubmit();
-        }
+        onSubmit();
       }
     },
-    [onSubmit, status, stop],
+    [onSubmit],
   );
 
   const onInputChange = useCallback(
@@ -143,7 +148,7 @@ export const RichChatPanel = () => {
         </ScrollArea>
       </div>
       <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end px-2">
-        {status !== ChatStatus.Idle && <p>Thinking...</p>}
+        {isWorking && <p>Thinking...</p>}
       </div>
       <div className="flex flex-col gap-2 px-2">
         <Textarea
@@ -152,10 +157,15 @@ export const RichChatPanel = () => {
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
-        {status === ChatStatus.Idle ? (
+        {!isWorking ? (
           <Button onClick={onSubmit}>Send</Button>
         ) : (
-          <Button variant="outline" onClick={stop}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              console.log('stop');
+            }}
+          >
             Stop
           </Button>
         )}

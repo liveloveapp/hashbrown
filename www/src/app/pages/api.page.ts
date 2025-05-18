@@ -9,7 +9,7 @@ import { ApiMenu } from '../components/ApiMenu';
   imports: [RouterOutlet, Footer, Header, ApiMenu, EnterpriseProducts],
   template: `
     <www-header />
-    <main>
+    <main class="api">
       <www-ref-menu />
       <div>
         <router-outlet></router-outlet>
@@ -25,7 +25,7 @@ import { ApiMenu } from '../components/ApiMenu';
       height: 100%;
     }
 
-    main {
+    .api {
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
@@ -44,7 +44,7 @@ import { ApiMenu } from '../components/ApiMenu';
     }
 
     @media screen and (min-width: 768px) {
-      main {
+      .api {
         grid-template-columns: 192px auto;
 
         > www-ref-menu {
@@ -54,13 +54,13 @@ import { ApiMenu } from '../components/ApiMenu';
     }
 
     @media screen and (min-width: 1024px) {
-      main {
+      .api {
         grid-template-columns: 256px auto;
       }
     }
 
     @media screen and (min-width: 1281px) {
-      main {
+      .api {
         grid-template-columns: 320px auto;
       }
     }

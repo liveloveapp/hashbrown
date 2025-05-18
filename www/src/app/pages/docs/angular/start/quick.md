@@ -6,7 +6,7 @@ hashbrown is an open source library for building meaningful AI experiences with 
 
 - **Headless**: build your UI how you want
 - **Signal Based**: hashbrown uses signals for reactivity
-- **Platform Agnostic**: use any supported platform or model
+- **Platform Agnostic**: use any [supported platform](/docs/angular/start/platforms)
 
 ---
 
@@ -34,7 +34,7 @@ So, grab an API key and follow along.
 ## Install
 
 ```sh
-npm install @hashbrown/core @hashbrown/angular
+npm install @hashbrown/{core,angular,openai} --save
 ```
 
 ---
@@ -47,7 +47,6 @@ It provides a set of methods for sending and receiving messages, as well as mana
 <www-code-example header="chat-panel.component.ts">
 
 ```ts
-
 @Component({
   selector: 'app-chat-panel',
   imports: [

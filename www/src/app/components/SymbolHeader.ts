@@ -49,7 +49,7 @@ import { SymbolCodeLink } from './SymbolCodeLink';
 
           > .import {
             font: 700 12px/16px monospace;
-            color: #7d542f;
+            color: rgba(125, 84, 47, 0.56);
           }
 
           > .name {

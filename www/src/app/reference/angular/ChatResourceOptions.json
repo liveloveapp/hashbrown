@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!ChatResourceOptions:interface",
-      "docComment": "/**\n * Chat resource configuration.\n */\n",
+      "docComment": "/**\n * Chat resource configuration.\n *\n * @remarks\n *\n * The `ChatResourceOptions` interface defines the options for configuring the chat resource.\n *\n * @typedef {object} ChatResourceOptions\n *\n * @param model - The model to use for the chat.\n *\n * @param temperature - The temperature for the chat.\n *\n * @param tools - The tools to use for the chat.\n *\n * @param maxTokens - The maximum number of tokens for the chat.\n *\n * @param messages - The initial messages for the chat.\n *\n * @param debounceTime - The debounce time for the chat.\n *\n * @param  - {s.HashbrownType | Signal<s.HashbrownType>} [θresponseFormat] - The response format for the chat.\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "export interface ChatResourceOptions " }
       ],
@@ -272,13 +272,42 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Chat resource configuration.\n",
+        "summary": "Chat resource configuration.\n\n",
         "usageNotes": "",
-        "remarks": "",
+        "remarks": "\n\nThe `ChatResourceOptions` interface defines the options for configuring the chat resource.\n\n@typedef {object} ChatResourceOptions\n\n",
         "deprecated": "",
         "returns": "",
         "see": [],
-        "params": []
+        "params": [
+          {
+            "name": "model",
+            "description": "The model to use for the chat.\n\n"
+          },
+          {
+            "name": "temperature",
+            "description": "The temperature for the chat.\n\n"
+          },
+          {
+            "name": "tools",
+            "description": "The tools to use for the chat.\n\n"
+          },
+          {
+            "name": "maxTokens",
+            "description": "The maximum number of tokens for the chat.\n\n"
+          },
+          {
+            "name": "messages",
+            "description": "The initial messages for the chat.\n\n"
+          },
+          {
+            "name": "debounceTime",
+            "description": "The debounce time for the chat.\n\n"
+          },
+          {
+            "name": "",
+            "description": "  - {s.HashbrownType | Signal<s.HashbrownType>} [θresponseFormat] - The response format for the chat.\n"
+          }
+        ]
       }
     }
   ]

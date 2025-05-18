@@ -1,0 +1,80 @@
+{
+  "name": "useStructuredCompletion",
+  "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "useStructuredCompletion: <Input, Output extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
+        {
+          "kind": "Reference",
+          "text": "UseStructuredCompletionOptions",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionOptions:interface"
+        },
+        { "kind": "Content", "text": "<Input, Output>" },
+        { "kind": "Content", "text": ") => " },
+        {
+          "kind": "Reference",
+          "text": "UseStructuredCompletionResult",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionResult:interface"
+        },
+        { "kind": "Content", "text": "<Output>" }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Input",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Output",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "useStructuredCompletion",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

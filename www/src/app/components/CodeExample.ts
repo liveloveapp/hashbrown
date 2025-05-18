@@ -21,7 +21,7 @@ import { Copy } from '../icons/Copy';
       :host {
         display: flex;
         flex-direction: column;
-        border: 1px solid rgba(61, 60, 58, 0.24);
+        border: 1px solid #000;
         border-radius: 12px;
         margin: 14px 0 24px;
         overflow: hidden;
@@ -31,8 +31,7 @@ import { Copy } from '../icons/Copy';
         display: flex;
         justify-content: space-between;
         padding: 8px 16px;
-        background-color: rgba(61, 60, 58, 0.08);
-        border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+        border-bottom: 1px solid #000;
         font-size: 12px;
         font-weight: 500;
         color: rgba(61, 60, 58, 0.88);
@@ -45,7 +44,7 @@ import { Copy } from '../icons/Copy';
       }
 
       .content {
-        background: rgba(61, 60, 58, 0.04);
+        background: #3d3c3a;
         padding: 16px;
         overflow-x: scroll;
       }

@@ -6,6 +6,7 @@ import { SmartHomeService } from '../../../services/smart-home.service';
 import { LightsPageActions } from '../../lights/actions';
 import { PredictionsAiActions } from '../../predictions/actions';
 import { ScenesApiActions, ScenesPageActions } from '../actions';
+import { ScheduledScenesPageActions } from '../../../pages/scheduled-scenes/actions';
 
 export const loadScenes$ = createEffect(
   () => {
@@ -13,7 +14,11 @@ export const loadScenes$ = createEffect(
     const smartHome = inject(SmartHomeService);
 
     return actions$.pipe(
-      ofType(ScenesPageActions.enter, LightsPageActions.enter),
+      ofType(
+        ScenesPageActions.enter,
+        LightsPageActions.enter,
+        ScheduledScenesPageActions.enter,
+      ),
       mergeMap(() =>
         of(smartHome.scenes()).pipe(
           map((scenes) => ScenesApiActions.loadScenesSuccess({ scenes })),

@@ -7,10 +7,8 @@ import { Header } from '../components/Header';
   imports: [RouterOutlet, Footer, Header],
   template: `
     <www-header />
-    <main>
-      <div>
-        <router-outlet></router-outlet>
-      </div>
+    <main class="enterprise">
+      <router-outlet></router-outlet>
     </main>
     <www-footer />
   `,
@@ -21,12 +19,8 @@ import { Header } from '../components/Header';
       height: 100%;
     }
 
-    www-header {
+    .enterprise {
       border-bottom: 1px solid rgba(61, 60, 58, 0.24);
-    }
-
-    www-footer {
-      border-top: 1px solid rgba(61, 60, 58, 0.24);
     }
   `,
 })

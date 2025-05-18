@@ -147,7 +147,7 @@ export class LightFormComponent {
   readonly nameCompletion = completionResource({
     model: 'gpt-4o-mini',
     input: this.nameSignal,
-    system: computed(
+    prompt: computed(
       () => `
       Help the user generate a name for a light. The input will be what
       they have typed so far, and the output should be a prediction for
@@ -155,7 +155,8 @@ export class LightFormComponent {
       the name. Don't include any other text.
       
       If the name looks complete or sounds like a good name, just return
-      an empty string.
+      an empty string. Don't forget to include a leading space if there's
+      not a trailing space in the input and you are predicting a full word.
 
       Never include quote marks around your prediction.
       

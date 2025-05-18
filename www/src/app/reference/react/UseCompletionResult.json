@@ -1,0 +1,117 @@
+{
+  "name": "UseCompletionResult",
+  "canonicalReference": "@hashbrownai/react!UseCompletionResult:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/react!UseCompletionResult:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseCompletionResult extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "UseChatResult",
+          "canonicalReference": "@hashbrownai/react!UseChatResult:interface"
+        },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+      "releaseTag": "Public",
+      "name": "UseCompletionResult",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult#output:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "output: " },
+            { "kind": "Content", "text": "string | null" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "output",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult#setExamples:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "setExamples: " },
+            {
+              "kind": "Content",
+              "text": "(examples: {\n        input: string;\n        output: string;\n    }[]) => void"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "setExamples",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 2 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
+      }
+    }
+  ]
+}

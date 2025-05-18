@@ -1,8 +1,6 @@
-export { UiCompletion } from './components/ui-completion';
 export { createTool, createToolWithArgs } from './create-tool.fn';
 export { HashbrownProvider } from './hashbrown-provider';
 export {
-  ChatStatus,
   useChat,
   type UseChatOptions,
   type UseChatResult,
@@ -22,4 +20,9 @@ export {
   type UseStructuredCompletionOptions,
   type UseStructuredCompletionResult,
 } from './hooks/use-structured-completion';
-export { useUiChat } from './hooks/use-ui-chat';
+export {
+  useUiChat,
+  type UiChatMessage,
+  type UiAssistantMessage,
+  type UiUserMessage,
+} from './hooks/use-ui-chat';

@@ -1,96 +1,128 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { s } from '@hashbrownai/core';
-import { Message } from 'packages/core/src/models/chat';
+import { Chat, s } from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
-import {
-  useStructuredChat,
-  UseStructuredChatOptions,
-  UseStructuredChatResult,
-} from './use-structured-chat';
+import { useStructuredChat } from './use-structured-chat';
 
 export interface UseStructuredCompletionOptions<
-  Input,
-  Output extends s.HashbrownType,
-> extends UseStructuredChatOptions<Output> {
-  input: Input;
-  system: string;
-  examples?: { input: Input; output: s.Infer<Output> }[];
+  Schema extends s.HashbrownType,
+  Tools extends Chat.AnyTool,
+> {
+  /**
+   * The input string to predict from.
+   */
+  input: string | null | undefined;
+
+  /**
+   * The LLM model to use for the chat.
+   *
+   */
+  model: string;
+
+  /**
+   * The prompt to use for the chat.
+   */
+  prompt: string;
+
+  /**
+   * The schema to use for the chat.
+   */
+  schema: Schema;
+
+  /**
+   * The tools to make available use for the chat.
+   * default: []
+   */
+  tools?: Tools[];
+
+  /**
+   * The temperature for the chat.
+   */
+  temperature?: number;
+
+  /**
+   * The maximum number of tokens to allow.
+   * default: 5000
+   */
+  maxTokens?: number;
+
+  /**
+   * The debounce time between sends to the endpoint.
+   * default: 150
+   */
+  debounceTime?: number;
+
+  /**
+   * The name of the hook, useful for debugging.
+   */
+  debugName?: string;
 }
 
-export interface UseStructuredCompletionResult<Output extends s.HashbrownType>
-  extends Omit<UseStructuredChatResult<Output>, 'messages'> {
-  output: Output;
+/**
+ * The result of the `useStructuredCompletion` hook.
+ */
+export interface UseStructuredCompletionResult<Schema extends s.HashbrownType> {
+  /**
+   * The output of the chat.
+   */
+  output: s.Infer<Schema> | null;
+
+  /**
+   * Reload the chat, useful for retrying when an error occurs.
+   */
+  reload: () => void;
+
+  /**
+   * The error encountered during chat operations, if any.
+   */
+  error: Error | null;
+
+  /**
+   * Whether the chat is receiving a response.
+   */
+  isReceiving: boolean;
+
+  /**
+   * Whether the chat is sending a response.
+   */
+  isSending: boolean;
+
+  /**
+   * Whether the chat is running tool calls.
+   */
+  isRunningToolCalls: boolean;
 }
 
-export const useStructuredCompletion = <Input, Output extends s.HashbrownType>(
-  options: UseStructuredCompletionOptions<Input, Output>,
-): UseStructuredCompletionResult<Output> => {
-  const { input, system, examples, ...structuredChatOptions } = options;
-
-  const fullInstructions = useMemo(() => {
-    return `
-    ${system}
-
-    ## Examples
-    ${examples
-      ?.map(
-        (example) => `
-        Input: ${JSON.stringify(example.input)}
-        Output: ${JSON.stringify(example.output)}
-      `,
-      )
-      .join('\n')}
-    `;
-  }, [system, examples]);
-
-  const stringifiedInput = useMemo(
-    () => (input ? JSON.stringify(input) : null),
-    [input],
-  );
-
-  const messages = useMemo(() => {
-    if (!stringifiedInput) {
-      return [
-        {
-          role: 'system',
-          content: fullInstructions,
-        },
-      ];
-    }
-
-    return [
-      { role: 'system', content: fullInstructions },
-      { role: 'user', content: stringifiedInput },
-    ];
-  }, [fullInstructions, stringifiedInput]);
-
-  const structuredChat = useStructuredChat({
-    ...structuredChatOptions,
+export const useStructuredCompletion = <
+  Schema extends s.HashbrownType,
+  Tools extends Chat.AnyTool,
+>(
+  options: UseStructuredCompletionOptions<Schema, Tools>,
+): UseStructuredCompletionResult<Schema> => {
+  const { setMessages, ...chat } = useStructuredChat({
+    ...options,
   });
 
   useEffect(() => {
-    structuredChat.setMessages(messages as Message<string>[]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+    if (!options.input) return;
 
-  const resultOutput = useMemo(() => {
-    if (!structuredChat.messages) {
-      return null;
-    }
-    const lastMessage =
-      structuredChat.messages[structuredChat.messages.length - 1];
-    if (
-      lastMessage &&
-      lastMessage.role === 'assistant' &&
-      lastMessage.content
-    ) {
-      return lastMessage.content;
-    }
-    return null;
-  }, [structuredChat.messages]);
+    setMessages([{ role: 'user', content: options.input }]);
+  }, [setMessages, options.input]);
+
+  const output: s.Infer<Schema> | null = useMemo(() => {
+    const message = chat.messages.find(
+      (message) => message.role === 'assistant' && message.content,
+    );
+
+    if (!message) return null;
+
+    return message.content;
+  }, [chat.messages]);
 
   return {
-    ...structuredChat,
-    output: resultOutput as Output,
+    output,
+    reload: chat.reload,
+    error: chat.error,
+    isReceiving: chat.isReceiving,
+    isSending: chat.isSending,
+    isRunningToolCalls: chat.isRunningToolCalls,
   };
 };

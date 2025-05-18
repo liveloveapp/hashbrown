@@ -16,18 +16,18 @@
           "text": "Chat.ResponseFormat",
           "canonicalReference": "!Chat.ResponseFormat:type"
         },
-        { "kind": "Content", "text": ">({ output, ...options }: " },
+        { "kind": "Content", "text": ">({ schema, ...options }: " },
         {
           "kind": "Reference",
-          "text": "StructuredChatOptions",
-          "canonicalReference": "@hashbrownai/react!~StructuredChatOptions:interface"
+          "text": "UseStructuredChatOptions",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions:interface"
         },
         { "kind": "Content", "text": "<Output>" },
         { "kind": "Content", "text": ") => " },
         {
           "kind": "Reference",
-          "text": "StructuredChatInterface",
-          "canonicalReference": "@hashbrownai/react!~StructuredChatInterface:interface"
+          "text": "UseStructuredChatResult",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatResult:interface"
         },
         { "kind": "Content", "text": "<Output>" }
       ],
@@ -37,7 +37,7 @@
       "overloadIndex": 1,
       "parameters": [
         {
-          "parameterName": "{ output, ...options }",
+          "parameterName": "{ schema, ...options }",
           "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
         }

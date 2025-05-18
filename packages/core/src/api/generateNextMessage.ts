@@ -1,4 +1,4 @@
-import { Chat, ChatMiddleware } from '../models';
+import { Chat_OLD, ChatMiddleware } from '../models';
 import { s } from '../schema';
 
 /**
@@ -12,11 +12,11 @@ import { s } from '../schema';
  * @param {typeof fetch} config.fetchImplementation - The fetch implementation to use for making the API request.
  * @param {string} config.apiUrl - The URL of the API endpoint to send the request to.
  * @param {string} config.model - The model identifier to use for generating the chat completion.
- * @param {Chat.Message[]} config.messages - An array of chat messages to include in the request.
- * @param {Chat.Tool[]} [config.tools] - Optional array of tools to include in the request.
+ * @param {Chat_OLD.Message[]} config.messages - An array of chat messages to include in the request.
+ * @param {Chat_OLD.Tool[]} [config.tools] - Optional array of tools to include in the request.
  * @param {number} [config.maxTokens] - Optional maximum number of tokens to generate.
  * @param {number} [config.temperature] - Optional temperature setting for the model.
- * @param {Chat.ResponseFormat} [config.responseFormat] - Optional response format for the chat completion.
+ * @param {Chat_OLD.ResponseFormat} [config.responseFormat] - Optional response format for the chat completion.
  * @param {Array<(requestInit: RequestInit) => RequestInit>} config.middleware - Array of middleware functions to modify the request.
  *
  * @yields {AsyncGenerator<Chat.CompletionChunk>} - An async generator yielding chunks of chat completion data.
@@ -27,15 +27,15 @@ export async function* generateNextMessage(config: {
   fetchImplementation: typeof fetch;
   apiUrl: string;
   model: string;
-  messages: Chat.Message[];
-  tools?: Chat.Tool[];
+  messages: Chat_OLD.Message[];
+  tools?: Chat_OLD.Tool[];
   maxTokens?: number;
   temperature?: number;
   responseFormat?: s.HashbrownType;
   abortSignal: AbortSignal;
   middleware: ChatMiddleware[];
-}): AsyncGenerator<Chat.CompletionChunk> {
-  const chatCompletionParams: Chat.CompletionCreateParams = {
+}): AsyncGenerator<Chat_OLD.CompletionChunk> {
+  const chatCompletionParams: Chat_OLD.CompletionCreateParams = {
     model: config.model,
     messages: config.messages,
     tools: config.tools,
@@ -60,7 +60,7 @@ export async function* generateNextMessage(config: {
       break;
     }
 
-    requestInit = await middleware(requestInit, config.abortSignal);
+    requestInit = await middleware(requestInit);
   }
 
   const response = await config.fetchImplementation(config.apiUrl, requestInit);
@@ -94,7 +94,7 @@ export async function* generateNextMessage(config: {
 
       for (const jsonChunk of jsonChunks) {
         if (jsonChunk.trim()) {
-          const jsonData = JSON.parse(jsonChunk) as Chat.CompletionChunk;
+          const jsonData = JSON.parse(jsonChunk) as Chat_OLD.CompletionChunk;
 
           yield jsonData;
         }

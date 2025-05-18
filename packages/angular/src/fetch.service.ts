@@ -1,5 +1,5 @@
 import { Inject, Injectable, InjectionToken } from '@angular/core';
-import { Chat, s } from '@hashbrownai/core';
+import { Chat_OLD, s } from '@hashbrownai/core';
 import { Observable } from 'rxjs';
 import { generateNextMessage } from '@hashbrownai/core';
 
@@ -16,9 +16,9 @@ export class FetchService {
 
   streamChatCompletionWithTools(
     url: string,
-    request: Chat.CompletionCreateParams,
-  ): Observable<Chat.CompletionChunk> {
-    return new Observable<Chat.CompletionChunk>((observer) => {
+    request: Chat_OLD.CompletionCreateParams,
+  ): Observable<Chat_OLD.CompletionChunk> {
+    return new Observable<Chat_OLD.CompletionChunk>((observer) => {
       const abortController = new AbortController();
 
       (async () => {

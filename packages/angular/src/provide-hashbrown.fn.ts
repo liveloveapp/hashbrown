@@ -1,12 +1,14 @@
 import { inject, InjectionToken } from '@angular/core';
-
-export const HASHBROWN_CONFIG_INJECTION_TOKEN = new InjectionToken<{
-  baseUrl: string;
-}>('HashbrownConfig');
+import { ChatMiddleware } from '@hashbrownai/core';
 
 export interface ProvideHashbrownOptions {
   baseUrl: string;
+  middleware?: ChatMiddleware[];
+  emulateStructuredOutput?: boolean;
 }
+
+export const HASHBROWN_CONFIG_INJECTION_TOKEN =
+  new InjectionToken<ProvideHashbrownOptions>('HashbrownConfig');
 
 export function provideHashbrown(options: ProvideHashbrownOptions) {
   return {

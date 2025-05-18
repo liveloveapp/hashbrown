@@ -10,7 +10,13 @@ import { ConfigService } from '../services/ConfigService';
     <header>
       <div class="left">
         <a routerLink="/">
-          <www-hashbrown height="24" width="137.91" />
+          <img
+            src="/logo/hashbrown.png"
+            alt="our friendly logo that looks like a hashbrown character from an animated tv show"
+            height="47"
+            width="48"
+          />
+          <www-hashbrown height="24" width="137.91" stroke="#e8a23d" />
         </a>
       </div>
       <div class="right">
@@ -20,6 +26,9 @@ import { ConfigService } from '../services/ConfigService';
               <a [routerLink]="docsUrl()" class="underline">docs</a>
             </li>
             <li><a routerLink="/api" class="underline">api</a></li>
+            <li>
+              <a [routerLink]="examplesUrl()" class="underline">examples</a>
+            </li>
             <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
@@ -43,8 +52,13 @@ import { ConfigService } from '../services/ConfigService';
 
         > .left {
           display: flex;
-          gap: 24px;
           align-items: center;
+
+          > a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
         }
 
         > .right {
@@ -90,6 +104,9 @@ export class Header {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
     return `/docs/${this.configService.config().sdk}/start/quick`;
+  });
+  examplesUrl = computed(() => {
+    return `/examples/${this.configService.config().sdk}/chat`;
   });
 
   onSearch() {

@@ -1,10 +1,10 @@
-import { Chat } from '../models';
+import { Chat } from '../chat-state';
 
 export interface VendorClient {
   stream: {
     text: (
       apiKey: string,
-      request: Chat.CompletionCreateParams,
-    ) => Chat.CompletionChunkResponse;
+      request: Chat.Api.CompletionCreateParams,
+    ) => AsyncIterable<Chat.Api.CompletionChunk>;
   };
 }
