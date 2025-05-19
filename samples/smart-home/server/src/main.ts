@@ -38,8 +38,9 @@ app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
 });
 
-app.post('/chat', async (req, res) => {
+app.post('/chat', async (req, res, next) => {
   const request = req.body as Chat.Api.CompletionCreateParams;
+
   // console.log(JSON.stringify(request, null, 4));
 
   // Azure OpenAI Service
@@ -57,8 +58,15 @@ app.post('/chat', async (req, res) => {
   const stream = HashbrownOpenAI.stream.text(OPENAI_API_KEY, request);
 
   res.header('Content-Type', 'text/plain');
-  for await (const chunk of stream) {
-    res.write(JSON.stringify(chunk));
+
+  try {
+    for await (const chunk of stream) {
+      res.write(JSON.stringify(chunk));
+    }
+  } catch (error) {
+    console.error(error);
+    // Pass errors to Express error middleware so server doesn't crash
+    next(error);
   }
   res.end();
 });

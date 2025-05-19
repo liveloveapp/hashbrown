@@ -20,7 +20,7 @@ export const RichChatPanel = () => {
     useUiChat({
       model: 'gpt-4o',
       prompt:
-        'You are a smart home assistant. You can control the lights in the house.',
+        'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function',
       tools: [
         createTool({
           name: 'getLights',
