@@ -11,13 +11,13 @@
       "docComment": "",
       "excerptTokens": [
         { "kind": "Content", "text": "export type RenderableMessage = " },
-        { "kind": "Content", "text": "{\n    content: " },
+        { "kind": "Content", "text": "{\n    [" },
         {
           "kind": "Reference",
-          "text": "ComponentTree",
-          "canonicalReference": "!unknown"
+          "text": "TAG_NAME_REGISTRY",
+          "canonicalReference": "@hashbrownai/angular!TAG_NAME_REGISTRY:var"
         },
-        { "kind": "Content", "text": "[];\n    tags: " },
+        { "kind": "Content", "text": "]: " },
         {
           "kind": "Reference",
           "text": "TagNameRegistry",

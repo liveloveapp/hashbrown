@@ -29,41 +29,6 @@
       "members": [
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#examples:member",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "examples?: " },
-            {
-              "kind": "Content",
-              "text": "{\n        input: Input;\n        output: string;\n    }[]"
-            },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": true,
-          "releaseTag": "Public",
-          "name": "examples",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#input:member",
           "docComment": "",
           "excerptTokens": [
@@ -138,10 +103,10 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#system:member",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#prompt:member",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "system: " },
+            { "kind": "Content", "text": "prompt: " },
             {
               "kind": "Reference",
               "text": "SignalLike",
@@ -153,7 +118,7 @@
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "system",
+          "name": "prompt",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
           "docs": {
             "modifiers": {

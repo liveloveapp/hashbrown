@@ -8,24 +8,148 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseCompletionResult:interface",
-      "docComment": "",
+      "docComment": "/**\n * The result of the `useCompletion` hook.\n */\n",
       "excerptTokens": [
-        {
-          "kind": "Content",
-          "text": "export interface UseCompletionResult extends "
-        },
-        {
-          "kind": "Reference",
-          "text": "UseChatResult",
-          "canonicalReference": "@hashbrownai/react!UseChatResult:interface"
-        },
-        { "kind": "Content", "text": " " }
+        { "kind": "Content", "text": "export interface UseCompletionResult " }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
       "releaseTag": "Public",
       "name": "UseCompletionResult",
       "preserveMemberOrder": false,
       "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult#error:member",
+          "docComment": "/**\n * The error encountered during chat operations, if any.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "error: " },
+            {
+              "kind": "Reference",
+              "text": "Error",
+              "canonicalReference": "!Error:interface"
+            },
+            { "kind": "Content", "text": " | null" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "error",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The error encountered during chat operations, if any.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult#isReceiving:member",
+          "docComment": "/**\n * Whether the chat is receiving a response.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "isReceiving: " },
+            { "kind": "Content", "text": "boolean" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "isReceiving",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Whether the chat is receiving a response.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult#isRunningToolCalls:member",
+          "docComment": "/**\n * Whether the chat is running tool calls.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "isRunningToolCalls: " },
+            { "kind": "Content", "text": "boolean" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "isRunningToolCalls",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Whether the chat is running tool calls.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult#isSending:member",
+          "docComment": "/**\n * Whether the chat is sending a response.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "isSending: " },
+            { "kind": "Content", "text": "boolean" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "isSending",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Whether the chat is sending a response.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/react!UseCompletionResult#output:member",
@@ -60,20 +184,17 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseCompletionResult#setExamples:member",
-          "docComment": "",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult#reload:member",
+          "docComment": "/**\n * Reload the chat, useful for retrying when an error occurs.\n */\n",
           "excerptTokens": [
-            { "kind": "Content", "text": "setExamples: " },
-            {
-              "kind": "Content",
-              "text": "(examples: {\n        input: string;\n        output: string;\n    }[]) => void"
-            },
+            { "kind": "Content", "text": "reload: " },
+            { "kind": "Content", "text": "() => void" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "setExamples",
+          "name": "reload",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
@@ -84,7 +205,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Reload the chat, useful for retrying when an error occurs.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -94,7 +215,7 @@
           }
         }
       ],
-      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 2 }],
+      "extendsTokenRanges": [],
       "docs": {
         "modifiers": {
           "isInternal": false,
@@ -104,7 +225,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "The result of the `useCompletion` hook.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

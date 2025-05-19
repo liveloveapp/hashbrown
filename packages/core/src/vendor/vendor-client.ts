@@ -1,4 +1,4 @@
-import { Chat } from '../chat-state';
+import { Chat } from '../models';
 
 export interface VendorClient {
   stream: {

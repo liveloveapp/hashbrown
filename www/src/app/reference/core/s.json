@@ -42,7 +42,7 @@
             { "kind": "Content", "text": "<Options>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 7, "endIndex": 9 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -118,7 +118,7 @@
             { "kind": "Content", "text": "]['result']>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "typeParameters": [
             {
@@ -212,7 +212,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "AnyOfType",
@@ -262,7 +262,7 @@
             { "kind": "Content", "text": "<Item>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 7, "endIndex": 9 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -332,7 +332,7 @@
             },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "typeParameters": [
             {
@@ -426,7 +426,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "ArrayType",
@@ -467,7 +467,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -514,7 +514,7 @@
             { "kind": "Content", "text": "<boolean>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "name": "BooleanType",
           "preserveMemberOrder": false,
@@ -600,7 +600,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "BooleanType",
@@ -644,7 +644,7 @@
             { "kind": "Content", "text": "<T>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 5, "endIndex": 7 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -702,7 +702,7 @@
             { "kind": "Content", "text": "<T>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "typeParameters": [
             {
@@ -796,7 +796,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "ConstStringType",
@@ -827,7 +827,7 @@
             { "kind": "Content", "text": "DISCRIMINATOR = " },
             { "kind": "Content", "text": "\"__discriminator\"" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
           "isReadonly": true,
           "releaseTag": "Public",
@@ -874,7 +874,7 @@
             { "kind": "Content", "text": "<string[]>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 7, "endIndex": 9 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -937,7 +937,7 @@
             { "kind": "Content", "text": "<Entries>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "typeParameters": [
             {
@@ -1031,7 +1031,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "EnumType",
@@ -1072,7 +1072,7 @@
             { "kind": "Content", "text": "string" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/getDescription.ts",
+          "fileUrlPath": "../packages/core/src/schema/get-description.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1114,7 +1114,7 @@
             { "kind": "Content", "text": "unknown" },
             { "kind": "Content", "text": "> " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "typeParameters": [
             {
@@ -1208,7 +1208,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "HashbrownType",
@@ -1252,7 +1252,7 @@
             { "kind": "Content", "text": "]['result']" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "name": "Infer",
           "typeParameters": [
@@ -1299,7 +1299,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1346,7 +1346,7 @@
             { "kind": "Content", "text": "<number>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "name": "IntegerType",
           "preserveMemberOrder": false,
@@ -1432,7 +1432,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "IntegerType",
@@ -1483,7 +1483,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1541,7 +1541,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1599,7 +1599,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1657,7 +1657,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1715,7 +1715,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1773,7 +1773,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1831,7 +1831,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1889,7 +1889,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1947,7 +1947,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -1995,7 +1995,7 @@
             { "kind": "Content", "text": "boolean" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/isStreaming.ts",
+          "fileUrlPath": "../packages/core/src/schema/is-streaming.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -2053,7 +2053,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -2099,7 +2099,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -2137,7 +2137,7 @@
             { "kind": "Content", "text": "<null>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "name": "NullType",
           "preserveMemberOrder": false,
@@ -2223,7 +2223,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "NullType",
@@ -2264,7 +2264,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -2311,7 +2311,7 @@
             { "kind": "Content", "text": "<number>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "name": "NumberType",
           "preserveMemberOrder": false,
@@ -2397,7 +2397,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "NumberType",
@@ -2449,12 +2449,12 @@
             {
               "kind": "Reference",
               "text": "CleanInterfaceShape",
-              "canonicalReference": "@hashbrownai/core!~CleanInterfaceShape:type"
+              "canonicalReference": "@hashbrownai/core!θtypes.CleanInterfaceShape:type"
             },
             { "kind": "Content", "text": "<Shape>>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -2538,7 +2538,7 @@
             },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "typeParameters": [
             {
@@ -2632,7 +2632,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "ObjectType",
@@ -2684,7 +2684,7 @@
             { "kind": "Content", "text": "<T>" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/parse.ts",
+          "fileUrlPath": "../packages/core/src/schema/parse.ts",
           "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -2740,7 +2740,7 @@
             {
               "kind": "Reference",
               "text": "IsUnion",
-              "canonicalReference": "@hashbrownai/core!~IsUnion:type"
+              "canonicalReference": "@hashbrownai/core!θtypes.IsUnion:type"
             },
             { "kind": "Content", "text": "<T> extends true ? " },
             {
@@ -2826,7 +2826,7 @@
             { "kind": "Content", "text": "<T[K]>;\n}> : never" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "name": "Schema",
           "typeParameters": [
@@ -2860,7 +2860,7 @@
           "canonicalReference": "@hashbrownai/core!s.streaming:namespace",
           "docComment": "",
           "excerptTokens": [],
-          "fileUrlPath": "../packages/core/src/schema/internal/index.ts",
+          "fileUrlPath": "../packages/core/src/schema/public_api.ts",
           "releaseTag": "None",
           "name": "streaming",
           "preserveMemberOrder": false,
@@ -2894,7 +2894,7 @@
                 { "kind": "Content", "text": "<Options>" },
                 { "kind": "Content", "text": ";" }
               ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
+              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
               "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
               "releaseTag": "Public",
               "overloadIndex": 1,
@@ -2963,7 +2963,7 @@
                 { "kind": "Content", "text": "<Item>" },
                 { "kind": "Content", "text": ";" }
               ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
+              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
               "returnTypeTokenRange": { "startIndex": 7, "endIndex": 9 },
               "releaseTag": "Public",
               "overloadIndex": 1,
@@ -3007,54 +3007,6 @@
             },
             {
               "kind": "Function",
-              "canonicalReference": "@hashbrownai/core!s.streaming.boolean:function(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "export declare function boolean(description: "
-                },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": "): " },
-                {
-                  "kind": "Reference",
-                  "text": "BooleanType",
-                  "canonicalReference": "@hashbrownai/core!s.BooleanType:interface"
-                },
-                { "kind": "Content", "text": ";" }
-              ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
-              "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-              "releaseTag": "Public",
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "description",
-                  "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-                  "isOptional": false
-                }
-              ],
-              "name": "boolean",
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "Function",
               "canonicalReference": "@hashbrownai/core!s.streaming.constString:function(1)",
               "docComment": "",
               "excerptTokens": [
@@ -3074,7 +3026,7 @@
                 { "kind": "Content", "text": "<T>" },
                 { "kind": "Content", "text": ";" }
               ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
+              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
               "returnTypeTokenRange": { "startIndex": 5, "endIndex": 7 },
               "releaseTag": "Public",
               "overloadIndex": 1,
@@ -3134,7 +3086,7 @@
                 { "kind": "Content", "text": "<string[]>" },
                 { "kind": "Content", "text": ";" }
               ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
+              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
               "returnTypeTokenRange": { "startIndex": 7, "endIndex": 9 },
               "releaseTag": "Public",
               "overloadIndex": 1,
@@ -3158,102 +3110,6 @@
                 }
               ],
               "name": "enumType",
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "Function",
-              "canonicalReference": "@hashbrownai/core!s.streaming.integer:function(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "export declare function integer(description: "
-                },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": "): " },
-                {
-                  "kind": "Reference",
-                  "text": "IntegerType",
-                  "canonicalReference": "@hashbrownai/core!s.IntegerType:interface"
-                },
-                { "kind": "Content", "text": ";" }
-              ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
-              "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-              "releaseTag": "Public",
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "description",
-                  "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-                  "isOptional": false
-                }
-              ],
-              "name": "integer",
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "Function",
-              "canonicalReference": "@hashbrownai/core!s.streaming.number:function(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "export declare function number(description: "
-                },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": "): " },
-                {
-                  "kind": "Reference",
-                  "text": "NumberType",
-                  "canonicalReference": "@hashbrownai/core!s.NumberType:interface"
-                },
-                { "kind": "Content", "text": ";" }
-              ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
-              "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-              "releaseTag": "Public",
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "description",
-                  "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-                  "isOptional": false
-                }
-              ],
-              "name": "number",
               "docs": {
                 "modifiers": {
                   "isInternal": false,
@@ -3301,12 +3157,12 @@
                 {
                   "kind": "Reference",
                   "text": "CleanInterfaceShape",
-                  "canonicalReference": "@hashbrownai/core!~CleanInterfaceShape:type"
+                  "canonicalReference": "@hashbrownai/core!θtypes.CleanInterfaceShape:type"
                 },
                 { "kind": "Content", "text": "<Shape>>" },
                 { "kind": "Content", "text": ";" }
               ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
+              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
               "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
               "releaseTag": "Public",
               "overloadIndex": 1,
@@ -3366,7 +3222,7 @@
                 },
                 { "kind": "Content", "text": ";" }
               ],
-              "fileUrlPath": "../packages/core/src/schema/internal/streaming.ts",
+              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
               "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
               "releaseTag": "Public",
               "overloadIndex": 1,
@@ -3433,7 +3289,7 @@
             },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -3480,7 +3336,7 @@
             { "kind": "Content", "text": "<string>" },
             { "kind": "Content", "text": " " }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "releaseTag": "Public",
           "name": "StringType",
           "preserveMemberOrder": false,
@@ -3566,7 +3422,7 @@
             },
             { "kind": "Content", "text": ">" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/base.ts",
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
           "isReadonly": true,
           "releaseTag": "Public",
           "name": "StringType",
@@ -3607,7 +3463,7 @@
             { "kind": "Content", "text": "any" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/toJsonSchema.ts",
+          "fileUrlPath": "../packages/core/src/schema/to-json-schema.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -3655,7 +3511,7 @@
             { "kind": "Content", "text": "any" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/toOpenAPI.ts",
+          "fileUrlPath": "../packages/core/src/schema/to-open-api.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,
@@ -3703,7 +3559,7 @@
             { "kind": "Content", "text": "string" },
             { "kind": "Content", "text": ";" }
           ],
-          "fileUrlPath": "../packages/core/src/schema/internal/toTypeScript.ts",
+          "fileUrlPath": "../packages/core/src/schema/to-typescript.ts",
           "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
           "releaseTag": "Public",
           "overloadIndex": 1,

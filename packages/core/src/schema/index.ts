@@ -1,1 +1,1 @@
-export * as s from './internal';
+export * as s from './public_api';
