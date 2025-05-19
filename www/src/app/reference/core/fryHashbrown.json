@@ -12,15 +12,8 @@
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "export declare function fryHashbrown<Output extends "
+          "text": "export declare function fryHashbrown<Tools extends "
         },
-        { "kind": "Content", "text": "string | " },
-        {
-          "kind": "Reference",
-          "text": "s.HashbrownType",
-          "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-        },
-        { "kind": "Content", "text": ", Tools extends " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
@@ -38,14 +31,8 @@
         },
         {
           "kind": "Content",
-          "text": "<Output, Tools>[];\n    tools?: Tools[];\n    responseSchema?: "
+          "text": "<string, Tools>[];\n    tools?: Tools[];\n    middleware?: "
         },
-        {
-          "kind": "Reference",
-          "text": "s.HashbrownType",
-          "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-        },
-        { "kind": "Content", "text": ";\n    middleware?: " },
         {
           "kind": "Reference",
           "text": "Chat.Middleware",
@@ -61,29 +48,24 @@
           "text": "Hashbrown",
           "canonicalReference": "@hashbrownai/core!Hashbrown:interface"
         },
-        { "kind": "Content", "text": "<Output, Tools>" },
+        { "kind": "Content", "text": "<string, Tools>" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../packages/core/src/hashbrown.ts",
-      "returnTypeTokenRange": { "startIndex": 14, "endIndex": 16 },
+      "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "init",
-          "parameterTypeTokenRange": { "startIndex": 6, "endIndex": 13 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 8 },
           "isOptional": false
         }
       ],
       "typeParameters": [
         {
-          "typeParameterName": "Output",
-          "constraintTokenRange": { "startIndex": 1, "endIndex": 3 },
-          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
-        },
-        {
           "typeParameterName": "Tools",
-          "constraintTokenRange": { "startIndex": 4, "endIndex": 5 },
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
@@ -154,6 +136,119 @@
             "description": "  - {number} [init.debounce] - Debounce interval in milliseconds for sending messages.\n\n"
           }
         ]
+      }
+    },
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/core!fryHashbrown:function(2)",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function fryHashbrown<Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+        },
+        { "kind": "Content", "text": ", Tools extends " },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+        },
+        { "kind": "Content", "text": ", Output extends " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "@hashbrownai/core!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>" },
+        { "kind": "Content", "text": " = " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "@hashbrownai/core!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>" },
+        { "kind": "Content", "text": ">(init: " },
+        {
+          "kind": "Content",
+          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: string;\n    prompt: string;\n    temperature?: number;\n    maxTokens?: number;\n    messages?: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.Message_3:type"
+        },
+        {
+          "kind": "Content",
+          "text": "<Output, Tools>[];\n    tools?: Tools[];\n    responseSchema: Schema;\n    middleware?: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.Middleware",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.Middleware:type"
+        },
+        {
+          "kind": "Content",
+          "text": "[];\n    emulateStructuredOutput?: boolean;\n    debounce?: number;\n}"
+        },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "Hashbrown",
+          "canonicalReference": "@hashbrownai/core!Hashbrown:interface"
+        },
+        { "kind": "Content", "text": "<Output, Tools>" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../packages/core/src/hashbrown.ts",
+      "returnTypeTokenRange": { "startIndex": 17, "endIndex": 19 },
+      "releaseTag": "Public",
+      "overloadIndex": 2,
+      "parameters": [
+        {
+          "parameterName": "init",
+          "parameterTypeTokenRange": { "startIndex": 11, "endIndex": 16 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Schema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 4 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Output",
+          "constraintTokenRange": { "startIndex": 5, "endIndex": 7 },
+          "defaultTypeTokenRange": { "startIndex": 8, "endIndex": 10 }
+        }
+      ],
+      "name": "fryHashbrown",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": []
       }
     }
   ]

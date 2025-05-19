@@ -6,8 +6,8 @@ import { Chat, s } from '@hashbrownai/core';
 import { SignalLike } from './types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
-export interface StructuredCompletionResourceRef<Output extends s.HashbrownType>
-  extends Resource<s.Infer<Output> | null> {}
+export interface StructuredCompletionResourceRef<Output>
+  extends Resource<Output | null> {}
 
 export interface StructuredCompletionResourceOptions<
   Input,
@@ -24,12 +24,13 @@ export interface StructuredCompletionResourceOptions<
 export function structuredCompletionResource<
   Input,
   Schema extends s.HashbrownType,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
-): StructuredCompletionResourceRef<Schema> {
+): StructuredCompletionResourceRef<Output> {
   const { model, input, schema, prompt, tools, debugName } = options;
 
-  const resource = structuredChatResource({
+  const resource = structuredChatResource<Schema, Chat.AnyTool, Output>({
     model,
     prompt,
     schema,
@@ -55,7 +56,8 @@ export function structuredCompletionResource<
     if (
       lastMessage &&
       lastMessage.role === 'assistant' &&
-      lastMessage.content
+      lastMessage.content &&
+      lastMessage.content !== null
     ) {
       return lastMessage.content;
     }
@@ -67,7 +69,7 @@ export function structuredCompletionResource<
   const isLoading = resource.isLoading;
   const reload = resource.reload;
 
-  function hasValue(this: StructuredCompletionResourceRef<Schema>) {
+  function hasValue(this: StructuredCompletionResourceRef<Output>) {
     return Boolean(value());
   }
 

@@ -25,11 +25,11 @@
           "text": "Chat.AssistantMessage",
           "canonicalReference": "!Chat.AssistantMessage:type"
         },
-        { "kind": "Content", "text": "<typeof " },
+        { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
-          "text": "publicSchema",
-          "canonicalReference": "@hashbrownai/react!~publicSchema:var"
+          "text": "UiChatSchema",
+          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
         },
         { "kind": "Content", "text": ", Tools> & {\n    ui: " },
         {

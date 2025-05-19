@@ -18,7 +18,7 @@ export type RenderableMessage = {
 };
 
 export const getTagNameRegistry = (
-  message: Chat.Message<s.HashbrownType, Chat.AnyTool>,
+  message: Chat.Message<UiChatSchema, Chat.AnyTool>,
 ): TagNameRegistry | undefined => {
   if (TAG_NAME_REGISTRY in message) {
     return message[TAG_NAME_REGISTRY] as TagNameRegistry;
@@ -27,21 +27,18 @@ export const getTagNameRegistry = (
   return undefined;
 };
 
-const publicSchema = s.object('UI', {
-  ui: s.streaming.array(
-    'List of elements',
-    s.object('Component', {
-      $tagName: s.string(''),
-      $props: s.object('', {}),
-      get $children() {
-        return s.array('', publicSchema);
-      },
-    }),
-  ),
-});
+export interface UiChatSchemaComponent {
+  $tagName: string;
+  $props: Record<string, any>;
+  $children: UiChatSchemaComponent[];
+}
+
+export interface UiChatSchema {
+  ui: UiChatSchemaComponent[];
+}
 
 export type UiAssistantMessage<Tools extends Chat.AnyTool> =
-  Chat.AssistantMessage<typeof publicSchema, Tools> & {
+  Chat.AssistantMessage<UiChatSchema, Tools> & {
     [TAG_NAME_REGISTRY]: TagNameRegistry;
   };
 
@@ -73,11 +70,11 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
     ),
   });
 
-  const chat = structuredChatResource<typeof publicSchema, Tools>({
+  const chat = structuredChatResource({
     model: args.model,
     temperature: args.temperature,
     maxTokens: args.maxTokens,
-    schema: internalSchema as s.HashbrownType as typeof publicSchema,
+    schema: internalSchema,
     tools: [...(args.tools ?? [])],
     prompt: args.prompt,
     debugName: args.debugName,
