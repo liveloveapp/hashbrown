@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Core entry point for the Hashbrown framework.
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
@@ -22,10 +23,7 @@ import { devActions } from './actions';
  * @template Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.
  * @template Tools - The set of tools available to the chat instance.
  */
-export interface Hashbrown<
-  Output extends string | s.HashbrownType,
-  Tools extends Chat.AnyTool,
-> {
+export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   /** Replace the current set of messages in the chat state. */
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
   /** Send a new message to the LLM and update state. */
@@ -69,9 +67,23 @@ export interface Hashbrown<
  * @returns {Hashbrown<Output, Tools>} A configured Hashbrown instance.
  * @throws {Error} If a reserved tool name ("output") is used.
  */
+export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
+  debugName?: string;
+  apiUrl: string;
+  model: string;
+  prompt: string;
+  temperature?: number;
+  maxTokens?: number;
+  messages?: Chat.Message<string, Tools>[];
+  tools?: Tools[];
+  middleware?: Chat.Middleware[];
+  emulateStructuredOutput?: boolean;
+  debounce?: number;
+}): Hashbrown<string, Tools>;
 export function fryHashbrown<
-  Output extends string | s.HashbrownType,
+  Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(init: {
   debugName?: string;
   apiUrl: string;
@@ -81,11 +93,25 @@ export function fryHashbrown<
   maxTokens?: number;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
+  responseSchema: Schema;
+  middleware?: Chat.Middleware[];
+  emulateStructuredOutput?: boolean;
+  debounce?: number;
+}): Hashbrown<Output, Tools>;
+export function fryHashbrown(init: {
+  debugName?: string;
+  apiUrl: string;
+  model: string;
+  prompt: string;
+  temperature?: number;
+  maxTokens?: number;
+  messages?: Chat.Message<string, Chat.AnyTool>[];
+  tools?: Chat.AnyTool[];
   responseSchema?: s.HashbrownType;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
-}): Hashbrown<Output, Tools> {
+}): Hashbrown<any, Chat.AnyTool> {
   const hasIllegalOutputTool = init.tools?.some(
     (tool) => tool.name === 'output',
   );
@@ -126,23 +152,23 @@ export function fryHashbrown<
     }),
   );
 
-  function setMessages(messages: Chat.Message<Output, Tools>[]) {
+  function setMessages(messages: Chat.Message<any, Chat.AnyTool>[]) {
     state.dispatch(
       devActions.setMessages({ messages: messages as Chat.AnyMessage[] }),
     );
   }
 
-  function sendMessage(message: Chat.Message<Output, Tools>) {
+  function sendMessage(message: Chat.Message<any, Chat.AnyTool>) {
     state.dispatch(
       devActions.sendMessage({ message: message as Chat.AnyMessage }),
     );
   }
 
   function observeMessages(
-    onChange: (messages: Chat.Message<Output, Tools>[]) => void,
+    onChange: (messages: Chat.Message<any, Chat.AnyTool>[]) => void,
   ) {
     return state.select(selectViewMessages, (messages) =>
-      onChange(messages as Chat.Message<Output, Tools>[]),
+      onChange(messages as Chat.Message<any, Chat.AnyTool>[]),
     );
   }
 

@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!createTool:function(1)",
-      "docComment": "",
+      "docComment": "/**\n * Creates a tool with a handler that takes no arguments.\n *\n * @param input - \n *\n * @returns \n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,38 +17,28 @@
         { "kind": "Content", "text": "string" },
         { "kind": "Content", "text": ", Result>(input: " },
         {
-          "kind": "Content",
-          "text": "{\n    name: Name;\n    description: string;\n    handler: () => "
-        },
-        {
           "kind": "Reference",
-          "text": "Promise",
-          "canonicalReference": "!Promise:interface"
+          "text": "CreateToolInput",
+          "canonicalReference": "@hashbrownai/angular!CreateToolInput:interface"
         },
-        { "kind": "Content", "text": "<Result>;\n}" },
+        { "kind": "Content", "text": "<Name, Result>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "Chat.Tool",
           "canonicalReference": "!Chat.Tool:type"
         },
-        { "kind": "Content", "text": "<Name, " },
-        {
-          "kind": "Reference",
-          "text": "s.ObjectType",
-          "canonicalReference": "!s.ObjectType:type"
-        },
-        { "kind": "Content", "text": "<object>, Result>" },
+        { "kind": "Content", "text": "<Name, void, Result>" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/create-tool.fn.d.ts",
-      "returnTypeTokenRange": { "startIndex": 7, "endIndex": 11 },
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "input",
-          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
         }
       ],
@@ -74,13 +64,13 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Creates a tool with a handler that takes no arguments.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": "",
+        "returns": "\n",
         "see": [],
-        "params": []
+        "params": [{ "name": "input", "description": "" }]
       }
     }
   ]

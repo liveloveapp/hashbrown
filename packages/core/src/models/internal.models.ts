@@ -4,7 +4,7 @@ import { s } from '../schema';
 export interface Tool {
   name: string;
   description: string;
-  schema: s.ObjectType<Record<string, s.HashbrownType>>;
+  schema: s.HashbrownType;
   handler: (input: any, abortSignal: AbortSignal) => Promise<any>;
 }
 

@@ -6,11 +6,11 @@ export type Middleware = (
   fetchInit: RequestInit,
 ) => RequestInit | Promise<RequestInit>;
 
-export type Tool<Name, ArgsSchema extends s.HashbrownType, Result> = {
+export type Tool<Name, Args, Result> = {
   name: Name;
   description: string;
-  schema: ArgsSchema;
-  handler: (input: ArgsSchema, abortSignal: AbortSignal) => Promise<Result>;
+  schema: s.HashbrownType;
+  handler: (input: Args, abortSignal: AbortSignal) => Promise<Result>;
 };
 
 export type AnyTool = Tool<any, any, any>;
@@ -21,13 +21,13 @@ export type UserMessage = {
 };
 
 export type ToolCall<ToolUnion extends AnyTool> = Prettify<
-  ToolUnion extends Tool<infer Name, infer ArgsSchema, infer Result>
+  ToolUnion extends Tool<infer Name, infer Args, infer Result>
     ?
         | {
             role: 'tool';
             status: 'done';
             name: Name;
-            args: s.Infer<ArgsSchema>;
+            args: Args;
             result: PromiseSettledResult<Result>;
             toolCallId: string;
           }
@@ -35,7 +35,7 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
             role: 'tool';
             status: 'pending';
             name: Name;
-            args: s.Infer<ArgsSchema>;
+            args: Args;
             toolCallId: string;
             progress?: number;
           }
@@ -44,28 +44,14 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
 
 export type AnyToolCall = ToolCall<AnyTool>;
 
-export type AssistantMessage<
-  OutputSchemaOrString extends string | s.HashbrownType,
-  ToolUnion extends AnyTool,
-> = Prettify<
-  OutputSchemaOrString extends string
-    ? {
-        role: 'assistant';
-        content?: OutputSchemaOrString;
-        toolCalls: ToolCall<ToolUnion>[];
-      }
-    : OutputSchemaOrString extends s.HashbrownType
-      ? {
-          role: 'assistant';
-          content?: s.Infer<OutputSchemaOrString>;
-          toolCalls: ToolCall<ToolUnion>[];
-        }
-      : never
->;
+export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
+  role: 'assistant';
+  content?: Output;
+  toolCalls: ToolCall<ToolUnion>[];
+}
 
-export type Message<
-  OutputSchemaOrString extends string | s.HashbrownType,
-  Tools extends AnyTool,
-> = UserMessage | AssistantMessage<OutputSchemaOrString, Tools>;
+export type Message<Output, Tools extends AnyTool> =
+  | UserMessage
+  | AssistantMessage<Output, Tools>;
 
-export type AnyMessage = Message<string | s.HashbrownType, AnyTool>;
+export type AnyMessage = Message<string | object, AnyTool>;

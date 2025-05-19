@@ -38,10 +38,16 @@
           "text": "UseStructuredCompletionResult",
           "canonicalReference": "@hashbrownai/react!UseStructuredCompletionResult:interface"
         },
-        { "kind": "Content", "text": "<Schema>" }
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>>" }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
-      "returnTypeTokenRange": { "startIndex": 8, "endIndex": 10 },
+      "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [

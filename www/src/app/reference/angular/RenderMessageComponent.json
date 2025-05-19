@@ -74,15 +74,21 @@
             },
             {
               "kind": "Content",
-              "text": "<{\n        $tagName: string;\n        $props: object;\n        $children: {\n            ui: any[];\n        }[];\n    }[]>"
+              "text": "<import(\"./ui-chat-resource.fn\")."
             },
+            {
+              "kind": "Reference",
+              "text": "UiChatSchemaComponent",
+              "canonicalReference": "@hashbrownai/angular!UiChatSchemaComponent:interface"
+            },
+            { "kind": "Content", "text": "[]>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
           "name": "content",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
           "isStatic": false,
           "isProtected": false,
           "isAbstract": false,

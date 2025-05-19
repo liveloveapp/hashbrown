@@ -59,11 +59,11 @@ export interface UseStructuredCompletionOptions<
 /**
  * The result of the `useStructuredCompletion` hook.
  */
-export interface UseStructuredCompletionResult<Schema extends s.HashbrownType> {
+export interface UseStructuredCompletionResult<Output> {
   /**
    * The output of the chat.
    */
-  output: s.Infer<Schema> | null;
+  output: Output | null;
 
   /**
    * Reload the chat, useful for retrying when an error occurs.
@@ -96,7 +96,7 @@ export const useStructuredCompletion = <
   Tools extends Chat.AnyTool,
 >(
   options: UseStructuredCompletionOptions<Schema, Tools>,
-): UseStructuredCompletionResult<Schema> => {
+): UseStructuredCompletionResult<s.Infer<Schema>> => {
   const { setMessages, ...chat } = useStructuredChat({
     ...options,
   });
