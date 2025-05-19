@@ -27,10 +27,8 @@ export const runTools = createEffect((store) => {
 
         return Promise.resolve(tool.handler(args, abortController.signal));
       } catch (error) {
-        console.log(error);
-
-        // We may have received unnecessarily escaped input, so try JSON.parse
-        // again.
+        // We may have received unnecessarily escaped input, so try
+        // again with JSON.parse
         if (
           error instanceof Error &&
           error.message.includes('Expected an object at')

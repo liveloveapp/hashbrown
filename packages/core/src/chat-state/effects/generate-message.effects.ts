@@ -112,7 +112,6 @@ export const generateMessage = createEffect((store) => {
 
           for (const jsonChunk of jsonChunks) {
             if (jsonChunk.trim()) {
-              console.log(jsonChunk);
               const jsonData = JSON.parse(
                 jsonChunk,
               ) as Chat.Api.CompletionChunk;

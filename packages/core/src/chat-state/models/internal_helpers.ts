@@ -227,12 +227,6 @@ export function toInternalToolCallsFromApi(
     return [];
   }
 
-  console.log(toolCall.function.arguments);
-  try {
-    JSON.parse(toolCall.function.arguments);
-  } catch (e) {
-    console.error(e);
-  }
   return [
     {
       id: toolCall.id,
