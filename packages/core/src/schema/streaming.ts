@@ -53,15 +53,3 @@ export function enumType<Entries extends string[]>(
 ) {
   return new EnumType({ type: 'enum', description, entries, streaming: true });
 }
-
-export function anyOf<const Options extends readonly HashbrownType[]>(
-  description: string,
-  options: Options,
-): AnyOfType<Options> {
-  return new AnyOfType({
-    type: 'any-of',
-    description,
-    options,
-    streaming: true,
-  }) as any;
-}
