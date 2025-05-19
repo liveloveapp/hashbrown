@@ -12,8 +12,6 @@ import { s } from '../../schema';
     console.log('Connected');
   });
 
-  // TODO: add this as a test case or to the big schema below
-
   // anyOf as a property (instead of in a container)
   const responseSchema = s.object('gridArea', {
     gridArea: s.string('gridArea string'),

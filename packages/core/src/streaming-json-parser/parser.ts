@@ -3,7 +3,7 @@ import { s } from '../schema';
 import { isStreaming } from '../schema/is-streaming';
 import { HashbrownType, internal } from '../schema/base';
 
-const ENABLE_LOGGING = true;
+const ENABLE_LOGGING = false;
 
 class PartialJSON extends Error {}
 
@@ -160,7 +160,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     }
 
     let currentContainerStackIndex = containerStack.length - 1;
-    console.log(currentContainerStackIndex);
 
     try {
       while (jsonString[index] !== '}') {
@@ -274,8 +273,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
               );
             }
           } else {
-            console.log(containerStack);
-            console.log(currentContainerStackIndex);
             const schemaFragmentForKey = (
               containerStack[currentContainerStackIndex][internal]
                 .definition as any
@@ -286,8 +283,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
               containerStack.push(
                 (schemaFragmentForKey as any)[internal].definition.options,
               );
-
-              // currentContainerStackIndex++;
 
               logger.log(
                 `Object key ${key} in container ${currentContainerStackIndex} is anyOf`,
@@ -339,10 +334,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             logger.log(
               'Inner: opting not to return partial obj if non-streaming properties are missing',
             );
-
-            console.log('got here');
-            console.log(currentContainer);
-            console.log(currentContainer[internal]?.definition);
 
             // Are all non-streaming fields present?
             if (
@@ -403,10 +394,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       //   - in an array for AnyOf, which means we aren't streaming
       // */
       const currentContainer = containerStack[currentContainerStackIndex];
-
-      console.log('got there');
-      console.log(currentContainer);
-      console.log(currentContainer[internal]?.definition);
 
       // Is this an undetermined anyOf?
       if (Array.isArray(currentContainer)) {
