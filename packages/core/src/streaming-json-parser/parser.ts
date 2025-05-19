@@ -465,7 +465,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       // If the next level up is an array (an anyOf) and we aren't in an actual array,
       // then we are done with the anyOf and should pop it, too.
       if (!insideArray && discriminatorValue) {
-        console.log(containerStack);
         const completedContainer = containerStack.pop();
         logger.log(`Also completed anyOf container: ${completedContainer}`);
       }
