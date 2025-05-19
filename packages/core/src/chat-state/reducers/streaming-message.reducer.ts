@@ -30,6 +30,7 @@ export const reducer = createReducer(
     };
   }),
   on(apiActions.generateMessageSuccess, (state) => {
+    console.log(state);
     return {
       ...state,
       message: null,

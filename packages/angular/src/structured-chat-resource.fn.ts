@@ -64,6 +64,8 @@ export function structuredChatResource<
   const isRunningToolCalls = toSignal(hashbrown.observeIsRunningToolCalls);
   const error = toSignal(hashbrown.observeError);
 
+  console.log(value());
+
   const status = computed(() => {
     if (isReceiving() || isSending() || isRunningToolCalls()) {
       return ResourceStatus.Loading;

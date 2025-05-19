@@ -27,6 +27,26 @@ export const runTools = createEffect((store) => {
 
         return Promise.resolve(tool.handler(args, abortController.signal));
       } catch (error) {
+        console.log(error);
+
+        // We may have received unnecessarily escaped input, so try JSON.parse
+        // again.
+        if (
+          error instanceof Error &&
+          error.message.includes('Expected an object at')
+        ) {
+          try {
+            const args = s.parse(
+              tool.schema,
+              JSON.parse(toolCall.arguments as any),
+            );
+
+            return Promise.resolve(tool.handler(args, abortController.signal));
+          } catch (error) {
+            return Promise.reject(error);
+          }
+        }
+
         return Promise.reject(error);
       }
     });
