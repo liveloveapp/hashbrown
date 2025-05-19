@@ -136,7 +136,7 @@ export class ChatPanelComponent {
     debugName: 'simple-chat',
     // model: 'gemini-2.5-flash-preview-04-17',
     model: 'gpt-4.1',
-    prompt: `You are a helpful assistant that can answer questions and help with tasks.`,
+    prompt: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
     tools: [
       createTool({
         name: 'getUser',
@@ -187,7 +187,7 @@ export class ChatPanelComponent {
     // model: 'gemini-2.5-pro-preview-05-06',
     model: 'gpt-4.1',
     prompt: `
-      You are a helpful assistant that can answer questions and help with tasks.
+      You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments.
     `,
     components: [
       exposeComponent(MarkdownComponent, {

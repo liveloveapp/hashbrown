@@ -64,6 +64,7 @@ export function toViewMessagesFromInternal(
       const tater = outputSchema
         ? new StreamSchemaParser(outputSchema)
         : undefined;
+
       const content = tater
         ? message.content
           ? isStreaming
