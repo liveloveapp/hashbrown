@@ -1,14 +1,23 @@
 import { createServer } from 'net';
 
 const TEST_JSON = {
-  booleanValue: false,
-  value: 'Example glossary',
-  array: ['string 1', 'string 2'],
-  object: {
-    a: 'make it do what it do',
-    b: 'call the Ghost Busters',
+  gridArea: 'a string',
+  element: {
+    __discriminator: 'markdown',
+    data: 'the markdown data',
   },
+  afterAnyOf: 'after any of, to make sure popping work',
 };
+
+// const TEST_JSON = {
+//   booleanValue: false,
+//   value: 'Example glossary',
+//   array: ['string 1', 'string 2'],
+//   object: {
+//     a: 'make it do what it do',
+//     b: 'call the Ghost Busters',
+//   },
+// };
 
 // const TEST_JSON = [
 //   {

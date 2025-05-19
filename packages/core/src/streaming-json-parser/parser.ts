@@ -138,20 +138,25 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
     // If we are not in an array, find key in current level of document stock, and add to stack
     if (parentKey !== '') {
-      // If parentKey is set, we are not in an array, so get the next stack container
-      // (arrays handle it differently, so they can do clean up when the array is complete)
-      const nextContainer = (
-        containerStack[containerStack.length - 1][internal].definition as any
-      ).shape[parentKey];
+      // Are we in any anyOf?
+      const currentContainer = containerStack[containerStack.length - 1];
 
-      logger.log(`Starting new object with key: ${parentKey}`);
-      logger.log(nextContainer);
+      // Not any anyOf, so move down a level
+      if (!Array.isArray(currentContainer)) {
+        // If parentKey is set, we are not in an array, so get the next stack container
+        // (arrays handle it differently, so they can do clean up when the array is complete)
+        const nextContainer = (currentContainer[internal].definition as any)
+          .shape[parentKey];
 
-      if (nextContainer == null) {
-        throwMalformedError(`Key: ${parentKey} not expected in container`);
+        logger.log(`Starting new object with key: ${parentKey}`);
+        logger.log(nextContainer);
+
+        if (nextContainer == null) {
+          throwMalformedError(`Key: ${parentKey} not expected in container`);
+        }
+
+        containerStack.push(nextContainer);
       }
-
-      containerStack.push(nextContainer);
     }
 
     let currentContainerStackIndex = containerStack.length - 1;
@@ -162,10 +167,14 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         if (index >= length) {
           const currentContainer = containerStack[currentContainerStackIndex];
 
-          if (
-            !Array.isArray(currentContainer) &&
-            s.isStreaming(currentContainer)
-          ) {
+          // Is this an undetermined anyOf?
+          if (Array.isArray(currentContainer)) {
+            logger.log('Outer: incomplete anyOf object, so throw error');
+
+            throw new IncompleteNonStreamingObject(
+              'Incomplete anyOf object found',
+            );
+          } else if (s.isStreaming(currentContainer)) {
             logger.log('Index >= length: returning partial object');
             return obj;
           } else {
@@ -269,18 +278,36 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
                 .definition as any
             ).shape[key];
 
-            const currentKeyAllowsIncomplete =
-              s.isStreaming(schemaFragmentForKey);
+            if (s.isAnyOfType(schemaFragmentForKey)) {
+              // Property is anyOf, so push option list to container stack
+              containerStack.push(
+                (schemaFragmentForKey as any)[internal].definition.options,
+              );
 
-            logger.log(
-              `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
-            );
+              logger.log(
+                `Object key ${key} in container ${currentContainerStackIndex} is anyOf`,
+              );
 
-            const value = parseAny(key, currentKeyAllowsIncomplete, false);
+              // AnyOfs are never directly streaming
+              const value = parseAny(key, false, false);
 
-            logger.log('Value:');
-            logger.log(value);
-            obj[key] = value;
+              logger.log('Value:');
+              logger.log(value);
+              obj[key] = value;
+            } else {
+              const currentKeyAllowsIncomplete =
+                s.isStreaming(schemaFragmentForKey);
+
+              logger.log(
+                `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
+              );
+
+              const value = parseAny(key, currentKeyAllowsIncomplete, false);
+
+              logger.log('Value:');
+              logger.log(value);
+              obj[key] = value;
+            }
           }
         } catch (e) {
           logger.error(e);
@@ -294,10 +321,13 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
           */
           const currentContainer = containerStack[currentContainerStackIndex];
 
-          if (
-            !Array.isArray(currentContainer) &&
-            s.isStreaming(currentContainer)
-          ) {
+          // Is this an undetermined anyOf?
+          if (Array.isArray(currentContainer)) {
+            logger.log('Outer: Incomplete anyOf object, so throw error');
+            throw new IncompleteNonStreamingObject(
+              'Incomplete anyOf object found',
+            );
+          } else if (s.isStreaming(currentContainer)) {
             logger.log('Inner: returning partial object');
             return obj;
           } else {
@@ -365,7 +395,11 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       // */
       const currentContainer = containerStack[currentContainerStackIndex];
 
-      if (!Array.isArray(currentContainer) && s.isStreaming(currentContainer)) {
+      // Is this an undetermined anyOf?
+      if (Array.isArray(currentContainer)) {
+        logger.log('Outer: Incomplete anyOf object, so throw error');
+        throw new IncompleteNonStreamingObject('Incomplete anyOf object found');
+      } else if (s.isStreaming(currentContainer)) {
         logger.log('Outer: returning partial object');
         return obj;
       } else {
@@ -427,6 +461,13 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       logger.log(
         `Completed container: ${completedContainer?.[internal].definition.description}`,
       );
+
+      // If the next level up is an array (an anyOf) and we aren't in an actual array,
+      // then we are done with the anyOf and should pop it, too.
+      if (!insideArray && discriminatorValue) {
+        const completedContainer = containerStack.pop();
+        logger.log(`Also completed anyOf container: ${completedContainer}`);
+      }
     } else {
       logger.log('Inside array. Object completed, but keeping container stack');
     }

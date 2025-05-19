@@ -12,15 +12,37 @@ import { s } from '../../schema';
     console.log('Connected');
   });
 
-  const responseSchema = s.object('root', {
-    booleanValue: s.boolean('a boolean'),
-    value: s.streaming.string('glossary name'),
-    array: s.streaming.array('array', s.string('array string')),
-    object: s.streaming.object('object', {
-      a: s.streaming.string('plan a'),
-      b: s.streaming.string('plan b'),
-    }),
+  // anyOf as a property (instead of in a container)
+  const responseSchema = s.object('gridArea', {
+    gridArea: s.string('gridArea string'),
+    element: s.anyOf([
+      s.object('Markdown', {
+        __discriminator: s.constString('markdown'),
+        data: s.streaming.string('The markdown data'),
+      }),
+    ]),
+    afterAnyOf: s.string('make sure popping works'),
   });
+
+  // const data = {
+  //   gridArea: 'a string',
+  //   element: {
+  //     __discriminator: 'markdown',
+  //     data: 'the markdown data',
+  //   },
+  // };
+
+  // s.parse(responseSchema, data);
+
+  // const responseSchema = s.object('root', {
+  //   booleanValue: s.boolean('a boolean'),
+  //   value: s.streaming.string('glossary name'),
+  //   array: s.streaming.array('array', s.string('array string')),
+  //   object: s.streaming.object('object', {
+  //     a: s.streaming.string('plan a'),
+  //     b: s.streaming.string('plan b'),
+  //   }),
+  // });
 
   // const responseSchema = s.streaming.array(
   //   'root array',
