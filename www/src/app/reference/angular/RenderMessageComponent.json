@@ -23,35 +23,66 @@
       "members": [
         {
           "kind": "Property",
-          "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#childrenWeakMap:member",
+          "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#appRef:member",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "childrenWeakMap: " },
+            { "kind": "Content", "text": "appRef: " },
             {
               "kind": "Reference",
-              "text": "WeakMap",
-              "canonicalReference": "!WeakMap:interface"
+              "text": "ApplicationRef",
+              "canonicalReference": "@angular/core!ApplicationRef:class"
             },
-            { "kind": "Content", "text": "<" },
-            {
-              "kind": "Reference",
-              "text": "ComponentTree",
-              "canonicalReference": "!unknown"
-            },
-            { "kind": "Content", "text": ", " },
-            {
-              "kind": "Reference",
-              "text": "RenderableMessage",
-              "canonicalReference": "@hashbrownai/angular!RenderableMessage:type"
-            },
-            { "kind": "Content", "text": ">" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "childrenWeakMap",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
+          "name": "appRef",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isStatic": false,
+          "isProtected": false,
+          "isAbstract": false,
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "Property",
+          "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#content:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "content: " },
+            { "kind": "Content", "text": "import(\"@angular/core\")." },
+            {
+              "kind": "Reference",
+              "text": "Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<{\n        $tagName: string;\n        $props: object;\n        $children: {\n            ui: any[];\n        }[];\n    }[]>"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "content",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
           "isStatic": false,
           "isProtected": false,
           "isAbstract": false,
@@ -127,58 +158,6 @@
         },
         {
           "kind": "Method",
-          "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#getChildMessage:member(1)",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "getChildMessage(node: " },
-            {
-              "kind": "Reference",
-              "text": "ComponentTree",
-              "canonicalReference": "!unknown"
-            },
-            { "kind": "Content", "text": "): " },
-            {
-              "kind": "Reference",
-              "text": "RenderableMessage",
-              "canonicalReference": "@hashbrownai/angular!RenderableMessage:type"
-            },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isStatic": false,
-          "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-          "releaseTag": "Public",
-          "isProtected": false,
-          "overloadIndex": 1,
-          "parameters": [
-            {
-              "parameterName": "node",
-              "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "isOptional": false
-            }
-          ],
-          "isOptional": false,
-          "isAbstract": false,
-          "name": "getChildMessage",
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "Method",
           "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#getEmbeddedView:member(1)",
           "docComment": "",
           "excerptTokens": [
@@ -233,59 +212,6 @@
         },
         {
           "kind": "Method",
-          "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#getInputs:member(1)",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "getInputs(node: " },
-            {
-              "kind": "Reference",
-              "text": "ComponentTree",
-              "canonicalReference": "!unknown"
-            },
-            { "kind": "Content", "text": "): " },
-            {
-              "kind": "Reference",
-              "text": "Record",
-              "canonicalReference": "!Record:type"
-            },
-            { "kind": "Content", "text": "<string, any> | undefined" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isStatic": false,
-          "returnTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
-          "releaseTag": "Public",
-          "isProtected": false,
-          "overloadIndex": 1,
-          "parameters": [
-            {
-              "parameterName": "node",
-              "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "isOptional": false
-            }
-          ],
-          "isOptional": false,
-          "isAbstract": false,
-          "name": "getInputs",
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "Method",
           "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#getRootNodes:member(1)",
           "docComment": "",
           "excerptTokens": [
@@ -297,7 +223,7 @@
             },
             { "kind": "Content", "text": "<any>" },
             { "kind": "Content", "text": "): " },
-            { "kind": "Content", "text": "any[][]" },
+            { "kind": "Content", "text": "any[]" },
             { "kind": "Content", "text": ";" }
           ],
           "isStatic": false,
@@ -347,7 +273,7 @@
               "text": "Type",
               "canonicalReference": "@angular/core!Type$1:interface"
             },
-            { "kind": "Content", "text": "<object>" },
+            { "kind": "Content", "text": "<object> | null" },
             { "kind": "Content", "text": ";" }
           ],
           "isStatic": false,
@@ -385,58 +311,6 @@
         },
         {
           "kind": "Property",
-          "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#inputsWeakMap:member",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "inputsWeakMap: " },
-            {
-              "kind": "Reference",
-              "text": "WeakMap",
-              "canonicalReference": "!WeakMap:interface"
-            },
-            { "kind": "Content", "text": "<" },
-            {
-              "kind": "Reference",
-              "text": "ComponentTree",
-              "canonicalReference": "!unknown"
-            },
-            { "kind": "Content", "text": ", " },
-            {
-              "kind": "Reference",
-              "text": "Record",
-              "canonicalReference": "!Record:type"
-            },
-            { "kind": "Content", "text": "<string, unknown>>" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": false,
-          "releaseTag": "Public",
-          "name": "inputsWeakMap",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
-          "isStatic": false,
-          "isProtected": false,
-          "isAbstract": false,
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "Property",
           "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#message:member",
           "docComment": "",
           "excerptTokens": [
@@ -450,10 +324,10 @@
             { "kind": "Content", "text": "<" },
             {
               "kind": "Reference",
-              "text": "RenderableMessage",
-              "canonicalReference": "@hashbrownai/angular!RenderableMessage:type"
+              "text": "UiAssistantMessage",
+              "canonicalReference": "@hashbrownai/angular!UiAssistantMessage:type"
             },
-            { "kind": "Content", "text": ">" },
+            { "kind": "Content", "text": "<any>>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
@@ -499,20 +373,64 @@
               "text": "TemplateRef",
               "canonicalReference": "@angular/core!TemplateRef:class"
             },
-            { "kind": "Content", "text": "<any>, " },
-            {
-              "kind": "Reference",
-              "text": "Node",
-              "canonicalReference": "!Node:interface"
-            },
-            { "kind": "Content", "text": "[][]>" },
+            { "kind": "Content", "text": "<any>, any[]>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
           "name": "rootNodesWeakMap",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 5 },
+          "isStatic": false,
+          "isProtected": false,
+          "isAbstract": false,
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "Property",
+          "canonicalReference": "@hashbrownai/angular!RenderMessageComponent#tagNameRegistry:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "tagNameRegistry: " },
+            { "kind": "Content", "text": "import(\"@angular/core\")." },
+            {
+              "kind": "Reference",
+              "text": "Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<import(\"./ui-chat-resource.fn\")."
+            },
+            {
+              "kind": "Reference",
+              "text": "TagNameRegistry",
+              "canonicalReference": "@hashbrownai/angular!TagNameRegistry:type"
+            },
+            { "kind": "Content", "text": " | undefined>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "tagNameRegistry",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
           "isStatic": false,
           "isProtected": false,
           "isAbstract": false,

@@ -26,10 +26,13 @@
           "text": "InjectionToken",
           "canonicalReference": "@angular/core!InjectionToken:class"
         },
+        { "kind": "Content", "text": "<" },
         {
-          "kind": "Content",
-          "text": "<{\n        baseUrl: string;\n    }>;\n    useValue: "
+          "kind": "Reference",
+          "text": "ProvideHashbrownOptions",
+          "canonicalReference": "@hashbrownai/angular!~ProvideHashbrownOptions:interface"
         },
+        { "kind": "Content", "text": ">;\n    useValue: " },
         {
           "kind": "Reference",
           "text": "ProvideHashbrownOptions",
@@ -39,7 +42,7 @@
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/provide-hashbrown.fn.d.ts",
-      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 8 },
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 10 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [

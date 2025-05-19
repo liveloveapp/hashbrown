@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal, Type } from '@angular/core';
-import { Chat, createComponentSchema, s } from '@hashbrownai/core';
+import { Chat, s, θcomponents } from '@hashbrownai/core';
 import { ExposedComponent } from './expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
@@ -69,7 +69,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
-      createComponentSchema(args.components),
+      θcomponents.createComponentSchema(args.components),
     ),
   });
 

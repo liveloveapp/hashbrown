@@ -1,7 +1,7 @@
 import { Logger } from '../logger/logger';
 import { s } from '../schema';
-import { isStreaming } from '../schema/internal';
-import { HashbrownType, internal } from '../schema/internal/base';
+import { isStreaming } from '../schema/is-streaming';
+import { HashbrownType, internal } from '../schema/base';
 
 const ENABLE_LOGGING = false;
 

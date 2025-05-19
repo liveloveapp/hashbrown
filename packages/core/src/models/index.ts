@@ -1,2 +1,1 @@
-export * as Chat_OLD from './chat';
-export * from './middleware';
+export * as Chat from './public_api';

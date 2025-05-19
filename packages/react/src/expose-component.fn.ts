@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Prettify, s } from '@hashbrownai/core';
+import { s, θtypes } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 
-export type ComponentPropSchema<T> = Prettify<
+export type ComponentPropSchema<T> = θtypes.Prettify<
   T extends ComponentType<infer P>
     ? {
         [K in keyof P]?: s.Schema<P[K]>;
@@ -28,7 +28,7 @@ export interface ExposedComponent<T extends ComponentType<any>> {
  */
 export function exposeComponent<T extends ComponentType<any>>(
   component: T,
-  config: Prettify<Omit<ExposedComponent<T>, 'component'>>,
+  config: θtypes.Prettify<Omit<ExposedComponent<T>, 'component'>>,
 ): ExposedComponent<T> {
   return {
     component,

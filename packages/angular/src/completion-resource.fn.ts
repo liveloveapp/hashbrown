@@ -12,7 +12,7 @@ import {
   Signal,
   signal,
 } from '@angular/core';
-import { ChatMiddleware, fryHashbrown } from '@hashbrownai/core';
+import { Chat, fryHashbrown } from '@hashbrownai/core';
 import { injectHashbrownConfig } from './provide-hashbrown.fn';
 import { SignalLike } from './types';
 import { readSignalLike, toSignal } from './utils';
@@ -34,7 +34,7 @@ export function completionResource<Input>(
   const hashbrown = fryHashbrown({
     debugName: 'completionResource',
     apiUrl: config.baseUrl,
-    middleware: config.middleware?.map((m): ChatMiddleware => {
+    middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),

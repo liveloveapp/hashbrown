@@ -8,31 +8,36 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions:interface",
-      "docComment": "",
+      "docComment": "/**\n * Options for the `useChat` hook.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "export interface UseStructuredChatOptions<Output extends "
+          "text": "export interface UseStructuredChatOptions<Schema extends "
         },
         {
           "kind": "Reference",
-          "text": "Chat.ResponseFormat",
-          "canonicalReference": "!Chat.ResponseFormat:type"
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
         },
-        { "kind": "Content", "text": "> extends " },
+        { "kind": "Content", "text": ", Tools extends " },
         {
           "kind": "Reference",
-          "text": "UseChatOptions",
-          "canonicalReference": "@hashbrownai/react!UseChatOptions:interface"
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
         },
-        { "kind": "Content", "text": " " }
+        { "kind": "Content", "text": "> " }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
-          "typeParameterName": "Output",
+          "typeParameterName": "Schema",
           "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 4 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
@@ -41,15 +46,208 @@
       "members": [
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#schema:member",
-          "docComment": "/**\n * The output schema for the predictions.\n */\n",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#debounceTime:member",
+          "docComment": "/**\n * The debounce time between sends to the endpoint. default: 150\n */\n",
           "excerptTokens": [
-            { "kind": "Content", "text": "schema: " },
+            { "kind": "Content", "text": "debounceTime?: " },
+            { "kind": "Content", "text": "number" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "debounceTime",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The debounce time between sends to the endpoint. default: 150\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#debugName:member",
+          "docComment": "/**\n * The name of the hook, useful for debugging.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "debugName?: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "debugName",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The name of the hook, useful for debugging.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#maxTokens:member",
+          "docComment": "/**\n * The maximum number of tokens to allow. default: 5000\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "maxTokens?: " },
+            { "kind": "Content", "text": "number" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "maxTokens",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The maximum number of tokens to allow. default: 5000\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#messages:member",
+          "docComment": "/**\n * The initial messages for the chat. default: 1.0\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "messages?: " },
             {
               "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "!s.HashbrownType:type"
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
             },
+            { "kind": "Content", "text": "<Schema, Tools>[]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "messages",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The initial messages for the chat. default: 1.0\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#model:member",
+          "docComment": "/**\n * The LLM model to use for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "model",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The LLM model to use for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#prompt:member",
+          "docComment": "/**\n * The prompt to use for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "prompt: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "prompt",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The prompt to use for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#schema:member",
+          "docComment": "/**\n * The schema to use for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "schema: " },
+            { "kind": "Content", "text": "Schema" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
@@ -66,7 +264,71 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The output schema for the predictions.\n",
+            "summary": "The schema to use for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#temperature:member",
+          "docComment": "/**\n * The temperature for the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "temperature?: " },
+            { "kind": "Content", "text": "number" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "temperature",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The temperature for the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#tools:member",
+          "docComment": "/**\n * The tools to make available use for the chat. default: []\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "tools?: " },
+            { "kind": "Content", "text": "Tools[]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "tools",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The tools to make available use for the chat. default: []\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -76,7 +338,7 @@
           }
         }
       ],
-      "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 4 }],
+      "extendsTokenRanges": [],
       "docs": {
         "modifiers": {
           "isInternal": false,
@@ -86,7 +348,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Options for the `useChat` hook.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
