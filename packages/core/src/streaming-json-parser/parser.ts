@@ -118,6 +118,72 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     markPartialJSON('Unterminated string literal');
   };
 
+  const handleIncompleteObject = (
+    currentContainerStackIndex: number,
+    obj: any,
+  ) => {
+    const currentContainer = containerStack[currentContainerStackIndex];
+
+    // Is this an undetermined anyOf?
+    if (Array.isArray(currentContainer)) {
+      logger.log('Outer: incomplete anyOf object, so throw error');
+
+      throw new IncompleteNonStreamingObject('Incomplete anyOf object found');
+    } else if (s.isStreaming(currentContainer)) {
+      logger.log('Index >= length: returning partial object');
+      return obj;
+    } else {
+      logger.log(
+        'Index >= length: opting not to return partial obj if non-streaming properties are missing',
+      );
+
+      // Are all non-streaming fields present?
+      if (
+        Object.entries(
+          (currentContainer[internal].definition as any).shape,
+        ).every(([key, subSchema]) => {
+          logger.log(
+            `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
+          );
+
+          // if this key is streaming and not present, add an "empty" value
+          if (s.isStreaming(subSchema as any)) {
+            if (!(key in obj)) {
+              if (
+                s.isStringType(subSchema as any) ||
+                s.isConstStringType(subSchema as any) ||
+                s.isEnumType(subSchema as any)
+              ) {
+                obj[key] = '';
+              } else if (s.isArrayType(subSchema as any)) {
+                obj[key] = [];
+              } else if (s.isObjectType(subSchema as any)) {
+                obj[key] = {};
+              } else {
+                throw new UnexpectedStreamingType(
+                  'Unexpected schema type for a streaming prop',
+                );
+              }
+            }
+            return true;
+          }
+
+          if (key in obj) {
+            return true;
+          }
+
+          return false;
+        })
+      ) {
+        return obj;
+      }
+
+      throw new IncompleteNonStreamingObject(
+        'Incomplete but non-streaming object found',
+      );
+    }
+  };
+
   const parseObj = (parentKey: string, insideArray: boolean) => {
     logger.log(`Parsing object with parent: ${parentKey}`);
     index++; // skip initial brace
@@ -155,68 +221,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       while (jsonString[index] !== '}') {
         skipBlank();
         if (index >= length) {
-          const currentContainer = containerStack[currentContainerStackIndex];
-
-          // Is this an undetermined anyOf?
-          if (Array.isArray(currentContainer)) {
-            logger.log('Outer: incomplete anyOf object, so throw error');
-
-            throw new IncompleteNonStreamingObject(
-              'Incomplete anyOf object found',
-            );
-          } else if (s.isStreaming(currentContainer)) {
-            logger.log('Index >= length: returning partial object');
-            return obj;
-          } else {
-            logger.log(
-              'Index >= length: opting not to return partial obj if non-streaming properties are missing',
-            );
-
-            // Are all non-streaming fields present?
-            if (
-              Object.entries(
-                (currentContainer[internal].definition as any).shape,
-              ).every(([key, subSchema]) => {
-                logger.log(
-                  `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
-                );
-
-                // if this key is streaming and not present, add an "empty" value
-                if (s.isStreaming(subSchema as any)) {
-                  if (!(key in obj)) {
-                    if (
-                      s.isStringType(subSchema as any) ||
-                      s.isConstStringType(subSchema as any) ||
-                      s.isEnumType(subSchema as any)
-                    ) {
-                      obj[key] = '';
-                    } else if (s.isArrayType(subSchema as any)) {
-                      obj[key] = [];
-                    } else if (s.isObjectType(subSchema as any)) {
-                      obj[key] = {};
-                    } else {
-                      throw new UnexpectedStreamingType(
-                        'Unexpected schema type for a streaming prop',
-                      );
-                    }
-                  }
-                  return true;
-                }
-
-                if (key in obj) {
-                  return true;
-                }
-
-                return false;
-              })
-            ) {
-              return obj;
-            }
-
-            throw new IncompleteNonStreamingObject(
-              'Incomplete but non-streaming object found',
-            );
-          }
+          return handleIncompleteObject(currentContainerStackIndex, obj);
         }
 
         const key = parseStr(false);
@@ -309,66 +314,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             - in an object that is or is not streaming
             - in an array for AnyOf, which means we aren't streaming
           */
-          const currentContainer = containerStack[currentContainerStackIndex];
 
-          // Is this an undetermined anyOf?
-          if (Array.isArray(currentContainer)) {
-            logger.log('Outer: Incomplete anyOf object, so throw error');
-            throw new IncompleteNonStreamingObject(
-              'Incomplete anyOf object found',
-            );
-          } else if (s.isStreaming(currentContainer)) {
-            logger.log('Inner: returning partial object');
-            return obj;
-          } else {
-            logger.log(
-              'Inner: opting not to return partial obj if non-streaming properties are missing',
-            );
-
-            // Are all non-streaming fields present?
-            if (
-              Object.entries(
-                (currentContainer[internal].definition as any).shape,
-              ).every(([key, subSchema]) => {
-                logger.log(
-                  `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
-                );
-                // if this key is streaming and not present, add an "empty" value
-                if (s.isStreaming(subSchema as any)) {
-                  if (!(key in obj)) {
-                    if (
-                      s.isStringType(subSchema as any) ||
-                      s.isConstStringType(subSchema as any) ||
-                      s.isEnumType(subSchema as any)
-                    ) {
-                      obj[key] = '';
-                    } else if (s.isArrayType(subSchema as any)) {
-                      obj[key] = [];
-                    } else if (s.isObjectType(subSchema as any)) {
-                      obj[key] = {};
-                    } else {
-                      throw new UnexpectedStreamingType(
-                        'Unexpected schema type for a streaming prop',
-                      );
-                    }
-                  }
-                  return true;
-                }
-
-                if (key in obj) {
-                  return true;
-                }
-
-                return false;
-              })
-            ) {
-              return obj;
-            }
-
-            throw new IncompleteNonStreamingObject(
-              'Incomplete but non-streaming object found',
-            );
-          }
+          return handleIncompleteObject(currentContainerStackIndex, obj);
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
@@ -377,69 +324,14 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       logger.log(e);
 
       // /*
-      //   We'll get here if a key is not completes
+      //   We'll get here if a key is not complete.
 
       //   We'll either be:
       //   - in an object that is or is not streaming
       //   - in an array for AnyOf, which means we aren't streaming
       // */
-      const currentContainer = containerStack[currentContainerStackIndex];
 
-      // Is this an undetermined anyOf?
-      if (Array.isArray(currentContainer)) {
-        logger.log('Outer: Incomplete anyOf object, so throw error');
-        throw new IncompleteNonStreamingObject('Incomplete anyOf object found');
-      } else if (s.isStreaming(currentContainer)) {
-        logger.log('Outer: returning partial object');
-        return obj;
-      } else {
-        logger.log(
-          'Outer: opting not to return partial obj if non-streaming properties are missing',
-        );
-        // Are all non-streaming fields present?
-        if (
-          Object.entries(
-            (currentContainer[internal].definition as any).shape,
-          ).every(([key, subSchema]) => {
-            logger.log(
-              `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
-            );
-            // if this key is streaming and not present, add an "empty" value
-            if (s.isStreaming(subSchema as any)) {
-              if (!(key in obj)) {
-                if (
-                  s.isStringType(subSchema as any) ||
-                  s.isConstStringType(subSchema as any) ||
-                  s.isEnumType(subSchema as any)
-                ) {
-                  obj[key] = '';
-                } else if (s.isArrayType(subSchema as any)) {
-                  obj[key] = [];
-                } else if (s.isObjectType(subSchema as any)) {
-                  obj[key] = {};
-                } else {
-                  throw new UnexpectedStreamingType(
-                    'Unexpected schema type for a streaming prop',
-                  );
-                }
-              }
-              return true;
-            }
-
-            if (key in obj) {
-              return true;
-            }
-
-            return false;
-          })
-        ) {
-          return obj;
-        }
-
-        throw new IncompleteNonStreamingObject(
-          'Incomplete but non-streaming object found',
-        );
-      }
+      return handleIncompleteObject(currentContainerStackIndex, obj);
     }
     index++; // skip final brace
 
