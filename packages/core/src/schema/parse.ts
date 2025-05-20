@@ -1,6 +1,6 @@
 import * as s from './base';
 
-export function parse<T extends s.HashbrownType>(
+export function parseJsonSchema<T extends s.HashbrownType>(
   schema: T,
   object: unknown,
   path: string[] = [],
@@ -53,7 +53,10 @@ export function parse<T extends s.HashbrownType>(
     const { shape } = schema[s.internal].definition;
 
     Object.entries(shape).every(([key, child]) =>
-      parse(child, object[key as keyof typeof object], [...path, key]),
+      parseJsonSchema(child, object[key as keyof typeof object], [
+        ...path,
+        key,
+      ]),
     );
 
     return object;
@@ -62,14 +65,16 @@ export function parse<T extends s.HashbrownType>(
     if (!Array.isArray(object))
       throw new Error(`Expected an array at: ${path.join('.')}`);
 
-    object.every((item) => parse(schema[s.internal].definition.element, item));
+    object.every((item) =>
+      parseJsonSchema(schema[s.internal].definition.element, item),
+    );
 
     return object;
   }
   if (s.isAnyOfType(schema)) {
     const isValid = schema[s.internal].definition.options.some((option) => {
       try {
-        parse(option, object, [...path, 'anyOf']);
+        parseJsonSchema(option, object, [...path, 'anyOf']);
         return true;
       } catch {
         return false;
@@ -93,4 +98,12 @@ export function parse<T extends s.HashbrownType>(
   }
 
   throw new Error(`Unhandled schema type at: ${path.join('.')}`);
+}
+
+export function validateJsonSchema<T extends s.HashbrownType>(
+  schema: T,
+  object: unknown,
+): void {
+  // No return.  Just see if it throws an exception.
+  parseJsonSchema(schema, object);
 }

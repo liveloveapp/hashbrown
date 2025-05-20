@@ -32,7 +32,7 @@ import { s } from '../../schema';
   //   },
   // };
 
-  // s.parse(responseSchema, data);
+  // s.validateJsonSchema(responseSchema, data);
 
   // const responseSchema = s.object('root', {
   //   booleanValue: s.boolean('a boolean'),
