@@ -18,7 +18,7 @@ function parseJSON(jsonString: string, schema: s.HashbrownType): any {
     throw new TypeError(`expecting str, got ${typeof jsonString}`);
   }
   if (!jsonString.trim()) {
-    throw new Error(`${jsonString} is empty`);
+    return '';
   }
   return _parseJSON(jsonString.trim(), schema);
 }
@@ -95,6 +95,11 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   const parseStr: (allowsIncomplete: boolean) => string = (
     allowsIncomplete,
   ) => {
+    if (containerStack.length === 1) {
+      // String literal at top level, so see if the the schema allows streaming
+      allowsIncomplete = s.isStreaming(schema);
+    }
+
     const start = index;
     let escape = false;
     index++; // skip initial quote
@@ -475,6 +480,11 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   const parseArr = (currentKey: string, allowsIncomplete: boolean) => {
+    if (containerStack.length === 1) {
+      // String literal at top level, so see if the the schema allows streaming
+      allowsIncomplete = s.isStreaming(schema);
+    }
+
     index++; // skip initial bracket
     logger.log('parseArr: Start');
     const arr = [];
@@ -550,6 +560,10 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     if (index === 0) {
       if (jsonString === '-') throwMalformedError("Not sure what '-' is");
       try {
+        // JSON string starts with a number, so we'll try to parse the whole thing as one.
+        // Thus, set index to length.
+        index = jsonString.length;
+
         return JSON.parse(jsonString);
       } catch (e) {
         if (allowsIncomplete)
@@ -595,13 +609,40 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   try {
-    return parseAny('', true, false);
+    const result = parseAny('', false, false);
+
+    // We returned, but have we not consumed the whole length?
+    if (index < length) {
+      throwMalformedError('Extra data after end of parsing');
+    }
+
+    return result;
   } catch (e) {
     if (e instanceof IncompleteNonStreamingObject) {
       logger.log('Got incomplete object error at top level');
+
+      return '';
     }
 
-    return '';
+    if (e instanceof PartialJSON) {
+      logger.log('Got unterminated container');
+
+      return '';
+    }
+
+    if (e instanceof MalformedJSON) {
+      if (e.message.includes('Exponent part is missing a number')) {
+        logger.log('Found number with exponent sans number');
+        return '';
+      }
+
+      if (e.message.includes('Unterminated fractional number')) {
+        logger.log('Found number with decimal point sans numbers');
+        return '';
+      }
+    }
+
+    throw e;
   }
 };
 
