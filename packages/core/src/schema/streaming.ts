@@ -1,11 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  ArrayType,
-  EnumType,
-  HashbrownType,
-  ObjectType,
-  StringType,
-} from './base';
+import { ArrayType, HashbrownType, ObjectType, StringType } from './base';
 import { CleanInterfaceShape } from '../utils/types';
 
 export function string(description: string): StringType {
