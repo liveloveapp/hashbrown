@@ -23,7 +23,7 @@ export const runTools = createEffect((store) => {
       }
 
       try {
-        const args = s.parse(tool.schema, toolCall.arguments);
+        const args = s.parseJsonSchema(tool.schema, toolCall.arguments);
 
         return Promise.resolve(tool.handler(args, abortController.signal));
       } catch (error) {
@@ -34,7 +34,7 @@ export const runTools = createEffect((store) => {
           error.message.includes('Expected an object at')
         ) {
           try {
-            const args = s.parse(
+            const args = s.parseJsonSchema(
               tool.schema,
               JSON.parse(toolCall.arguments as any),
             );
