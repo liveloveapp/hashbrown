@@ -61,35 +61,20 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
     if (jsonString[index] === '[')
       return parseArr(currentKey, allowsIncomplete);
-    if (
-      jsonString.substring(index, index + 4) === 'null' ||
-      (allowsIncomplete &&
-        length - index < 4 &&
-        'null'.startsWith(jsonString.substring(index)))
-    ) {
+    if (jsonString.substring(index, index + 4) === 'null') {
       index += 4;
       return null;
     }
-    if (
-      jsonString.substring(index, index + 4) === 'true' ||
-      (allowsIncomplete &&
-        length - index < 4 &&
-        'true'.startsWith(jsonString.substring(index)))
-    ) {
+    if (jsonString.substring(index, index + 4) === 'true') {
       index += 4;
       return true;
     }
-    if (
-      jsonString.substring(index, index + 5) === 'false' ||
-      (allowsIncomplete &&
-        length - index < 5 &&
-        'false'.startsWith(jsonString.substring(index)))
-    ) {
+    if (jsonString.substring(index, index + 5) === 'false') {
       index += 5;
       return false;
     }
 
-    return parseNum(allowsIncomplete);
+    return parseNum();
   };
 
   const parseStr: (allowsIncomplete: boolean) => string = (
@@ -556,7 +541,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     return arr;
   };
 
-  const parseNum = (allowsIncomplete: boolean) => {
+  const parseNum = () => {
     if (index === 0) {
       if (jsonString === '-') throwMalformedError("Not sure what '-' is");
       try {
@@ -566,14 +551,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
         return JSON.parse(jsonString);
       } catch (e) {
-        if (allowsIncomplete)
-          try {
-            return JSON.parse(
-              jsonString.substring(0, jsonString.lastIndexOf('e')),
-            );
-          } catch (e) {
-            logger.error(e);
-          }
         throwMalformedError(String(e));
       }
     }
@@ -584,8 +561,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     while (jsonString[index] && ',]}'.indexOf(jsonString[index]) === -1)
       index++;
 
-    if (index == length && !allowsIncomplete)
-      markPartialJSON('Unterminated number literal');
+    if (index == length) markPartialJSON('Unterminated number literal');
 
     try {
       return JSON.parse(jsonString.substring(start, index));
