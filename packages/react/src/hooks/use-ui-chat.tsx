@@ -4,21 +4,18 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
 
-const publicSchema = s.object('UI', {
-  ui: s.streaming.array(
-    'List of elements',
-    s.object('Component', {
-      $tagName: s.string(''),
-      $props: s.object('', {}),
-      get $children() {
-        return s.array('', publicSchema);
-      },
-    }),
-  ),
-});
+export interface UiChatSchemaComponent {
+  $tagName: string;
+  $props: Record<string, any>;
+  $children: UiChatSchemaComponent[];
+}
+
+export interface UiChatSchema {
+  ui: UiChatSchemaComponent[];
+}
 
 export type UiAssistantMessage<Tools extends Chat.AnyTool> =
-  Chat.AssistantMessage<typeof publicSchema, Tools> & {
+  Chat.AssistantMessage<UiChatSchema, Tools> & {
     ui: React.ReactElement[] | null;
   };
 
@@ -46,7 +43,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * The initial messages for the chat.
    * default: 1.0
    */
-  messages?: Chat.Message<typeof publicSchema, Tools>[];
+  messages?: Chat.Message<UiChatSchema, Tools>[];
   /**
    * The tools to make available use for the chat.
    * default: []
@@ -81,15 +78,14 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 ) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  const elements = useMemo(
-    () => θcomponents.createComponentSchema(components),
-    [components],
-  );
   const ui = useMemo(() => {
     return s.object('UI', {
-      ui: s.streaming.array('List of elements', elements),
+      ui: s.streaming.array(
+        'List of elements',
+        θcomponents.createComponentSchema(components),
+      ),
     });
-  }, [elements]);
+  }, [components]);
   const chat = useStructuredChat({
     ...chatOptions,
     schema: ui,
@@ -97,7 +93,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 
   const buildContent = useCallback(
     (
-      nodes: Array<s.Infer<typeof elements>>,
+      nodes: Array<UiChatSchemaComponent>,
       parentKey = '',
     ): React.ReactElement[] => {
       const elements = nodes.map((element, index) => {

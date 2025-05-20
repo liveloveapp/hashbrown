@@ -9,6 +9,7 @@ import { HashbrownContext } from '../hashbrown-provider';
 export interface UseStructuredChatOptions<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
 > {
   /**
    * The LLM model to use for the chat.
@@ -30,7 +31,7 @@ export interface UseStructuredChatOptions<
    * The initial messages for the chat.
    * default: 1.0
    */
-  messages?: Chat.Message<Schema, Tools>[];
+  messages?: Chat.Message<Output, Tools>[];
   /**
    * The tools to make available use for the chat.
    * default: []
@@ -63,26 +64,23 @@ export interface UseStructuredChatOptions<
 /**
  * Represents the result of the `useChat` hook.
  */
-export interface UseStructuredChatResult<
-  Schema extends s.HashbrownType,
-  Tools extends Chat.AnyTool,
-> {
+export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   /**
    * An array of chat messages.
    */
-  messages: Chat.Message<Schema, Tools>[];
+  messages: Chat.Message<Output, Tools>[];
 
   /**
    * Function to update the chat messages.
    * @param messages - The new array of chat messages.
    */
-  setMessages: (messages: Chat.Message<Schema, Tools>[]) => void;
+  setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
 
   /**
    * Function to send a new chat message.
    * @param message - The chat message to send.
    */
-  sendMessage: (message: Chat.Message<Schema, Tools>) => void;
+  sendMessage: (message: Chat.Message<Output, Tools>) => void;
 
   /**
    * Reload the chat, useful for retrying when an error occurs.
@@ -151,13 +149,14 @@ export interface UseStructuredChatResult<
 export function useStructuredChat<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(
-  options: UseStructuredChatOptions<Schema, Tools>,
-): UseStructuredChatResult<Schema, Tools> {
+  options: UseStructuredChatOptions<Schema, Tools, Output>,
+): UseStructuredChatResult<Output, Tools> {
   const tools: Tools[] = useTools(options.tools ?? []);
   const config = useContext(HashbrownContext);
 
-  const [hashbrown, setHashbrown] = useState<Hashbrown<Schema, Tools> | null>(
+  const [hashbrown, setHashbrown] = useState<Hashbrown<Output, Tools> | null>(
     null,
   );
 
@@ -168,7 +167,7 @@ export function useStructuredChat<
       throw new Error('HashbrownContext not found');
     }
 
-    const instance = fryHashbrown<Schema, Tools>({
+    const instance = fryHashbrown<Schema, Tools, Output>({
       apiUrl: config.url,
       middleware: config.middleware,
       model: options.model,
@@ -198,21 +197,21 @@ export function useStructuredChat<
   ]);
 
   const sendMessage = useCallback(
-    (message: Chat.Message<Schema, Tools>) => {
+    (message: Chat.Message<Output, Tools>) => {
       hashbrown?.sendMessage(message);
     },
     [hashbrown],
   );
 
   const setMessages = useCallback(
-    (messages: Chat.Message<Schema, Tools>[]) => {
+    (messages: Chat.Message<Output, Tools>[]) => {
       hashbrown?.setMessages(messages);
     },
     [hashbrown],
   );
 
   const [internalMessages, setInternalMessages] = useState<
-    Chat.Message<Schema, Tools>[]
+    Chat.Message<Output, Tools>[]
   >(options.messages ?? []);
   const [isReceiving, setIsReceiving] = useState(false);
   const [isSending, setIsSending] = useState(false);

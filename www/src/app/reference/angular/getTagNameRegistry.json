@@ -19,8 +19,8 @@
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
-          "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "text": "UiChatSchema",
+          "canonicalReference": "@hashbrownai/angular!UiChatSchema:interface"
         },
         { "kind": "Content", "text": ", " },
         {

@@ -12,16 +12,15 @@ import { Chat, fryHashbrown, s } from '@hashbrownai/core';
 import { injectHashbrownConfig } from './provide-hashbrown.fn';
 import { readSignalLike, toSignal } from './utils';
 
-export interface StructuredChatResourceRef<
-  Schema extends s.HashbrownType,
-  Tools extends Chat.AnyTool,
-> extends Resource<Chat.Message<Schema, Tools>[]> {
+export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
+  extends Resource<Chat.Message<Output, Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
 }
 
 export interface StructuredChatResourceOptions<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
 > {
   model: string | Signal<string>;
   prompt: string | Signal<string>;
@@ -29,7 +28,7 @@ export interface StructuredChatResourceOptions<
   temperature?: number | Signal<number>;
   tools?: Tools[];
   maxTokens?: number | Signal<number>;
-  messages?: Chat.Message<Schema, Tools>[];
+  messages?: Chat.Message<Output, Tools>[];
   debugName?: string;
   debounce?: number;
 }
@@ -37,12 +36,13 @@ export interface StructuredChatResourceOptions<
 export function structuredChatResource<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(
-  options: StructuredChatResourceOptions<Schema, Tools>,
-): StructuredChatResourceRef<Schema, Tools> {
+  options: StructuredChatResourceOptions<Schema, Tools, Output>,
+): StructuredChatResourceRef<Output, Tools> {
   const config = injectHashbrownConfig();
   const injector = inject(Injector);
-  const hashbrown = fryHashbrown<Schema, Tools>({
+  const hashbrown = fryHashbrown<Schema, Tools, Output>({
     apiUrl: config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>

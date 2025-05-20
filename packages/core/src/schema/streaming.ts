@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  AnyOfType,
   ArrayType,
-  ConstStringType,
   EnumType,
   HashbrownType,
   ObjectType,
@@ -12,15 +10,6 @@ import { CleanInterfaceShape } from '../utils/types';
 
 export function string(description: string): StringType {
   return new StringType({ type: 'string', description, streaming: true });
-}
-
-export function constString<T extends string>(value: T): ConstStringType<T> {
-  return new ConstStringType({
-    type: 'const-string',
-    description: `${value}`,
-    value,
-    streaming: true,
-  }) as any;
 }
 
 export function object<Shape extends Record<string, any>>(
@@ -44,24 +33,5 @@ export function array<Item extends HashbrownType>(
     description,
     streaming: true,
     element: item,
-  }) as any;
-}
-
-export function enumType<Entries extends string[]>(
-  description: string,
-  entries: Entries,
-) {
-  return new EnumType({ type: 'enum', description, entries, streaming: true });
-}
-
-export function anyOf<const Options extends readonly HashbrownType[]>(
-  description: string,
-  options: Options,
-): AnyOfType<Options> {
-  return new AnyOfType({
-    type: 'any-of',
-    description,
-    options,
-    streaming: true,
   }) as any;
 }

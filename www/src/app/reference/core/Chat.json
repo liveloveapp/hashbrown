@@ -26,13 +26,7 @@
               "text": "Message",
               "canonicalReference": "@hashbrownai/core!~Chat_2.Message_3:type"
             },
-            { "kind": "Content", "text": "<string | " },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": ", " },
+            { "kind": "Content", "text": "<string | object, " },
             {
               "kind": "Reference",
               "text": "AnyTool",
@@ -44,7 +38,7 @@
           "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
           "name": "AnyMessage",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 7 },
+          "typeTokenRange": { "startIndex": 1, "endIndex": 5 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -1533,87 +1527,141 @@
           }
         },
         {
-          "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:type",
+          "kind": "Interface",
+          "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:interface",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export type AssistantMessage<OutputSchemaOrString extends "
+              "text": "export interface AssistantMessage<Output, ToolUnion extends "
             },
-            { "kind": "Content", "text": "string | " },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": ", ToolUnion extends " },
             {
               "kind": "Reference",
               "text": "AnyTool",
               "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
             },
-            { "kind": "Content", "text": "> = " },
-            {
-              "kind": "Reference",
-              "text": "Prettify",
-              "canonicalReference": "@hashbrownai/core!θtypes.Prettify:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<OutputSchemaOrString extends string ? {\n    role: 'assistant';\n    content?: OutputSchemaOrString;\n    toolCalls: "
-            },
-            {
-              "kind": "Reference",
-              "text": "ToolCall",
-              "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<ToolUnion>[];\n} : OutputSchemaOrString extends "
-            },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            {
-              "kind": "Content",
-              "text": " ? {\n    role: 'assistant';\n    content?: "
-            },
-            {
-              "kind": "Reference",
-              "text": "s.Infer",
-              "canonicalReference": "@hashbrownai/core!s.Infer:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<OutputSchemaOrString>;\n    toolCalls: "
-            },
-            {
-              "kind": "Reference",
-              "text": "ToolCall",
-              "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
-            },
-            { "kind": "Content", "text": "<ToolUnion>[];\n} : never>" },
-            { "kind": "Content", "text": ";" }
+            { "kind": "Content", "text": "> " }
           ],
           "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
-          "name": "AssistantMessage",
           "typeParameters": [
             {
-              "typeParameterName": "OutputSchemaOrString",
-              "constraintTokenRange": { "startIndex": 1, "endIndex": 3 },
+              "typeParameterName": "Output",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             },
             {
               "typeParameterName": "ToolUnion",
-              "constraintTokenRange": { "startIndex": 4, "endIndex": 5 },
+              "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "typeTokenRange": { "startIndex": 6, "endIndex": 16 },
+          "name": "AssistantMessage",
+          "preserveMemberOrder": false,
+          "members": [
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage#content:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "content?: " },
+                { "kind": "Content", "text": "Output" },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": true,
+              "releaseTag": "Public",
+              "name": "content",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage#role:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "role: " },
+                { "kind": "Content", "text": "'assistant'" },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "role",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage#toolCalls:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "toolCalls: " },
+                {
+                  "kind": "Reference",
+                  "text": "ToolCall",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
+                },
+                { "kind": "Content", "text": "<ToolUnion>[]" },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "toolCalls",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            }
+          ],
+          "extendsTokenRanges": [],
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -1970,29 +2018,16 @@
                     { "kind": "Content", "text": "schema: " },
                     {
                       "kind": "Reference",
-                      "text": "s.ObjectType",
-                      "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
-                    },
-                    { "kind": "Content", "text": "<" },
-                    {
-                      "kind": "Reference",
-                      "text": "Record",
-                      "canonicalReference": "!Record:type"
-                    },
-                    { "kind": "Content", "text": "<string, " },
-                    {
-                      "kind": "Reference",
                       "text": "s.HashbrownType",
                       "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
                     },
-                    { "kind": "Content", "text": ">>" },
                     { "kind": "Content", "text": ";" }
                   ],
                   "isReadonly": false,
                   "isOptional": false,
                   "releaseTag": "Public",
                   "name": "schema",
-                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
                   "docs": {
                     "modifiers": {
                       "isInternal": false,
@@ -2382,15 +2417,8 @@
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export type Message<OutputSchemaOrString extends "
+              "text": "export type Message<Output, Tools extends "
             },
-            { "kind": "Content", "text": "string | " },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": ", Tools extends " },
             {
               "kind": "Reference",
               "text": "AnyTool",
@@ -2406,9 +2434,9 @@
             {
               "kind": "Reference",
               "text": "AssistantMessage",
-              "canonicalReference": "@hashbrownai/core!~Chat_2.AssistantMessage_3:type"
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AssistantMessage_3:interface"
             },
-            { "kind": "Content", "text": "<OutputSchemaOrString, Tools>" },
+            { "kind": "Content", "text": "<Output, Tools>" },
             { "kind": "Content", "text": ";" }
           ],
           "fileUrlPath": "../packages/core/src/models/view.models.ts",
@@ -2416,17 +2444,17 @@
           "name": "Message",
           "typeParameters": [
             {
-              "typeParameterName": "OutputSchemaOrString",
-              "constraintTokenRange": { "startIndex": 1, "endIndex": 3 },
+              "typeParameterName": "Output",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             },
             {
               "typeParameterName": "Tools",
-              "constraintTokenRange": { "startIndex": 4, "endIndex": 5 },
+              "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "typeTokenRange": { "startIndex": 6, "endIndex": 10 },
+          "typeTokenRange": { "startIndex": 3, "endIndex": 7 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -2507,17 +2535,20 @@
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export type Tool<Name, ArgsSchema extends "
+              "text": "export type Tool<Name, Args, Result> = "
+            },
+            {
+              "kind": "Content",
+              "text": "{\n    name: Name;\n    description: string;\n    schema: "
             },
             {
               "kind": "Reference",
               "text": "s.HashbrownType",
               "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
             },
-            { "kind": "Content", "text": ", Result> = " },
             {
               "kind": "Content",
-              "text": "{\n    name: Name;\n    description: string;\n    schema: ArgsSchema;\n    handler: (input: ArgsSchema, abortSignal: "
+              "text": ";\n    handler: (input: Args, abortSignal: "
             },
             {
               "kind": "Reference",
@@ -2543,8 +2574,8 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             },
             {
-              "typeParameterName": "ArgsSchema",
-              "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "typeParameterName": "Args",
+              "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             },
             {
@@ -2553,7 +2584,7 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "typeTokenRange": { "startIndex": 3, "endIndex": 8 },
+          "typeTokenRange": { "startIndex": 1, "endIndex": 8 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -2600,14 +2631,8 @@
             },
             {
               "kind": "Content",
-              "text": "<infer Name, infer ArgsSchema, infer Result> ? {\n    role: 'tool';\n    status: 'done';\n    name: Name;\n    args: "
+              "text": "<infer Name, infer Args, infer Result> ? {\n    role: 'tool';\n    status: 'done';\n    name: Name;\n    args: Args;\n    result: "
             },
-            {
-              "kind": "Reference",
-              "text": "s.Infer",
-              "canonicalReference": "@hashbrownai/core!s.Infer:type"
-            },
-            { "kind": "Content", "text": "<ArgsSchema>;\n    result: " },
             {
               "kind": "Reference",
               "text": "PromiseSettledResult",
@@ -2615,16 +2640,7 @@
             },
             {
               "kind": "Content",
-              "text": "<Result>;\n    toolCallId: string;\n} | {\n    role: 'tool';\n    status: 'pending';\n    name: Name;\n    args: "
-            },
-            {
-              "kind": "Reference",
-              "text": "s.Infer",
-              "canonicalReference": "@hashbrownai/core!s.Infer:type"
-            },
-            {
-              "kind": "Content",
-              "text": "<ArgsSchema>;\n    toolCallId: string;\n    progress?: number;\n} : never>"
+              "text": "<Result>;\n    toolCallId: string;\n} | {\n    role: 'tool';\n    status: 'pending';\n    name: Name;\n    args: Args;\n    toolCallId: string;\n    progress?: number;\n} : never>"
             },
             { "kind": "Content", "text": ";" }
           ],
@@ -2638,7 +2654,7 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "typeTokenRange": { "startIndex": 3, "endIndex": 13 },
+          "typeTokenRange": { "startIndex": 3, "endIndex": 9 },
           "docs": {
             "modifiers": {
               "isInternal": false,

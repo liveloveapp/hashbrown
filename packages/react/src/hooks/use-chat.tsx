@@ -150,7 +150,7 @@ export function useChat<Tools extends Chat.AnyTool>(
 
     console.log('frying hashbrown');
 
-    const instance = fryHashbrown<string, Tools>({
+    const instance = fryHashbrown<Tools>({
       apiUrl: config.url,
       middleware: config.middleware,
       debugName: options.debugName,

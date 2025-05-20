@@ -92,7 +92,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
 ): ChatResourceRef<Tools> {
   const config = injectHashbrownConfig();
   const injector = inject(Injector);
-  const hashbrown = fryHashbrown<string, Tools>({
+  const hashbrown = fryHashbrown({
     apiUrl: config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
