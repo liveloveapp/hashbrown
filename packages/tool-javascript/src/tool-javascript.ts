@@ -18,7 +18,7 @@ export function createToolJavaScript(config: {
   const functionDescriptions = config.functions.map((fn) => {
     const args = s.isNullType(fn.schema)
       ? ''
-      : `args: ${s.toTypeScript(fn.schema)}`;
+      : `args: ${fn.schema.toTypeScript()}`;
 
     return `
       ### ${fn.name}
@@ -26,7 +26,7 @@ export function createToolJavaScript(config: {
       
       Type Signature:
       \`\`\`javascript
-      ${fn.name}(${args}): ${s.toTypeScript(fn.output)}
+      ${fn.name}(${args}): ${fn.output.toTypeScript()}
       \`\`\`
     `;
   });
