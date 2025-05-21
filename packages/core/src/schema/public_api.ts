@@ -36,8 +36,6 @@ export {
 } from './base';
 export { getDescription } from './get-description';
 export { isStreaming } from './is-streaming';
-export { parseJsonSchema, validateJsonSchema } from './parse';
 export * as streaming from './streaming';
 export { toJsonSchema } from './to-json-schema';
-export { toOpenApi } from './to-open-api';
 export { toTypeScript } from './to-typescript';
