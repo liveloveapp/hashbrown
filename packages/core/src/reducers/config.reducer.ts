@@ -1,7 +1,7 @@
-import { s } from '../schema';
-import { Chat } from '../models';
-import { createReducer, on } from '../utils/micro-ngrx';
 import { devActions } from '../actions';
+import { Chat } from '../models';
+import { s } from '../schema';
+import { createReducer, on } from '../utils/micro-ngrx';
 
 export interface ConfigState {
   apiUrl: string;
@@ -38,6 +38,12 @@ export const reducer = createReducer(
       middleware: action.payload.middleware,
       emulateStructuredOutput:
         action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
+    };
+  }),
+  on(devActions.updateOptions, (state, action) => {
+    return {
+      ...state,
+      ...action.payload,
     };
   }),
 );
