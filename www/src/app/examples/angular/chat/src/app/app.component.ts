@@ -1,4 +1,4 @@
-import { Component, effect, inject, resource, signal } from '@angular/core';
+import { Component, inject, resource } from '@angular/core';
 import {
   createTool,
   createToolWithArgs,
@@ -14,7 +14,6 @@ import { MessagesComponent } from './components/messages.component';
 import { Light } from './models/light';
 import { AuthService } from './services/auth.service';
 import { LightsStore } from './store/lights.store';
-import { setApiKey, setProvider } from './utils/config.util';
 
 @Component({
   selector: 'app-root',
@@ -27,11 +26,7 @@ import { setApiKey, setProvider } from './utils/config.util';
   providers: [LightsStore],
   template: `
     <div class="app">
-      <app-config
-        [provider]="provider()"
-        (apiKeyChange)="apiKey.set($event)"
-        (providerChange)="provider.set($event)"
-      />
+      <app-config />
       <div class="lights">
         <h3>Lights</h3>
         @for (light of lightsResource.value(); track light.id) {
@@ -130,11 +125,10 @@ import { setApiKey, setProvider } from './utils/config.util';
 })
 export class App {
   lightsStore = inject(LightsStore);
-  apiKey = signal<string>('');
-  provider = signal('openai');
 
   chat = uiChatResource({
     model: 'gpt-4.1',
+    debugName: 'lights-chat',
     prompt:
       'You are a helpful assistant that can answer questions and help with tasks',
     components: [
@@ -188,16 +182,6 @@ export class App {
           }),
       }),
     ],
-  });
-
-  syncApiKey = effect(() => {
-    const apiKey = this.apiKey();
-    setApiKey(apiKey);
-  });
-
-  syncProvider = effect(() => {
-    const provider = this.provider();
-    setProvider(provider);
   });
 
   lightsResource = resource({

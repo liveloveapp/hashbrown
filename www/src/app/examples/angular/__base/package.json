@@ -19,7 +19,6 @@
     "@hashbrownai/core": "<hashbrown-version>",
     "@hashbrownai/google": "0.0.1",
     "@hashbrownai/openai": "<hashbrown-version>",
-    "@hashbrownai/react": "<hashbrown-version>",
     "@hashbrownai/tool-javascript": "<hashbrown-version>",
     "@ngrx/signals": "<ngrx-version>",
     "@types/react": "^19.1.4",

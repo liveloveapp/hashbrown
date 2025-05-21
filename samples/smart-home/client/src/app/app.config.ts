@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  inject,
   provideExperimentalZonelessChangeDetection,
 } from '@angular/core';
 import { provideNativeDateAdapter } from '@angular/material/core';
@@ -7,7 +8,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHashbrown } from '@hashbrownai/angular';
 import { provideEffects } from '@ngrx/effects';
-import { provideStore } from '@ngrx/store';
+import { provideStore, Store } from '@ngrx/store';
 import { provideMarkdown } from 'ngx-markdown';
 // import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { routes } from './app.routes';
@@ -35,6 +36,13 @@ export const appConfig: ApplicationConfig = {
     provideHashbrown({
       baseUrl: 'http://localhost:3000/chat',
       emulateStructuredOutput: true,
+      middleware: [
+        function (request: RequestInit) {
+          const store = inject(Store);
+          console.log(store);
+          return request;
+        },
+      ],
     }),
     provideNativeDateAdapter(),
   ],

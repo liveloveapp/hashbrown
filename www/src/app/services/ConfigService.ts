@@ -48,6 +48,6 @@ export class ConfigService {
   }
 
   set(config: Partial<AppConfig>) {
-    this.configSignal.set({ ...this.configSignal(), ...config });
+    this.configSignal.update((c) => ({ ...c, ...config }));
   }
 }

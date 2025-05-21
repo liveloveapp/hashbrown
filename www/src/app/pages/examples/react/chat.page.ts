@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { Stackblitz } from '../../../components/Stackblitz';
 
 @Component({
-  template: `<www-stackblitz name="angular/chat" />`,
+  template: `<www-stackblitz name="react/chat" />`,
   imports: [Stackblitz],
   styles: `
     :host {

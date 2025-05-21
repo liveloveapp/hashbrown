@@ -1,0 +1,16 @@
+.container {
+  flex: 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+}
+
+.chatMessage {
+  padding: 16px;
+  border-radius: 16px;
+  width: 80%;
+  background-color: rgba(61, 60, 58, 0.24);
+  align-self: flex-end;
+  margin-bottom: 16px;
+}

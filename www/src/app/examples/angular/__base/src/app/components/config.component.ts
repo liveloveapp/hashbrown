@@ -1,7 +1,8 @@
-import { Component, input, output, signal, Type } from '@angular/core';
+import { Component, inject, signal, Type } from '@angular/core';
 import { BrandGoogleComponent } from '../icons/brand-google.component';
 import { BrandOpenAiComponent } from '../icons/brand-openai.component';
 import { BrandWriterComponent } from '../icons/brand-writer.component';
+import { ConfigStore } from '../store/config.store';
 import { ButtonGroupComponent } from './button-group.component';
 
 @Component({
@@ -47,6 +48,7 @@ import { ButtonGroupComponent } from './button-group.component';
   `,
 })
 export class ConfigComponent {
+  configStore = inject(ConfigStore);
   providers = signal<{ label: string; value: string; icon?: Type<any> }[]>([
     {
       label: 'OpenAI',
@@ -64,17 +66,14 @@ export class ConfigComponent {
       icon: BrandWriterComponent,
     },
   ]);
-  provider = input.required<string>();
-  apiKeyChange = output<string>();
-  providerChange = output<string>();
+  provider = this.configStore.provider;
 
   onApiKeyChange(event: Event): void {
     const target = event.target as HTMLInputElement;
-    const apiKey = target.value;
-    this.apiKeyChange.emit(apiKey);
+    this.configStore.setApiKey(target.value);
   }
 
   onProviderChange(value: string): void {
-    this.providerChange.emit(value);
+    this.configStore.setProvider(value);
   }
 }

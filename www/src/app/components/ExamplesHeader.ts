@@ -1,4 +1,4 @@
-import { Component, computed, inject, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Angular } from '../icons/Angular';
 import { Hashbrown } from '../icons/Hashbrown';
@@ -23,6 +23,9 @@ import { DropdownMenu } from './DropDownMenu';
               <a [routerLink]="docsUrl()" class="underline">docs</a>
             </li>
             <li><a routerLink="/api" class="underline">api</a></li>
+            <li>
+              <a [routerLink]="examplesUrl()" class="underline">examples</a>
+            </li>
             <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
@@ -155,9 +158,18 @@ export class ExamplesHeader {
   docsUrl = computed(() => {
     return `/docs/${this.configService.config().sdk}/start/quick`;
   });
+  examplesUrl = computed(() => {
+    return `/examples/${this.configService.config().sdk}/chat`;
+  });
   dropdownMenu = viewChild.required(DropdownMenu);
 
   close() {
     this.dropdownMenu().toggle();
+  }
+
+  constructor() {
+    effect(() => {
+      console.log(this.configService.config());
+    });
   }
 }

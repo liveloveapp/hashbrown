@@ -26,7 +26,7 @@ import { Providers } from '../components/Providers';
     <main class="home">
       <www-hero />
       <www-providers />
-      <www-lpd-tour />
+      <!--      <www-lpd-tour />-->
       <www-open-source />
       <www-adapters />
       <www-getting-started />
