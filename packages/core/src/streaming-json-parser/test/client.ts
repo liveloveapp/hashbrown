@@ -5,7 +5,7 @@ import { SocketAsyncIterable } from './socket-async-iterable';
 import { s } from '../../schema';
 
 (async () => {
-  console.log('Connecting...');
+  // console.log('Connecting...');
   // const client = new Socket();
 
   // client.connect(1337, '127.0.0.1', function () {
@@ -35,6 +35,8 @@ import { s } from '../../schema';
 
   console.log(responseSchema.parseJsonSchema(data));
   responseSchema.validateJsonSchema(data);
+
+  console.log(responseSchema.toTypeScript());
 
   // const responseSchema = s.object('root', {
   //   booleanValue: s.boolean('a boolean'),

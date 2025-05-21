@@ -23,6 +23,7 @@ type TypeBox = {
   [internal]: TypeInternals;
   toJsonSchema: () => object;
   parseJsonSchema: (object: unknown, path: string[]) => any;
+  toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
 };
 
 export interface HashbrownTypeCtor<
@@ -33,6 +34,7 @@ export interface HashbrownTypeCtor<
   init(inst: T, def: D): asserts inst is T;
   toJsonSchema(schema: any): any;
   parseJsonSchema(object: unknown, path: string[]): any;
+  toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
 }
 
 export const HashbrownTypeCtor = <
@@ -47,6 +49,10 @@ export const HashbrownTypeCtor = <
     object: unknown,
     path: string[],
   ) => any,
+  toTypeScriptImpl: (
+    schema: HashbrownTypeCtor<T, D>,
+    pathSeen: Set<HashbrownType>,
+  ) => string,
 ): HashbrownTypeCtor<T, D> => {
   class Class {
     private toJsonSchemaImpl: (schema: HashbrownTypeCtor<T, D>) => any;
@@ -55,11 +61,16 @@ export const HashbrownTypeCtor = <
       object: unknown,
       path: string[],
     ) => any;
+    private toTypeScriptImpl: (
+      schema: HashbrownTypeCtor<T, D>,
+      pathSeen: Set<HashbrownType>,
+    ) => string;
 
     constructor(definition: D) {
       Class.init(this as any, definition);
       this.toJsonSchemaImpl = toJsonSchemaImpl;
       this.parseJsonSchemaImpl = parseJsonSchemaImpl;
+      this.toTypeScriptImpl = toTypeScriptImpl;
     }
 
     static init(instance: T, definition: D) {
@@ -85,6 +96,10 @@ export const HashbrownTypeCtor = <
 
     validateJsonSchema(object: unknown) {
       this.parseJsonSchema(object, []);
+    }
+
+    toTypeScript(pathSeen: Set<HashbrownType> = new Set()) {
+      return this.toTypeScriptImpl(this as any, pathSeen);
     }
   }
 
@@ -113,6 +128,7 @@ export interface HashbrownType<out Result = unknown> {
   toJsonSchema: () => any;
   parseJsonSchema: (object: unknown, path?: string[]) => any;
   validateJsonSchema: (object: unknown) => void;
+  toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
 }
 
 interface HashbrownTypeInternals<out Result = unknown>
@@ -133,6 +149,9 @@ export const HashbrownType: HashbrownTypeCtor<HashbrownType> =
     },
     () => {
       return;
+    },
+    () => {
+      return '';
     },
   );
 
@@ -172,6 +191,9 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor(
       throw new Error(`Expected a string at: ${path.join('.')}, got ${object}`);
 
     return object;
+  },
+  (schema: any) => {
+    return `string`;
   },
 );
 
@@ -230,6 +252,9 @@ export const ConstStringType: HashbrownTypeCtor<ConstStringType> =
 
       return object;
     },
+    (schema: any) => {
+      return `"${schema[internal].definition.value}"`;
+    },
   );
 
 export function isConstStringType(
@@ -283,6 +308,9 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor(
 
     return object;
   },
+  (schema: any) => {
+    return `number`;
+  },
 );
 
 export function isNumberType(type: HashbrownType): type is NumberType {
@@ -329,6 +357,9 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor(
       throw new Error(`Expected a boolean at: ${path.join('.')}`);
 
     return object;
+  },
+  (schema: any) => {
+    return 'boolean';
   },
 );
 
@@ -378,6 +409,9 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor(
       throw new Error(`Expected an integer at: ${path.join('.')}`);
 
     return object;
+  },
+  (schema: any) => {
+    return `integer`;
   },
 );
 
@@ -453,6 +487,24 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor(
 
     return object;
   },
+  (schema: any, pathSeen: Set<HashbrownType>) => {
+    if (pathSeen.has(schema)) {
+      const desc = schema[internal].definition.description || '<anonymous>';
+      throw new Error(`Cycle detected in schema at "${desc}"`);
+    }
+    pathSeen.add(schema);
+
+    const depth = pathSeen.size - 1;
+
+    const entries = Object.entries(schema[internal].definition.shape);
+    const lines = entries.map(([key, child]) => {
+      // clone pathSeen for each branch
+      return `${' '.repeat(depth + 2)}${key}: ${(child as any).toTypeScript(new Set(pathSeen))};`;
+    });
+    return `{
+${lines.join('\n')}
+${' '.repeat(depth)}}`;
+  },
 );
 
 export function isObjectType(type: HashbrownType): type is ObjectType {
@@ -518,6 +570,17 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor(
     );
 
     return object;
+  },
+  (schema: any, pathSeen: Set<HashbrownType>) => {
+    if (pathSeen.has(schema)) {
+      const desc = schema[internal].definition.description || '<anonymous>';
+      throw new Error(`Cycle detected in schema at "${desc}"`);
+    }
+    pathSeen.add(schema);
+
+    return `Array<${schema[internal].definition.element.toTypeScript(
+      new Set(pathSeen),
+    )}>`;
   },
 );
 
@@ -589,6 +652,17 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor(
 
     return object;
   },
+  (schema: any, pathSeen: Set<HashbrownType>) => {
+    if (pathSeen.has(schema)) {
+      const desc = schema[internal].definition.description || '<anonymous>';
+      throw new Error(`Cycle detected in schema at "${desc}"`);
+    }
+    pathSeen.add(schema);
+
+    return schema[internal].definition.options
+      .map((opt: any) => opt.toTypeScript(new Set(pathSeen)))
+      .join(' | ');
+  },
 );
 
 export function isAnyOfType(type: HashbrownType): type is AnyOfType {
@@ -650,6 +724,11 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor(
 
     return object;
   },
+  (schema: any) => {
+    return schema[internal].definition.entries
+      .map((e: any) => `"${e}"`)
+      .join(' | ');
+  },
 );
 
 export function isEnumType(type: HashbrownType): type is EnumType {
@@ -700,6 +779,9 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor(
       throw new Error(`Expected a null at: ${path.join('.')}`);
 
     return object;
+  },
+  (schema: any) => {
+    return `null`;
   },
 );
 
