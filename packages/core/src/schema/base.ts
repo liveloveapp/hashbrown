@@ -21,6 +21,8 @@ type TypeInternals = {
 
 type TypeBox = {
   [internal]: TypeInternals;
+  toJsonSchema: () => object;
+  parseJsonSchema: (object: unknown, path: string[]) => any;
 };
 
 export interface HashbrownTypeCtor<
@@ -29,6 +31,8 @@ export interface HashbrownTypeCtor<
 > {
   new (def: D): T;
   init(inst: T, def: D): asserts inst is T;
+  toJsonSchema(schema: any): any;
+  parseJsonSchema(object: unknown, path: string[]): any;
 }
 
 export const HashbrownTypeCtor = <
@@ -37,10 +41,25 @@ export const HashbrownTypeCtor = <
 >(
   name: string,
   initializer: (instance: T, definition: D) => void,
+  toJsonSchemaImpl: (schema: HashbrownTypeCtor<T, D>) => any,
+  parseJsonSchemaImpl: (
+    schema: HashbrownTypeCtor<T, D>,
+    object: unknown,
+    path: string[],
+  ) => any,
 ): HashbrownTypeCtor<T, D> => {
   class Class {
+    private toJsonSchemaImpl: (schema: HashbrownTypeCtor<T, D>) => any;
+    private parseJsonSchemaImpl: (
+      schema: HashbrownTypeCtor<T, D>,
+      object: unknown,
+      path: string[],
+    ) => any;
+
     constructor(definition: D) {
       Class.init(this as any, definition);
+      this.toJsonSchemaImpl = toJsonSchemaImpl;
+      this.parseJsonSchemaImpl = parseJsonSchemaImpl;
     }
 
     static init(instance: T, definition: D) {
@@ -55,11 +74,23 @@ export const HashbrownTypeCtor = <
 
       instance[internal].definition = definition;
     }
+
+    toJsonSchema() {
+      return this.toJsonSchemaImpl(this as any);
+    }
+
+    parseJsonSchema(object: unknown, path: string[] = []) {
+      return this.parseJsonSchemaImpl(this as any, object, path);
+    }
+
+    validateJsonSchema(object: unknown) {
+      this.parseJsonSchema(object, []);
+    }
   }
 
   Object.defineProperty(Class, 'name', { value: name });
 
-  return Class as HashbrownTypeCtor<T, D>;
+  return Class as unknown as HashbrownTypeCtor<T, D>;
 };
 
 interface HashbrownTypeDefinition {
@@ -79,6 +110,9 @@ interface HashbrownTypeDefinition {
 }
 export interface HashbrownType<out Result = unknown> {
   [internal]: HashbrownTypeInternals<Result>;
+  toJsonSchema: () => any;
+  parseJsonSchema: (object: unknown, path?: string[]) => any;
+  validateJsonSchema: (object: unknown) => void;
 }
 
 interface HashbrownTypeInternals<out Result = unknown>
@@ -88,10 +122,19 @@ interface HashbrownTypeInternals<out Result = unknown>
 }
 
 export const HashbrownType: HashbrownTypeCtor<HashbrownType> =
-  HashbrownTypeCtor('HashbrownType', (inst, def) => {
-    inst ??= {} as any;
-    inst[internal].definition = def;
-  });
+  HashbrownTypeCtor(
+    'HashbrownType',
+    (inst, def) => {
+      inst ??= {} as any;
+      inst[internal].definition = def;
+    },
+    () => {
+      return;
+    },
+    () => {
+      return;
+    },
+  );
 
 /**
  * --------------------------------------
@@ -117,6 +160,18 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor(
   'String',
   (inst, def) => {
     HashbrownType.init(inst, def);
+  },
+  (schema: any) => {
+    return {
+      type: 'string',
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (typeof object !== 'string')
+      throw new Error(`Expected a string at: ${path.join('.')}, got ${object}`);
+
+    return object;
   },
 );
 
@@ -153,9 +208,29 @@ export interface ConstStringType<T extends string = string>
 }
 
 export const ConstStringType: HashbrownTypeCtor<ConstStringType> =
-  HashbrownTypeCtor('ConstString', (inst, def) => {
-    HashbrownType.init(inst, def);
-  });
+  HashbrownTypeCtor(
+    'ConstString',
+    (inst, def) => {
+      HashbrownType.init(inst, def);
+    },
+    (schema: any) => {
+      return {
+        type: 'string',
+        const: schema[internal].definition.value,
+        description: schema[internal].definition.description,
+      };
+    },
+    (schema: any, object: unknown, path: string[]) => {
+      if (typeof object !== 'string')
+        throw new Error(`Expected a string at: ${path.join('.')}`);
+      if (object !== schema[internal].definition.value)
+        throw new Error(
+          `Expected a string at: ${path.join('.')}, got ${object}, received ${schema[internal].definition.value}`,
+        );
+
+      return object;
+    },
+  );
 
 export function isConstStringType(
   type: HashbrownType,
@@ -196,6 +271,18 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor(
   (inst, def) => {
     HashbrownType.init(inst, def);
   },
+  (schema: any) => {
+    return {
+      type: 'number',
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (typeof object !== 'number')
+      throw new Error(`Expected a number at: ${path.join('.')}`);
+
+    return object;
+  },
 );
 
 export function isNumberType(type: HashbrownType): type is NumberType {
@@ -231,6 +318,18 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor(
   (inst, def) => {
     HashbrownType.init(inst, def);
   },
+  (schema: any) => {
+    return {
+      type: 'boolean',
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (typeof object !== 'boolean')
+      throw new Error(`Expected a boolean at: ${path.join('.')}`);
+
+    return object;
+  },
 );
 
 export function isBooleanType(type: HashbrownType): type is BooleanType {
@@ -265,6 +364,20 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor(
   'Integer',
   (inst, def) => {
     HashbrownType.init(inst, def);
+  },
+  (schema: any) => {
+    return {
+      type: 'integer',
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (typeof object !== 'number')
+      throw new Error(`Expected a number at: ${path.join('.')}`);
+    if (!Number.isInteger(object))
+      throw new Error(`Expected an integer at: ${path.join('.')}`);
+
+    return object;
   },
 );
 
@@ -315,6 +428,31 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor(
   (inst, def) => {
     HashbrownType.init(inst, def);
   },
+  (schema: any) => {
+    return {
+      type: 'object',
+      // Properties is populated externally because we need to find loops
+      properties: [],
+      required: Object.keys(schema[internal].definition.shape),
+      additionalProperties: false,
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (typeof object !== 'object' || object === null)
+      throw new Error(`Expected an object at: ${path.join('.')}`);
+
+    const { shape } = schema[internal].definition;
+
+    Object.entries(shape).every(([key, child]) =>
+      (child as any).parseJsonSchema(object[key as keyof typeof object], [
+        ...path,
+        key,
+      ]),
+    );
+
+    return object;
+  },
 );
 
 export function isObjectType(type: HashbrownType): type is ObjectType {
@@ -361,6 +499,25 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor(
   'Array',
   (inst, def) => {
     HashbrownType.init(inst, def);
+  },
+  (schema: any) => {
+    return {
+      type: 'array',
+      // items is populated externally since we find loops and duplicated sections
+      // through the whole schema
+      items: [],
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (!Array.isArray(object))
+      throw new Error(`Expected an array at: ${path.join('.')}`);
+
+    object.every((item) =>
+      schema[internal].definition.element.parseJsonSchema(item, path),
+    );
+
+    return object;
   },
 );
 
@@ -411,6 +568,27 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor(
   (inst, def) => {
     HashbrownType.init(inst, def);
   },
+  (schema: any) => {
+    return {
+      anyOf: [],
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    const isValid = schema[internal].definition.options.some((option: any) => {
+      try {
+        option.parseJsonSchema(object, [...path, 'anyOf']);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (!isValid) {
+      throw new Error(`No matching schema found at: ${path.join('.')}`);
+    }
+
+    return object;
+  },
 );
 
 export function isAnyOfType(type: HashbrownType): type is AnyOfType {
@@ -457,6 +635,21 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor(
   (inst, def) => {
     HashbrownType.init(inst, def);
   },
+  (schema: any) => {
+    return {
+      type: 'string',
+      enum: schema[internal].definition.entries,
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (typeof object !== 'string')
+      throw new Error(`Expected a string at: ${path.join('.')}`);
+    if (!schema[internal].definition.entries.includes(object))
+      throw new Error(`Expected an enum value at: ${path.join('.')}`);
+
+    return object;
+  },
 );
 
 export function isEnumType(type: HashbrownType): type is EnumType {
@@ -494,6 +687,19 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor(
   'Null',
   (inst, def) => {
     HashbrownType.init(inst, def);
+  },
+  (schema: any) => {
+    return {
+      type: 'null',
+      const: schema[internal].definition.value,
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    if (object !== null)
+      throw new Error(`Expected a null at: ${path.join('.')}`);
+
+    return object;
   },
 );
 
