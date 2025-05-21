@@ -6,11 +6,11 @@ import { s } from '../../schema';
 
 (async () => {
   console.log('Connecting...');
-  const client = new Socket();
+  // const client = new Socket();
 
-  client.connect(1337, '127.0.0.1', function () {
-    console.log('Connected');
-  });
+  // client.connect(1337, '127.0.0.1', function () {
+  //   console.log('Connected');
+  // });
 
   // anyOf as a property (instead of in a container)
   const responseSchema = s.object('gridArea', {
@@ -24,15 +24,17 @@ import { s } from '../../schema';
     afterAnyOf: s.string('make sure popping works'),
   });
 
-  // const data = {
-  //   gridArea: 'a string',
-  //   element: {
-  //     __discriminator: 'markdown',
-  //     data: 'the markdown data',
-  //   },
-  // };
+  const data = {
+    gridArea: 'a string',
+    element: {
+      __discriminator: 'markdown',
+      data: 'the markdown data',
+    },
+    afterAnyOf: 'a string after the anyOf',
+  };
 
-  // s.validateJsonSchema(responseSchema, data);
+  console.log(responseSchema.parseJsonSchema(data));
+  responseSchema.validateJsonSchema(data);
 
   // const responseSchema = s.object('root', {
   //   booleanValue: s.boolean('a boolean'),
@@ -115,26 +117,26 @@ import { s } from '../../schema';
   //   }),
   // );
 
-  const iterable = new SocketAsyncIterable(client);
+  // const iterable = new SocketAsyncIterable(client);
 
-  const parserIterable = AsyncParserIterable(iterable, responseSchema);
+  // const parserIterable = AsyncParserIterable(iterable, responseSchema);
 
-  try {
-    for await (const data of parserIterable) {
-      // To see how things are changing in a dynamic way, clear the console before
-      // parsing update
-      // console.clear();
-      console.log('new chunk');
-      console.log(JSON.stringify(data, null, 4));
-    }
-    console.log('Socket ended.');
-  } catch (err) {
-    console.error('Socket error:', err);
-  }
+  //   try {
+  //     for await (const data of parserIterable) {
+  //       // To see how things are changing in a dynamic way, clear the console before
+  //       // parsing update
+  //       // console.clear();
+  //       console.log('new chunk');
+  //       console.log(JSON.stringify(data, null, 4));
+  //     }
+  //     console.log('Socket ended.');
+  //   } catch (err) {
+  //     console.error('Socket error:', err);
+  //   }
 
-  client.on('close', function () {
-    console.log('Connection closed');
-  });
+  //   client.on('close', function () {
+  //     console.log('Connection closed');
+  //   });
 })()
   .then(() => console.log('in then'))
   .catch((err) => console.log('Fatal error', err));

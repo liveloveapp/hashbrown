@@ -129,69 +129,24 @@ export function toJsonSchema(schema: HashbrownType) {
       for (const [k, child] of shapeWithStreamingAtEnd) {
         props[k] = printNode(child, false, inDef, pathSeen);
       }
-      result = {
-        type: 'object',
-        properties: props,
-        required: Object.keys(n[internal].definition.shape),
-        additionalProperties: false,
-        description: n[internal].definition.description,
-      };
+
+      result = n.toJsonSchema();
+      result.properties = props;
     } else if (s.isArrayType(n)) {
-      result = {
-        type: 'array',
-        items: printNode(
-          n[internal].definition.element,
-          false,
-          inDef,
-          pathSeen,
-        ),
-        description: n[internal].definition.description,
-      };
+      result = n.toJsonSchema();
+      result.items = printNode(
+        n[internal].definition.element,
+        false,
+        inDef,
+        pathSeen,
+      );
     } else if (s.isAnyOfType(n)) {
-      result = {
-        anyOf: n[internal].definition.options.map((opt) =>
-          printNode(opt, false, inDef, pathSeen),
-        ),
-      };
-    } else if (s.isEnumType(n)) {
-      result = {
-        type: 'string',
-        enum: n[internal].definition.entries,
-        description: n[internal].definition.description,
-      };
-    } else if (s.isNullType(n)) {
-      result = {
-        type: 'null',
-        description: n[internal].definition.description,
-      };
-    } else if (s.isStringType(n)) {
-      result = {
-        type: 'string',
-        description: n[internal].definition.description,
-      };
-    } else if (s.isConstStringType(n)) {
-      result = {
-        type: 'string',
-        const: n[internal].definition.value,
-        description: n[internal].definition.description,
-      };
-    } else if (s.isNumberType(n)) {
-      result = {
-        type: 'number',
-        description: n[internal].definition.description,
-      };
-    } else if (s.isIntegerType(n)) {
-      result = {
-        type: 'integer',
-        description: n[internal].definition.description,
-      };
-    } else if (s.isBooleanType(n)) {
-      result = {
-        type: 'boolean',
-        description: n[internal].definition.description,
-      };
+      result = n.toJsonSchema();
+      result.anyOf = n[internal].definition.options.map((opt) =>
+        printNode(opt, false, inDef, pathSeen),
+      );
     } else {
-      throw new Error(`Unknown node type: ${n[internal].definition.type}`);
+      result = n.toJsonSchema();
     }
 
     pathSeen.delete(n);
