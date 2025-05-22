@@ -1,13 +1,34 @@
 import { createServer } from 'net';
 
-const TEST_JSON = {
-  gridArea: 'a string',
-  element: {
-    __discriminator: 'markdown',
-    data: 'the markdown data',
+// const TEST_JSON = {
+//   element: {
+//     0: {
+//       data: 'the markdown data',
+//     },
+//   },
+// };
+
+const TEST_JSON = [
+  {
+    '0': {
+      data: 'the markdown data',
+    },
   },
-  afterAnyOf: 'after any of, to make sure popping work',
-};
+  {
+    '1': 17,
+  },
+  {
+    '2': false,
+  },
+  {
+    '1': 123,
+  },
+  {
+    '0': {
+      data: 'more markdown data',
+    },
+  },
+];
 
 // const TEST_JSON = {
 //   booleanValue: false,

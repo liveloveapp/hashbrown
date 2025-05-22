@@ -199,14 +199,15 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     skipBlank();
     const obj: Record<string, any> = {};
 
-    let discriminatorValue: string | undefined = undefined;
+    // let discriminatorValue: string | undefined = undefined;
+    let inAnyOfWrapper = false;
 
     // If we are not in an array, find key in current level of document stock, and add to stack
     if (parentKey !== '') {
       // Are we in any anyOf?
       const currentContainer = containerStack[containerStack.length - 1];
 
-      // Not any anyOf, so move down a level
+      // Not an anyOf, so move down a level
       if (!Array.isArray(currentContainer)) {
         // If parentKey is set, we are not in an array, so get the next stack container
         // (arrays handle it differently, so they can do clean up when the array is complete)
@@ -240,46 +241,50 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         try {
           logger.log(`Handling key: ${key}`);
 
-          if (key === s.DISCRIMINATOR) {
-            const value = parseAny(key, false, false);
-            logger.log(
-              `Noting discriminator key of: ${key} and value of: ${value}`,
-            );
-            discriminatorValue = value;
-            const currentContainer = containerStack[containerStack.length - 1];
+          // Are we in an anyOf array?
+          if (Array.isArray(containerStack[currentContainerStackIndex])) {
+            // Then the key is the discriminator.
+            logger.log(`Noting discriminator of: ${key}`);
 
-            const matchingSchema = (currentContainer as any).filter(
-              (schema: HashbrownType) => {
-                const discriminatorSchemaValue = (
-                  schema[internal].definition as any
-                ).shape[s.DISCRIMINATOR][internal].definition.value;
-                logger.log(
-                  `Is ${discriminatorSchemaValue} === ${discriminatorValue}`,
-                );
-                return discriminatorSchemaValue === discriminatorValue;
-              },
-            );
+            const matchingSchema = (
+              containerStack[currentContainerStackIndex] as any
+            )[parseInt(key)];
 
             logger.log(
-              `Found matching schema in current container for ${discriminatorValue}: ${!!matchingSchema}`,
+              `Found matching schema in current container for ${key}: ${!!matchingSchema}`,
             );
 
-            if (matchingSchema.length > 0) {
+            if (matchingSchema) {
               logger.log('Adding schema for discriminator');
               logger.log(matchingSchema);
-              containerStack.push(matchingSchema[0]);
+
+              // const nextContainer = (currentContainer[internal].definition as any)
+              // .shape[parentKey];
+              containerStack.push(
+                s.object(`AnyOf Wrapper for ${key}`, {
+                  [key]: matchingSchema,
+                }),
+              );
+
+              inAnyOfWrapper = true;
+
+              // Push a "fake" object container so that the subsequent call to parseAny will find the correct schema
+              // containerStack.push(matchingSchema[0]);
               currentContainerStackIndex = containerStack.length - 1;
 
+              const value = parseAny(key, true, false);
+
+              logger.log('Value:');
+              logger.log(value);
               obj[key] = value;
             } else {
-              throwMalformedError(
-                `No schema found for discriminator: ${discriminatorValue}`,
-              );
+              throwMalformedError(`No schema found for discriminator: ${key}`);
             }
           } else {
+            const currentContainer = containerStack[currentContainerStackIndex];
+
             const schemaFragmentForKey = (
-              containerStack[currentContainerStackIndex][internal]
-                .definition as any
+              currentContainer[internal].definition as any
             ).shape[key];
 
             if (s.isAnyOfType(schemaFragmentForKey)) {
@@ -328,17 +333,16 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     index++; // skip final brace
 
     // Are we inside an array?  They handle adding/removing stack containers for themselves
-    // Unless it's an AnyOf, then go ahead and pop
-    if (!insideArray || discriminatorValue) {
+    if (!insideArray || inAnyOfWrapper) {
       // Done with this container, so pop off stack
+      // console.log(containerStack);
       const completedContainer = containerStack.pop();
       logger.log(
         `Completed container: ${completedContainer?.[internal].definition.description}`,
       );
 
-      // If the next level up is an array (an anyOf) and we aren't in an actual array,
-      // then we are done with the anyOf and should pop it, too.
-      if (!insideArray && discriminatorValue) {
+      // If we just completed an anyOf wrapper, we need to pop the options array off the stack, too
+      if (!insideArray && inAnyOfWrapper) {
         const completedContainer = containerStack.pop();
         logger.log(`Also completed anyOf container: ${completedContainer}`);
       }

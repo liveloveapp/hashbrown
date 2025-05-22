@@ -142,9 +142,11 @@ export function toJsonSchema(schema: HashbrownType) {
       );
     } else if (s.isAnyOfType(n)) {
       result = n.toJsonSchema();
-      result.anyOf = n[internal].definition.options.map((opt) =>
-        printNode(opt, false, inDef, pathSeen),
-      );
+      result.anyOf = n[internal].definition.options.map((opt, index) => {
+        return {
+          [index]: printNode(opt, false, inDef, pathSeen),
+        };
+      });
     } else {
       result = n.toJsonSchema();
     }
