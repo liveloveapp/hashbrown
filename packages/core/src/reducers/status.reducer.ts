@@ -42,7 +42,7 @@ export const reducer = createReducer(
     return {
       ...state,
       isReceiving: false,
-      isRunningToolCalls: Boolean(toolCalls && toolCalls.length > 0),
+      isRunningToolCalls: true,
     };
   }),
   on(apiActions.generateMessageError, (state, action) => {
@@ -64,6 +64,14 @@ export const reducer = createReducer(
       ...state,
       isRunningToolCalls: false,
       error: action.payload,
+    };
+  }),
+  on(internalActions.skippedToolCalls, (state) => {
+    return {
+      ...state,
+      isRunningToolCalls: false,
+      isSending: false,
+      isReceiving: false,
     };
   }),
 );

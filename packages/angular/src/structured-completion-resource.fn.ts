@@ -45,10 +45,12 @@ export function structuredCompletionResource<
       return;
     }
 
-    resource.sendMessage({
-      role: 'user',
-      content: typeof _input === 'string' ? _input : JSON.stringify(_input),
-    });
+    resource.setMessages([
+      {
+        role: 'user',
+        content: typeof _input === 'string' ? _input : JSON.stringify(_input),
+      },
+    ]);
   });
 
   const value = computed(() => {
