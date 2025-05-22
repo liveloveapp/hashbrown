@@ -17,6 +17,7 @@ import {
 import { s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
+  defineAsyncRuntime,
   defineFunction,
 } from '@hashbrownai/tool-javascript';
 import { Store } from '@ngrx/store';
@@ -183,6 +184,23 @@ export class ChatPanelComponent {
    * UI chat
    * --------------------------------------------------------------------------
    */
+  runtime = defineAsyncRuntime({
+    loadVariant: () => Promise.resolve(variant),
+    functions: [
+      defineFunction({
+        name: 'getLights',
+        description: 'Get the current lights',
+        output: s.array(
+          'The lights',
+          s.object('A light', {
+            id: s.string('The id of the light'),
+            brightness: s.number('The brightness of the light'),
+          }),
+        ),
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      }),
+    ],
+  });
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-preview-05-06',
     model: 'gpt-4.1',
@@ -246,21 +264,7 @@ export class ChatPanelComponent {
           ),
       }),
       createToolJavaScript({
-        loadVariant: () => Promise.resolve(variant),
-        functions: [
-          defineFunction({
-            name: 'getLights',
-            description: 'Get the current lights',
-            output: s.array(
-              'The lights',
-              s.object('A light', {
-                id: s.string('The id of the light'),
-                brightness: s.number('The brightness of the light'),
-              }),
-            ),
-            handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-          }),
-        ],
+        runtime: this.runtime,
       }),
     ],
     debugName: 'ui-chat',

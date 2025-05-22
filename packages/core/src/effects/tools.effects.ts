@@ -12,6 +12,8 @@ export const runTools = createEffect((store) => {
     const toolEntities = store.read(selectToolEntities);
 
     if (toolCalls.length === 0) {
+      await Promise.resolve();
+      store.dispatch(internalActions.skippedToolCalls());
       return;
     }
 
