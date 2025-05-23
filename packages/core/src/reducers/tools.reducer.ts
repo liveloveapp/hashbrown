@@ -14,26 +14,7 @@ const initialState: ToolState = {
 
 export const reducer = createReducer(
   initialState,
-  on(devActions.init, (state, action) => {
-    const tools = action.payload.tools;
-
-    if (!tools) {
-      return state;
-    }
-
-    return {
-      ...state,
-      names: tools.map((tool) => tool.name),
-      entities: tools.reduce(
-        (acc, tool) => {
-          acc[tool.name] = tool;
-          return acc;
-        },
-        {} as Record<string, Chat.Internal.Tool>,
-      ),
-    };
-  }),
-  on(devActions.updateOptions, (state, action) => {
+  on(devActions.init, devActions.updateOptions, (state, action) => {
     const tools = action.payload.tools;
 
     if (!tools) {
