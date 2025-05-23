@@ -137,7 +137,6 @@ export const selectViewMessages = select(
         Chat.helpers.toViewMessagesFromInternal(
           message,
           toolCalls,
-          false,
           responseSchema,
         ),
     );
@@ -148,7 +147,6 @@ export const selectViewMessages = select(
       Chat.helpers.toViewMessagesFromInternal(
         message,
         toolCalls,
-        true,
         responseSchema,
       ),
     );

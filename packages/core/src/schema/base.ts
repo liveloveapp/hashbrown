@@ -10,8 +10,6 @@ import {
 export const internal = '~schema';
 export type internal = typeof internal;
 
-export const DISCRIMINATOR = '__discriminator';
-
 type TypeInternals = {
   definition: {
     description: string;
@@ -466,7 +464,7 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor(
     return {
       type: 'object',
       // Properties is populated externally because we need to find loops
-      properties: [],
+      properties: {},
       required: Object.keys(schema[internal].definition.shape),
       additionalProperties: false,
       description: schema[internal].definition.description,
@@ -637,20 +635,24 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
-    const isValid = schema[internal].definition.options.some((option: any) => {
-      try {
-        option.parseJsonSchema(object, [...path, 'anyOf']);
-        return true;
-      } catch {
-        return false;
-      }
-    });
-
-    if (!isValid) {
-      throw new Error(`No matching schema found at: ${path.join('.')}`);
+    if (typeof object !== 'object' || object === null) {
+      throw new Error(`Expected an object at: ${path.join('.')}`);
     }
 
-    return object;
+    const anyOfKeys = Object.keys(object);
+
+    if (anyOfKeys.length !== 1) {
+      throw new Error(`Malformed anyOf wrapper at ${path.join('.')}`);
+    }
+
+    const anyOfIndex = anyOfKeys[0];
+
+    // Discriminator should be index in options list, so try to parse object.index as option type
+    const parsedObject = schema[internal].definition.options[
+      anyOfIndex
+    ].parseJsonSchema((object as any)[anyOfIndex]);
+
+    return parsedObject;
   },
   (schema: any, pathSeen: Set<HashbrownType>) => {
     if (pathSeen.has(schema)) {

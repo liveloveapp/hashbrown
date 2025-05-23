@@ -1,12 +1,22 @@
 import { createServer } from 'net';
 
+// const TEST_JSON = {
+//   element: {
+//     0: {
+//       data: 'the markdown data',
+//     },
+//   },
+// };
+
 const TEST_JSON = {
-  gridArea: 'a string',
-  element: {
-    __discriminator: 'markdown',
-    data: 'the markdown data',
-  },
-  afterAnyOf: 'after any of, to make sure popping work',
+  ui: [
+    {
+      '0': {
+        $tagName: 'app-markdown',
+        $props: { data: 'Hello! How can I assist you today?' },
+      },
+    },
+  ],
 };
 
 // const TEST_JSON = {
@@ -127,7 +137,6 @@ const TEST_JSON = {
 //         ],
 //         anyOfListWithDiscriminator: [
 //           {
-//             __discriminator: 'seventh',
 //             firstName: '7th',
 //             lastName:
 //               'It is a simplified subset of SGML, designed to be easier to use and more web-friendly.',
@@ -142,13 +151,11 @@ const TEST_JSON = {
 //             },
 //           },
 //           {
-//             __discriminator: 'eighth',
 //             firstName: '8th',
 //             lastName:
 //               'XML documents must be well-formed, meaning they follow strict syntax rules such as properly nested tags.',
 //           },
 //           {
-//             __discriminator: 'seventh',
 //             firstName: '7th',
 //             lastName:
 //               'XML helped pave the way for structured data on the internet and continues to influence modern data formats',
@@ -163,7 +170,6 @@ const TEST_JSON = {
 //             },
 //           },
 //           {
-//             __discriminator: 'eighth',
 //             firstName: '8th',
 //             lastName:
 //               'Although not as widely used today, SGML laid the groundwork for modern web technologies and markup standards.',
@@ -279,7 +285,6 @@ const TEST_JSON = {
 //         ],
 //         anyOfListWithDiscriminator: [
 //           {
-//             __discriminator: 'seventh',
 //             firstName: '7th',
 //             lastName:
 //               'It is a simplified subset of SGML, designed to be easier to use and more web-friendly.',
@@ -294,13 +299,11 @@ const TEST_JSON = {
 //             },
 //           },
 //           {
-//             __discriminator: 'eighth',
 //             firstName: '8th',
 //             lastName:
 //               'XML documents must be well-formed, meaning they follow strict syntax rules such as properly nested tags.',
 //           },
 //           {
-//             __discriminator: 'seventh',
 //             firstName: '7th',
 //             lastName:
 //               'XML helped pave the way for structured data on the internet and continues to influence modern data formats',
@@ -315,7 +318,6 @@ const TEST_JSON = {
 //             },
 //           },
 //           {
-//             __discriminator: 'eighth',
 //             firstName: '8th',
 //             lastName:
 //               'Although not as widely used today, SGML laid the groundwork for modern web technologies and markup standards.',
