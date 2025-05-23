@@ -3,7 +3,7 @@ import { s } from '../schema';
 import { isStreaming } from '../schema/is-streaming';
 import { internal } from '../schema/base';
 
-const ENABLE_LOGGING = true;
+const ENABLE_LOGGING = false;
 
 class PartialJSON extends Error {}
 
@@ -52,6 +52,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   ) => any = (currentKey, allowsIncomplete, insideArray) => {
     skipBlank();
 
+    logger.log(`Remaining string: ${jsonString.slice(index)}`);
     logger.log('Current last container:');
     logger.log(containerStack[containerStack.length - 1]);
 
@@ -417,8 +418,8 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   const parseArr = (currentKey: string, allowsIncomplete: boolean) => {
-    if (containerStack.length === 1) {
-      // String literal at top level, so see if the the schema allows streaming
+    if (containerStack.length === 1 && s.isArrayType(containerStack[0])) {
+      // See if the the schema allows streaming
       allowsIncomplete = s.isStreaming(schema);
     }
 
@@ -439,7 +440,9 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     logger.log('Array container: ');
     logger.log(arrayContainer);
 
-    logger.log(`Is anyOf? ${s.isAnyOfType(arrayContainer)}`);
+    logger.log(`Allows streaming? ${allowsIncomplete}`);
+
+    // logger.log(`Is anyOf? ${s.isAnyOfType(arrayContainer)}`);
 
     let containerNeedsPopping = false;
     let contentsAllowIncomplete = false;

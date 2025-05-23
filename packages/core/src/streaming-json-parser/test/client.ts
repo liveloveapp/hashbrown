@@ -21,16 +21,19 @@ import { s } from '../../schema';
   //   ]),
   // });
 
-  const responseSchema = s.streaming.array(
-    'gridArray',
-    s.anyOf([
-      s.object('array object', {
-        data: s.streaming.string('array object streaming data'),
-      }),
-      s.number('array number'),
-      s.boolean('array boolean'),
-    ]),
-  );
+  const responseSchema = s.object('UI', {
+    ui: s.streaming.array(
+      'list of elements',
+      s.anyOf([
+        s.object('Show markdown to the user', {
+          $tagName: s.constString('app-markdown'),
+          $props: s.object('Props', {
+            data: s.streaming.string('The markdown content'),
+          }),
+        }),
+      ]),
+    ),
+  });
 
   // const data = {
   //   gridArea: 'a string',
@@ -99,7 +102,6 @@ import { s } from '../../schema';
   //           s.anyOf([
   //             // No streaming
   //             s.object('7th Grade Teacher', {
-  //               __discriminator: s.constString('seventh'),
   //               // Expectation: this will be moved to end of properties list
   //               birthDate: s.streaming.object('7th.birthDate', {
   //                 // Expectation: property order won't change, but incremental updates
@@ -117,7 +119,6 @@ import { s } from '../../schema';
   //             }),
   //             // Will stream
   //             s.object('8th Grade Teacher', {
-  //               __discriminator: s.constString('eighth'),
   //               firstName: s.streaming.string('8th.firstName'),
   //               lastName: s.streaming.string('8th.lastName'),
   //             }),

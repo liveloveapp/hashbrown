@@ -464,7 +464,7 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor(
     return {
       type: 'object',
       // Properties is populated externally because we need to find loops
-      properties: [],
+      properties: {},
       required: Object.keys(schema[internal].definition.shape),
       additionalProperties: false,
       description: schema[internal].definition.description,

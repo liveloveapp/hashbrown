@@ -152,6 +152,17 @@ test('Streaming array emits elements incrementally', () => {
   expect(parse(schema, '[1,2,3]')).toEqual([1, 2, 3]);
 });
 
+test('Streaming array in non-streaming object emits elements incrementally', () => {
+  const schema = s.object('root', {
+    data: s.streaming.array('arr', s.number('num')),
+  });
+
+  expect(parse(schema, '{"data":[1')).toEqual({ data: [] });
+  expect(parse(schema, '{"data":[1,')).toEqual({ data: [1] });
+  expect(parse(schema, '{"data":[1,2,')).toEqual({ data: [1, 2] });
+  expect(parse(schema, '{"data":[1,2,3]}')).toEqual({ data: [1, 2, 3] });
+});
+
 test('Streaming object emits fields incrementally', () => {
   const schema = s.streaming.object('obj', {
     a: s.number('a'),
@@ -277,6 +288,63 @@ describe('anyOf', () => {
       123,
       { data: 'more markdown data' },
     ]);
+  });
+
+  test('ui client schema', () => {
+    const schema = s.object('UI', {
+      ui: s.streaming.array(
+        'list of elements',
+        s.anyOf([
+          s.object('Show markdown to the user', {
+            $tagName: s.constString('app-markdown'),
+            $props: s.object('Props', {
+              data: s.streaming.string('The markdown content'),
+            }),
+          }),
+        ]),
+      ),
+    });
+
+    const jsonString = JSON.stringify({
+      ui: [
+        {
+          '0': {
+            $tagName: 'app-markdown',
+            $props: { data: 'Hello! How can I assist you today?' },
+          },
+        },
+      ],
+    });
+
+    const chunk1 = jsonString.slice(0, 15);
+    const chunk2 = jsonString.slice(15, 30);
+    // Cross into the beginning of the data string
+    const chunk3 = jsonString.slice(30, 60);
+    // Return rest of data string
+    const chunk4 = jsonString.slice(60);
+
+    expect(parse(schema, chunk1)).toEqual({ ui: [] });
+    expect(parse(schema, chunk1 + chunk2)).toEqual({ ui: [] });
+    expect(parse(schema, chunk1 + chunk2 + chunk3)).toEqual({
+      ui: [
+        {
+          $props: {
+            data: 'Hel',
+          },
+          $tagName: 'app-markdown',
+        },
+      ],
+    });
+    expect(parse(schema, chunk1 + chunk2 + chunk3 + chunk4)).toEqual({
+      ui: [
+        {
+          $props: {
+            data: 'Hello! How can I assist you today?',
+          },
+          $tagName: 'app-markdown',
+        },
+      ],
+    });
   });
 
   xtest('streaming array with anyOf with anyOf', () => {

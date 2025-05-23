@@ -97,6 +97,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
       parentKey = '',
     ): React.ReactElement[] => {
       const elements = nodes.map((element, index) => {
+        console.log(element);
         const key = `${parentKey}_${index}`;
 
         const componentName = element.$tagName;

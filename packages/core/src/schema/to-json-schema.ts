@@ -83,6 +83,7 @@ export function toJsonSchema(schema: HashbrownType) {
     inDef: HashbrownType | null = null,
     pathSeen: Set<HashbrownType> = new Set(),
   ): any {
+    // console.log('in printNode');
     // a) cycle back to the root
     if (!isRoot && n === rootNode) {
       return { $ref: '#' };
@@ -111,6 +112,7 @@ export function toJsonSchema(schema: HashbrownType) {
     let result: any;
 
     if (s.isObjectType(n)) {
+      // console.log(n);
       // Sort props so that streaming ones are at the end
       const shapeWithStreamingAtEnd = Object.entries(
         n[internal].definition.shape,
@@ -142,11 +144,19 @@ export function toJsonSchema(schema: HashbrownType) {
       );
     } else if (s.isAnyOfType(n)) {
       result = n.toJsonSchema();
+      // console.log(n);
       result.anyOf = n[internal].definition.options.map((opt, index) => {
+        const indexAsStr = `${index}`;
         return {
-          [index]: printNode(opt, false, inDef, pathSeen),
+          type: 'object',
+          additionalProperties: false,
+          required: [indexAsStr],
+          properties: {
+            [indexAsStr]: printNode(opt, false, inDef, pathSeen),
+          },
         };
       });
+      // console.log(result);
     } else {
       result = n.toJsonSchema();
     }
