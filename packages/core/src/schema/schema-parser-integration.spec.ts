@@ -135,17 +135,6 @@ test('Unterminated string at EOF throws', () => {
   expect(parse(schema, '"oops')).toEqual('');
 });
 
-test('anyOf flattened parsing', () => {
-  const schema = s.object('root', {
-    value: s.anyOf([s.number('num'), s.string('str')]),
-  });
-  const input = '{"value":{"0":123}}';
-  const input2 = '{"value":{"1":"hello"}}';
-
-  expect(parse(schema, input)).toEqual({ value: 123 });
-  expect(parse(schema, input2)).toEqual({ value: 'hello' });
-});
-
 test('Streaming string emits partial content', () => {
   const schema = s.streaming.string('str');
 
@@ -193,6 +182,17 @@ test('Extra data after valid JSON throws error', () => {
 });
 
 describe('anyOf', () => {
+  test('anyOf flattened parsing', () => {
+    const schema = s.object('root', {
+      value: s.anyOf([s.number('num'), s.string('str')]),
+    });
+    const input = '{"value":{"0":123}}';
+    const input2 = '{"value":{"1":"hello"}}';
+
+    expect(parse(schema, input)).toEqual({ value: 123 });
+    expect(parse(schema, input2)).toEqual({ value: 'hello' });
+  });
+
   test('anyOf envelope parsing across chunks (number branch)', () => {
     const schema = s.object('root', {
       value: s.anyOf([s.number('num'), s.string('str')]),
@@ -233,12 +233,14 @@ describe('anyOf', () => {
 
     expect(parse(schema, chunk1)).toEqual({
       element: {
-        '0': {
-          data: '',
-        },
+        data: '',
       },
     });
-    expect(parse(schema, combined)).toEqual({ value: 'hello' });
+    expect(parse(schema, combined)).toEqual({
+      element: {
+        data: 'streaming data',
+      },
+    });
   });
 
   test('streaming array with anyOf with mix of types', () => {
@@ -253,16 +255,73 @@ describe('anyOf', () => {
       ]),
     );
 
-    const chunk1 = '[{"0":{"data":"the';
+    const chunk1 = '[{"0":{"data":"the ';
     const chunk2 = 'markdown data"}},{"1":17},{"';
     const chunk3 = '2":false},{"1":12';
     const chunk4 = '3},{"0":{"data":"more markdown data"}}]';
 
-    expect(parse(schema, chunk1)).toEqual([{ '0': { data: 'the' } }]);
-    expect(parse(schema, chunk1 + chunk2)).toEqual({ value: 'hello' });
-    expect(parse(schema, chunk1 + chunk2 + chunk3)).toEqual({ value: 'hello' });
-    expect(parse(schema, chunk1 + chunk2 + chunk3 + chunk4)).toEqual({
-      value: 'hello',
-    });
+    expect(parse(schema, chunk1)).toEqual([{ data: 'the' }]);
+    expect(parse(schema, chunk1 + chunk2)).toEqual([
+      { data: 'the markdown data' },
+      17,
+    ]);
+    expect(parse(schema, chunk1 + chunk2 + chunk3)).toEqual([
+      { data: 'the markdown data' },
+      17,
+      false,
+    ]);
+    expect(parse(schema, chunk1 + chunk2 + chunk3 + chunk4)).toEqual([
+      { data: 'the markdown data' },
+      17,
+      false,
+      123,
+      { data: 'more markdown data' },
+    ]);
+  });
+
+  xtest('streaming array with anyOf with anyOf', () => {
+    const schema = s.streaming.array(
+      'streaming array',
+      s.anyOf([
+        s.anyOf([
+          s.streaming.string('array object streaming data'),
+          s.constString('anyOf anyOf constString'),
+        ]),
+        s.number('array number'),
+        s.boolean('array boolean'),
+      ]),
+    );
+
+    const data = [
+      {
+        '0': {
+          '0': 'streaming string in inner anyOf',
+        },
+      },
+      {
+        '1': 17,
+      },
+      {
+        '2': false,
+      },
+      {
+        '1': 123,
+      },
+      {
+        '0': {
+          '1': 'anyOf anyOf constString',
+        },
+      },
+    ];
+
+    const asJson = JSON.stringify(data);
+
+    expect(parse(schema, asJson)).toEqual([
+      'streaming string in inner anyOf',
+      17,
+      false,
+      123,
+      'anyOf anyOf constString',
+    ]);
   });
 });
