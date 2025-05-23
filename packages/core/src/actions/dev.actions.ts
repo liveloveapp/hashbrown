@@ -1,6 +1,6 @@
+import { Chat } from '../models';
 import { s } from '../schema';
 import { createActionGroup, props } from '../utils/micro-ngrx';
-import { Chat } from '../models';
 
 export default createActionGroup('dev', {
   init: props<{
@@ -21,5 +21,18 @@ export default createActionGroup('dev', {
   }>(),
   sendMessage: props<{
     message: Chat.AnyMessage;
+  }>(),
+  updateOptions: props<{
+    debugName?: string;
+    apiUrl?: string;
+    model?: string;
+    prompt?: string;
+    temperature?: number;
+    maxTokens?: number;
+    tools?: Chat.AnyTool[];
+    responseSchema?: s.HashbrownType;
+    middleware?: Chat.Middleware[];
+    emulateStructuredOutput?: boolean;
+    debounce?: number;
   }>(),
 });

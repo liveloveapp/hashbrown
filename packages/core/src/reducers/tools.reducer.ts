@@ -1,5 +1,5 @@
-import { Chat } from '../models';
 import { devActions } from '../actions';
+import { Chat } from '../models';
 import { createReducer, on, select } from '../utils/micro-ngrx';
 
 export type ToolState = {
@@ -14,7 +14,7 @@ const initialState: ToolState = {
 
 export const reducer = createReducer(
   initialState,
-  on(devActions.init, (state, action) => {
+  on(devActions.init, devActions.updateOptions, (state, action) => {
     const tools = action.payload.tools;
 
     if (!tools) {

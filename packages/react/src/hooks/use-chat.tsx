@@ -144,29 +144,46 @@ export function useChat<Tools extends Chat.AnyTool>(
   );
 
   useEffect(() => {
+    return () => {
+      if (hashbrown) {
+        hashbrown.teardown();
+        setHashbrown(null);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!config) {
       throw new Error('HashbrownContext not found');
     }
 
-    console.log('frying hashbrown');
+    const instance =
+      hashbrown ??
+      fryHashbrown<Tools>({
+        apiUrl: config.url,
+        middleware: config.middleware,
+        debugName: options.debugName,
+        maxTokens: options.maxTokens,
+        model: options.model,
+        prompt: options.prompt,
+        temperature: options.temperature,
+        tools,
+      });
 
-    const instance = fryHashbrown<Tools>({
-      apiUrl: config.url,
-      middleware: config.middleware,
-      debugName: options.debugName,
-      maxTokens: options.maxTokens,
-      model: options.model,
-      prompt: options.prompt,
-      temperature: options.temperature,
-      tools,
-    });
-
-    setHashbrown(instance);
-
-    return () => {
-      instance.teardown();
-      setHashbrown(null);
-    };
+    if (!hashbrown) {
+      setHashbrown(instance);
+    } else {
+      instance.updateOptions({
+        apiUrl: config.url,
+        middleware: config.middleware,
+        debugName: options.debugName,
+        maxTokens: options.maxTokens,
+        model: options.model,
+        prompt: options.prompt,
+        temperature: options.temperature,
+        tools,
+      });
+    }
   }, [
     config,
     options.debugName,

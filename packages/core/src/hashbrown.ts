@@ -3,7 +3,9 @@
  * Core entry point for the Hashbrown framework.
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
  */
-import { createStore } from './utils/micro-ngrx';
+import { devActions } from './actions';
+import effects from './effects';
+import { Chat } from './models';
 import {
   reducers,
   selectError,
@@ -12,10 +14,8 @@ import {
   selectIsSending,
   selectViewMessages,
 } from './reducers';
-import effects from './effects';
-import { Chat } from './models';
 import { s } from './schema';
-import { devActions } from './actions';
+import { createStore } from './utils/micro-ngrx';
 
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
@@ -42,6 +42,22 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   ) => void;
   /** Subscribe to error state; invokes callback if an error occurs. */
   observeError: (onChange: (error: Error | null) => void) => void;
+  /** Update the chat options after initialization */
+  updateOptions: (
+    options: Partial<{
+      debugName?: string;
+      apiUrl: string;
+      model: string;
+      prompt: string;
+      temperature: number;
+      maxTokens: number;
+      tools: Tools[];
+      responseSchema: s.HashbrownType;
+      middleware: Chat.Middleware[];
+      emulateStructuredOutput: boolean;
+      debounce: number;
+    }>,
+  ) => void;
   /** Clean up resources and listeners associated with this Hashbrown instance. */
   teardown: () => void;
 }
@@ -190,6 +206,24 @@ export function fryHashbrown(init: {
     return state.select(selectError, onChange);
   }
 
+  function updateOptions(
+    options: Partial<{
+      debugName?: string;
+      apiUrl: string;
+      model: string;
+      prompt: string;
+      temperature: number;
+      maxTokens: number;
+      tools: Chat.AnyTool[];
+      responseSchema: s.HashbrownType;
+      middleware: Chat.Middleware[];
+      emulateStructuredOutput: boolean;
+      debounce: number;
+    }>,
+  ) {
+    state.dispatch(devActions.updateOptions(options));
+  }
+
   function teardown() {
     state.teardown();
   }
@@ -202,6 +236,7 @@ export function fryHashbrown(init: {
     observeIsSending,
     observeIsRunningToolCalls,
     observeError,
+    updateOptions,
     teardown,
   };
 }
