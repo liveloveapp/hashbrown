@@ -5,38 +5,50 @@ import { SocketAsyncIterable } from './socket-async-iterable';
 import { s } from '../../schema';
 
 (async () => {
-  // console.log('Connecting...');
-  // const client = new Socket();
+  console.log('Connecting...');
+  const client = new Socket();
 
-  // client.connect(1337, '127.0.0.1', function () {
-  //   console.log('Connected');
-  // });
-
-  // anyOf as a property (instead of in a container)
-  const responseSchema = s.object('gridArea', {
-    gridArea: s.string('gridArea string'),
-    element: s.anyOf([
-      s.object('Markdown', {
-        __discriminator: s.constString('markdown'),
-        data: s.streaming.string('The markdown data'),
-      }),
-    ]),
-    afterAnyOf: s.string('make sure popping works'),
+  client.connect(1337, '127.0.0.1', function () {
+    console.log('Connected');
   });
 
-  const data = {
-    gridArea: 'a string',
-    element: {
-      __discriminator: 'markdown',
-      data: 'the markdown data',
-    },
-    afterAnyOf: 'a string after the anyOf',
-  };
+  // anyOf as a property (instead of in a container)
+  // const responseSchema = s.object('gridArea', {
+  //   element: s.anyOf([
+  //     s.object('Markdown', {
+  //       data: s.streaming.string('The markdown data'),
+  //     }),
+  //   ]),
+  // });
 
-  console.log(responseSchema.parseJsonSchema(data));
-  responseSchema.validateJsonSchema(data);
+  const responseSchema = s.object('UI', {
+    ui: s.streaming.array(
+      'list of elements',
+      s.anyOf([
+        s.object('Show markdown to the user', {
+          $tagName: s.constString('app-markdown'),
+          $props: s.object('Props', {
+            data: s.streaming.string('The markdown content'),
+          }),
+        }),
+      ]),
+    ),
+  });
 
-  console.log(responseSchema.toTypeScript());
+  // const data = {
+  //   gridArea: 'a string',
+  //   element: {
+  //     [0]: {
+  //       data: 'the markdown data',
+  //     },
+  //   },
+  //   afterAnyOf: 'a string after the anyOf',
+  // };
+
+  // console.log(responseSchema.parseJsonSchema(data));
+  // responseSchema.validateJsonSchema(data);
+
+  // console.log(responseSchema.toTypeScript());
 
   // const responseSchema = s.object('root', {
   //   booleanValue: s.boolean('a boolean'),
@@ -90,7 +102,6 @@ import { s } from '../../schema';
   //           s.anyOf([
   //             // No streaming
   //             s.object('7th Grade Teacher', {
-  //               __discriminator: s.constString('seventh'),
   //               // Expectation: this will be moved to end of properties list
   //               birthDate: s.streaming.object('7th.birthDate', {
   //                 // Expectation: property order won't change, but incremental updates
@@ -108,7 +119,6 @@ import { s } from '../../schema';
   //             }),
   //             // Will stream
   //             s.object('8th Grade Teacher', {
-  //               __discriminator: s.constString('eighth'),
   //               firstName: s.streaming.string('8th.firstName'),
   //               lastName: s.streaming.string('8th.lastName'),
   //             }),
@@ -119,26 +129,26 @@ import { s } from '../../schema';
   //   }),
   // );
 
-  // const iterable = new SocketAsyncIterable(client);
+  const iterable = new SocketAsyncIterable(client);
 
-  // const parserIterable = AsyncParserIterable(iterable, responseSchema);
+  const parserIterable = AsyncParserIterable(iterable, responseSchema);
 
-  //   try {
-  //     for await (const data of parserIterable) {
-  //       // To see how things are changing in a dynamic way, clear the console before
-  //       // parsing update
-  //       // console.clear();
-  //       console.log('new chunk');
-  //       console.log(JSON.stringify(data, null, 4));
-  //     }
-  //     console.log('Socket ended.');
-  //   } catch (err) {
-  //     console.error('Socket error:', err);
-  //   }
+  try {
+    for await (const data of parserIterable) {
+      // To see how things are changing in a dynamic way, clear the console before
+      // parsing update
+      // console.clear();
+      console.log('new chunk');
+      console.log(JSON.stringify(data, null, 4));
+    }
+    console.log('Socket ended.');
+  } catch (err) {
+    console.error('Socket error:', err);
+  }
 
-  //   client.on('close', function () {
-  //     console.log('Connection closed');
-  //   });
+  client.on('close', function () {
+    console.log('Connection closed');
+  });
 })()
   .then(() => console.log('in then'))
   .catch((err) => console.log('Fatal error', err));

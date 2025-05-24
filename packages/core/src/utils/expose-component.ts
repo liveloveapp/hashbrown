@@ -53,15 +53,10 @@ export function createComponentSchema(
   const weakMap = new WeakMap<Component<any>, s.HashbrownType>();
 
   const elements = s.anyOf(
-    components.map((component, discriminator) =>
-      createSchema(component, discriminator.toString()),
-    ),
+    components.map((component) => createSchema(component)),
   );
 
-  function createSchema(
-    component: ExposedComponent<any>,
-    discriminator: string,
-  ): s.HashbrownType {
+  function createSchema(component: ExposedComponent<any>): s.HashbrownType {
     if (weakMap.has(component.component)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return weakMap.get(component.component)!;
@@ -71,37 +66,32 @@ export function createComponentSchema(
 
     if (children === 'any') {
       const schema = s.object(component.description, {
-        __discriminator: s.constString(discriminator),
         $tagName: s.constString(component.name),
         $props: s.object('Props', component.props ?? {}),
         get $children(): any {
           return s.streaming.array('Child Elements', elements);
         },
       });
+
       weakMap.set(component.component, schema);
       return schema;
     } else if (children && Array.isArray(children)) {
       const schema = s.object(component.description, {
-        __discriminator: s.constString(discriminator),
         $tagName: s.constString(component.name),
         $props: s.object('Props', component.props ?? {}),
         get $children(): any {
           return s.streaming.array(
             'Child Elements',
-            s.anyOf(
-              children.map((child, innerDiscriminator) =>
-                createSchema(child, innerDiscriminator.toString()),
-              ),
-            ),
+            s.anyOf(children.map((child) => createSchema(child))),
           );
         },
       });
+
       weakMap.set(component.component, schema);
       return schema;
     }
 
     const schema = s.object(component.description, {
-      __discriminator: s.constString(discriminator),
       $tagName: s.constString(component.name),
       $props: s.object('Props', component.props ?? {}),
     });

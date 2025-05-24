@@ -163,28 +163,48 @@ export function useStructuredChat<
   const [schema] = useState<Schema>(options.schema);
 
   useEffect(() => {
+    return () => {
+      if (hashbrown) {
+        hashbrown.teardown();
+        setHashbrown(null);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!config) {
       throw new Error('HashbrownContext not found');
     }
 
-    const instance = fryHashbrown<Schema, Tools, Output>({
-      apiUrl: config.url,
-      middleware: config.middleware,
-      model: options.model,
-      prompt: options.prompt,
-      responseSchema: schema,
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      tools,
-      debugName: options.debugName,
-    });
+    const instance =
+      hashbrown ??
+      fryHashbrown<Schema, Tools, Output>({
+        apiUrl: config.url,
+        middleware: config.middleware,
+        model: options.model,
+        prompt: options.prompt,
+        responseSchema: schema,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        tools,
+        debugName: options.debugName,
+      });
 
-    setHashbrown(instance);
-
-    return () => {
-      instance.teardown();
-      setHashbrown(null);
-    };
+    if (!hashbrown) {
+      setHashbrown(instance);
+    } else {
+      instance.updateOptions({
+        apiUrl: config.url,
+        middleware: config.middleware,
+        model: options.model,
+        prompt: options.prompt,
+        responseSchema: schema,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        tools,
+        debugName: options.debugName,
+      });
+    }
   }, [
     config,
     options.model,

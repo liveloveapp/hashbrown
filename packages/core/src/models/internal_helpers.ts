@@ -48,7 +48,6 @@ export function toInternalMessagesFromView(
 export function toViewMessagesFromInternal(
   message: Chat.Internal.Message,
   toolCalls: Record<string, Chat.Internal.ToolCall>,
-  isStreaming: boolean,
   outputSchema?: s.HashbrownType,
 ): Chat.AnyMessage[] {
   switch (message.role) {
@@ -65,13 +64,11 @@ export function toViewMessagesFromInternal(
         ? new StreamSchemaParser(outputSchema)
         : undefined;
 
-      const content = tater
-        ? message.content
-          ? isStreaming
-            ? tater.parse(message.content)
-            : JSON.parse(message.content)
-          : undefined
-        : message.content;
+      let content = message.content;
+
+      if (message.content && tater) {
+        content = tater.parse(message.content);
+      }
 
       return [
         {
