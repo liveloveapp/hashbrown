@@ -6,4 +6,5 @@ export default createActionGroup('api', {
   generateMessageChunk: props<Chat.Api.AssistantMessage>(),
   generateMessageSuccess: props<Chat.Api.AssistantMessage>(),
   generateMessageError: props<Error>(),
+  generateMessageExhaustedRetries: props<void>(),
 });

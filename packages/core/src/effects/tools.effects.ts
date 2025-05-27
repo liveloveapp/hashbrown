@@ -11,6 +11,9 @@ export const runTools = createEffect((store) => {
     const toolCalls = store.read(selectPendingToolCalls);
     const toolEntities = store.read(selectToolEntities);
 
+    console.log('in run tool effects');
+    console.log(toolCalls);
+
     if (toolCalls.length === 0) {
       return;
     }

@@ -15,6 +15,7 @@ export default createActionGroup('dev', {
     responseSchema?: s.HashbrownType;
     middleware?: Chat.Middleware[];
     emulateStructuredOutput?: boolean;
+    retries?: number;
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];
@@ -22,6 +23,7 @@ export default createActionGroup('dev', {
   sendMessage: props<{
     message: Chat.AnyMessage;
   }>(),
+  resendMessages: props<void>,
   updateOptions: props<{
     debugName?: string;
     apiUrl?: string;
@@ -34,5 +36,6 @@ export default createActionGroup('dev', {
     middleware?: Chat.Middleware[];
     emulateStructuredOutput?: boolean;
     debounce?: number;
+    retries?: number;
   }>(),
 });

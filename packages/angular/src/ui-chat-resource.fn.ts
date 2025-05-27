@@ -33,6 +33,35 @@ export interface UiChatSchemaComponent {
   $children: UiChatSchemaComponent[];
 }
 
+/*
+TODO:
+for chat:
+- add error display component
+-- error-indicative styling
+-- retry button?
+- when being loaded from state, should not be, like, reapplied
+-- also, retry button should not be available
+
+for predictions (via action stream):
+- - don't show error, just auto-retry
+- if 3 failures in a row, warn user predictions is unavailable
+
+for completion:
+- don't show error, just auto-retry
+- if 3 failures in a row, warn user completion is unavailable
+
+for suggestions (e.g. scenes):
+- don't show error, just auto-retry
+- if 3 (configurable) failures in a row, warn user suggestions
+  seem to be unavailable
+
+Infrastructure for the above to make it easy to integrate:
+- manual retry for chat
+- auto retry for everything else w/ configurable limit
+- a way to know retry limit has been reached
+
+*/
+
 export interface UiChatSchema {
   ui: UiChatSchemaComponent[];
 }
@@ -43,14 +72,17 @@ export type UiAssistantMessage<Tools extends Chat.AnyTool> =
   };
 
 export type UiUserMessage = Chat.UserMessage;
+export type UiErrorMessage = Chat.ErrorMessage;
 
 export type UiChatMessage<Tools extends Chat.AnyTool> =
   | UiAssistantMessage<Tools>
-  | UiUserMessage;
+  | UiUserMessage
+  | UiErrorMessage;
 
 export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<UiChatMessage<Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
+  resendMessages: () => void;
 }
 export function uiChatResource<Tools extends Chat.AnyTool>(args: {
   components: ExposedComponent<any>[];
@@ -111,6 +143,10 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
         };
       }
       if (message.role === 'user') {
+        return message;
+      }
+      if (message.role === 'error') {
+        console.log('saw error message in ui-chat');
         return message;
       }
 

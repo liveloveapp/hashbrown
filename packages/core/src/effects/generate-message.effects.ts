@@ -14,6 +14,7 @@ import {
   selectMiddleware,
   selectModel,
   selectResponseSchema,
+  selectRetries,
   selectShouldGenerateMessage,
   selectTemperature,
 } from '../reducers';
@@ -25,6 +26,7 @@ export const generateMessage = createEffect((store) => {
     devActions.init,
     devActions.setMessages,
     devActions.sendMessage,
+    devActions.resendMessages,
     internalActions.runToolCallsSuccess,
     switchAsync(async (switchSignal) => {
       const apiUrl = store.read(selectApiUrl);
@@ -36,6 +38,7 @@ export const generateMessage = createEffect((store) => {
       const messages = store.read(selectApiMessages);
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const debounce = store.read(selectDebounce);
+      const retries = store.read(selectRetries);
       const tools = store.read(selectApiTools);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
 
@@ -59,83 +62,115 @@ export const generateMessage = createEffect((store) => {
 
       await sleep(debounce, switchSignal);
 
-      if (effectAbortController.signal.aborted || switchSignal.aborted) {
-        return;
-      }
+      let attempt = 0;
 
-      let requestInit: RequestInit = {
-        method: 'POST',
-        body: JSON.stringify(params),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: switchSignal,
-      };
+      do {
+        attempt++;
 
-      if (middleware && middleware.length) {
-        for (const m of middleware) {
-          requestInit = await m(requestInit);
-        }
-      }
-
-      const response = await fetch(apiUrl, requestInit);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      if (!response.body) {
-        throw new Error('Response body is null');
-      }
-
-      store.dispatch(apiActions.generateMessageStart());
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let message: Chat.Api.AssistantMessage | null = null;
-
-      while (true) {
         if (effectAbortController.signal.aborted || switchSignal.aborted) {
           return;
         }
 
-        const { done, value } = await reader.read();
+        let requestInit: RequestInit = {
+          method: 'POST',
+          body: JSON.stringify(params),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: switchSignal,
+        };
 
-        if (done) {
-          break;
+        if (middleware && middleware.length) {
+          for (const m of middleware) {
+            requestInit = await m(requestInit);
+          }
         }
 
-        const chunk = decoder.decode(value, { stream: true });
+        const response = await fetch(apiUrl, requestInit);
 
-        try {
-          const jsonChunks = chunk.split(/(?<=})(?={)/);
+        if (!response.ok) {
+          store.dispatch(
+            apiActions.generateMessageError(
+              new Error(`HTTP error! Status: ${response.status}`),
+            ),
+          );
+          // return;
+          continue;
+        }
 
-          for (const jsonChunk of jsonChunks) {
-            if (jsonChunk.trim()) {
-              const jsonData = JSON.parse(
-                jsonChunk,
-              ) as Chat.Api.CompletionChunk;
+        if (!response.body) {
+          store.dispatch(
+            apiActions.generateMessageError(new Error(`Response body is null`)),
+          );
+          // return;
+          continue;
+        }
 
-              message = updateMessagesWithDelta(message, jsonData);
+        store.dispatch(apiActions.generateMessageStart());
 
-              // We just made it non-null on the line above, so we can safely
-              // assert it here.
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let message: Chat.Api.AssistantMessage | null = null;
 
-              if (message) {
-                store.dispatch(apiActions.generateMessageChunk(message));
+        while (true) {
+          if (effectAbortController.signal.aborted || switchSignal.aborted) {
+            break;
+          }
+
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+
+          try {
+            const jsonChunks = chunk.split(/(?<=})(?={)/);
+
+            // TODO: need to inject and deal with errors from backend here
+
+            // TODO: what to do if we start streaming in an error message?
+
+            for (const jsonChunk of jsonChunks) {
+              if (jsonChunk.trim()) {
+                const jsonData = JSON.parse(
+                  jsonChunk,
+                ) as Chat.Api.CompletionChunk;
+
+                message = updateMessagesWithDelta(message, jsonData);
+
+                // We just made it non-null on the line above, so we can safely
+                // assert it here.
+
+                if (message) {
+                  store.dispatch(apiActions.generateMessageChunk(message));
+                }
               }
             }
+          } catch (error) {
+            console.error('Error parsing JSON chunk:', error);
+            store.dispatch(
+              apiActions.generateMessageError(new Error(`Bad chunk format`)),
+            );
+            // return;
+            break;
           }
-        } catch (error) {
-          console.error('Error parsing JSON chunk:', error);
         }
-      }
 
-      store.dispatch(
-        apiActions.generateMessageSuccess(
-          message as unknown as Chat.Api.AssistantMessage,
-        ),
-      );
+        store.dispatch(
+          apiActions.generateMessageSuccess(
+            message as unknown as Chat.Api.AssistantMessage,
+          ),
+        );
+
+        break;
+      } while (retries > 0 && attempt < retries + 1);
+
+      // Did we exhaust our retries?
+      if (retries > 0 && attempt > retries) {
+        store.dispatch(apiActions.generateMessageExhaustedRetries());
+      }
     }, effectAbortController.signal),
   );
 

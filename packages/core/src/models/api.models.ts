@@ -28,6 +28,11 @@ export interface UserMessage {
   content: string;
 }
 
+export interface ErrorMessage {
+  role: 'error';
+  content: string;
+}
+
 export interface SystemMessage {
   role: 'system';
   content: string;
@@ -42,6 +47,7 @@ export interface ToolMessage {
 
 export type Message =
   | UserMessage
+  | ErrorMessage
   | AssistantMessage
   | SystemMessage
   | ToolMessage;

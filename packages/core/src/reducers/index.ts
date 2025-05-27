@@ -49,6 +49,11 @@ export const selectIsRunningToolCalls = select(
 );
 export const selectError = select(selectStatusState, fromStatus.selectError);
 
+export const selectExhaustedRetries = select(
+  selectStatusState,
+  fromStatus.selectExhaustedRetries,
+);
+
 /**
  * Streaming Message
  */
@@ -100,6 +105,10 @@ export const selectPrompt = select(selectConfigState, fromConfig.selectPrompt);
 export const selectDebounce = select(
   selectConfigState,
   fromConfig.selectDebounce,
+);
+export const selectRetries = select(
+  selectConfigState,
+  fromConfig.selectRetries,
 );
 export const selectTemperature = select(
   selectConfigState,

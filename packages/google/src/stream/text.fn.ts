@@ -34,6 +34,15 @@ export async function* text(
             },
           ],
         };
+      case 'error':
+        return {
+          role: 'error',
+          parts: [
+            {
+              text: message.content,
+            },
+          ],
+        };
       case 'assistant': {
         return {
           role: 'model',

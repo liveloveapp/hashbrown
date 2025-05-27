@@ -16,12 +16,12 @@ import { createTool, structuredCompletionResource } from '@hashbrownai/angular';
 
 const PREDICTIONS_SCHEMA = s.anyOf([
   s.object('Suggests adding a light to the system', {
-    __discriminator: s.constString('Add Light'),
+    discriminator: s.constString('Add Light'),
     name: s.string('The suggested name of the light'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest adding a scene to the system', {
-    __discriminator: s.constString('Add Scene'),
+    discriminator: s.constString('Add Scene'),
     name: s.string('The suggested name of the scene'),
     lights: s.array(
       'The lights in the scene',
@@ -32,18 +32,18 @@ const PREDICTIONS_SCHEMA = s.anyOf([
     ),
   }),
   s.object('Suggest scheduling a scene to the system', {
-    __discriminator: s.constString('Schedule Scene'),
+    discriminator: s.constString('Schedule Scene'),
     sceneId: s.string('The ID of the scene'),
     datetime: s.string('The datetime of the scene'),
   }),
   s.object('Suggest adding a light to a scene', {
-    __discriminator: s.constString('Add Light to Scene'),
+    discriminator: s.constString('Add Light to Scene'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest removing a light from a scene', {
-    __discriminator: s.constString('Remove Light from Scene'),
+    discriminator: s.constString('Remove Light from Scene'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
   }),
@@ -55,7 +55,7 @@ const PREDICTIONS_SCHEMA = s.anyOf([
   template: `
     <!-- Loop over predictions and display according to type -->
     @for (prediction of output(); track $index) {
-      @switch (prediction.__discriminator) {
+      @switch (prediction.discriminator) {
         @case ('Add Light') {
           <div class="prediction">
             <div class="predictionIcon">

@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {
   chatResource,
   createTool,
@@ -42,6 +43,7 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
     ComposerComponent,
     MessagesComponent,
     SimpleMessagesComponent,
+    MatProgressSpinnerModule,
   ],
   template: `
     <div class="chat-header">
@@ -52,9 +54,16 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
       @if (simpleDemo) {
         <app-simple-chat-messages [messages]="simpleChat.value()" />
       } @else {
-        <app-chat-messages [messages]="chat.value()" />
+        <app-chat-messages
+          [messages]="chat.value()"
+          (retry)="retryMessages()"
+        />
       }
     </div>
+
+    @if (!simpleDemo && chat.isLoading()) {
+      <div class="chat-loading"><mat-spinner></mat-spinner></div>
+    }
 
     <div class="chat-composer">
       <app-chat-composer
@@ -77,6 +86,7 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
         grid-template-areas:
           'header'
           'messages'
+          'loading'
           'composer';
         grid-template-rows: auto 1fr auto;
         grid-template-columns: 1fr;
@@ -89,6 +99,18 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
         align-items: center;
         padding: 16px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .chat-loading {
+        grid-area: loading;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .chat-loading mat-spinner {
+        height: 32px !important;
+        width: 32px !important;
       }
 
       .chat-messages {
@@ -273,5 +295,9 @@ export class ChatPanelComponent {
     } else {
       this.chat.sendMessage({ role: 'user', content: message });
     }
+  }
+
+  retryMessages() {
+    this.chat.resendMessages();
   }
 }

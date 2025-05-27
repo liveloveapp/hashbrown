@@ -13,6 +13,7 @@ export interface ConfigState {
   responseSchema?: s.HashbrownType;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput: boolean;
+  retries: number;
 }
 
 const initialState: ConfigState = {
@@ -21,11 +22,13 @@ const initialState: ConfigState = {
   prompt: '',
   debounce: 150,
   emulateStructuredOutput: false,
+  retries: 0,
 };
 
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action) => {
+    console.log(action.payload);
     return {
       ...state,
       apiUrl: action.payload.apiUrl,
@@ -38,6 +41,7 @@ export const reducer = createReducer(
       middleware: action.payload.middleware,
       emulateStructuredOutput:
         action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
+      retries: action.payload.retries ?? state.retries,
     };
   }),
   on(devActions.updateOptions, (state, action) => {
@@ -59,3 +63,4 @@ export const selectResponseSchema = (state: ConfigState) =>
 export const selectMiddleware = (state: ConfigState) => state.middleware;
 export const selectEmulateStructuredOutput = (state: ConfigState) =>
   state.emulateStructuredOutput;
+export const selectRetries = (state: ConfigState) => state.retries;

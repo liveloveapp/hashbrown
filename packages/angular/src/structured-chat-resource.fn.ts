@@ -15,6 +15,7 @@ import { readSignalLike, toSignal } from './utils';
 export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<Output, Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
+  resendMessages: () => void;
 }
 
 export interface StructuredChatResourceOptions<
@@ -108,12 +109,17 @@ export function structuredChatResource<
     hashbrown.sendMessage(message);
   }
 
+  function resendMessages() {
+    hashbrown.resendMessages();
+  }
+
   return {
     hasValue: hasValue as any,
     status,
     isLoading,
     reload,
     sendMessage,
+    resendMessages,
     value,
     error,
   };

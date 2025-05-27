@@ -9,6 +9,7 @@ import { Chat } from './models';
 import {
   reducers,
   selectError,
+  selectExhaustedRetries,
   selectIsReceiving,
   selectIsRunningToolCalls,
   selectIsSending,
@@ -28,6 +29,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
   /** Send a new message to the LLM and update state. */
   sendMessage: (message: Chat.Message<Output, Tools>) => void;
+  /** Resend messages and update state. Often used manually after an error.*/
+  resendMessages: () => void;
   /** Subscribe to message updates; invokes callback on state changes. */
   observeMessages: (
     onChange: (messages: Chat.Message<Output, Tools>[]) => void,
@@ -42,6 +45,10 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   ) => void;
   /** Subscribe to error state; invokes callback if an error occurs. */
   observeError: (onChange: (error: Error | null) => void) => void;
+  /** Subscribe to exhausted retries state; invokes callback if an retries are exhausted on a single request. */
+  observeExhaustedRetries: (
+    onChange: (exhaustedRetries: boolean) => void,
+  ) => void;
   /** Update the chat options after initialization */
   updateOptions: (
     options: Partial<{
@@ -95,6 +102,7 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
+  retries?: number;
 }): Hashbrown<string, Tools>;
 export function fryHashbrown<
   Schema extends s.HashbrownType,
@@ -113,6 +121,7 @@ export function fryHashbrown<
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
+  retries?: number;
 }): Hashbrown<Output, Tools>;
 export function fryHashbrown(init: {
   debugName?: string;
@@ -127,6 +136,7 @@ export function fryHashbrown(init: {
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
+  retries?: number;
 }): Hashbrown<any, Chat.AnyTool> {
   const hasIllegalOutputTool = init.tools?.some(
     (tool) => tool.name === 'output',
@@ -165,6 +175,7 @@ export function fryHashbrown(init: {
       middleware: init.middleware,
       emulateStructuredOutput: init.emulateStructuredOutput,
       debounce: init.debounce,
+      retries: init.retries,
     }),
   );
 
@@ -178,6 +189,10 @@ export function fryHashbrown(init: {
     state.dispatch(
       devActions.sendMessage({ message: message as Chat.AnyMessage }),
     );
+  }
+
+  function resendMessages() {
+    state.dispatch(devActions.resendMessages());
   }
 
   function observeMessages(
@@ -206,6 +221,12 @@ export function fryHashbrown(init: {
     return state.select(selectError, onChange);
   }
 
+  function observeExhaustedRetries(
+    onChange: (exhaustedRetries: boolean) => void,
+  ) {
+    return state.select(selectExhaustedRetries, onChange);
+  }
+
   function updateOptions(
     options: Partial<{
       debugName?: string;
@@ -231,11 +252,13 @@ export function fryHashbrown(init: {
   return {
     setMessages,
     sendMessage,
+    resendMessages,
     observeMessages,
     observeIsReceiving,
     observeIsSending,
     observeIsRunningToolCalls,
     observeError,
+    observeExhaustedRetries,
     updateOptions,
     teardown,
   };
