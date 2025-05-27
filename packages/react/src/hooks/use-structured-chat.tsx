@@ -18,9 +18,9 @@ export interface UseStructuredChatOptions<
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   /**
    * The schema to use for the chat.
@@ -37,17 +37,6 @@ export interface UseStructuredChatOptions<
    * default: []
    */
   tools?: Tools[];
-
-  /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
 
   /**
    * The debounce time between sends to the endpoint.
@@ -120,7 +109,7 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
  * const MyChatComponent = () => {
  *   const { messages, sendMessage, status } = useStructuredChat({
  *     model: 'gpt-4o',
- *     prompt: 'You are a helpful assistant.',
+ *     system: 'You are a helpful assistant.',
  *     schema: s.object('Person', {
  *       name: s.string('Name of the person'),
  *       age: s.number('Age of the person'),
@@ -169,7 +158,7 @@ export function useStructuredChat<
         setHashbrown(null);
       }
     };
-  }, []);
+  }, [hashbrown]);
 
   useEffect(() => {
     if (!config) {
@@ -182,10 +171,8 @@ export function useStructuredChat<
         apiUrl: config.url,
         middleware: config.middleware,
         model: options.model,
-        prompt: options.prompt,
+        system: options.system,
         responseSchema: schema,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
         tools,
         debugName: options.debugName,
       });
@@ -197,20 +184,17 @@ export function useStructuredChat<
         apiUrl: config.url,
         middleware: config.middleware,
         model: options.model,
-        prompt: options.prompt,
+        system: options.system,
         responseSchema: schema,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
         tools,
         debugName: options.debugName,
       });
     }
   }, [
+    hashbrown,
     config,
     options.model,
-    options.prompt,
-    options.temperature,
-    options.maxTokens,
+    options.system,
     options.debugName,
     schema,
     tools,

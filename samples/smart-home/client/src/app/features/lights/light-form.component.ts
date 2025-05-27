@@ -147,7 +147,7 @@ export class LightFormComponent {
   readonly nameCompletion = completionResource({
     model: 'gpt-4o-mini',
     input: this.nameSignal,
-    prompt: computed(
+    system: computed(
       () => `
       Help the user generate a name for a light. The input will be what
       they have typed so far, and the output should be a prediction for

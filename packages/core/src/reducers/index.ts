@@ -96,18 +96,10 @@ export const selectMiddleware = select(
   fromConfig.selectMiddleware,
 );
 export const selectModel = select(selectConfigState, fromConfig.selectModel);
-export const selectPrompt = select(selectConfigState, fromConfig.selectPrompt);
+export const selectSystem = select(selectConfigState, fromConfig.selectSystem);
 export const selectDebounce = select(
   selectConfigState,
   fromConfig.selectDebounce,
-);
-export const selectTemperature = select(
-  selectConfigState,
-  fromConfig.selectTemperature,
-);
-export const selectMaxTokens = select(
-  selectConfigState,
-  fromConfig.selectMaxTokens,
 );
 export const selectResponseSchema = select(
   selectConfigState,
@@ -156,19 +148,12 @@ export const selectViewMessages = select(
 );
 
 export const selectApiMessages = select(
-  selectPrompt,
   selectMessages,
   selectToolCalls,
-  (prompt, messages, toolCalls): Chat.Api.Message[] => {
-    return [
-      {
-        role: 'system',
-        content: prompt,
-      },
-      ...messages.flatMap((message): Chat.Api.Message[] =>
-        Chat.helpers.toApiMessagesFromInternal(message, toolCalls),
-      ),
-    ];
+  (messages, toolCalls): Chat.Api.Message[] => {
+    return messages.flatMap((message): Chat.Api.Message[] =>
+      Chat.helpers.toApiMessagesFromInternal(message, toolCalls),
+    );
   },
 );
 

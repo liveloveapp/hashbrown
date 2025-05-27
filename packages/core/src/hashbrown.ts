@@ -48,9 +48,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       debugName?: string;
       apiUrl: string;
       model: string;
-      prompt: string;
-      temperature: number;
-      maxTokens: number;
+      system: string;
       tools: Tools[];
       responseSchema: s.HashbrownType;
       middleware: Chat.Middleware[];
@@ -71,9 +69,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
  * @param {string} [init.debugName] - Optional debug name for devtools tracing.
  * @param {string} init.apiUrl - Base URL of the Hashbrown API endpoint.
  * @param {string} init.model - The LLM model identifier to use.
- * @param {string} init.prompt - System prompt or initial context for the chat.
- * @param {number} [init.temperature] - Sampling temperature for LLM responses.
- * @param {number} [init.maxTokens] - Maximum tokens to generate per response.
+ * @param {string} init.system - System prompt or initial context for the chat.
  * @param {Chat.Message<Output, Tools>[]} [init.messages] - Initial message history.
  * @param {Tools[]} [init.tools] - Array of tools to enable in the instance.
  * @param {s.HashbrownType} [init.responseSchema] - JSON schema for validating structured output.
@@ -87,9 +83,7 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
   apiUrl: string;
   model: string;
-  prompt: string;
-  temperature?: number;
-  maxTokens?: number;
+  system: string;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
   middleware?: Chat.Middleware[];
@@ -104,9 +98,7 @@ export function fryHashbrown<
   debugName?: string;
   apiUrl: string;
   model: string;
-  prompt: string;
-  temperature?: number;
-  maxTokens?: number;
+  system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
   responseSchema: Schema;
@@ -118,9 +110,7 @@ export function fryHashbrown(init: {
   debugName?: string;
   apiUrl: string;
   model: string;
-  prompt: string;
-  temperature?: number;
-  maxTokens?: number;
+  system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
   responseSchema?: s.HashbrownType;
@@ -156,9 +146,7 @@ export function fryHashbrown(init: {
     devActions.init({
       apiUrl: init.apiUrl,
       model: init.model,
-      prompt: init.prompt,
-      temperature: init.temperature,
-      maxTokens: init.maxTokens,
+      system: init.system,
       messages: init.messages as Chat.AnyMessage[],
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
@@ -211,9 +199,7 @@ export function fryHashbrown(init: {
       debugName?: string;
       apiUrl: string;
       model: string;
-      prompt: string;
-      temperature: number;
-      maxTokens: number;
+      system: string;
       tools: Chat.AnyTool[];
       responseSchema: s.HashbrownType;
       middleware: Chat.Middleware[];

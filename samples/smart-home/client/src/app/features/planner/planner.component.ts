@@ -244,7 +244,7 @@ export class PlannerComponent {
   chat = structuredChatResource({
     model: 'gpt-4.1-mini',
     debugName: 'planner-chat',
-    prompt: `
+    system: `
       I am going to give you a description of a plan for how my
       user wants their smart home to be configured. They are
       going to give you a description of their home, the lights in
@@ -291,7 +291,7 @@ export class PlannerComponent {
           })
         : null,
     ),
-    prompt: `
+    system: `
       I am going to give you a description of a plan for how my
       user wants their smart home to be configured. They are
       going to give you a description of their home, the lights in

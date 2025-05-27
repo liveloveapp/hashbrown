@@ -15,15 +15,12 @@ export async function* text(
   apiKey: string,
   request: Chat.Api.CompletionCreateParams,
 ): AsyncIterable<Chat.Api.CompletionChunk> {
-  const { messages, model, tools, response_format, tool_choice } = request;
+  const { messages, model, tools, responseFormat, toolChoice, system } =
+    request;
   const ai = new GoogleGenAI({
     apiKey,
   });
-  const systemMessage = messages.find((message) => message.role === 'system');
-  const messagesWithoutSystem = messages.filter(
-    (message) => message.role !== 'system',
-  );
-  const contents = messagesWithoutSystem.map((message): Content => {
+  const contents = messages.map((message): Content => {
     switch (message.role) {
       case 'user':
         return {
@@ -38,12 +35,12 @@ export async function* text(
         return {
           role: 'model',
           parts: [
-            ...(message.tool_calls?.map(
-              (tool_call): Part => ({
+            ...(message.toolCalls?.map(
+              (toolCall): Part => ({
                 functionCall: {
-                  id: tool_call.id,
-                  name: tool_call.function.name,
-                  args: JSON.parse(tool_call.function.arguments),
+                  id: toolCall.id,
+                  name: toolCall.function.name,
+                  args: JSON.parse(toolCall.function.arguments),
                 },
               }),
             ) ?? []),
@@ -57,8 +54,8 @@ export async function* text(
           parts: [
             {
               functionResponse: {
-                id: message.tool_call_id,
-                name: message.tool_name,
+                id: message.toolCallId,
+                name: message.toolName,
                 response: { result: JSON.stringify(message.content) },
               },
             },
@@ -82,29 +79,27 @@ export async function* text(
     );
   }
 
-  const responseSchema = response_format
-    ? ((await toGeminiSchema(response_format)) as Schema)
+  const responseSchema = responseFormat
+    ? ((await toGeminiSchema(responseFormat)) as Schema)
     : undefined;
 
   const config: GenerateContentParameters['config'] = {
-    systemInstruction: systemMessage?.content
-      ? {
-          parts: [{ text: systemMessage.content }],
-        }
-      : undefined,
+    systemInstruction: {
+      parts: [{ text: system }],
+    },
     tools: [
       {
         functionDeclarations: geminiTools,
       },
     ],
-    responseMimeType: response_format ? 'application/json' : 'text/plain',
+    responseMimeType: responseFormat ? 'application/json' : 'text/plain',
     responseSchema: responseSchema,
     toolConfig: {
       functionCallingConfig: {
         mode:
-          tool_choice === 'required'
+          toolChoice === 'required'
             ? FunctionCallingConfigMode.ANY
-            : tool_choice === 'none'
+            : toolChoice === 'none'
               ? FunctionCallingConfigMode.NONE
               : FunctionCallingConfigMode.AUTO,
       },
@@ -135,7 +130,7 @@ export async function* text(
             delta: {
               content: null,
               role: 'assistant',
-              tool_calls: [
+              toolCalls: [
                 {
                   index: 0,
                   id: getToolCallId(0),
@@ -147,7 +142,7 @@ export async function* text(
                 },
               ],
             },
-            finish_reason: null,
+            finishReason: null,
           },
         ],
       };
@@ -171,7 +166,7 @@ export async function* text(
             role: 'assistant',
           },
           logprobs: null,
-          finish_reason: candidate.finishReason ?? null,
+          finishReason: candidate.finishReason ?? null,
         })) ?? [],
     };
     yield chunkMessage;

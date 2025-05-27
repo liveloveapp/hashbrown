@@ -135,7 +135,7 @@ export class App {
 
   chat = uiChatResource({
     model: 'gpt-4.1',
-    prompt:
+    system:
       'You are a helpful assistant that can answer questions and help with tasks',
     components: [
       exposeComponent(MarkdownComponent, {

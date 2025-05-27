@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!ChatResourceOptions:interface",
-      "docComment": "/**\n * Chat resource configuration.\n *\n * @remarks\n *\n * The `ChatResourceOptions` interface defines the options for configuring the chat resource.\n *\n * @typedef {object} ChatResourceOptions\n *\n * @param model - The model to use for the chat.\n *\n * @param temperature - The temperature for the chat.\n *\n * @param tools - The tools to use for the chat.\n *\n * @param maxTokens - The maximum number of tokens for the chat.\n *\n * @param messages - The initial messages for the chat.\n *\n * @param debounceTime - The debounce time for the chat.\n *\n * @param  - {s.HashbrownType | Signal<s.HashbrownType>} [θresponseFormat] - The response format for the chat.\n */\n",
+      "docComment": "/**\n * Chat resource configuration.\n *\n * @remarks\n *\n * The `ChatResourceOptions` interface defines the options for configuring the chat resource.\n *\n * @typedef {object} ChatResourceOptions\n *\n * @param model - The model to use for the chat.\n *\n * @param tools - The tools to use for the chat.\n *\n * @param messages - The initial messages for the chat.\n *\n * @param debounceTime - The debounce time for the chat.\n *\n * @param  - {s.HashbrownType | Signal<s.HashbrownType>} [θresponseFormat] - The response format for the chat.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -79,44 +79,6 @@
           "releaseTag": "Public",
           "name": "debugName",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#maxTokens:member",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "maxTokens?: " },
-            { "kind": "Content", "text": "number | " },
-            {
-              "kind": "Reference",
-              "text": "Signal",
-              "canonicalReference": "@angular/core!Signal:type"
-            },
-            { "kind": "Content", "text": "<number>" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": true,
-          "releaseTag": "Public",
-          "name": "maxTokens",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -224,10 +186,10 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#prompt:member",
+          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#system:member",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "prompt: " },
+            { "kind": "Content", "text": "system: " },
             { "kind": "Content", "text": "string | " },
             {
               "kind": "Reference",
@@ -240,45 +202,7 @@
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "prompt",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#temperature:member",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "temperature?: " },
-            { "kind": "Content", "text": "number | " },
-            {
-              "kind": "Reference",
-              "text": "Signal",
-              "canonicalReference": "@angular/core!Signal:type"
-            },
-            { "kind": "Content", "text": "<number>" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": true,
-          "releaseTag": "Public",
-          "name": "temperature",
+          "name": "system",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
           "docs": {
             "modifiers": {
@@ -353,16 +277,8 @@
             "description": "The model to use for the chat.\n\n"
           },
           {
-            "name": "temperature",
-            "description": "The temperature for the chat.\n\n"
-          },
-          {
             "name": "tools",
             "description": "The tools to use for the chat.\n\n"
-          },
-          {
-            "name": "maxTokens",
-            "description": "The maximum number of tokens for the chat.\n\n"
           },
           {
             "name": "messages",

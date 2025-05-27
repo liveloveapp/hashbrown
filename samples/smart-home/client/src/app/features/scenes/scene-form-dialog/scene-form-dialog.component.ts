@@ -175,7 +175,7 @@ export class SceneFormDialogComponent {
   predictedLights = structuredCompletionResource({
     model: 'gpt-4.1',
     input: this.sceneNameSignal,
-    prompt: computed(
+    system: computed(
       () => `
       Predict the lights that will be added to the scene based on the name. For example,
       if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
