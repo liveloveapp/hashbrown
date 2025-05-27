@@ -1,3 +1,15 @@
+/**
+ * Skillet is an LLM-optimized streaming JSON Parser - perfectly suited for streaming hot and fresh JSON.
+ *
+ * Portions of this code are derived from Zod (MIT License) (https://github.com/colinhacks/zod).
+ * See the LICENSE file in the project root for full license text.
+ *
+ * @license MIT
+ * @author LiveLoveApp, LLC
+ * @see https://github.com/liveloveapp/hashbrown
+ * @see https://github.com/colinhacks/zod
+ */
+
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
