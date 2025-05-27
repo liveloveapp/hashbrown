@@ -1,52 +1,80 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat, s } from '@hashbrownai/core';
+import {
+  inject,
+  Injector,
+  runInInjectionContext,
+  untracked,
+} from '@angular/core';
 
-export class BoundTool<
+/**
+ * Input for the createToolWithArgs function.
+ */
+export interface CreateToolWithArgsInput<
   Name extends string,
-  InputSchema extends s.ObjectType<any>,
+  Schema extends s.HashbrownType,
+  Result,
 > {
-  constructor(
-    readonly name: Name,
-    readonly description: string,
-    readonly schema: InputSchema,
-    readonly handler: (input: s.Infer<InputSchema>) => Promise<any>,
-  ) {}
-
-  toTool(): Chat.Tool<Name, InputSchema> {
-    return {
-      name: this.name,
-      description: this.description,
-      schema: this.schema,
-    };
-  }
+  name: Name;
+  description: string;
+  schema: Schema;
+  handler: (input: s.Infer<Schema>) => Promise<Result>;
 }
 
+/**
+ * Creates a tool with a schema and a handler that takes the schema as an argument.
+ *
+ * @param input
+ * @returns
+ */
 export function createToolWithArgs<
-  Name extends string,
-  InputSchema extends s.ObjectType<any>,
->(input: {
-  name: Name;
-  description: string;
-  schema: InputSchema;
-  handler: (input: s.Infer<InputSchema>) => Promise<any>;
-}): BoundTool<Name, InputSchema> {
-  return new BoundTool(
-    input.name,
-    input.description,
-    input.schema,
-    input.handler,
-  );
-}
+  const Name extends string,
+  Schema extends s.HashbrownType,
+  Result,
+>(
+  input: CreateToolWithArgsInput<Name, Schema, Result>,
+): Chat.Tool<Name, s.Infer<Schema>, Result> {
+  const injector = inject(Injector);
 
-export function createTool<Name extends string>(input: {
-  name: Name;
-  description: string;
-  handler: () => Promise<any>;
-}): BoundTool<Name, s.ObjectType<any>> {
-  return createToolWithArgs({
+  return {
     name: input.name,
     description: input.description,
-    schema: s.object('Empty object', {}),
-    handler: input.handler,
-  });
+    schema: input.schema,
+    handler: (args) => {
+      return untracked(() =>
+        runInInjectionContext(injector, () => input.handler(args)),
+      );
+    },
+  };
+}
+
+/**
+ * Input for the createTool function.
+ */
+export interface CreateToolInput<Name extends string, Result> {
+  name: Name;
+  description: string;
+  handler: () => Promise<Result>;
+}
+
+/**
+ * Creates a tool with a handler that takes no arguments.
+ *
+ * @param input
+ * @returns
+ */
+export function createTool<const Name extends string, Result>(
+  input: CreateToolInput<Name, Result>,
+): Chat.Tool<Name, void, Result> {
+  const injector = inject(Injector);
+
+  return {
+    name: input.name,
+    description: input.description,
+    schema: s.object('Empty Object', {}),
+    handler: () => {
+      return untracked(() =>
+        runInInjectionContext(injector, () => input.handler()),
+      );
+    },
+  };
 }

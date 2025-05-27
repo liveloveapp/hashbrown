@@ -175,7 +175,7 @@ export class SceneFormDialogComponent {
   predictedLights = structuredCompletionResource({
     model: 'gpt-4.1',
     input: this.sceneNameSignal,
-    system: computed(
+    prompt: computed(
       () => `
       Predict the lights that will be added to the scene based on the name. For example,
       if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
@@ -187,27 +187,8 @@ export class SceneFormDialogComponent {
         .join('\n')}
     `,
     ),
-    examples: [
-      {
-        input: 'Dim Bedroom Lights',
-        output: {
-          lights: [
-            { lightId: 'light1', brightness: 20 },
-            { lightId: 'light2', brightness: 20 },
-          ],
-        },
-      },
-      {
-        input: 'All Lights On',
-        output: {
-          lights: [
-            { lightId: 'light3', brightness: 100 },
-            { lightId: 'light4', brightness: 100 },
-          ],
-        },
-      },
-    ],
-    output: s.object('Your response', {
+    debugName: 'Predict Lights',
+    schema: s.object('Your response', {
       lights: s.streaming.array(
         'The lights to add to the scene',
         s.object('A join between a light and a scene', {

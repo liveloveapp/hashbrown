@@ -1,92 +1,64 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-empty-interface */
-import { computed, Resource, Signal } from '@angular/core';
-import { s } from '@hashbrownai/core';
+import { computed, effect, Resource, Signal } from '@angular/core';
+import { Chat, s } from '@hashbrownai/core';
 import { SignalLike } from './types';
 import { structuredChatResource } from './structured-chat-resource.fn';
-import { BoundTool } from './create-tool.fn';
 
-export interface StructuredCompletionResourceRef<Output extends s.HashbrownType>
-  extends Resource<s.Infer<Output> | null> {}
+export interface StructuredCompletionResourceRef<Output>
+  extends Resource<Output | null> {}
 
 export interface StructuredCompletionResourceOptions<
   Input,
-  Output extends s.HashbrownType,
+  Schema extends s.HashbrownType,
 > {
   model: string;
   input: Signal<Input | null | undefined>;
-  examples?: {
-    input: Input;
-    output: s.Infer<Output>;
-  }[];
-  output: Output;
-  system: SignalLike<string>;
-  tools?: SignalLike<BoundTool<string, any>[]>;
+  schema: Schema;
+  prompt: SignalLike<string>;
+  tools?: Chat.AnyTool[];
+  debugName?: string;
 }
 
 export function structuredCompletionResource<
   Input,
-  Output extends s.HashbrownType,
+  Schema extends s.HashbrownType,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(
-  options: StructuredCompletionResourceOptions<Input, Output>,
+  options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
-  const {
+  const { model, input, schema, prompt, tools, debugName } = options;
+
+  const resource = structuredChatResource<Schema, Chat.AnyTool, Output>({
     model,
-    input,
-    output: responseFormat,
-    system,
-    examples = [],
+    prompt,
+    schema,
     tools,
-  } = options;
-  const messages = computed(() => {
-    const _input = input();
-    const _system = typeof system === 'string' ? system : system();
-    const _fullInstructions = `
-      ${_system}
-
-      ## Examples
-      ${examples
-        .map(
-          (example) => `
-        Input: ${JSON.stringify(example.input)}
-        Output: ${JSON.stringify(example.output)}
-      `,
-        )
-        .join('\n')}
-    `;
-
-    if (!_input) {
-      return [
-        {
-          role: 'system' as const,
-          content: _fullInstructions,
-        },
-      ];
-    }
-
-    return [
-      {
-        role: 'system' as const,
-        content: _fullInstructions,
-      },
-      {
-        role: 'user' as const,
-        content: JSON.stringify(_input),
-      },
-    ];
+    debugName,
   });
 
-  const resource = structuredChatResource({
-    model,
-    responseFormat,
-    messages,
-    tools,
+  effect(() => {
+    const _input = input();
+
+    if (!_input) {
+      return;
+    }
+
+    resource.sendMessage({
+      role: 'user',
+      content: typeof _input === 'string' ? _input : JSON.stringify(_input),
+    });
   });
 
   const value = computed(() => {
     const lastMessage = resource.value()[resource.value().length - 1];
-    if (lastMessage.role === 'assistant' && lastMessage.content) {
+    if (
+      lastMessage &&
+      lastMessage.role === 'assistant' &&
+      lastMessage.content &&
+      lastMessage.content !== null
+    ) {
       return lastMessage.content;
     }
     return null;

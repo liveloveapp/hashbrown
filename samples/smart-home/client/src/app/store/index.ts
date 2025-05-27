@@ -3,11 +3,13 @@ import * as fromLastUserAction from './last-user-action.reducer';
 import * as fromLayout from './layout.reducer';
 import * as fromLights from './lights.reducer';
 import * as fromScenes from './scenes.reducer';
+import * as fromScheduledScenes from './scheduled-scenes.reducer';
 
 export interface AppState {
   lights: fromLights.LightsState;
   lastUserAction: fromLastUserAction.LastUserActionState;
   scenes: fromScenes.ScenesState;
+  scheduledScenes: fromScheduledScenes.ScheduledScenesState;
   layout: fromLayout.LayoutState;
 }
 
@@ -15,6 +17,7 @@ export const reducers: ActionReducerMap<AppState> = {
   lights: fromLights.lightsReducer,
   lastUserAction: fromLastUserAction.lastUserActionReducer,
   scenes: fromScenes.scenesReducer,
+  scheduledScenes: fromScheduledScenes.scheduledScenesReducer,
   layout: fromLayout.layoutReducer,
 };
 

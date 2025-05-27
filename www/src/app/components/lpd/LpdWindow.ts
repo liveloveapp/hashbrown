@@ -24,7 +24,7 @@ import { Component, input } from '@angular/core';
       display: flex;
       flex-direction: column;
       border-radius: 12px;
-      border: 1px solid rgba(61, 60, 58, 1);
+      border: 1px solid #3d3c3a;
       overflow: hidden;
     }
 
@@ -32,14 +32,14 @@ import { Component, input } from '@angular/core';
       display: flex;
       align-items: center;
       height: 32px;
-      border-bottom: 1px solid rgba(61, 60, 58, 1);
+      border-bottom: 1px solid #3d3c3a;
     }
 
     .lpd-window-controls {
       display: flex;
       align-items: center;
       gap: 4px;
-      border-right: 1px solid rgba(61, 60, 58, 1);
+      border-right: 1px solid #3d3c3a;
       padding: 0 12px;
       height: 100%;
     }
@@ -49,7 +49,7 @@ import { Component, input } from '@angular/core';
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      border: 1px solid rgba(61, 60, 58, 1);
+      border: 1px solid #3d3c3a;
     }
 
     .lpd-window-title {

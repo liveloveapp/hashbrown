@@ -12,20 +12,34 @@
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "export declare function structuredCompletionResource<Input, Output extends "
+          "text": "export declare function structuredCompletionResource<Input, Schema extends "
         },
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
           "canonicalReference": "!s.HashbrownType:type"
         },
+        { "kind": "Content", "text": ", Output extends " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>" },
+        { "kind": "Content", "text": " = " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>" },
         { "kind": "Content", "text": ">(options: " },
         {
           "kind": "Reference",
           "text": "StructuredCompletionResourceOptions",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions:interface"
         },
-        { "kind": "Content", "text": "<Input, Output>" },
+        { "kind": "Content", "text": "<Input, Schema>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
@@ -36,13 +50,13 @@
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/structured-completion-resource.fn.d.ts",
-      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
+      "returnTypeTokenRange": { "startIndex": 12, "endIndex": 14 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "options",
-          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "parameterTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
           "isOptional": false
         }
       ],
@@ -53,9 +67,14 @@
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         },
         {
-          "typeParameterName": "Output",
+          "typeParameterName": "Schema",
           "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Output",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "defaultTypeTokenRange": { "startIndex": 6, "endIndex": 8 }
         }
       ],
       "name": "structuredCompletionResource",

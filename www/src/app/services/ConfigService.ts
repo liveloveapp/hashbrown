@@ -1,19 +1,21 @@
 import { isPlatformBrowser } from '@angular/common';
 import { effect, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 
-export interface SdkConfig {
+export interface AppConfig {
   sdk: 'angular' | 'react';
+  provider: 'google' | 'openai' | 'writer';
 }
 
-const DEFAULT_CONFIG: SdkConfig = {
+const DEFAULT_CONFIG: AppConfig = {
   sdk: 'angular',
+  provider: 'openai',
 };
 
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
   platformId = inject(PLATFORM_ID);
 
-  private configSignal = signal<SdkConfig>(
+  private configSignal = signal<AppConfig>(
     this.loadFromLocalStorage('config') ?? DEFAULT_CONFIG,
   );
 
@@ -45,7 +47,7 @@ export class ConfigService {
     return null;
   }
 
-  set(config: Partial<SdkConfig>) {
+  set(config: Partial<AppConfig>) {
     this.configSignal.set({ ...this.configSignal(), ...config });
   }
 }

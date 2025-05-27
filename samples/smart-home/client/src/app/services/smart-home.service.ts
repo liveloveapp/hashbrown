@@ -227,16 +227,6 @@ export class SmartHomeService {
   private checkScheduledScenes() {
     const now = new Date();
     const currentWeekday = now.getDay();
-    const weekdays = [
-      'sunday',
-      'monday',
-      'tuesday',
-      'wednesday',
-      'thursday',
-      'friday',
-      'saturday',
-    ];
-    const currentWeekdayName = weekdays[currentWeekday] as Weekday;
 
     this.scheduledScenes().forEach((scheduledScene) => {
       if (!scheduledScene.isEnabled) return;
@@ -248,7 +238,7 @@ export class SmartHomeService {
           startDate.getMonth() === now.getMonth() &&
           startDate.getFullYear() === now.getFullYear()) ||
         // Or if it matches the recurrence rule
-        scheduledScene.recurrenceRule?.weekdays.includes(currentWeekdayName);
+        scheduledScene.weekdays[currentWeekday];
 
       if (shouldTrigger) {
         this.applyScene(scheduledScene.sceneId);

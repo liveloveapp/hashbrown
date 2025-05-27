@@ -29,12 +29,15 @@ import { ApiMember } from '../models/api-report.models';
         > code {
           grid-area: returns;
           font: 700 14px/18px monospace;
-          color: #7d542f;
+          color: #fbbb52;
         }
 
         > div {
           grid-area: description;
-          font-size: 13px;
+          font:
+            400 12px/16px Poppins,
+            sans-serif;
+          color: rgba(250, 249, 240, 0.8);
         }
 
         > www-symbol-excerpt {

@@ -6,7 +6,7 @@ Hashbrown for React is an open source library for building meaningful AI experie
 
 - Headless: build your UI how you want.
 - Hook Based: hashbrown uses hooks for managing message state and streaming updates into your app.
-- Platform Agnostic: use any supported platform or model.
+- Platform Agnostic: use any [supported platform](/docs/react/start/platforms)
 
 ## Capabilities
 

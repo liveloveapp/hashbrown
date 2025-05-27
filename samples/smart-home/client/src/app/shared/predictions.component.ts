@@ -328,7 +328,7 @@ export class PredictionsComponent {
   predictions = structuredCompletionResource({
     model: 'o4-mini',
     input: this.lastAction,
-    system: `
+    prompt: `
   You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
   Important Guidelines:
   - The user already owns all necessary hardware. Do not suggest purchasing hardware.
@@ -414,14 +414,13 @@ export class PredictionsComponent {
         handler: () => Promise.resolve(this.scenes()),
       }),
     ],
-    output: s.object('The result', {
+    schema: s.object('The result', {
       predictions: s.streaming.array('The predictions', PREDICTIONS_SCHEMA),
     }),
   });
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
-      console.log(source);
       if (source === undefined || source === null) return [];
 
       return source.predictions;

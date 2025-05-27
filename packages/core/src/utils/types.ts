@@ -113,3 +113,14 @@ export type LastOf<T> =
 export type UnionToTuple<T, L = LastOf<T>> = [T] extends [never]
   ? []
   : [...UnionToTuple<Exclude<T, L>>, L];
+
+/**
+ * A utility type that makes all properties of a type `T` optional.
+ * This type is useful for creating partial types, which can be
+ * useful for various type operations.
+ *
+ * @template T - The type to be made partial.
+ */
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};

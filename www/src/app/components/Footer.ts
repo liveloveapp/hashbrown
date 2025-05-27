@@ -1,25 +1,22 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BrandBlueSky } from '../icons/BrandBlueSky';
+import { BrandGitHub } from '../icons/BrandGitHub';
 import { BrandLinkedIn } from '../icons/BrandLinkedIn';
-import { LiveLoveApp } from '../icons/LiveLoveApp';
+import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-footer',
-  imports: [RouterLink, BrandBlueSky, BrandLinkedIn, LiveLoveApp],
+  imports: [BrandBlueSky, BrandGitHub, BrandLinkedIn, Hashbrown, RouterLink],
   template: `
     <footer>
       <div class="links">
         <div class="brand">
           <div class="title">
-            <span>Cooked up by</span>
-            <a href="https://liveloveapp.com"><www-liveloveapp /></a>
+            <www-hashbrown height="24" width="137.91" stroke="#fff" />
           </div>
-          <small>
-            LiveLoveApp is a team of engineers who bring data to life on the web
-            using AI.
-          </small>
+          <small>© LiveLoveApp, LLC 2025.<br />Based in Oregon.</small>
         </div>
         <div class="docs">
           <div class="title">Documentation</div>
@@ -59,13 +56,131 @@ import { ConfigService } from '../services/ConfigService';
               <www-brand-linkedin />
             </a>
           </li>
+          <li>
+            <a href="https://github.com/liveloveapp/hashbrown" target="_blank">
+              <www-brand-github />
+            </a>
+          </li>
         </ul>
       </div>
     </footer>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="100%"
+      height="9"
+      viewBox="0 0 1728 9"
+      fill="none"
+    >
+      <g clip-path="url(#clip0_72_106)">
+        <rect width="1728" height="9" fill="#3D3C3A" />
+        <rect
+          x="301.191"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 301.191 -124)"
+          fill="#A0A985"
+        />
+        <rect
+          x="1037.19"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 1037.19 -124)"
+          fill="#AF68B4"
+        />
+        <rect
+          x="-66.8086"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 -66.8086 -124)"
+          fill="#AF68B4"
+        />
+        <rect
+          x="485.191"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 485.191 -124)"
+          fill="#FBBB52"
+        />
+        <rect
+          x="1221.19"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 1221.19 -124)"
+          fill="#9ECFD7"
+        />
+        <rect
+          x="117.191"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 117.191 -124)"
+          fill="#9ECFD7"
+        />
+        <rect
+          x="669.191"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 669.191 -124)"
+          fill="#E88C4D"
+        />
+        <rect
+          x="1773.19"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 1773.19 -124)"
+          fill="#E88C4D"
+        />
+        <rect
+          x="1405.19"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 1405.19 -124)"
+          fill="#A0A985"
+        />
+        <rect
+          x="853.191"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 853.191 -124)"
+          fill="#E27676"
+        />
+        <rect
+          x="1957.19"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 1957.19 -124)"
+          fill="#E27676"
+        />
+        <rect
+          x="1589.19"
+          y="-124"
+          width="160"
+          height="614.383"
+          transform="rotate(30 1589.19 -124)"
+          fill="#FBBB52"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_72_106">
+          <rect width="1728" height="9" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
   `,
   styles: `
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
     }
 
     footer {
@@ -74,6 +189,7 @@ import { ConfigService } from '../services/ConfigService';
       gap: 32px;
       margin: 0 auto;
       padding: 32px;
+      width: 100%;
 
       > .links {
         display: grid;
@@ -100,7 +216,7 @@ import { ConfigService } from '../services/ConfigService';
               display: flex;
               align-items: center;
 
-              > www-liveloveapp {
+              > www-brand-liveloveapp-wordmark {
                 margin-top: 4px;
               }
             }

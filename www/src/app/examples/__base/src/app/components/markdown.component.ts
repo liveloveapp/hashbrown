@@ -1,0 +1,11 @@
+import { Component, input } from '@angular/core';
+import { MarkdownComponent as NgxMarkdownComponent } from 'ngx-markdown';
+
+@Component({
+  selector: 'app-markdown',
+  imports: [NgxMarkdownComponent],
+  template: '<markdown [data]="data()"></markdown>',
+})
+export class MarkdownComponent {
+  data = input<string>('');
+}

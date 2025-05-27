@@ -1,90 +1,99 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  Chat,
-  createComponentSchema,
-  ExposedComponent,
-  s,
-} from '@hashbrownai/core';
+import { Chat, s, θcomponents } from '@hashbrownai/core';
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  useStructuredChat,
-  UseStructuredChatOptions,
-} from './use-structured-chat';
+import { ExposedComponent } from '../expose-component.fn';
+import { useStructuredChat } from './use-structured-chat';
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace UiChat {
-  export type AssistantMessage = {
-    role: 'assistant';
-    content: React.ReactElement | null;
-  };
-
-  export type ToolCallMessage = {
-    role: 'tool';
-    name: string;
-    callId: string;
-    isPending: boolean;
-    result?: unknown;
-    error?: string;
-  };
-
-  export type Message =
-    | UiChat.ToolCallMessage
-    | UiChat.AssistantMessage
-    | Chat.UserMessage
-    | Chat.AssistantMessage
-    | Chat.SystemMessage;
+export interface UiChatSchemaComponent {
+  $tagName: string;
+  $props: Record<string, any>;
+  $children: UiChatSchemaComponent[];
 }
 
-export interface UiChatOptions
-  extends Omit<UseStructuredChatOptions<any>, 'schema'> {
+export interface UiChatSchema {
+  ui: UiChatSchemaComponent[];
+}
+
+export type UiAssistantMessage<Tools extends Chat.AnyTool> =
+  Chat.AssistantMessage<UiChatSchema, Tools> & {
+    ui: React.ReactElement[] | null;
+  };
+
+export type UiUserMessage = Chat.UserMessage;
+
+export type UiChatMessage<Tools extends Chat.AnyTool> =
+  | UiAssistantMessage<Tools>
+  | UiUserMessage;
+
+export interface UiChatOptions<Tools extends Chat.AnyTool> {
+  /**
+   * The LLM model to use for the chat.
+   *
+   */
+  model: string;
+
+  /**
+   * The prompt to use for the chat.
+   */
+  prompt: string;
+
   components: ExposedComponent<any>[];
+
+  /**
+   * The initial messages for the chat.
+   * default: 1.0
+   */
+  messages?: Chat.Message<UiChatSchema, Tools>[];
+  /**
+   * The tools to make available use for the chat.
+   * default: []
+   */
+  tools?: Tools[];
+
+  /**
+   * The temperature for the chat.
+   */
+  temperature?: number;
+
+  /**
+   * The maximum number of tokens to allow.
+   * default: 5000
+   */
+  maxTokens?: number;
+
+  /**
+   * The debounce time between sends to the endpoint.
+   * default: 150
+   */
+  debounceTime?: number;
+
+  /**
+   * The name of the hook, useful for debugging.
+   */
+  debugName?: string;
 }
 
-export const useUiChat = (options: UiChatOptions) => {
+export const useUiChat = <Tools extends Chat.AnyTool>(
+  options: UiChatOptions<Tools>,
+) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  const elements = useMemo(
-    () => createComponentSchema(components),
-    [components],
-  );
   const ui = useMemo(() => {
     return s.object('UI', {
-      ui: s.streaming.array('List of elements', elements),
+      ui: s.streaming.array(
+        'List of elements',
+        θcomponents.createComponentSchema(components),
+      ),
     });
-  }, [elements]);
-
-  const systemMessage = useMemo(() => {
-    return `
-        You are chatbot chatting with a human on my web app. Please be
-        curteuous, helpful, and friendly. Try to answer all questions
-        to the best of your ability. Keep answers concise and to the point.
-
-        If the user asks you for things, strongly prefer to provide control 
-        components. Organize them logically with other components if you have
-        the opportunity.
-        
-        If the user asks you to take an action, respond simply with the action you have taken.
-
-        Today's date is ${new Date().toLocaleDateString()}.
-
-        NEVER use ANY newline strings such as "\\n" or "\\\\n" in your response.
-        `;
-  }, []);
-
+  }, [components]);
   const chat = useStructuredChat({
     ...chatOptions,
-    messages: [
-      {
-        role: 'system',
-        content: systemMessage,
-      },
-    ],
     schema: ui,
   });
 
   const buildContent = useCallback(
     (
-      nodes: Array<s.Infer<typeof elements>>,
+      nodes: Array<UiChatSchemaComponent>,
       parentKey = '',
     ): React.ReactElement[] => {
       const elements = nodes.map((element, index) => {
@@ -117,76 +126,20 @@ export const useUiChat = (options: UiChatOptions) => {
   );
 
   const uiChatMessages = useMemo(() => {
-    const findToolCallMessage = (toolCallId: string) => {
-      return chat.messages.find(
-        (t): t is Chat.ToolMessage =>
-          t.role === 'tool' && t.tool_call_id === toolCallId,
-      );
-    };
-
-    return chat.messages.flatMap((message, index): UiChat.Message[] => {
-      if (message.role === 'tool' || message.role === 'system') {
-        return [];
-      }
-      if (message.role === 'user') {
-        return [message];
-      }
+    return chat.messages.map((message): UiChatMessage<Tools> => {
       if (message.role === 'assistant') {
-        const toolCalls = message.tool_calls ?? [];
-
-        const toolCallMessages = toolCalls.map(
-          (toolCall): UiChat.ToolCallMessage => {
-            const toolCallMessage = findToolCallMessage(toolCall.id);
-            const toolName = toolCall.function.name;
-            const toolContent = toolCallMessage?.content;
-            const toolResult =
-              toolContent && toolContent.status === 'fulfilled'
-                ? toolContent.value
-                : undefined;
-            const toolError =
-              toolContent && toolContent.status === 'rejected'
-                ? toolContent.reason
-                : undefined;
-
-            return {
-              role: 'tool',
-              name: toolName,
-              callId: toolCall.id,
-              isPending: toolResult === undefined,
-              result: toolResult,
-              error: toolError,
-            };
-          },
-        );
-
-        if (
-          message.content &&
-          (message as any).content !== '' &&
-          message.content.ui
-        ) {
-          const renderedMessage: UiChat.AssistantMessage = {
-            role: 'assistant',
-            // eslint-disable-next-line react/jsx-no-useless-fragment
-            content: <>{...buildContent(message.content.ui, `${index}`)}</>,
-          };
-
-          return [...toolCallMessages, renderedMessage];
-        }
-
-        return toolCallMessages;
+        return {
+          ...message,
+          ui: message.content?.ui ? buildContent(message.content.ui) : null,
+        } as UiAssistantMessage<Tools>;
       }
-
-      throw new Error(`Unknown message role. ${(message as any).role}`);
+      return message;
     });
   }, [buildContent, chat.messages]);
 
-  const result = useMemo(() => {
-    return {
-      ...chat,
-      messages: uiChatMessages,
-      setComponents,
-    };
-  }, [chat, uiChatMessages, setComponents]);
-
-  return result;
+  return {
+    ...chat,
+    messages: uiChatMessages,
+    setComponents,
+  };
 };

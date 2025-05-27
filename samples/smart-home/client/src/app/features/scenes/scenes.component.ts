@@ -64,6 +64,7 @@ import { selectAllScenes } from '../../store';
       .scenes-container {
         padding: 20px;
       }
+
       .scene-item {
         display: flex;
         align-items: center;

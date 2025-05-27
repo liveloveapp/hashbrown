@@ -54,13 +54,13 @@ export function attachFunctionToContext(
   const fnHandle = context.newAsyncifiedFunction(name, async (...args) => {
     if (s.isNullType(input)) {
       const result = await handler();
-      return transport.sendObject(s.parse(output, result));
+      return transport.sendObject(output.parseJsonSchema(result));
     }
 
     const resolvedInput = transport.receiveObject(args[0]);
-    const parsedInput = s.parse(input, resolvedInput);
+    const parsedInput = input.parseJsonSchema(resolvedInput);
     const result = await handler(parsedInput);
-    return transport.sendObject(s.parse(output, result));
+    return transport.sendObject(output.parseJsonSchema(result));
   });
 
   context.setProp(attachTo, name, fnHandle);

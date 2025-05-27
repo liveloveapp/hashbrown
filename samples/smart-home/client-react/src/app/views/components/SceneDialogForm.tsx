@@ -1,5 +1,5 @@
 import { s } from '@hashbrownai/core';
-import { ChatStatus, useStructuredCompletion } from '@hashbrownai/react';
+import { useStructuredCompletion } from '@hashbrownai/react';
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -53,10 +53,11 @@ export const SceneDialogForm = (
   );
   const [open, setOpen] = useState(false);
 
-  const { output, status } = useStructuredCompletion({
+  const { output, isSending } = useStructuredCompletion({
+    debugName: 'SceneDialogForm',
     input: open ? sceneName : null,
     model: 'gpt-4o-mini',
-    system: `Predict the lights that will be added to the scene based on the name. For example,
+    prompt: `Predict the lights that will be added to the scene based on the name. For example,
     if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
     be in the bedroom at a lower brightness.
 
@@ -71,26 +72,6 @@ export const SceneDialogForm = (
         }),
       ),
     }),
-    examples: [
-      {
-        input: 'Dim Bedroom Lights',
-        output: {
-          lights: [
-            { lightId: '1', brightness: 20 },
-            { lightId: '2', brightness: 20 },
-          ],
-        },
-      },
-      {
-        input: 'All Lights On',
-        output: {
-          lights: [
-            { lightId: '3', brightness: 100 },
-            { lightId: '4', brightness: 100 },
-          ],
-        },
-      },
-    ],
   });
 
   // Get available lights that aren't already in the scene
@@ -201,12 +182,12 @@ export const SceneDialogForm = (
             )}
             <div className="flex flex-col gap-2">
               <Label>Recommendations</Label>
-              {status !== ChatStatus.Idle && (
+              {isSending && (
                 <p className="text-sm text-muted-foreground">
                   Generating recommendations...
                 </p>
               )}
-              {output?.lights.map((prediction) => (
+              {output?.lights?.map((prediction) => (
                 <SceneLightRecommendation
                   key={prediction.lightId}
                   lightId={prediction.lightId}

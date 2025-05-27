@@ -21,6 +21,9 @@ import { DropdownMenu } from './DropDownMenu';
           <ul>
             <li><a routerLink="/api" class="underline">api</a></li>
             <li>
+              <a [routerLink]="examplesUrl()" class="underline">examples</a>
+            </li>
+            <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
             <li>
@@ -28,24 +31,24 @@ import { DropdownMenu } from './DropDownMenu';
                 @switch (config().sdk) {
                   @case ('angular') {
                     <label>
-                      <www-angular height="16px" width="16px" />
+                      <www-angular height="16px" width="16px" fill="#774625" />
                       Angular
                     </label>
                   }
                   @case ('react') {
                     <label>
-                      <www-react height="16px" width="16px" />
+                      <www-react height="16px" width="16px" fill="#774625" />
                       React
                     </label>
                   }
                 }
                 <div content>
                   <a routerLink="/docs/angular/start/quick" (click)="close()">
-                    <www-angular />
+                    <www-angular fill="#774625" />
                     Angular
                   </a>
                   <a routerLink="/docs/react/start/quick" (click)="close()">
-                    <www-react />
+                    <www-react fill="#774625" />
                     React
                   </a>
                 </div>
@@ -149,8 +152,8 @@ import { DropdownMenu } from './DropDownMenu';
 export class DocsHeader {
   configService = inject(ConfigService);
   config = this.configService.config;
-  docsUrl = computed(() => {
-    return `/docs/${this.configService.config().sdk}/start/quick`;
+  examplesUrl = computed(() => {
+    return `/examples/${this.configService.config().sdk}/chat`;
   });
   dropdownMenu = viewChild.required(DropdownMenu);
 

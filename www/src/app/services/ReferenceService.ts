@@ -1,12 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import {
   ApiMemberSummary,
   CanonicalReference,
   MinimizedApiPackageReport,
   ParsedCanonicalReference,
 } from '../models/api-report.models';
-import { packageNames, packages } from '../reference/api-report.min.json';
 import { link, section, Section } from '../models/menu.models';
+import { packageNames, packages } from '../reference/api-report.min.json';
 
 const MODULE_REFERENCES = Object.fromEntries(
   Object.entries(import.meta.glob('../reference/**/*.json')).map(

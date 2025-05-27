@@ -1,79 +1,120 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computed, isSignal, Resource, Signal, signal } from '@angular/core';
-import { chatResource } from './chat-resource.fn';
-import { Chat, s, Tater } from '@hashbrownai/core';
-import { BoundTool } from './create-tool.fn';
+import {
+  computed,
+  inject,
+  Injector,
+  Resource,
+  ResourceStatus,
+  runInInjectionContext,
+  Signal,
+} from '@angular/core';
+import { Chat, fryHashbrown, s } from '@hashbrownai/core';
+import { injectHashbrownConfig } from './provide-hashbrown.fn';
+import { readSignalLike, toSignal } from './utils';
 
-export interface StructuredChatResourceRef<T extends s.HashbrownType>
-  extends Resource<Chat.Message<s.Infer<T>>[]> {
-  sendMessage: (message: Chat.UserMessage | Chat.UserMessage[]) => void;
+export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
+  extends Resource<Chat.Message<Output, Tools>[]> {
+  sendMessage: (message: Chat.UserMessage) => void;
 }
 
-export interface StructuredChatResourceOptions<T extends s.HashbrownType> {
+export interface StructuredChatResourceOptions<
+  Schema extends s.HashbrownType,
+  Tools extends Chat.AnyTool,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
+> {
   model: string | Signal<string>;
+  prompt: string | Signal<string>;
+  schema: Schema;
   temperature?: number | Signal<number>;
-  tools?: BoundTool<string, any>[] | Signal<BoundTool<string, any>[]>;
+  tools?: Tools[];
   maxTokens?: number | Signal<number>;
-  messages?: Chat.Message<s.Infer<T>>[] | Signal<Chat.Message<s.Infer<T>>[]>;
-  debounceTime?: number;
-  responseFormat: T | Signal<T>;
+  messages?: Chat.Message<Output, Tools>[];
+  debugName?: string;
+  debounce?: number;
 }
 
-function stringifyMessage<T extends s.HashbrownType>(
-  message: Chat.Message<s.Infer<T>>,
-): Chat.Message<string> {
-  if (message.role === 'assistant') {
-    return {
-      ...message,
-      content: message.content ? JSON.stringify(message.content) : undefined,
-    };
-  }
-  return message;
-}
-
-export function structuredChatResource<T extends s.HashbrownType>(
-  options: StructuredChatResourceOptions<T>,
-): StructuredChatResourceRef<T> {
-  const { responseFormat: providedResponseFormat, messages, ...rest } = options;
-  const responseFormat = isSignal(providedResponseFormat)
-    ? providedResponseFormat
-    : signal(providedResponseFormat);
-  const stringifiedMessages = computed(() => {
-    const providedMessages = isSignal(messages) ? messages() : messages;
-
-    if (!providedMessages) return [];
-
-    return providedMessages.map(stringifyMessage);
+export function structuredChatResource<
+  Schema extends s.HashbrownType,
+  Tools extends Chat.AnyTool,
+  Output extends s.Infer<Schema> = s.Infer<Schema>,
+>(
+  options: StructuredChatResourceOptions<Schema, Tools, Output>,
+): StructuredChatResourceRef<Output, Tools> {
+  const config = injectHashbrownConfig();
+  const injector = inject(Injector);
+  const hashbrown = fryHashbrown<Schema, Tools, Output>({
+    apiUrl: config.baseUrl,
+    middleware: config.middleware?.map((m): Chat.Middleware => {
+      return (requestInit) =>
+        runInInjectionContext(injector, () => m(requestInit));
+    }),
+    prompt: readSignalLike(options.prompt),
+    model: readSignalLike(options.model),
+    temperature: options.temperature && readSignalLike(options.temperature),
+    tools: options.tools,
+    maxTokens: options.maxTokens && readSignalLike(options.maxTokens),
+    responseSchema: options.schema,
+    debugName: options.debugName,
+    emulateStructuredOutput: config.emulateStructuredOutput,
+    debounce: options.debounce,
   });
+  const value = toSignal(hashbrown.observeMessages);
+  const isReceiving = toSignal(hashbrown.observeIsReceiving);
+  const isSending = toSignal(hashbrown.observeIsSending);
+  const isRunningToolCalls = toSignal(hashbrown.observeIsRunningToolCalls);
+  const error = toSignal(hashbrown.observeError);
 
-  const chat = chatResource({
-    ...rest,
-    messages: messages ? stringifiedMessages : undefined,
-    θresponseFormat: responseFormat,
-  });
+  const status = computed(() => {
+    if (isReceiving() || isSending() || isRunningToolCalls()) {
+      return ResourceStatus.Loading;
+    }
 
-  const parsedMessages = computed(() => {
-    return chat.value().reduce(
-      (acc, message) => {
-        if (message.role === 'assistant' && message.content) {
-          try {
-            const streamParser = new Tater.StreamSchemaParser(responseFormat());
-            const streamResult = streamParser.parse(message.content);
-            acc.push({ ...message, content: streamResult });
-          } catch (error) {
-            // Do nothing for right now
-          }
-        } else {
-          acc.push(message);
-        }
-        return acc;
-      },
-      [] as Chat.Message<s.Infer<T>>[],
+    if (error()) {
+      return ResourceStatus.Error;
+    }
+
+    const hasAssistantMessage = value().some(
+      (message) => message.role === 'assistant',
     );
+
+    if (hasAssistantMessage) {
+      return ResourceStatus.Resolved;
+    }
+
+    return ResourceStatus.Idle;
   });
+
+  const isLoading = computed(() => {
+    return isReceiving() || isSending() || isRunningToolCalls();
+  });
+
+  function reload() {
+    const lastMessage = value()[value().length - 1];
+
+    if (lastMessage.role === 'assistant') {
+      hashbrown.setMessages(value().slice(0, -1));
+
+      return true;
+    }
+
+    return false;
+  }
+
+  function hasValue() {
+    return value().some((message) => message.role === 'assistant');
+  }
+
+  function sendMessage(message: Chat.UserMessage) {
+    hashbrown.sendMessage(message);
+  }
 
   return {
-    ...chat,
-    value: parsedMessages,
+    hasValue: hasValue as any,
+    status,
+    isLoading,
+    reload,
+    sendMessage,
+    value,
+    error,
   };
 }

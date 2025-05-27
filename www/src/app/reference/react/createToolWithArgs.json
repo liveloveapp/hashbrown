@@ -12,62 +12,45 @@
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "export declare function createToolWithArgs<Name extends "
+          "text": "export declare function createToolWithArgs<const Name extends "
         },
         { "kind": "Content", "text": "string" },
-        { "kind": "Content", "text": ", InputSchema extends " },
-        {
-          "kind": "Reference",
-          "text": "s.ObjectType",
-          "canonicalReference": "!s.ObjectType:type"
-        },
-        { "kind": "Content", "text": "<" },
-        {
-          "kind": "Reference",
-          "text": "Record",
-          "canonicalReference": "!Record:type"
-        },
-        { "kind": "Content", "text": "<string, " },
+        { "kind": "Content", "text": ", Schema extends " },
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
           "canonicalReference": "!s.HashbrownType:type"
         },
-        { "kind": "Content", "text": ">>" },
-        { "kind": "Content", "text": ">(input: " },
+        { "kind": "Content", "text": ", Result>(input: " },
         {
-          "kind": "Content",
-          "text": "{\n    name: Name;\n    description: string;\n    schema: InputSchema;\n    handler: (input: "
+          "kind": "Reference",
+          "text": "CreateToolWithArgsInput",
+          "canonicalReference": "@hashbrownai/react!~CreateToolWithArgsInput:interface"
         },
+        { "kind": "Content", "text": "<Name, Schema, Result>" },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
+        },
+        { "kind": "Content", "text": "<Name, " },
         {
           "kind": "Reference",
           "text": "s.Infer",
           "canonicalReference": "!s.Infer:type"
         },
-        { "kind": "Content", "text": "<InputSchema>) => " },
-        {
-          "kind": "Reference",
-          "text": "Promise",
-          "canonicalReference": "!Promise:interface"
-        },
-        { "kind": "Content", "text": "<unknown>;\n}" },
-        { "kind": "Content", "text": "): " },
-        {
-          "kind": "Reference",
-          "text": "BoundTool",
-          "canonicalReference": "@hashbrownai/react!~BoundTool:class"
-        },
-        { "kind": "Content", "text": "<Name, InputSchema>" },
+        { "kind": "Content", "text": "<Schema>, Result>" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/react/create-tool.fn.d.ts",
-      "returnTypeTokenRange": { "startIndex": 16, "endIndex": 18 },
+      "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "input",
-          "parameterTypeTokenRange": { "startIndex": 10, "endIndex": 15 },
+          "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 7 },
           "isOptional": false
         }
       ],
@@ -78,8 +61,13 @@
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         },
         {
-          "typeParameterName": "InputSchema",
-          "constraintTokenRange": { "startIndex": 3, "endIndex": 9 },
+          "typeParameterName": "Schema",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 4 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Result",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],

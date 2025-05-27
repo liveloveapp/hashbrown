@@ -10,20 +10,27 @@
       "canonicalReference": "@hashbrownai/react!useUiChat:function(1)",
       "docComment": "",
       "excerptTokens": [
-        { "kind": "Content", "text": "useUiChat: (options: " },
+        { "kind": "Content", "text": "useUiChat: <Tools extends " },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
         {
           "kind": "Reference",
           "text": "UiChatOptions",
           "canonicalReference": "@hashbrownai/react!~UiChatOptions:interface"
         },
+        { "kind": "Content", "text": "<Tools>" },
         { "kind": "Content", "text": ") => " },
         { "kind": "Content", "text": "{\n    messages: " },
         {
           "kind": "Reference",
-          "text": "UiChat.Message",
-          "canonicalReference": "@hashbrownai/react!~UiChat.Message:type"
+          "text": "UiChatMessage",
+          "canonicalReference": "@hashbrownai/react!UiChatMessage:type"
         },
-        { "kind": "Content", "text": "[];\n    setComponents: " },
+        { "kind": "Content", "text": "<Tools>[];\n    setComponents: " },
         {
           "kind": "Reference",
           "text": "React.Dispatch",
@@ -39,7 +46,7 @@
         {
           "kind": "Reference",
           "text": "ExposedComponent",
-          "canonicalReference": "!unknown"
+          "canonicalReference": "@hashbrownai/react!ExposedComponent:interface"
         },
         {
           "kind": "Content",
@@ -50,25 +57,31 @@
           "text": "Chat.Message",
           "canonicalReference": "!Chat.Message:type"
         },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "UiChatSchema",
+          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+        },
         {
           "kind": "Content",
-          "text": "[]) => void;\n    sendMessage: (message: "
+          "text": ", Tools>[]) => void;\n    sendMessage: (message: "
         },
         {
           "kind": "Reference",
           "text": "Chat.Message",
           "canonicalReference": "!Chat.Message:type"
         },
-        {
-          "kind": "Content",
-          "text": ") => void;\n    status: import('./use-chat')."
-        },
+        { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
-          "text": "ChatStatus",
-          "canonicalReference": "@hashbrownai/react!ChatStatus:enum"
+          "text": "UiChatSchema",
+          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
         },
-        { "kind": "Content", "text": ";\n    error: " },
+        {
+          "kind": "Content",
+          "text": ", Tools>) => void;\n    reload: () => void;\n    error: "
+        },
         {
           "kind": "Reference",
           "text": "Error",
@@ -76,33 +89,25 @@
         },
         {
           "kind": "Content",
-          "text": " | null;\n    stop: () => void;\n    reload: () => void;\n    output: "
-        },
-        {
-          "kind": "Reference",
-          "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
-        },
-        {
-          "kind": "Content",
-          "text": " | undefined;\n    setOutput: (output: "
-        },
-        {
-          "kind": "Reference",
-          "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
-        },
-        { "kind": "Content", "text": " | undefined) => void;\n}" }
+          "text": " | null;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n}"
+        }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
-      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 24 },
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 25 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "options",
-          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
       "name": "useUiChat",

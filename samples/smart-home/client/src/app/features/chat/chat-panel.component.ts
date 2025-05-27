@@ -11,9 +11,10 @@ import {
   chatResource,
   createTool,
   createToolWithArgs,
+  exposeComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { exposeComponent, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
   defineFunction,
@@ -31,6 +32,7 @@ import { LightCardComponent } from './components/light-card.component';
 import { MarkdownComponent } from './components/markdown.component';
 import { MessagesComponent } from './components/messages.component';
 import { SimpleMessagesComponent } from './components/simple-messages.component';
+
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
@@ -50,7 +52,7 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
       @if (simpleDemo) {
         <app-simple-chat-messages [messages]="simpleChat.value()" />
       } @else {
-        <app-chat-messages [messages]="chat.messages()" />
+        <app-chat-messages [messages]="chat.value()" />
       }
     </div>
 
@@ -117,7 +119,7 @@ export class ChatPanelComponent {
   constructor() {
     effect(() => {
       // React when messages change
-      this.chat.messages();
+      this.chat.value();
       if (this.contentDiv.nativeElement) {
         this.contentDiv.nativeElement.scrollTop =
           this.contentDiv.nativeElement.scrollHeight;
@@ -131,15 +133,10 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
+    debugName: 'simple-chat',
+    // model: 'gemini-2.5-flash-preview-04-17',
     model: 'gpt-4.1',
-    messages: [
-      {
-        role: 'system',
-        content: `
-          You are a helpful assistant that can answer questions and help with tasks.
-        `,
-      },
-    ],
+    prompt: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
     tools: [
       createTool({
         name: 'getUser',
@@ -187,36 +184,29 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   chat = uiChatResource({
-    // model: 'gemini-2.5-pro-exp-03-25',
+    // model: 'gemini-2.5-pro-preview-05-06',
     model: 'gpt-4.1',
-    messages: [
-      {
-        role: 'system',
-        content: `
-          You are a helpful assistant that can answer questions and help with tasks.
-        `,
-      },
-    ],
+    prompt: `
+      You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments.
+    `,
     components: [
       exposeComponent(MarkdownComponent, {
-        name: 'markdown',
         description: 'Show markdown to the user',
-        props: {
+        input: {
           data: s.streaming.string('The markdown content'),
         },
       }),
       exposeComponent(LightCardComponent, {
-        name: 'light',
-        description: 'Show a light to the user',
-        props: {
+        description: `This option shows a light to the user, with a dimmer for them to control the light.
+          Always prefer this option over printing a light's name.`,
+        input: {
           lightId: s.string('The id of the light'),
         },
       }),
       exposeComponent(CardComponent, {
-        name: 'card',
         description: 'Show a card to the user',
         children: 'any',
-        props: {
+        input: {
           title: s.streaming.string('The title of the card'),
         },
       }),
@@ -227,11 +217,11 @@ export class ChatPanelComponent {
         description: 'Get information about the current user',
         handler: () => this.authService.getUser(),
       }),
-      // createTool({
-      //   name: 'getLights',
-      //   description: 'Get the current lights',
-      //   handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-      // }),
+      createTool({
+        name: 'getLights',
+        description: 'Get the current lights',
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      }),
       createToolWithArgs({
         name: 'controlLight',
         description: 'Control a light',
@@ -273,6 +263,8 @@ export class ChatPanelComponent {
         ],
       }),
     ],
+    debugName: 'ui-chat',
+    // debounce: 10000,
   });
 
   sendMessage(message: string) {

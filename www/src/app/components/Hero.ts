@@ -1,16 +1,21 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-hero',
-  imports: [RouterLink, ArrowUpRight, Hashbrown],
+  imports: [RouterLink, Hashbrown],
   template: `
     <div class="bleed">
       <div class="container">
         <div class="logo">
+          <img
+            src="/logo/hashbrown.png"
+            alt="our friendly logo that looks like a hashbrown character from an animated tv show"
+            height="136"
+            width="134"
+          />
           <www-hashbrown />
           <p>
             a framework for building joyful,<br />AI-powered user experiences
@@ -33,7 +38,8 @@ import { ConfigService } from '../services/ConfigService';
     .bleed {
       display: flex;
       flex-direction: column;
-      padding: 128px 64px;
+      padding: 64px 32px;
+      width: 100%;
       max-width: 1024px;
     }
 
@@ -46,6 +52,7 @@ import { ConfigService } from '../services/ConfigService';
       > .logo {
         display: flex;
         flex-direction: column;
+        align-items: center;
         gap: 16px;
 
         > p {
@@ -91,6 +98,12 @@ import { ConfigService } from '../services/ConfigService';
             sans-serif;
           text-align: center;
         }
+      }
+    }
+
+    @media screen and (min-width: 1024px) {
+      .bleed {
+        padding: 128px 64px;
       }
     }
   `,

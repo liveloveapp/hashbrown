@@ -1,3 +1,1 @@
-export * from './Component';
-export * as Chat from './chat';
-export * from './middleware';
+export * as Chat from './public_api';

@@ -1,4 +1,5 @@
 import baseConfig from '../eslint.config.mjs';
+import angularPlugin from '@angular-eslint/eslint-plugin';
 
 export default [
   ...baseConfig,
@@ -18,20 +19,13 @@ export default [
   },
   {
     files: ['**/*.ts'],
+    plugins: { '@angular-eslint': angularPlugin },
     rules: {
-      '@angular-eslint/directive-selector': [
-        'error',
-        {
-          type: 'attribute',
-          prefix: 'Www',
-          style: 'camelCase',
-        },
-      ],
       '@angular-eslint/component-selector': [
         'error',
         {
           type: 'element',
-          prefix: 'www',
+          prefix: ['app', 'www'],
           style: 'kebab-case',
         },
       ],

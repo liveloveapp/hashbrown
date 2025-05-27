@@ -8,30 +8,49 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useChat:function(1)",
-      "docComment": "/**\n * Custom React hook to manage chat interactions within a HashbrownProvider context. This hook provides functionalities to send messages, handle tool calls, and manage chat status.\n *\n * @param options - Configuration options for the chat.\n *\n * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.\n *\n * @example\n * ```tsx\n * const MyChatComponent = () => {\n *   const { messages, sendMessage, status } = useChat({\n *     model: 'gpt-4o',\n *     messages: [\n *       {\n *         role: 'system',\n *         content: 'You are a helpful assistant.',\n *       },\n *     ],\n *     tools: [],\n *   });\n *\n *   const handleSendMessage = () => {\n *     sendMessage({ role: 'user', content: 'Hello, how are you?' });\n *   };\n *\n *   return (\n *     <div>\n *       <button onClick={handleSendMessage}>Send Message</button>\n *       <div>Status: {status}</div>\n *       <ul>\n *         {messages.map((msg, index) => (\n *           <li key={index}>{msg.content}</li>\n *         ))}\n *       </ul>\n *     </div>\n *   );\n * };\n * ```\n *\n */\n",
+      "docComment": "/**\n * Custom React hook to manage chat interactions within a HashbrownProvider context. This hook provides functionalities to send messages, handle tool calls, and manage chat status.\n *\n * @param options - Configuration options for the chat.\n *\n * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.\n *\n * @example\n * ```tsx\n * const MyChatComponent = () => {\n *   const { messages, sendMessage, status } = useChat({\n *     model: 'gpt-4o',\n *     prompt: 'You are a helpful assistant.',\n *     tools: [],\n *   });\n *\n *   const handleSendMessage = () => {\n *     sendMessage({ role: 'user', content: 'Hello, how are you?' });\n *   };\n *\n *   return (\n *     <div>\n *       <button onClick={handleSendMessage}>Send Message</button>\n *       <div>Status: {status}</div>\n *       <ul>\n *         {messages.map((msg, index) => (\n *           <li key={index}>{msg.content}</li>\n *         ))}\n *       </ul>\n *     </div>\n *   );\n * };\n * ```\n *\n */\n",
       "excerptTokens": [
-        { "kind": "Content", "text": "useChat: (options: " },
+        {
+          "kind": "Content",
+          "text": "export declare function useChat<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
         {
           "kind": "Reference",
           "text": "UseChatOptions",
-          "canonicalReference": "@hashbrownai/react!~UseChatOptions:interface"
+          "canonicalReference": "@hashbrownai/react!UseChatOptions:interface"
         },
-        { "kind": "Content", "text": ") => " },
+        { "kind": "Content", "text": "<Tools>" },
+        { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "UseChatResult",
-          "canonicalReference": "@hashbrownai/react!~UseChatResult:interface"
-        }
+          "canonicalReference": "@hashbrownai/react!UseChatResult:interface"
+        },
+        { "kind": "Content", "text": "<Tools>" },
+        { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
-      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "options",
-          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
       "name": "useChat",

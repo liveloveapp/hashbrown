@@ -1,51 +1,85 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat, s } from '@hashbrownai/core';
+import { useEffect, useMemo, useRef } from 'react';
 
-export class BoundTool<
+/**
+ * Input for the createToolWithArgs function.
+ */
+export interface CreateToolWithArgsInput<
   Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.HashbrownType>>,
+  Schema extends s.HashbrownType,
+  Result,
 > {
-  constructor(
-    readonly name: Name,
-    readonly description: string,
-    readonly schema: InputSchema,
-    readonly handler: (input: s.Infer<InputSchema>) => Promise<unknown>,
-  ) {}
-
-  toTool(): Chat.Tool<Name> {
-    return {
-      name: this.name,
-      description: this.description,
-      schema: this.schema,
-    };
-  }
+  name: Name;
+  description: string;
+  schema: Schema;
+  handler: (input: s.Infer<Schema>) => Promise<Result>;
 }
 
 export function createToolWithArgs<
-  Name extends string,
-  InputSchema extends s.ObjectType<Record<string, s.HashbrownType>>,
->(input: {
-  name: Name;
-  description: string;
-  schema: InputSchema;
-  handler: (input: s.Infer<InputSchema>) => Promise<unknown>;
-}): BoundTool<Name, InputSchema> {
-  return new BoundTool(
-    input.name,
-    input.description,
-    input.schema,
-    input.handler,
-  );
-}
-
-export function createTool<Name extends string>(input: {
-  name: Name;
-  description: string;
-  handler: () => Promise<unknown>;
-}): BoundTool<Name, s.ObjectType<Record<string, s.HashbrownType>>> {
-  return createToolWithArgs({
+  const Name extends string,
+  Schema extends s.HashbrownType,
+  Result,
+>(
+  input: CreateToolWithArgsInput<Name, Schema, Result>,
+): Chat.Tool<Name, s.Infer<Schema>, Result> {
+  return {
     name: input.name,
     description: input.description,
-    schema: s.object('Empty object', {}),
+    schema: input.schema,
     handler: input.handler,
-  });
+  };
+}
+
+/**
+ * Input for the createTool function.
+ */
+export interface CreateToolInput<Name extends string, Result> {
+  name: Name;
+  description: string;
+  handler: () => Promise<Result>;
+}
+
+/**
+ * Creates a tool with a handler that takes no arguments.
+ *
+ * @param input
+ * @returns
+ */
+export function createTool<const Name extends string, Result>(
+  input: CreateToolInput<Name, Result>,
+): Chat.Tool<Name, void, Result> {
+  return {
+    name: input.name,
+    description: input.description,
+    schema: s.object('Empty Object', {}),
+    handler: input.handler,
+  };
+}
+
+/**
+ * Use tools in a React component.
+ *
+ * @param tools
+ * @returns
+ */
+export function useTools<Tools extends Chat.AnyTool>(tools: Tools[]) {
+  const callbacks = useRef<
+    Record<string, (input: any, abortSignal: AbortSignal) => Promise<unknown>>
+  >({});
+
+  useEffect(() => {
+    for (const tool of tools) {
+      callbacks.current[tool.name] = tool.handler;
+    }
+  }, [tools]);
+
+  return useMemo(() => {
+    return tools.map((tool) => ({
+      ...tool,
+      handler: (input: any, abortSignal: AbortSignal) =>
+        callbacks.current[tool.name](input, abortSignal),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...tools.map((tool) => tool.name)]);
 }

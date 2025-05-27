@@ -1,2 +1,2 @@
-export * from './exposeComponent';
+export * from './expose-component';
 export * from './types';

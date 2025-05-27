@@ -4,11 +4,11 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { map, tap } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { DocsHeader } from '../components/DocsHeader';
+import { DocsMenu } from '../components/DocsMenu';
 import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
 import { MarkdownPage } from '../components/MarkdownPage';
-import { DocsMenu } from '../components/DocsMenu';
-import { ConfigService, SdkConfig } from '../services/ConfigService';
+import { AppConfig, ConfigService } from '../services/ConfigService';
 
 @Component({
   imports: [
@@ -21,7 +21,7 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
   ],
   template: `
     <www-docs-header />
-    <main>
+    <main class="docs">
       <www-docs-menu />
       <www-markdown-page>
         <router-outlet></router-outlet>
@@ -37,7 +37,7 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
       height: 100%;
     }
 
-    main {
+    .docs {
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
@@ -48,7 +48,7 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
     }
 
     @media screen and (min-width: 768px) {
-      main {
+      .docs {
         grid-template-columns: 192px auto;
 
         > www-docs-menu {
@@ -58,13 +58,13 @@ import { ConfigService, SdkConfig } from '../services/ConfigService';
     }
 
     @media screen and (min-width: 1024px) {
-      main {
+      .docs {
         grid-template-columns: 256px auto;
       }
     }
 
     @media screen and (min-width: 1281px) {
-      main {
+      .docs {
         grid-template-columns: 320px auto;
       }
     }
@@ -81,7 +81,7 @@ export default class DocsPage {
       filter((matches) => matches.length > 1),
       map((matches) => matches[1]),
       tap((sdk) => {
-        this.configService.set({ sdk: sdk as SdkConfig['sdk'] });
+        this.configService.set({ sdk: sdk as AppConfig['sdk'] });
       }),
     ),
   );

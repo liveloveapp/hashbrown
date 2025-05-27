@@ -16,6 +16,6 @@ export interface ScheduledScene {
   name: string;
   sceneId: string;
   startDate: Date;
-  recurrenceRule?: RecurrenceRule;
+  weekdays: boolean[];
   isEnabled: boolean;
 }

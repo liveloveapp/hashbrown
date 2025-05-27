@@ -38,7 +38,7 @@ export const LightDialogForm = (
   const { output: nameCompletion } = useCompletion({
     model: 'gpt-4o-mini',
     input: open ? lightName : '',
-    system: `
+    prompt: `
       Help the user generate a name for a light. The input will be what
       they have typed so far, and the output should be a prediction for
       the name of the light. Just give me the next bit of text to add to
@@ -54,11 +54,6 @@ export const LightDialogForm = (
       The user already has these lights in their home:
       ${lights.map((l) => l.name).join(', ')}
     `,
-    examples: [
-      { input: 'Garage Flo', output: 'odlight' },
-      { input: 'Table L', output: 'amp' },
-      { input: 'Attic', output: 'Light' },
-    ],
   });
 
   const handleSubmit = () => {
