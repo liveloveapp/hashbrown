@@ -24,11 +24,9 @@ export interface StructuredChatResourceOptions<
   Output extends s.Infer<Schema> = s.Infer<Schema>,
 > {
   model: string | Signal<string>;
-  prompt: string | Signal<string>;
+  system: string | Signal<string>;
   schema: Schema;
-  temperature?: number | Signal<number>;
   tools?: Tools[];
-  maxTokens?: number | Signal<number>;
   messages?: Chat.Message<Output, Tools>[];
   debugName?: string;
   debounce?: number;
@@ -49,11 +47,9 @@ export function structuredChatResource<
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    prompt: readSignalLike(options.prompt),
+    system: readSignalLike(options.system),
     model: readSignalLike(options.model),
-    temperature: options.temperature && readSignalLike(options.temperature),
     tools: options.tools,
-    maxTokens: options.maxTokens && readSignalLike(options.maxTokens),
     responseSchema: options.schema,
     debugName: options.debugName,
     emulateStructuredOutput: config.emulateStructuredOutput,

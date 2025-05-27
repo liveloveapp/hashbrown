@@ -88,6 +88,44 @@
             "see": [],
             "params": []
           }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!StructuredChatResourceRef#setMessages:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "setMessages: " },
+            { "kind": "Content", "text": "(messages: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<Output, Tools>[]) => void" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "setMessages",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
         }
       ],
       "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 7 }],

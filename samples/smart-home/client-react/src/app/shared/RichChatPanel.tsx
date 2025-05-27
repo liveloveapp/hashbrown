@@ -19,7 +19,7 @@ export const RichChatPanel = () => {
   const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
     useUiChat({
       model: 'gpt-4o',
-      prompt:
+      system:
         'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
       tools: [
         createTool({

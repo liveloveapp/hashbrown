@@ -328,7 +328,7 @@ export class PredictionsComponent {
   predictions = structuredCompletionResource({
     model: 'o4-mini',
     input: this.lastAction,
-    prompt: `
+    system: `
   You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
   Important Guidelines:
   - The user already owns all necessary hardware. Do not suggest purchasing hardware.

@@ -55,9 +55,7 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 export function uiChatResource<Tools extends Chat.AnyTool>(args: {
   components: ExposedComponent<any>[];
   model: string | Signal<string>;
-  prompt: string | Signal<string>;
-  temperature?: number | Signal<number>;
-  maxTokens?: number | Signal<number>;
+  system: string | Signal<string>;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
   debugName?: string;
@@ -72,11 +70,9 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
 
   const chat = structuredChatResource({
     model: args.model,
-    temperature: args.temperature,
-    maxTokens: args.maxTokens,
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
-    prompt: args.prompt,
+    system: args.system,
     debugName: args.debugName,
     debounce: args.debounce,
   });

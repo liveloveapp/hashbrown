@@ -17,7 +17,7 @@ export const reducer = createReducer(
     const [internalMessage] = Chat.helpers.toInternalMessagesFromApi({
       role: apiMessage.role ?? 'assistant',
       content: apiMessage.content ?? '',
-      tool_calls: apiMessage.tool_calls ?? [],
+      toolCalls: apiMessage.toolCalls ?? [],
     });
 
     if (!internalMessage) {

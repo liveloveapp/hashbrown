@@ -16,7 +16,7 @@ export interface StructuredCompletionResourceOptions<
   model: string;
   input: Signal<Input | null | undefined>;
   schema: Schema;
-  prompt: SignalLike<string>;
+  system: SignalLike<string>;
   tools?: Chat.AnyTool[];
   debugName?: string;
 }
@@ -28,11 +28,11 @@ export function structuredCompletionResource<
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
-  const { model, input, schema, prompt, tools, debugName } = options;
+  const { model, input, schema, system, tools, debugName } = options;
 
   const resource = structuredChatResource<Schema, Chat.AnyTool, Output>({
     model,
-    prompt,
+    system,
     schema,
     tools,
     debugName,

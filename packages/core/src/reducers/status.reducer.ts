@@ -37,7 +37,7 @@ export const reducer = createReducer(
     };
   }),
   on(apiActions.generateMessageSuccess, (state, action) => {
-    const toolCalls = action.payload.tool_calls;
+    const toolCalls = action.payload.toolCalls;
 
     return {
       ...state,
