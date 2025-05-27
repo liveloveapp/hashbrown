@@ -5,7 +5,6 @@ import { Footer } from '../components/Footer';
 import { GettingStarted } from '../components/GettingStarted';
 import { Header } from '../components/Header';
 import { Hero } from '../components/Hero';
-import { LdpTour } from '../components/lpd/LdpTour';
 import { OpenSource } from '../components/OpenSource';
 import { Providers } from '../components/Providers';
 
@@ -17,7 +16,6 @@ import { Providers } from '../components/Providers';
     GettingStarted,
     Header,
     Hero,
-    LdpTour,
     OpenSource,
     Providers,
   ],
@@ -26,7 +24,7 @@ import { Providers } from '../components/Providers';
     <main class="home">
       <www-hero />
       <www-providers />
-      <www-lpd-tour />
+      <!--      <www-lpd-tour />-->
       <www-open-source />
       <www-adapters />
       <www-getting-started />

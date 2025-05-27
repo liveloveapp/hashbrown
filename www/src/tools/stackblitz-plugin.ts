@@ -27,7 +27,12 @@ const HASHBROWN_VERSION = packageJson.version;
 const NGRX_VERSION = packageJson.dependencies['@ngrx/signals'];
 const NGX_MARKDOWN_VERSION = packageJson.dependencies['ngx-markdown'];
 const NODE_VERSION = packageJson.devDependencies['@types/node'];
+const REACT_VERSION = packageJson.dependencies['react'];
 const TYPESCRIPT_VERSION = packageJson.devDependencies['typescript'];
+const VITE_PLUGIN_REACT_VERSION =
+  packageJson.devDependencies['@vitejs/plugin-react'];
+const VITE_VERSION = packageJson.devDependencies['vite'];
+const ZUSTAND_VERSION = packageJson.devDependencies['zustand'];
 
 export default function hashbrownStackblitzPlugin(): Plugin {
   function resolveFiles(
@@ -46,7 +51,11 @@ export default function hashbrownStackblitzPlugin(): Plugin {
             .replace(/<ngrx-version>/g, NGRX_VERSION)
             .replace(/<ngx-markdown-version>/g, NGX_MARKDOWN_VERSION)
             .replace(/<node-version>/g, NODE_VERSION)
-            .replace(/<typescript-version>/g, TYPESCRIPT_VERSION);
+            .replace(/<react-version>/g, REACT_VERSION)
+            .replace(/<typescript-version>/g, TYPESCRIPT_VERSION)
+            .replace(/<vite-plugin-react-version>/g, VITE_PLUGIN_REACT_VERSION)
+            .replace(/<vite-version>/g, VITE_VERSION)
+            .replace(/<zustand-version>/g, ZUSTAND_VERSION);
 
           return acc;
         }
@@ -58,34 +67,37 @@ export default function hashbrownStackblitzPlugin(): Plugin {
     );
   }
 
-  function getBaseConfig(
+  function loadConfigRecursively(
     id: string,
-    config: StackblitzConfig,
+    visited = new Set<string>(),
   ): StackblitzConfig {
-    if (!config.extends) {
-      return EMPTY_CONFIG;
+    if (visited.has(id)) {
+      throw new Error(`Circular extends detected: ${id}`);
+    }
+    visited.add(id);
+
+    const contents = fs.readFileSync(id, 'utf-8');
+    const config = parseYaml(contents) as StackblitzConfig;
+
+    // Start from an empty base
+    let baseConfig: StackblitzConfig = { ...EMPTY_CONFIG, files: {} };
+
+    // If there's an extends, load and merge recursively
+    if (config.extends) {
+      const basePath = path.resolve(path.dirname(id), config.extends);
+      baseConfig = loadConfigRecursively(basePath, visited);
     }
 
-    const pathToBase = path.resolve(path.dirname(id), config.extends);
-    const baseContents = fs.readFileSync(pathToBase, 'utf-8');
-    const base = parseYaml(baseContents) as StackblitzConfig;
-    const baseFiles = resolveFiles(pathToBase, base.files);
+    // Resolve this config's own files
+    const ownFiles = resolveFiles(id, config.files);
 
+    // Merge base and own config
     return {
-      ...base,
-      files: baseFiles,
-    };
-  }
-
-  function loadConfig(id: string, config: StackblitzConfig): StackblitzConfig {
-    const base = getBaseConfig(id, config);
-
-    return {
-      ...base,
+      ...baseConfig,
       ...config,
       files: {
-        ...base.files,
-        ...resolveFiles(id, config.files),
+        ...baseConfig.files,
+        ...ownFiles,
       },
     };
   }
@@ -102,9 +114,7 @@ export default function hashbrownStackblitzPlugin(): Plugin {
         return src;
       }
 
-      const parsed = parseYaml(src);
-      const config = loadConfig(id, parsed as StackblitzConfig);
-
+      const config = loadConfigRecursively(id);
       return `export default ${JSON.stringify(config)};`;
     },
   };

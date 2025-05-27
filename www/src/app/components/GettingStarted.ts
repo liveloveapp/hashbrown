@@ -371,7 +371,7 @@ const providerExamplesSources: Record<string, [string, string][]> = {
 })
 export class GettingStarted {
   configService = inject(ConfigService);
-  sdk = linkedSignal(() => this.configService.config().sdk);
+  sdk = linkedSignal(() => this.configService.sdk());
   sdks = signal<{ label: string; value: string; icon?: Type<any> }[]>([
     {
       label: 'Angular',
@@ -384,7 +384,7 @@ export class GettingStarted {
       icon: React,
     },
   ]);
-  provider = linkedSignal(() => this.configService.config().provider);
+  provider = linkedSignal(() => this.configService.provider());
   providers = signal<{ label: string; value: string; icon?: Type<any> }[]>([
     {
       label: 'OpenAI',
@@ -407,13 +407,13 @@ export class GettingStarted {
   private readonly providerExamples = providerExamplesSources;
 
   cta = computed(() => {
-    const sdk = this.configService.config().sdk;
-    const provider = this.configService.config().provider;
+    const sdk = this.configService.sdk();
+    const provider = this.configService.provider();
     return `npm install @hashbrownai/{core,${provider},${sdk}} --save`;
   });
 
   ctaHref = computed(() => {
-    return `/docs/${this.configService.config().sdk}/recipes/chat`;
+    return `/docs/${this.configService.sdk()}/recipes/chat`;
   });
 
   computedExamples = computed(() => {

@@ -169,6 +169,7 @@ import { Component } from '@angular/core';
       > p {
         max-width: 767px;
         width: 100%;
+        text-align: center;
         font:
           400 18px/24px Poppins,
           sans-serif;
