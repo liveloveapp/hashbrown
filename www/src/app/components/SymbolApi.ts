@@ -99,9 +99,9 @@ export class SymbolApi {
   router = inject(Router);
   symbol = input.required<ApiMember>();
   density = input<string>(SymbolApiDensity[0]);
+
   headerExcerptTokens = computed((): ApiExcerptToken[] => {
     const symbol = this.symbol();
-
     if (
       symbol.kind === ApiMemberKind.Class ||
       symbol.kind === ApiMemberKind.Interface ||
@@ -124,7 +124,8 @@ export class SymbolApi {
     if (
       symbol.kind === ApiMemberKind.Class ||
       symbol.kind === ApiMemberKind.Interface ||
-      symbol.kind === ApiMemberKind.Enum
+      symbol.kind === ApiMemberKind.Enum ||
+      symbol.kind === ApiMemberKind.Namespace
     ) {
       const members = symbol.members ?? [];
       const [nonDeprecatedMembers, deprecatedMembers] = members.reduce(

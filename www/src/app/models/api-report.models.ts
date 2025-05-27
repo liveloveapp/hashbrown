@@ -8,6 +8,7 @@ export enum ApiMemberKind {
   Variable = 'Variable',
   Property = 'Property',
   Method = 'Method',
+  Namespace = 'Namespace',
 }
 
 export enum ApiExcerptTokenKind {
