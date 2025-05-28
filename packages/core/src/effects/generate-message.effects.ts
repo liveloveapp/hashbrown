@@ -119,9 +119,10 @@ export const generateMessage = createEffect((store) => {
                 break;
               }
               case 'error': {
-                store.dispatch(
-                  apiActions.generateMessageError(new Error(frame.error)),
-                );
+                // Assumption: a 'finish' will follow the 'error', but we know we need to retry
+                // as soon as we see the error.  Therefore, throw an exception to break out
+                // of the for loop.
+                throw new Error(frame.error);
                 break;
               }
               case 'finish': {
