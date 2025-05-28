@@ -45,6 +45,12 @@ export interface UseStructuredChatOptions<
   debounceTime?: number;
 
   /**
+   * Number of retries if an error is received.
+   * default: 0
+   */
+  retries?: number;
+
+  /**
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
@@ -72,6 +78,11 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   sendMessage: (message: Chat.Message<Output, Tools>) => void;
 
   /**
+   * Function to cause current messages to be resent.  Can be used after an error in chat.
+   */
+  resendMessages: () => void;
+
+  /**
    * Reload the chat, useful for retrying when an error occurs.
    */
   reload: () => void;
@@ -95,6 +106,11 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Whether the current request has exhausted retries.
+   */
+  exhaustedRetries: boolean;
 }
 
 /**
@@ -175,6 +191,8 @@ export function useStructuredChat<
         responseSchema: schema,
         tools,
         debugName: options.debugName,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
 
     if (!hashbrown) {
@@ -188,6 +206,8 @@ export function useStructuredChat<
         responseSchema: schema,
         tools,
         debugName: options.debugName,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
     }
   }, [
@@ -198,6 +218,8 @@ export function useStructuredChat<
     options.debugName,
     schema,
     tools,
+    options.debounceTime,
+    options.retries,
   ]);
 
   const sendMessage = useCallback(
@@ -206,6 +228,10 @@ export function useStructuredChat<
     },
     [hashbrown],
   );
+
+  const resendMessages = useCallback(() => {
+    hashbrown?.resendMessages();
+  }, [hashbrown]);
 
   const setMessages = useCallback(
     (messages: Chat.Message<Output, Tools>[]) => {
@@ -220,6 +246,7 @@ export function useStructuredChat<
   const [isReceiving, setIsReceiving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isRunningToolCalls, setIsRunningToolCalls] = useState(false);
+  const [exhaustedRetries, setExhaustedRetries] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -242,6 +269,10 @@ export function useStructuredChat<
     hashbrown?.observeError((error) => {
       setError(error);
     });
+
+    hashbrown?.observeExhaustedRetries((exhaustedRetries) => {
+      setExhaustedRetries(exhaustedRetries);
+    });
   }, [hashbrown]);
 
   const reload = useCallback(() => {
@@ -259,11 +290,13 @@ export function useStructuredChat<
   return {
     messages: internalMessages,
     sendMessage,
+    resendMessages,
     setMessages,
     reload,
     error,
     isReceiving,
     isSending,
     isRunningToolCalls,
+    exhaustedRetries,
   };
 }
