@@ -9,6 +9,7 @@ import { Chat } from './models';
 import {
   reducers,
   selectError,
+  selectIsLoading,
   selectIsReceiving,
   selectIsRunningToolCalls,
   selectIsSending,
@@ -26,22 +27,38 @@ import { createStore } from './utils/micro-ngrx';
 export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   /** Replace the current set of messages in the chat state. */
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
+
   /** Send a new message to the LLM and update state. */
   sendMessage: (message: Chat.Message<Output, Tools>) => void;
+
   /** Subscribe to message updates; invokes callback on state changes. */
   observeMessages: (
     onChange: (messages: Chat.Message<Output, Tools>[]) => void,
   ) => void;
+
   /** Subscribe to receiving state; true when awaiting LLM response. */
   observeIsReceiving: (onChange: (isReceiving: boolean) => void) => void;
+
   /** Subscribe to sending state; true when a message is queued for sending. */
   observeIsSending: (onChange: (isSending: boolean) => void) => void;
+
   /** Subscribe to tool call execution state. */
   observeIsRunningToolCalls: (
     onChange: (isRunningToolCalls: boolean) => void,
   ) => void;
+
+  /** Subscribe to loading state; true when the chat is loading. */
+  observeIsLoading: (onChange: (isLoading: boolean) => void) => void;
+
   /** Subscribe to error state; invokes callback if an error occurs. */
   observeError: (onChange: (error: Error | null) => void) => void;
+
+  /** The current messages in the chat. */
+  readonly messages: Chat.Message<Output, Tools>[];
+
+  /** The current error state of the chat. */
+  readonly error: Error | null;
+
   /** Update the chat options after initialization */
   updateOptions: (
     options: Partial<{
@@ -56,6 +73,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       debounce: number;
     }>,
   ) => void;
+
   /** Clean up resources and listeners associated with this Hashbrown instance. */
   teardown: () => void;
 }
@@ -190,6 +208,10 @@ export function fryHashbrown(init: {
     return state.select(selectIsRunningToolCalls, onChange);
   }
 
+  function observeIsLoading(onChange: (isLoading: boolean) => void) {
+    return state.select(selectIsLoading, onChange);
+  }
+
   function observeError(onChange: (error: Error | null) => void) {
     return state.select(selectError, onChange);
   }
@@ -221,8 +243,15 @@ export function fryHashbrown(init: {
     observeIsReceiving,
     observeIsSending,
     observeIsRunningToolCalls,
+    observeIsLoading,
     observeError,
     updateOptions,
     teardown,
+    get messages() {
+      return state.read(selectViewMessages);
+    },
+    get error() {
+      return state.read(selectError);
+    },
   };
 }
