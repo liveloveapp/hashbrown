@@ -132,6 +132,7 @@ export interface ApiMember {
   parameters?: ApiMemberParam[];
   typeParameters?: ApiMemberTypeParam[];
   docs: ApiDocs;
+  isDeprecated: boolean;
 }
 
 export interface ApiMemberSummary {
