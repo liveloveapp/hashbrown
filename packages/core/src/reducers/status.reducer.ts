@@ -6,6 +6,7 @@ export interface StatusState {
   isSending: boolean;
   isRunningToolCalls: boolean;
   error: Error | null;
+  exhaustedRetries: boolean;
 }
 
 export const initialStatusState: StatusState = {
@@ -13,16 +14,35 @@ export const initialStatusState: StatusState = {
   isSending: false,
   isRunningToolCalls: false,
   error: null,
+  exhaustedRetries: false,
 };
 
 export const reducer = createReducer(
   initialStatusState,
-  on(devActions.sendMessage, devActions.setMessages, (state) => {
-    return {
-      ...state,
-      isSending: true,
-    };
+  on(devActions.init, (state, action) => {
+    const messages = action.payload.messages ?? [];
+    const lastMessage = messages[messages.length - 1];
+
+    if (lastMessage?.role === 'user') {
+      return {
+        ...state,
+        isSending: true,
+      };
+    }
+
+    return state;
   }),
+  on(
+    devActions.sendMessage,
+    devActions.setMessages,
+    devActions.resendMessages,
+    (state) => {
+      return {
+        ...state,
+        isSending: true,
+      };
+    },
+  ),
   on(apiActions.generateMessageStart, (state) => {
     return {
       ...state,
@@ -36,19 +56,20 @@ export const reducer = createReducer(
       isReceiving: true,
     };
   }),
-  on(apiActions.generateMessageSuccess, (state, action) => {
-    const toolCalls = action.payload.tool_calls;
-
+  on(apiActions.generateMessageSuccess, (state) => {
     return {
       ...state,
       isReceiving: false,
-      isRunningToolCalls: Boolean(toolCalls && toolCalls.length > 0),
+      isRunningToolCalls: true,
+      error: null,
+      exhaustedRetries: false,
     };
   }),
   on(apiActions.generateMessageError, (state, action) => {
     return {
       ...state,
       isReceiving: false,
+      isSending: false,
       error: action.payload,
     };
   }),
@@ -66,6 +87,20 @@ export const reducer = createReducer(
       error: action.payload,
     };
   }),
+  on(apiActions.generateMessageExhaustedRetries, (state) => {
+    return {
+      ...state,
+      exhaustedRetries: true,
+    };
+  }),
+  on(internalActions.skippedToolCalls, (state) => {
+    return {
+      ...state,
+      isRunningToolCalls: false,
+      isSending: false,
+      isReceiving: false,
+    };
+  }),
 );
 
 export const selectIsReceiving = (state: StatusState) => state.isReceiving;
@@ -73,3 +108,5 @@ export const selectIsSending = (state: StatusState) => state.isSending;
 export const selectIsRunningToolCalls = (state: StatusState) =>
   state.isRunningToolCalls;
 export const selectError = (state: StatusState) => state.error;
+export const selectExhaustedRetries = (state: StatusState) =>
+  state.exhaustedRetries;

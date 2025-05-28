@@ -11,6 +11,7 @@ import { ConfigService } from '../services/ConfigService';
       <div class="left">
         <a routerLink="/">
           <img
+            class="shake"
             src="/logo/hashbrown.png"
             alt="our friendly logo that looks like a hashbrown character from an animated tv show"
             height="47"
@@ -27,7 +28,7 @@ import { ConfigService } from '../services/ConfigService';
             </li>
             <li><a routerLink="/api" class="underline">api</a></li>
             <li>
-              <a [routerLink]="examplesUrl()" class="underline">examples</a>
+              <a [routerLink]="examplesUrl()" class="underline">example</a>
             </li>
             <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
@@ -48,7 +49,7 @@ import { ConfigService } from '../services/ConfigService';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 24px 32px;
+        padding: 12px 32px;
 
         > .left {
           display: flex;
@@ -103,13 +104,9 @@ import { ConfigService } from '../services/ConfigService';
 export class Header {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
-    return `/docs/${this.configService.config().sdk}/start/quick`;
+    return `/docs/${this.configService.sdk()}/start/quick`;
   });
   examplesUrl = computed(() => {
-    return `/examples/${this.configService.config().sdk}/chat`;
+    return `/examples/${this.configService.sdk()}/chat`;
   });
-
-  onSearch() {
-    console.warn('Not implemented');
-  }
 }

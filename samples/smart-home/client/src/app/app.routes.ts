@@ -41,4 +41,11 @@ export const routes: Routes = [
         (m) => m.ScheduledScenesComponent,
       ),
   },
+  {
+    path: 'planner',
+    loadComponent: () =>
+      import('./features/planner/planner.component').then(
+        (m) => m.PlannerComponent,
+      ),
+  },
 ];

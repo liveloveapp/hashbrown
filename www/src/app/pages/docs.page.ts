@@ -1,14 +1,10 @@
-import { Component, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { map, tap } from 'rxjs';
-import { filter } from 'rxjs/operators';
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 import { DocsHeader } from '../components/DocsHeader';
 import { DocsMenu } from '../components/DocsMenu';
 import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
 import { MarkdownPage } from '../components/MarkdownPage';
-import { AppConfig, ConfigService } from '../services/ConfigService';
 
 @Component({
   imports: [
@@ -70,19 +66,4 @@ import { AppConfig, ConfigService } from '../services/ConfigService';
     }
   `,
 })
-export default class DocsPage {
-  configService = inject(ConfigService);
-  router = inject(Router);
-  sdk = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map((event) => event.url.match(/\/docs\/([^/]+)\//)),
-      filter((matches): matches is RegExpMatchArray => matches !== null),
-      filter((matches) => matches.length > 1),
-      map((matches) => matches[1]),
-      tap((sdk) => {
-        this.configService.set({ sdk: sdk as AppConfig['sdk'] });
-      }),
-    ),
-  );
-}
+export default class DocsPage {}

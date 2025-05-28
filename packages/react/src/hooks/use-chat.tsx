@@ -14,9 +14,9 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   /**
    * The initial messages for the chat.
@@ -28,17 +28,6 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
    * default: []
    */
   tools?: Tools[];
-
-  /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
 
   /**
    * The debounce time between sends to the endpoint.
@@ -111,7 +100,7 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * const MyChatComponent = () => {
  *   const { messages, sendMessage, status } = useChat({
  *     model: 'gpt-4o',
- *     prompt: 'You are a helpful assistant.',
+ *     system: 'You are a helpful assistant.',
  *     tools: [],
  *   });
  *
@@ -150,7 +139,7 @@ export function useChat<Tools extends Chat.AnyTool>(
         setHashbrown(null);
       }
     };
-  }, []);
+  }, [hashbrown]);
 
   useEffect(() => {
     if (!config) {
@@ -163,10 +152,8 @@ export function useChat<Tools extends Chat.AnyTool>(
         apiUrl: config.url,
         middleware: config.middleware,
         debugName: options.debugName,
-        maxTokens: options.maxTokens,
         model: options.model,
-        prompt: options.prompt,
-        temperature: options.temperature,
+        system: options.system,
         tools,
       });
 
@@ -177,20 +164,17 @@ export function useChat<Tools extends Chat.AnyTool>(
         apiUrl: config.url,
         middleware: config.middleware,
         debugName: options.debugName,
-        maxTokens: options.maxTokens,
         model: options.model,
-        prompt: options.prompt,
-        temperature: options.temperature,
+        system: options.system,
         tools,
       });
     }
   }, [
     config,
+    hashbrown,
     options.debugName,
-    options.maxTokens,
     options.model,
-    options.prompt,
-    options.temperature,
+    options.system,
     tools,
     hashbrown,
   ]);

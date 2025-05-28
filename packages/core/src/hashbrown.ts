@@ -9,6 +9,8 @@ import { Chat } from './models';
 import {
   reducers,
   selectError,
+  selectExhaustedRetries,
+  selectIsLoading,
   selectIsReceiving,
   selectIsRunningToolCalls,
   selectIsSending,
@@ -26,31 +28,50 @@ import { createStore } from './utils/micro-ngrx';
 export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   /** Replace the current set of messages in the chat state. */
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
+
   /** Send a new message to the LLM and update state. */
   sendMessage: (message: Chat.Message<Output, Tools>) => void;
+  /** Resend messages and update state. Often used manually after an error.*/
+  resendMessages: () => void;
   /** Subscribe to message updates; invokes callback on state changes. */
   observeMessages: (
     onChange: (messages: Chat.Message<Output, Tools>[]) => void,
   ) => void;
+
   /** Subscribe to receiving state; true when awaiting LLM response. */
   observeIsReceiving: (onChange: (isReceiving: boolean) => void) => void;
+
   /** Subscribe to sending state; true when a message is queued for sending. */
   observeIsSending: (onChange: (isSending: boolean) => void) => void;
+
   /** Subscribe to tool call execution state. */
   observeIsRunningToolCalls: (
     onChange: (isRunningToolCalls: boolean) => void,
   ) => void;
+
+  /** Subscribe to loading state; true when the chat is loading. */
+  observeIsLoading: (onChange: (isLoading: boolean) => void) => void;
+
   /** Subscribe to error state; invokes callback if an error occurs. */
   observeError: (onChange: (error: Error | null) => void) => void;
+  /** Subscribe to exhausted retries state; invokes callback if an retries are exhausted on a single request. */
+  observeExhaustedRetries: (
+    onChange: (exhaustedRetries: boolean) => void,
+  ) => void;
+
+  /** The current messages in the chat. */
+  readonly messages: Chat.Message<Output, Tools>[];
+
+  /** The current error state of the chat. */
+  readonly error: Error | null;
+
   /** Update the chat options after initialization */
   updateOptions: (
     options: Partial<{
       debugName?: string;
       apiUrl: string;
       model: string;
-      prompt: string;
-      temperature: number;
-      maxTokens: number;
+      system: string;
       tools: Tools[];
       responseSchema: s.HashbrownType;
       middleware: Chat.Middleware[];
@@ -58,6 +79,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       debounce: number;
     }>,
   ) => void;
+
   /** Clean up resources and listeners associated with this Hashbrown instance. */
   teardown: () => void;
 }
@@ -71,9 +93,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
  * @param {string} [init.debugName] - Optional debug name for devtools tracing.
  * @param {string} init.apiUrl - Base URL of the Hashbrown API endpoint.
  * @param {string} init.model - The LLM model identifier to use.
- * @param {string} init.prompt - System prompt or initial context for the chat.
- * @param {number} [init.temperature] - Sampling temperature for LLM responses.
- * @param {number} [init.maxTokens] - Maximum tokens to generate per response.
+ * @param {string} init.system - System prompt or initial context for the chat.
  * @param {Chat.Message<Output, Tools>[]} [init.messages] - Initial message history.
  * @param {Tools[]} [init.tools] - Array of tools to enable in the instance.
  * @param {s.HashbrownType} [init.responseSchema] - JSON schema for validating structured output.
@@ -87,14 +107,13 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
   apiUrl: string;
   model: string;
-  prompt: string;
-  temperature?: number;
-  maxTokens?: number;
+  system: string;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
+  retries?: number;
 }): Hashbrown<string, Tools>;
 export function fryHashbrown<
   Schema extends s.HashbrownType,
@@ -104,29 +123,27 @@ export function fryHashbrown<
   debugName?: string;
   apiUrl: string;
   model: string;
-  prompt: string;
-  temperature?: number;
-  maxTokens?: number;
+  system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
   responseSchema: Schema;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
+  retries?: number;
 }): Hashbrown<Output, Tools>;
 export function fryHashbrown(init: {
   debugName?: string;
   apiUrl: string;
   model: string;
-  prompt: string;
-  temperature?: number;
-  maxTokens?: number;
+  system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
   responseSchema?: s.HashbrownType;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
+  retries?: number;
 }): Hashbrown<any, Chat.AnyTool> {
   const hasIllegalOutputTool = init.tools?.some(
     (tool) => tool.name === 'output',
@@ -156,15 +173,14 @@ export function fryHashbrown(init: {
     devActions.init({
       apiUrl: init.apiUrl,
       model: init.model,
-      prompt: init.prompt,
-      temperature: init.temperature,
-      maxTokens: init.maxTokens,
+      system: init.system,
       messages: init.messages as Chat.AnyMessage[],
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
       middleware: init.middleware,
       emulateStructuredOutput: init.emulateStructuredOutput,
       debounce: init.debounce,
+      retries: init.retries,
     }),
   );
 
@@ -178,6 +194,10 @@ export function fryHashbrown(init: {
     state.dispatch(
       devActions.sendMessage({ message: message as Chat.AnyMessage }),
     );
+  }
+
+  function resendMessages() {
+    state.dispatch(devActions.resendMessages());
   }
 
   function observeMessages(
@@ -202,8 +222,18 @@ export function fryHashbrown(init: {
     return state.select(selectIsRunningToolCalls, onChange);
   }
 
+  function observeIsLoading(onChange: (isLoading: boolean) => void) {
+    return state.select(selectIsLoading, onChange);
+  }
+
   function observeError(onChange: (error: Error | null) => void) {
     return state.select(selectError, onChange);
+  }
+
+  function observeExhaustedRetries(
+    onChange: (exhaustedRetries: boolean) => void,
+  ) {
+    return state.select(selectExhaustedRetries, onChange);
   }
 
   function updateOptions(
@@ -211,9 +241,7 @@ export function fryHashbrown(init: {
       debugName?: string;
       apiUrl: string;
       model: string;
-      prompt: string;
-      temperature: number;
-      maxTokens: number;
+      system: string;
       tools: Chat.AnyTool[];
       responseSchema: s.HashbrownType;
       middleware: Chat.Middleware[];
@@ -231,12 +259,21 @@ export function fryHashbrown(init: {
   return {
     setMessages,
     sendMessage,
+    resendMessages,
     observeMessages,
     observeIsReceiving,
     observeIsSending,
     observeIsRunningToolCalls,
+    observeIsLoading,
     observeError,
+    observeExhaustedRetries,
     updateOptions,
     teardown,
+    get messages() {
+      return state.read(selectViewMessages);
+    },
+    get error() {
+      return state.read(selectError);
+    },
   };
 }

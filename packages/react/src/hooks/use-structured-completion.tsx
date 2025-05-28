@@ -18,9 +18,9 @@ export interface UseStructuredCompletionOptions<
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   /**
    * The schema to use for the chat.
@@ -32,17 +32,6 @@ export interface UseStructuredCompletionOptions<
    * default: []
    */
   tools?: Tools[];
-
-  /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
 
   /**
    * The debounce time between sends to the endpoint.

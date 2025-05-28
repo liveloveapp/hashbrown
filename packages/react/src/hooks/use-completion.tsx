@@ -18,26 +18,15 @@ export interface UseCompletionOptions<Tools extends Chat.AnyTool> {
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the completion.
    */
-  prompt: string;
+  system: string;
 
   /**
-   * The tools to make available use for the chat.
+   * The tools to make available use for the completion.
    * default: []
    */
   tools?: Tools[];
-
-  /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
 
   /**
    * The debounce time between sends to the endpoint.

@@ -129,38 +129,6 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#maxTokens:member",
-          "docComment": "/**\n * The maximum number of tokens to allow. default: 5000\n */\n",
-          "excerptTokens": [
-            { "kind": "Content", "text": "maxTokens?: " },
-            { "kind": "Content", "text": "number" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": true,
-          "releaseTag": "Public",
-          "name": "maxTokens",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "The maximum number of tokens to allow. default: 5000\n",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#messages:member",
           "docComment": "/**\n * The initial messages for the chat. default: 1.0\n */\n",
           "excerptTokens": [
@@ -230,38 +198,6 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#prompt:member",
-          "docComment": "/**\n * The prompt to use for the chat.\n */\n",
-          "excerptTokens": [
-            { "kind": "Content", "text": "prompt: " },
-            { "kind": "Content", "text": "string" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": false,
-          "releaseTag": "Public",
-          "name": "prompt",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "The prompt to use for the chat.\n",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#schema:member",
           "docComment": "/**\n * The schema to use for the chat.\n */\n",
           "excerptTokens": [
@@ -294,17 +230,17 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#temperature:member",
-          "docComment": "/**\n * The temperature for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions#system:member",
+          "docComment": "/**\n * The system message to use for the chat.\n */\n",
           "excerptTokens": [
-            { "kind": "Content", "text": "temperature?: " },
-            { "kind": "Content", "text": "number" },
+            { "kind": "Content", "text": "system: " },
+            { "kind": "Content", "text": "string" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
-          "isOptional": true,
+          "isOptional": false,
           "releaseTag": "Public",
-          "name": "temperature",
+          "name": "system",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
@@ -315,7 +251,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The temperature for the chat.\n",
+            "summary": "The system message to use for the chat.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",

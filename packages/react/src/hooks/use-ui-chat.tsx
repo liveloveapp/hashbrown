@@ -34,9 +34,9 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   components: ExposedComponent<any>[];
 
@@ -50,17 +50,6 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * default: []
    */
   tools?: Tools[];
-
-  /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
 
   /**
    * The debounce time between sends to the endpoint.

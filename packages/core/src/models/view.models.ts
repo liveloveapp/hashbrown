@@ -50,8 +50,14 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
   toolCalls: ToolCall<ToolUnion>[];
 }
 
+export type ErrorMessage = {
+  role: 'error';
+  content: string;
+};
+
 export type Message<Output, Tools extends AnyTool> =
   | UserMessage
-  | AssistantMessage<Output, Tools>;
+  | AssistantMessage<Output, Tools>
+  | ErrorMessage;
 
 export type AnyMessage = Message<string | object, AnyTool>;
