@@ -1,12 +1,21 @@
-import { Component, input, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 
 export type AlertType = 'info' | 'warn' | 'error' | 'help';
 
 @Component({
   selector: 'www-alert',
-  template: ` <ng-content></ng-content> `,
+  template: `
+    @if (header()) {
+      <div class="header">
+        <span>{{ header() }}</span>
+      </div>
+    }
+    <div class="content">
+      <ng-content />
+    </div>
+  `,
   host: {
-    '[class.infor]': 'isInfo',
+    '[class.info]': 'isInfo',
     '[class.warn]': 'isWarn',
     '[class.error]': 'isError',
     '[class.help]': 'isHelp',
@@ -14,14 +23,30 @@ export type AlertType = 'info' | 'warn' | 'error' | 'help';
   styles: [
     `
       :host {
-        display: block;
-        padding: 16px;
-        margin: 16px 0;
-        border-left: 8px solid;
-        border-top: 1px solid;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #000;
+        border-radius: 12px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 16px;
         border-bottom: 1px solid;
-        border-right: 1px solid;
-        border-color: rgba(255, 255, 255, 0.12);
+        font-size: 12px;
+        font-weight: 500;
+        color: rgba(61, 60, 58, 0.88);
+
+        > button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+      }
+
+      .content {
+        padding: 16px;
       }
 
       :host p {
@@ -31,31 +56,44 @@ export type AlertType = 'info' | 'warn' | 'error' | 'help';
       :host(.info) {
         border-color: rgb(97, 174, 238);
         background-color: rgba(97, 174, 238, 0.12);
+
+        .header {
+          border-color: rgb(97, 174, 238);
+        }
       }
 
       :host(.warn) {
         border-color: rgb(255, 184, 113);
         background-color: rgba(255, 184, 113, 0.12);
+
+        .header {
+          border-color: rgb(255, 184, 113);
+        }
       }
 
       :host(.error) {
         border-color: rgb(220, 53, 69);
         background-color: rgba(220, 53, 69, 0.12);
+
+        .header {
+          border-color: rgb(220, 53, 69);
+        }
       }
 
       :host(.help) {
         border-color: rgba(255, 172, 230, 0.72);
         background-color: rgba(255, 172, 230, 0.08);
-      }
 
-      :host + h2 {
-        margin-top: 0;
+        .header {
+          border-color: rgba(255, 172, 230, 0.72);
+        }
       }
     `,
   ],
 })
 export class Alert {
   type = input<AlertType>('info');
+  header = input<string>('');
 
   get isInfo() {
     return this.type() === 'info';
