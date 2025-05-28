@@ -17,6 +17,19 @@ export const initialStatusState: StatusState = {
 
 export const reducer = createReducer(
   initialStatusState,
+  on(devActions.init, (state, action) => {
+    const messages = action.payload.messages ?? [];
+    const lastMessage = messages[messages.length - 1];
+
+    if (lastMessage?.role === 'user') {
+      return {
+        ...state,
+        isSending: true,
+      };
+    }
+
+    return state;
+  }),
   on(devActions.sendMessage, devActions.setMessages, (state) => {
     return {
       ...state,

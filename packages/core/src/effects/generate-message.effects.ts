@@ -16,6 +16,7 @@ import {
   selectShouldGenerateMessage,
   selectSystem,
 } from '../reducers';
+import { decodeFrames } from '../frames/decode-frames';
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
@@ -78,61 +79,54 @@ export const generateMessage = createEffect((store) => {
       const response = await fetch(apiUrl, requestInit);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        store.dispatch(
+          apiActions.generateMessageError(
+            new Error(`HTTP error! Status: ${response.status}`),
+          ),
+        );
+        return;
       }
 
       if (!response.body) {
-        throw new Error('Response body is null');
+        store.dispatch(
+          apiActions.generateMessageError(new Error('Response body is null')),
+        );
+        return;
       }
 
       store.dispatch(apiActions.generateMessageStart());
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
       let message: Chat.Api.AssistantMessage | null = null;
 
-      while (true) {
-        if (effectAbortController.signal.aborted || switchSignal.aborted) {
-          return;
-        }
-
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        const chunk = decoder.decode(value, { stream: true });
-
-        try {
-          const jsonChunks = chunk.split(/(?<=})(?={)/);
-
-          for (const jsonChunk of jsonChunks) {
-            if (jsonChunk.trim()) {
-              const jsonData = JSON.parse(
-                jsonChunk,
-              ) as Chat.Api.CompletionChunk;
-
-              message = updateMessagesWithDelta(message, jsonData);
-
-              // We just made it non-null on the line above, so we can safely
-              // assert it here.
-
-              if (message) {
-                store.dispatch(apiActions.generateMessageChunk(message));
-              }
+      for await (const frame of decodeFrames(response.body, {
+        signal: effectAbortController.signal,
+      })) {
+        switch (frame.type) {
+          case 'chunk': {
+            message = updateMessagesWithDelta(message, frame.chunk);
+            if (message) {
+              store.dispatch(apiActions.generateMessageChunk(message));
             }
+            break;
           }
-        } catch (error) {
-          console.error('Error parsing JSON chunk:', error);
+          case 'error': {
+            store.dispatch(
+              apiActions.generateMessageError(new Error(frame.error)),
+            );
+            break;
+          }
+          case 'finish': {
+            if (message) {
+              store.dispatch(
+                apiActions.generateMessageSuccess(
+                  message as unknown as Chat.Api.AssistantMessage,
+                ),
+              );
+            }
+            break;
+          }
         }
       }
-
-      store.dispatch(
-        apiActions.generateMessageSuccess(
-          message as unknown as Chat.Api.AssistantMessage,
-        ),
-      );
     }, effectAbortController.signal),
   );
 
@@ -194,7 +188,7 @@ function updateMessagesWithDelta(
       toolCalls: updatedToolCalls,
     };
     return updatedMessage;
-  } else if (delta.choices[0].delta.role === 'assistant') {
+  } else if (delta.choices[0]?.delta?.role === 'assistant') {
     return {
       role: 'assistant',
       content: delta.choices[0].delta.content ?? '',

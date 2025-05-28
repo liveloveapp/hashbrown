@@ -182,3 +182,11 @@ export const selectApiTools = select(
     );
   },
 );
+
+export const selectIsLoading = select(
+  selectIsSending,
+  selectIsReceiving,
+  selectIsRunningToolCalls,
+  (isSending, isReceiving, isRunningToolCalls) =>
+    isSending || isReceiving || isRunningToolCalls,
+);
