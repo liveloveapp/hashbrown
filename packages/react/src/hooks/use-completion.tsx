@@ -38,6 +38,12 @@ export interface UseCompletionOptions<Tools extends Chat.AnyTool> {
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Number of retries if an error is received.
+   * default: 0
+   */
+  retries?: number;
 }
 
 /**
@@ -70,6 +76,11 @@ export interface UseCompletionResult {
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Whether the current request has exhausted retries.
+   */
+  exhaustedRetries: boolean;
 }
 
 export const useCompletion = <Tools extends Chat.AnyTool>(
@@ -106,5 +117,6 @@ export const useCompletion = <Tools extends Chat.AnyTool>(
     isReceiving: chat.isReceiving,
     isSending: chat.isSending,
     isRunningToolCalls: chat.isRunningToolCalls,
+    exhaustedRetries: chat.exhaustedRetries,
   };
 };

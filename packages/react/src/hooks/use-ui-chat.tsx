@@ -20,6 +20,7 @@ export type UiAssistantMessage<Tools extends Chat.AnyTool> =
   };
 
 export type UiUserMessage = Chat.UserMessage;
+export type UiErrorMessage = Chat.ErrorMessage;
 
 export type UiChatMessage<Tools extends Chat.AnyTool> =
   | UiAssistantMessage<Tools>
@@ -118,13 +119,6 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
   const uiChatMessages = useMemo(() => {
     return chat.messages.map((message): UiChatMessage<Tools> => {
       if (message.role === 'assistant') {
-        return {
-          ...message,
-          ui: message.content?.ui ? buildContent(message.content.ui) : null,
-        } as UiAssistantMessage<Tools>;
-      }
-
-      if (message.role === 'error') {
         return {
           ...message,
           ui: message.content?.ui ? buildContent(message.content.ui) : null,

@@ -77,6 +77,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
       debounce: number;
+      retries: number;
     }>,
   ) => void;
 
@@ -247,6 +248,7 @@ export function fryHashbrown(init: {
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
       debounce: number;
+      retries: number;
     }>,
   ) {
     state.dispatch(devActions.updateOptions(options));

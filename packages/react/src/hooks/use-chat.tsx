@@ -36,6 +36,12 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
   debounceTime?: number;
 
   /**
+   * Number of retries if an error is received.
+   * default: 0
+   */
+  retries?: number;
+
+  /**
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
@@ -86,6 +92,11 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Whether the current request has exhausted retries.
+   */
+  exhaustedRetries: boolean;
 }
 
 /**
@@ -155,6 +166,8 @@ export function useChat<Tools extends Chat.AnyTool>(
         model: options.model,
         system: options.system,
         tools,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
 
     if (!hashbrown) {
@@ -167,16 +180,19 @@ export function useChat<Tools extends Chat.AnyTool>(
         model: options.model,
         system: options.system,
         tools,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
     }
   }, [
     config,
     hashbrown,
+    options.debounceTime,
     options.debugName,
     options.model,
+    options.retries,
     options.system,
     tools,
-    hashbrown,
   ]);
 
   const sendMessage = useCallback(
@@ -199,6 +215,7 @@ export function useChat<Tools extends Chat.AnyTool>(
   const [isReceiving, setIsReceiving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isRunningToolCalls, setIsRunningToolCalls] = useState(false);
+  const [exhaustedRetries, setExhaustedRetries] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -220,6 +237,10 @@ export function useChat<Tools extends Chat.AnyTool>(
 
     hashbrown?.observeError((error) => {
       setError(error);
+    });
+
+    hashbrown?.observeExhaustedRetries((exhaustedRetries) => {
+      setExhaustedRetries(exhaustedRetries);
     });
   }, [hashbrown]);
 
@@ -244,5 +265,6 @@ export function useChat<Tools extends Chat.AnyTool>(
     isReceiving,
     isSending,
     isRunningToolCalls,
+    exhaustedRetries,
   };
 }

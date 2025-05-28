@@ -16,6 +16,7 @@ import {
 import { Input } from '../../shared/input';
 import { Label } from '../../shared/label';
 import { useSmartHomeStore } from '../../store/smart-home.store';
+import { CircleAlert } from 'lucide-react';
 
 interface LightDialogFormProps {
   light?: LightModel;
@@ -35,7 +36,7 @@ export const LightDialogForm = (
   const [lightName, setLightName] = useState(light?.name || '');
   const [open, setOpen] = useState(false);
 
-  const { output: nameCompletion } = useCompletion({
+  const { output: nameCompletion, exhaustedRetries } = useCompletion({
     model: 'gpt-4o-mini',
     input: open ? lightName : '',
     system: `
@@ -54,6 +55,7 @@ export const LightDialogForm = (
       The user already has these lights in their home:
       ${lights.map((l) => l.name).join(', ')}
     `,
+    retries: 3,
   });
 
   const handleSubmit = () => {
@@ -121,6 +123,13 @@ export const LightDialogForm = (
                       {nameCompletion}
                     </span>
                   </div>
+                </div>
+              )}
+
+              {exhaustedRetries && (
+                <div className="mt-3 flex gap-2 bg-destructive/80 rounded-md p-2 text-primary-foreground">
+                  <CircleAlert />
+                  Completion is not available at this time.
                 </div>
               )}
             </div>
