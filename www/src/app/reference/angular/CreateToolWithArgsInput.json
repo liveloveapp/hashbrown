@@ -89,7 +89,13 @@
               "text": "s.Infer",
               "canonicalReference": "!s.Infer:type"
             },
-            { "kind": "Content", "text": "<Schema>) => " },
+            { "kind": "Content", "text": "<Schema>, abortSignal: " },
+            {
+              "kind": "Reference",
+              "text": "AbortSignal",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ") => " },
             {
               "kind": "Reference",
               "text": "Promise",
@@ -102,7 +108,7 @@
           "isOptional": false,
           "releaseTag": "Public",
           "name": "handler",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 8 },
           "docs": {
             "modifiers": {
               "isInternal": false,

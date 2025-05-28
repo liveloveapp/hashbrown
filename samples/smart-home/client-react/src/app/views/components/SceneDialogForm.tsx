@@ -57,7 +57,7 @@ export const SceneDialogForm = (
     debugName: 'SceneDialogForm',
     input: open ? sceneName : null,
     model: 'gpt-4o-mini',
-    prompt: `Predict the lights that will be added to the scene based on the name. For example,
+    system: `Predict the lights that will be added to the scene based on the name. For example,
     if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
     be in the bedroom at a lower brightness.
 

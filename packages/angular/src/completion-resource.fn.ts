@@ -22,13 +22,13 @@ export interface CompletionResourceRef extends Resource<string | null> {}
 export interface CompletionResourceOptions<Input> {
   model: SignalLike<string>;
   input: Signal<Input | null | undefined>;
-  prompt: SignalLike<string>;
+  system: SignalLike<string>;
 }
 
 export function completionResource<Input>(
   options: CompletionResourceOptions<Input>,
 ): CompletionResourceRef {
-  const { model, input, prompt } = options;
+  const { model, input, system } = options;
   const injector = inject(Injector);
   const config = injectHashbrownConfig();
   const hashbrown = fryHashbrown({
@@ -39,9 +39,7 @@ export function completionResource<Input>(
         runInInjectionContext(injector, () => m(requestInit));
     }),
     model: readSignalLike(model),
-    prompt: readSignalLike(prompt),
-    temperature: 1,
-    maxTokens: 1000,
+    system: readSignalLike(system),
     messages: [],
     tools: [],
     retries: 3,

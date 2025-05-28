@@ -141,23 +141,18 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#prompt:member",
+          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#schema:member",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "prompt: " },
-            {
-              "kind": "Reference",
-              "text": "SignalLike",
-              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
-            },
-            { "kind": "Content", "text": "<string>" },
+            { "kind": "Content", "text": "schema: " },
+            { "kind": "Content", "text": "Schema" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "prompt",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "name": "schema",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -178,18 +173,23 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#schema:member",
+          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#system:member",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "schema: " },
-            { "kind": "Content", "text": "Schema" },
+            { "kind": "Content", "text": "system: " },
+            {
+              "kind": "Reference",
+              "text": "SignalLike",
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
+            },
+            { "kind": "Content", "text": "<string>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "schema",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "name": "system",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
           "docs": {
             "modifiers": {
               "isInternal": false,

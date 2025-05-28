@@ -18,6 +18,7 @@ import {
 import { s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
+  defineAsyncRuntime,
   defineFunction,
 } from '@hashbrownai/tool-javascript';
 import { Store } from '@ngrx/store';
@@ -158,7 +159,7 @@ export class ChatPanelComponent {
     debugName: 'simple-chat',
     // model: 'gemini-2.5-flash-preview-04-17',
     model: 'gpt-4.1',
-    prompt: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
+    system: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
     tools: [
       createTool({
         name: 'getUser',
@@ -205,10 +206,27 @@ export class ChatPanelComponent {
    * UI chat
    * --------------------------------------------------------------------------
    */
+  runtime = defineAsyncRuntime({
+    loadVariant: () => Promise.resolve(variant),
+    functions: [
+      defineFunction({
+        name: 'getLights',
+        description: 'Get the current lights',
+        output: s.array(
+          'The lights',
+          s.object('A light', {
+            id: s.string('The id of the light'),
+            brightness: s.number('The brightness of the light'),
+          }),
+        ),
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      }),
+    ],
+  });
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-preview-05-06',
     model: 'gpt-4.1',
-    prompt: `
+    system: `
       You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments.
     `,
     components: [
@@ -268,21 +286,7 @@ export class ChatPanelComponent {
           ),
       }),
       createToolJavaScript({
-        loadVariant: () => Promise.resolve(variant),
-        functions: [
-          defineFunction({
-            name: 'getLights',
-            description: 'Get the current lights',
-            output: s.array(
-              'The lights',
-              s.object('A light', {
-                id: s.string('The id of the light'),
-                brightness: s.number('The brightness of the light'),
-              }),
-            ),
-            handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-          }),
-        ],
+        runtime: this.runtime,
       }),
     ],
     debugName: 'ui-chat',

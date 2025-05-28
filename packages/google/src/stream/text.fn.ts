@@ -3,187 +3,232 @@ import {
   Content,
   FunctionCallingConfigMode,
   FunctionDeclaration,
+  GenerateContentConfig,
   GenerateContentParameters,
   GoogleGenAI,
   Part,
   Schema,
 } from '@google/genai';
-import { Chat } from '@hashbrownai/core';
+import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
 import convertToOpenApiSchema from '@openapi-contrib/json-schema-to-openapi-schema';
 
+export interface GoogleTextStreamOptions {
+  apiKey: string;
+  request: Chat.Api.CompletionCreateParams;
+  transformRequestOptions?: (
+    options: GenerateContentParameters,
+  ) => GenerateContentParameters | Promise<GenerateContentParameters>;
+}
+
 export async function* text(
-  apiKey: string,
-  request: Chat.Api.CompletionCreateParams,
-): AsyncIterable<Chat.Api.CompletionChunk> {
-  const { messages, model, tools, response_format, tool_choice } = request;
+  options: GoogleTextStreamOptions,
+): AsyncIterable<Uint8Array> {
+  const { apiKey, request, transformRequestOptions } = options;
+  const { messages, model, tools, responseFormat, toolChoice, system } =
+    request;
+
   const ai = new GoogleGenAI({
     apiKey,
   });
-  const systemMessage = messages.find((message) => message.role === 'system');
-  const messagesWithoutSystem = messages.filter(
-    (message) => message.role !== 'system',
-  );
-  const contents = messagesWithoutSystem.map((message): Content => {
-    switch (message.role) {
-      case 'user':
-        return {
-          role: 'user',
-          parts: [
-            {
-              text: message.content,
-            },
-          ],
-        };
-      case 'error':
-        return {
-          role: 'error',
-          parts: [
-            {
-              text: message.content,
-            },
-          ],
-        };
-      case 'assistant': {
-        return {
-          role: 'model',
-          parts: [
-            ...(message.tool_calls?.map(
-              (tool_call): Part => ({
-                functionCall: {
-                  id: tool_call.id,
-                  name: tool_call.function.name,
-                  args: JSON.parse(tool_call.function.arguments),
-                },
-              }),
-            ) ?? []),
-            ...(message.content ? [{ text: message.content }] : []),
-          ],
-        };
-      }
-      case 'tool':
-        return {
-          role: 'user',
-          parts: [
-            {
-              functionResponse: {
-                id: message.tool_call_id,
-                name: message.tool_name,
-                response: { result: JSON.stringify(message.content) },
+
+  try {
+    const contents = messages.map((message): Content => {
+      switch (message.role) {
+        case 'user':
+          return {
+            role: 'user',
+            parts: [
+              {
+                text: message.content,
               },
+            ],
+          };
+        case 'error':
+          return {
+            role: 'error',
+            parts: [
+              {
+                text: message.content,
+              },
+            ],
+          };
+        case 'assistant': {
+          return {
+            role: 'model',
+            parts: [
+              ...(message.toolCalls?.map(
+                (toolCall): Part => ({
+                  functionCall: {
+                    id: toolCall.id,
+                    name: toolCall.function.name,
+                    args: JSON.parse(toolCall.function.arguments),
+                  },
+                }),
+              ) ?? []),
+              ...(message.content ? [{ text: message.content }] : []),
+            ],
+          };
+        }
+        case 'tool':
+          return {
+            role: 'user',
+            parts: [
+              {
+                functionResponse: {
+                  id: message.toolCallId,
+                  name: message.toolName,
+                  response: { result: JSON.stringify(message.content) },
+                },
+              },
+            ],
+          };
+      }
+    });
+
+    let geminiTools: FunctionDeclaration[] = [];
+
+    if (tools && tools.length) {
+      geminiTools = await Promise.all(
+        tools.map(async (tool): Promise<FunctionDeclaration> => {
+          const schema = await toGeminiSchema(tool.parameters);
+          return {
+            name: tool.name,
+            description: tool.description,
+            parameters: schema as Schema,
+          };
+        }),
+      );
+    }
+
+    const responseSchema = responseFormat
+      ? ((await toGeminiSchema(responseFormat)) as Schema)
+      : undefined;
+
+    const config: GenerateContentConfig = {
+      systemInstruction: {
+        parts: [{ text: system }],
+      },
+      tools: [
+        {
+          functionDeclarations: geminiTools,
+        },
+      ],
+      responseMimeType: responseFormat ? 'application/json' : 'text/plain',
+      responseSchema: responseSchema,
+      toolConfig: {
+        functionCallingConfig: {
+          mode:
+            toolChoice === 'required'
+              ? FunctionCallingConfigMode.ANY
+              : toolChoice === 'none'
+                ? FunctionCallingConfigMode.NONE
+                : FunctionCallingConfigMode.AUTO,
+        },
+      },
+    };
+
+    const params: GenerateContentParameters = {
+      model,
+      config,
+      contents,
+    };
+
+    const resolvedParams = transformRequestOptions
+      ? await transformRequestOptions(params)
+      : params;
+
+    const response = await ai.models.generateContentStream(resolvedParams);
+
+    const toolCallIndicesToStringId: Record<number, string> = {};
+    const getToolCallId = (index: number) => {
+      if (toolCallIndicesToStringId[index] === undefined) {
+        toolCallIndicesToStringId[index] = `tool_call_${crypto.randomUUID()}`;
+      }
+      return toolCallIndicesToStringId[index];
+    };
+
+    for await (const chunk of await response) {
+      const firstPart = chunk.candidates?.[0]?.content?.parts?.[0];
+      if (firstPart && firstPart.functionCall) {
+        const chunkMessage: Chat.Api.CompletionChunk = {
+          choices: [
+            {
+              index: 0,
+              delta: {
+                content: null,
+                role: 'assistant',
+                toolCalls: [
+                  {
+                    index: 0,
+                    id: getToolCallId(0),
+                    type: 'function',
+                    function: {
+                      name: firstPart.functionCall.name,
+                      arguments: JSON.stringify(firstPart.functionCall.args),
+                    },
+                  },
+                ],
+              },
+              finishReason: null,
             },
           ],
         };
-    }
-  });
 
-  let geminiTools: FunctionDeclaration[] = [];
-
-  if (tools && tools.length) {
-    geminiTools = await Promise.all(
-      tools.map(async (tool): Promise<FunctionDeclaration> => {
-        const schema = await toGeminiSchema(tool.parameters);
-        return {
-          name: tool.name,
-          description: tool.description,
-          parameters: schema as Schema,
+        const frame: Frame = {
+          type: 'chunk',
+          chunk: chunkMessage,
         };
-      }),
-    );
-  }
 
-  const responseSchema = response_format
-    ? ((await toGeminiSchema(response_format)) as Schema)
-    : undefined;
+        yield encodeFrame(frame);
+      }
 
-  const config: GenerateContentParameters['config'] = {
-    systemInstruction: systemMessage?.content
-      ? {
-          parts: [{ text: systemMessage.content }],
-        }
-      : undefined,
-    tools: [
-      {
-        functionDeclarations: geminiTools,
-      },
-    ],
-    responseMimeType: response_format ? 'application/json' : 'text/plain',
-    responseSchema: responseSchema,
-    toolConfig: {
-      functionCallingConfig: {
-        mode:
-          tool_choice === 'required'
-            ? FunctionCallingConfigMode.ANY
-            : tool_choice === 'none'
-              ? FunctionCallingConfigMode.NONE
-              : FunctionCallingConfigMode.AUTO,
-      },
-    },
-  };
-
-  const response = await ai.models.generateContentStream({
-    model,
-    config,
-    contents,
-  });
-
-  const toolCallIndicesToStringId: Record<number, string> = {};
-  const getToolCallId = (index: number) => {
-    if (toolCallIndicesToStringId[index] === undefined) {
-      toolCallIndicesToStringId[index] = `tool_call_${crypto.randomUUID()}`;
-    }
-    return toolCallIndicesToStringId[index];
-  };
-
-  for await (const chunk of await response) {
-    const firstPart = chunk.candidates?.[0]?.content?.parts?.[0];
-    if (firstPart && firstPart.functionCall) {
       const chunkMessage: Chat.Api.CompletionChunk = {
-        choices: [
-          {
-            index: 0,
+        choices:
+          chunk.candidates?.map((candidate, index) => ({
+            index: candidate.index ?? index,
             delta: {
-              content: null,
+              content:
+                candidate.content?.parts?.reduce((str: string, part: Part) => {
+                  if (part.text) {
+                    return str + part.text;
+                  }
+
+                  return str;
+                }, '') ?? null,
+              // todo: Brian Love: candidate.content?.role ??
               role: 'assistant',
-              tool_calls: [
-                {
-                  index: 0,
-                  id: getToolCallId(0),
-                  type: 'function',
-                  function: {
-                    name: firstPart.functionCall.name,
-                    arguments: JSON.stringify(firstPart.functionCall.args),
-                  },
-                },
-              ],
             },
-            finish_reason: null,
-          },
-        ],
+            logprobs: null,
+            finishReason: candidate.finishReason ?? null,
+          })) ?? [],
       };
-      yield chunkMessage;
+      const frame: Frame = {
+        type: 'chunk',
+        chunk: chunkMessage,
+      };
+      yield encodeFrame(frame);
     }
+  } catch (error) {
+    if (error instanceof Error) {
+      const frame: Frame = {
+        type: 'error',
+        error: error.toString(),
+        stacktrace: error.stack,
+      };
+      yield encodeFrame(frame);
+    } else {
+      const frame: Frame = {
+        type: 'error',
+        error: String(error),
+      };
 
-    const chunkMessage: Chat.Api.CompletionChunk = {
-      choices:
-        chunk.candidates?.map((candidate, index) => ({
-          index: candidate.index ?? index,
-          delta: {
-            content:
-              candidate.content?.parts?.reduce((str: string, part: Part) => {
-                if (part.text) {
-                  return str + part.text;
-                }
-
-                return str;
-              }, '') ?? null,
-            // todo: Brian Love: candidate.content?.role ??
-            role: 'assistant',
-          },
-          logprobs: null,
-          finish_reason: candidate.finishReason ?? null,
-        })) ?? [],
+      yield encodeFrame(frame);
+    }
+  } finally {
+    const frame: Frame = {
+      type: 'finish',
     };
-    yield chunkMessage;
+    yield encodeFrame(frame);
   }
 }
 

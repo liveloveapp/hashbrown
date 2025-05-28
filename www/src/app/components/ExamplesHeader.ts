@@ -24,11 +24,14 @@ import { DropdownMenu } from './DropDownMenu';
             </li>
             <li><a routerLink="/api" class="underline">api</a></li>
             <li>
+              <a [routerLink]="examplesUrl()" class="underline">example</a>
+            </li>
+            <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
             <li>
               <www-dropdown-menu [placement]="['right', 'bottom']">
-                @switch (config().sdk) {
+                @switch (sdk()) {
                   @case ('angular') {
                     <label>
                       <www-angular height="16px" width="16px" fill="#774625" />
@@ -151,9 +154,12 @@ import { DropdownMenu } from './DropDownMenu';
 })
 export class ExamplesHeader {
   configService = inject(ConfigService);
-  config = this.configService.config;
+  sdk = this.configService.sdk;
   docsUrl = computed(() => {
-    return `/docs/${this.configService.config().sdk}/start/quick`;
+    return `/docs/${this.sdk()}/start/quick`;
+  });
+  examplesUrl = computed(() => {
+    return `/examples/${this.sdk()}/chat`;
   });
   dropdownMenu = viewChild.required(DropdownMenu);
 

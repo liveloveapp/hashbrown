@@ -68,7 +68,7 @@ import { MatIconModule } from '@angular/material/icon';
             @if (lostService()) {
               <div class="error">
                 <mat-icon inline>error</mat-icon>Assisted completion is not
-                available
+                available.
               </div>
             }
 
@@ -168,7 +168,7 @@ export class LightFormComponent {
   readonly nameCompletion = completionResource({
     model: 'gpt-4o-mini',
     input: this.nameSignal,
-    prompt: computed(
+    system: computed(
       () => `
       Help the user generate a name for a light. The input will be what
       they have typed so far, and the output should be a prediction for

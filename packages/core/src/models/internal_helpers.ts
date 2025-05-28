@@ -158,8 +158,8 @@ export function toApiMessagesFromInternal(
             {
               role: 'tool',
               content: toolCall.result,
-              tool_call_id: toolCall.id,
-              tool_name: toolCall.name,
+              toolCallId: toolCall.id,
+              toolName: toolCall.name,
             },
           ];
         },
@@ -168,7 +168,7 @@ export function toApiMessagesFromInternal(
         {
           role: 'assistant',
           content: message.content,
-          tool_calls: toolCallsForMessage.map((toolCall, index) => ({
+          toolCalls: toolCallsForMessage.map((toolCall, index) => ({
             id: toolCall.id,
             index,
             type: 'function',
@@ -291,7 +291,7 @@ export function toInternalToolCallsFromView(
 export function toInternalMessagesFromApi(
   message: Chat.Api.Message,
 ): Chat.Internal.Message[] {
-  if (message.role === 'tool' || message.role === 'system') {
+  if (message.role === 'tool') {
     return [];
   }
 
@@ -313,7 +313,7 @@ export function toInternalMessagesFromApi(
     ];
   }
 
-  const output = message.tool_calls?.find(
+  const output = message.toolCalls?.find(
     (toolCall) => toolCall.function.name === 'output',
   );
 
@@ -324,7 +324,7 @@ export function toInternalMessagesFromApi(
       role: 'assistant',
       content,
       toolCallIds:
-        message.tool_calls
+        message.toolCalls
           ?.filter((toolCall) => toolCall.function.name !== 'output')
           .map((toolCall) => toolCall.id) || [],
     },

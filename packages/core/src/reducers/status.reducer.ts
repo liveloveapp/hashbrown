@@ -1,6 +1,5 @@
 import { createReducer, on } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
-import { toInternalToolCallsFromApi } from '../models/internal_helpers';
 
 export interface StatusState {
   isReceiving: boolean;
@@ -20,6 +19,19 @@ export const initialStatusState: StatusState = {
 
 export const reducer = createReducer(
   initialStatusState,
+  on(devActions.init, (state, action) => {
+    const messages = action.payload.messages ?? [];
+    const lastMessage = messages[messages.length - 1];
+
+    if (lastMessage?.role === 'user') {
+      return {
+        ...state,
+        isSending: true,
+      };
+    }
+
+    return state;
+  }),
   on(
     devActions.sendMessage,
     devActions.setMessages,
@@ -44,19 +56,11 @@ export const reducer = createReducer(
       isReceiving: true,
     };
   }),
-  on(apiActions.generateMessageSuccess, (state, action) => {
-    // NB: We don't treat 'output' calls the same as other tool
-    // calls (i.e. they are not handled by the 'runTools' effect)
-    // so we need to not consider them when setting isRunningToolCalls.
-    // Otherwise, the status will never clear.
-    const toolCalls = action.payload.tool_calls?.flatMap(
-      toInternalToolCallsFromApi,
-    );
-
+  on(apiActions.generateMessageSuccess, (state) => {
     return {
       ...state,
       isReceiving: false,
-      isRunningToolCalls: Boolean(toolCalls && toolCalls.length > 0),
+      isRunningToolCalls: true,
       error: null,
       exhaustedRetries: false,
     };
@@ -87,6 +91,14 @@ export const reducer = createReducer(
     return {
       ...state,
       exhaustedRetries: true,
+    };
+  }),
+  on(internalActions.skippedToolCalls, (state) => {
+    return {
+      ...state,
+      isRunningToolCalls: false,
+      isSending: false,
+      isReceiving: false,
     };
   }),
 );

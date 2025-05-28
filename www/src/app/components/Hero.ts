@@ -27,11 +27,15 @@ import { ConfigService } from '../services/ConfigService';
         </div>
       </div>
     </div>
+    <div class="divider-1"></div>
+    <div class="divider-2"></div>
+    <div class="divider-3"></div>
   `,
   styles: `
     :host {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
       background: #fbbb52;
     }
 
@@ -101,6 +105,25 @@ import { ConfigService } from '../services/ConfigService';
       }
     }
 
+    .divider-1,
+    .divider-2,
+    .divider-3 {
+      width: 100%;
+      height: 12px;
+    }
+
+    .divider-1 {
+      background: #e88c4d;
+    }
+
+    .divider-2 {
+      background: #b86060;
+    }
+
+    .divider-3 {
+      background: #9ecfd7;
+    }
+
     @media screen and (min-width: 1024px) {
       .bleed {
         padding: 128px 64px;
@@ -111,6 +134,6 @@ import { ConfigService } from '../services/ConfigService';
 export class Hero {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
-    return `/docs/${this.configService.config().sdk}/start/quick`;
+    return `/docs/${this.configService.sdk()}/start/quick`;
   });
 }

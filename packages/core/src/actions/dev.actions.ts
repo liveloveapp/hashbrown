@@ -6,10 +6,8 @@ export default createActionGroup('dev', {
   init: props<{
     apiUrl: string;
     model: string;
-    prompt: string;
+    system: string;
     debounce?: number;
-    temperature?: number;
-    maxTokens?: number;
     messages?: Chat.AnyMessage[];
     tools?: Chat.AnyTool[];
     responseSchema?: s.HashbrownType;
@@ -28,9 +26,7 @@ export default createActionGroup('dev', {
     debugName?: string;
     apiUrl?: string;
     model?: string;
-    prompt?: string;
-    temperature?: number;
-    maxTokens?: number;
+    system?: string;
     tools?: Chat.AnyTool[];
     responseSchema?: s.HashbrownType;
     middleware?: Chat.Middleware[];

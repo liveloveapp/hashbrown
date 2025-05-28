@@ -1,4 +1,10 @@
-import { Component, inject, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  ResourceStatus,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 // import { predictionResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
@@ -53,6 +59,11 @@ const PREDICTIONS_SCHEMA = s.anyOf([
   selector: 'app-predictions',
   standalone: true,
   template: `
+    @if (lostService()) {
+      <div class="error">
+        <mat-icon inline>error</mat-icon>Structured completion is not available.
+      </div>
+    }
     <!-- Loop over predictions and display according to type -->
     @for (prediction of output(); track $index) {
       @switch (prediction.discriminator) {
@@ -313,6 +324,16 @@ const PREDICTIONS_SCHEMA = s.anyOf([
         border: 1px solid var(--mat-sys-primary);
         color: var(--mat-sys-on-primary);
       }
+
+      .error {
+        background-color: var(--mat-sys-error-container);
+        width: fit-content;
+        padding: 16px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
     `,
   ],
   imports: [MatIconModule],
@@ -328,7 +349,7 @@ export class PredictionsComponent {
   predictions = structuredCompletionResource({
     model: 'o4-mini',
     input: this.lastAction,
-    prompt: `
+    system: `
   You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
   Important Guidelines:
   - The user already owns all necessary hardware. Do not suggest purchasing hardware.
@@ -418,6 +439,11 @@ export class PredictionsComponent {
       predictions: s.streaming.array('The predictions', PREDICTIONS_SCHEMA),
     }),
   });
+
+  protected lostService = computed(
+    () => this.predictions.status() === ResourceStatus.Error,
+  );
+
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {

@@ -10,14 +10,14 @@ import {
   selectApiUrl,
   selectDebounce,
   selectEmulateStructuredOutput,
-  selectMaxTokens,
   selectMiddleware,
   selectModel,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
-  selectTemperature,
+  selectSystem,
 } from '../reducers';
+import { decodeFrames } from '../frames/decode-frames';
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
@@ -32,14 +32,13 @@ export const generateMessage = createEffect((store) => {
       const apiUrl = store.read(selectApiUrl);
       const middleware = store.read(selectMiddleware);
       const model = store.read(selectModel);
-      const temperature = store.read(selectTemperature);
-      const maxTokens = store.read(selectMaxTokens);
       const responseSchema = store.read(selectResponseSchema);
       const messages = store.read(selectApiMessages);
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const debounce = store.read(selectDebounce);
       const retries = store.read(selectRetries);
       const tools = store.read(selectApiTools);
+      const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
 
       if (!shouldGenerateMessage) {
@@ -48,13 +47,12 @@ export const generateMessage = createEffect((store) => {
 
       const params: Chat.Api.CompletionCreateParams = {
         model,
+        system,
         messages,
-        temperature,
         tools,
-        max_tokens: maxTokens,
-        tool_choice:
+        toolChoice:
           emulateStructuredOutput && responseSchema ? 'required' : undefined,
-        response_format:
+        responseFormat:
           !emulateStructuredOutput && responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined,
@@ -106,60 +104,44 @@ export const generateMessage = createEffect((store) => {
 
         store.dispatch(apiActions.generateMessageStart());
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
         let message: Chat.Api.AssistantMessage | null = null;
 
-        while (true) {
-          if (effectAbortController.signal.aborted || switchSignal.aborted) {
-            break;
-          }
-
-          const { done, value } = await reader.read();
-
-          if (done) {
-            break;
-          }
-
-          const chunk = decoder.decode(value, { stream: true });
-
-          try {
-            const jsonChunks = chunk.split(/(?<=})(?={)/);
-
-            // TODO: need to inject and deal with errors from backend here
-
-            // TODO: what to do if we start streaming in an error message?
-
-            for (const jsonChunk of jsonChunks) {
-              if (jsonChunk.trim()) {
-                const jsonData = JSON.parse(
-                  jsonChunk,
-                ) as Chat.Api.CompletionChunk;
-
-                message = updateMessagesWithDelta(message, jsonData);
-
-                // We just made it non-null on the line above, so we can safely
-                // assert it here.
-
+        try {
+          for await (const frame of decodeFrames(response.body, {
+            signal: effectAbortController.signal,
+          })) {
+            switch (frame.type) {
+              case 'chunk': {
+                message = updateMessagesWithDelta(message, frame.chunk);
                 if (message) {
                   store.dispatch(apiActions.generateMessageChunk(message));
                 }
+                break;
+              }
+              case 'error': {
+                store.dispatch(
+                  apiActions.generateMessageError(new Error(frame.error)),
+                );
+                break;
+              }
+              case 'finish': {
+                if (message) {
+                  store.dispatch(
+                    apiActions.generateMessageSuccess(
+                      message as unknown as Chat.Api.AssistantMessage,
+                    ),
+                  );
+                }
+                break;
               }
             }
-          } catch (error) {
-            console.error('Error parsing JSON chunk:', error);
-            store.dispatch(
-              apiActions.generateMessageError(new Error(`Bad chunk format`)),
-            );
-            break;
           }
+        } catch (e) {
+          if (e instanceof Error) {
+            store.dispatch(apiActions.generateMessageError(e));
+          }
+          continue;
         }
-
-        store.dispatch(
-          apiActions.generateMessageSuccess(
-            message as unknown as Chat.Api.AssistantMessage,
-          ),
-        );
 
         break;
       } while (retries > 0 && attempt < retries + 1);
@@ -220,20 +202,20 @@ function updateMessagesWithDelta(
 ): Chat.Api.AssistantMessage | null {
   if (message && message.role === 'assistant') {
     const updatedToolCalls = mergeToolCalls(
-      message.tool_calls,
-      delta.choices[0].delta.tool_calls ?? [],
+      message.toolCalls,
+      delta.choices[0].delta.toolCalls ?? [],
     );
     const updatedMessage: Chat.Api.AssistantMessage = {
       ...message,
       content: (message.content ?? '') + (delta.choices[0].delta.content ?? ''),
-      tool_calls: updatedToolCalls,
+      toolCalls: updatedToolCalls,
     };
     return updatedMessage;
-  } else if (delta.choices[0].delta.role === 'assistant') {
+  } else if (delta.choices[0]?.delta?.role === 'assistant') {
     return {
       role: 'assistant',
       content: delta.choices[0].delta.content ?? '',
-      tool_calls: mergeToolCalls([], delta.choices[0].delta.tool_calls ?? []),
+      toolCalls: mergeToolCalls([], delta.choices[0].delta.toolCalls ?? []),
     };
   }
   return message;

@@ -12,6 +12,8 @@ export const runTools = createEffect((store) => {
     const toolEntities = store.read(selectToolEntities);
 
     if (toolCalls.length === 0) {
+      await Promise.resolve();
+      store.dispatch(internalActions.skippedToolCalls());
       return;
     }
 
@@ -53,8 +55,8 @@ export const runTools = createEffect((store) => {
       (toolCall, index) => ({
         role: 'tool',
         content: results[index],
-        tool_call_id: toolCall.id,
-        tool_name: toolCall.name,
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
       }),
     );
 
