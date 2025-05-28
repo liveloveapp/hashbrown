@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/core!fryHashbrown:function(1)",
-      "docComment": "/**\n * Initialize a Hashbrown chat instance with the given configuration.\n *\n * @template Output - The type of messages expected from the LLM.  @template Tools - The set of tools to register with the chat instance.\n *\n * @param init - Initialization options.\n *\n * @param  - {string} [init.debugName] - Optional debug name for devtools tracing.\n *\n * @param  - {string} init.apiUrl - Base URL of the Hashbrown API endpoint.\n *\n * @param  - {string} init.model - The LLM model identifier to use.\n *\n * @param  - {string} init.prompt - System prompt or initial context for the chat.\n *\n * @param  - {number} [init.temperature] - Sampling temperature for LLM responses.\n *\n * @param  - {number} [init.maxTokens] - Maximum tokens to generate per response.\n *\n * @param  - {Chat.Message<Output, Tools>[]} [init.messages] - Initial message history.\n *\n * @param  - {Tools[]} [init.tools] - Array of tools to enable in the instance.\n *\n * @param  - {s.HashbrownType} [init.responseSchema] - JSON schema for validating structured output.\n *\n * @param  - {Chat.Middleware[]} [init.middleware] - Middleware functions to run on messages.\n *\n * @param  - {boolean} [init.emulateStructuredOutput] - Whether to emulate structured output behavior.\n *\n * @param  - {number} [init.debounce] - Debounce interval in milliseconds for sending messages.\n *\n * @returns {Hashbrown<Output, Tools>} A configured Hashbrown instance.\n *\n * @throws\n *\n * {Error} If a reserved tool name (\"output\") is used.\n */\n",
+      "docComment": "/**\n * Initialize a Hashbrown chat instance with the given configuration.\n *\n * @template Output - The type of messages expected from the LLM.  @template Tools - The set of tools to register with the chat instance.\n *\n * @param init - Initialization options.\n *\n * @param  - {string} [init.debugName] - Optional debug name for devtools tracing.\n *\n * @param  - {string} init.apiUrl - Base URL of the Hashbrown API endpoint.\n *\n * @param  - {string} init.model - The LLM model identifier to use.\n *\n * @param  - {string} init.system - System prompt or initial context for the chat.\n *\n * @param  - {Chat.Message<Output, Tools>[]} [init.messages] - Initial message history.\n *\n * @param  - {Tools[]} [init.tools] - Array of tools to enable in the instance.\n *\n * @param  - {s.HashbrownType} [init.responseSchema] - JSON schema for validating structured output.\n *\n * @param  - {Chat.Middleware[]} [init.middleware] - Middleware functions to run on messages.\n *\n * @param  - {boolean} [init.emulateStructuredOutput] - Whether to emulate structured output behavior.\n *\n * @param  - {number} [init.debounce] - Debounce interval in milliseconds for sending messages.\n *\n * @returns {Hashbrown<Output, Tools>} A configured Hashbrown instance.\n *\n * @throws\n *\n * {Error} If a reserved tool name (\"output\") is used.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -22,7 +22,7 @@
         { "kind": "Content", "text": ">(init: " },
         {
           "kind": "Content",
-          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: string;\n    prompt: string;\n    temperature?: number;\n    maxTokens?: number;\n    messages?: "
+          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: string;\n    system: string;\n    messages?: "
         },
         {
           "kind": "Reference",
@@ -101,15 +101,7 @@
           },
           {
             "name": "",
-            "description": "  - {string} init.prompt - System prompt or initial context for the chat.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {number} [init.temperature] - Sampling temperature for LLM responses.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {number} [init.maxTokens] - Maximum tokens to generate per response.\n\n"
+            "description": "  - {string} init.system - System prompt or initial context for the chat.\n\n"
           },
           {
             "name": "",
@@ -175,7 +167,7 @@
         { "kind": "Content", "text": ">(init: " },
         {
           "kind": "Content",
-          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: string;\n    prompt: string;\n    temperature?: number;\n    maxTokens?: number;\n    messages?: "
+          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: string;\n    system: string;\n    messages?: "
         },
         {
           "kind": "Reference",

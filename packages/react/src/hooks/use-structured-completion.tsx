@@ -18,9 +18,9 @@ export interface UseStructuredCompletionOptions<
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   /**
    * The schema to use for the chat.
@@ -34,17 +34,6 @@ export interface UseStructuredCompletionOptions<
   tools?: Tools[];
 
   /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
-
-  /**
    * The debounce time between sends to the endpoint.
    * default: 150
    */
@@ -54,6 +43,12 @@ export interface UseStructuredCompletionOptions<
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Number of retries if an error is received.
+   * default: 0
+   */
+  retries?: number;
 }
 
 /**
@@ -89,6 +84,11 @@ export interface UseStructuredCompletionResult<Output> {
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Whether the current request has exhausted retries.
+   */
+  exhaustedRetries: boolean;
 }
 
 export const useStructuredCompletion = <
@@ -124,5 +124,6 @@ export const useStructuredCompletion = <
     isReceiving: chat.isReceiving,
     isSending: chat.isSending,
     isRunningToolCalls: chat.isRunningToolCalls,
+    exhaustedRetries: chat.exhaustedRetries,
   };
 };

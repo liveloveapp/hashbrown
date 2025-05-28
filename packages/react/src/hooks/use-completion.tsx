@@ -18,26 +18,15 @@ export interface UseCompletionOptions<Tools extends Chat.AnyTool> {
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the completion.
    */
-  prompt: string;
+  system: string;
 
   /**
-   * The tools to make available use for the chat.
+   * The tools to make available use for the completion.
    * default: []
    */
   tools?: Tools[];
-
-  /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
 
   /**
    * The debounce time between sends to the endpoint.
@@ -49,6 +38,12 @@ export interface UseCompletionOptions<Tools extends Chat.AnyTool> {
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Number of retries if an error is received.
+   * default: 0
+   */
+  retries?: number;
 }
 
 /**
@@ -81,6 +76,11 @@ export interface UseCompletionResult {
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Whether the current request has exhausted retries.
+   */
+  exhaustedRetries: boolean;
 }
 
 export const useCompletion = <Tools extends Chat.AnyTool>(
@@ -117,5 +117,6 @@ export const useCompletion = <Tools extends Chat.AnyTool>(
     isReceiving: chat.isReceiving,
     isSending: chat.isSending,
     isRunningToolCalls: chat.isRunningToolCalls,
+    exhaustedRetries: chat.exhaustedRetries,
   };
 };

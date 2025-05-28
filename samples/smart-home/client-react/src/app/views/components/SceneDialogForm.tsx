@@ -31,6 +31,7 @@ import {
 import { useSmartHomeStore } from '../../store/smart-home.store';
 import { SceneLight } from './SceneLight';
 import { SceneLightRecommendation } from './SceneLightRecommendation';
+import { CircleAlert } from 'lucide-react';
 
 interface SceneDialogFormProps {
   scene?: SceneModel;
@@ -53,11 +54,11 @@ export const SceneDialogForm = (
   );
   const [open, setOpen] = useState(false);
 
-  const { output, isSending } = useStructuredCompletion({
+  const { output, isSending, exhaustedRetries } = useStructuredCompletion({
     debugName: 'SceneDialogForm',
     input: open ? sceneName : null,
     model: 'gpt-4o-mini',
-    prompt: `Predict the lights that will be added to the scene based on the name. For example,
+    system: `Predict the lights that will be added to the scene based on the name. For example,
     if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
     be in the bedroom at a lower brightness.
 
@@ -72,6 +73,7 @@ export const SceneDialogForm = (
         }),
       ),
     }),
+    retries: 3,
   });
 
   // Get available lights that aren't already in the scene
@@ -182,7 +184,7 @@ export const SceneDialogForm = (
             )}
             <div className="flex flex-col gap-2">
               <Label>Recommendations</Label>
-              {isSending && (
+              {!exhaustedRetries && isSending && (
                 <p className="text-sm text-muted-foreground">
                   Generating recommendations...
                 </p>
@@ -194,6 +196,13 @@ export const SceneDialogForm = (
                   brightness={prediction.brightness}
                 />
               ))}
+
+              {exhaustedRetries && (
+                <div className="mt-1 flex gap-2 bg-destructive/80 rounded-md p-2 text-primary-foreground">
+                  <CircleAlert />
+                  Recommendations are not available at this time.
+                </div>
+              )}
             </div>
           </div>
         </div>

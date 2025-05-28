@@ -344,7 +344,7 @@
             },
             {
               "kind": "Content",
-              "text": "<{\n        debugName?: string;\n        apiUrl: string;\n        model: string;\n        prompt: string;\n        temperature: number;\n        maxTokens: number;\n        tools: Tools[];\n        responseSchema: "
+              "text": "<{\n        debugName?: string;\n        apiUrl: string;\n        model: string;\n        system: string;\n        tools: Tools[];\n        responseSchema: "
             },
             {
               "kind": "Reference",

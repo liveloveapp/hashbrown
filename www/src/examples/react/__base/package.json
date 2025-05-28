@@ -1,0 +1,35 @@
+{
+  "name": "hashbrownai-react-example",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "concurrently \"npm run client\" \"npm run server\"",
+    "client": "vite --open",
+    "server": "node server.mjs"
+  },
+  "dependencies": {
+    "react": "<react-version>",
+    "react-dom": "<react-version>",
+    "@hashbrownai/azure": "<hashbrown-version>",
+    "@hashbrownai/core": "<hashbrown-version>",
+    "@hashbrownai/google": "0.0.1",
+    "@hashbrownai/openai": "<hashbrown-version>",
+    "@hashbrownai/react": "<hashbrown-version>",
+    "@hashbrownai/tool-javascript": "<hashbrown-version>",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "zustand": "<zustand-version>"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "@types/react": "<react-version>",
+    "@types/react-dom": "<react-version>",
+    "@vitejs/plugin-react": "vite-plugin-react-version",
+    "concurrently": "^9.1.2",
+    "typescript": "<typescript-version>",
+    "vite": "<vite-version>"
+  }
+}

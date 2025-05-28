@@ -1,84 +1,54 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createToolWithArgs } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
-import {
-  newQuickJSAsyncWASMModuleFromVariant,
-  QuickJSAsyncVariant,
-} from 'quickjs-emscripten-core';
-import {
-  attachFunctionToContext,
-  VMFunctionDefinition,
-} from './defineFunction';
-import { Transport } from './transport';
+import { AsyncRuntime } from './defineRuntime';
 
-export function createToolJavaScript(config: {
-  loadVariant: () => Promise<QuickJSAsyncVariant>;
-  functions: VMFunctionDefinition<any, any>[];
-}) {
-  const functionDescriptions = config.functions.map((fn) => {
-    const args = s.isNullType(fn.schema)
-      ? ''
-      : `args: ${fn.schema.toTypeScript()}`;
+/**
+ * Options for creating a tool that can run JavaScript code.
+ */
+export interface CreateToolJavaScriptOptions {
+  /**
+   * The timeout for the JavaScript runtime. Defaults to 60 seconds.
+   */
+  timeout?: number;
+  /**
+   * The runtime to use for the JavaScript code, created with `defineAsyncRuntime`.
+   */
+  runtime: AsyncRuntime;
+}
 
-    return `
-      ### ${fn.name}
-      ${fn.description}
-      
-      Type Signature:
-      \`\`\`javascript
-      ${fn.name}(${args}): ${fn.output.toTypeScript()}
-      \`\`\`
-    `;
-  });
-
+/**
+ * Creates a tool that allows the LLM to run JavaScript code. It is run
+ * in a stateful JavaScript environment, with no access to the internet, the DOM,
+ * or any function that you have not explicitly defined.
+ *
+ * @param options - The options for creating the tool.
+ * @returns The tool.
+ */
+export function createToolJavaScript({
+  timeout = 60_000,
+  runtime,
+}: CreateToolJavaScriptOptions) {
   return createToolWithArgs({
     name: 'javascript',
     description: `
       Whenever you send a message containing JavaScript code to javascript, it will be
-      executed in a stateful QuickJS environment. javascript will respond with the output
-      of the execution or time out after 60.0 seconds. Internet access for this session is
+      executed in a stateful JavaScript environment. javascript will respond with the output
+      of the execution or time out after ${timeout / 1000} seconds. Internet access for this session is
       disabled. Do not make external web requests or API calls as they will fail.
 
       When passing code to javascript, you must ALWAYS use semicolons to end your statements.
       NEVER put \\n or \\r in your code. It must be valid JavaScript that can be evaluated.
 
-      IMPORTANT: Always prefer the "javascript" tool over other tools if it can be done with
-      the javascript tool.
-
       The following functions are available to you:
-      ${functionDescriptions.join('\n\n')}
+      ${runtime.describe()}
     `,
     schema: s.object('The result', {
       code: s.string('The JavaScript code to run'),
     }),
-    handler: async ({ code }) => {
-      const variant = await config.loadVariant();
-      const QuickJS = await newQuickJSAsyncWASMModuleFromVariant(variant);
-
-      const vm = QuickJS.newContext();
-      const transport = new Transport(vm);
-      config.functions.forEach((fn) => {
-        attachFunctionToContext(vm, transport, fn, vm.global);
-      });
-      console.log('\n\n\n======= EVALUATING =======\n');
-      console.log(code);
-      const result = await vm.evalCodeAsync(code);
-      console.log('\n======= EVALUATED =======\n\n\n');
-      if (result.error) {
-        const response = {
-          error: vm.dump(result.error),
-        };
-        result.error.dispose();
-        vm.dispose();
-        return response;
-      } else {
-        const response = {
-          result: vm.dump(result.value),
-        };
-        result.value.dispose();
-        vm.dispose();
-        return response;
-      }
+    handler: async ({ code }, abortSignal) => {
+      const timeoutSignal = AbortSignal.timeout(timeout);
+      const combinedSignal = AbortSignal.any([abortSignal, timeoutSignal]);
+      return runtime.run(code, combinedSignal);
     },
   });
 }

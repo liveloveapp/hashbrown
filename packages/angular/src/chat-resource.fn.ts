@@ -24,19 +24,15 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
  *
  * @typedef {object} ChatResourceOptions
  * @param {string | Signal<string>} model - The model to use for the chat.
- * @param {number | Signal<number>} [temperature] - The temperature for the chat.
  * @param {BoundTool<string, any>[] | Signal<BoundTool<string, any>[]>} [tools] - The tools to use for the chat.
- * @param {number | Signal<number>} [maxTokens] - The maximum number of tokens for the chat.
  * @param {Chat.Message[] | Signal<Chat.Message[]>} [messages] - The initial messages for the chat.
  * @param {number} [debounceTime] - The debounce time for the chat.
  * @param {s.HashbrownType | Signal<s.HashbrownType>} [θresponseFormat] - The response format for the chat.
  */
 export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
-  prompt: string | Signal<string>;
+  system: string | Signal<string>;
   model: string | Signal<string>;
-  temperature?: number | Signal<number>;
   tools?: Tools[];
-  maxTokens?: number | Signal<number>;
   messages?:
     | Chat.Message<string, Tools>[]
     | Signal<Chat.Message<string, Tools>[]>;
@@ -98,11 +94,9 @@ export function chatResource<Tools extends Chat.AnyTool>(
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    prompt: readSignalLike(options.prompt),
+    system: readSignalLike(options.system),
     model: readSignalLike(options.model),
-    temperature: options.temperature && readSignalLike(options.temperature),
     tools: options.tools,
-    maxTokens: options.maxTokens && readSignalLike(options.maxTokens),
     emulateStructuredOutput: config.emulateStructuredOutput,
     debugName: options.debugName,
   });

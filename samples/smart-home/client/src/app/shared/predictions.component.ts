@@ -1,4 +1,10 @@
-import { Component, inject, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  ResourceStatus,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 // import { predictionResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
@@ -16,12 +22,12 @@ import { createTool, structuredCompletionResource } from '@hashbrownai/angular';
 
 const PREDICTIONS_SCHEMA = s.anyOf([
   s.object('Suggests adding a light to the system', {
-    __discriminator: s.constString('Add Light'),
+    discriminator: s.constString('Add Light'),
     name: s.string('The suggested name of the light'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest adding a scene to the system', {
-    __discriminator: s.constString('Add Scene'),
+    discriminator: s.constString('Add Scene'),
     name: s.string('The suggested name of the scene'),
     lights: s.array(
       'The lights in the scene',
@@ -32,18 +38,18 @@ const PREDICTIONS_SCHEMA = s.anyOf([
     ),
   }),
   s.object('Suggest scheduling a scene to the system', {
-    __discriminator: s.constString('Schedule Scene'),
+    discriminator: s.constString('Schedule Scene'),
     sceneId: s.string('The ID of the scene'),
     datetime: s.string('The datetime of the scene'),
   }),
   s.object('Suggest adding a light to a scene', {
-    __discriminator: s.constString('Add Light to Scene'),
+    discriminator: s.constString('Add Light to Scene'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
     brightness: s.integer('A number between 0-100'),
   }),
   s.object('Suggest removing a light from a scene', {
-    __discriminator: s.constString('Remove Light from Scene'),
+    discriminator: s.constString('Remove Light from Scene'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
   }),
@@ -53,9 +59,14 @@ const PREDICTIONS_SCHEMA = s.anyOf([
   selector: 'app-predictions',
   standalone: true,
   template: `
+    @if (lostService()) {
+      <div class="error">
+        <mat-icon inline>error</mat-icon>Prediction is not available.
+      </div>
+    }
     <!-- Loop over predictions and display according to type -->
     @for (prediction of output(); track $index) {
-      @switch (prediction.__discriminator) {
+      @switch (prediction.discriminator) {
         @case ('Add Light') {
           <div class="prediction">
             <div class="predictionIcon">
@@ -313,6 +324,16 @@ const PREDICTIONS_SCHEMA = s.anyOf([
         border: 1px solid var(--mat-sys-primary);
         color: var(--mat-sys-on-primary);
       }
+
+      .error {
+        background-color: var(--mat-sys-error-container);
+        width: fit-content;
+        padding: 16px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
     `,
   ],
   imports: [MatIconModule],
@@ -328,7 +349,7 @@ export class PredictionsComponent {
   predictions = structuredCompletionResource({
     model: 'o4-mini',
     input: this.lastAction,
-    prompt: `
+    system: `
   You are an AI smart home assistant tasked with predicting the next possible user action in a smart home configuration app. Your suggestions will be displayed as floating cards in the bottom right of the screen.
   Important Guidelines:
   - The user already owns all necessary hardware. Do not suggest purchasing hardware.
@@ -418,6 +439,11 @@ export class PredictionsComponent {
       predictions: s.streaming.array('The predictions', PREDICTIONS_SCHEMA),
     }),
   });
+
+  protected lostService = computed(
+    () => this.predictions.status() === ResourceStatus.Error,
+  );
+
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {

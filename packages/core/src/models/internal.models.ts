@@ -11,7 +11,7 @@ export interface Tool {
 export interface ToolCall {
   id: string;
   name: string;
-  arguments: object;
+  arguments: string;
   result?: PromiseSettledResult<any>;
   progress?: number;
   status: 'pending' | 'done';
@@ -28,4 +28,9 @@ export interface UserMessage {
   content: string;
 }
 
-export type Message = AssistantMessage | UserMessage;
+export interface ErrorMessage {
+  role: 'error';
+  content: string;
+}
+
+export type Message = AssistantMessage | UserMessage | ErrorMessage;

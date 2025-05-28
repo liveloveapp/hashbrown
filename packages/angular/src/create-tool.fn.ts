@@ -17,7 +17,10 @@ export interface CreateToolWithArgsInput<
   name: Name;
   description: string;
   schema: Schema;
-  handler: (input: s.Infer<Schema>) => Promise<Result>;
+  handler: (
+    input: s.Infer<Schema>,
+    abortSignal: AbortSignal,
+  ) => Promise<Result>;
 }
 
 /**
@@ -39,9 +42,9 @@ export function createToolWithArgs<
     name: input.name,
     description: input.description,
     schema: input.schema,
-    handler: (args) => {
+    handler: (args, abortSignal) => {
       return untracked(() =>
-        runInInjectionContext(injector, () => input.handler(args)),
+        runInInjectionContext(injector, () => input.handler(args, abortSignal)),
       );
     },
   };
@@ -53,7 +56,7 @@ export function createToolWithArgs<
 export interface CreateToolInput<Name extends string, Result> {
   name: Name;
   description: string;
-  handler: () => Promise<Result>;
+  handler: (abortSignal: AbortSignal) => Promise<Result>;
 }
 
 /**
@@ -71,9 +74,9 @@ export function createTool<const Name extends string, Result>(
     name: input.name,
     description: input.description,
     schema: s.object('Empty Object', {}),
-    handler: () => {
+    handler: (_, abortSignal) => {
       return untracked(() =>
-        runInInjectionContext(injector, () => input.handler()),
+        runInInjectionContext(injector, () => input.handler(abortSignal)),
       );
     },
   };

@@ -1,6 +1,6 @@
 import { QuickJSContext, QuickJSHandle } from 'quickjs-emscripten';
 
-export class Transport {
+export class RuntimeTransport {
   jsonHandle: QuickJSHandle;
   stringifyHandle: QuickJSHandle;
   parseHandle: QuickJSHandle;

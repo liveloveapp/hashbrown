@@ -22,13 +22,13 @@ export interface CompletionResourceRef extends Resource<string | null> {}
 export interface CompletionResourceOptions<Input> {
   model: SignalLike<string>;
   input: Signal<Input | null | undefined>;
-  prompt: SignalLike<string>;
+  system: SignalLike<string>;
 }
 
 export function completionResource<Input>(
   options: CompletionResourceOptions<Input>,
 ): CompletionResourceRef {
-  const { model, input, prompt } = options;
+  const { model, input, system } = options;
   const injector = inject(Injector);
   const config = injectHashbrownConfig();
   const hashbrown = fryHashbrown({
@@ -39,11 +39,10 @@ export function completionResource<Input>(
         runInInjectionContext(injector, () => m(requestInit));
     }),
     model: readSignalLike(model),
-    prompt: readSignalLike(prompt),
-    temperature: 1,
-    maxTokens: 1000,
+    system: readSignalLike(system),
     messages: [],
     tools: [],
+    retries: 3,
   });
   const messages = toSignal(hashbrown.observeMessages);
   const internalMessages = computed(() => {
@@ -61,6 +60,10 @@ export function completionResource<Input>(
     ];
   });
 
+  const error = toSignal(hashbrown.observeError);
+
+  const exhaustedRetries = toSignal(hashbrown.observeExhaustedRetries);
+
   effect(() => {
     const _messages = internalMessages();
 
@@ -69,6 +72,7 @@ export function completionResource<Input>(
 
   const value = computed(() => {
     const lastMessage = messages()[messages().length - 1];
+
     if (
       lastMessage &&
       lastMessage.role === 'assistant' &&
@@ -80,8 +84,13 @@ export function completionResource<Input>(
     return null;
   });
 
-  const status = signal(ResourceStatus.Idle);
-  const error = signal<Error | null>(null);
+  const status = computed(() => {
+    if (exhaustedRetries()) {
+      return ResourceStatus.Error;
+    }
+
+    return ResourceStatus.Idle;
+  });
   const isLoading = signal(false);
   const reload = () => {
     return true;

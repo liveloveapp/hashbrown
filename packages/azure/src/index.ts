@@ -1,6 +1,6 @@
-import { AzureClient, text } from './stream/text.fn';
+import { text } from './stream/text.fn';
 
-export const HashbrownAzure: AzureClient = {
+export const HashbrownAzure = {
   stream: {
     text,
   },

@@ -1,3 +1,15 @@
+/**
+ * Skillet is an LLM-optimized streaming JSON Parser - perfectly suited for streaming hot and fresh JSON.
+ *
+ * Portions of this code are derived from partial-json (MIT License) (https://github.com/promplate/partial-json-parser-js).
+ * See the LICENSE file in the project root for full license text.
+ *
+ * @license MIT
+ * @author LiveLoveApp, LLC
+ * @see https://github.com/liveloveapp/hashbrown
+ * @see https://github.com/promplate/partial-json-parser-js
+ */
+
 import { Logger } from '../logger/logger';
 import { s } from '../schema';
 import { isStreaming } from '../schema/is-streaming';

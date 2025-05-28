@@ -48,6 +48,7 @@ export function toInternalMessagesFromView(
 export function toViewMessagesFromInternal(
   message: Chat.Internal.Message,
   toolCalls: Record<string, Chat.Internal.ToolCall>,
+  tools: Chat.AnyTool[],
   outputSchema?: s.HashbrownType,
 ): Chat.AnyMessage[] {
   switch (message.role) {
@@ -55,6 +56,14 @@ export function toViewMessagesFromInternal(
       return [
         {
           role: 'user',
+          content: message.content,
+        },
+      ];
+    }
+    case 'error': {
+      return [
+        {
+          role: 'error',
           content: message.content,
         },
       ];
@@ -74,36 +83,51 @@ export function toViewMessagesFromInternal(
         {
           role: 'assistant',
           content,
-          toolCalls: message.toolCallIds.map((toolCallId): Chat.AnyToolCall => {
-            const toolCall = toolCalls[toolCallId];
+          toolCalls: message.toolCallIds.flatMap(
+            (toolCallId): Chat.AnyToolCall[] => {
+              const toolCall = toolCalls[toolCallId];
+              const tool = tools.find((tool) => tool.name === toolCall.name);
 
-            switch (toolCall.status) {
-              case 'done': {
-                return {
-                  role: 'tool',
-                  status: 'done',
-                  name: toolCall.name,
-                  toolCallId,
-                  args: toolCall.arguments,
-                  // The internal models don't use a union, since that tends to
-                  // complicate reducer logic. This is necessary to uplift our
-                  // internal model into the view union.
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  result: toolCall.result!,
-                };
+              if (!tool) {
+                return [];
               }
-              case 'pending': {
-                return {
-                  role: 'tool',
-                  status: 'pending',
-                  name: toolCall.name,
-                  toolCallId,
-                  progress: toolCall.progress,
-                  args: toolCall.arguments,
-                };
+
+              switch (toolCall.status) {
+                case 'done': {
+                  return [
+                    {
+                      role: 'tool',
+                      status: 'done',
+                      name: toolCall.name,
+                      toolCallId,
+                      args: new StreamSchemaParser(tool.schema).parse(
+                        toolCall.arguments,
+                      ),
+                      // The internal models don't use a union, since that tends to
+                      // complicate reducer logic. This is necessary to uplift our
+                      // internal model into the view union.
+                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                      result: toolCall.result!,
+                    },
+                  ];
+                }
+                case 'pending': {
+                  return [
+                    {
+                      role: 'tool',
+                      status: 'pending',
+                      name: toolCall.name,
+                      toolCallId,
+                      progress: toolCall.progress,
+                      args: new StreamSchemaParser(tool.schema).parse(
+                        toolCall.arguments,
+                      ),
+                    },
+                  ];
+                }
               }
-            }
-          }),
+            },
+          ),
         },
       ];
     }
@@ -150,8 +174,8 @@ export function toApiMessagesFromInternal(
             {
               role: 'tool',
               content: toolCall.result,
-              tool_call_id: toolCall.id,
-              tool_name: toolCall.name,
+              toolCallId: toolCall.id,
+              toolName: toolCall.name,
             },
           ];
         },
@@ -160,13 +184,13 @@ export function toApiMessagesFromInternal(
         {
           role: 'assistant',
           content: message.content,
-          tool_calls: toolCallsForMessage.map((toolCall, index) => ({
+          toolCalls: toolCallsForMessage.map((toolCall, index) => ({
             id: toolCall.id,
             index,
             type: 'function',
             function: {
               name: toolCall.name,
-              arguments: JSON.stringify(toolCall.arguments),
+              arguments: toolCall.arguments,
             },
           })),
         },
@@ -228,7 +252,7 @@ export function toInternalToolCallsFromApi(
     {
       id: toolCall.id,
       name: toolCall.function.name,
-      arguments: JSON.parse(toolCall.function.arguments),
+      arguments: toolCall.function.arguments,
       status: 'pending',
     },
   ];
@@ -249,13 +273,13 @@ export function toInternalToolCallsFromView(
       return [];
     }
 
-    return message.toolCalls.map((toolCall) => {
+    return message.toolCalls.map((toolCall): Chat.Internal.ToolCall => {
       switch (toolCall.status) {
         case 'done': {
           return {
             id: toolCall.toolCallId,
             name: toolCall.name,
-            arguments: toolCall.args,
+            arguments: JSON.stringify(toolCall.args),
             status: 'done',
             result: toolCall.result,
           };
@@ -265,7 +289,7 @@ export function toInternalToolCallsFromView(
             id: toolCall.toolCallId,
             name: toolCall.name,
             status: 'pending',
-            arguments: toolCall.args,
+            arguments: JSON.stringify(toolCall.args),
           };
         }
       }
@@ -283,7 +307,7 @@ export function toInternalToolCallsFromView(
 export function toInternalMessagesFromApi(
   message: Chat.Api.Message,
 ): Chat.Internal.Message[] {
-  if (message.role === 'tool' || message.role === 'system') {
+  if (message.role === 'tool') {
     return [];
   }
 
@@ -296,7 +320,16 @@ export function toInternalMessagesFromApi(
     ];
   }
 
-  const output = message.tool_calls?.find(
+  if (message.role === 'error') {
+    return [
+      {
+        role: 'error',
+        content: message.content,
+      },
+    ];
+  }
+
+  const output = message.toolCalls?.find(
     (toolCall) => toolCall.function.name === 'output',
   );
 
@@ -307,7 +340,7 @@ export function toInternalMessagesFromApi(
       role: 'assistant',
       content,
       toolCallIds:
-        message.tool_calls
+        message.toolCalls
           ?.filter((toolCall) => toolCall.function.name !== 'output')
           .map((toolCall) => toolCall.id) || [],
     },

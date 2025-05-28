@@ -103,10 +103,10 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#prompt:member",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#system:member",
           "docComment": "",
           "excerptTokens": [
-            { "kind": "Content", "text": "prompt: " },
+            { "kind": "Content", "text": "system: " },
             {
               "kind": "Reference",
               "text": "SignalLike",
@@ -118,7 +118,7 @@
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "prompt",
+          "name": "system",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
           "docs": {
             "modifiers": {
