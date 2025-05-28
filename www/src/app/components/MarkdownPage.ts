@@ -138,6 +138,7 @@ type Heading = { level: number; text: string; id: string; url: string };
           padding: 16px;
           border-radius: 8px;
           background: #2b2a29 !important;
+          overflow-x: auto;
         }
 
         code:not(pre code) {

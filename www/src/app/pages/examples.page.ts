@@ -1,13 +1,32 @@
-import { Component } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  inject,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ExamplesHeader } from '../components/ExamplesHeader';
+import { Alert } from '../components/Alert';
+import { isPlatformBrowser } from '@angular/common';
 
 @Component({
-  imports: [RouterOutlet, ExamplesHeader],
+  imports: [RouterOutlet, ExamplesHeader, Alert],
   template: `
     <www-examples-header />
     <main class="examples">
-      <router-outlet></router-outlet>
+      @if (isSafari()) {
+        <div class="alert">
+          <www-alert type="warn">
+            <p>
+              Due to limitations, our stackblitz examples will not run in
+              Safari. We tried turning the frier up to 11, but it didn't work.
+            </p>
+          </www-alert>
+        </div>
+      } @else {
+        <router-outlet></router-outlet>
+      }
     </main>
   `,
   styles: `
@@ -18,9 +37,27 @@ import { ExamplesHeader } from '../components/ExamplesHeader';
     }
 
     .examples {
-      flex: 1 auto;
       display: flex;
+      flex: 1 auto;
+
+      > .alert {
+        align-self: center;
+        width: 320px;
+        margin: 0 auto;
+      }
     }
   `,
 })
-export default class ExamplesPage {}
+export default class ExamplesPage implements AfterViewInit {
+  platformId = inject(PLATFORM_ID);
+  isSafari = signal(false);
+
+  ngAfterViewInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      setTimeout(() => {
+        const ua = navigator.userAgent;
+        this.isSafari.set(/webkit/i.test(ua) && !/edge|chrome/i.test(ua));
+      });
+    }
+  }
+}
