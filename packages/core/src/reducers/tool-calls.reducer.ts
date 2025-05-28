@@ -38,9 +38,6 @@ export const reducer = createReducer(
   on(apiActions.generateMessageSuccess, (state, action) => {
     const message = action.payload;
 
-    console.log('in generate meessage success for tool-calls.reducer');
-    console.log(message.tool_calls);
-
     if (!message.tool_calls) {
       return state;
     }
@@ -74,7 +71,5 @@ export const selectToolCalls = select(
 );
 
 export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) => {
-  console.log(toolCalls);
-
   return toolCalls.filter((toolCall) => toolCall.status === 'pending');
 });

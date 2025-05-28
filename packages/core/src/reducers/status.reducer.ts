@@ -84,8 +84,6 @@ export const reducer = createReducer(
     };
   }),
   on(apiActions.generateMessageExhaustedRetries, (state) => {
-    console.log('in exhausted retires for status reducer');
-
     return {
       ...state,
       exhaustedRetries: true,

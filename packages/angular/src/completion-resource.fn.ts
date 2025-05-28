@@ -87,7 +87,6 @@ export function completionResource<Input>(
   });
 
   const status = computed(() => {
-    console.log(exhaustedRetries());
     if (exhaustedRetries()) {
       return ResourceStatus.Error;
     }

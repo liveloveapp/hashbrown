@@ -94,7 +94,6 @@ export const generateMessage = createEffect((store) => {
               new Error(`HTTP error! Status: ${response.status}`),
             ),
           );
-          // return;
           continue;
         }
 
@@ -102,7 +101,6 @@ export const generateMessage = createEffect((store) => {
           store.dispatch(
             apiActions.generateMessageError(new Error(`Response body is null`)),
           );
-          // return;
           continue;
         }
 
@@ -153,7 +151,6 @@ export const generateMessage = createEffect((store) => {
             store.dispatch(
               apiActions.generateMessageError(new Error(`Bad chunk format`)),
             );
-            // return;
             break;
           }
         }

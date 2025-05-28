@@ -43,9 +43,6 @@ export const reducer = createReducer(
       content: message.message,
     };
 
-    console.log('adding error message to state');
-    console.log(errorMessage);
-
     return {
       ...state,
       messages: [...state.messages, errorMessage],
