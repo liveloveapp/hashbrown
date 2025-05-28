@@ -70,6 +70,6 @@ export const selectToolCalls = select(
   (ids, entities) => ids.map((id) => entities[id]),
 );
 
-export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) =>
-  toolCalls.filter((toolCall) => toolCall.status === 'pending'),
-);
+export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) => {
+  return toolCalls.filter((toolCall) => toolCall.status === 'pending');
+});

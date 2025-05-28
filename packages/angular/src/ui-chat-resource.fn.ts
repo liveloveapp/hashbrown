@@ -43,14 +43,17 @@ export type UiAssistantMessage<Tools extends Chat.AnyTool> =
   };
 
 export type UiUserMessage = Chat.UserMessage;
+export type UiErrorMessage = Chat.ErrorMessage;
 
 export type UiChatMessage<Tools extends Chat.AnyTool> =
   | UiAssistantMessage<Tools>
-  | UiUserMessage;
+  | UiUserMessage
+  | UiErrorMessage;
 
 export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<UiChatMessage<Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
+  resendMessages: () => void;
 }
 export function uiChatResource<Tools extends Chat.AnyTool>(args: {
   components: ExposedComponent<any>[];
@@ -107,6 +110,9 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
         };
       }
       if (message.role === 'user') {
+        return message;
+      }
+      if (message.role === 'error') {
         return message;
       }
 

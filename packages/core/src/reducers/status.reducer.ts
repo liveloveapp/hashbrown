@@ -6,6 +6,7 @@ export interface StatusState {
   isSending: boolean;
   isRunningToolCalls: boolean;
   error: Error | null;
+  exhaustedRetries: boolean;
 }
 
 export const initialStatusState: StatusState = {
@@ -13,6 +14,7 @@ export const initialStatusState: StatusState = {
   isSending: false,
   isRunningToolCalls: false,
   error: null,
+  exhaustedRetries: false,
 };
 
 export const reducer = createReducer(
@@ -30,12 +32,17 @@ export const reducer = createReducer(
 
     return state;
   }),
-  on(devActions.sendMessage, devActions.setMessages, (state) => {
-    return {
-      ...state,
-      isSending: true,
-    };
-  }),
+  on(
+    devActions.sendMessage,
+    devActions.setMessages,
+    devActions.resendMessages,
+    (state) => {
+      return {
+        ...state,
+        isSending: true,
+      };
+    },
+  ),
   on(apiActions.generateMessageStart, (state) => {
     return {
       ...state,
@@ -49,19 +56,20 @@ export const reducer = createReducer(
       isReceiving: true,
     };
   }),
-  on(apiActions.generateMessageSuccess, (state, action) => {
-    const toolCalls = action.payload.toolCalls;
-
+  on(apiActions.generateMessageSuccess, (state) => {
     return {
       ...state,
       isReceiving: false,
       isRunningToolCalls: true,
+      error: null,
+      exhaustedRetries: false,
     };
   }),
   on(apiActions.generateMessageError, (state, action) => {
     return {
       ...state,
       isReceiving: false,
+      isSending: false,
       error: action.payload,
     };
   }),
@@ -79,6 +87,12 @@ export const reducer = createReducer(
       error: action.payload,
     };
   }),
+  on(apiActions.generateMessageExhaustedRetries, (state) => {
+    return {
+      ...state,
+      exhaustedRetries: true,
+    };
+  }),
   on(internalActions.skippedToolCalls, (state) => {
     return {
       ...state,
@@ -94,3 +108,5 @@ export const selectIsSending = (state: StatusState) => state.isSending;
 export const selectIsRunningToolCalls = (state: StatusState) =>
   state.isRunningToolCalls;
 export const selectError = (state: StatusState) => state.error;
+export const selectExhaustedRetries = (state: StatusState) =>
+  state.exhaustedRetries;

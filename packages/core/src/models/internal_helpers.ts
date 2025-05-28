@@ -59,6 +59,14 @@ export function toViewMessagesFromInternal(
         },
       ];
     }
+    case 'error': {
+      return [
+        {
+          role: 'error',
+          content: message.content,
+        },
+      ];
+    }
     case 'assistant': {
       const tater = outputSchema
         ? new StreamSchemaParser(outputSchema)
@@ -291,6 +299,15 @@ export function toInternalMessagesFromApi(
     return [
       {
         role: 'user',
+        content: message.content,
+      },
+    ];
+  }
+
+  if (message.role === 'error') {
+    return [
+      {
+        role: 'error',
         content: message.content,
       },
     ];

@@ -36,6 +36,7 @@ export function structuredCompletionResource<
     schema,
     tools,
     debugName,
+    retries: 3,
   });
 
   effect(() => {

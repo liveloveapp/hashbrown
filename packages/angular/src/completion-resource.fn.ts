@@ -42,6 +42,7 @@ export function completionResource<Input>(
     system: readSignalLike(system),
     messages: [],
     tools: [],
+    retries: 3,
   });
   const messages = toSignal(hashbrown.observeMessages);
   const internalMessages = computed(() => {
@@ -59,6 +60,10 @@ export function completionResource<Input>(
     ];
   });
 
+  const error = toSignal(hashbrown.observeError);
+
+  const exhaustedRetries = toSignal(hashbrown.observeExhaustedRetries);
+
   effect(() => {
     const _messages = internalMessages();
 
@@ -67,6 +72,7 @@ export function completionResource<Input>(
 
   const value = computed(() => {
     const lastMessage = messages()[messages().length - 1];
+
     if (
       lastMessage &&
       lastMessage.role === 'assistant' &&
@@ -78,8 +84,13 @@ export function completionResource<Input>(
     return null;
   });
 
-  const status = signal(ResourceStatus.Idle);
-  const error = signal<Error | null>(null);
+  const status = computed(() => {
+    if (exhaustedRetries()) {
+      return ResourceStatus.Error;
+    }
+
+    return ResourceStatus.Idle;
+  });
   const isLoading = signal(false);
   const reload = () => {
     return true;

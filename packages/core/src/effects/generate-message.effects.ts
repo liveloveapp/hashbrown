@@ -13,6 +13,7 @@ import {
   selectMiddleware,
   selectModel,
   selectResponseSchema,
+  selectRetries,
   selectShouldGenerateMessage,
   selectSystem,
 } from '../reducers';
@@ -25,6 +26,7 @@ export const generateMessage = createEffect((store) => {
     devActions.init,
     devActions.setMessages,
     devActions.sendMessage,
+    devActions.resendMessages,
     internalActions.runToolCallsSuccess,
     switchAsync(async (switchSignal) => {
       const apiUrl = store.read(selectApiUrl);
@@ -34,6 +36,7 @@ export const generateMessage = createEffect((store) => {
       const messages = store.read(selectApiMessages);
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const debounce = store.read(selectDebounce);
+      const retries = store.read(selectRetries);
       const tools = store.read(selectApiTools);
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
@@ -57,75 +60,95 @@ export const generateMessage = createEffect((store) => {
 
       await sleep(debounce, switchSignal);
 
-      if (effectAbortController.signal.aborted || switchSignal.aborted) {
-        return;
-      }
+      let attempt = 0;
 
-      let requestInit: RequestInit = {
-        method: 'POST',
-        body: JSON.stringify(params),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: switchSignal,
-      };
+      do {
+        attempt++;
 
-      if (middleware && middleware.length) {
-        for (const m of middleware) {
-          requestInit = await m(requestInit);
+        if (effectAbortController.signal.aborted || switchSignal.aborted) {
+          return;
         }
-      }
 
-      const response = await fetch(apiUrl, requestInit);
+        let requestInit: RequestInit = {
+          method: 'POST',
+          body: JSON.stringify(params),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: switchSignal,
+        };
 
-      if (!response.ok) {
-        store.dispatch(
-          apiActions.generateMessageError(
-            new Error(`HTTP error! Status: ${response.status}`),
-          ),
-        );
-        return;
-      }
-
-      if (!response.body) {
-        store.dispatch(
-          apiActions.generateMessageError(new Error('Response body is null')),
-        );
-        return;
-      }
-
-      store.dispatch(apiActions.generateMessageStart());
-
-      let message: Chat.Api.AssistantMessage | null = null;
-
-      for await (const frame of decodeFrames(response.body, {
-        signal: effectAbortController.signal,
-      })) {
-        switch (frame.type) {
-          case 'chunk': {
-            message = updateMessagesWithDelta(message, frame.chunk);
-            if (message) {
-              store.dispatch(apiActions.generateMessageChunk(message));
-            }
-            break;
-          }
-          case 'error': {
-            store.dispatch(
-              apiActions.generateMessageError(new Error(frame.error)),
-            );
-            break;
-          }
-          case 'finish': {
-            if (message) {
-              store.dispatch(
-                apiActions.generateMessageSuccess(
-                  message as unknown as Chat.Api.AssistantMessage,
-                ),
-              );
-            }
-            break;
+        if (middleware && middleware.length) {
+          for (const m of middleware) {
+            requestInit = await m(requestInit);
           }
         }
+
+        const response = await fetch(apiUrl, requestInit);
+
+        if (!response.ok) {
+          store.dispatch(
+            apiActions.generateMessageError(
+              new Error(`HTTP error! Status: ${response.status}`),
+            ),
+          );
+          continue;
+        }
+
+        if (!response.body) {
+          store.dispatch(
+            apiActions.generateMessageError(new Error(`Response body is null`)),
+          );
+          continue;
+        }
+
+        store.dispatch(apiActions.generateMessageStart());
+
+        let message: Chat.Api.AssistantMessage | null = null;
+
+        try {
+          for await (const frame of decodeFrames(response.body, {
+            signal: effectAbortController.signal,
+          })) {
+            switch (frame.type) {
+              case 'chunk': {
+                message = updateMessagesWithDelta(message, frame.chunk);
+                if (message) {
+                  store.dispatch(apiActions.generateMessageChunk(message));
+                }
+                break;
+              }
+              case 'error': {
+                store.dispatch(
+                  apiActions.generateMessageError(new Error(frame.error)),
+                );
+                break;
+              }
+              case 'finish': {
+                if (message) {
+                  store.dispatch(
+                    apiActions.generateMessageSuccess(
+                      message as unknown as Chat.Api.AssistantMessage,
+                    ),
+                  );
+                }
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          if (e instanceof Error) {
+            store.dispatch(apiActions.generateMessageError(e));
+          }
+          continue;
+        }
+
+        break;
+      } while (retries > 0 && attempt < retries + 1);
+
+      // Did we exhaust our retries?
+      if (retries > 0 && attempt > retries) {
+        store.dispatch(apiActions.generateMessageExhaustedRetries());
       }
     }, effectAbortController.signal),
   );

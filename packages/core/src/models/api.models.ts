@@ -28,6 +28,11 @@ export interface UserMessage {
   content: string;
 }
 
+export interface ErrorMessage {
+  role: 'error';
+  content: string;
+}
+
 export interface ToolMessage {
   role: 'tool';
   content: PromiseSettledResult<any>;
@@ -35,7 +40,11 @@ export interface ToolMessage {
   toolName: string;
 }
 
-export type Message = UserMessage | AssistantMessage | ToolMessage;
+export type Message =
+  | UserMessage
+  | ErrorMessage
+  | AssistantMessage
+  | ToolMessage;
 
 export interface CompletionChunkChoice {
   index: number;

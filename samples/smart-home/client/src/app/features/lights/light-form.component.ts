@@ -1,8 +1,10 @@
 import {
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
+  ResourceStatus,
   viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -18,6 +20,7 @@ import { map } from 'rxjs/operators';
 import { LightsPageActions } from './actions/lights-page.actions';
 import { Store } from '@ngrx/store';
 import { completionResource } from '@hashbrownai/angular';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-light-form',
@@ -30,6 +33,7 @@ import { completionResource } from '@hashbrownai/angular';
     MatButtonModule,
     MatCardModule,
     RouterModule,
+    MatIconModule,
   ],
   template: `
     <div class="form-container">
@@ -60,6 +64,13 @@ import { completionResource } from '@hashbrownai/angular';
                 <mat-error>Name is required</mat-error>
               }
             </mat-form-field>
+
+            @if (lostService()) {
+              <div class="error">
+                <mat-icon inline>error</mat-icon>Assisted completion is not
+                available.
+              </div>
+            }
 
             <div class="actions">
               <button mat-button type="button" [routerLink]="['/lights']">
@@ -128,6 +139,16 @@ import { completionResource } from '@hashbrownai/angular';
         position: relative;
         background: transparent;
       }
+
+      .error {
+        background-color: var(--mat-sys-error-container);
+        width: fit-content;
+        padding: 16px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
     `,
   ],
 })
@@ -172,6 +193,10 @@ export class LightFormComponent {
     this.route.params.pipe(map((params) => Boolean(params['id']))),
   );
 
+  protected lostService = computed(
+    () => this.nameCompletion.status() === ResourceStatus.Error,
+  );
+
   constructor() {
     const id = this.route.snapshot.params['id'];
     if (id) {
@@ -193,9 +218,6 @@ export class LightFormComponent {
       if (!name) {
         throw new Error('Name is required');
       }
-
-      console.log(name);
-      console.log(id);
 
       if (id) {
         this.store.dispatch(

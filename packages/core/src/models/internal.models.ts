@@ -28,4 +28,9 @@ export interface UserMessage {
   content: string;
 }
 
-export type Message = AssistantMessage | UserMessage;
+export interface ErrorMessage {
+  role: 'error';
+  content: string;
+}
+
+export type Message = AssistantMessage | UserMessage | ErrorMessage;
