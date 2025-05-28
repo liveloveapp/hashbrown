@@ -625,12 +625,12 @@
         },
         {
           "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.constString:function(1)",
+          "canonicalReference": "@hashbrownai/core!s.literal:function(1)",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare function constString<T extends "
+              "text": "export declare function literal<T extends "
             },
             { "kind": "Content", "text": "string" },
             { "kind": "Content", "text": ">(value: " },
@@ -662,7 +662,7 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "name": "constString",
+          "name": "literal",
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -821,12 +821,12 @@
         },
         {
           "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.enumType:function(1)",
+          "canonicalReference": "@hashbrownai/core!s.enumeration:function(1)",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare function enumType<Entries extends "
+              "text": "export declare function enumeration<Entries extends "
             },
             { "kind": "Content", "text": "string[]" },
             { "kind": "Content", "text": ">(description: " },
@@ -865,7 +865,7 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "name": "enumType",
+          "name": "enumeration",
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -1742,12 +1742,12 @@
         },
         {
           "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.isConstStringType:function(1)",
+          "canonicalReference": "@hashbrownai/core!s.isLiteralType:function(1)",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare function isConstStringType(type: "
+              "text": "export declare function isLiteralType(type: "
             },
             {
               "kind": "Reference",
@@ -1779,7 +1779,7 @@
               "isOptional": false
             }
           ],
-          "name": "isConstStringType",
+          "name": "isLiteralType",
           "docs": {
             "modifiers": {
               "isInternal": false,
