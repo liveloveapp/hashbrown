@@ -4,7 +4,7 @@ import {
   toObservable,
   toSignal,
 } from '@angular/core/rxjs-interop';
-import { switchMap, tap } from 'rxjs';
+import { switchMap } from 'rxjs';
 import { Symbol } from '../../../../components/Symbol';
 import { ReferenceService } from '../../../../services/ReferenceService';
 
@@ -28,7 +28,6 @@ export default class SubpackageSymbolPage {
   }));
   resolvedSymbol = toSignal(
     toObservable(this.inputs).pipe(
-      tap(console.log),
       switchMap((inputs) =>
         this.referenceService.loadReferenceData(
           `${inputs.package}/${inputs.subpackage}`,
