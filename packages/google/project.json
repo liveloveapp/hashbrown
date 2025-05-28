@@ -34,6 +34,7 @@
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/packages/google"],
+      "cache": true,
       "options": {
         "jestConfig": "packages/google/jest.config.ts",
         "passWithNoTests": true

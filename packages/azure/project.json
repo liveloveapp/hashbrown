@@ -34,6 +34,7 @@
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/packages/azure"],
+      "cache": true,
       "options": {
         "jestConfig": "packages/azure/jest.config.ts",
         "passWithNoTests": true

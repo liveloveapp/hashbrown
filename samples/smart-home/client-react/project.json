@@ -5,18 +5,5 @@
   "projectType": "application",
   "tags": [],
   "// targets": "to see all targets run: nx show project client-react --web",
-  "targets": {
-    "build": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "echo 'Skipping build for client-react'"
-      }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "echo 'Skipping test for client-react'"
-      }
-    }
-  }
+  "targets": {}
 }
