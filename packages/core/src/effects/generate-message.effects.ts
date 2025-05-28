@@ -78,7 +78,9 @@ export const generateMessage = createEffect((store) => {
         }
       }
 
-      const response = await fetch(apiUrl, requestInit);
+      // TODO: remove after testing
+
+      const response = await fetch('apiUrl', requestInit);
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);

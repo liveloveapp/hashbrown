@@ -192,6 +192,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     options.prompt,
     options.temperature,
     tools,
+    hashbrown,
   ]);
 
   const sendMessage = useCallback(

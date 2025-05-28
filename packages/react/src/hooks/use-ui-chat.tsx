@@ -23,6 +23,7 @@ export type UiUserMessage = Chat.UserMessage;
 
 export type UiChatMessage<Tools extends Chat.AnyTool> =
   | UiAssistantMessage<Tools>
+  | UiErrorMessage
   | UiUserMessage;
 
 export interface UiChatOptions<Tools extends Chat.AnyTool> {
@@ -133,6 +134,14 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
           ui: message.content?.ui ? buildContent(message.content.ui) : null,
         } as UiAssistantMessage<Tools>;
       }
+
+      if (message.role === 'error') {
+        return {
+          ...message,
+          ui: message.content?.ui ? buildContent(message.content.ui) : null,
+        } as UiAssistantMessage<Tools>;
+      }
+
       return message;
     });
   }, [buildContent, chat.messages]);
