@@ -12,6 +12,7 @@ import { SymbolReturns } from './SymbolReturns';
 import { SymbolSummary } from './SymbolSummary';
 import { SymbolTypeParams } from './SymbolTypeParams';
 import { SymbolUsageNotes } from './SymbolUsageNotes';
+import { SymbolChip } from './SymbolChip';
 
 @Component({
   selector: 'www-symbol',
@@ -24,44 +25,59 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
     SymbolSummary,
     SymbolTypeParams,
     SymbolUsageNotes,
+    SymbolChip,
   ],
   template: `
-    @for (symbol of summary().members; track $index) {
-      <www-symbol-header
-        [name]="summary().name"
-        [fileUrlPath]="summary().fileUrlPath"
-        [symbol]="symbol"
-      />
-      <article>
-        @if (symbol.docs.summary) {
-          <www-symbol-summary [symbol]="symbol" />
+    @if (summary().kind === 'Namespace') {
+      @for (symbol of summary().members; track $index) {
+        <www-symbol-header
+          [name]="summary().name"
+          [fileUrlPath]="summary().fileUrlPath"
+          [symbol]="symbol"
+        />
+
+        @for (childSymbol of symbol.members; track $index) {
+          <www-symbol-chip [symbol]="childSymbol" />
         }
-        <www-symbol-api [symbol]="symbol" />
-        @if (
-          symbol.parameters?.length ||
-          symbol.typeParameters?.length ||
-          symbol.returnTypeTokenRange ||
-          symbol.docs.usageNotes
-        ) {
-          <div class="content">
-            @if (symbol.parameters?.length) {
-              <www-symbol-params [symbol]="symbol" />
-            }
-            @if (symbol.typeParameters?.length) {
-              <www-symbol-type-params [symbol]="symbol" />
-            }
-            @if (symbol.returnTypeTokenRange) {
-              <www-symbol-returns [symbol]="symbol" />
-            }
-            @if (symbol.docs.usageNotes) {
-              <www-symbol-usage-notes [symbol]="symbol" />
-            }
-          </div>
-        }
-        @if (getMethodsForSymbol(symbol).length) {
-          <www-symbol-methods [symbol]="symbol" />
-        }
-      </article>
+      }
+    } @else {
+      @for (symbol of summary().members; track $index) {
+        <www-symbol-header
+          [name]="summary().name"
+          [fileUrlPath]="summary().fileUrlPath"
+          [symbol]="symbol"
+        />
+        <article>
+          @if (symbol.docs.summary) {
+            <www-symbol-summary [symbol]="symbol" />
+          }
+          <www-symbol-api [symbol]="symbol" />
+          @if (
+            symbol.parameters?.length ||
+            symbol.typeParameters?.length ||
+            symbol.returnTypeTokenRange ||
+            symbol.docs.usageNotes
+          ) {
+            <div class="content">
+              @if (symbol.parameters?.length) {
+                <www-symbol-params [symbol]="symbol" />
+              }
+              @if (symbol.typeParameters?.length) {
+                <www-symbol-type-params [symbol]="symbol" />
+              }
+              @if (symbol.returnTypeTokenRange) {
+                <www-symbol-returns [symbol]="symbol" />
+              }
+              @if (symbol.docs.usageNotes) {
+                <www-symbol-usage-notes [symbol]="symbol" />
+              }
+            </div>
+          }
+          @if (getMethodsForSymbol(symbol).length) {
+            <www-symbol-methods [symbol]="symbol" />
+          }
+        </article>
+      }
     }
   `,
   styles: [
