@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -8,6 +8,7 @@ import { PredictionsComponent } from './shared/predictions.component';
 import { ChatActions } from './features/chat/actions';
 import { selectIsChatPanelOpen } from './store';
 import { ChatPanelComponent } from './features/chat/chat-panel.component';
+import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +18,7 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
     RouterModule,
     MatToolbarModule,
     MatButtonModule,
+    MatIconModule,
     PredictionsComponent,
     ChatPanelComponent,
   ],
@@ -37,6 +39,9 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
       >
         Scheduled Scenes
       </button>
+      <button mat-button (click)="toggleChatPanel()">
+        <mat-icon>chat</mat-icon> Chat
+      </button>
     </mat-toolbar>
 
     <main [class.chatPanelOpen]="isChatPanelOpen()">
@@ -56,13 +61,15 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
       }
 
       main {
-        padding: 20px;
+        padding: 84px 20px;
         max-width: 1200px;
         margin: 0 auto;
       }
 
       mat-toolbar {
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        position: fixed;
+        z-index: 100;
       }
 
       .chatPanelOpen {
@@ -75,11 +82,15 @@ import { ChatPanelComponent } from './features/chat/chat-panel.component';
     `,
   ],
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent {
   store = inject(Store);
   isChatPanelOpen = this.store.selectSignal(selectIsChatPanelOpen);
 
-  ngAfterViewInit() {
-    this.store.dispatch(ChatActions.openChatPanel());
+  constructor(iconRegistry: MatIconRegistry) {
+    iconRegistry.setDefaultFontSetClass('material-symbols-outlined');
+  }
+
+  toggleChatPanel() {
+    this.store.dispatch(ChatActions.toggleChatPanel());
   }
 }

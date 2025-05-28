@@ -63,6 +63,10 @@ export const selectStreamingMessage = select(
   selectStreamingMessageState,
   fromStreamingMessage.selectStreamingMessage,
 );
+export const selectStreamingToolCallEntities = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectStreamingToolCallEntities,
+);
 
 /**
  * Tools
@@ -126,11 +130,15 @@ export const selectViewMessages = select(
   selectMessages,
   selectToolCallEntities,
   selectStreamingMessage,
+  selectStreamingToolCallEntities,
+  selectTools,
   selectResponseSchema,
   (
     messages,
     toolCalls,
     streamingMessage,
+    streamingToolCalls,
+    tools,
     responseSchema,
   ): Chat.AnyMessage[] => {
     const nonStreamingMessages = messages.flatMap(
@@ -138,6 +146,7 @@ export const selectViewMessages = select(
         Chat.helpers.toViewMessagesFromInternal(
           message,
           toolCalls,
+          tools,
           responseSchema,
         ),
     );
@@ -147,7 +156,8 @@ export const selectViewMessages = select(
     ).flatMap((message): Chat.AnyMessage[] =>
       Chat.helpers.toViewMessagesFromInternal(
         message,
-        toolCalls,
+        streamingToolCalls,
+        tools,
         responseSchema,
       ),
     );

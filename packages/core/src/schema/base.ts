@@ -15,6 +15,7 @@
 import {
   CleanInterfaceShape,
   Flatten,
+  IsStringUnion,
   IsUnion,
   UnionToTuple,
 } from '../utils/types';
@@ -702,19 +703,19 @@ export function anyOf<const Options extends readonly HashbrownType[]>(
  * --------------------------------------
  */
 
-interface EnumTypeDefinition<out Entries extends string[]>
+interface EnumTypeDefinition<out Entries extends readonly any[]>
   extends HashbrownTypeDefinition {
   type: 'enum';
   entries: Entries;
 }
 
-interface EnumTypeInternals<out Entries extends string[]>
-  extends HashbrownTypeInternals<Entries> {
-  definition: EnumTypeDefinition<Entries>;
+interface EnumTypeInternals<Result extends readonly any[]>
+  extends HashbrownTypeInternals<Result[number]> {
+  definition: EnumTypeDefinition<Result>;
 }
 
-export interface EnumType<out Entries extends string[] = string[]>
-  extends HashbrownType<Entries> {
+export interface EnumType<Entries extends readonly string[] = readonly string[]>
+  extends HashbrownType {
   [internal]: EnumTypeInternals<Entries>;
 }
 
@@ -749,11 +750,16 @@ export function isEnumType(type: HashbrownType): type is EnumType {
   return type[internal].definition.type === 'enum';
 }
 
-export function enumType<Entries extends string[]>(
+export function enumType<const Entries extends readonly string[]>(
   description: string,
-  entries: Entries,
-) {
-  return new EnumType({ type: 'enum', description, entries, streaming: false });
+  entries: [...Entries],
+): EnumType<Entries> {
+  return new EnumType({
+    type: 'enum',
+    description,
+    entries,
+    streaming: false,
+  }) as any;
 }
 
 /**
@@ -826,10 +832,16 @@ type SchemaForUnion<T> = AnyOfType<
 >;
 
 export type Schema<T> =
-  IsUnion<T> extends true
-    ? SchemaForUnion<T>
-    : T extends string[]
-      ? EnumType<T>
+  IsStringUnion<T> extends true
+    ? [T] extends [string]
+      ? UnionToTuple<T> extends infer U
+        ? U extends string[]
+          ? EnumType<U>
+          : never
+        : never
+      : never
+    : IsUnion<T> extends true
+      ? SchemaForUnion<T>
       : T extends Array<infer U>
         ? ArrayType<Schema<U>>
         : T extends string
@@ -845,3 +857,5 @@ export type Schema<T> =
                 : T extends object
                   ? ObjectType<{ [K in keyof T]: Schema<T[K]> }>
                   : never;
+
+type R = Schema<'a' | 'b'>;

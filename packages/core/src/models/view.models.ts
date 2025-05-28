@@ -13,7 +13,7 @@ export type Tool<Name, Args, Result> = {
   handler: (input: Args, abortSignal: AbortSignal) => Promise<Result>;
 };
 
-export type AnyTool = Tool<any, any, any>;
+export type AnyTool = Tool<string, any, any>;
 
 export type UserMessage = {
   role: 'user';

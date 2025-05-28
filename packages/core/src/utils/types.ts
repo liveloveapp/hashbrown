@@ -76,6 +76,9 @@ export type IsUnion<T, U = T> = T extends any
     : true
   : never;
 
+export type IsStringUnion<T> =
+  IsUnion<T> extends true ? (T extends string ? true : false) : false;
+
 /**
  * A utility type that converts a union type `U` to an intersection type.
  * This type is useful for converting a union to an intersection,
