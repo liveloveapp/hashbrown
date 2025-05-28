@@ -46,6 +46,8 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+      - name: Start CI Run
+        run: npx nx-cloud start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="test"
 
       - name: Lint, test, and build affected.
         run: npx nx affected -t lint,test,build --parallel=3
