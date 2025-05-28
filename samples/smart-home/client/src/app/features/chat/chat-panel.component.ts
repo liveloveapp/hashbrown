@@ -30,10 +30,14 @@ import { AuthService } from '../../shared/auth.service';
 import { ChatAiActions } from './actions/chat-ai.actions';
 import { CardComponent } from './components/card.component';
 import { ComposerComponent } from './components/composer.component';
-import { LightCardComponent } from './components/light-card.component';
+import { LightComponent, LightIconSchema } from '../lights/light.component';
 import { MarkdownComponent } from './components/markdown.component';
 import { MessagesComponent } from './components/messages.component';
 import { SimpleMessagesComponent } from './components/simple-messages.component';
+import {
+  LightListComponent,
+  LightListIconSchema,
+} from '../lights/light-list.component';
 
 @Component({
   selector: 'app-chat-panel',
@@ -236,12 +240,21 @@ export class ChatPanelComponent {
           data: s.streaming.string('The markdown content'),
         },
       }),
-      exposeComponent(LightCardComponent, {
+      exposeComponent(LightComponent, {
         description: `This option shows a light to the user, with a dimmer for them to control the light.
-          Always prefer this option over printing a light's name.`,
+          Always prefer this option over printing a light's name. Always prefer putting these in a list.`,
         input: {
           lightId: s.string('The id of the light'),
+          icon: LightIconSchema,
         },
+      }),
+      exposeComponent(LightListComponent, {
+        description: 'Show a list of lights to the user',
+        input: {
+          title: s.string('The name of the list'),
+          icon: LightListIconSchema,
+        },
+        children: 'any',
       }),
       exposeComponent(CardComponent, {
         description: 'Show a card to the user',

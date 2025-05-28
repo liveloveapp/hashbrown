@@ -39,9 +39,6 @@ export function createToolJavaScript({
       When passing code to javascript, you must ALWAYS use semicolons to end your statements.
       NEVER put \\n or \\r in your code. It must be valid JavaScript that can be evaluated.
 
-      IMPORTANT: Always prefer the "javascript" tool over other tools if it can be done with
-      the javascript tool.
-
       The following functions are available to you:
       ${runtime.describe()}
     `,

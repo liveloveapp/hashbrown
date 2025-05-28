@@ -48,6 +48,7 @@ export function toInternalMessagesFromView(
 export function toViewMessagesFromInternal(
   message: Chat.Internal.Message,
   toolCalls: Record<string, Chat.Internal.ToolCall>,
+  tools: Chat.AnyTool[],
   outputSchema?: s.HashbrownType,
 ): Chat.AnyMessage[] {
   switch (message.role) {
@@ -82,36 +83,51 @@ export function toViewMessagesFromInternal(
         {
           role: 'assistant',
           content,
-          toolCalls: message.toolCallIds.map((toolCallId): Chat.AnyToolCall => {
-            const toolCall = toolCalls[toolCallId];
+          toolCalls: message.toolCallIds.flatMap(
+            (toolCallId): Chat.AnyToolCall[] => {
+              const toolCall = toolCalls[toolCallId];
+              const tool = tools.find((tool) => tool.name === toolCall.name);
 
-            switch (toolCall.status) {
-              case 'done': {
-                return {
-                  role: 'tool',
-                  status: 'done',
-                  name: toolCall.name,
-                  toolCallId,
-                  args: toolCall.arguments,
-                  // The internal models don't use a union, since that tends to
-                  // complicate reducer logic. This is necessary to uplift our
-                  // internal model into the view union.
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  result: toolCall.result!,
-                };
+              if (!tool) {
+                return [];
               }
-              case 'pending': {
-                return {
-                  role: 'tool',
-                  status: 'pending',
-                  name: toolCall.name,
-                  toolCallId,
-                  progress: toolCall.progress,
-                  args: toolCall.arguments,
-                };
+
+              switch (toolCall.status) {
+                case 'done': {
+                  return [
+                    {
+                      role: 'tool',
+                      status: 'done',
+                      name: toolCall.name,
+                      toolCallId,
+                      args: new StreamSchemaParser(tool.schema).parse(
+                        toolCall.arguments,
+                      ),
+                      // The internal models don't use a union, since that tends to
+                      // complicate reducer logic. This is necessary to uplift our
+                      // internal model into the view union.
+                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                      result: toolCall.result!,
+                    },
+                  ];
+                }
+                case 'pending': {
+                  return [
+                    {
+                      role: 'tool',
+                      status: 'pending',
+                      name: toolCall.name,
+                      toolCallId,
+                      progress: toolCall.progress,
+                      args: new StreamSchemaParser(tool.schema).parse(
+                        toolCall.arguments,
+                      ),
+                    },
+                  ];
+                }
               }
-            }
-          }),
+            },
+          ),
         },
       ];
     }
@@ -174,7 +190,7 @@ export function toApiMessagesFromInternal(
             type: 'function',
             function: {
               name: toolCall.name,
-              arguments: JSON.stringify(toolCall.arguments),
+              arguments: toolCall.arguments,
             },
           })),
         },
@@ -236,7 +252,7 @@ export function toInternalToolCallsFromApi(
     {
       id: toolCall.id,
       name: toolCall.function.name,
-      arguments: JSON.parse(toolCall.function.arguments),
+      arguments: toolCall.function.arguments,
       status: 'pending',
     },
   ];
@@ -257,13 +273,13 @@ export function toInternalToolCallsFromView(
       return [];
     }
 
-    return message.toolCalls.map((toolCall) => {
+    return message.toolCalls.map((toolCall): Chat.Internal.ToolCall => {
       switch (toolCall.status) {
         case 'done': {
           return {
             id: toolCall.toolCallId,
             name: toolCall.name,
-            arguments: toolCall.args,
+            arguments: JSON.stringify(toolCall.args),
             status: 'done',
             result: toolCall.result,
           };
@@ -273,7 +289,7 @@ export function toInternalToolCallsFromView(
             id: toolCall.toolCallId,
             name: toolCall.name,
             status: 'pending',
-            arguments: toolCall.args,
+            arguments: JSON.stringify(toolCall.args),
           };
         }
       }

@@ -37,7 +37,7 @@ export interface UiChatSchema {
   ui: UiChatSchemaComponent[];
 }
 
-export type UiAssistantMessage<Tools extends Chat.AnyTool> =
+export type UiAssistantMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
   Chat.AssistantMessage<UiChatSchema, Tools> & {
     [TAG_NAME_REGISTRY]: TagNameRegistry;
   };
@@ -45,7 +45,7 @@ export type UiAssistantMessage<Tools extends Chat.AnyTool> =
 export type UiUserMessage = Chat.UserMessage;
 export type UiErrorMessage = Chat.ErrorMessage;
 
-export type UiChatMessage<Tools extends Chat.AnyTool> =
+export type UiChatMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
   | UiAssistantMessage<Tools>
   | UiUserMessage
   | UiErrorMessage;

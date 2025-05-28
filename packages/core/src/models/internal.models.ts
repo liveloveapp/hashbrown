@@ -11,7 +11,7 @@ export interface Tool {
 export interface ToolCall {
   id: string;
   name: string;
-  arguments: object;
+  arguments: string;
   result?: PromiseSettledResult<any>;
   progress?: number;
   status: 'pending' | 'done';
