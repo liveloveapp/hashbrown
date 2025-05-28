@@ -52,7 +52,10 @@ app.post('/chat', async (req, res, next) => {
   // );
 
   // Google Gemini
-  // const stream = HashbrownGoogle.stream.text(GOOGLE_API_KEY, request);
+  // const stream = HashbrownGoogle.stream.text({
+  //   apiKey: GOOGLE_API_KEY,
+  //   request,
+  // });
 
   // OpenAI
   const stream = HashbrownOpenAI.stream.text({

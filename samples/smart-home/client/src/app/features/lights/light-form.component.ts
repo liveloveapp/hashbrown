@@ -2,7 +2,6 @@
 import {
   Component,
   computed,
-  effect,
   ElementRef,
   inject,
   ResourceStatus,
@@ -132,7 +131,7 @@ import { MatIconModule } from '@angular/material/icon';
       }
 
       .ghost-input .completion {
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(0, 0, 0, 0.5);
         font-style: italic;
       }
 
@@ -166,6 +165,7 @@ export class LightFormComponent {
 
   protected nameSignal = toSignal(this.form.get('name')!.valueChanges);
   protected lightNames = this.smartHome.lights().map((l) => l.name);
+
   readonly nameCompletion = completionResource({
     model: 'gpt-4o-mini',
     input: this.nameSignal,
