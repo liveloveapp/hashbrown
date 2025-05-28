@@ -61,7 +61,7 @@ const PREDICTIONS_SCHEMA = s.anyOf([
   template: `
     @if (lostService()) {
       <div class="error">
-        <mat-icon inline>error</mat-icon>Structured completion is not available.
+        <mat-icon inline>error</mat-icon>Prediction is not available.
       </div>
     }
     <!-- Loop over predictions and display according to type -->
