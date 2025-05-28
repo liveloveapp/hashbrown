@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import sdk from '@stackblitz/sdk';
 import type { StackblitzConfig } from '../../tools/stackblitz-plugin';
 
-const EXAMPLE_FILES = import.meta.glob('../examples/**/stackblitz.yml', {
+const EXAMPLE_FILES = import.meta.glob('../../examples/**/stackblitz.yml', {
   import: 'default',
 });
 
@@ -10,7 +10,7 @@ const EXAMPLE_FILES = import.meta.glob('../examples/**/stackblitz.yml', {
 export class ExamplesService {
   async getConfig(exampleName: string): Promise<StackblitzConfig> {
     return (await EXAMPLE_FILES[
-      `../examples/${exampleName}/stackblitz.yml`
+      `../../examples/${exampleName}/stackblitz.yml`
     ]()) as StackblitzConfig;
   }
 

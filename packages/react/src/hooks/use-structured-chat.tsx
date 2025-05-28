@@ -18,9 +18,9 @@ export interface UseStructuredChatOptions<
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   /**
    * The schema to use for the chat.
@@ -39,21 +39,16 @@ export interface UseStructuredChatOptions<
   tools?: Tools[];
 
   /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
-
-  /**
    * The debounce time between sends to the endpoint.
    * default: 150
    */
   debounceTime?: number;
+
+  /**
+   * Number of retries if an error is received.
+   * default: 0
+   */
+  retries?: number;
 
   /**
    * The name of the hook, useful for debugging.
@@ -83,6 +78,11 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   sendMessage: (message: Chat.Message<Output, Tools>) => void;
 
   /**
+   * Function to cause current messages to be resent.  Can be used after an error in chat.
+   */
+  resendMessages: () => void;
+
+  /**
    * Reload the chat, useful for retrying when an error occurs.
    */
   reload: () => void;
@@ -106,6 +106,11 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Whether the current request has exhausted retries.
+   */
+  exhaustedRetries: boolean;
 }
 
 /**
@@ -120,7 +125,7 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
  * const MyChatComponent = () => {
  *   const { messages, sendMessage, status } = useStructuredChat({
  *     model: 'gpt-4o',
- *     prompt: 'You are a helpful assistant.',
+ *     system: 'You are a helpful assistant.',
  *     schema: s.object('Person', {
  *       name: s.string('Name of the person'),
  *       age: s.number('Age of the person'),
@@ -169,7 +174,7 @@ export function useStructuredChat<
         setHashbrown(null);
       }
     };
-  }, []);
+  }, [hashbrown]);
 
   useEffect(() => {
     if (!config) {
@@ -182,12 +187,12 @@ export function useStructuredChat<
         apiUrl: config.url,
         middleware: config.middleware,
         model: options.model,
-        prompt: options.prompt,
+        system: options.system,
         responseSchema: schema,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
         tools,
         debugName: options.debugName,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
 
     if (!hashbrown) {
@@ -197,23 +202,24 @@ export function useStructuredChat<
         apiUrl: config.url,
         middleware: config.middleware,
         model: options.model,
-        prompt: options.prompt,
+        system: options.system,
         responseSchema: schema,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
         tools,
         debugName: options.debugName,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
     }
   }, [
+    hashbrown,
     config,
     options.model,
-    options.prompt,
-    options.temperature,
-    options.maxTokens,
+    options.system,
     options.debugName,
     schema,
     tools,
+    options.debounceTime,
+    options.retries,
   ]);
 
   const sendMessage = useCallback(
@@ -222,6 +228,10 @@ export function useStructuredChat<
     },
     [hashbrown],
   );
+
+  const resendMessages = useCallback(() => {
+    hashbrown?.resendMessages();
+  }, [hashbrown]);
 
   const setMessages = useCallback(
     (messages: Chat.Message<Output, Tools>[]) => {
@@ -236,6 +246,7 @@ export function useStructuredChat<
   const [isReceiving, setIsReceiving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isRunningToolCalls, setIsRunningToolCalls] = useState(false);
+  const [exhaustedRetries, setExhaustedRetries] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -258,6 +269,10 @@ export function useStructuredChat<
     hashbrown?.observeError((error) => {
       setError(error);
     });
+
+    hashbrown?.observeExhaustedRetries((exhaustedRetries) => {
+      setExhaustedRetries(exhaustedRetries);
+    });
   }, [hashbrown]);
 
   const reload = useCallback(() => {
@@ -275,11 +290,13 @@ export function useStructuredChat<
   return {
     messages: internalMessages,
     sendMessage,
+    resendMessages,
     setMessages,
     reload,
     error,
     isReceiving,
     isSending,
     isRunningToolCalls,
+    exhaustedRetries,
   };
 }

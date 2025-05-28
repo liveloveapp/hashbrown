@@ -131,38 +131,6 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#maxTokens:member",
-          "docComment": "/**\n * The maximum number of tokens to allow. default: 5000\n */\n",
-          "excerptTokens": [
-            { "kind": "Content", "text": "maxTokens?: " },
-            { "kind": "Content", "text": "number" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": true,
-          "releaseTag": "Public",
-          "name": "maxTokens",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "The maximum number of tokens to allow. default: 5000\n",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/react!UseCompletionOptions#model:member",
           "docComment": "/**\n * The LLM model to use for the chat.\n */\n",
           "excerptTokens": [
@@ -195,17 +163,17 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#prompt:member",
-          "docComment": "/**\n * The prompt to use for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#system:member",
+          "docComment": "/**\n * The system message to use for the completion.\n */\n",
           "excerptTokens": [
-            { "kind": "Content", "text": "prompt: " },
+            { "kind": "Content", "text": "system: " },
             { "kind": "Content", "text": "string" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
-          "name": "prompt",
+          "name": "system",
           "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
@@ -216,39 +184,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The prompt to use for the chat.\n",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!UseCompletionOptions#temperature:member",
-          "docComment": "/**\n * The temperature for the chat.\n */\n",
-          "excerptTokens": [
-            { "kind": "Content", "text": "temperature?: " },
-            { "kind": "Content", "text": "number" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "isReadonly": false,
-          "isOptional": true,
-          "releaseTag": "Public",
-          "name": "temperature",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "The temperature for the chat.\n",
+            "summary": "The system message to use for the completion.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -260,7 +196,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/react!UseCompletionOptions#tools:member",
-          "docComment": "/**\n * The tools to make available use for the chat. default: []\n */\n",
+          "docComment": "/**\n * The tools to make available use for the completion. default: []\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "tools?: " },
             { "kind": "Content", "text": "Tools[]" },
@@ -280,7 +216,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The tools to make available use for the chat. default: []\n",
+            "summary": "The tools to make available use for the completion. default: []\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",

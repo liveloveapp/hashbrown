@@ -1,4 +1,4 @@
-import { createActionGroup, props } from '../utils/micro-ngrx';
+import { createActionGroup, emptyProps, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 
 export default createActionGroup('internal', {
@@ -6,4 +6,5 @@ export default createActionGroup('internal', {
     toolMessages: Chat.Api.ToolMessage[];
   }>(),
   runToolCallsError: props<Error>(),
+  skippedToolCalls: emptyProps(),
 });

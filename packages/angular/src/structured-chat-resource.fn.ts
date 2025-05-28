@@ -15,6 +15,8 @@ import { readSignalLike, toSignal } from './utils';
 export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<Output, Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
+  resendMessages: () => void;
+  setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
 }
 
 export interface StructuredChatResourceOptions<
@@ -23,14 +25,13 @@ export interface StructuredChatResourceOptions<
   Output extends s.Infer<Schema> = s.Infer<Schema>,
 > {
   model: string | Signal<string>;
-  prompt: string | Signal<string>;
+  system: string | Signal<string>;
   schema: Schema;
-  temperature?: number | Signal<number>;
   tools?: Tools[];
-  maxTokens?: number | Signal<number>;
   messages?: Chat.Message<Output, Tools>[];
   debugName?: string;
   debounce?: number;
+  retries?: number;
 }
 
 export function structuredChatResource<
@@ -48,15 +49,14 @@ export function structuredChatResource<
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    prompt: readSignalLike(options.prompt),
+    system: readSignalLike(options.system),
     model: readSignalLike(options.model),
-    temperature: options.temperature && readSignalLike(options.temperature),
     tools: options.tools,
-    maxTokens: options.maxTokens && readSignalLike(options.maxTokens),
     responseSchema: options.schema,
     debugName: options.debugName,
     emulateStructuredOutput: config.emulateStructuredOutput,
     debounce: options.debounce,
+    retries: options.retries,
   });
   const value = toSignal(hashbrown.observeMessages);
   const isReceiving = toSignal(hashbrown.observeIsReceiving);
@@ -64,12 +64,14 @@ export function structuredChatResource<
   const isRunningToolCalls = toSignal(hashbrown.observeIsRunningToolCalls);
   const error = toSignal(hashbrown.observeError);
 
+  const exhaustedRetries = toSignal(hashbrown.observeExhaustedRetries);
+
   const status = computed(() => {
     if (isReceiving() || isSending() || isRunningToolCalls()) {
       return ResourceStatus.Loading;
     }
 
-    if (error()) {
+    if (exhaustedRetries()) {
       return ResourceStatus.Error;
     }
 
@@ -108,13 +110,23 @@ export function structuredChatResource<
     hashbrown.sendMessage(message);
   }
 
+  function resendMessages() {
+    hashbrown.resendMessages();
+  }
+
+  function setMessages(messages: Chat.Message<Output, Tools>[]) {
+    hashbrown.setMessages(messages);
+  }
+
   return {
     hasValue: hasValue as any,
     status,
     isLoading,
     reload,
     sendMessage,
+    resendMessages,
     value,
     error,
+    setMessages,
   };
 }

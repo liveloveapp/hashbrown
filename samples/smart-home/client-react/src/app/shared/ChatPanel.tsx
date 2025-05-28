@@ -11,7 +11,7 @@ export const ChatPanel = () => {
   const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
     useChat({
       model: 'gpt-4o-mini',
-      prompt:
+      system:
         'You are a helpful assistant that can answer questions and help with tasks.',
       tools: [
         createTool({

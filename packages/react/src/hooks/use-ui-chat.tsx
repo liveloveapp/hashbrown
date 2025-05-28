@@ -20,9 +20,11 @@ export type UiAssistantMessage<Tools extends Chat.AnyTool> =
   };
 
 export type UiUserMessage = Chat.UserMessage;
+export type UiErrorMessage = Chat.ErrorMessage;
 
 export type UiChatMessage<Tools extends Chat.AnyTool> =
   | UiAssistantMessage<Tools>
+  | UiErrorMessage
   | UiUserMessage;
 
 export interface UiChatOptions<Tools extends Chat.AnyTool> {
@@ -33,9 +35,9 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   components: ExposedComponent<any>[];
 
@@ -49,17 +51,6 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * default: []
    */
   tools?: Tools[];
-
-  /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
 
   /**
    * The debounce time between sends to the endpoint.
@@ -133,6 +124,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
           ui: message.content?.ui ? buildContent(message.content.ui) : null,
         } as UiAssistantMessage<Tools>;
       }
+
       return message;
     });
   }, [buildContent, chat.messages]);

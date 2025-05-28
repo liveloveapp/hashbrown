@@ -1,5 +1,15 @@
-import { isPlatformBrowser } from '@angular/common';
-import { effect, inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
+import { isPlatformBrowser, Location } from '@angular/common';
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter, map, startWith } from 'rxjs/operators';
 
 export interface AppConfig {
   sdk: 'angular' | 'react';
@@ -13,17 +23,38 @@ const DEFAULT_CONFIG: AppConfig = {
 
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
-  platformId = inject(PLATFORM_ID);
-
-  private configSignal = signal<AppConfig>(
+  private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
+  private location = inject(Location);
+  private config = signal<AppConfig>(
     this.loadFromLocalStorage('config') ?? DEFAULT_CONFIG,
   );
+  private path = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => this.location.path(false)),
+      startWith(this.location.path(false)),
+    ),
+    { initialValue: this.location.path(false) },
+  );
 
-  readonly config = this.configSignal.asReadonly();
+  readonly sdk = computed(() => this.config().sdk);
+  readonly provider = computed(() => this.config().provider);
 
   constructor() {
     effect(() => {
-      this.saveToLocalStorage('config', this.configSignal());
+      const path = this.path();
+      if (!path) {
+        return;
+      }
+      const sdk = path.includes('angular')
+        ? 'angular'
+        : path.includes('react')
+          ? 'react'
+          : undefined;
+      if (sdk) {
+        this.set({ sdk });
+      }
     });
   }
 
@@ -48,6 +79,6 @@ export class ConfigService {
   }
 
   set(config: Partial<AppConfig>) {
-    this.configSignal.set({ ...this.configSignal(), ...config });
+    this.config.update((c) => ({ ...c, ...config }));
   }
 }

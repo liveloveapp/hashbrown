@@ -66,9 +66,7 @@ export class MenuService {
   configService = inject(ConfigService);
   referenceService = inject(ReferenceService);
   docs = computed(() => {
-    return this.configService.config().sdk === 'angular'
-      ? DOCS_ANGULAR
-      : DOCS_REACT;
+    return this.configService.sdk() === 'angular' ? DOCS_ANGULAR : DOCS_REACT;
   });
   refs = signal<Section>(this.referenceService.getSection());
 }

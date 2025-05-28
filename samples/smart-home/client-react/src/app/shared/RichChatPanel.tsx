@@ -16,67 +16,71 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const RichChatPanel = () => {
-  const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
-    useUiChat({
-      model: 'gpt-4o',
-      prompt:
-        'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
-      tools: [
-        createTool({
-          name: 'getLights',
-          description: 'Get the current lights',
-          handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-        }),
-        createToolWithArgs({
-          name: 'controlLight',
-          description:
-            'Control the light. Brightness is a number between 0 and 100.',
-          schema: s.object('Control light input', {
-            lightId: s.string('The id of the light'),
-            brightness: s.number(
-              'The brightness of the light, between 0 and 100',
-            ),
-          }) as unknown as s.ObjectType<
-            Record<string, s.HashbrownType<unknown>>
-          >,
-          handler: (input: object) => {
-            const { lightId, brightness } = input as {
-              lightId: string;
-              brightness: number;
-            };
-            useSmartHomeStore.getState().updateLight(lightId, {
-              brightness,
-            });
-            return Promise.resolve(true);
-          },
-        }),
-      ],
-      components: [
-        exposeComponent(LightChatComponent, {
-          name: 'LightChatComponent',
-          description: 'A component that lets the user control a light',
-          props: {
-            lightId: s.string('The id of the light'),
-          },
-        }),
-        exposeComponent(MarkdownComponent, {
-          name: 'MarkdownComponent',
-          description: 'Show markdown content to the user',
-          props: {
-            content: s.streaming.string('The content of the markdown'),
-          },
-        }),
-        exposeComponent(CardComponent, {
-          name: 'CardComponent',
-          description: 'Show a card with children components to the user',
-          children: 'any',
-          props: {
-            title: s.string('The title of the card'),
-            description: s.streaming.string('The description of the card'),
-          },
-        }),
-      ],
-    });
+  const {
+    messages,
+    sendMessage,
+    resendMessages,
+    isSending,
+    isReceiving,
+    isRunningToolCalls,
+  } = useUiChat({
+    model: 'gpt-4o',
+    system:
+      'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
+    tools: [
+      createTool({
+        name: 'getLights',
+        description: 'Get the current lights',
+        handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+      }),
+      createToolWithArgs({
+        name: 'controlLight',
+        description:
+          'Control the light. Brightness is a number between 0 and 100.',
+        schema: s.object('Control light input', {
+          lightId: s.string('The id of the light'),
+          brightness: s.number(
+            'The brightness of the light, between 0 and 100',
+          ),
+        }) as unknown as s.ObjectType<Record<string, s.HashbrownType<unknown>>>,
+        handler: (input: object) => {
+          const { lightId, brightness } = input as {
+            lightId: string;
+            brightness: number;
+          };
+          useSmartHomeStore.getState().updateLight(lightId, {
+            brightness,
+          });
+          return Promise.resolve(true);
+        },
+      }),
+    ],
+    components: [
+      exposeComponent(LightChatComponent, {
+        name: 'LightChatComponent',
+        description: 'A component that lets the user control a light',
+        props: {
+          lightId: s.string('The id of the light'),
+        },
+      }),
+      exposeComponent(MarkdownComponent, {
+        name: 'MarkdownComponent',
+        description: 'Show markdown content to the user',
+        props: {
+          content: s.streaming.string('The content of the markdown'),
+        },
+      }),
+      exposeComponent(CardComponent, {
+        name: 'CardComponent',
+        description: 'Show a card with children components to the user',
+        children: 'any',
+        props: {
+          title: s.string('The title of the card'),
+          description: s.streaming.string('The description of the card'),
+        },
+      }),
+    ],
+  });
 
   const isWorking = useMemo(() => {
     return isSending || isReceiving || isRunningToolCalls;
@@ -136,13 +140,22 @@ export const RichChatPanel = () => {
     [],
   );
 
+  const onRetry = useCallback(() => {
+    resendMessages();
+  }, [resendMessages]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-col flex-1 min-h-0">
         <ScrollArea className="flex-1" ref={scrollAreaRef}>
           <div className="flex flex-col gap-2 px-2">
-            {messages.map((message, index) => (
-              <RichMessage key={index} message={message} />
+            {messages.map((message, index, array) => (
+              <RichMessage
+                key={index}
+                message={message}
+                onRetry={onRetry}
+                isLast={index === array.length - 1}
+              />
             ))}
           </div>
         </ScrollArea>

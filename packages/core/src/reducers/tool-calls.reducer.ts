@@ -38,20 +38,20 @@ export const reducer = createReducer(
   on(apiActions.generateMessageSuccess, (state, action) => {
     const message = action.payload;
 
-    if (!message.tool_calls) {
+    if (!message.toolCalls) {
       return state;
     }
 
     return adapter.addMany(
       state,
-      message.tool_calls.flatMap(toInternalToolCallsFromApi),
+      message.toolCalls.flatMap(toInternalToolCallsFromApi),
     );
   }),
   on(internalActions.runToolCallsSuccess, (state, action) => {
     const { toolMessages } = action.payload;
     const changes: EntityChange<Chat.Internal.ToolCall>[] = toolMessages.map(
       (toolMessage) => ({
-        id: toolMessage.tool_call_id,
+        id: toolMessage.toolCallId,
         updates: { result: toolMessage.content, status: 'done' },
       }),
     );
@@ -70,6 +70,6 @@ export const selectToolCalls = select(
   (ids, entities) => ids.map((id) => entities[id]),
 );
 
-export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) =>
-  toolCalls.filter((toolCall) => toolCall.status === 'pending'),
-);
+export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) => {
+  return toolCalls.filter((toolCall) => toolCall.status === 'pending');
+});
