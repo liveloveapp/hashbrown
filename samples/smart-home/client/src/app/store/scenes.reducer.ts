@@ -3,12 +3,16 @@ import { createReducer, on } from '@ngrx/store';
 import { Scene } from '../models/scene.model';
 import { ScenesApiActions } from '../features/scenes/actions/scenes-api.actions';
 import { ScenesPageActions } from '../features/scenes/actions/scenes-page.actions';
+import { ChatAiActions } from '../features/chat/actions/chat-ai.actions';
+
 export interface ScenesState extends EntityState<Scene> {
   loading: boolean;
   error: string | null;
 }
 
-export const adapter: EntityAdapter<Scene> = createEntityAdapter<Scene>();
+export const adapter: EntityAdapter<Scene> = createEntityAdapter<Scene>({
+  sortComparer: (a, b) => a.name.localeCompare(b.name),
+});
 
 export const initialState: ScenesState = adapter.getInitialState({
   loading: false,
@@ -55,6 +59,9 @@ export const scenesReducer = createReducer(
         state,
       );
     },
+  ),
+  on(ChatAiActions.addScene, (state, { scene }) =>
+    adapter.addOne(scene, state),
   ),
 );
 

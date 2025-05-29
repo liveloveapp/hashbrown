@@ -50,11 +50,25 @@ import { ToolChipComponent } from './tool-chip.component';
                       done="Got your lights"
                     />
                   }
+                  @case ('getScenes') {
+                    <app-tool-chip
+                      [toolCall]="toolCall"
+                      pending="Getting your scenes..."
+                      done="Got your scenes"
+                    />
+                  }
                   @case ('controlLight') {
                     <app-tool-chip
                       [toolCall]="toolCall"
                       pending="Controlling your light..."
                       done="Controlled your light"
+                    />
+                  }
+                  @case ('createScene') {
+                    <app-tool-chip
+                      [toolCall]="toolCall"
+                      pending="Creating your scene..."
+                      done="Created your scene"
                     />
                   }
                   @case ('javascript') {
@@ -150,10 +164,6 @@ import { ToolChipComponent } from './tool-chip.component';
 
       hb-render-message {
         grid-area: content;
-      }
-
-      .chat-message.assistant:not(.hasToolCalls) hb-render-message {
-        padding-top: 4px;
       }
 
       .chat-message.component {

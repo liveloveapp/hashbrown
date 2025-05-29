@@ -12,5 +12,7 @@ export const LightsApiActions = createActionGroup({
     'Update Light Failure': props<{ error: string }>(),
     'Delete Light Success': props<{ id: string }>(),
     'Delete Light Failure': props<{ error: string }>(),
+    'Control Light Success': props<{ light: Light }>(),
+    'Control Light Failure': props<{ error: string }>(),
   },
 });

@@ -1,8 +1,8 @@
 import { effect, Injectable, signal } from '@angular/core';
-import { Observable, of, throwError } from 'rxjs';
+import { lastValueFrom, Observable, of, throwError } from 'rxjs';
 import { Light } from '../models/light.model';
 import { Scene, SceneLight } from '../models/scene.model';
-import { ScheduledScene, Weekday } from '../models/scheduled-scene.model';
+import { ScheduledScene } from '../models/scheduled-scene.model';
 
 @Injectable({
   providedIn: 'root',
@@ -48,15 +48,23 @@ export class SmartHomeService {
     return data ? JSON.parse(data) : null;
   }
 
-  loadLights(): Observable<Light[]> {
+  loadLights$(): Observable<Light[]> {
     return of(this.lights());
   }
 
-  loadScenes(): Observable<Scene[]> {
+  loadLights() {
+    return lastValueFrom(this.loadLights$());
+  }
+
+  loadScenes$(): Observable<Scene[]> {
     return of(this.scenes());
   }
 
-  addLight(light: Omit<Light, 'id'>): Observable<Light> {
+  loadScenes() {
+    return lastValueFrom(this.loadScenes$());
+  }
+
+  addLight$(light: Omit<Light, 'id'>): Observable<Light> {
     const newLight: Light = {
       ...light,
       id: crypto.randomUUID(),
@@ -67,7 +75,11 @@ export class SmartHomeService {
     return of(newLight);
   }
 
-  updateLight(id: string, updates: Partial<Omit<Light, 'id'>>) {
+  addLight(light: Omit<Light, 'id'>) {
+    return lastValueFrom(this.addLight$(light));
+  }
+
+  updateLight$(id: string, updates: Partial<Omit<Light, 'id'>>) {
     const lightToUpdate = this.lights().find((light) => light.id === id);
 
     if (!lightToUpdate) {
@@ -86,7 +98,7 @@ export class SmartHomeService {
     return of(updatedLight);
   }
 
-  deleteLight(id: string): Observable<string> {
+  deleteLight$(id: string): Observable<string> {
     this.lightsSignal.update((lights) =>
       lights.filter((light) => light.id !== id),
     );
@@ -94,7 +106,7 @@ export class SmartHomeService {
     return of(id);
   }
 
-  addScene(scene: Omit<Scene, 'id'>): Observable<Scene> {
+  addScene$(scene: Omit<Scene, 'id'>): Observable<Scene> {
     const newScene: Scene = {
       ...scene,
       id: crypto.randomUUID(),
@@ -105,7 +117,11 @@ export class SmartHomeService {
     return of(newScene);
   }
 
-  updateScene(
+  addScene(scene: Omit<Scene, 'id'>) {
+    return lastValueFrom(this.addScene$(scene));
+  }
+
+  updateScene$(
     id: string,
     updates: Partial<Omit<Scene, 'id'>>,
   ): Observable<Scene> {
@@ -125,7 +141,7 @@ export class SmartHomeService {
     return of(scene);
   }
 
-  deleteScene(id: string): Observable<string> {
+  deleteScene$(id: string): Observable<string> {
     this.scenesSignal.update((scenes) =>
       scenes.filter((scene) => scene.id !== id),
     );
@@ -133,13 +149,13 @@ export class SmartHomeService {
     return of(id);
   }
 
-  applyScene(sceneId: string): Observable<Scene> {
+  applyScene$(sceneId: string): Observable<Scene> {
     const scene = this.scenes().find((s) => s.id === sceneId);
 
     if (!scene) return throwError(() => new Error('Scene not found'));
 
     scene.lights.forEach((sceneLight) => {
-      this.updateLight(sceneLight.lightId, {
+      this.updateLight$(sceneLight.lightId, {
         brightness: sceneLight.brightness,
       });
     });
@@ -147,7 +163,7 @@ export class SmartHomeService {
     return of(scene);
   }
 
-  addScheduledScene(
+  addScheduledScene$(
     scheduledScene: Omit<ScheduledScene, 'id'>,
   ): Observable<ScheduledScene> {
     const newScheduledScene: ScheduledScene = {
@@ -163,7 +179,7 @@ export class SmartHomeService {
     return of(newScheduledScene);
   }
 
-  updateScheduledScene(
+  updateScheduledScene$(
     id: string,
     updates: Partial<Omit<ScheduledScene, 'id'>>,
   ): Observable<ScheduledScene> {
@@ -189,7 +205,7 @@ export class SmartHomeService {
     return of(updatedScheduledScene);
   }
 
-  deleteScheduledScene(id: string): Observable<string> {
+  deleteScheduledScene$(id: string): Observable<string> {
     this.scheduledScenesSignal.update((scheduledScenes) =>
       scheduledScenes.filter((scheduledScene) => scheduledScene.id !== id),
     );
@@ -197,7 +213,7 @@ export class SmartHomeService {
     return of(id);
   }
 
-  addLightToScene(
+  addLightToScene$(
     lightId: string,
     sceneId: string,
     brightness: number,
@@ -213,8 +229,12 @@ export class SmartHomeService {
     return of({ lightId, sceneId, brightness });
   }
 
+  controlLight$(lightId: string, brightness: number) {
+    return this.updateLight$(lightId, { brightness });
+  }
+
   controlLight(lightId: string, brightness: number) {
-    return this.updateLight(lightId, { brightness });
+    return lastValueFrom(this.controlLight$(lightId, brightness));
   }
 
   private startScheduledScenesCheck() {
@@ -241,7 +261,7 @@ export class SmartHomeService {
         scheduledScene.weekdays[currentWeekday];
 
       if (shouldTrigger) {
-        this.applyScene(scheduledScene.sceneId);
+        this.applyScene$(scheduledScene.sceneId);
       }
     });
   }

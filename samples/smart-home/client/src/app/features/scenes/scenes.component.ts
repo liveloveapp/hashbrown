@@ -10,6 +10,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SceneFormDialogComponent } from './scene-form-dialog/scene-form-dialog.component';
 import { ScenesPageActions } from './actions/scenes-page.actions';
 import { selectAllScenes } from '../../store';
+import { SceneComponent } from './scene.component';
 
 @Component({
   selector: 'app-scenes',
@@ -20,66 +21,49 @@ import { selectAllScenes } from '../../store';
     MatButtonModule,
     MatIconModule,
     MatDialogModule,
+    SceneComponent,
   ],
   template: `
-    <div class="scenes-container">
-      <mat-card>
-        <mat-card-header>
-          <mat-card-title>Scenes</mat-card-title>
-          <button mat-raised-button color="primary" (click)="openSceneDialog()">
-            Add Scene
-          </button>
-        </mat-card-header>
-        <mat-card-content>
-          @for (scene of scenes(); track scene.id) {
-            <div class="scene-item">
-              <h3>{{ scene.name }}</h3>
-              <div class="scene-actions">
-                <button
-                  mat-raised-button
-                  color="primary"
-                  (click)="applyScene(scene.id)"
-                >
-                  Apply
-                </button>
-                <button mat-icon-button (click)="openSceneDialog(scene)">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="deleteScene(scene)"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </div>
-          }
-        </mat-card-content>
-      </mat-card>
+    <div class="scenes-list">
+      @for (scene of scenes(); track scene.id) {
+        <app-scene
+          [sceneId]="scene.id"
+          (applyScene)="applyScene(scene.id)"
+        ></app-scene>
+      }
     </div>
+    <button
+      class="add-scene-button"
+      mat-fab
+      extended
+      color="primary"
+      (click)="openSceneDialog()"
+    >
+      Add Scene
+    </button>
   `,
   styles: [
     `
-      .scenes-container {
-        padding: 20px;
+      :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+        position: relative;
       }
 
-      .scene-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin: 16px 0;
-      }
-      .scene-actions {
-        display: flex;
-        gap: 8px;
+      .add-scene-button {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
       }
 
-      mat-card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+      .scenes-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        padding: 16px;
+        width: 100%;
+        height: 100%;
       }
     `,
   ],
