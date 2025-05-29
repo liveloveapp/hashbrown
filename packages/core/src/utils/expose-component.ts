@@ -66,7 +66,7 @@ export function createComponentSchema(
 
     if (children === 'any') {
       const schema = s.object(component.description, {
-        $tagName: s.constString(component.name),
+        $tagName: s.literal(component.name),
         $props: s.object('Props', component.props ?? {}),
         get $children(): any {
           return s.streaming.array('Child Elements', elements);
@@ -77,7 +77,7 @@ export function createComponentSchema(
       return schema;
     } else if (children && Array.isArray(children)) {
       const schema = s.object(component.description, {
-        $tagName: s.constString(component.name),
+        $tagName: s.literal(component.name),
         $props: s.object('Props', component.props ?? {}),
         get $children(): any {
           return s.streaming.array(
@@ -92,7 +92,7 @@ export function createComponentSchema(
     }
 
     const schema = s.object(component.description, {
-      $tagName: s.constString(component.name),
+      $tagName: s.literal(component.name),
       $props: s.object('Props', component.props ?? {}),
     });
     weakMap.set(component.component, schema);

@@ -8,7 +8,7 @@ import { selectLightEntities } from '../../store';
 import { ChatAiActions } from '../chat/actions';
 import { s } from '@hashbrownai/core';
 
-export const LightIconSchema = s.enumType(
+export const LightIconSchema = s.enumeration(
   `Icon for the light. Default to "lightbulb".`,
   ['floor_lamp', 'table_lamp', 'wall_lamp', 'lightbulb'],
 );

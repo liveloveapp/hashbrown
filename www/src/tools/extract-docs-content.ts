@@ -33,7 +33,7 @@ interface ApiPackage {
 }
 
 const MONOREPO_ROOT = path.join(process.cwd(), '../');
-const ANGULAR_THETA_CHAR = 'ɵ';
+const ANGULAR_THETA_CHAR = 'θ';
 
 const PACKAGES_TO_PARSE: ApiPackage[] = [
   {
@@ -192,7 +192,7 @@ function rollupApiReport(pkg: ApiPackage): ApiReport {
 }
 
 function renderDocNode(annotation: string, docNode?: DocNode): string {
-  let result: string = '';
+  let result = '';
   if (docNode) {
     if (docNode instanceof DocExcerpt) {
       result += docNode.content.toString();

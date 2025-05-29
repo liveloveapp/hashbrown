@@ -31,7 +31,7 @@ export default class SubpackageSymbolPage {
       switchMap((inputs) =>
         this.referenceService.loadReferenceData(
           `${inputs.package}/${inputs.subpackage}`,
-          inputs.symbol,
+          inputs.symbol.split('/').join('.'),
         ),
       ),
       takeUntilDestroyed(),

@@ -22,7 +22,9 @@ import { Markdown } from '../pipes/Markdown';
       }
 
       h2 {
-        font: 700 14px/18px monospace;
+        font:
+          700 14px/18px 'Operator Mono',
+          monospace;
         color: rgba(255, 255, 255, 0.88);
       }
 

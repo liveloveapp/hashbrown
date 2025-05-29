@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { EMPTY, fromEvent, Observable, switchMap, takeUntil } from 'rxjs';
+import { EMPTY, fromEvent, Observable, switchMap } from 'rxjs';
 import {
   CanonicalReference,
   ParsedCanonicalReference,
@@ -38,12 +38,12 @@ export class SymbolLink {
   referenceService = inject(ReferenceService);
   internalSymbolLink =
     viewChild<ElementRef<HTMLAnchorElement>>('internalSymbolLink');
-  url: string = '';
-  isPrivate: boolean = true;
+  url = '';
+  isPrivate = true;
   parsedReference: ParsedCanonicalReference = new ParsedCanonicalReference(
     '@hashbrownai/core!Component:type',
   );
-  shouldUseExternalLink: boolean = false;
+  shouldUseExternalLink = false;
 
   /**
    * Signal inputs aren't supported by @angular/elements, so we need

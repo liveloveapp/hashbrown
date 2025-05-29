@@ -35,13 +35,32 @@ import { LightListComponent } from './light-list.component';
           <app-light [lightId]="light.id" icon="lightbulb" />
         }
       </app-light-list>
-      <button mat-raised-button color="primary" [routerLink]="['/lights/add']">
+      <button
+        class="add-light-button"
+        mat-fab
+        extended
+        color="primary"
+        [routerLink]="['/lights/add']"
+      >
         Add Light
       </button>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .add-light-button {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+      }
+
       .lights-container {
         padding: 20px;
       }

@@ -174,8 +174,16 @@ pre {
 }
 
 code {
-  font: 500 14px/1.5rem monospace;
+  font: 500 14px/1.5rem 'Operator Mono', monospace;
   font-variant-ligatures: none;
+}
+
+@font-face {
+  font-family: 'Operator Mono';
+  src: url('/font/operator-mono/normal-400.woff2') format('woff2'),
+    url('/font/operator-mono/normal-400.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
 }
 
 @font-face {

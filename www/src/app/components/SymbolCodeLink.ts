@@ -13,7 +13,6 @@ import { BrandGitHub } from '../icons/BrandGitHub';
 export class SymbolCodeLink {
   fileUrlPath = input.required<string>();
   url = computed(() => {
-    console.log(this.fileUrlPath());
     const [, fileName] = this.fileUrlPath().split('dist/');
     if (!fileName) {
       return '';

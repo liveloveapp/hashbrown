@@ -139,7 +139,7 @@ export class PlannerComponent {
         input: s.object('Create Scheduled Scene Params', {
           sceneId: s.string('the id of the scene'),
           rrule: s.object('Recurrence Rule', {
-            freq: s.enumType('Recurrence frequency (FREQ)', [
+            freq: s.enumeration('Recurrence frequency (FREQ)', [
               'SECONDLY',
               'MINUTELY',
               'HOURLY',
@@ -317,14 +317,14 @@ export class PlannerComponent {
     schema: s.object('The result', {
       result: s.anyOf([
         s.object('A description of the code', {
-          type: s.constString('description'),
+          type: s.literal('description'),
           steps: s.streaming.array(
             'The steps in the code',
             s.string('The step'),
           ),
         }),
         s.object('A description of the changes that need to be made', {
-          type: s.constString('changes'),
+          type: s.literal('changes'),
           changes: s.streaming.array(
             'The changes that need to be made to the code',
             s.string('The change'),

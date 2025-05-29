@@ -15,7 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         align-items: center;
         flex-grow: 0;
         flex-shrink: 0;
-        font-family: 'Oxanium', monospace;
+        font-family: 'Operator Mono', monospace;
         text-transform: uppercase;
         font-weight: 700;
         font-size: 10px;

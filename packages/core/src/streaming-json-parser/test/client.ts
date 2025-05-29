@@ -3,6 +3,8 @@ import { AsyncParserIterable } from '../streaming-json-parser';
 import { SocketAsyncIterable } from './socket-async-iterable';
 
 import { s } from '../../schema';
+import { toJsonSchema } from '../../schema/to-json-schema';
+import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 
 (async () => {
   console.log('Connecting...');
@@ -21,19 +23,21 @@ import { s } from '../../schema';
   //   ]),
   // });
 
-  const responseSchema = s.object('UI', {
-    ui: s.streaming.array(
-      'list of elements',
-      s.anyOf([
-        s.object('Show markdown to the user', {
-          $tagName: s.constString('app-markdown'),
-          $props: s.object('Props', {
-            data: s.streaming.string('The markdown content'),
-          }),
-        }),
-      ]),
-    ),
-  });
+  // const responseSchema = s.object('UI', {
+  //   ui: s.streaming.array(
+  //     'list of elements',
+  //     s.anyOf([
+  //       s.object('Show markdown to the user', {
+  //         $tagName: s.constString('app-markdown'),
+  //         $props: s.object('Props', {
+  //           data: s.streaming.string('The markdown content'),
+  //         }),
+  //       }),
+  //     ]),
+  //   ),
+  // });
+
+  const responseSchema = s.number('top-level number');
 
   // const data = {
   //   gridArea: 'a string',
@@ -44,6 +48,12 @@ import { s } from '../../schema';
   //   },
   //   afterAnyOf: 'a string after the anyOf',
   // };
+
+  const data = {
+    [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
+  };
+
+  // console.log(toJsonSchema(responseSchema));
 
   // console.log(responseSchema.parseJsonSchema(data));
   // responseSchema.validateJsonSchema(data);

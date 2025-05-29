@@ -1,5 +1,6 @@
 import * as s from './public_api';
 import { StreamSchemaParser } from '../streaming-json-parser/streaming-json-parser';
+import { PRIMITIVE_WRAPPER_FIELD_NAME } from './base';
 
 function parse(schema: s.HashbrownType, input: string) {
   const parser = new StreamSchemaParser(schema);
@@ -192,6 +193,61 @@ test('Extra data after valid JSON throws error', () => {
   expect(() => parse(schema, '{"a":1}garbage')).toThrow();
 });
 
+describe('Wrapped primitives', () => {
+  test('Boolean', () => {
+    const schema = s.boolean('b');
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: true,
+      }),
+    );
+
+    expect(result).toBe(true);
+  });
+
+  test('String', () => {
+    const schema = s.string('s');
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: 'string value',
+      }),
+    );
+
+    expect(result).toBe('string value');
+  });
+
+  test('Streaming string', () => {
+    const schema = s.streaming.string('s');
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: 'string value',
+      }).slice(0, -5),
+    );
+
+    // Incomplete string is ok, since it is streaming
+    expect(result).toBe('string va');
+  });
+
+  test('Array', () => {
+    const schema = s.array('a', s.string('a.s'));
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: ['string value'],
+      }),
+    );
+
+    expect(result).toStrictEqual(['string value']);
+  });
+});
+
 describe('anyOf', () => {
   test('anyOf flattened parsing', () => {
     const schema = s.object('root', {
@@ -296,7 +352,7 @@ describe('anyOf', () => {
         'list of elements',
         s.anyOf([
           s.object('Show markdown to the user', {
-            $tagName: s.constString('app-markdown'),
+            $tagName: s.literal('app-markdown'),
             $props: s.object('Props', {
               data: s.streaming.string('The markdown content'),
             }),
@@ -353,7 +409,7 @@ describe('anyOf', () => {
       s.anyOf([
         s.anyOf([
           s.streaming.string('array object streaming data'),
-          s.constString('anyOf anyOf constString'),
+          s.literal('anyOf anyOf literal'),
         ]),
         s.number('array number'),
         s.boolean('array boolean'),
@@ -377,7 +433,7 @@ describe('anyOf', () => {
       },
       {
         '0': {
-          '1': 'anyOf anyOf constString',
+          '1': 'anyOf anyOf literal',
         },
       },
     ];
@@ -389,7 +445,7 @@ describe('anyOf', () => {
       17,
       false,
       123,
-      'anyOf anyOf constString',
+      'anyOf anyOf literal',
     ]);
   });
 });

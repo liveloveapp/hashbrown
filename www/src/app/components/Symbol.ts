@@ -12,6 +12,7 @@ import { SymbolReturns } from './SymbolReturns';
 import { SymbolSummary } from './SymbolSummary';
 import { SymbolTypeParams } from './SymbolTypeParams';
 import { SymbolUsageNotes } from './SymbolUsageNotes';
+import { SymbolChip } from './SymbolChip';
 
 @Component({
   selector: 'www-symbol',
@@ -24,44 +25,60 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
     SymbolSummary,
     SymbolTypeParams,
     SymbolUsageNotes,
+    SymbolChip,
   ],
   template: `
-    @for (symbol of summary().members; track $index) {
-      <www-symbol-header
-        [name]="summary().name"
-        [fileUrlPath]="summary().fileUrlPath"
-        [symbol]="symbol"
-      />
-      <article>
-        @if (symbol.docs.summary) {
-          <www-symbol-summary [symbol]="symbol" />
-        }
-        <www-symbol-api [symbol]="symbol" />
-        @if (
-          symbol.parameters?.length ||
-          symbol.typeParameters?.length ||
-          symbol.returnTypeTokenRange ||
-          symbol.docs.usageNotes
-        ) {
-          <div class="content">
-            @if (symbol.parameters?.length) {
-              <www-symbol-params [symbol]="symbol" />
-            }
-            @if (symbol.typeParameters?.length) {
-              <www-symbol-type-params [symbol]="symbol" />
-            }
-            @if (symbol.returnTypeTokenRange) {
-              <www-symbol-returns [symbol]="symbol" />
-            }
-            @if (symbol.docs.usageNotes) {
-              <www-symbol-usage-notes [symbol]="symbol" />
-            }
-          </div>
-        }
-        @if (getMethodsForSymbol(symbol).length) {
-          <www-symbol-methods [symbol]="symbol" />
-        }
-      </article>
+    @if (summary().kind === 'Namespace') {
+      @for (symbol of summary().members; track $index) {
+        <www-symbol-header
+          [name]="summary().name"
+          [fileUrlPath]="summary().fileUrlPath"
+          [symbol]="symbol"
+        />
+        <div class="symbols">
+          @for (childSymbol of symbol.members; track $index) {
+            <www-symbol-chip [symbol]="childSymbol" />
+          }
+        </div>
+      }
+    } @else {
+      @for (symbol of summary().members; track $index) {
+        <www-symbol-header
+          [name]="summary().name"
+          [fileUrlPath]="summary().fileUrlPath"
+          [symbol]="symbol"
+        />
+        <article>
+          @if (symbol.docs.summary) {
+            <www-symbol-summary [symbol]="symbol" />
+          }
+          <www-symbol-api [density]="'0'" [symbol]="symbol" />
+          @if (
+            symbol.parameters?.length ||
+            symbol.typeParameters?.length ||
+            symbol.returnTypeTokenRange ||
+            symbol.docs.usageNotes
+          ) {
+            <div class="content">
+              @if (symbol.parameters?.length) {
+                <www-symbol-params [symbol]="symbol" />
+              }
+              @if (symbol.typeParameters?.length) {
+                <www-symbol-type-params [symbol]="symbol" />
+              }
+              @if (symbol.returnTypeTokenRange) {
+                <www-symbol-returns [symbol]="symbol" />
+              }
+              @if (symbol.docs.usageNotes) {
+                <www-symbol-usage-notes [symbol]="symbol" />
+              }
+            </div>
+          }
+          @if (getMethodsForSymbol(symbol).length) {
+            <www-symbol-methods [symbol]="symbol" />
+          }
+        </article>
+      }
     }
   `,
   styles: [
@@ -71,6 +88,15 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
         flex-direction: column;
         gap: 32px;
         padding: 32px;
+      }
+
+      .symbols {
+        width: 100%;
+        padding: 0 24px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        border-left: 1px solid rgba(255, 255, 255, 0.12);
       }
 
       article {
@@ -92,12 +118,20 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
       }
 
       @media screen and (min-width: 1024px) {
+        .symbols {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
         article {
           max-width: 738px;
         }
       }
 
       @media screen and (min-width: 1281px) {
+        .symbols {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
         article {
           max-width: 956px;
         }

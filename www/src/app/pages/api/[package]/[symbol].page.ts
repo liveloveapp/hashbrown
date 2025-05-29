@@ -1,12 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   inject,
   input,
+  resource,
 } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { switchMap } from 'rxjs';
 import { Symbol } from '../../../components/Symbol';
 import { ReferenceService } from '../../../services/ReferenceService';
 
@@ -14,7 +12,7 @@ import { ReferenceService } from '../../../services/ReferenceService';
   imports: [Symbol],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (resolvedSymbol(); as summary) {
+    @if (symbolResource.value(); as summary) {
       <www-symbol [summary]="summary" />
     }
   `,
@@ -30,18 +28,13 @@ export default class PackageSymbolPage {
   referenceService = inject(ReferenceService);
   package = input.required<string>();
   symbol = input.required<string>();
-  inputs = computed(() => ({
-    package: this.package(),
-    symbol: this.symbol(),
-  }));
-  resolvedSymbol = toSignal(
-    toObservable(this.inputs).pipe(
-      switchMap((inputs) => {
-        return this.referenceService.loadReferenceData(
-          inputs.package,
-          inputs.symbol,
-        );
-      }),
-    ),
-  );
+
+  symbolResource = resource({
+    request: () => ({
+      package: this.package(),
+      symbol: this.symbol(),
+    }),
+    loader: ({ request }) =>
+      this.referenceService.loadReferenceData(request.package, request.symbol),
+  });
 }
