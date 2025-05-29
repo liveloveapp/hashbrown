@@ -148,6 +148,6 @@ export class PageSection {
   isOpen = computed(() => this.isToggledOpen() || this.hasActiveUrl());
 
   toggleSection() {
-    this.isToggledOpen.set(!this.isToggledOpen());
+    this.isToggledOpen.update((open) => !open);
   }
 }

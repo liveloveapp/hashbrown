@@ -46,12 +46,16 @@ import { SymbolExcerpt } from './SymbolExcerpt';
           gap: 16px;
 
           > .symbol {
-            font: 700 14px/18px monospace;
+            font:
+              700 14px/18px 'Operator Mono',
+              monospace;
             color: #fbbb52;
           }
 
           > .name {
-            font: 700 14px/18px monospace;
+            font:
+              700 14px/18px 'Operator Mono',
+              monospace;
             color: #ffa657;
           }
 

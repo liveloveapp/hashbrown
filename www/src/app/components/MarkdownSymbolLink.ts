@@ -13,7 +13,7 @@ import { SymbolLink } from './SymbolLink';
         color: #fff;
         padding: 3px 6px;
         border-radius: 4px;
-        font-family: monospace;
+        font-family: 'Operator Mono', monospace;
         font-variant-ligatures: none;
         font-weight: 600;
         text-decoration: none;

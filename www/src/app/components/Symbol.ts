@@ -35,10 +35,11 @@ import { SymbolChip } from './SymbolChip';
           [fileUrlPath]="summary().fileUrlPath"
           [symbol]="symbol"
         />
-
-        @for (childSymbol of symbol.members; track $index) {
-          <www-symbol-chip [symbol]="childSymbol" />
-        }
+        <div class="symbols">
+          @for (childSymbol of symbol.members; track $index) {
+            <www-symbol-chip [symbol]="childSymbol" />
+          }
+        </div>
       }
     } @else {
       @for (symbol of summary().members; track $index) {
@@ -51,7 +52,7 @@ import { SymbolChip } from './SymbolChip';
           @if (symbol.docs.summary) {
             <www-symbol-summary [symbol]="symbol" />
           }
-          <www-symbol-api [symbol]="symbol" />
+          <www-symbol-api [density]="'0'" [symbol]="symbol" />
           @if (
             symbol.parameters?.length ||
             symbol.typeParameters?.length ||
@@ -89,6 +90,15 @@ import { SymbolChip } from './SymbolChip';
         padding: 32px;
       }
 
+      .symbols {
+        width: 100%;
+        padding: 0 24px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        border-left: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
       article {
         display: flex;
         flex-direction: column;
@@ -108,12 +118,20 @@ import { SymbolChip } from './SymbolChip';
       }
 
       @media screen and (min-width: 1024px) {
+        .symbols {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
         article {
           max-width: 738px;
         }
       }
 
       @media screen and (min-width: 1281px) {
+        .symbols {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
         article {
           max-width: 956px;
         }

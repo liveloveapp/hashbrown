@@ -10,7 +10,7 @@ import { SymbolLink } from './SymbolLink';
   template: `
     <div class="links">
       <!-- prettier-ignore -->
-      @for (excerpt of simplifiedExcerptTokens(); track $index) {@if (excerpt.kind === 'Content') {{{ excerpt.text }}} @else if (excerpt.kind === 'Reference') {<www-symbol-link [reference]="excerpt.canonicalReference" />}}
+      @for (excerpt of simplifiedExcerptTokens(); track $index) {@if (excerpt.kind === 'Content') {{{ excerpt.text }}} @else if (excerpt.kind === 'Reference') {<www-symbol-link [reference]="excerpt.canonicalReference" class="reference" />}}
     </div>
     <div
       [ngClass]="{ deprecated: deprecated() }"
@@ -27,7 +27,9 @@ import { SymbolLink } from './SymbolLink';
       .links,
       code {
         display: block;
-        font: 500 14px/1.5rem monospace;
+        font:
+          500 14px/1.5rem 'Operator Mono',
+          monospace;
         font-variant-ligatures: none;
       }
 
@@ -35,6 +37,15 @@ import { SymbolLink } from './SymbolLink';
         position: absolute;
         color: transparent;
         white-space: pre;
+      }
+
+      .reference {
+        text-decoration: underline;
+        text-decoration-color: transparent;
+
+        &:hover {
+          text-decoration-color: #ffa657;
+        }
       }
 
       .deprecated {

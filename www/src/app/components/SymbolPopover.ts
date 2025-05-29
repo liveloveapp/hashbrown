@@ -1,4 +1,4 @@
-import { Component, InjectionToken, inject } from '@angular/core';
+import { Component, inject, InjectionToken } from '@angular/core';
 import { ApiMemberSummary } from '../models/api-report.models';
 import { SymbolApi } from './SymbolApi';
 import { SymbolHeader } from './SymbolHeader';
