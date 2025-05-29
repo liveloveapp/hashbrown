@@ -350,7 +350,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
           if (!(key in obj)) {
             if (
               s.isStringType(subSchema as any) ||
-              s.isConstStringType(subSchema as any) ||
+              s.isLiteralType(subSchema as any) ||
               s.isEnumType(subSchema as any)
             ) {
               obj[key] = '';

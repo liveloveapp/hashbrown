@@ -2,7 +2,7 @@ import { Component, input } from '@angular/core';
 import { s } from '@hashbrownai/core';
 import { MatIconModule } from '@angular/material/icon';
 
-export const LightListIconSchema = s.enumType('Icon for a Group of Lights', [
+export const LightListIconSchema = s.enumeration('Icon for a Group of Lights', [
   'living', // livingRoom
   'kitchen', // kitchen
   'dining', // diningRoom

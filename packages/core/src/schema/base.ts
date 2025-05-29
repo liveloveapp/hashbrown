@@ -12,6 +12,8 @@
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import {
   CleanInterfaceShape,
   Flatten,
@@ -124,7 +126,7 @@ export const HashbrownTypeCtor = <
 interface HashbrownTypeDefinition {
   type:
     | 'string'
-    | 'const-string'
+    | 'literal'
     | 'number'
     | 'boolean'
     | 'integer'
@@ -230,73 +232,79 @@ export function string(description: string): StringType {
 /**
  * --------------------------------------
  * --------------------------------------
- *          Const String Type
+ *          Literal Type
  * --------------------------------------
  * --------------------------------------
  */
 
-interface ConstStringTypeDefinition<T extends string = string>
-  extends HashbrownTypeDefinition {
-  type: 'const-string';
+interface LiteralTypeDefinition<
+  T extends string | number | boolean = string | number | boolean,
+> extends HashbrownTypeDefinition {
+  type: 'literal';
   value: T;
 }
 
-interface ConstStringTypeInternals<T extends string = string>
-  extends HashbrownTypeInternals<T> {
-  definition: ConstStringTypeDefinition<T>;
+interface LiteralTypeInternals<
+  T extends string | number | boolean = string | number | boolean,
+> extends HashbrownTypeInternals<T> {
+  definition: LiteralTypeDefinition<T>;
 }
 
-export interface ConstStringType<T extends string = string>
-  extends HashbrownType<T> {
-  [internal]: ConstStringTypeInternals<T>;
+export interface LiteralType<
+  T extends string | number | boolean = string | number | boolean,
+> extends HashbrownType<T> {
+  [internal]: LiteralTypeInternals<T>;
 }
 
-export const ConstStringType: HashbrownTypeCtor<ConstStringType> =
-  HashbrownTypeCtor(
-    'ConstString',
-    (inst, def) => {
-      HashbrownType.init(inst, def);
-    },
-    (schema: any) => {
-      return {
-        type: 'string',
-        const: schema[internal].definition.value,
-        description: schema[internal].definition.description,
-      };
-    },
-    (schema: any, object: unknown, path: string[]) => {
-      // Is this a wrapped primitive?
-      if (
-        object != null &&
-        typeof object === 'object' &&
-        Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-      ) {
-        object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-      }
+export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor(
+  'Literal',
+  (inst, def) => {
+    HashbrownType.init(inst, def);
+  },
+  (schema: any) => {
+    const isString = typeof schema[internal].definition.value === 'string';
+    const isNumber = typeof schema[internal].definition.value === 'number';
+    const isBoolean = typeof schema[internal].definition.value === 'boolean';
 
-      if (typeof object !== 'string')
-        throw new Error(`Expected a string at: ${path.join('.')}`);
-      if (object !== schema[internal].definition.value)
-        throw new Error(
-          `Expected a string at: ${path.join('.')}, got ${object}, received ${schema[internal].definition.value}`,
-        );
+    return {
+      type: isString ? 'string' : isNumber ? 'number' : 'boolean',
+      const: schema[internal].definition.value,
+      description: schema[internal].definition.description,
+    };
+  },
+  (schema: any, object: unknown, path: string[]) => {
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
 
-      return object;
-    },
-    (schema: any) => {
-      return `"${schema[internal].definition.value}"`;
-    },
-  );
+    const isString = typeof object === 'string';
+    const isNumber = typeof object === 'number';
+    const isBoolean = typeof object === 'boolean';
 
-export function isConstStringType(
-  type: HashbrownType,
-): type is ConstStringType {
-  return type[internal].definition.type === 'const-string';
+    if (!isString && !isNumber && !isBoolean)
+      throw new Error(
+        `Expected a string, number, or boolean at: ${path.join('.')}, got ${object}, received ${schema[internal].definition.value}`,
+      );
+
+    return object;
+  },
+  (schema: any) => {
+    return JSON.stringify(schema[internal].definition.value);
+  },
+);
+
+export function isLiteralType(type: HashbrownType): type is LiteralType {
+  return type[internal].definition.type === 'literal';
 }
 
-export function constString<T extends string>(value: T): ConstStringType<T> {
-  return new ConstStringType({
-    type: 'const-string',
+export function literal<T extends string>(value: T): LiteralType<T> {
+  return new LiteralType({
+    type: 'literal',
     description: `${value}`,
     value,
     streaming: false,
@@ -761,12 +769,18 @@ export function anyOf<const Options extends readonly HashbrownType[]>(
  * --------------------------------------
  */
 
+/**
+ * @internal
+ */
 interface EnumTypeDefinition<out Entries extends readonly any[]>
   extends HashbrownTypeDefinition {
   type: 'enum';
   entries: Entries;
 }
 
+/**
+ * @internal
+ */
 interface EnumTypeInternals<Result extends readonly any[]>
   extends HashbrownTypeInternals<Result[number]> {
   definition: EnumTypeDefinition<Result>;
@@ -774,6 +788,9 @@ interface EnumTypeInternals<Result extends readonly any[]>
 
 export interface EnumType<Entries extends readonly string[] = readonly string[]>
   extends HashbrownType {
+  /**
+   * @internal
+   */
   [internal]: EnumTypeInternals<Entries>;
 }
 
@@ -817,7 +834,7 @@ export function isEnumType(type: HashbrownType): type is EnumType {
   return type[internal].definition.type === 'enum';
 }
 
-export function enumType<const Entries extends readonly string[]>(
+export function enumeration<const Entries extends readonly string[]>(
   description: string,
   entries: [...Entries],
 ): EnumType<Entries> {
@@ -885,7 +902,7 @@ export function isNullType(type: HashbrownType): type is NullType {
   return type[internal].definition.type === 'null';
 }
 
-export function nullType(): NullType {
+export function nullish(): NullType {
   return new NullType({ type: 'null', description: '', streaming: false });
 }
 
@@ -923,7 +940,7 @@ export type Schema<T> =
         : T extends string
           ? string extends T
             ? StringType
-            : ConstStringType<T>
+            : LiteralType<T>
           : T extends number
             ? NumberType | IntegerType
             : T extends boolean
