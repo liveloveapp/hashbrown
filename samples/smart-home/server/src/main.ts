@@ -11,12 +11,8 @@ const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
-// const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
-// const AZURE_API_VERSION = process.env['AZURE_API_VERSION'] ?? '';
+const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
-
-// const AZURE_ENDPOINT = 'https://ai-hashbrowndev507071463475.openai.azure.com/';
-// const AZURE_API_VERSION = '2024-04-01-preview';
 
 if (!OPENAI_API_KEY) {
   console.warn('OPENAI_API_KEY is not set');
@@ -44,12 +40,11 @@ app.post('/chat', async (req, res, next) => {
   // console.log(JSON.stringify(request, null, 4));
 
   // Azure OpenAI Service
-  // const stream = HashbrownAzure.stream.text(
-  //   AZURE_API_KEY,
-  //   AZURE_ENDPOINT,
-  //   AZURE_API_VERSION,
+  // const stream = HashbrownAzure.stream.text({
+  //   apiKey: AZURE_API_KEY,
+  //   endpoint: AZURE_ENDPOINT,
   //   request,
-  // );
+  // });
 
   // Google Gemini
   // const stream = HashbrownGoogle.stream.text({

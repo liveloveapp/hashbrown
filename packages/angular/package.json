@@ -2,12 +2,12 @@
   "name": "@hashbrownai/angular",
   "version": "0.0.1",
   "peerDependencies": {
-    "@angular/core": "^19.0.0",
+    "@angular/core": "^20.0.0",
     "@hashbrownai/core": "*",
-    "@angular/common": "^19.0.0",
+    "@angular/common": "^20.0.0",
     "vite": "^6.0.0",
-    "@analogjs/vite-plugin-angular": "beta",
-    "@nx/vite": "20.6.0"
+    "@analogjs/vite-plugin-angular": "1.17.1-beta.2",
+    "@nx/vite": "21.2.0-beta.1"
   },
   "sideEffects": false
 }
