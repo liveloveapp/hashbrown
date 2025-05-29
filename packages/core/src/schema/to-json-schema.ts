@@ -140,6 +140,17 @@ export function toJsonSchema(schema: HashbrownType) {
         inDef,
         pathSeen,
       );
+
+      if (isRoot) {
+        result = {
+          type: 'object',
+          additionalProperties: false,
+          required: [s.PRIMITIVE_WRAPPER_FIELD_NAME],
+          properties: {
+            [s.PRIMITIVE_WRAPPER_FIELD_NAME]: result,
+          },
+        };
+      }
     } else if (s.isAnyOfType(n)) {
       result = n.toJsonSchema();
       result.anyOf = n[internal].definition.options.map((opt, index) => {
@@ -155,6 +166,17 @@ export function toJsonSchema(schema: HashbrownType) {
       });
     } else {
       result = n.toJsonSchema();
+
+      if (isRoot) {
+        result = {
+          type: 'object',
+          additionalProperties: false,
+          required: [s.PRIMITIVE_WRAPPER_FIELD_NAME],
+          properties: {
+            [s.PRIMITIVE_WRAPPER_FIELD_NAME]: result,
+          },
+        };
+      }
     }
 
     pathSeen.delete(n);

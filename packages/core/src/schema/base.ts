@@ -23,6 +23,8 @@ import {
 export const internal = '~schema';
 export type internal = typeof internal;
 
+export const PRIMITIVE_WRAPPER_FIELD_NAME = '__wrappedPrimitive';
+
 type TypeInternals = {
   definition: {
     description: string;
@@ -198,6 +200,15 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
+
     if (typeof object !== 'string')
       throw new Error(`Expected a string at: ${path.join('.')}, got ${object}`);
 
@@ -254,6 +265,15 @@ export const ConstStringType: HashbrownTypeCtor<ConstStringType> =
       };
     },
     (schema: any, object: unknown, path: string[]) => {
+      // Is this a wrapped primitive?
+      if (
+        object != null &&
+        typeof object === 'object' &&
+        Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+      ) {
+        object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+      }
+
       if (typeof object !== 'string')
         throw new Error(`Expected a string at: ${path.join('.')}`);
       if (object !== schema[internal].definition.value)
@@ -314,6 +334,17 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
+    console.log('parsing number from json schmea ');
+    console.log(object);
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
+
     if (typeof object !== 'number')
       throw new Error(`Expected a number at: ${path.join('.')}`);
 
@@ -364,6 +395,15 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
+
     if (typeof object !== 'boolean')
       throw new Error(`Expected a boolean at: ${path.join('.')}`);
 
@@ -414,6 +454,15 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
+
     if (typeof object !== 'number')
       throw new Error(`Expected a number at: ${path.join('.')}`);
     if (!Number.isInteger(object))
@@ -573,6 +622,15 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
+
     if (!Array.isArray(object))
       throw new Error(`Expected an array at: ${path.join('.')}`);
 
@@ -732,6 +790,15 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
+
     if (typeof object !== 'string')
       throw new Error(`Expected a string at: ${path.join('.')}`);
     if (!schema[internal].definition.entries.includes(object))
@@ -795,6 +862,15 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
+    // Is this a wrapped primitive?
+    if (
+      object != null &&
+      typeof object === 'object' &&
+      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
+    ) {
+      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
+    }
+
     if (object !== null)
       throw new Error(`Expected a null at: ${path.join('.')}`);
 

@@ -1,4 +1,5 @@
 import { createServer } from 'net';
+import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 
 // const TEST_JSON = {
 //   element: {
@@ -8,15 +9,19 @@ import { createServer } from 'net';
 //   },
 // };
 
+// const TEST_JSON = {
+//   ui: [
+//     {
+//       '0': {
+//         $tagName: 'app-markdown',
+//         $props: { data: 'Hello! How can I assist you today?' },
+//       },
+//     },
+//   ],
+// };
+
 const TEST_JSON = {
-  ui: [
-    {
-      '0': {
-        $tagName: 'app-markdown',
-        $props: { data: 'Hello! How can I assist you today?' },
-      },
-    },
-  ],
+  [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
 };
 
 // const TEST_JSON = {
@@ -337,8 +342,8 @@ const server = createServer(async function (socket) {
 
   console.log(`Test string length: ${TEST_STRING.length}`);
 
-  const MAX_SIZE = 30;
-  const MIN_SIZE = 10;
+  const MAX_SIZE = 10;
+  const MIN_SIZE = 5;
 
   let cursor = 0;
 
