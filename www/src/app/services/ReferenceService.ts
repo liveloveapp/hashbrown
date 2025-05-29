@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import {
-  ApiMember,
   ApiMemberSummary,
   CanonicalReference,
   MinimizedApiPackageReport,
@@ -35,7 +34,7 @@ export class ReferenceService {
           Object.entries(api.symbols).map(([name]) => {
             return link(
               name,
-              `/api/${pkg.replace(/^@hashbrownai/, '')}/${name}`,
+              `/api/${pkg.replace(/^@hashbrownai\//, '')}/${name}`,
             );
           }),
         );

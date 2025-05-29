@@ -115,7 +115,9 @@ import { ReferenceService } from '../../services/ReferenceService';
         padding: 32px;
 
         > h2 {
-          font: 700 14px/18px monospace;
+          font:
+            700 14px/18px 'Operator Mono',
+            monospace;
           color: #774625;
           margin-top: 32px;
 

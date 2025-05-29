@@ -283,7 +283,19 @@ export default {
       },
     },
     {
-      scope: ['entity.name', 'meta.export.default', 'meta.definition.variable'],
+      scope: ['entity.name'],
+      settings: {
+        foreground: '#ffa657',
+      },
+    },
+    {
+      scope: ['meta.export.default'],
+      settings: {
+        foreground: '#FBBB52',
+      },
+    },
+    {
+      scope: ['meta.definition.variable'],
       settings: {
         foreground: '#ffa657',
       },

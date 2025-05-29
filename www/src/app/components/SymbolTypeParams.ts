@@ -29,17 +29,23 @@ import { SymbolExcerpt } from './SymbolExcerpt';
         gap: 16px;
 
         > code {
-          font: 500 12px/16px monospace;
+          font:
+            500 12px/16px 'Operator Mono',
+            monospace;
           font-variant-ligatures: none;
         }
 
         > .symbol {
-          font: 700 14px/18px monospace;
+          font:
+            700 14px/18px 'Operator Mono',
+            monospace;
           color: #fbbb52;
         }
 
         > .name {
-          font: 700 14px/18px monospace;
+          font:
+            700 14px/18px 'Operator Mono',
+            monospace;
           color: #ffa657;
         }
       }
