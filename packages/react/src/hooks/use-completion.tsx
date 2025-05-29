@@ -83,7 +83,26 @@ export interface UseCompletionResult {
   exhaustedRetries: boolean;
 }
 
+/**
+ * This React hook creates a change instance used to interact with the LLM.
+ * The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.
+ *
+ * @description
+ * The `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs.  This is useful for things like natural language autocompletions.
+ *
+ * @example
+ * ```ts
+ * const { output } = useCompletion({
+ *   model: 'gpt-4o-mini',
+ *   input: firstName,
+ *   system: `Help the user generate a last name for the given first name.`,
+ * });
+ * ```
+ */
 export const useCompletion = <Tools extends Chat.AnyTool>(
+  /**
+   * The options to configure the completion chat.
+   */
   options: UseCompletionOptions<Tools>,
 ): UseCompletionResult => {
   const { setMessages, ...chat } = useChat({

@@ -2,6 +2,22 @@
 import { s, θtypes } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 
+/**
+ * When exposing a component to the chat, you must provide a schema for the props of that component.
+ * The `ComponentPropSchema` type defines the schema for those component props.
+ *
+ * @example
+ * ```ts
+ * // Example usage in a tool definition.
+ * exposeComponent(CardComponent, {
+ *   // ...
+ *   props: { // The ComponentPropSchema
+ *     title: s.string('The title of the card'),
+ *     description: s.streaming.string('The description of the card'),
+ *   },
+ * });
+ * ```
+ */
 export type ComponentPropSchema<T> = θtypes.Prettify<
   T extends ComponentType<infer P>
     ? {
@@ -10,24 +26,74 @@ export type ComponentPropSchema<T> = θtypes.Prettify<
     : never
 >;
 
+/**
+ * This type defines the configuration for a component to be exposed to the chat.
+ *
+ * @example
+ * ```ts
+ * exposeComponent(CardComponent, {
+ *   name: 'CardComponent',
+ *   description: 'Show a card with children components to the user',
+ *   children: 'any',
+ *   props: {
+ *     title: s.string('The title of the card'),
+ *     description: s.streaming.string('The description of the card'),
+ *   },
+ * });
+ * ```
+ */
 export interface ExposedComponent<T extends ComponentType<any>> {
+  /**
+   * The component to be exposed.
+   */
   component: T;
+  /**
+   * The name of the component.
+   */
   name: string;
+  /**
+   * The description of the component.  This is also used by the LLM to understand when to use the component.
+   */
   description: string;
+  /**
+   * The children of the component.
+   */
   children?: 'any' | ExposedComponent<any>[] | false;
+  /**
+   * The schema describing the props for this component.
+   */
   props?: ComponentPropSchema<T>;
 }
 
 /**
- * Exposes a component by combining it with additional configuration details.
+ * Creates an object used to expose a component for use by the LLM.
  *
- * @template T - The type of the component.
- * @param {T} component - The React component to be exposed.
- * @param {Prettify<Omit<ExposedComponent<T>, 'component'>>} config - The configuration object for the component, excluding the component itself.
- * @returns {ExposedComponent<T>} - An object representing the exposed component, including the component and its configuration.
+ * @example
+ * ```ts
+ * exposeComponent(
+ *   CardComponent, // The React component to be exposed.
+ *   { // The exposed component configuration.
+ *     name: 'CardComponent',
+ *     description: 'Show a card with children components to the user',
+ *     children: 'any',
+ *     props: {
+ *       title: s.string('The title of the card'),
+ *       description: s.streaming.string('The description of the card'),
+ *     },
+ *   },
+ * });
+ * ```
+ *
+ * @returns {ExposedComponent<T>} - An object representing the component in order to expose it to the LLM.
  */
 export function exposeComponent<T extends ComponentType<any>>(
+  /**
+   * The component to be exposed.
+   */
   component: T,
+  /**
+   * The configuration object for the component, excluding the component itself.
+   */
   config: θtypes.Prettify<Omit<ExposedComponent<T>, 'component'>>,
 ): ExposedComponent<T> {
   return {

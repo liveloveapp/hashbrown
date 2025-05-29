@@ -4,7 +4,7 @@ import { useTools } from '../create-tool.fn';
 import { HashbrownContext } from '../hashbrown-provider';
 
 /**
- * Options for the `useChat` hook.
+ * Options for the `useStructuredChat` hook.
  */
 export interface UseStructuredChatOptions<
   Schema extends s.HashbrownType,
@@ -57,7 +57,7 @@ export interface UseStructuredChatOptions<
 }
 
 /**
- * Represents the result of the `useChat` hook.
+ * The result object-type returned by the `useStructuredChat` hook that provides functions and state for interacting with the chat.
  */
 export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   /**
@@ -114,41 +114,30 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
 }
 
 /**
- * Custom React hook to manage chat interactions within a HashbrownProvider context.
- * This hook provides functionalities to send messages, handle tool calls, and manage chat status.
+ * This React hook creates a chat instance used to interact with the LLM.
+ * The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.
  *
- * @param {UseStructuredChatOptions} options - Configuration options for the chat.
+ * @description
+ * The `useStructuredChat` hook provides functionality for structured chats. Structured chats are used when you want to use the LLM to generate structured data according to a defined schema. This is particularly useful for:
+ * - Generating typed data structures
+ * - Creating form responses
+ * - Building UI components
+ * - Extracting information into a specific format
+ *
  * @returns {UseStructuredChatResult} An object containing chat state and functions to interact with the chat.
  *
  * @example
+ * In this example, the LLM will respond with a JSON object containing the translations of the input message into English, Spanish, and French.
  * ```tsx
- * const MyChatComponent = () => {
- *   const { messages, sendMessage, status } = useStructuredChat({
- *     model: 'gpt-4o',
- *     system: 'You are a helpful assistant.',
- *     schema: s.object('Person', {
- *       name: s.string('Name of the person'),
- *       age: s.number('Age of the person'),
- *     }),
- *     tools: [],
- *   });
- *
- *   const handleSendMessage = () => {
- *     sendMessage({ role: 'user', content: 'Hello, how are you?' });
- *   };
- *
- *   return (
- *     <div>
- *       <button onClick={handleSendMessage}>Send Message</button>
- *       <div>Status: {status}</div>
- *       <ul>
- *         {messages.map((msg, index) => (
- *           <li key={index}>{msg.content}</li>
- *         ))}
- *       </ul>
- *     </div>
- *   );
- * };
+ * const { messages, sendMessage } = useStructuredChat({
+ *   model: 'gpt-4o',
+ *   system: 'You are a helpful translator that provides accurate translations.',
+ *   schema: s.object('Translations', {
+ *     english: s.string('English translation'),
+ *     spanish: s.string('Spanish translation'),
+ *     french: s.string('French translation')
+ *   }),
+ * });
  * ```
  */
 export function useStructuredChat<
