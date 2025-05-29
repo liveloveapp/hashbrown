@@ -7,6 +7,7 @@ import { Header } from '../components/Header';
 import { Hero } from '../components/Hero';
 import { OpenSource } from '../components/OpenSource';
 import { Providers } from '../components/Providers';
+import { LdpTour } from '../components/ldp/LdpTour';
 
 @Component({
   imports: [
@@ -18,13 +19,14 @@ import { Providers } from '../components/Providers';
     Hero,
     OpenSource,
     Providers,
+    LdpTour,
   ],
   template: `
     <www-header />
     <main class="home">
       <www-hero />
       <www-providers />
-      <!--      <www-lpd-tour />-->
+      <www-ldp-tour />
       <www-open-source />
       <www-adapters />
       <www-getting-started />
