@@ -1,5 +1,8 @@
 export { createTool, createToolWithArgs } from './create-tool.fn';
-export { HashbrownProvider } from './hashbrown-provider';
+export {
+  HashbrownProvider,
+  type HashbrownProviderOptions,
+} from './hashbrown-provider';
 export {
   useChat,
   type UseChatOptions,
@@ -22,7 +25,8 @@ export {
 } from './hooks/use-structured-completion';
 export {
   useUiChat,
-  type UiChatMessage,
   type UiAssistantMessage,
+  type UiChatMessage,
+  type UiChatOptions,
   type UiUserMessage,
 } from './hooks/use-ui-chat';

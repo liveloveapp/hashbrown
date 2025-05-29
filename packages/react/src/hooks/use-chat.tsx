@@ -48,7 +48,7 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
 }
 
 /**
- * Represents the result of the `useChat` hook.
+ * The result object-type returned by the `useChat` hook that provides functions and state for interacting with the chat.
  */
 export interface UseChatResult<Tools extends Chat.AnyTool> {
   /**
@@ -100,10 +100,12 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
 }
 
 /**
- * Custom React hook to manage chat interactions within a HashbrownProvider context.
- * This hook provides functionalities to send messages, handle tool calls, and manage chat status.
+ * This React hook creates a chat instance used to interact with the LLM.
+ * The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.
  *
- * @param {UseChatOptions} options - Configuration options for the chat.
+ * @description
+ * The `useChat` hook provides the most basic functionality for un-structured chats.  Unstructured chats include things like general chats and natural language controls.
+ *
  * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.
  *
  * @example
@@ -136,6 +138,9 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * ```
  */
 export function useChat<Tools extends Chat.AnyTool>(
+  /**
+   * The options for the chat.
+   */
   options: UseChatOptions<Tools>,
 ): UseChatResult<Tools> {
   const tools: Tools[] = useTools(options.tools ?? []);

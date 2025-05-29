@@ -2,6 +2,9 @@ import { Chat, s } from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useStructuredChat } from './use-structured-chat';
 
+/**
+ * Options for the `useStructuredCompletion` hook.
+ */
 export interface UseStructuredCompletionOptions<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
@@ -13,7 +16,6 @@ export interface UseStructuredCompletionOptions<
 
   /**
    * The LLM model to use for the chat.
-   *
    */
   model: string;
 
@@ -28,7 +30,7 @@ export interface UseStructuredCompletionOptions<
   schema: Schema;
 
   /**
-   * The tools to make available use for the chat.
+   * The tools to make available for the chat.
    * default: []
    */
   tools?: Tools[];
@@ -52,7 +54,7 @@ export interface UseStructuredCompletionOptions<
 }
 
 /**
- * The result of the `useStructuredCompletion` hook.
+ * The result object-type returned by the `useStructuredCompletion` hook that provides the structured output and state for the completion.
  */
 export interface UseStructuredCompletionResult<Output> {
   /**
@@ -91,6 +93,36 @@ export interface UseStructuredCompletionResult<Output> {
   exhaustedRetries: boolean;
 }
 
+/**
+ * This React hook creates a completion instance that predicts structured data based on input context.
+ * The result object contains the predicted structured output and state for monitoring the completion.
+ *
+ * @description
+ * The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for:
+ * - Smart form field suggestions
+ * - Context-aware recommendations
+ * - Predictive UI generation
+ * - Intelligent defaults
+ *
+ * @returns {UseStructuredCompletionResult} An object containing the predicted structured output and completion state.
+ *
+ * @example
+ * In this example, the LLM will predict a color palette based on a given theme or mood.
+ * ```tsx
+ * const { output } = useStructuredCompletion({
+ *   model: 'gpt-4o',
+ *   system: `Predict a color palette based on the given mood or theme. For example,
+ *   if the theme is "Calm Ocean", suggest appropriate colors.`,
+ *   input: theme,
+ *   schema: s.object('Color Palette', {
+ *     colors: s.array(
+ *       'The colors in the palette',
+ *       s.string('Hex color code')
+ *     )
+ *   })
+ * });
+ * ```
+ */
 export const useStructuredCompletion = <
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,

@@ -1,5 +1,8 @@
 import { createContext } from 'react';
 
+/**
+ * The options for the Hashbrown provider.
+ */
 export interface HashbrownProviderOptions {
   /**
    * The URL of the Hashbrown server endpoint.
@@ -24,7 +27,20 @@ export const HashbrownContext = createContext<
   HashbrownProviderContext | undefined
 >(undefined);
 
+/**
+ * The context for the Hashbrown provider.  This is used to store the URL and middleware for contacting the Hashbrown endpoint.
+ *
+ * @example
+ * ```ts
+ * <HashbrownProvider url="https://your.api.local/chat">
+ *   <App />
+ * </HashbrownProvider>
+ * ```
+ */
 export const HashbrownProvider = (
+  /**
+   * The options for the Hashbrown provider.
+   */
   props: HashbrownProviderOptions & {
     children: React.ReactNode;
   },
