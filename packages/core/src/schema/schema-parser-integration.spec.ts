@@ -1,5 +1,6 @@
 import * as s from './public_api';
 import { StreamSchemaParser } from '../streaming-json-parser/streaming-json-parser';
+import { PRIMITIVE_WRAPPER_FIELD_NAME } from './base';
 
 function parse(schema: s.HashbrownType, input: string) {
   const parser = new StreamSchemaParser(schema);
@@ -190,6 +191,61 @@ test('Extra data after valid JSON throws error', () => {
   const schema = s.object('obj', { a: s.number('a') });
 
   expect(() => parse(schema, '{"a":1}garbage')).toThrow();
+});
+
+describe('Wrapped primitives', () => {
+  test('Boolean', () => {
+    const schema = s.boolean('b');
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: true,
+      }),
+    );
+
+    expect(result).toBe(true);
+  });
+
+  test('String', () => {
+    const schema = s.string('s');
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: 'string value',
+      }),
+    );
+
+    expect(result).toBe('string value');
+  });
+
+  test('Streaming string', () => {
+    const schema = s.streaming.string('s');
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: 'string value',
+      }).slice(0, -5),
+    );
+
+    // Incomplete string is ok, since it is streaming
+    expect(result).toBe('string va');
+  });
+
+  test('Array', () => {
+    const schema = s.array('a', s.string('a.s'));
+
+    const result = parse(
+      schema,
+      JSON.stringify({
+        [PRIMITIVE_WRAPPER_FIELD_NAME]: ['string value'],
+      }),
+    );
+
+    expect(result).toStrictEqual(['string value']);
+  });
 });
 
 describe('anyOf', () => {

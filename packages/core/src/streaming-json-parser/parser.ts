@@ -13,7 +13,12 @@
 import { Logger } from '../logger/logger';
 import { s } from '../schema';
 import { isStreaming } from '../schema/is-streaming';
-import { internal } from '../schema/base';
+import {
+  internal,
+  isAnyOfType,
+  isObjectType,
+  PRIMITIVE_WRAPPER_FIELD_NAME,
+} from '../schema/base';
 
 const ENABLE_LOGGING = false;
 
@@ -24,6 +29,14 @@ class MalformedJSON extends Error {}
 class IncompleteNonStreamingObject extends Error {}
 
 class UnexpectedStreamingType extends Error {}
+
+function shouldBeWrappedPrimitive(schema: s.HashbrownType): boolean {
+  if (isAnyOfType(schema) || isObjectType(schema)) {
+    return false;
+  }
+
+  return true;
+}
 
 function parseJSON(jsonString: string, schema: s.HashbrownType): any {
   if (typeof jsonString !== 'string') {
@@ -65,16 +78,27 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     skipBlank();
 
     logger.log(`Remaining string: ${jsonString.slice(index)}`);
+
+    const currentLastContainer = containerStack[containerStack.length - 1];
+
     logger.log('Current last container:');
-    logger.log(containerStack[containerStack.length - 1]);
+    logger.log(currentLastContainer);
 
     if (index >= length) markPartialJSON('Unexpected end of input');
     if (jsonString[index] === '"') return parseStr(allowsIncomplete);
     if (jsonString[index] === '{') {
-      // If the current container is an array, we assume an anyOf wrapper
-      // is starting.  Else, we parse as a regular object.
-      if (Array.isArray(containerStack[containerStack.length - 1])) {
+      /*
+        If the top-level schema is a primitive that should be object-wrapped, we 
+        assume a wrapped primitive is starting
+
+        If the current container is an array, we assume an anyOf wrapper is starting.  
+        
+        Else, we parse as a regular object.
+      */
+      if (Array.isArray(currentLastContainer)) {
         return parseAnyOf(currentKey);
+      } else if (shouldBeWrappedPrimitive(currentLastContainer)) {
+        return parseWrappedPrimitive();
       } else {
         return parseObj(currentKey, insideArray);
       }
@@ -139,8 +163,76 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     markPartialJSON('Unterminated string literal');
   };
 
+  const handleIncompleteWrappedPrimitive = (val: any) => {
+    if (val == null) {
+      throw new IncompleteNonStreamingObject(
+        'Incomplete wrapped primitive object found',
+      );
+    }
+
+    return val;
+  };
+
+  const parseWrappedPrimitive = () => {
+    logger.log(`Parsing wrapped primitive object`);
+    index++; // skip initial brace
+    skipBlank();
+    let value: any = undefined;
+
+    try {
+      while (jsonString[index] !== '}') {
+        skipBlank();
+        if (index >= length) {
+          return handleIncompleteWrappedPrimitive(value);
+        }
+
+        const key = parseStr(false);
+
+        if (key !== PRIMITIVE_WRAPPER_FIELD_NAME) {
+          // How did we get here if this isn't really a wrapped primitive?
+          throwMalformedError(
+            `Wrapped primitive has unexpected key name: ${key}`,
+          );
+        }
+
+        skipBlank();
+        index++; // skip colon
+        try {
+          logger.log(`Handling key: ${key}`);
+
+          const matchingSchema = containerStack[containerStack.length - 1];
+
+          logger.log('Found top-level schema:');
+          logger.log(matchingSchema);
+
+          // This isn't a real object, so don't pass the key name
+          value = parseAny('', isStreaming(matchingSchema), false);
+
+          logger.log('Value:');
+          logger.log(value);
+        } catch (e) {
+          logger.error(e);
+          return handleIncompleteWrappedPrimitive(value);
+        }
+        skipBlank();
+        if (jsonString[index] === ',') index++; // skip comma
+      }
+    } catch (e) {
+      logger.log(e);
+
+      return handleIncompleteWrappedPrimitive(value);
+    }
+    index++; // skip final brace
+
+    const completedContainer = containerStack.pop();
+    logger.log(
+      `Completed wrapped primitive container: ${completedContainer?.[internal].definition.description}`,
+    );
+
+    return value;
+  };
+
   const handleIncompleteAnyOf = (val: any) => {
-    // TODO: if value is undefined at this point, raise an exception
     if (val == null) {
       throw new IncompleteNonStreamingObject('Incomplete anyOf object found');
     }
@@ -149,10 +241,9 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   const parseAnyOf = (parentKey: string) => {
-    logger.log(`Parsing object with parent: ${parentKey}`);
+    logger.log(`Parsing anyOf with parent: ${parentKey}`);
     index++; // skip initial brace
     skipBlank();
-    // const obj: Record<string, any> = {};
     let value: any = undefined;
 
     let currentContainerStackIndex = containerStack.length - 1;
@@ -169,10 +260,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         skipBlank();
         index++; // skip colon
         try {
-          logger.log(`Handling key: ${key}`);
-
-          // Then the key is the discriminator.
-          logger.log(`Noting discriminator of: ${key}`);
+          logger.log(`Handling discriminator: ${key}`);
 
           const matchingSchema = (
             containerStack[currentContainerStackIndex] as any
@@ -186,23 +274,18 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             logger.log('Adding schema for discriminator');
             logger.log(matchingSchema);
 
-            // const nextContainer = (currentContainer[internal].definition as any)
-            // .shape[parentKey];
             containerStack.push(
               s.object(`AnyOf Wrapper for ${key}`, {
                 [key]: matchingSchema,
               }),
             );
 
-            // Push a "fake" object container so that the subsequent call to parseAny will find the correct schema
-            // containerStack.push(matchingSchema[0]);
             currentContainerStackIndex = containerStack.length - 1;
 
             value = parseAny(key, true, false);
 
             logger.log('Value:');
             logger.log(value);
-            // obj[key] = value;
           } else {
             throwMalformedError(`No schema found for discriminator: ${key}`);
           }
