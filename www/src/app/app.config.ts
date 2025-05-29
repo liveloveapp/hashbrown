@@ -10,7 +10,7 @@ import {
   ApplicationConfig,
   inject,
   provideAppInitializer,
-  provideExperimentalZonelessChangeDetection,
+  provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideClientHydration } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -23,7 +23,7 @@ import { HighlighterService } from './services/HighlighterService';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideExperimentalZonelessChangeDetection(),
+    provideZonelessChangeDetection(),
     provideFileRouter(
       withComponentInputBinding(),
       withInMemoryScrolling({

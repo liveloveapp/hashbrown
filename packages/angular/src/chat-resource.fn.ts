@@ -15,6 +15,7 @@ import { readSignalLike, toSignal } from './utils';
 export interface ChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<string, Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
+  reload: () => boolean;
 }
 
 /**
@@ -106,13 +107,13 @@ export function chatResource<Tools extends Chat.AnyTool>(
   const isRunningToolCalls = toSignal(hashbrown.observeIsRunningToolCalls);
   const error = toSignal(hashbrown.observeError);
 
-  const status = computed(() => {
+  const status = computed((): ResourceStatus => {
     if (isReceiving() || isSending() || isRunningToolCalls()) {
-      return ResourceStatus.Loading;
+      return 'loading';
     }
 
     if (error()) {
-      return ResourceStatus.Error;
+      return 'error';
     }
 
     const hasAssistantMessage = value().some(
@@ -120,10 +121,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
     );
 
     if (hasAssistantMessage) {
-      return ResourceStatus.Resolved;
+      return 'resolved';
     }
 
-    return ResourceStatus.Idle;
+    return 'idle';
   });
 
   const isLoading = computed(() => {

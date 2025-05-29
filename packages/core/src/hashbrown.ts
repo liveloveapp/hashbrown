@@ -53,7 +53,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   observeIsLoading: (onChange: (isLoading: boolean) => void) => void;
 
   /** Subscribe to error state; invokes callback if an error occurs. */
-  observeError: (onChange: (error: Error | null) => void) => void;
+  observeError: (onChange: (error: Error | undefined) => void) => void;
   /** Subscribe to exhausted retries state; invokes callback if an retries are exhausted on a single request. */
   observeExhaustedRetries: (
     onChange: (exhaustedRetries: boolean) => void,
@@ -63,7 +63,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   readonly messages: Chat.Message<Output, Tools>[];
 
   /** The current error state of the chat. */
-  readonly error: Error | null;
+  readonly error: Error | undefined;
 
   /** Update the chat options after initialization */
   updateOptions: (
@@ -227,7 +227,7 @@ export function fryHashbrown(init: {
     return state.select(selectIsLoading, onChange);
   }
 
-  function observeError(onChange: (error: Error | null) => void) {
+  function observeError(onChange: (error: Error | undefined) => void) {
     return state.select(selectError, onChange);
   }
 

@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-empty-object-type */
-/* eslint-disable @typescript-eslint/no-empty-interface */
 import {
   computed,
   effect,
@@ -17,7 +15,9 @@ import { injectHashbrownConfig } from './provide-hashbrown.fn';
 import { SignalLike } from './types';
 import { readSignalLike, toSignal } from './utils';
 
-export interface CompletionResourceRef extends Resource<string | null> {}
+export interface CompletionResourceRef extends Resource<string | null> {
+  reload: () => boolean;
+}
 
 export interface CompletionResourceOptions<Input> {
   model: SignalLike<string>;
@@ -84,12 +84,12 @@ export function completionResource<Input>(
     return null;
   });
 
-  const status = computed(() => {
+  const status = computed((): ResourceStatus => {
     if (exhaustedRetries()) {
-      return ResourceStatus.Error;
+      return 'error';
     }
 
-    return ResourceStatus.Idle;
+    return 'idle';
   });
   const isLoading = signal(false);
   const reload = () => {
