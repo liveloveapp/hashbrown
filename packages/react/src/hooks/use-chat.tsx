@@ -107,6 +107,8 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.
  *
  * @example
+ * This example demonstrates how to use the `useChat` hook to create a simple chat component.
+ *
  * ```tsx
  * const MyChatComponent = () => {
  *   const { messages, sendMessage, status } = useChat({

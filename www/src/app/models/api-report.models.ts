@@ -96,6 +96,7 @@ export interface ApiDocs {
   returns: string;
   see: string[];
   params: { name: string; description: string }[];
+  examples: string[];
 }
 
 export interface ApiTokenRange {

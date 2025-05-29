@@ -5,6 +5,7 @@ import {
   ApiMemberSummary,
 } from '../models/api-report.models';
 import { SymbolApi } from './SymbolApi';
+import { SymbolExamples } from './SymbolExamples';
 import { SymbolHeader } from './SymbolHeader';
 import { SymbolMethods } from './SymbolMethods';
 import { SymbolParams } from './SymbolParams';
@@ -24,6 +25,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
     SymbolSummary,
     SymbolTypeParams,
     SymbolUsageNotes,
+    SymbolExamples,
   ],
   template: `
     @for (symbol of summary().members; track $index) {
@@ -57,6 +59,9 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
               <www-symbol-usage-notes [symbol]="symbol" />
             }
           </div>
+        }
+        @if (symbol.docs.examples?.length) {
+          <www-symbol-examples [symbol]="symbol" />
         }
         @if (getMethodsForSymbol(symbol).length) {
           <www-symbol-methods [symbol]="symbol" />
