@@ -1,3 +1,38 @@
+## 0.0.2-9 (2025-05-29)
+
+### 🚀 Features
+
+- www homepage sdk mockup ([#62](https://github.com/liveloveapp/project-cassini/pull/62))
+- www branding ([#63](https://github.com/liveloveapp/project-cassini/pull/63))
+- www lla branding ([#64](https://github.com/liveloveapp/project-cassini/pull/64))
+- middleware ([4733a91](https://github.com/liveloveapp/project-cassini/commit/4733a91))
+- better vm support ([0bed9e1](https://github.com/liveloveapp/project-cassini/commit/0bed9e1))
+- **core:** Add emulated structured outputs mode to the API ([d127f9f](https://github.com/liveloveapp/project-cassini/commit/d127f9f))
+- **core:** Switch to encoded binary responses for resiliency ([02dc324](https://github.com/liveloveapp/project-cassini/commit/02dc324))
+- **core:** Improve consuming tool call results ([b57f42b](https://github.com/liveloveapp/project-cassini/commit/b57f42b))
+- **core, angular:** Show errors in chat and completion ([#154](https://github.com/liveloveapp/project-cassini/pull/154))
+- **google:** Wire up Gemini support ([f36402d](https://github.com/liveloveapp/project-cassini/commit/f36402d))
+- **hashbrown:** Add internal state management to core ([#82](https://github.com/liveloveapp/project-cassini/pull/82))
+- **www:** Add a feature tour to the landing page ([#65](https://github.com/liveloveapp/project-cassini/pull/65))
+- **www:** analytics ([#168](https://github.com/liveloveapp/project-cassini/pull/168))
+- **www:** docs clean up ([#177](https://github.com/liveloveapp/project-cassini/pull/177))
+- **www:** Add homepage tour ([#173](https://github.com/liveloveapp/project-cassini/pull/173))
+
+### 🩹 Fixes
+
+- provider injector ([#94](https://github.com/liveloveapp/project-cassini/pull/94))
+- do not show examples in Safari ([#167](https://github.com/liveloveapp/project-cassini/pull/167))
+- **angular:** Remove infinite loop caused by tool dependencies ([#76](https://github.com/liveloveapp/project-cassini/pull/76))
+- **azure:** Handle situations where the LLM emits a chunk without any choices ([1f3a3f0](https://github.com/liveloveapp/project-cassini/commit/1f3a3f0))
+- **core:** Minor bug fixes and enhancements to state ([9417198](https://github.com/liveloveapp/project-cassini/commit/9417198))
+- **www:** api reference doesnt handle namespaces ([#162](https://github.com/liveloveapp/project-cassini/pull/162))
+
+### ❤️ Thank You
+
+- Ben Taylor
+- Brian Love @blove
+- Mike Ryan @MikeRyanDev
+
 ## 0.0.2-7 (2025-05-14)
 
 ### 🚀 Features
