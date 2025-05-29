@@ -1,0 +1,6 @@
+name: 'Chat Example'
+description: 'Basic demonstration of hashbrown chat'
+extends: '../__base/stackblitz.yml'
+files:
+  src/app/App.module.css: './src/app/App.module.css'
+  src/app/App.tsx: './src/app/App.tsx'

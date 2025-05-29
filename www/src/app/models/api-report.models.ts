@@ -8,6 +8,7 @@ export enum ApiMemberKind {
   Variable = 'Variable',
   Property = 'Property',
   Method = 'Method',
+  Namespace = 'Namespace',
 }
 
 export enum ApiExcerptTokenKind {
@@ -132,6 +133,7 @@ export interface ApiMember {
   parameters?: ApiMemberParam[];
   typeParameters?: ApiMemberTypeParam[];
   docs: ApiDocs;
+  isDeprecated: boolean;
 }
 
 export interface ApiMemberSummary {

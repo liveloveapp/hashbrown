@@ -1,74 +1,58 @@
-# Hashbrown AI
+# @hashbrownai
 
-## Getting Started
+hashbrown is a TypeScript framework for building joyful, AI-powered user experiences.
 
-### Prerequisites
+## Documentation
 
-- [Node Version Manager (nvm)](https://github.com/nvm-sh/nvm) installed on your machine.
+Check out our website: [hashbrown.dev](https://hashbrown.dev).
 
-### Setup
+## Examples
 
-1. **Install the required Node.js version:**
+To see hashbrown in action, bring your own LLM provider API key and try a bite of hashbrown:
 
-   Use nvm to install and use the correct Node.js version for the project.
+- [Angular example app](https://hashbrown.dev/examples/angular/chat)
+- [React example app](https://hashbrown.dev/examples/react/chat)
 
-   ```sh
-   nvm install
-   nvm use
-   ```
+## Samples
 
-2. **Create the environment configuration:**
+**Want more than a quick bite?**
 
-   Copy the .env.test to .env and fill in the api key(s).
+Run the Angular sample app:
 
-3. **Install dependencies:**
-
-   Navigate to the project root directory and install the necessary dependencies.
-
-   ```sh
-   npm install
-   ```
-
-### Running the Project
-
-1. **Start the backend server:**
-
-   Comment / uncomment out the relevant AI provider in the `samples/smart-home/server/src/main.ts` file.
-
-   Run the following command to start the backend server:
-
-   ```sh
-   npx nx s server
-   ```
-
-2. **Start the frontend application:**
-
-   Run the following command to start the frontend application:
-
-   ```sh
-   npx nx s client
-   ```
-
-   If you want to run the react client, start it using:
-
-   ```sh
-   npx nx s client-react
-   ```
-
-Now, you should have both the backend server and the frontend application running. You can access the application in your browser.
-
-### Optional Dev Container
-
-Open the project in VSCode / Cursor and install the Dev Container extension.
-
-Then, open the command palette and select `Reopen in Container`.
-
-This will start the development environment inside a container.
-
-```bash
-nvm install
+```shell
 nvm use
 npm install
+npx nx server server && npx nx serve client
 ```
 
-Run the rest of the commands as described above.
+Run the React sample app:
+
+```shell
+nvm use
+npm install
+npx nx server server && npx nx serve client-react
+```
+
+## Contributing
+
+hashbrown is a community-driven project. Read our [contributing guidelines](./CONTRIBUTING.md) on how to get involved.
+
+## Enterprise Support
+
+The team behind hashbrown wants to help you with your project. We offer the following services:
+
+**AI Engineering Sprint**
+
+Get your team up to speed with a one-week AI engineering sprint. Includes a hands-on workshop with hashbrown and collaborative development time with our core team to bring your ideas to life.
+
+**Long Term Support**
+
+Ensure reliable, high-performance deployments with our Long Term Support plan. Includes an ongoing support retainer, SLA-backed issue resolution, and guided upgrades.
+
+**Consulting**
+
+LiveLoveApp provides hands-on engagement with our AI engineers for architecture reviews, custom integrations, proof-of-concept builds, performance tuning, and expert guidance on best practices.
+
+## License
+
+MIT © [LiveLoveApp, LLC](https://liveloveapp.com)

@@ -11,6 +11,8 @@ import { Light } from '../../models/light.model';
 import { Store } from '@ngrx/store';
 import { LightsPageActions } from './actions/lights-page.actions';
 import { selectAllLights } from '../../store';
+import { LightComponent } from './light.component';
+import { LightListComponent } from './light-list.component';
 
 @Component({
   selector: 'app-lights',
@@ -23,56 +25,42 @@ import { selectAllLights } from '../../store';
     MatIconModule,
     MatDialogModule,
     RouterLink,
+    LightComponent,
+    LightListComponent,
   ],
   template: `
     <div class="lights-container">
-      <mat-card>
-        <mat-card-header>
-          <mat-card-title>Lights</mat-card-title>
-          <button
-            mat-raised-button
-            color="primary"
-            [routerLink]="['/lights/add']"
-          >
-            Add Light
-          </button>
-        </mat-card-header>
-        <mat-card-content>
-          @for (light of lights(); track light.id) {
-            <div class="light-item">
-              <h3>{{ light.name }}</h3>
-              <div class="light-interactions">
-                <mat-slider [min]="0" [max]="100" [step]="1">
-                  <input
-                    matSliderThumb
-                    [value]="light.brightness"
-                    (valueChange)="updateBrightness(light.id, $event)"
-                  />
-                </mat-slider>
-                <div class="light-actions">
-                  <button
-                    mat-icon-button
-                    [routerLink]="['/lights', light.id, 'edit']"
-                  >
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="warn"
-                    (click)="deleteLight(light)"
-                  >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-              </div>
-            </div>
-          }
-        </mat-card-content>
-      </mat-card>
+      <app-light-list title="Lights" icon="living">
+        @for (light of lights(); track light.id) {
+          <app-light [lightId]="light.id" icon="lightbulb" />
+        }
+      </app-light-list>
+      <button
+        class="add-light-button"
+        mat-fab
+        extended
+        color="primary"
+        [routerLink]="['/lights/add']"
+      >
+        Add Light
+      </button>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .add-light-button {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+      }
+
       .lights-container {
         padding: 20px;
       }

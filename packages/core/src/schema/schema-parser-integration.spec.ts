@@ -296,7 +296,7 @@ describe('anyOf', () => {
         'list of elements',
         s.anyOf([
           s.object('Show markdown to the user', {
-            $tagName: s.constString('app-markdown'),
+            $tagName: s.literal('app-markdown'),
             $props: s.object('Props', {
               data: s.streaming.string('The markdown content'),
             }),
@@ -353,7 +353,7 @@ describe('anyOf', () => {
       s.anyOf([
         s.anyOf([
           s.streaming.string('array object streaming data'),
-          s.constString('anyOf anyOf constString'),
+          s.literal('anyOf anyOf literal'),
         ]),
         s.number('array number'),
         s.boolean('array boolean'),
@@ -377,7 +377,7 @@ describe('anyOf', () => {
       },
       {
         '0': {
-          '1': 'anyOf anyOf constString',
+          '1': 'anyOf anyOf literal',
         },
       },
     ];
@@ -389,7 +389,7 @@ describe('anyOf', () => {
       17,
       false,
       123,
-      'anyOf anyOf constString',
+      'anyOf anyOf literal',
     ]);
   });
 });

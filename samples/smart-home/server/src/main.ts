@@ -52,16 +52,22 @@ app.post('/chat', async (req, res, next) => {
   // );
 
   // Google Gemini
-  // const stream = HashbrownGoogle.stream.text(GOOGLE_API_KEY, request);
+  // const stream = HashbrownGoogle.stream.text({
+  //   apiKey: GOOGLE_API_KEY,
+  //   request,
+  // });
 
   // OpenAI
-  const stream = HashbrownOpenAI.stream.text(OPENAI_API_KEY, request);
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: OPENAI_API_KEY,
+    request,
+  });
 
-  res.header('Content-Type', 'text/plain');
+  res.header('Content-Type', 'application/octet-stream');
 
   try {
     for await (const chunk of stream) {
-      res.write(JSON.stringify(chunk));
+      res.write(chunk);
     }
   } catch (error) {
     console.error(error);

@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {
   chatResource,
   createTool,
@@ -17,6 +18,7 @@ import {
 import { s } from '@hashbrownai/core';
 import {
   createToolJavaScript,
+  defineAsyncRuntime,
   defineFunction,
 } from '@hashbrownai/tool-javascript';
 import { Store } from '@ngrx/store';
@@ -28,10 +30,14 @@ import { AuthService } from '../../shared/auth.service';
 import { ChatAiActions } from './actions/chat-ai.actions';
 import { CardComponent } from './components/card.component';
 import { ComposerComponent } from './components/composer.component';
-import { LightCardComponent } from './components/light-card.component';
+import { LightComponent, LightIconSchema } from '../lights/light.component';
 import { MarkdownComponent } from './components/markdown.component';
 import { MessagesComponent } from './components/messages.component';
 import { SimpleMessagesComponent } from './components/simple-messages.component';
+import {
+  LightListComponent,
+  LightListIconSchema,
+} from '../lights/light-list.component';
 
 @Component({
   selector: 'app-chat-panel',
@@ -42,6 +48,7 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
     ComposerComponent,
     MessagesComponent,
     SimpleMessagesComponent,
+    MatProgressSpinnerModule,
   ],
   template: `
     <div class="chat-header">
@@ -52,9 +59,16 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
       @if (simpleDemo) {
         <app-simple-chat-messages [messages]="simpleChat.value()" />
       } @else {
-        <app-chat-messages [messages]="chat.value()" />
+        <app-chat-messages
+          [messages]="chat.value()"
+          (retry)="retryMessages()"
+        />
       }
     </div>
+
+    @if (!simpleDemo && chat.isLoading()) {
+      <div class="chat-loading"><mat-spinner></mat-spinner></div>
+    }
 
     <div class="chat-composer">
       <app-chat-composer
@@ -77,6 +91,7 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
         grid-template-areas:
           'header'
           'messages'
+          'loading'
           'composer';
         grid-template-rows: auto 1fr auto;
         grid-template-columns: 1fr;
@@ -89,6 +104,18 @@ import { SimpleMessagesComponent } from './components/simple-messages.component'
         align-items: center;
         padding: 16px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .chat-loading {
+        grid-area: loading;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .chat-loading mat-spinner {
+        height: 32px !important;
+        width: 32px !important;
       }
 
       .chat-messages {
@@ -136,7 +163,7 @@ export class ChatPanelComponent {
     debugName: 'simple-chat',
     // model: 'gemini-2.5-flash-preview-04-17',
     model: 'gpt-4.1',
-    prompt: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
+    system: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
     tools: [
       createTool({
         name: 'getUser',
@@ -178,15 +205,34 @@ export class ChatPanelComponent {
     ],
   });
 
+  runtime = defineAsyncRuntime({
+    loadVariant: () => Promise.resolve(variant),
+    functions: [
+      defineFunction({
+        name: 'getLights',
+        description: 'Get the current lights',
+        output: s.array(
+          'The lights',
+          s.object('A light', {
+            id: s.string('The id of the light'),
+            brightness: s.number('The brightness of the light'),
+          }),
+        ),
+        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      }),
+    ],
+  });
+
   /**
    * --------------------------------------------------------------------------
    * UI chat
    * --------------------------------------------------------------------------
    */
+
   chat = uiChatResource({
     // model: 'gemini-2.5-pro-preview-05-06',
     model: 'gpt-4.1',
-    prompt: `
+    system: `
       You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments.
     `,
     components: [
@@ -196,12 +242,21 @@ export class ChatPanelComponent {
           data: s.streaming.string('The markdown content'),
         },
       }),
-      exposeComponent(LightCardComponent, {
+      exposeComponent(LightComponent, {
         description: `This option shows a light to the user, with a dimmer for them to control the light.
-          Always prefer this option over printing a light's name.`,
+          Always prefer this option over printing a light's name. Always prefer putting these in a list.`,
         input: {
           lightId: s.string('The id of the light'),
+          icon: LightIconSchema,
         },
+      }),
+      exposeComponent(LightListComponent, {
+        description: 'Show a list of lights to the user',
+        input: {
+          title: s.string('The name of the list'),
+          icon: LightListIconSchema,
+        },
+        children: 'any',
       }),
       exposeComponent(CardComponent, {
         description: 'Show a card to the user',
@@ -246,21 +301,7 @@ export class ChatPanelComponent {
           ),
       }),
       createToolJavaScript({
-        loadVariant: () => Promise.resolve(variant),
-        functions: [
-          defineFunction({
-            name: 'getLights',
-            description: 'Get the current lights',
-            output: s.array(
-              'The lights',
-              s.object('A light', {
-                id: s.string('The id of the light'),
-                brightness: s.number('The brightness of the light'),
-              }),
-            ),
-            handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-          }),
-        ],
+        runtime: this.runtime,
       }),
     ],
     debugName: 'ui-chat',
@@ -273,5 +314,9 @@ export class ChatPanelComponent {
     } else {
       this.chat.sendMessage({ role: 'user', content: message });
     }
+  }
+
+  retryMessages() {
+    this.chat.resendMessages();
   }
 }

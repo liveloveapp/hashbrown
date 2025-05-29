@@ -319,6 +319,6 @@ import { ConfigService } from '../services/ConfigService';
 export class Footer {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
-    return `/docs/${this.configService.config().sdk}/start/quick`;
+    return `/docs/${this.configService.sdk()}/start/quick`;
   });
 }

@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Angular } from '../icons/Angular';
 import { BrandGoogle } from '../icons/BrandGoogle';
 import { BrandOpenAi } from '../icons/BrandOpenAi';
@@ -7,7 +8,7 @@ import { React } from '../icons/React';
 
 @Component({
   selector: 'www-providers',
-  imports: [Angular, React, BrandOpenAi, BrandGoogle, BrandWriter],
+  imports: [Angular, React, BrandOpenAi, BrandGoogle, BrandWriter, RouterLink],
   template: `
     <div class="bleed">
       <div class="banner">
@@ -82,7 +83,7 @@ import { React } from '../icons/React';
         </svg>
       </div>
       <div class="providers">
-        <div class="angular">
+        <a routerLink="/docs/angular/start/quick" class="angular">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="80"
@@ -96,8 +97,8 @@ import { React } from '../icons/React';
             />
           </svg>
           <www-angular fill="#fff" class="icon" />
-        </div>
-        <div class="react">
+        </a>
+        <a routerLink="/docs/react/start/quick" class="react">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="75"
@@ -111,7 +112,7 @@ import { React } from '../icons/React';
             />
           </svg>
           <www-react fill="#fff" class="icon" />
-        </div>
+        </a>
         <div class="open-ai">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -177,7 +178,6 @@ import { React } from '../icons/React';
         display: flex;
         justify-content: center;
         width: 100%;
-        border-top: 8px solid #e88c4d;
         background: #faf9f0;
       }
 
@@ -268,6 +268,7 @@ import { React } from '../icons/React';
         margin-top: 64px;
         color: #fff;
 
+        > a,
         > div {
           position: relative;
           display: flex;
@@ -317,6 +318,7 @@ import { React } from '../icons/React';
         .providers {
           gap: 32px;
 
+          > a,
           > div {
             height: 80px;
             width: 80px;

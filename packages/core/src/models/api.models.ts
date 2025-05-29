@@ -20,7 +20,7 @@ export interface ToolCall {
 export interface AssistantMessage {
   role: 'assistant';
   content?: string;
-  tool_calls?: ToolCall[];
+  toolCalls?: ToolCall[];
 }
 
 export interface UserMessage {
@@ -28,32 +28,32 @@ export interface UserMessage {
   content: string;
 }
 
-export interface SystemMessage {
-  role: 'system';
+export interface ErrorMessage {
+  role: 'error';
   content: string;
 }
 
 export interface ToolMessage {
   role: 'tool';
   content: PromiseSettledResult<any>;
-  tool_call_id: string;
-  tool_name: string;
+  toolCallId: string;
+  toolName: string;
 }
 
 export type Message =
   | UserMessage
+  | ErrorMessage
   | AssistantMessage
-  | SystemMessage
   | ToolMessage;
 
 export interface CompletionChunkChoice {
   index: number;
   delta: {
     content?: string | null;
-    role?: string;
-    tool_calls?: DeepPartial<ToolCall>[];
+    role?: string | undefined;
+    toolCalls?: DeepPartial<ToolCall>[];
   };
-  finish_reason: string | null;
+  finishReason: string | null;
 }
 
 export interface CompletionChunk {
@@ -64,10 +64,9 @@ export type CompletionToolChoiceOption = 'auto' | 'none' | 'required';
 
 export interface CompletionCreateParams {
   model: string;
+  system: string;
   messages: Message[];
-  temperature?: number;
-  max_tokens?: number;
-  response_format?: object;
-  tool_choice?: CompletionToolChoiceOption;
+  responseFormat?: object;
+  toolChoice?: CompletionToolChoiceOption;
   tools?: Tool[];
 }

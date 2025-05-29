@@ -1,0 +1,36 @@
+.container {
+  flex: 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  width: 80%;
+  
+
+  &.assistant {
+    align-self: flex-start;
+  }
+
+  &.user {
+    align-self: flex-end;
+    background-color: rgba(61, 60, 58, 0.08);
+  }
+}
+
+.ui {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content {
+  background-color: rgba(61, 60, 58, 0.16);
+}

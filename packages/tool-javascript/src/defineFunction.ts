@@ -1,65 +1,75 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '@hashbrownai/core';
 import { QuickJSAsyncContext, QuickJSHandle } from 'quickjs-emscripten';
-import { Transport } from './transport';
+import { RuntimeTransport } from './transport';
 
-export type VMFunctionDefinition<
-  Output extends s.HashbrownType,
-  Schema extends s.HashbrownType,
-> = {
+export type VMFunctionDefinition<Input, Output> = {
   name: string;
   description: string;
-  schema: Schema;
-  output: Output;
-  handler: (
-    input?: s.Infer<Schema>,
-  ) => s.Infer<Output> | Promise<s.Infer<Output>>;
+  input: s.HashbrownType;
+  output: s.HashbrownType;
+  handler: (input: Input, abortSignal: AbortSignal) => Output | Promise<Output>;
 };
 
-export function defineFunction<Output extends s.HashbrownType>(args: {
+export function defineFunction<OutputSchema extends s.HashbrownType>(args: {
   name: string;
   description: string;
-  output: Output;
-  handler: () => s.Infer<Output> | Promise<s.Infer<Output>>;
-}): VMFunctionDefinition<Output, s.NullType> {
+  output: OutputSchema;
+  handler: (
+    abortSignal?: AbortSignal,
+  ) => s.Infer<OutputSchema> | Promise<s.Infer<OutputSchema>>;
+}): VMFunctionDefinition<null, s.Infer<OutputSchema>> {
   return {
-    schema: s.nullType(),
-    ...args,
+    name: args.name,
+    description: args.description,
+    input: s.nullType(),
+    output: args.output,
+    handler: function (input: null, abortSignal: AbortSignal) {
+      return args.handler(abortSignal);
+    },
   };
 }
 
 export function defineFunctionWithArgs<
-  Output extends s.HashbrownType,
-  Schema extends s.HashbrownType,
+  InputSchema extends s.HashbrownType,
+  OutputSchema extends s.HashbrownType,
 >(args: {
   name: string;
   description: string;
-  schema: Schema;
-  output: Output;
+  input: InputSchema;
+  output: OutputSchema;
   handler: (
-    input: s.Infer<Schema>,
-  ) => s.Infer<Output> | Promise<s.Infer<Output>>;
-}): VMFunctionDefinition<Output, Schema> {
-  return args;
+    input: s.Infer<InputSchema>,
+    abortSignal?: AbortSignal,
+  ) => s.Infer<OutputSchema> | Promise<s.Infer<OutputSchema>>;
+}): VMFunctionDefinition<s.Infer<InputSchema>, s.Infer<OutputSchema>> {
+  return {
+    name: args.name,
+    description: args.description,
+    input: args.input,
+    output: args.output,
+    handler: args.handler,
+  };
 }
 
 export function attachFunctionToContext(
   context: QuickJSAsyncContext,
-  transport: Transport,
-  definition: VMFunctionDefinition<s.HashbrownType<any>, s.HashbrownType<any>>,
+  transport: RuntimeTransport,
+  definition: VMFunctionDefinition<any, any>,
   attachTo: QuickJSHandle,
+  abortSignal: AbortSignal,
 ) {
-  const { name, schema: input, output, handler } = definition;
+  const { name, input: input, output, handler } = definition;
 
   const fnHandle = context.newAsyncifiedFunction(name, async (...args) => {
     if (s.isNullType(input)) {
-      const result = await handler();
+      const result = await handler(null, abortSignal);
       return transport.sendObject(output.parseJsonSchema(result));
     }
 
     const resolvedInput = transport.receiveObject(args[0]);
     const parsedInput = input.parseJsonSchema(resolvedInput);
-    const result = await handler(parsedInput);
+    const result = await handler(parsedInput, abortSignal);
     return transport.sendObject(output.parseJsonSchema(result));
   });
 

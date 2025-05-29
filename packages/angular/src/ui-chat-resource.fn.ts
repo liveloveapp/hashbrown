@@ -37,27 +37,28 @@ export interface UiChatSchema {
   ui: UiChatSchemaComponent[];
 }
 
-export type UiAssistantMessage<Tools extends Chat.AnyTool> =
+export type UiAssistantMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
   Chat.AssistantMessage<UiChatSchema, Tools> & {
     [TAG_NAME_REGISTRY]: TagNameRegistry;
   };
 
 export type UiUserMessage = Chat.UserMessage;
+export type UiErrorMessage = Chat.ErrorMessage;
 
-export type UiChatMessage<Tools extends Chat.AnyTool> =
+export type UiChatMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
   | UiAssistantMessage<Tools>
-  | UiUserMessage;
+  | UiUserMessage
+  | UiErrorMessage;
 
 export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<UiChatMessage<Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
+  resendMessages: () => void;
 }
 export function uiChatResource<Tools extends Chat.AnyTool>(args: {
   components: ExposedComponent<any>[];
   model: string | Signal<string>;
-  prompt: string | Signal<string>;
-  temperature?: number | Signal<number>;
-  maxTokens?: number | Signal<number>;
+  system: string | Signal<string>;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
   debugName?: string;
@@ -72,11 +73,9 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
 
   const chat = structuredChatResource({
     model: args.model,
-    temperature: args.temperature,
-    maxTokens: args.maxTokens,
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
-    prompt: args.prompt,
+    system: args.system,
     debugName: args.debugName,
     debounce: args.debounce,
   });
@@ -111,6 +110,9 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
         };
       }
       if (message.role === 'user') {
+        return message;
+      }
+      if (message.role === 'error') {
         return message;
       }
 

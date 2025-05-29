@@ -26,7 +26,7 @@ import { s } from '../../schema';
       'list of elements',
       s.anyOf([
         s.object('Show markdown to the user', {
-          $tagName: s.constString('app-markdown'),
+          $tagName: s.literal('app-markdown'),
           $props: s.object('Props', {
             data: s.streaming.string('The markdown content'),
           }),

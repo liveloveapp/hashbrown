@@ -13,7 +13,7 @@ import { Copy } from '../icons/Copy';
       </button>
     </div>
     <div class="content" #content>
-      <ng-content></ng-content>
+      <ng-content />
     </div>
   `,
   styles: [

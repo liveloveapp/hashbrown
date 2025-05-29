@@ -329,6 +329,62 @@
             "see": [],
             "params": []
           }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!Hashbrown#updateOptions:member",
+          "docComment": "/**\n * Update the chat options after initialization\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "updateOptions: " },
+            { "kind": "Content", "text": "(options: " },
+            {
+              "kind": "Reference",
+              "text": "Partial",
+              "canonicalReference": "!Partial:type"
+            },
+            {
+              "kind": "Content",
+              "text": "<{\n        debugName?: string;\n        apiUrl: string;\n        model: string;\n        system: string;\n        tools: Tools[];\n        responseSchema: "
+            },
+            {
+              "kind": "Reference",
+              "text": "s.HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ";\n        middleware: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Middleware",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Middleware:type"
+            },
+            {
+              "kind": "Content",
+              "text": "[];\n        emulateStructuredOutput: boolean;\n        debounce: number;\n    }>) => void"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "updateOptions",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 8 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Update the chat options after initialization\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": []
+          }
         }
       ],
       "extendsTokenRanges": [],

@@ -5,6 +5,7 @@ import {
   ApiMemberSummary,
 } from '../models/api-report.models';
 import { SymbolApi } from './SymbolApi';
+import { SymbolChip } from './SymbolChip';
 import { SymbolExamples } from './SymbolExamples';
 import { SymbolHeader } from './SymbolHeader';
 import { SymbolMethods } from './SymbolMethods';
@@ -18,6 +19,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
   selector: 'www-symbol',
   imports: [
     SymbolApi,
+    SymbolExamples,
     SymbolHeader,
     SymbolMethods,
     SymbolParams,
@@ -25,48 +27,62 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
     SymbolSummary,
     SymbolTypeParams,
     SymbolUsageNotes,
-    SymbolExamples,
+    SymbolChip,
   ],
   template: `
-    @for (symbol of summary().members; track $index) {
-      <www-symbol-header
-        [name]="summary().name"
-        [fileUrlPath]="summary().fileUrlPath"
-        [symbol]="symbol"
-      />
-      <article>
-        @if (symbol.docs.summary) {
-          <www-symbol-summary [symbol]="symbol" />
+    @if (summary().kind === 'Namespace') {
+      @for (symbol of summary().members; track $index) {
+        <www-symbol-header
+          [name]="summary().name"
+          [fileUrlPath]="summary().fileUrlPath"
+          [symbol]="symbol"
+        />
+
+        @for (childSymbol of symbol.members; track $index) {
+          <www-symbol-chip [symbol]="childSymbol" />
         }
-        <www-symbol-api [symbol]="symbol" />
-        @if (
-          symbol.parameters?.length ||
-          symbol.typeParameters?.length ||
-          symbol.returnTypeTokenRange ||
-          symbol.docs.usageNotes
-        ) {
-          <div class="content">
-            @if (symbol.parameters?.length) {
-              <www-symbol-params [symbol]="symbol" />
-            }
-            @if (symbol.typeParameters?.length) {
-              <www-symbol-type-params [symbol]="symbol" />
-            }
-            @if (symbol.returnTypeTokenRange) {
-              <www-symbol-returns [symbol]="symbol" />
-            }
-            @if (symbol.docs.usageNotes) {
-              <www-symbol-usage-notes [symbol]="symbol" />
-            }
-          </div>
-        }
-        @if (symbol.docs.examples?.length) {
-          <www-symbol-examples [symbol]="symbol" />
-        }
-        @if (getMethodsForSymbol(symbol).length) {
-          <www-symbol-methods [symbol]="symbol" />
-        }
-      </article>
+      }
+    } @else {
+      @for (symbol of summary().members; track $index) {
+        <www-symbol-header
+          [name]="summary().name"
+          [fileUrlPath]="summary().fileUrlPath"
+          [symbol]="symbol"
+        />
+        <article>
+          @if (symbol.docs.summary) {
+            <www-symbol-summary [symbol]="symbol" />
+          }
+          <www-symbol-api [symbol]="symbol" />
+          @if (
+            symbol.parameters?.length ||
+            symbol.typeParameters?.length ||
+            symbol.returnTypeTokenRange ||
+            symbol.docs.usageNotes
+          ) {
+            <div class="content">
+              @if (symbol.parameters?.length) {
+                <www-symbol-params [symbol]="symbol" />
+              }
+              @if (symbol.typeParameters?.length) {
+                <www-symbol-type-params [symbol]="symbol" />
+              }
+              @if (symbol.returnTypeTokenRange) {
+                <www-symbol-returns [symbol]="symbol" />
+              }
+              @if (symbol.docs.usageNotes) {
+                <www-symbol-usage-notes [symbol]="symbol" />
+              }
+            </div>
+          }
+          @if (getMethodsForSymbol(symbol).length) {
+            <www-symbol-methods [symbol]="symbol" />
+          }
+          @if (symbol.docs.examples?.length) {
+            <www-symbol-examples [symbol]="symbol" />
+          }
+        </article>
+      }
     }
   `,
   styles: [

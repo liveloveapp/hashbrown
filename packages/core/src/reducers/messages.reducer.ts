@@ -1,6 +1,7 @@
 import { Chat } from '../models';
 import { createReducer, on } from '../utils/micro-ngrx';
 import { apiActions, devActions } from '../actions';
+import { ErrorMessage } from '../models/view.models';
 
 export interface MessagesState {
   messages: Chat.Internal.Message[];
@@ -33,6 +34,18 @@ export const reducer = createReducer(
     return {
       ...state,
       messages: [...state.messages, ...internalMessages],
+    };
+  }),
+  on(apiActions.generateMessageError, (state, action) => {
+    const message = action.payload;
+    const errorMessage: ErrorMessage = {
+      role: 'error',
+      content: message.message,
+    };
+
+    return {
+      ...state,
+      messages: [...state.messages, errorMessage],
     };
   }),
   on(devActions.setMessages, (state, action) => {

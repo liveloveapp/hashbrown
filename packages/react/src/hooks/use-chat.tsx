@@ -14,9 +14,9 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
   model: string;
 
   /**
-   * The prompt to use for the chat.
+   * The system message to use for the chat.
    */
-  prompt: string;
+  system: string;
 
   /**
    * The initial messages for the chat.
@@ -30,21 +30,16 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
   tools?: Tools[];
 
   /**
-   * The temperature for the chat.
-   */
-  temperature?: number;
-
-  /**
-   * The maximum number of tokens to allow.
-   * default: 5000
-   */
-  maxTokens?: number;
-
-  /**
    * The debounce time between sends to the endpoint.
    * default: 150
    */
   debounceTime?: number;
+
+  /**
+   * Number of retries if an error is received.
+   * default: 0
+   */
+  retries?: number;
 
   /**
    * The name of the hook, useful for debugging.
@@ -97,6 +92,11 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Whether the current request has exhausted retries.
+   */
+  exhaustedRetries: boolean;
 }
 
 /**
@@ -113,7 +113,7 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * const MyChatComponent = () => {
  *   const { messages, sendMessage, status } = useChat({
  *     model: 'gpt-4o',
- *     prompt: 'You are a helpful assistant.',
+ *     system: 'You are a helpful assistant.',
  *     tools: [],
  *   });
  *
@@ -152,7 +152,7 @@ export function useChat<Tools extends Chat.AnyTool>(
         setHashbrown(null);
       }
     };
-  }, []);
+  }, [hashbrown]);
 
   useEffect(() => {
     if (!config) {
@@ -165,11 +165,11 @@ export function useChat<Tools extends Chat.AnyTool>(
         apiUrl: config.url,
         middleware: config.middleware,
         debugName: options.debugName,
-        maxTokens: options.maxTokens,
         model: options.model,
-        prompt: options.prompt,
-        temperature: options.temperature,
+        system: options.system,
         tools,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
 
     if (!hashbrown) {
@@ -179,20 +179,21 @@ export function useChat<Tools extends Chat.AnyTool>(
         apiUrl: config.url,
         middleware: config.middleware,
         debugName: options.debugName,
-        maxTokens: options.maxTokens,
         model: options.model,
-        prompt: options.prompt,
-        temperature: options.temperature,
+        system: options.system,
         tools,
+        debounce: options.debounceTime,
+        retries: options.retries,
       });
     }
   }, [
     config,
+    hashbrown,
+    options.debounceTime,
     options.debugName,
-    options.maxTokens,
     options.model,
-    options.prompt,
-    options.temperature,
+    options.retries,
+    options.system,
     tools,
   ]);
 
@@ -216,6 +217,7 @@ export function useChat<Tools extends Chat.AnyTool>(
   const [isReceiving, setIsReceiving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isRunningToolCalls, setIsRunningToolCalls] = useState(false);
+  const [exhaustedRetries, setExhaustedRetries] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -237,6 +239,10 @@ export function useChat<Tools extends Chat.AnyTool>(
 
     hashbrown?.observeError((error) => {
       setError(error);
+    });
+
+    hashbrown?.observeExhaustedRetries((exhaustedRetries) => {
+      setExhaustedRetries(exhaustedRetries);
     });
   }, [hashbrown]);
 
@@ -261,5 +267,6 @@ export function useChat<Tools extends Chat.AnyTool>(
     isReceiving,
     isSending,
     isRunningToolCalls,
+    exhaustedRetries,
   };
 }

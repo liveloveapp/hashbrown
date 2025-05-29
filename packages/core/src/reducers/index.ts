@@ -49,6 +49,11 @@ export const selectIsRunningToolCalls = select(
 );
 export const selectError = select(selectStatusState, fromStatus.selectError);
 
+export const selectExhaustedRetries = select(
+  selectStatusState,
+  fromStatus.selectExhaustedRetries,
+);
+
 /**
  * Streaming Message
  */
@@ -57,6 +62,10 @@ export const selectStreamingMessageState = (state: State) =>
 export const selectStreamingMessage = select(
   selectStreamingMessageState,
   fromStreamingMessage.selectStreamingMessage,
+);
+export const selectStreamingToolCallEntities = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectStreamingToolCallEntities,
 );
 
 /**
@@ -96,18 +105,14 @@ export const selectMiddleware = select(
   fromConfig.selectMiddleware,
 );
 export const selectModel = select(selectConfigState, fromConfig.selectModel);
-export const selectPrompt = select(selectConfigState, fromConfig.selectPrompt);
+export const selectSystem = select(selectConfigState, fromConfig.selectSystem);
 export const selectDebounce = select(
   selectConfigState,
   fromConfig.selectDebounce,
 );
-export const selectTemperature = select(
+export const selectRetries = select(
   selectConfigState,
-  fromConfig.selectTemperature,
-);
-export const selectMaxTokens = select(
-  selectConfigState,
-  fromConfig.selectMaxTokens,
+  fromConfig.selectRetries,
 );
 export const selectResponseSchema = select(
   selectConfigState,
@@ -125,11 +130,15 @@ export const selectViewMessages = select(
   selectMessages,
   selectToolCallEntities,
   selectStreamingMessage,
+  selectStreamingToolCallEntities,
+  selectTools,
   selectResponseSchema,
   (
     messages,
     toolCalls,
     streamingMessage,
+    streamingToolCalls,
+    tools,
     responseSchema,
   ): Chat.AnyMessage[] => {
     const nonStreamingMessages = messages.flatMap(
@@ -137,6 +146,7 @@ export const selectViewMessages = select(
         Chat.helpers.toViewMessagesFromInternal(
           message,
           toolCalls,
+          tools,
           responseSchema,
         ),
     );
@@ -146,7 +156,8 @@ export const selectViewMessages = select(
     ).flatMap((message): Chat.AnyMessage[] =>
       Chat.helpers.toViewMessagesFromInternal(
         message,
-        toolCalls,
+        streamingToolCalls,
+        tools,
         responseSchema,
       ),
     );
@@ -156,19 +167,12 @@ export const selectViewMessages = select(
 );
 
 export const selectApiMessages = select(
-  selectPrompt,
   selectMessages,
   selectToolCalls,
-  (prompt, messages, toolCalls): Chat.Api.Message[] => {
-    return [
-      {
-        role: 'system',
-        content: prompt,
-      },
-      ...messages.flatMap((message): Chat.Api.Message[] =>
-        Chat.helpers.toApiMessagesFromInternal(message, toolCalls),
-      ),
-    ];
+  (messages, toolCalls): Chat.Api.Message[] => {
+    return messages.flatMap((message): Chat.Api.Message[] =>
+      Chat.helpers.toApiMessagesFromInternal(message, toolCalls),
+    );
   },
 );
 
@@ -196,4 +200,12 @@ export const selectApiTools = select(
       responseSchema ?? s.nullType(),
     );
   },
+);
+
+export const selectIsLoading = select(
+  selectIsSending,
+  selectIsReceiving,
+  selectIsRunningToolCalls,
+  (isSending, isReceiving, isRunningToolCalls) =>
+    isSending || isReceiving || isRunningToolCalls,
 );

@@ -625,12 +625,12 @@
         },
         {
           "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.constString:function(1)",
+          "canonicalReference": "@hashbrownai/core!s.literal:function(1)",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare function constString<T extends "
+              "text": "export declare function literal<T extends "
             },
             { "kind": "Content", "text": "string" },
             { "kind": "Content", "text": ">(value: " },
@@ -662,7 +662,7 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "name": "constString",
+          "name": "literal",
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -820,45 +820,13 @@
           }
         },
         {
-          "kind": "Variable",
-          "canonicalReference": "@hashbrownai/core!s.DISCRIMINATOR:var",
-          "docComment": "",
-          "excerptTokens": [
-            { "kind": "Content", "text": "DISCRIMINATOR = " },
-            { "kind": "Content", "text": "\"__discriminator\"" }
-          ],
-          "fileUrlPath": "../packages/core/src/schema/base.ts",
-          "initializerTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "isReadonly": true,
-          "releaseTag": "Public",
-          "name": "DISCRIMINATOR",
-          "variableTypeTokenRange": { "startIndex": 0, "endIndex": 0 },
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
           "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.enumType:function(1)",
+          "canonicalReference": "@hashbrownai/core!s.enumeration:function(1)",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare function enumType<Entries extends "
+              "text": "export declare function enumeration<Entries extends "
             },
             { "kind": "Content", "text": "string[]" },
             { "kind": "Content", "text": ">(description: " },
@@ -897,7 +865,7 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "name": "enumType",
+          "name": "enumeration",
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -1151,6 +1119,149 @@
               "releaseTag": "Public",
               "name": "\"~schema\"",
               "propertyTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType#parseJsonSchema:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "parseJsonSchema: " },
+                {
+                  "kind": "Content",
+                  "text": "(object: unknown, path?: string[]) => any"
+                },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "parseJsonSchema",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType#toJsonSchema:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "toJsonSchema: " },
+                { "kind": "Content", "text": "() => any" },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "toJsonSchema",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType#toTypeScript:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "toTypeScript: " },
+                { "kind": "Content", "text": "(pathSeen?: " },
+                {
+                  "kind": "Reference",
+                  "text": "Set",
+                  "canonicalReference": "!Set:interface"
+                },
+                { "kind": "Content", "text": "<" },
+                {
+                  "kind": "Reference",
+                  "text": "HashbrownType",
+                  "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+                },
+                { "kind": "Content", "text": ">) => string" },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "toTypeScript",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
+              "docs": {
+                "modifiers": {
+                  "isInternal": false,
+                  "isPublic": false,
+                  "isAlpha": false,
+                  "isBeta": false,
+                  "isOverride": false,
+                  "isExperimental": false
+                },
+                "summary": "",
+                "usageNotes": "",
+                "remarks": "",
+                "deprecated": "",
+                "returns": "",
+                "see": [],
+                "params": []
+              }
+            },
+            {
+              "kind": "PropertySignature",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType#validateJsonSchema:member",
+              "docComment": "",
+              "excerptTokens": [
+                { "kind": "Content", "text": "validateJsonSchema: " },
+                { "kind": "Content", "text": "(object: unknown) => void" },
+                { "kind": "Content", "text": ";" }
+              ],
+              "isReadonly": false,
+              "isOptional": false,
+              "releaseTag": "Public",
+              "name": "validateJsonSchema",
+              "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
               "docs": {
                 "modifiers": {
                   "isInternal": false,
@@ -1631,12 +1742,12 @@
         },
         {
           "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.isConstStringType:function(1)",
+          "canonicalReference": "@hashbrownai/core!s.isLiteralType:function(1)",
           "docComment": "",
           "excerptTokens": [
             {
               "kind": "Content",
-              "text": "export declare function isConstStringType(type: "
+              "text": "export declare function isLiteralType(type: "
             },
             {
               "kind": "Reference",
@@ -1668,7 +1779,7 @@
               "isOptional": false
             }
           ],
-          "name": "isConstStringType",
+          "name": "isLiteralType",
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -2656,82 +2767,6 @@
           }
         },
         {
-          "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.parse:function(1)",
-          "docComment": "",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export declare function parse<T extends "
-            },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": ">(schema: " },
-            { "kind": "Content", "text": "T" },
-            { "kind": "Content", "text": ", object: " },
-            { "kind": "Content", "text": "unknown" },
-            { "kind": "Content", "text": ", path?: " },
-            { "kind": "Content", "text": "string[]" },
-            { "kind": "Content", "text": "): " },
-            {
-              "kind": "Reference",
-              "text": "s.Infer",
-              "canonicalReference": "@hashbrownai/core!s.Infer:type"
-            },
-            { "kind": "Content", "text": "<T>" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "fileUrlPath": "../packages/core/src/schema/parse.ts",
-          "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
-          "releaseTag": "Public",
-          "overloadIndex": 1,
-          "parameters": [
-            {
-              "parameterName": "schema",
-              "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-              "isOptional": false
-            },
-            {
-              "parameterName": "object",
-              "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 6 },
-              "isOptional": false
-            },
-            {
-              "parameterName": "path",
-              "parameterTypeTokenRange": { "startIndex": 7, "endIndex": 8 },
-              "isOptional": true
-            }
-          ],
-          "typeParameters": [
-            {
-              "typeParameterName": "T",
-              "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
-            }
-          ],
-          "name": "parse",
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!s.Schema:type",
           "docComment": "",
@@ -2867,77 +2902,6 @@
           "members": [
             {
               "kind": "Function",
-              "canonicalReference": "@hashbrownai/core!s.streaming.anyOf:function(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "export declare function anyOf<const Options extends "
-                },
-                { "kind": "Content", "text": "readonly " },
-                {
-                  "kind": "Reference",
-                  "text": "HashbrownType",
-                  "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-                },
-                { "kind": "Content", "text": "[]" },
-                { "kind": "Content", "text": ">(description: " },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": ", options: " },
-                { "kind": "Content", "text": "Options" },
-                { "kind": "Content", "text": "): " },
-                {
-                  "kind": "Reference",
-                  "text": "AnyOfType",
-                  "canonicalReference": "@hashbrownai/core!s.AnyOfType:interface"
-                },
-                { "kind": "Content", "text": "<Options>" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
-              "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
-              "releaseTag": "Public",
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "description",
-                  "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 6 },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "options",
-                  "parameterTypeTokenRange": { "startIndex": 7, "endIndex": 8 },
-                  "isOptional": false
-                }
-              ],
-              "typeParameters": [
-                {
-                  "typeParameterName": "Options",
-                  "constraintTokenRange": { "startIndex": 1, "endIndex": 4 },
-                  "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
-                }
-              ],
-              "name": "anyOf",
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "Function",
               "canonicalReference": "@hashbrownai/core!s.streaming.array:function(1)",
               "docComment": "",
               "excerptTokens": [
@@ -2987,129 +2951,6 @@
                 }
               ],
               "name": "array",
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "Function",
-              "canonicalReference": "@hashbrownai/core!s.streaming.constString:function(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "export declare function constString<T extends "
-                },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": ">(value: " },
-                { "kind": "Content", "text": "T" },
-                { "kind": "Content", "text": "): " },
-                {
-                  "kind": "Reference",
-                  "text": "ConstStringType",
-                  "canonicalReference": "@hashbrownai/core!s.ConstStringType:interface"
-                },
-                { "kind": "Content", "text": "<T>" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
-              "returnTypeTokenRange": { "startIndex": 5, "endIndex": 7 },
-              "releaseTag": "Public",
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "value",
-                  "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-                  "isOptional": false
-                }
-              ],
-              "typeParameters": [
-                {
-                  "typeParameterName": "T",
-                  "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
-                  "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
-                }
-              ],
-              "name": "constString",
-              "docs": {
-                "modifiers": {
-                  "isInternal": false,
-                  "isPublic": false,
-                  "isAlpha": false,
-                  "isBeta": false,
-                  "isOverride": false,
-                  "isExperimental": false
-                },
-                "summary": "",
-                "usageNotes": "",
-                "remarks": "",
-                "deprecated": "",
-                "returns": "",
-                "see": [],
-                "params": []
-              }
-            },
-            {
-              "kind": "Function",
-              "canonicalReference": "@hashbrownai/core!s.streaming.enumType:function(1)",
-              "docComment": "",
-              "excerptTokens": [
-                {
-                  "kind": "Content",
-                  "text": "export declare function enumType<Entries extends "
-                },
-                { "kind": "Content", "text": "string[]" },
-                { "kind": "Content", "text": ">(description: " },
-                { "kind": "Content", "text": "string" },
-                { "kind": "Content", "text": ", entries: " },
-                { "kind": "Content", "text": "Entries" },
-                { "kind": "Content", "text": "): " },
-                {
-                  "kind": "Reference",
-                  "text": "EnumType",
-                  "canonicalReference": "@hashbrownai/core!s.EnumType:interface"
-                },
-                { "kind": "Content", "text": "<string[]>" },
-                { "kind": "Content", "text": ";" }
-              ],
-              "fileUrlPath": "../packages/core/src/schema/streaming.ts",
-              "returnTypeTokenRange": { "startIndex": 7, "endIndex": 9 },
-              "releaseTag": "Public",
-              "overloadIndex": 1,
-              "parameters": [
-                {
-                  "parameterName": "description",
-                  "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-                  "isOptional": false
-                },
-                {
-                  "parameterName": "entries",
-                  "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 6 },
-                  "isOptional": false
-                }
-              ],
-              "typeParameters": [
-                {
-                  "typeParameterName": "Entries",
-                  "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
-                  "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
-                }
-              ],
-              "name": "enumType",
               "docs": {
                 "modifiers": {
                   "isInternal": false,
@@ -3485,102 +3326,6 @@
               "isExperimental": false
             },
             "summary": "Walks the HashbrownType graph, finds any sub-schemas seen more than once (excluding the root), assigns each a unique name, and emits a draft-07 JSON Schema with a $defs section. Cycles always become $refs.\n",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.toOpenApi:function(1)",
-          "docComment": "",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export declare function toOpenApi(schema: "
-            },
-            {
-              "kind": "Reference",
-              "text": "s.HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": "): " },
-            { "kind": "Content", "text": "any" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "fileUrlPath": "../packages/core/src/schema/to-open-api.ts",
-          "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-          "releaseTag": "Public",
-          "overloadIndex": 1,
-          "parameters": [
-            {
-              "parameterName": "schema",
-              "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "isOptional": false
-            }
-          ],
-          "name": "toOpenApi",
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "",
-            "usageNotes": "",
-            "remarks": "",
-            "deprecated": "",
-            "returns": "",
-            "see": [],
-            "params": []
-          }
-        },
-        {
-          "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!s.toTypeScript:function(1)",
-          "docComment": "/**\n * Converts a Hashbrown schema into a TypeScript type literal string. Cyclic references will throw an error.\n */\n",
-          "excerptTokens": [
-            {
-              "kind": "Content",
-              "text": "export declare function toTypeScript(schema: "
-            },
-            {
-              "kind": "Reference",
-              "text": "HashbrownType",
-              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
-            },
-            { "kind": "Content", "text": "): " },
-            { "kind": "Content", "text": "string" },
-            { "kind": "Content", "text": ";" }
-          ],
-          "fileUrlPath": "../packages/core/src/schema/to-typescript.ts",
-          "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
-          "releaseTag": "Public",
-          "overloadIndex": 1,
-          "parameters": [
-            {
-              "parameterName": "schema",
-              "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
-              "isOptional": false
-            }
-          ],
-          "name": "toTypeScript",
-          "docs": {
-            "modifiers": {
-              "isInternal": false,
-              "isPublic": false,
-              "isAlpha": false,
-              "isBeta": false,
-              "isOverride": false,
-              "isExperimental": false
-            },
-            "summary": "Converts a Hashbrown schema into a TypeScript type literal string. Cyclic references will throw an error.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",

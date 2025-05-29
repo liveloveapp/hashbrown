@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, ResourceStatus } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -107,6 +107,13 @@ import { selectAllLights, selectLightEntities } from '../../../store';
 
         <button mat-button type="button" (click)="addLight()">Add Light</button>
       </form>
+
+      @if (lostService()) {
+        <div class="error">
+          <mat-icon inline>error</mat-icon>Structured completion is not
+          available.
+        </div>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button [mat-dialog-close]="undefined">Cancel</button>
@@ -155,6 +162,16 @@ import { selectAllLights, selectLightEntities } from '../../../store';
       mat-form-field {
         flex: 1;
       }
+
+      .error {
+        background-color: var(--mat-sys-error-container);
+        width: fit-content;
+        padding: 16px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
     `,
   ],
 })
@@ -175,7 +192,7 @@ export class SceneFormDialogComponent {
   predictedLights = structuredCompletionResource({
     model: 'gpt-4.1',
     input: this.sceneNameSignal,
-    prompt: computed(
+    system: computed(
       () => `
       Predict the lights that will be added to the scene based on the name. For example,
       if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
@@ -198,6 +215,10 @@ export class SceneFormDialogComponent {
       ),
     }),
   });
+
+  protected lostService = computed(
+    () => this.predictedLights.status() === ResourceStatus.Error,
+  );
 
   protected get lightsFormArray() {
     return this.form.get('lights') as FormArray;
