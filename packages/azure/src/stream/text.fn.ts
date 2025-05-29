@@ -5,7 +5,6 @@ import type { FunctionParameters } from 'openai/resources/shared';
 export interface AzureTextStreamOptions {
   apiKey: string;
   endpoint: string;
-  apiVersion: string;
   request: Chat.Api.CompletionCreateParams;
   transformRequestOptions?: (
     options: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
@@ -17,10 +16,23 @@ export interface AzureTextStreamOptions {
 export async function* text(
   options: AzureTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, endpoint, apiVersion, request, transformRequestOptions } =
-    options;
-  const { messages, model, tools, responseFormat, system, toolChoice } =
-    request;
+  const { apiKey, endpoint, request, transformRequestOptions } = options;
+  const {
+    messages,
+    model: modelAndVersion,
+    tools,
+    responseFormat,
+    system,
+    toolChoice,
+  } = request;
+
+  if (!modelAndVersion.includes('@')) {
+    throw new Error(
+      'Model version is required when using Azure OpenAI. Please specify the model version in the `model` string when supplied to any resource.',
+    );
+  }
+
+  const [model, apiVersion] = modelAndVersion.split('@');
 
   const client = new AzureOpenAI({
     apiKey,
