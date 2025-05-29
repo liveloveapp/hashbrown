@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Chat } from '@hashbrownai/core';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
@@ -60,14 +61,9 @@ app.post('/chat', async (req, res, next) => {
 
   res.header('Content-Type', 'application/octet-stream');
 
-  try {
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-  } catch (error) {
-    console.error(error);
-    // Pass errors to Express error middleware so server doesn't crash
-    next(error);
+  for await (const chunk of stream) {
+    res.write(chunk);
   }
+
   res.end();
 });

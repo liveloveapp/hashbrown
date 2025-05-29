@@ -4,6 +4,7 @@ import { catchError, concatMap, map, of } from 'rxjs';
 import { SmartHomeService } from '../../../services/smart-home.service';
 import { PredictionsAiActions } from '../../predictions/actions';
 import { ScenesPageActions } from '../../scenes/actions';
+import { ChatAiActions } from '../../chat/actions';
 import { LightsApiActions, LightsPageActions } from '../actions';
 
 export const loadLights$ = createEffect(
@@ -14,7 +15,7 @@ export const loadLights$ = createEffect(
     return actions$.pipe(
       ofType(LightsPageActions.enter, ScenesPageActions.enter),
       concatMap(() => {
-        return smartHome.loadLights().pipe(
+        return smartHome.loadLights$().pipe(
           map((lights) => LightsApiActions.loadLightsSuccess({ lights })),
           catchError((error) =>
             of(LightsApiActions.loadLightsFailure({ error })),
@@ -35,7 +36,7 @@ export const createLight$ = createEffect(
       ofType(LightsPageActions.addLight, PredictionsAiActions.addLight),
       concatMap((action) => {
         return smartHome
-          .addLight({
+          .addLight$({
             ...action.light,
             brightness: 100,
           })
@@ -59,7 +60,7 @@ export const updateLight$ = createEffect(
     return actions$.pipe(
       ofType(LightsPageActions.updateLight),
       concatMap((action) => {
-        return smartHome.updateLight(action.id, action.changes).pipe(
+        return smartHome.updateLight$(action.id, action.changes).pipe(
           map((light) => LightsApiActions.updateLightSuccess({ light })),
           catchError((error) =>
             of(LightsApiActions.updateLightFailure({ error })),
@@ -79,10 +80,30 @@ export const deleteLight$ = createEffect(
     return actions$.pipe(
       ofType(LightsPageActions.deleteLight),
       concatMap((action) => {
-        return smartHome.deleteLight(action.id).pipe(
+        return smartHome.deleteLight$(action.id).pipe(
           map(() => LightsApiActions.deleteLightSuccess({ id: action.id })),
           catchError((error) =>
             of(LightsApiActions.deleteLightFailure({ error })),
+          ),
+        );
+      }),
+    );
+  },
+  { functional: true },
+);
+
+export const controlLight$ = createEffect(
+  () => {
+    const actions$ = inject(Actions);
+    const smartHome = inject(SmartHomeService);
+
+    return actions$.pipe(
+      ofType(ChatAiActions.controlLight),
+      concatMap((action) => {
+        return smartHome.controlLight$(action.lightId, action.brightness).pipe(
+          map((light) => LightsApiActions.controlLightSuccess({ light })),
+          catchError((error) =>
+            of(LightsApiActions.controlLightFailure({ error })),
           ),
         );
       }),

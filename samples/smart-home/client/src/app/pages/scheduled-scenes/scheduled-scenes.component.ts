@@ -180,7 +180,7 @@ export class ScheduledScenesComponent {
   }
 
   toggleEnabled(scheduledScene: ScheduledScene) {
-    this.smartHomeService.updateScheduledScene(scheduledScene.id, {
+    this.smartHomeService.updateScheduledScene$(scheduledScene.id, {
       isEnabled: !scheduledScene.isEnabled,
     });
   }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, ResourceStatus } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -82,13 +82,13 @@ import { selectAllLights, selectLightEntities } from '../../../store';
           }
         </div>
 
-        @let prediction = predictedLights.value();
-        @if (prediction) {
+        @let predictedLights = predictedLightsResource.value();
+        @if (predictedLights) {
           <h5>
             <mat-icon aria-hidden="true" inline>bolt</mat-icon>
             Suggestions
           </h5>
-          @for (light of prediction.lights; track light.lightId) {
+          @for (light of predictedLights; track light.lightId) {
             @let suggestedLight = lightEntities()[light.lightId];
 
             <div class="predicted-light">
@@ -186,10 +186,15 @@ export class SceneFormDialogComponent {
     name: ['', Validators.required],
     lights: this.fb.array([]),
   });
-
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   sceneNameSignal = toSignal(this.form.get('name')!.valueChanges);
-  predictedLights = structuredCompletionResource({
+
+  /**
+   * --------------------------------------------------------------------------
+   * Predicted Lights Resource
+   * --------------------------------------------------------------------------
+   */
+  predictedLightsResource = structuredCompletionResource({
     model: 'gpt-4.1',
     input: this.sceneNameSignal,
     system: computed(
@@ -205,19 +210,17 @@ export class SceneFormDialogComponent {
     `,
     ),
     debugName: 'Predict Lights',
-    schema: s.object('Your response', {
-      lights: s.streaming.array(
-        'The lights to add to the scene',
-        s.object('A join between a light and a scene', {
-          lightId: s.string('the ID of the light to add'),
-          brightness: s.number('the brightness of the light from 0 to 100'),
-        }),
-      ),
-    }),
+    schema: s.streaming.array(
+      'The lights to add to the scene',
+      s.object('A join between a light and a scene', {
+        lightId: s.string('the ID of the light to add'),
+        brightness: s.number('the brightness of the light from 0 to 100'),
+      }),
+    ),
   });
 
   protected lostService = computed(
-    () => this.predictedLights.status() === 'error',
+    () => this.predictedLightsResource.status() === 'error',
   );
 
   protected get lightsFormArray() {

@@ -112,7 +112,7 @@ export class PlannerComponent {
           name: s.string('the name of the light'),
         }),
         handler: (name) =>
-          lastValueFrom(this.smartHome.addLight({ name, brightness: 100 })),
+          lastValueFrom(this.smartHome.addLight$({ name, brightness: 100 })),
       }),
       defineFunctionWithArgs({
         name: 'createScene',
@@ -131,7 +131,7 @@ export class PlannerComponent {
           id: s.string('the id of the scene'),
           name: s.string('the name of the scene'),
         }),
-        handler: (params) => lastValueFrom(this.smartHome.addScene(params)),
+        handler: (params) => lastValueFrom(this.smartHome.addScene$(params)),
       }),
       defineFunctionWithArgs({
         name: 'createScheduledScene',

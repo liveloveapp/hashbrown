@@ -40,7 +40,7 @@ export const addScene$ = createEffect(
     return actions$.pipe(
       ofType(ScenesPageActions.addScene),
       mergeMap(({ scene }) => {
-        smartHome.addScene(scene);
+        smartHome.addScene$(scene);
         const newScene = smartHome.scenes().find((s) => s.name === scene.name);
         if (!newScene) {
           return of(
@@ -69,7 +69,7 @@ export const addLightToScene$ = createEffect(
     return actions$.pipe(
       ofType(PredictionsAiActions.addLightToScene),
       mergeMap(({ lightId, sceneId, brightness }) => {
-        return smartHome.addLightToScene(lightId, sceneId, brightness).pipe(
+        return smartHome.addLightToScene$(lightId, sceneId, brightness).pipe(
           map((sceneLight) =>
             ScenesApiActions.addLightToSceneSuccess({
               sceneLight,
@@ -96,7 +96,7 @@ export const updateScene$ = createEffect(
     return actions$.pipe(
       ofType(ScenesPageActions.updateScene),
       mergeMap(({ id, scene }) => {
-        return smartHome.updateScene(id, scene).pipe(
+        return smartHome.updateScene$(id, scene).pipe(
           map((updatedScene) =>
             ScenesApiActions.updateSceneSuccess({ scene: updatedScene }),
           ),
@@ -118,7 +118,7 @@ export const deleteScene$ = createEffect(
     return actions$.pipe(
       ofType(ScenesPageActions.deleteScene),
       mergeMap(({ id }) => {
-        return smartHome.deleteScene(id).pipe(
+        return smartHome.deleteScene$(id).pipe(
           map((id) => ScenesApiActions.deleteSceneSuccess({ id })),
           catchError((error) =>
             of(ScenesApiActions.deleteSceneFailure({ error: error.message })),
@@ -138,7 +138,7 @@ export const applyScene$ = createEffect(
     return actions$.pipe(
       ofType(ScenesPageActions.applyScene),
       mergeMap(({ id }) => {
-        return smartHome.applyScene(id).pipe(
+        return smartHome.applyScene$(id).pipe(
           map((scene) => ScenesApiActions.applySceneSuccess({ scene })),
           catchError((error) =>
             of(ScenesApiActions.applySceneFailure({ error: error.message })),

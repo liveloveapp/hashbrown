@@ -38,8 +38,6 @@ export const appConfig: ApplicationConfig = {
       emulateStructuredOutput: true,
       middleware: [
         function (request: RequestInit) {
-          const store = inject(Store);
-          console.log(store);
           return request;
         },
       ],

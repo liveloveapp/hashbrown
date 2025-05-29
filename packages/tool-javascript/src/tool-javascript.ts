@@ -36,8 +36,8 @@ export function createToolJavaScript({
       of the execution or time out after ${timeout / 1000} seconds. Internet access for this session is
       disabled. Do not make external web requests or API calls as they will fail.
 
-      When passing code to javascript, you must ALWAYS use semicolons to end your statements.
-      NEVER put \\n or \\r in your code. It must be valid JavaScript that can be evaluated.
+      Important: Prefer calling javascript once with a large amount of code, rather than calling it
+      multiple times with smaller amounts of code.
 
       The following functions are available to you:
       ${runtime.describe()}
@@ -48,6 +48,7 @@ export function createToolJavaScript({
     handler: async ({ code }, abortSignal) => {
       const timeoutSignal = AbortSignal.timeout(timeout);
       const combinedSignal = AbortSignal.any([abortSignal, timeoutSignal]);
+
       return runtime.run(code, combinedSignal);
     },
   });

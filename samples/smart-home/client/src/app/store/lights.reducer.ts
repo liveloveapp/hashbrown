@@ -4,12 +4,16 @@ import { Light } from '../models/light.model';
 import { LightsApiActions } from '../features/lights/actions/lights-api.actions';
 import { LightsPageActions } from '../features/lights/actions/lights-page.actions';
 import { ChatAiActions } from '../features/chat/actions';
+import { ScenesApiActions } from '../features/scenes/actions';
+
 export interface LightsState extends EntityState<Light> {
   isLoading: boolean;
   error: string | null;
 }
 
-export const adapter: EntityAdapter<Light> = createEntityAdapter<Light>();
+export const adapter: EntityAdapter<Light> = createEntityAdapter<Light>({
+  sortComparer: (a, b) => a.name.localeCompare(b.name),
+});
 
 export const initialState: LightsState = adapter.getInitialState({
   isLoading: false,
@@ -51,21 +55,28 @@ export const lightsReducer = createReducer(
     ...state,
     error: action.error,
   })),
-  on(ChatAiActions.controlLight, (state, action) =>
-    adapter.updateOne(
-      { id: action.lightId, changes: { brightness: action.brightness } },
-      state,
-    ),
+  on(
+    ChatAiActions.applyScene,
+    ScenesApiActions.applySceneSuccess,
+    (state, action) =>
+      adapter.updateMany(
+        action.scene.lights.map((light) => ({
+          id: light.lightId,
+          changes: { brightness: light.brightness },
+        })),
+        state,
+      ),
   ),
-  on(ChatAiActions.applyScene, (state, action) =>
-    adapter.updateMany(
-      action.scene.lights.map((light) => ({
-        id: light.lightId,
-        changes: { brightness: light.brightness },
-      })),
-      state,
-    ),
+  on(ChatAiActions.addLight, (state, action) =>
+    adapter.addOne(action.light, state),
   ),
+  on(LightsApiActions.controlLightSuccess, (state, action) =>
+    adapter.updateOne({ id: action.light.id, changes: action.light }, state),
+  ),
+  on(LightsApiActions.controlLightFailure, (state, action) => ({
+    ...state,
+    error: action.error,
+  })),
 );
 
 export const { selectAll, selectEntities, selectIds, selectTotal } =
