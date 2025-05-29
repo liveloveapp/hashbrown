@@ -253,7 +253,7 @@ describe('anyOf', () => {
     const schema = s.object('root', {
       value: s.anyOf([s.number('num'), s.string('str')]),
     });
-    const input = '{"value":{"0":123}}';
+    const input = '{"value":123}';
     const input2 = '{"value":{"1":"hello"}}';
 
     expect(parse(schema, input)).toEqual({ value: 123 });
@@ -264,8 +264,8 @@ describe('anyOf', () => {
     const schema = s.object('root', {
       value: s.anyOf([s.number('num'), s.string('str')]),
     });
-    const chunk1 = '{"value":{"0":';
-    const chunk2 = '123}}';
+    const chunk1 = '{"value":';
+    const chunk2 = '123}';
     const combined = chunk1 + chunk2;
 
     expect(parse(schema, chunk1)).toBe('');
@@ -314,18 +314,18 @@ describe('anyOf', () => {
     const schema = s.streaming.array(
       'streaming array',
       s.anyOf([
+        s.number('array number'),
         s.object('array object', {
           data: s.streaming.string('array object streaming data'),
         }),
-        s.number('array number'),
         s.boolean('array boolean'),
       ]),
     );
 
-    const chunk1 = '[{"0":{"data":"the ';
-    const chunk2 = 'markdown data"}},{"1":17},{"';
-    const chunk3 = '2":false},{"1":12';
-    const chunk4 = '3},{"0":{"data":"more markdown data"}}]';
+    const chunk1 = '[{"1":{"data":"the ';
+    const chunk2 = 'markdown data"}},17,';
+    const chunk3 = 'false,12';
+    const chunk4 = '3,{"1":{"data":"more markdown data"}}]';
 
     expect(parse(schema, chunk1)).toEqual([{ data: 'the' }]);
     expect(parse(schema, chunk1 + chunk2)).toEqual([
