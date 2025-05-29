@@ -217,7 +217,7 @@ export class SceneFormDialogComponent {
   });
 
   protected lostService = computed(
-    () => this.predictedLights.status() === ResourceStatus.Error,
+    () => this.predictedLights.status() === 'error',
   );
 
   protected get lightsFormArray() {

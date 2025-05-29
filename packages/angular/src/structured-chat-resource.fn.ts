@@ -17,6 +17,7 @@ export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
   sendMessage: (message: Chat.UserMessage) => void;
   resendMessages: () => void;
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
+  reload: () => boolean;
 }
 
 export interface StructuredChatResourceOptions<
@@ -66,13 +67,13 @@ export function structuredChatResource<
 
   const exhaustedRetries = toSignal(hashbrown.observeExhaustedRetries);
 
-  const status = computed(() => {
+  const status = computed((): ResourceStatus => {
     if (isReceiving() || isSending() || isRunningToolCalls()) {
-      return ResourceStatus.Loading;
+      return 'loading';
     }
 
     if (exhaustedRetries()) {
-      return ResourceStatus.Error;
+      return 'error';
     }
 
     const hasAssistantMessage = value().some(
@@ -80,10 +81,10 @@ export function structuredChatResource<
     );
 
     if (hasAssistantMessage) {
-      return ResourceStatus.Resolved;
+      return 'resolved';
     }
 
-    return ResourceStatus.Idle;
+    return 'idle';
   });
 
   const isLoading = computed(() => {

@@ -5,7 +5,7 @@ export interface StatusState {
   isReceiving: boolean;
   isSending: boolean;
   isRunningToolCalls: boolean;
-  error: Error | null;
+  error: Error | undefined;
   exhaustedRetries: boolean;
 }
 
@@ -13,7 +13,7 @@ export const initialStatusState: StatusState = {
   isReceiving: false,
   isSending: false,
   isRunningToolCalls: false,
-  error: null,
+  error: undefined,
   exhaustedRetries: false,
 };
 
@@ -61,7 +61,7 @@ export const reducer = createReducer(
       ...state,
       isReceiving: false,
       isRunningToolCalls: true,
-      error: null,
+      error: undefined,
       exhaustedRetries: false,
     };
   }),

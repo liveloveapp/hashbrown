@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-empty-object-type */
-/* eslint-disable @typescript-eslint/no-empty-interface */
 import { computed, effect, Resource, Signal } from '@angular/core';
 import { Chat, s } from '@hashbrownai/core';
 import { SignalLike } from './types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
 export interface StructuredCompletionResourceRef<Output>
-  extends Resource<Output | null> {}
+  extends Resource<Output | null> {
+  reload: () => boolean;
+}
 
 export interface StructuredCompletionResourceOptions<
   Input,

@@ -16,7 +16,7 @@ export function toSignal<T>(
 ): Signal<T> {
   // eslint-disable-next-line prefer-const
   let _signal: WritableSignal<T> | undefined;
-  let initialValue: T | undefined;
+  let initialValue: T;
 
   source((value) => {
     if (_signal) {
@@ -26,11 +26,8 @@ export function toSignal<T>(
     }
   });
 
-  if (initialValue === undefined) {
-    throw new Error('Initial value is required');
-  }
-
-  _signal = signal(initialValue);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  _signal = signal(initialValue!);
 
   return _signal.asReadonly();
 }

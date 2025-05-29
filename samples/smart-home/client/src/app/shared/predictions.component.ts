@@ -440,9 +440,7 @@ export class PredictionsComponent {
     }),
   });
 
-  protected lostService = computed(
-    () => this.predictions.status() === ResourceStatus.Error,
-  );
+  protected lostService = computed(() => this.predictions.status() === 'error');
 
   output = linkedSignal({
     source: this.predictions.value,

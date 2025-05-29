@@ -195,7 +195,7 @@ export class LightFormComponent {
   );
 
   protected lostService = computed(
-    () => this.nameCompletion.status() === ResourceStatus.Error,
+    () => this.nameCompletion.status() === 'error',
   );
 
   constructor() {
