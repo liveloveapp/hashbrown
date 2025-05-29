@@ -5,6 +5,8 @@ import {
   ApiMemberSummary,
 } from '../models/api-report.models';
 import { SymbolApi } from './SymbolApi';
+import { SymbolChip } from './SymbolChip';
+import { SymbolExamples } from './SymbolExamples';
 import { SymbolHeader } from './SymbolHeader';
 import { SymbolMethods } from './SymbolMethods';
 import { SymbolParams } from './SymbolParams';
@@ -12,12 +14,12 @@ import { SymbolReturns } from './SymbolReturns';
 import { SymbolSummary } from './SymbolSummary';
 import { SymbolTypeParams } from './SymbolTypeParams';
 import { SymbolUsageNotes } from './SymbolUsageNotes';
-import { SymbolChip } from './SymbolChip';
 
 @Component({
   selector: 'www-symbol',
   imports: [
     SymbolApi,
+    SymbolExamples,
     SymbolHeader,
     SymbolMethods,
     SymbolParams,
@@ -76,6 +78,9 @@ import { SymbolChip } from './SymbolChip';
           }
           @if (getMethodsForSymbol(symbol).length) {
             <www-symbol-methods [symbol]="symbol" />
+          }
+          @if (symbol.docs.examples?.length) {
+            <www-symbol-examples [symbol]="symbol" />
           }
         </article>
       }

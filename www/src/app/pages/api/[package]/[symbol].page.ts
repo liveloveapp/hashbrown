@@ -30,11 +30,11 @@ export default class PackageSymbolPage {
   symbol = input.required<string>();
 
   symbolResource = resource({
-    request: () => ({
+    params: () => ({
       package: this.package(),
       symbol: this.symbol(),
     }),
-    loader: ({ request }) =>
-      this.referenceService.loadReferenceData(request.package, request.symbol),
+    loader: ({ params }) =>
+      this.referenceService.loadReferenceData(params.package, params.symbol),
   });
 }

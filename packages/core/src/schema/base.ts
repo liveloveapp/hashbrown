@@ -21,6 +21,7 @@ import {
   IsUnion,
   UnionToTuple,
 } from '../utils/types';
+import { needsDiscriminatorWrapperInAnyOf } from './to-json-schema';
 
 export const internal = '~schema';
 export type internal = typeof internal;
@@ -544,12 +545,13 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor(
 
     const { shape } = schema[internal].definition;
 
-    Object.entries(shape).every(([key, child]) =>
-      (child as any).parseJsonSchema(object[key as keyof typeof object], [
-        ...path,
-        key,
-      ]),
-    );
+    Object.entries(shape).forEach(([key, child]) => {
+      // AnyOf unwrapping can change the desired form of the result object, so
+      // update the object as we parse
+      (object as any)[key as keyof typeof object] = (
+        child as any
+      ).parseJsonSchema(object[key as keyof typeof object], [...path, key]);
+    });
 
     return object;
   },
@@ -640,9 +642,11 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor(
     if (!Array.isArray(object))
       throw new Error(`Expected an array at: ${path.join('.')}`);
 
-    object.every((item) =>
-      schema[internal].definition.element.parseJsonSchema(item, path),
-    );
+    // AnyOf unwrapping can change the desired form of the result object, so
+    // update the object as we parse
+    object.forEach((item) => {
+      item = schema[internal].definition.element.parseJsonSchema(item, path);
+    });
 
     return object;
   },
@@ -712,22 +716,51 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
-    if (typeof object !== 'object' || object === null) {
-      throw new Error(`Expected an object at: ${path.join('.')}`);
+    const options = schema[internal].definition.options;
+
+    let parsedObject = undefined;
+
+    for (let i = 0; i < options.length; i++) {
+      try {
+        if (needsDiscriminatorWrapperInAnyOf(options[i])) {
+          if (typeof object !== 'object' || object === null) {
+            throw new Error(`Expected an object at: ${path.join('.')}`);
+          }
+
+          const anyOfKeys = Object.keys(object);
+
+          if (anyOfKeys.length !== 1) {
+            throw new Error(`Malformed anyOf wrapper at ${path.join('.')}`);
+          }
+
+          const anyOfIndex = anyOfKeys[0];
+
+          if (anyOfIndex !== i.toString()) {
+            throw new Error(
+              `Unexpected discriminator value ${anyOfIndex} for option ${i}`,
+            );
+          }
+
+          parsedObject = options[i].parseJsonSchema(
+            (object as any)[anyOfIndex],
+          );
+        } else {
+          parsedObject = options[i].parseJsonSchema(object);
+        }
+        break;
+      } catch (e) {
+        // console.log(e);
+        // Parsing failed, but that is not unexpected due to the looping.
+        // Just try the next option.
+        continue;
+      }
     }
 
-    const anyOfKeys = Object.keys(object);
-
-    if (anyOfKeys.length !== 1) {
-      throw new Error(`Malformed anyOf wrapper at ${path.join('.')}`);
+    if (parsedObject == null) {
+      throw new Error(
+        `All options in anyOf failed parsing at: ${path.join('.')}`,
+      );
     }
-
-    const anyOfIndex = anyOfKeys[0];
-
-    // Discriminator should be index in options list, so try to parse object.index as option type
-    const parsedObject = schema[internal].definition.options[
-      anyOfIndex
-    ].parseJsonSchema((object as any)[anyOfIndex]);
 
     return parsedObject;
   },

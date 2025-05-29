@@ -8,21 +8,19 @@ import { HashbrownAzure } from './index';
 
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
-const AZURE_API_VERSION = process.env['AZURE_API_VERSION'] ?? '';
 
 test('Azure OpenAI Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      apiVersion: AZURE_API_VERSION,
       request,
     }),
   );
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4o',
+    model: 'gpt-4o@2025-01-01-preview',
     system: `
      I am writing an integration test against Azure OpenAI. Respond
      exactly with the text "Hello, world!"
@@ -54,14 +52,13 @@ test('Azure OpenAI Tool Calling', async () => {
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      apiVersion: AZURE_API_VERSION,
       request,
     }),
   );
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4o',
+    model: 'gpt-4o@2025-01-01-preview',
     system: `
      I am writing an integration test against Azure OpenAI. Call
      the "test" tool with the argument "Hello, world!"
@@ -110,14 +107,13 @@ test('Azure OpenAI with structured output', async () => {
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      apiVersion: AZURE_API_VERSION,
       request,
     }),
   );
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4o',
+    model: 'gpt-4o@2025-01-01-preview',
     system: `
      I am writing an integration test against Azure OpenAI. Respond
      exactly with the text "Hello, world!" in JSON format.
@@ -150,7 +146,6 @@ test('Azure OpenAI with tool calling and structured output', async () => {
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      apiVersion: AZURE_API_VERSION,
       request,
     }),
   );
@@ -158,7 +153,7 @@ test('Azure OpenAI with tool calling and structured output', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4o',
+    model: 'gpt-4o@2025-01-01-preview',
     system: `
      I am writing an integration test against Azure OpenAI. Call
      the "test" tool with the argument "Hello, world!"

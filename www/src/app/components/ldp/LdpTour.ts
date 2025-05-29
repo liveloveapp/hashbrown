@@ -1,19 +1,19 @@
 import {
-  Component,
   AfterViewInit,
-  NgZone,
-  viewChildren,
-  ElementRef,
-  signal,
+  Component,
   computed,
+  ElementRef,
+  NgZone,
+  signal,
+  viewChildren,
 } from '@angular/core';
 import { LpdNaturalLanguage } from './LpdNaturalLanguage';
 import { LdpCompletions } from './LdpCompletions';
-import { LdpChat } from './LdpChat';
+import { LdpVibeCode } from './LdpVibeCode';
 
 @Component({
-  selector: 'www-lpd-tour',
-  imports: [LpdNaturalLanguage, LdpCompletions, LdpChat],
+  selector: 'www-ldp-tour',
+  imports: [LpdNaturalLanguage, LdpCompletions, LdpVibeCode],
   template: `
     <section class="product-tour">
       <!-- Left: sticky animation area -->
@@ -31,7 +31,12 @@ import { LdpChat } from './LdpChat';
           </div>
           <div class="anim" [class.active]="3 === activeStep()" data-step="3">
             @if (activeStep() === 3) {
-              <www-lpd-chat />
+              <img src="/image/landing-page/chat-demo.svg" alt="Chat Demo" />
+            }
+          </div>
+          <div class="anim" [class.active]="4 === activeStep()" data-step="4">
+            @if (activeStep() === 4) {
+              <www-ldp-vibe-code />
             }
           </div>
         </div>
@@ -69,6 +74,16 @@ import { LdpChat } from './LdpChat';
             service calls that stream directly into your app's component layer -
             perfect for those times when a structured user interface would slow
             them down.
+          </p>
+        </section>
+        <section class="step" data-step="4" #step>
+          <h2 [class.active]="4 === activeStep()">
+            vibe code directly in the browser, safely & securely
+          </h2>
+          <p [class.active]="4 === activeStep()">
+            What if we could leverage vibe coding as an app capability? Turn
+            user intent and your data into code using LLMs, then use Hashbrown
+            to safely and securely run that code in a sandboxed environment.
           </p>
         </section>
       </div>
@@ -128,6 +143,7 @@ import { LdpChat } from './LdpChat';
         display: flex;
         flex-direction: column;
         justify-content: center;
+        gap: 8px;
         padding: 2rem;
         opacity: 1;
         transition: opacity 0.5s ease;
@@ -140,7 +156,7 @@ import { LdpChat } from './LdpChat';
       h2 {
         color: #5e5c5a;
         font-family: 'Fredoka';
-        font-size: 32px;
+        font-size: 28px;
         font-style: normal;
         font-weight: 600;
         line-height: 38px; /* 118.75% */
@@ -155,25 +171,34 @@ export class LdpTour implements AfterViewInit {
     this.observations().sort((a, b) => b.ratio - a.ratio),
   );
   bestObservation = computed(() => this.sortedObservations()[0]);
-  activeStep = computed(() => this.bestObservation()?.step ?? 1);
+  activeStep = signal(0);
 
   constructor(private zone: NgZone) {}
 
   ngAfterViewInit() {
-    const observer = new IntersectionObserver((entries) => {
-      const stepUpdates = entries.map((s) => ({
-        step: Number(s.target.getAttribute('data-step')),
-        ratio: s.intersectionRatio,
-      }));
-      const stepsBeingChanged = stepUpdates.map((s) => s.step);
+    if (
+      typeof window === 'undefined' ||
+      typeof window.IntersectionObserver === 'undefined'
+    ) {
+      return;
+    }
 
-      this.observations.update((allObservations) => {
-        const observationsNotBeingUpdated = allObservations.filter(
-          (o) => !stepsBeingChanged.includes(o.step),
-        );
-        return [...observationsNotBeingUpdated, ...stepUpdates];
-      });
-    });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const stepUpdates = entries.map((s) => ({
+          step: Number(s.target.getAttribute('data-step')),
+          ratio: s.intersectionRatio,
+        }));
+        const bestStep = stepUpdates.find((step) => step.ratio > 0.5);
+        if (bestStep) {
+          this.activeStep.set(bestStep.step);
+        }
+      },
+      {
+        rootMargin: '0px',
+        threshold: 0.5,
+      },
+    );
     this.steps().forEach((s) => observer.observe(s.nativeElement));
   }
 }

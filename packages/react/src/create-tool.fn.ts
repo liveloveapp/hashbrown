@@ -16,6 +16,22 @@ export interface CreateToolWithArgsInput<
   handler: (input: s.Infer<Schema>) => Promise<Result>;
 }
 
+/**
+ * This function creates a tool for the LLM to use that can use arguments.
+ *
+ * @example
+ * ```ts
+ * createToolWithArgs({
+ *   name: 'checkTodoItem',
+ *   description: 'Check a todo item',
+ *   schema: s.object('Check todo item input', {
+ *     id: s.string('The id of the todo item'),
+ *   }),
+ *   handler: (input) => checkTodoItem(input),
+ * });
+ * ```
+ * @returns {Chat.Tool<Name, s.Infer<Schema>, Result>} - A tool that the LLM can use.
+ */
 export function createToolWithArgs<
   const Name extends string,
   Schema extends s.HashbrownType,
@@ -41,12 +57,22 @@ export interface CreateToolInput<Name extends string, Result> {
 }
 
 /**
- * Creates a tool with a handler that takes no arguments.
+ * This function creates an argument-less tool for the LLM to use.
  *
- * @param input
- * @returns
+ * @example
+ * ```ts
+ * createTool({
+ *   name: 'getUser',
+ *   description: 'Get the current user',
+ *   handler: () => getUser(),
+ * });
+ * ```
+ * @returns {Chat.Tool<Name, void, Result>} - A tool that the LLM can use.
  */
 export function createTool<const Name extends string, Result>(
+  /**
+   * The input for the tool.
+   */
   input: CreateToolInput<Name, Result>,
 ): Chat.Tool<Name, void, Result> {
   return {

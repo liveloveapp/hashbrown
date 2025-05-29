@@ -239,6 +239,9 @@ function parseTSDoc(foundComment: string): ApiDocs {
       name: block.parameterName,
       description: renderDocNode('@param', block.content),
     })),
+    examples: docComment.customBlocks
+      .filter((block) => block.blockTag.tagName === '@example')
+      .map((block) => renderDocNode('@example', block)),
   };
 }
 
