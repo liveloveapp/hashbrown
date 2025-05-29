@@ -179,8 +179,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     skipBlank();
     let value: any = undefined;
 
-    // let currentContainerStackIndex = containerStack.length - 1;
-
     try {
       while (jsonString[index] !== '}') {
         skipBlank();
@@ -206,14 +204,6 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
           logger.log('Found top-level schema:');
           logger.log(matchingSchema);
-
-          // containerStack.push(
-          //   s.object(`AnyOf Wrapper for ${key}`, {
-          //     [key]: matchingSchema,
-          //   }),
-          // );
-
-          // currentContainerStackIndex = containerStack.length - 1;
 
           // This isn't a real object, so don't pass the key name
           value = parseAny('', isStreaming(matchingSchema), false);

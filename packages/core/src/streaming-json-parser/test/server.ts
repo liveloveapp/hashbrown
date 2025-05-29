@@ -342,8 +342,8 @@ const server = createServer(async function (socket) {
 
   console.log(`Test string length: ${TEST_STRING.length}`);
 
-  const MAX_SIZE = 10;
-  const MIN_SIZE = 5;
+  const MAX_SIZE = 30;
+  const MIN_SIZE = 10;
 
   let cursor = 0;
 

@@ -342,8 +342,6 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor(
     };
   },
   (schema: any, object: unknown, path: string[]) => {
-    console.log('parsing number from json schmea ');
-    console.log(object);
     // Is this a wrapped primitive?
     if (
       object != null &&
