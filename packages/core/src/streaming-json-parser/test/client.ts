@@ -15,13 +15,14 @@ import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
   });
 
   // anyOf as a property (instead of in a container)
-  // const responseSchema = s.object('gridArea', {
-  //   element: s.anyOf([
-  //     s.object('Markdown', {
-  //       data: s.streaming.string('The markdown data'),
-  //     }),
-  //   ]),
-  // });
+  const responseSchema = s.object('gridArea', {
+    element: s.anyOf([
+      s.boolean('a boolean'),
+      s.object('Markdown', {
+        data: s.streaming.string('The markdown data'),
+      }),
+    ]),
+  });
 
   // const responseSchema = s.object('UI', {
   //   ui: s.streaming.array(
@@ -37,25 +38,29 @@ import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
   //   ),
   // });
 
-  const responseSchema = s.number('top-level number');
-
-  // const data = {
-  //   gridArea: 'a string',
-  //   element: {
-  //     [0]: {
-  //       data: 'the markdown data',
-  //     },
-  //   },
-  //   afterAnyOf: 'a string after the anyOf',
-  // };
+  // const responseSchema = s.number('top-level number');
 
   const data = {
-    [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
+    gridArea: 'a string',
+    element: {
+      [1]: {
+        data: 'the markdown data',
+      },
+    },
+    // element: false,
+    // afterAnyOf: 'a string after the anyOf',
   };
 
-  // console.log(toJsonSchema(responseSchema));
+  // const data = {
+  //   [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
+  // };
 
-  // console.log(responseSchema.parseJsonSchema(data));
+  console.log(toJsonSchema(responseSchema).properties.element.anyOf);
+
+  // console.log('parsed value:');
+  const result = responseSchema.parseJsonSchema(data);
+  console.log('after parsed value');
+  console.log(result);
   // responseSchema.validateJsonSchema(data);
 
   // console.log(responseSchema.toTypeScript());

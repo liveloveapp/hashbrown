@@ -21,6 +21,21 @@ export function descriptionToCamelCase(description: string): string {
   return /^\d/.test(core) ? `_${core}` : core;
 }
 
+export function needsDiscriminatorWrapperInAnyOf(
+  schema: HashbrownType,
+): boolean {
+  if (
+    s.isAnyOfType(schema) ||
+    s.isArrayType(schema) ||
+    s.isObjectType(schema) ||
+    (s.isStringType(schema) && isStreaming(schema))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Walks the HashbrownType graph, finds any sub-schemas seen more than once
  * (excluding the root), assigns each a unique name, and emits a draft-07 JSON Schema
@@ -154,15 +169,19 @@ export function toJsonSchema(schema: HashbrownType) {
     } else if (s.isAnyOfType(n)) {
       result = n.toJsonSchema();
       result.anyOf = n[internal].definition.options.map((opt, index) => {
-        const indexAsStr = `${index}`;
-        return {
-          type: 'object',
-          additionalProperties: false,
-          required: [indexAsStr],
-          properties: {
-            [indexAsStr]: printNode(opt, false, inDef, pathSeen),
-          },
-        };
+        if (needsDiscriminatorWrapperInAnyOf(opt)) {
+          const indexAsStr = `${index}`;
+          return {
+            type: 'object',
+            additionalProperties: false,
+            required: [indexAsStr],
+            properties: {
+              [indexAsStr]: printNode(opt, false, inDef, pathSeen),
+            },
+          };
+        } else {
+          return printNode(opt, false, inDef, pathSeen);
+        }
       });
     } else {
       result = n.toJsonSchema();

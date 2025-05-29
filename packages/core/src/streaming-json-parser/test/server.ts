@@ -1,13 +1,14 @@
 import { createServer } from 'net';
 import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 
-// const TEST_JSON = {
-//   element: {
-//     0: {
-//       data: 'the markdown data',
-//     },
-//   },
-// };
+const TEST_JSON = {
+  // element: {
+  //   1: {
+  //     data: 'the markdown data',
+  //   },
+  // },
+  element: false,
+};
 
 // const TEST_JSON = {
 //   ui: [
@@ -20,9 +21,9 @@ import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 //   ],
 // };
 
-const TEST_JSON = {
-  [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
-};
+// const TEST_JSON = {
+//   [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
+// };
 
 // const TEST_JSON = {
 //   booleanValue: false,
