@@ -124,7 +124,7 @@ test('Trailing whitespace and newlines', () => {
   expect(result).toEqual({});
 });
 
-xtest('Malformed JSON mid-stream throws error', () => {
+test('Malformed JSON mid-stream throws error', () => {
   const schema = s.object('obj', { a: s.number('a') });
 
   expect(() => parse(schema, '{"a":1,{}}')).toThrow();
