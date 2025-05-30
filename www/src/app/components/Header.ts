@@ -2,10 +2,19 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'www-header',
-  imports: [RouterLink, Hashbrown],
+  imports: [
+    RouterLink,
+    Hashbrown,
+    MatButtonModule,
+    MatMenuModule,
+    MatIconModule,
+  ],
   template: `
     <header>
       <div class="left">
@@ -35,6 +44,25 @@ import { ConfigService } from '../services/ConfigService';
             </li>
           </ul>
         </nav>
+      </div>
+      <div class="menu">
+        <button
+          matIconButton
+          [matMenuTriggerFor]="menu"
+          aria-label="Navigation menu"
+        >
+          <mat-icon>menu</mat-icon>
+        </button>
+        <mat-menu #menu="matMenu">
+          <a mat-menu-item [routerLink]="docsUrl()" class="underline">docs</a>
+          <a mat-menu-item routerLink="/api" class="underline">api</a>
+          <a mat-menu-item [routerLink]="examplesUrl()" class="underline"
+            >example</a
+          >
+          <a mat-menu-item routerLink="/enterprise" class="underline"
+            >enterprise</a
+          >
+        </mat-menu>
       </div>
     </header>
   `,
@@ -91,6 +119,10 @@ import { ConfigService } from '../services/ConfigService';
             }
           }
         }
+
+        > .menu {
+          display: none;
+        }
       }
 
       @media print {
@@ -98,6 +130,31 @@ import { ConfigService } from '../services/ConfigService';
           display: none;
         }
       }
+
+      @media (width < 600px) {
+        header .right {
+          display: none;
+        }
+
+        header .menu {
+          display: block; 
+        }
+
+        .menu .a {
+          font:
+            600 16px/24px Poppins,
+            sans-serif;
+          color: #774625;
+          text-decoration: underline;
+          text-decoration-color: transparent;
+          transition: text-decoration-color ease-in-out 0.2s;
+
+          &:hover {
+            text-decoration-color: #774625;
+          }
+        }}
+      }
+
     `,
   ],
 })
