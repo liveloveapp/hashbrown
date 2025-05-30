@@ -108,7 +108,7 @@ import { DropdownMenu } from './DropDownMenu';
                     600 16px/16px 'KefirVariable',
                     sans-serif;
                   color: #774625;
-                  font-variation-settings: 'wght' 800;
+                  font-variation-settings: 'wght' 700;
                   text-decoration: underline;
                   text-decoration-color: transparent;
                   transition: text-decoration-color ease-in-out 0.2s;
