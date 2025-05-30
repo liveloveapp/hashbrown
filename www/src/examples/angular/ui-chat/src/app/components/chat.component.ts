@@ -41,7 +41,7 @@ export class ChatComponent {
   chat = uiChatResource({
     model: 'gpt-4.1',
     debugName: 'lights-chat',
-    prompt:
+    system:
       'You are a helpful assistant that can answer questions and help with tasks',
     components: [
       exposeComponent(MarkdownComponent, {

@@ -76,7 +76,7 @@ export class ChatComponent {
   chat = structuredChatResource({
     model: 'gpt-4.1',
     debugName: 'lights-chat',
-    prompt: `
+    system: `
       Please return a JSON object that contains the lights that the user mentions.
     `,
     schema: s.object('Output', {

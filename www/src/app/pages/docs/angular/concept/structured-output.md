@@ -28,7 +28,7 @@ Let's look at an example using the @hashbrownai/angular!structuredChatResource:f
 ```ts
 chat = structuredChatResource({
   model: 'gpt-4.1',
-  prompt: `
+  system: `
     You are a scheduling assistant. The user will provide a brief description
     of the date, time, and recurrence frequency for an event.
 

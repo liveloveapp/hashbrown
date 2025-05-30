@@ -26,6 +26,7 @@ To follow along, you'll need to
 1. [Sign up for OpenAI's API](https://openai.com/api/)
 2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
 3. Copy the API key so you have it handy
+4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for hashbrown to concsume
 
 ---
 
@@ -134,7 +135,7 @@ export class ChatComponent {
 
   chat = chatResource({
     model: 'gpt-4.1',
-    prompt: 'You are a helpful assistant that can answer questions and help with tasks',
+    system: 'You are a helpful assistant that can answer questions and help with tasks',
     tools: [
       createTool({
         name: 'getUser',
@@ -219,7 +220,7 @@ export class ChatComponent {
 
   chat = uiChatResource({
     model: 'gpt-4.1',
-    prompt: 'You are a helpful assistant that can answer questions and help with tasks',
+    system: 'You are a helpful assistant that can answer questions and help with tasks',
     components: [
       exposeComponent(MarkdownComponent, {
         name: 'markdown',
@@ -319,7 +320,7 @@ export class ChatComponent {
   chat = structuredChatResource({
     model: 'gpt-4.1',
     debugName: 'lights-chat',
-    prompt: `
+    system: `
       Please return a JSON object that contains the lights that the user mentions.
     `,
     output: s.object('Output', {
