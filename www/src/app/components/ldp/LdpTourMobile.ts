@@ -66,17 +66,13 @@ import { LdpVibeCode } from './LdpVibeCode';
     `
       .product-tour {
         display: flex;
-        // grid-template-columns: 450px 1fr;
         padding: 0 24px;
-        // max-width: 1106px;
         gap: 96px;
-        // margin: 0 auto;
       }
 
       .tour {
         position: sticky;
         top: 0;
-        // height: 100vh;
         overflow: hidden;
       }
 
@@ -87,16 +83,7 @@ import { LdpVibeCode } from './LdpVibeCode';
       }
 
       .feature-animation .anim {
-        // position: absolute;
-        // top: 0;
-        // left: 0;
         width: 100%;
-        // height: 100%;
-        // opacity: 0;
-        // transform: scale(0.9);
-        // transition:
-        //   opacity 0.5s ease,
-        //   transform 0.5s ease;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -105,7 +92,6 @@ import { LdpVibeCode } from './LdpVibeCode';
       }
 
       .structured-anim {
-        // height: 440px;
         flex: 1;
       }
 
@@ -125,10 +111,6 @@ import { LdpVibeCode } from './LdpVibeCode';
         opacity: 1;
         transition: opacity 0.5s ease;
       }
-
-      // .step.active {
-      //   opacity: 1;
-      // }
 
       h2 {
         color: #5e5c5a;
