@@ -20,7 +20,7 @@ import {
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
 
-const ENABLE_LOGGING = false;
+const ENABLE_LOGGING = true;
 
 class PartialJSON extends Error {}
 
@@ -274,11 +274,19 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
             logger.log('Adding schema for discriminator');
             logger.log(matchingSchema);
 
-            containerStack.push(
-              s.object(`AnyOf Wrapper for ${key}`, {
-                [key]: matchingSchema,
-              }),
-            );
+            // If the matching schema is itself an anyOf, we need to push its options array
+            // to the schema stack instead of the schema
+            if (s.isAnyOfType(matchingSchema)) {
+              containerStack.push(
+                (matchingSchema as any)[internal].definition.options,
+              );
+            } else {
+              containerStack.push(
+                s.object(`AnyOf Wrapper for ${key}`, {
+                  [key]: matchingSchema,
+                }),
+              );
+            }
 
             currentContainerStackIndex = containerStack.length - 1;
 
@@ -304,9 +312,13 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     index++; // skip final brace
 
     const completedContainer = containerStack.pop();
-    logger.log(
-      `Completed anyOf container: ${completedContainer?.[internal].definition.description}`,
-    );
+    if (Array.isArray(completedContainer)) {
+      logger.log(`Completed nested anyOf container`);
+    } else {
+      logger.log(
+        `Completed anyOf container: ${completedContainer?.[internal].definition.description}`,
+      );
+    }
 
     return value;
   };
