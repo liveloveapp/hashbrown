@@ -403,7 +403,7 @@ describe('anyOf', () => {
     });
   });
 
-  xtest('streaming array with anyOf with anyOf', () => {
+  test('streaming array with anyOf with anyOf', () => {
     const schema = s.streaming.array(
       'streaming array',
       s.anyOf([
@@ -422,20 +422,10 @@ describe('anyOf', () => {
           '0': 'streaming string in inner anyOf',
         },
       },
-      {
-        '1': 17,
-      },
-      {
-        '2': false,
-      },
-      {
-        '1': 123,
-      },
-      {
-        '0': {
-          '1': 'anyOf anyOf literal',
-        },
-      },
+      17,
+      false,
+      123,
+      'anyOf anyOf literal',
     ];
 
     const asJson = JSON.stringify(data);
