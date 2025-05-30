@@ -20,7 +20,7 @@ import {
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
 
-const ENABLE_LOGGING = true;
+const ENABLE_LOGGING = false;
 
 class PartialJSON extends Error {}
 
