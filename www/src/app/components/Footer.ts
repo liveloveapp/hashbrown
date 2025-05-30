@@ -27,6 +27,9 @@ import { ConfigService } from '../services/ConfigService';
             <li>
               <a routerLink="/api" class="underline">API Reference</a>
             </li>
+            <li>
+              <a [routerLink]="examplesUrl()" class="underline">Examples</a>
+            </li>
           </ul>
         </div>
         <div class="enterprise">
@@ -320,5 +323,8 @@ export class Footer {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/quick`;
+  });
+  examplesUrl = computed(() => {
+    return `/examples/${this.configService.sdk()}/chat`;
   });
 }

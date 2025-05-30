@@ -1,1 +1,41 @@
-{"name":"TAG_NAME_REGISTRY","canonicalReference":"@hashbrownai/angular!TAG_NAME_REGISTRY:var","kind":"Variable","fileUrlPath":"../dist/packages/angular/ui-chat-resource.fn.d.ts","isDeprecated":false,"members":[{"kind":"Variable","canonicalReference":"@hashbrownai/angular!TAG_NAME_REGISTRY:var","docComment":"","excerptTokens":[{"kind":"Content","text":"TAG_NAME_REGISTRY: "},{"kind":"Content","text":"unique symbol"}],"fileUrlPath":"../dist/packages/angular/ui-chat-resource.fn.d.ts","isReadonly":true,"releaseTag":"Public","name":"TAG_NAME_REGISTRY","variableTypeTokenRange":{"startIndex":1,"endIndex":2},"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "TAG_NAME_REGISTRY",
+  "canonicalReference": "@hashbrownai/angular!TAG_NAME_REGISTRY:var",
+  "kind": "Variable",
+  "fileUrlPath": "../dist/packages/angular/index.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Variable",
+      "canonicalReference": "@hashbrownai/angular!TAG_NAME_REGISTRY:var",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "TAG_NAME_REGISTRY: " },
+        { "kind": "Content", "text": "unique symbol" }
+      ],
+      "fileUrlPath": "../dist/packages/angular/index.d.ts",
+      "isReadonly": true,
+      "releaseTag": "Public",
+      "name": "TAG_NAME_REGISTRY",
+      "variableTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

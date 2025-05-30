@@ -1,1 +1,92 @@
-{"name":"StructuredCompletionResourceRef","canonicalReference":"@hashbrownai/angular!StructuredCompletionResourceRef:interface","kind":"Interface","fileUrlPath":"../dist/packages/angular/structured-completion-resource.fn.d.ts","isDeprecated":false,"members":[{"kind":"Interface","canonicalReference":"@hashbrownai/angular!StructuredCompletionResourceRef:interface","docComment":"","excerptTokens":[{"kind":"Content","text":"export interface StructuredCompletionResourceRef<Output> extends "},{"kind":"Reference","text":"Resource","canonicalReference":"@angular/core!Resource:interface"},{"kind":"Content","text":"<Output | null>"},{"kind":"Content","text":" "}],"fileUrlPath":"../dist/packages/angular/structured-completion-resource.fn.d.ts","releaseTag":"Public","typeParameters":[{"typeParameterName":"Output","constraintTokenRange":{"startIndex":0,"endIndex":0},"defaultTypeTokenRange":{"startIndex":0,"endIndex":0}}],"name":"StructuredCompletionResourceRef","preserveMemberOrder":false,"members":[],"extendsTokenRanges":[{"startIndex":1,"endIndex":3}],"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "StructuredCompletionResourceRef",
+  "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/angular/index.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef:interface",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "interface StructuredCompletionResourceRef<Output> extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Resource",
+          "canonicalReference": "@angular/core!Resource:interface"
+        },
+        { "kind": "Content", "text": "<Output | null>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/angular/index.d.ts",
+      "releaseTag": "Public",
+      "typeParameters": [
+        {
+          "typeParameterName": "Output",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "StructuredCompletionResourceRef",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef#reload:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "reload: " },
+            { "kind": "Content", "text": "() => boolean" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "reload",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

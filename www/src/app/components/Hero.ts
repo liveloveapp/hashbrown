@@ -24,6 +24,14 @@ import { ConfigService } from '../services/ConfigService';
         <div class="cta">
           <a [routerLink]="docsUrl()"> read the documentation </a>
           <p>100% free, open-source, and MIT-Licensed</p>
+          <iframe
+            src="https://ghbtns.com/github-btn.html?user=liveloveapp&repo=hashbrown&type=star&count=true&size=large"
+            frameborder="0"
+            scrolling="0"
+            width="120"
+            height="30"
+            title="GitHub"
+          ></iframe>
         </div>
       </div>
     </div>
@@ -71,7 +79,7 @@ import { ConfigService } from '../services/ConfigService';
       > .cta {
         display: flex;
         flex-direction: column;
-        align-content: center;
+        align-items: center;
         gap: 16px;
 
         a {

@@ -1,16 +1,25 @@
 import { Component, ElementRef, input, viewChild } from '@angular/core';
 import { Copy } from '../icons/Copy';
+import { PlayerPlay } from '../icons/PlayerPlay';
 
 @Component({
   selector: 'www-code-example',
-  imports: [Copy],
+  imports: [Copy, PlayerPlay],
   template: `
     <div class="header">
       <span>{{ header() }}</span>
-      <button (click)="onCopy()" aria-label="Copy code to clipboard">
-        <www-copy height="16px" width="16px" />
-        copy
-      </button>
+      <div>
+        @if (run()) {
+          <a [href]="run()">
+            <www-player-play height="16px" width="16px" />
+            run
+          </a>
+        }
+        <button (click)="onCopy()" aria-label="Copy code to clipboard">
+          <www-copy height="16px" width="16px" />
+          copy
+        </button>
+      </div>
     </div>
     <div class="content" #content>
       <ng-content />
@@ -36,10 +45,25 @@ import { Copy } from '../icons/Copy';
         font-weight: 500;
         color: rgba(61, 60, 58, 0.88);
 
-        > button {
+        > div {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 16px;
+
+          > a,
+          > button {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font:
+              500 12px/14px 'Poppins',
+              sans-serif;
+          }
+
+          > a {
+            text-decoration: none;
+            color: inherit;
+          }
         }
       }
 
@@ -53,6 +77,7 @@ import { Copy } from '../icons/Copy';
 })
 export class CodeExample {
   header = input<string>('');
+  run = input<string | undefined>(undefined);
   contentRef = viewChild<ElementRef<HTMLDivElement>>('content');
 
   async onCopy() {

@@ -10,7 +10,7 @@ Check out our website: [hashbrown.dev](https://hashbrown.dev).
 
 To see hashbrown in action, bring your own LLM provider API key and try a bite of hashbrown:
 
-- [Angular example app](https://hashbrown.dev/examples/angular/chat)
+- [Angular example app](https://hashbrown.dev/examples/angular/ui-chat)
 - [React example app](https://hashbrown.dev/examples/react/chat)
 
 ## Samples
@@ -22,7 +22,7 @@ Run the Angular sample app:
 ```shell
 nvm use
 npm install
-npx nx server server && npx nx serve client
+npx nx serve server && npx nx serve client
 ```
 
 Run the React sample app:
@@ -30,7 +30,7 @@ Run the React sample app:
 ```shell
 nvm use
 npm install
-npx nx server server && npx nx serve client-react
+npx nx serve server && npx nx serve client-react
 ```
 
 ## Contributing

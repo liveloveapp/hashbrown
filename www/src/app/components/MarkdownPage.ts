@@ -123,6 +123,14 @@ type Heading = { level: number; text: string; id: string; url: string };
           margin-left: 24px;
         }
 
+        ol {
+          list-style: decimal;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-left: 24px;
+        }
+
         :not(www-symbol-link) > a {
           text-decoration: underline;
           text-decoration-color: #774625;
@@ -131,6 +139,22 @@ type Heading = { level: number; text: string; id: string; url: string };
 
           &:hover {
             text-decoration-color: #fbbb52;
+          }
+
+          &.cta {
+            align-self: flex-end;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 32px;
+            border: 6px solid #64afb5;
+            background: #9ecfd7;
+            color: #384849;
+            font:
+              500 18px/24px 'Fredoka',
+              sans-serif;
+            text-decoration: none;
+            padding: 12px 24px;
           }
         }
 
@@ -142,7 +166,9 @@ type Heading = { level: number; text: string; id: string; url: string };
         }
 
         code:not(pre code) {
-          font-weight: 600;
+          font:
+            600 16px/24px 'Operator mono',
+            monospace;
         }
 
         table {

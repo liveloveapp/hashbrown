@@ -189,22 +189,6 @@ code {
   font-style: normal;
 }
 
-@font-face {
-  font-family: 'Wonder';
-  font-style: normal;
-  font-weight: 500;
-  src: url(/font/wonder/normal-500.otf) format('opentype');
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Wonder';
-  font-style: italic;
-  font-weight: 500;
-  src: url(/font/wonder/italic-500.otf) format('opentype');
-  font-display: swap;
-}
-
 .kind.EntryPoint {
   background-color: #f8d7da;
   color: #721c24;
