@@ -2,9 +2,10 @@ import { Component, inject } from '@angular/core';
 import {
   createTool,
   createToolWithArgs,
+  exposeComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { exposeComponent, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import { CardComponent } from './card.component';
 import { ComposerComponent } from './composer.component';
 import { LightComponent } from './light.component';
@@ -45,24 +46,21 @@ export class ChatComponent {
       'You are a helpful assistant that can answer questions and help with tasks',
     components: [
       exposeComponent(MarkdownComponent, {
-        name: 'markdown',
         description: 'Show markdown to the user',
-        props: {
+        input: {
           data: s.streaming.string('The markdown content'),
         },
       }),
       exposeComponent(LightComponent, {
-        name: 'light',
         description: 'Show a light to the user',
-        props: {
+        input: {
           lightId: s.string('The id of the light'),
         },
       }),
       exposeComponent(CardComponent, {
-        name: 'card',
         description: 'Show a card to the user',
         children: 'any',
-        props: {
+        input: {
           title: s.streaming.string('The title of the card'),
         },
       }),

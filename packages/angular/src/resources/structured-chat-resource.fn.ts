@@ -99,37 +99,61 @@ export function structuredChatResource<
     debounce: options.debounce,
     retries: options.retries,
   });
-  const value = toSignal(hashbrown.observeMessages);
-  const isReceiving = toSignal(hashbrown.observeIsReceiving);
-  const isSending = toSignal(hashbrown.observeIsSending);
-  const isRunningToolCalls = toSignal(hashbrown.observeIsRunningToolCalls);
-  const error = toSignal(hashbrown.observeError);
+
+  const debugNamePrefix = options.debugName ? options.debugName + '.' : '';
+
+  const value = toSignal(
+    hashbrown.observeMessages,
+    `${debugNamePrefix}structuredChat.value`,
+  );
+  const isReceiving = toSignal(
+    hashbrown.observeIsReceiving,
+    `${debugNamePrefix}structuredChat.isReceiving`,
+  );
+  const isSending = toSignal(
+    hashbrown.observeIsSending,
+    `${debugNamePrefix}structuredChat.isSending`,
+  );
+  const isRunningToolCalls = toSignal(
+    hashbrown.observeIsRunningToolCalls,
+    `${debugNamePrefix}structuredChat.isRunningToolCalls`,
+  );
+  const error = toSignal(
+    hashbrown.observeError,
+    `${debugNamePrefix}structuredChat.error`,
+  );
 
   const exhaustedRetries = toSignal(hashbrown.observeExhaustedRetries);
 
-  const status = computed((): ResourceStatus => {
-    if (isReceiving() || isSending() || isRunningToolCalls()) {
-      return 'loading';
-    }
+  const status = computed(
+    (): ResourceStatus => {
+      if (isReceiving() || isSending() || isRunningToolCalls()) {
+        return 'loading';
+      }
 
-    if (exhaustedRetries()) {
-      return 'error';
-    }
+      if (exhaustedRetries()) {
+        return 'error';
+      }
 
-    const hasAssistantMessage = value().some(
-      (message) => message.role === 'assistant',
-    );
+      const hasAssistantMessage = value().some(
+        (message) => message.role === 'assistant',
+      );
 
-    if (hasAssistantMessage) {
-      return 'resolved';
-    }
+      if (hasAssistantMessage) {
+        return 'resolved';
+      }
 
-    return 'idle';
-  });
+      return 'idle';
+    },
+    { debugName: `${debugNamePrefix}structuredChat.status` },
+  );
 
-  const isLoading = computed(() => {
-    return isReceiving() || isSending() || isRunningToolCalls();
-  });
+  const isLoading = computed(
+    () => {
+      return isReceiving() || isSending() || isRunningToolCalls();
+    },
+    { debugName: `${debugNamePrefix}structuredChat.isLoading` },
+  );
 
   function reload() {
     const lastMessage = value()[value().length - 1];

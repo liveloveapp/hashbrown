@@ -157,6 +157,6 @@ export class Header {
     return `/docs/${this.configService.sdk()}/start/quick`;
   });
   examplesUrl = computed(() => {
-    return `/examples/${this.configService.sdk()}/chat`;
+    return `/examples/${this.configService.sdk()}/ui-chat`;
   });
 }

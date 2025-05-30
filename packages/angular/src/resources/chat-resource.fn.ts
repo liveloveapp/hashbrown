@@ -97,35 +97,59 @@ export function chatResource<Tools extends Chat.AnyTool>(
     emulateStructuredOutput: config.emulateStructuredOutput,
     debugName: options.debugName,
   });
-  const value = toSignal(hashbrown.observeMessages);
-  const isReceiving = toSignal(hashbrown.observeIsReceiving);
-  const isSending = toSignal(hashbrown.observeIsSending);
-  const isRunningToolCalls = toSignal(hashbrown.observeIsRunningToolCalls);
-  const error = toSignal(hashbrown.observeError);
 
-  const status = computed((): ResourceStatus => {
-    if (isReceiving() || isSending() || isRunningToolCalls()) {
-      return 'loading';
-    }
+  const debugNamePrefix = options.debugName ? options.debugName + '.' : '';
 
-    if (error()) {
-      return 'error';
-    }
+  const value = toSignal(
+    hashbrown.observeMessages,
+    `${debugNamePrefix}chat.value`,
+  );
+  const isReceiving = toSignal(
+    hashbrown.observeIsReceiving,
+    `${debugNamePrefix}chat.isReceiving`,
+  );
+  const isSending = toSignal(
+    hashbrown.observeIsSending,
+    `${debugNamePrefix}chat.isSending`,
+  );
+  const isRunningToolCalls = toSignal(
+    hashbrown.observeIsRunningToolCalls,
+    `${debugNamePrefix}chat.isRunningToolCalls`,
+  );
+  const error = toSignal(
+    hashbrown.observeError,
+    `${debugNamePrefix}chat.error`,
+  );
 
-    const hasAssistantMessage = value().some(
-      (message) => message.role === 'assistant',
-    );
+  const status = computed(
+    (): ResourceStatus => {
+      if (isReceiving() || isSending() || isRunningToolCalls()) {
+        return 'loading';
+      }
 
-    if (hasAssistantMessage) {
-      return 'resolved';
-    }
+      if (error()) {
+        return 'error';
+      }
 
-    return 'idle';
-  });
+      const hasAssistantMessage = value().some(
+        (message) => message.role === 'assistant',
+      );
 
-  const isLoading = computed(() => {
-    return isReceiving() || isSending() || isRunningToolCalls();
-  });
+      if (hasAssistantMessage) {
+        return 'resolved';
+      }
+
+      return 'idle';
+    },
+    { debugName: `${debugNamePrefix}chat.status` },
+  );
+
+  const isLoading = computed(
+    () => {
+      return isReceiving() || isSending() || isRunningToolCalls();
+    },
+    { debugName: `${debugNamePrefix}chat.isLoading` },
+  );
 
   function reload() {
     const lastMessage = value()[value().length - 1];

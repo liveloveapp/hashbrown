@@ -13,7 +13,7 @@
     "react-dom": "<react-version>",
     "@hashbrownai/azure": "<hashbrown-version>",
     "@hashbrownai/core": "<hashbrown-version>",
-    "@hashbrownai/google": "0.0.1",
+    "@hashbrownai/google": "<hashbrown-version>",
     "@hashbrownai/openai": "<hashbrown-version>",
     "@hashbrownai/react": "<hashbrown-version>",
     "@hashbrownai/tool-javascript": "<hashbrown-version>",
@@ -27,7 +27,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "<react-version>",
     "@types/react-dom": "<react-version>",
-    "@vitejs/plugin-react": "vite-plugin-react-version",
+    "@vitejs/plugin-react": "<vite-plugin-react-version>",
     "concurrently": "^9.1.2",
     "typescript": "<typescript-version>",
     "vite": "<vite-version>"
