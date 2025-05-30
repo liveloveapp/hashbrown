@@ -171,15 +171,16 @@ import { ConfigService } from '../services/ConfigService';
         >.
       </p>
       <div class="divider"></div>
-      <iframe
-        width="640"
-        height="416"
-        src="https://www.loom.com/embed/2ef3bafa9415476e92125701a2fe2c17?sid=888c5c57-e441-47a0-a520-46d45b754d79"
-        frameborder="0"
-        webkitallowfullscreen
-        mozallowfullscreen
-        allowfullscreen
-      ></iframe>
+      <div style="padding:64.9% 0 0 0;position:relative;width:100%;">
+        <iframe
+          src="https://player.vimeo.com/video/1088958585?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+          frameborder="0"
+          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;"
+          title="Introducing Hashbrown"
+        ></iframe>
+      </div>
+      <script src="https://player.vimeo.com/api/player.js"></script>
     </div>
   `,
   styles: [
