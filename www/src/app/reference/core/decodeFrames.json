@@ -1,1 +1,96 @@
-{"name":"decodeFrames","canonicalReference":"@hashbrownai/core!decodeFrames:function","kind":"Function","fileUrlPath":"../packages/core/src/frames/decode-frames.ts","isDeprecated":false,"members":[{"kind":"Function","canonicalReference":"@hashbrownai/core!decodeFrames:function(1)","docComment":"/**\n * Decode a ReadableStream<Uint8Array> of length-prefixed JSON frames into a stream of T.\n *\n * Frame format: [4-byte BE length][UTF-8 JSON payload]\n *\n * @param stream - ReadableStream producing Uint8Array chunks\n *\n * @param options - decoding options  @yields parsed JSON objects of type T\n */\n","excerptTokens":[{"kind":"Content","text":"export declare function decodeFrames(stream: "},{"kind":"Reference","text":"ReadableStream","canonicalReference":"!ReadableStream:interface"},{"kind":"Content","text":"<"},{"kind":"Reference","text":"Uint8Array","canonicalReference":"!Uint8Array:interface"},{"kind":"Content","text":">"},{"kind":"Content","text":", options: "},{"kind":"Reference","text":"DecodeFramesOptions","canonicalReference":"@hashbrownai/core!DecodeFramesOptions:interface"},{"kind":"Content","text":"): "},{"kind":"Reference","text":"AsyncGenerator","canonicalReference":"!AsyncGenerator:interface"},{"kind":"Content","text":"<"},{"kind":"Reference","text":"Frame","canonicalReference":"@hashbrownai/core!Frame:type"},{"kind":"Content","text":", void, unknown>"},{"kind":"Content","text":";"}],"fileUrlPath":"../packages/core/src/frames/decode-frames.ts","returnTypeTokenRange":{"startIndex":8,"endIndex":12},"releaseTag":"Public","overloadIndex":1,"parameters":[{"parameterName":"stream","parameterTypeTokenRange":{"startIndex":1,"endIndex":5},"isOptional":false},{"parameterName":"options","parameterTypeTokenRange":{"startIndex":6,"endIndex":7},"isOptional":false}],"name":"decodeFrames","docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"Decode a ReadableStream<Uint8Array> of length-prefixed JSON frames into a stream of T.\n\nFrame format: [4-byte BE length][UTF-8 JSON payload]\n\n","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[{"name":"stream","description":"ReadableStream producing Uint8Array chunks\n\n"},{"name":"options","description":"decoding options  @yields parsed JSON objects of type T\n"}]}}]}
+{
+  "name": "decodeFrames",
+  "canonicalReference": "@hashbrownai/core!decodeFrames:function",
+  "kind": "Function",
+  "fileUrlPath": "../packages/core/src/frames/decode-frames.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/core!decodeFrames:function(1)",
+      "docComment": "/**\n * Decode a ReadableStream<Uint8Array> of length-prefixed JSON frames into a stream of T.\n *\n * Frame format: [4-byte BE length][UTF-8 JSON payload]\n *\n * @param stream - ReadableStream producing Uint8Array chunks\n *\n * @param options - decoding options  @yields parsed JSON objects of type T\n */\n",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function decodeFrames(stream: "
+        },
+        {
+          "kind": "Reference",
+          "text": "ReadableStream",
+          "canonicalReference": "!ReadableStream:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "Uint8Array",
+          "canonicalReference": "!Uint8Array:interface"
+        },
+        { "kind": "Content", "text": ">" },
+        { "kind": "Content", "text": ", options: " },
+        {
+          "kind": "Reference",
+          "text": "DecodeFramesOptions",
+          "canonicalReference": "@hashbrownai/core!DecodeFramesOptions:interface"
+        },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "AsyncGenerator",
+          "canonicalReference": "!AsyncGenerator:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "Frame",
+          "canonicalReference": "@hashbrownai/core!Frame:type"
+        },
+        { "kind": "Content", "text": ", void, unknown>" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../packages/core/src/frames/decode-frames.ts",
+      "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "stream",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 5 },
+          "isOptional": false
+        },
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 6, "endIndex": 7 },
+          "isOptional": false
+        }
+      ],
+      "name": "decodeFrames",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "Decode a ReadableStream<Uint8Array> of length-prefixed JSON frames into a stream of T.\n\nFrame format: [4-byte BE length][UTF-8 JSON payload]\n\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [
+          {
+            "name": "stream",
+            "description": "ReadableStream producing Uint8Array chunks\n\n"
+          },
+          {
+            "name": "options",
+            "description": "decoding options  @yields parsed JSON objects of type T\n"
+          }
+        ],
+        "examples": []
+      }
+    }
+  ]
+}

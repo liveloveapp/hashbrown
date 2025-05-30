@@ -20,12 +20,14 @@ import { isPlatformBrowser } from '@angular/common';
           <www-alert type="warn">
             <p>
               Due to limitations, our stackblitz examples will not run in
-              Safari. We tried turning the frier up to 11, but it didn't work.
+              Safari. We tried turning the fryer up to 11, but it didn't work.
             </p>
           </www-alert>
         </div>
       } @else {
-        <router-outlet></router-outlet>
+        @defer (when isBrowser) {
+          <router-outlet></router-outlet>
+        }
       }
     </main>
   `,
@@ -50,14 +52,13 @@ import { isPlatformBrowser } from '@angular/common';
 })
 export default class ExamplesPage implements AfterViewInit {
   platformId = inject(PLATFORM_ID);
+  isBrowser = isPlatformBrowser(this.platformId);
   isSafari = signal(false);
 
   ngAfterViewInit(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      setTimeout(() => {
-        const ua = navigator.userAgent;
-        this.isSafari.set(/webkit/i.test(ua) && !/edge|chrome/i.test(ua));
-      });
+    if (this.isBrowser) {
+      const ua = navigator.userAgent;
+      this.isSafari.set(/webkit/i.test(ua) && !/edge|chrome/i.test(ua));
     }
   }
 }

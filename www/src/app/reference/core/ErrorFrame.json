@@ -1,1 +1,141 @@
-{"name":"ErrorFrame","canonicalReference":"@hashbrownai/core!ErrorFrame:interface","kind":"Interface","fileUrlPath":"../packages/core/src/frames/frame-types.ts","isDeprecated":false,"members":[{"kind":"Interface","canonicalReference":"@hashbrownai/core!ErrorFrame:interface","docComment":"","excerptTokens":[{"kind":"Content","text":"export interface ErrorFrame "}],"fileUrlPath":"../packages/core/src/frames/frame-types.ts","releaseTag":"Public","name":"ErrorFrame","preserveMemberOrder":false,"members":[{"kind":"PropertySignature","canonicalReference":"@hashbrownai/core!ErrorFrame#error:member","docComment":"","excerptTokens":[{"kind":"Content","text":"error: "},{"kind":"Content","text":"string"},{"kind":"Content","text":";"}],"isReadonly":false,"isOptional":false,"releaseTag":"Public","name":"error","propertyTypeTokenRange":{"startIndex":1,"endIndex":2},"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}},{"kind":"PropertySignature","canonicalReference":"@hashbrownai/core!ErrorFrame#stacktrace:member","docComment":"","excerptTokens":[{"kind":"Content","text":"stacktrace?: "},{"kind":"Content","text":"string"},{"kind":"Content","text":";"}],"isReadonly":false,"isOptional":true,"releaseTag":"Public","name":"stacktrace","propertyTypeTokenRange":{"startIndex":1,"endIndex":2},"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}},{"kind":"PropertySignature","canonicalReference":"@hashbrownai/core!ErrorFrame#type:member","docComment":"","excerptTokens":[{"kind":"Content","text":"type: "},{"kind":"Content","text":"'error'"},{"kind":"Content","text":";"}],"isReadonly":false,"isOptional":false,"releaseTag":"Public","name":"type","propertyTypeTokenRange":{"startIndex":1,"endIndex":2},"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}],"extendsTokenRanges":[],"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "ErrorFrame",
+  "canonicalReference": "@hashbrownai/core!ErrorFrame:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../packages/core/src/frames/frame-types.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/core!ErrorFrame:interface",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export interface ErrorFrame " }
+      ],
+      "fileUrlPath": "../packages/core/src/frames/frame-types.ts",
+      "releaseTag": "Public",
+      "name": "ErrorFrame",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!ErrorFrame#error:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "error: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "error",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!ErrorFrame#stacktrace:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "stacktrace?: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "stacktrace",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!ErrorFrame#type:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "type: " },
+            { "kind": "Content", "text": "'error'" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "type",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

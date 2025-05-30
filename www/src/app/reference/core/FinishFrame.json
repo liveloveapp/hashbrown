@@ -1,1 +1,75 @@
-{"name":"FinishFrame","canonicalReference":"@hashbrownai/core!FinishFrame:interface","kind":"Interface","fileUrlPath":"../packages/core/src/frames/frame-types.ts","isDeprecated":false,"members":[{"kind":"Interface","canonicalReference":"@hashbrownai/core!FinishFrame:interface","docComment":"","excerptTokens":[{"kind":"Content","text":"export interface FinishFrame "}],"fileUrlPath":"../packages/core/src/frames/frame-types.ts","releaseTag":"Public","name":"FinishFrame","preserveMemberOrder":false,"members":[{"kind":"PropertySignature","canonicalReference":"@hashbrownai/core!FinishFrame#type:member","docComment":"","excerptTokens":[{"kind":"Content","text":"type: "},{"kind":"Content","text":"'finish'"},{"kind":"Content","text":";"}],"isReadonly":false,"isOptional":false,"releaseTag":"Public","name":"type","propertyTypeTokenRange":{"startIndex":1,"endIndex":2},"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}],"extendsTokenRanges":[],"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "FinishFrame",
+  "canonicalReference": "@hashbrownai/core!FinishFrame:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../packages/core/src/frames/frame-types.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/core!FinishFrame:interface",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export interface FinishFrame " }
+      ],
+      "fileUrlPath": "../packages/core/src/frames/frame-types.ts",
+      "releaseTag": "Public",
+      "name": "FinishFrame",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!FinishFrame#type:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "type: " },
+            { "kind": "Content", "text": "'finish'" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "type",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

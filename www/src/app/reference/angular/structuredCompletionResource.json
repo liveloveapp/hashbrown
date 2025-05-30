@@ -1,1 +1,101 @@
-{"name":"structuredCompletionResource","canonicalReference":"@hashbrownai/angular!structuredCompletionResource:function","kind":"Function","fileUrlPath":"../dist/packages/angular/structured-completion-resource.fn.d.ts","isDeprecated":false,"members":[{"kind":"Function","canonicalReference":"@hashbrownai/angular!structuredCompletionResource:function(1)","docComment":"","excerptTokens":[{"kind":"Content","text":"export declare function structuredCompletionResource<Input, Schema extends "},{"kind":"Reference","text":"s.HashbrownType","canonicalReference":"!s.HashbrownType:type"},{"kind":"Content","text":", Output extends "},{"kind":"Reference","text":"s.Infer","canonicalReference":"!s.Infer:type"},{"kind":"Content","text":"<Schema>"},{"kind":"Content","text":" = "},{"kind":"Reference","text":"s.Infer","canonicalReference":"!s.Infer:type"},{"kind":"Content","text":"<Schema>"},{"kind":"Content","text":">(options: "},{"kind":"Reference","text":"StructuredCompletionResourceOptions","canonicalReference":"@hashbrownai/angular!StructuredCompletionResourceOptions:interface"},{"kind":"Content","text":"<Input, Schema>"},{"kind":"Content","text":"): "},{"kind":"Reference","text":"StructuredCompletionResourceRef","canonicalReference":"@hashbrownai/angular!StructuredCompletionResourceRef:interface"},{"kind":"Content","text":"<Output>"},{"kind":"Content","text":";"}],"fileUrlPath":"../dist/packages/angular/structured-completion-resource.fn.d.ts","returnTypeTokenRange":{"startIndex":12,"endIndex":14},"releaseTag":"Public","overloadIndex":1,"parameters":[{"parameterName":"options","parameterTypeTokenRange":{"startIndex":9,"endIndex":11},"isOptional":false}],"typeParameters":[{"typeParameterName":"Input","constraintTokenRange":{"startIndex":0,"endIndex":0},"defaultTypeTokenRange":{"startIndex":0,"endIndex":0}},{"typeParameterName":"Schema","constraintTokenRange":{"startIndex":1,"endIndex":2},"defaultTypeTokenRange":{"startIndex":0,"endIndex":0}},{"typeParameterName":"Output","constraintTokenRange":{"startIndex":3,"endIndex":5},"defaultTypeTokenRange":{"startIndex":6,"endIndex":8}}],"name":"structuredCompletionResource","docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "structuredCompletionResource",
+  "canonicalReference": "@hashbrownai/angular!structuredCompletionResource:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/angular/index.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/angular!structuredCompletionResource:function(1)",
+      "docComment": "",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function structuredCompletionResource<Input, Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ", Output extends " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>" },
+        { "kind": "Content", "text": " = " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>" },
+        { "kind": "Content", "text": ">(options: " },
+        {
+          "kind": "Reference",
+          "text": "StructuredCompletionResourceOptions",
+          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions:interface"
+        },
+        { "kind": "Content", "text": "<Input, Schema>" },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "StructuredCompletionResourceRef",
+          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef:interface"
+        },
+        { "kind": "Content", "text": "<Output>" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/angular/index.d.ts",
+      "returnTypeTokenRange": { "startIndex": 12, "endIndex": 14 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Input",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Schema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Output",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "defaultTypeTokenRange": { "startIndex": 6, "endIndex": 8 }
+        }
+      ],
+      "name": "structuredCompletionResource",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

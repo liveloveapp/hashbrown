@@ -1,1 +1,67 @@
-{"name":"ComponentPropSchema","canonicalReference":"@hashbrownai/react!ComponentPropSchema:type","kind":"TypeAlias","fileUrlPath":"../dist/packages/react/expose-component.fn.d.ts","isDeprecated":false,"members":[{"kind":"TypeAlias","canonicalReference":"@hashbrownai/react!ComponentPropSchema:type","docComment":"","excerptTokens":[{"kind":"Content","text":"export type ComponentPropSchema<T> = "},{"kind":"Reference","text":"θtypes.Prettify","canonicalReference":"!θtypes.Prettify:type"},{"kind":"Content","text":"<T extends "},{"kind":"Reference","text":"ComponentType","canonicalReference":"@types/react!React.ComponentType:type"},{"kind":"Content","text":"<infer P> ? {\n    [K in keyof P]?: "},{"kind":"Reference","text":"s.Schema","canonicalReference":"!s.Schema:type"},{"kind":"Content","text":"<P[K]>;\n} : never>"},{"kind":"Content","text":";"}],"fileUrlPath":"../dist/packages/react/expose-component.fn.d.ts","releaseTag":"Public","name":"ComponentPropSchema","typeParameters":[{"typeParameterName":"T","constraintTokenRange":{"startIndex":0,"endIndex":0},"defaultTypeTokenRange":{"startIndex":0,"endIndex":0}}],"typeTokenRange":{"startIndex":1,"endIndex":7},"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "ComponentPropSchema",
+  "canonicalReference": "@hashbrownai/react!ComponentPropSchema:type",
+  "kind": "TypeAlias",
+  "fileUrlPath": "../dist/packages/react/expose-component.fn.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "TypeAlias",
+      "canonicalReference": "@hashbrownai/react!ComponentPropSchema:type",
+      "docComment": "/**\n * When exposing a component to the chat, you must provide a schema for the props of that component. The `ComponentPropSchema` type defines the schema for those component props.\n *\n * @example\n * ```ts\n * // Example usage in a tool definition.\n * exposeComponent(CardComponent, {\n *   // ...\n *   props: { // The ComponentPropSchema\n *     title: s.string('The title of the card'),\n *     description: s.streaming.string('The description of the card'),\n *   },\n * });\n * ```\n *\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export type ComponentPropSchema<T> = " },
+        {
+          "kind": "Reference",
+          "text": "θtypes.Prettify",
+          "canonicalReference": "!θtypes.Prettify:type"
+        },
+        { "kind": "Content", "text": "<T extends " },
+        {
+          "kind": "Reference",
+          "text": "ComponentType",
+          "canonicalReference": "@types/react!React.ComponentType:type"
+        },
+        { "kind": "Content", "text": "<infer P> ? {\n    [K in keyof P]?: " },
+        {
+          "kind": "Reference",
+          "text": "s.Schema",
+          "canonicalReference": "!s.Schema:type"
+        },
+        { "kind": "Content", "text": "<P[K]>;\n} : never>" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/react/expose-component.fn.d.ts",
+      "releaseTag": "Public",
+      "name": "ComponentPropSchema",
+      "typeParameters": [
+        {
+          "typeParameterName": "T",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "typeTokenRange": { "startIndex": 1, "endIndex": 7 },
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "When exposing a component to the chat, you must provide a schema for the props of that component. The `ComponentPropSchema` type defines the schema for those component props.\n\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": [
+          "\n```ts\n// Example usage in a tool definition.\nexposeComponent(CardComponent, {\n  // ...\n  props: { // The ComponentPropSchema\n    title: s.string('The title of the card'),\n    description: s.streaming.string('The description of the card'),\n  },\n});\n```\n\n"
+        ]
+      }
+    }
+  ]
+}
