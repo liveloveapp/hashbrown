@@ -74,6 +74,9 @@ export function completionResource<Input>(
     tools: [],
     retries: 3,
   });
+
+  const debugNamePrefix = 'completionResource.';
+
   const messages = toSignal(hashbrown.observeMessages);
   const internalMessages = computed(() => {
     const _input = input();
@@ -90,9 +93,15 @@ export function completionResource<Input>(
     ];
   });
 
-  const error = toSignal(hashbrown.observeError);
+  const error = toSignal(
+    hashbrown.observeError,
+    `${debugNamePrefix}completion.error`,
+  );
 
-  const exhaustedRetries = toSignal(hashbrown.observeExhaustedRetries);
+  const exhaustedRetries = toSignal(
+    hashbrown.observeExhaustedRetries,
+    `${debugNamePrefix}completion.exhaustedRetries`,
+  );
 
   effect(() => {
     const _messages = internalMessages();
@@ -100,19 +109,22 @@ export function completionResource<Input>(
     hashbrown.setMessages(_messages);
   });
 
-  const value = computed(() => {
-    const lastMessage = messages()[messages().length - 1];
+  const value = computed(
+    () => {
+      const lastMessage = messages()[messages().length - 1];
 
-    if (
-      lastMessage &&
-      lastMessage.role === 'assistant' &&
-      lastMessage.content &&
-      typeof lastMessage.content === 'string'
-    ) {
-      return lastMessage.content;
-    }
-    return null;
-  });
+      if (
+        lastMessage &&
+        lastMessage.role === 'assistant' &&
+        lastMessage.content &&
+        typeof lastMessage.content === 'string'
+      ) {
+        return lastMessage.content;
+      }
+      return null;
+    },
+    { debugName: `${debugNamePrefix}completion.value` },
+  );
 
   const status = computed((): ResourceStatus => {
     if (exhaustedRetries()) {
