@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { reflectComponentType } from '@angular/core';
-import { s, θtypes } from '@hashbrownai/core';
+import { s, ɵtypes } from '@hashbrownai/core';
 
 type AngularSignalLike<T> = () => T;
 
-export type ComponentPropSchema<T> = θtypes.Prettify<
+export type ComponentPropSchema<T> = ɵtypes.Prettify<
   T extends { new (...args: any[]): infer P }
     ? {
         [K in keyof P]?: P[K] extends AngularSignalLike<infer U>
@@ -32,7 +32,7 @@ export interface ExposedComponent<T extends { new (...args: any[]): any }> {
  */
 export function exposeComponent<T extends { new (...args: any[]): any }>(
   component: T,
-  config: θtypes.Prettify<
+  config: ɵtypes.Prettify<
     Omit<ExposedComponent<T>, 'component' | 'name' | 'props'> & {
       input?: ComponentPropSchema<T>;
     }

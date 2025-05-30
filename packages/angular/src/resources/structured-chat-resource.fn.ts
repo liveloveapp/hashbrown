@@ -9,9 +9,12 @@ import {
   Signal,
 } from '@angular/core';
 import { Chat, fryHashbrown, s } from '@hashbrownai/core';
-import { injectHashbrownConfig } from './provide-hashbrown.fn';
-import { readSignalLike, toSignal } from './utils';
+import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
+import { readSignalLike, toSignal } from '../utils/signals';
 
+/**
+ * A reference to the structured chat resource.
+ */
 export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<Output, Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
@@ -20,21 +23,58 @@ export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
   reload: () => boolean;
 }
 
+/**
+ * Options for the structured chat resource.
+ */
 export interface StructuredChatResourceOptions<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
   Output extends s.Infer<Schema> = s.Infer<Schema>,
 > {
+  /**
+   * The model to use for the structured chat resource.
+   */
   model: string | Signal<string>;
+  /**
+   * The system prompt to use for the structured chat resource.
+   */
   system: string | Signal<string>;
+  /**
+   * The schema to use for the structured chat resource.
+   */
   schema: Schema;
+  /**
+   * The tools to use for the structured chat resource.
+   */
   tools?: Tools[];
+  /**
+   * The initial messages for the structured chat resource.
+   */
   messages?: Chat.Message<Output, Tools>[];
+  /**
+   * The debug name for the structured chat resource.
+   */
   debugName?: string;
+  /**
+   * The debounce time for the structured chat resource.
+   */
   debounce?: number;
+  /**
+   * The number of retries for the structured chat resource.
+   */
   retries?: number;
+  /**
+   * The API URL to use for the structured chat resource.
+   */
+  apiUrl?: string;
 }
 
+/**
+ * Creates a structured chat resource.
+ *
+ * @param options - The options for the structured chat resource.
+ * @returns The structured chat resource.
+ */
 export function structuredChatResource<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
@@ -42,10 +82,10 @@ export function structuredChatResource<
 >(
   options: StructuredChatResourceOptions<Schema, Tools, Output>,
 ): StructuredChatResourceRef<Output, Tools> {
-  const config = injectHashbrownConfig();
+  const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
   const hashbrown = fryHashbrown<Schema, Tools, Output>({
-    apiUrl: config.baseUrl,
+    apiUrl: options.apiUrl ?? config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));

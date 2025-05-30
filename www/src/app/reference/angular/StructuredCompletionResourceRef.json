@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceRef:interface",
-      "docComment": "",
+      "docComment": "/**\n * A reference to the structured completion resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -78,7 +78,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "A reference to the structured completion resource.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

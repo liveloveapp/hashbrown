@@ -33,7 +33,7 @@ interface ApiPackage {
 }
 
 const MONOREPO_ROOT = path.join(process.cwd(), '../');
-const ANGULAR_THETA_CHAR = 'θ';
+const ANGULAR_THETA_CHAR = 'ɵ';
 
 const PACKAGES_TO_PARSE: ApiPackage[] = [
   {

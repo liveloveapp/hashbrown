@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions:interface",
-      "docComment": "",
+      "docComment": "/**\n * Options for the structured chat resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -65,8 +65,41 @@
       "members": [
         {
           "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#apiUrl:member",
+          "docComment": "/**\n * The API URL to use for the structured chat resource.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "apiUrl?: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "apiUrl",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The API URL to use for the structured chat resource.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#debounce:member",
-          "docComment": "",
+          "docComment": "/**\n * The debounce time for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "debounce?: " },
             { "kind": "Content", "text": "number" },
@@ -86,7 +119,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The debounce time for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -99,7 +132,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#debugName:member",
-          "docComment": "",
+          "docComment": "/**\n * The debug name for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "debugName?: " },
             { "kind": "Content", "text": "string" },
@@ -119,7 +152,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The debug name for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -132,7 +165,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#messages:member",
-          "docComment": "",
+          "docComment": "/**\n * The initial messages for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "messages?: " },
             {
@@ -157,7 +190,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The initial messages for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -170,7 +203,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#model:member",
-          "docComment": "",
+          "docComment": "/**\n * The model to use for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "model: " },
             { "kind": "Content", "text": "string | " },
@@ -196,7 +229,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The model to use for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -209,7 +242,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#retries:member",
-          "docComment": "",
+          "docComment": "/**\n * The number of retries for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "retries?: " },
             { "kind": "Content", "text": "number" },
@@ -229,7 +262,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The number of retries for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -242,7 +275,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#schema:member",
-          "docComment": "",
+          "docComment": "/**\n * The schema to use for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "schema: " },
             { "kind": "Content", "text": "Schema" },
@@ -262,7 +295,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The schema to use for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -275,7 +308,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#system:member",
-          "docComment": "",
+          "docComment": "/**\n * The system prompt to use for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "system: " },
             { "kind": "Content", "text": "string | " },
@@ -301,7 +334,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The system prompt to use for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -314,7 +347,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceOptions#tools:member",
-          "docComment": "",
+          "docComment": "/**\n * The tools to use for the structured chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "tools?: " },
             { "kind": "Content", "text": "Tools[]" },
@@ -334,7 +367,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The tools to use for the structured chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -355,7 +388,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Options for the structured chat resource.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

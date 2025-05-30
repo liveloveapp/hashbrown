@@ -25,8 +25,8 @@
         { "kind": "Content", "text": ", \nconfig: " },
         {
           "kind": "Reference",
-          "text": "θtypes.Prettify",
-          "canonicalReference": "!θtypes.Prettify:type"
+          "text": "ɵtypes.Prettify",
+          "canonicalReference": "!ɵtypes.Prettify:type"
         },
         { "kind": "Content", "text": "<" },
         {

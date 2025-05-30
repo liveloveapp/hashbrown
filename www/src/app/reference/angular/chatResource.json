@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!chatResource:function(1)",
-      "docComment": "/**\n * Creates and returns a chat resource with reactive signals and message-handling functions.\n *\n * @description The `chatResource` function creates a chat resource that manages the state of chat messages, tools, and the structured response format configurations. It provides a reactive interface for sending messages and handling responses with the LLM. The `chatResource` function is the simplest way to communicate with the LLM via text. The other resources exposed by hashbrown build on top of `chatResource` and provide additional functionality.\n *\n * @param options - The configuration options for the chat resource.\n *\n * @returns An object with reactive signals and a sendMessage function.\n *\n * @example\n * ```typescript\n * import { chatResource } from '@hashbrownai/angular';\n *\n * @Component({\n *    template: `\n *      <app-simple-chat-message [messages]=\"chat.value()\" />\n *      <app-chat-composer (sendMessage)=\"sendMessage($event)\" />\n *    `,\n * }) export class AppComponent {\n *   chat = chatResource({\n *     model: 'gpt-4o',\n *     messages: [\n *       {\n *         role: 'system',\n *         content:\n *           'You are a helpful guide for hashbrown, which enables Angular developers to build joyful and meaningful AI-powered experiences in their web apps.'\n *        },\n *     ]\n *   });\n *\n *   sendMessage() {\n *     this.chat.sendMessage({\n *       role: 'user',\n *       content: 'What is hashbrown?'\n *     });\n *   }\n * }\n * ```\n *\n */\n",
+      "docComment": "/**\n * Creates a chat resource for managing LLM-driven conversations.\n *\n * @template Tools\n *\n * @param options - Configuration for the chat resource.\n *\n * @returns {ChatResourceRef<Tools>} An object with reactive signals and methods for interacting with the chat.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -63,21 +63,19 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Creates and returns a chat resource with reactive signals and message-handling functions.\n\n The `chatResource` function creates a chat resource that manages the state of chat messages, tools, and the structured response format configurations. It provides a reactive interface for sending messages and handling responses with the LLM. The `chatResource` function is the simplest way to communicate with the LLM via text. The other resources exposed by hashbrown build on top of `chatResource` and provide additional functionality.\n\n",
+        "summary": "Creates a chat resource for managing LLM-driven conversations.\n\n@template Tools\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " An object with reactive signals and a sendMessage function.\n\n",
+        "returns": " {ChatResourceRef<Tools>} An object with reactive signals and methods for interacting with the chat.\n",
         "see": [],
         "params": [
           {
             "name": "options",
-            "description": "The configuration options for the chat resource.\n\n"
+            "description": "Configuration for the chat resource.\n\n"
           }
         ],
-        "examples": [
-          "\n```typescript\nimport { chatResource } from '@hashbrownai/angular';\n\n@Component({\n   template: `\n     <app-simple-chat-message [messages]=\"chat.value()\" />\n     <app-chat-composer (sendMessage)=\"sendMessage($event)\" />\n   `,\n}) export class AppComponent {\n  chat = chatResource({\n    model: 'gpt-4o',\n    messages: [\n      {\n        role: 'system',\n        content:\n          'You are a helpful guide for hashbrown, which enables Angular developers to build joyful and meaningful AI-powered experiences in their web apps.'\n       },\n    ]\n  });\n\n  sendMessage() {\n    this.chat.sendMessage({\n      role: 'user',\n      content: 'What is hashbrown?'\n    });\n  }\n}\n```\n\n"
-        ]
+        "examples": []
       }
     }
   ]

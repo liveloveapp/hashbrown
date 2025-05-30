@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!ChatResourceRef:interface",
-      "docComment": "",
+      "docComment": "/**\n * Represents the reactive chat resource, including current messages and control methods.\n *\n * @interface ChatResourceRef  @template Tools  @extends {Resource<Chat.Message<string, Tools>[]>}  @property {(message: Chat.UserMessage) => void} sendMessage - Send a new user message to the chat.  @property {() => boolean} reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -129,7 +129,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Represents the reactive chat resource, including current messages and control methods.\n\n@interface ChatResourceRef  @template Tools  @extends {Resource<Chat.Message<string, Tools>[]>}  @property {(message: Chat.UserMessage) => void} sendMessage - Send a new user message to the chat.  @property {() => boolean} reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

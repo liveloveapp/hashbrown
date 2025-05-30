@@ -390,7 +390,7 @@
                     {
                       "kind": "Reference",
                       "text": "DeepPartial",
-                      "canonicalReference": "@hashbrownai/core!θtypes.DeepPartial:type"
+                      "canonicalReference": "@hashbrownai/core!ɵtypes.DeepPartial:type"
                     },
                     { "kind": "Content", "text": "<" },
                     {
@@ -2806,7 +2806,7 @@
             {
               "kind": "Reference",
               "text": "Prettify",
-              "canonicalReference": "@hashbrownai/core!θtypes.Prettify:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.Prettify:type"
             },
             { "kind": "Content", "text": "<ToolUnion extends " },
             {

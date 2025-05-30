@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!CompletionResourceRef:interface",
-      "docComment": "",
+      "docComment": "/**\n * A reference to the completion resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -30,7 +30,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!CompletionResourceRef#reload:member",
-          "docComment": "",
+          "docComment": "/**\n * Reloads the resource.\n *\n * @returns Whether the resource was reloaded.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "reload: " },
             { "kind": "Content", "text": "() => boolean" },
@@ -50,11 +50,11 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Reloads the resource.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
-            "returns": "",
+            "returns": " Whether the resource was reloaded.\n",
             "see": [],
             "params": [],
             "examples": []
@@ -71,7 +71,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "A reference to the completion resource.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

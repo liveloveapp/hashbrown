@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!StructuredChatResourceRef:interface",
-      "docComment": "",
+      "docComment": "/**\n * A reference to the structured chat resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -206,7 +206,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "A reference to the structured chat resource.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

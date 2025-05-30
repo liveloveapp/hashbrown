@@ -1,23 +1,23 @@
 {
-  "name": "θtypes",
-  "canonicalReference": "@hashbrownai/core!θtypes:namespace",
+  "name": "ɵtypes",
+  "canonicalReference": "@hashbrownai/core!ɵtypes:namespace",
   "kind": "Namespace",
   "fileUrlPath": "../packages/core/src/public_api.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Namespace",
-      "canonicalReference": "@hashbrownai/core!θtypes:namespace",
+      "canonicalReference": "@hashbrownai/core!ɵtypes:namespace",
       "docComment": "",
       "excerptTokens": [],
       "fileUrlPath": "../packages/core/src/public_api.ts",
       "releaseTag": "None",
-      "name": "θtypes",
+      "name": "ɵtypes",
       "preserveMemberOrder": false,
       "members": [
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.CleanInterfaceShape:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.CleanInterfaceShape:type",
           "docComment": "/**\n * This is a mysterious little helper found in the Zod codebase. If you read the implementation, you'd think that it is stripping question marks from the keys of an object. While that's technically true, we never use it to actually strip question marks.\n *\n * Instead, it works a lot like `Prettify`. In our schema library, we support cycles using getters:\n * ```ts\n * const node = s.object({\n *   tagName: s.string(),\n *   get children() {\n *     return s.array('children', node);\n *   }\n * })\n * ```\n *\n * However, once we use `s.Infer` on this, for some reason, the TypeScript language service doesn't print the correct type for the `children` property. Strangely, it's just a printing error, the type is actually correct.\n *\n * This helper cleans the type so that it prints correctly.\n */\n",
           "excerptTokens": [
             {
@@ -29,7 +29,7 @@
             {
               "kind": "Reference",
               "text": "Identity",
-              "canonicalReference": "@hashbrownai/core!θtypes.Identity:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.Identity:type"
             },
             {
               "kind": "Content",
@@ -68,7 +68,7 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.DeepPartial:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.DeepPartial:type",
           "docComment": "/**\n * A utility type that makes all properties of a type `T` optional. This type is useful for creating partial types, which can be useful for various type operations.\n *\n * @template T - The type to be made partial.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type DeepPartial<T> = " },
@@ -79,7 +79,7 @@
             {
               "kind": "Reference",
               "text": "DeepPartial",
-              "canonicalReference": "@hashbrownai/core!θtypes.DeepPartial:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.DeepPartial:type"
             },
             { "kind": "Content", "text": "<T[P]> : T[P];\n}" },
             { "kind": "Content", "text": ";" }
@@ -115,14 +115,14 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.Flatten:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.Flatten:type",
           "docComment": "/**\n * A utility type that flattens a given type `T` by mapping over its keys and returning a new type with the same properties. This type is useful for simplifying complex type structures, making them easier to read and understand.\n *\n * @template T - The type to be flattened.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type Flatten<T> = " },
             {
               "kind": "Reference",
               "text": "Identity",
-              "canonicalReference": "@hashbrownai/core!θtypes.Identity:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.Identity:type"
             },
             { "kind": "Content", "text": "<{\n    [k in keyof T]: T[k];\n}>" },
             { "kind": "Content", "text": ";" }
@@ -158,7 +158,7 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.Identity:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.Identity:type",
           "docComment": "/**\n * A utility type that returns the type it receives as input. This type is often used to force TypeScript to evaluate and simplify complex types, making them easier to read and understand.\n *\n * @template T - The type to be returned as is.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type Identity<T> = " },
@@ -196,14 +196,14 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.IsStringUnion:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.IsStringUnion:type",
           "docComment": "",
           "excerptTokens": [
             { "kind": "Content", "text": "export type IsStringUnion<T> = " },
             {
               "kind": "Reference",
               "text": "IsUnion",
-              "canonicalReference": "@hashbrownai/core!θtypes.IsUnion:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.IsUnion:type"
             },
             {
               "kind": "Content",
@@ -242,7 +242,7 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.IsUnion:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.IsUnion:type",
           "docComment": "/**\n * A utility type that checks if a type `T` is a union. This type is useful for determining if a type is a union and for converting a union to an intersection.\n *\n * @template T - The type to be checked.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type IsUnion<T, U = " },
@@ -290,14 +290,14 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.LastOf:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.LastOf:type",
           "docComment": "/**\n * A utility type that returns the last element of a union type. This type is useful for extracting the last element from a union, which can be useful for various type operations.\n *\n * @template T - The union type to be processed.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type LastOf<T> = " },
             {
               "kind": "Reference",
               "text": "UnionToIntersection",
-              "canonicalReference": "@hashbrownai/core!θtypes.UnionToIntersection:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.UnionToIntersection:type"
             },
             {
               "kind": "Content",
@@ -336,7 +336,7 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.Prettify:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.Prettify:type",
           "docComment": "/**\n * A utility type that takes a type `T` and returns a new type with the same properties as `T`. This type is primarily used to improve the readability of complex type definitions by expanding them into a more human-readable form.\n *\n * @template T - The type to be prettified.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type Prettify<T> = " },
@@ -377,7 +377,7 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.UnionToIntersection:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.UnionToIntersection:type",
           "docComment": "/**\n * A utility type that converts a union type `U` to an intersection type. This type is useful for converting a union to an intersection, which can be useful for various type operations.\n *\n * @template U - The union type to be converted.\n */\n",
           "excerptTokens": [
             {
@@ -421,14 +421,14 @@
         },
         {
           "kind": "TypeAlias",
-          "canonicalReference": "@hashbrownai/core!θtypes.UnionToTuple:type",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.UnionToTuple:type",
           "docComment": "/**\n * A utility type that converts a union type `T` to a tuple. This type is useful for converting a union to a tuple, which can be useful for various type operations.\n *\n * @template T - The union type to be converted.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type UnionToTuple<T, L = " },
             {
               "kind": "Reference",
               "text": "LastOf",
-              "canonicalReference": "@hashbrownai/core!θtypes.LastOf:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.LastOf:type"
             },
             { "kind": "Content", "text": "<T>" },
             { "kind": "Content", "text": "> = " },
@@ -436,7 +436,7 @@
             {
               "kind": "Reference",
               "text": "UnionToTuple",
-              "canonicalReference": "@hashbrownai/core!θtypes.UnionToTuple:type"
+              "canonicalReference": "@hashbrownai/core!ɵtypes.UnionToTuple:type"
             },
             { "kind": "Content", "text": "<" },
             {

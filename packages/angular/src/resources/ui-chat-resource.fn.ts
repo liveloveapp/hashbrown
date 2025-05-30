@@ -1,73 +1,74 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computed, Resource, Signal, Type } from '@angular/core';
-import { Chat, s, θcomponents } from '@hashbrownai/core';
-import { ExposedComponent } from './expose-component.fn';
+import { computed, Resource, Signal } from '@angular/core';
+import { Chat, s, ɵcomponents } from '@hashbrownai/core';
+import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
+import {
+  TAG_NAME_REGISTRY,
+  TagNameRegistry,
+  UiChatMessage,
+} from '../utils/ui-chat.helpers';
 
-export const TAG_NAME_REGISTRY = Symbol('θtagNameRegistry');
-
-export type TagNameRegistry = {
-  [tagName: string]: {
-    props: Record<string, s.HashbrownType>;
-    component: Type<object>;
-  };
-};
-
-export type RenderableMessage = {
-  [TAG_NAME_REGISTRY]: TagNameRegistry;
-};
-
-export const getTagNameRegistry = (
-  message: Chat.Message<UiChatSchema, Chat.AnyTool>,
-): TagNameRegistry | undefined => {
-  if (TAG_NAME_REGISTRY in message) {
-    return message[TAG_NAME_REGISTRY] as TagNameRegistry;
-  }
-
-  return undefined;
-};
-
-export interface UiChatSchemaComponent {
-  $tagName: string;
-  $props: Record<string, any>;
-  $children: UiChatSchemaComponent[];
+/**
+ * Options for the UI chat resource.
+ */
+export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
+  /**
+   * The components to use for the UI chat resource.
+   */
+  components: ExposedComponent<any>[];
+  /**
+   * The model to use for the UI chat resource.
+   */
+  model: string | Signal<string>;
+  /**
+   * The system prompt to use for the UI chat resource.
+   */
+  system: string | Signal<string>;
+  /**
+   * The initial messages for the UI chat resource.
+   */
+  messages?: Chat.Message<string, Tools>[];
+  /**
+   * The tools to use for the UI chat resource.
+   */
+  tools?: Tools[];
+  /**
+   * The debug name for the UI chat resource.
+   */
+  debugName?: string;
+  /**
+   * The debounce time for the UI chat resource.
+   */
+  debounce?: number;
+  /**
+   * The API URL to use for the UI chat resource.
+   */
+  apiUrl?: string;
 }
 
-export interface UiChatSchema {
-  ui: UiChatSchemaComponent[];
-}
-
-export type UiAssistantMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
-  Chat.AssistantMessage<UiChatSchema, Tools> & {
-    [TAG_NAME_REGISTRY]: TagNameRegistry;
-  };
-
-export type UiUserMessage = Chat.UserMessage;
-export type UiErrorMessage = Chat.ErrorMessage;
-
-export type UiChatMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
-  | UiAssistantMessage<Tools>
-  | UiUserMessage
-  | UiErrorMessage;
-
+/**
+ * A reference to the UI chat resource.
+ */
 export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<UiChatMessage<Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
   resendMessages: () => void;
 }
-export function uiChatResource<Tools extends Chat.AnyTool>(args: {
-  components: ExposedComponent<any>[];
-  model: string | Signal<string>;
-  system: string | Signal<string>;
-  messages?: Chat.Message<string, Tools>[];
-  tools?: Tools[];
-  debugName?: string;
-  debounce?: number;
-}): UiChatResourceRef<Tools> {
+
+/**
+ * Creates a UI chat resource.
+ *
+ * @param args - The arguments for the UI chat resource.
+ * @returns The UI chat resource.
+ */
+export function uiChatResource<Tools extends Chat.AnyTool>(
+  args: UiChatResourceOptions<Tools>,
+): UiChatResourceRef<Tools> {
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
-      θcomponents.createComponentSchema(args.components),
+      ɵcomponents.createComponentSchema(args.components),
     ),
   });
 
@@ -78,6 +79,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(args: {
     system: args.system,
     debugName: args.debugName,
     debounce: args.debounce,
+    apiUrl: args.apiUrl,
   });
 
   const value = computed(() => {

@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!structuredCompletionResource:function(1)",
-      "docComment": "",
+      "docComment": "/**\n * Creates a structured completion resource.\n *\n * @param options - The options for the structured completion resource.\n *\n * @returns The structured completion resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -87,13 +87,18 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Creates a structured completion resource.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": "",
+        "returns": " The structured completion resource.\n",
         "see": [],
-        "params": [],
+        "params": [
+          {
+            "name": "options",
+            "description": "The options for the structured completion resource.\n\n"
+          }
+        ],
         "examples": []
       }
     }

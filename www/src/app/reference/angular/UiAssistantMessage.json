@@ -38,13 +38,13 @@
         {
           "kind": "Reference",
           "text": "TAG_NAME_REGISTRY",
-          "canonicalReference": "@hashbrownai/angular!TAG_NAME_REGISTRY:var"
+          "canonicalReference": "@hashbrownai/angular!~TAG_NAME_REGISTRY:var"
         },
         { "kind": "Content", "text": "]: " },
         {
           "kind": "Reference",
           "text": "TagNameRegistry",
-          "canonicalReference": "@hashbrownai/angular!TagNameRegistry:type"
+          "canonicalReference": "@hashbrownai/angular!~TagNameRegistry:type"
         },
         { "kind": "Content", "text": ";\n}" },
         { "kind": "Content", "text": ";" }

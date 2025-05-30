@@ -1,26 +1,60 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, effect, Resource, Signal } from '@angular/core';
 import { Chat, s } from '@hashbrownai/core';
-import { SignalLike } from './types';
+import { SignalLike } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
+/**
+ * A reference to the structured completion resource.
+ */
 export interface StructuredCompletionResourceRef<Output>
   extends Resource<Output | null> {
   reload: () => boolean;
 }
 
+/**
+ * Options for the structured completion resource.
+ */
 export interface StructuredCompletionResourceOptions<
   Input,
   Schema extends s.HashbrownType,
 > {
+  /**
+   * The model to use for the structured completion resource.
+   */
   model: string;
+  /**
+   * The input to the structured completion resource.
+   */
   input: Signal<Input | null | undefined>;
+  /**
+   * The schema to use for the structured completion resource.
+   */
   schema: Schema;
+  /**
+   * The system prompt to use for the structured completion resource.
+   */
   system: SignalLike<string>;
+  /**
+   * The tools to use for the structured completion resource.
+   */
   tools?: Chat.AnyTool[];
+  /**
+   * The debug name for the structured completion resource.
+   */
   debugName?: string;
+  /**
+   * The API URL to use for the structured completion resource.
+   */
+  apiUrl?: string;
 }
 
+/**
+ * Creates a structured completion resource.
+ *
+ * @param options - The options for the structured completion resource.
+ * @returns The structured completion resource.
+ */
 export function structuredCompletionResource<
   Input,
   Schema extends s.HashbrownType,
@@ -28,7 +62,7 @@ export function structuredCompletionResource<
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
-  const { model, input, schema, system, tools, debugName } = options;
+  const { model, input, schema, system, tools, debugName, apiUrl } = options;
 
   const resource = structuredChatResource<Schema, Chat.AnyTool, Output>({
     model,
@@ -37,6 +71,7 @@ export function structuredCompletionResource<
     tools,
     debugName,
     retries: 3,
+    apiUrl,
   });
 
   effect(() => {

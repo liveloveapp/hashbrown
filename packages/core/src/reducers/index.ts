@@ -197,7 +197,7 @@ export const selectApiTools = select(
     return Chat.helpers.toApiToolsFromInternal(
       tools,
       emulateStructuredOutput && !!responseSchema,
-      responseSchema ?? s.nullType(),
+      responseSchema ?? s.nullish(),
     );
   },
 );
