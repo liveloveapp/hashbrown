@@ -180,7 +180,6 @@ import { ConfigService } from '../services/ConfigService';
           title="Introducing Hashbrown"
         ></iframe>
       </div>
-      <script src="https://player.vimeo.com/api/player.js"></script>
     </div>
   `,
   styles: [
