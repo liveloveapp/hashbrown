@@ -9,6 +9,18 @@
     "client": "ng serve --open",
     "server": "node server.mjs"
   },
+  "overrides": {
+    "@angular/build": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/common": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@nx/angular": "21.2.0-beta.1",
+    "@nx/devkit": "21.2.0-beta.1",
+    "@nx/vite": "21.2.0-beta.1",
+    "@swc/core": "~1.5.7",
+    "rollup": "4.9.5"
+  },
   "dependencies": {
     "@angular/common": "<angular-version>",
     "@angular/compiler": "<angular-version>",
@@ -17,7 +29,7 @@
     "@hashbrownai/angular": "<hashbrown-version>",
     "@hashbrownai/azure": "<hashbrown-version>",
     "@hashbrownai/core": "<hashbrown-version>",
-    "@hashbrownai/google": "0.0.1",
+    "@hashbrownai/google": "<hashbrown-version>",
     "@hashbrownai/openai": "<hashbrown-version>",
     "@hashbrownai/tool-javascript": "<hashbrown-version>",
     "@ngrx/signals": "<ngrx-version>",
