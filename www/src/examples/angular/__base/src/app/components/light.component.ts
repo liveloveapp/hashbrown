@@ -1,5 +1,4 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import { ChevronRight } from '../icons/chevron-right.component';
 import { Light } from '../models/light';
 import { LightsStore } from '../store/lights.store';
 import { CardComponent } from './card.component';
@@ -7,7 +6,7 @@ import { SliderComponent } from './slider.component';
 
 @Component({
   selector: 'app-light',
-  imports: [CardComponent, ChevronRight, SliderComponent],
+  imports: [CardComponent, SliderComponent],
   template: `
     <app-card [title]="light().name">
       <div class="light">
@@ -19,7 +18,6 @@ import { SliderComponent } from './slider.component';
           {{ light().brightness }}%
         </div>
       </div>
-      <app-chevron-right />
     </app-card>
   `,
   styles: [

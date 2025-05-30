@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { Stackblitz } from '../../../components/Stackblitz';
 
 @Component({
-  template: `<www-stackblitz name="react/chat" />`,
+  template: `<www-stackblitz name="react/ui-chat" />`,
   imports: [Stackblitz],
   styles: `
     :host {
@@ -13,4 +13,4 @@ import { Stackblitz } from '../../../components/Stackblitz';
     }
   `,
 })
-export default class ChatPage {}
+export default class UiChatPage {}

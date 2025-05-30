@@ -172,7 +172,7 @@ export class DocsHeader {
     return `/docs/${this.sdk()}/start/quick`;
   });
   examplesUrl = computed(() => {
-    return `/examples/${this.sdk()}/chat`;
+    return `/examples/${this.sdk()}/ui-chat`;
   });
   dropdownMenu = viewChild.required(DropdownMenu);
 
