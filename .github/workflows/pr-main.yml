@@ -8,6 +8,9 @@ on:
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   NX_CLOUD_AUTH_TOKEN: ${{ secrets.NX_CLOUD_AUTH_TOKEN }}
+  AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
+  AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+  AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
 
 jobs:
   build:
