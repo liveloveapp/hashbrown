@@ -131,6 +131,15 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     }
 
     const start = index;
+
+    // Is the next character a string?
+    // parseAny checks before calling parseStr, but functions parsing
+    // key names (i.e. parseObj) do not, and we need to detect potentially
+    // malformed JSON immediately following a comma
+    if (jsonString[start] !== '"') {
+      throwMalformedError('String expected but not started');
+    }
+
     let escape = false;
     index++; // skip initial quote
     while (
