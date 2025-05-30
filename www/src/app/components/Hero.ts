@@ -10,7 +10,7 @@ import { ConfigService } from '../services/ConfigService';
       <div class="container">
         <div class="logo">
           <img
-            src="/image/logo/brand-mark.svg"
+            src="/image/logo/brand-mark-alt.svg"
             alt="our friendly logo that looks like a hashbrown character from an animated tv show"
           />
           <p>
@@ -55,13 +55,13 @@ import { ConfigService } from '../services/ConfigService';
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 32px;
+      gap: 34px;
 
       > .logo {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 32px;
+        gap: 16px;
 
         img {
           width: 180px;
