@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/google",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -9,6 +9,6 @@
   },
   "peerDependencies": {
     "@google/genai": "^0.8.0",
-    "@hashbrownai/core": "*"
+    "@hashbrownai/core": "0.0.3"
   }
 }

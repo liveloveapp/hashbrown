@@ -1,9 +1,9 @@
 {
   "name": "@hashbrownai/angular",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "peerDependencies": {
     "@angular/core": "^20.0.0",
-    "@hashbrownai/core": "*",
+    "@hashbrownai/core": "0.0.3",
     "@angular/common": "^20.0.0"
   },
   "sideEffects": false
