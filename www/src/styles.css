@@ -174,13 +174,16 @@ pre {
 }
 
 code {
-  font: 500 14px/1.5rem 'Operator Mono', monospace;
+  font:
+    500 14px/1.5rem 'Operator Mono',
+    monospace;
   font-variant-ligatures: none;
 }
 
 @font-face {
   font-family: 'Operator Mono';
-  src: url('/font/operator-mono/normal-400.woff2') format('woff2'),
+  src:
+    url('/font/operator-mono/normal-400.woff2') format('woff2'),
     url('/font/operator-mono/normal-400.woff') format('woff');
   font-weight: 400;
   font-style: normal;
@@ -261,16 +264,45 @@ code {
 }
 
 @keyframes shake {
-  0% { transform: rotate(0deg); }
-  10% { transform: rotate(5deg); }
-  20% { transform: rotate(-5deg); }
-  30% { transform: rotate(4deg); }
-  40% { transform: rotate(-4deg); }
-  50% { transform: rotate(2deg); }
-  60% { transform: rotate(-2deg); }
-  70% { transform: rotate(1deg); }
-  80% { transform: rotate(-1deg); }
-  90% { transform: rotate(0.5deg); }
-  100% { transform: rotate(0deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(5deg);
+  }
+  20% {
+    transform: rotate(-5deg);
+  }
+  30% {
+    transform: rotate(4deg);
+  }
+  40% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+  60% {
+    transform: rotate(-2deg);
+  }
+  70% {
+    transform: rotate(1deg);
+  }
+  80% {
+    transform: rotate(-1deg);
+  }
+  90% {
+    transform: rotate(0.5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
+.mat-mdc-menu-panel {
+  background-color: #774625 !important;
+}
+
+.mat-mdc-menu-item-text {
+  color: #faf9f0;
+}

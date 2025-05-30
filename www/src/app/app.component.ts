@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { Alert } from './components/Alert';
 import { CodeExample } from './components/CodeExample';
 import { MarkdownSymbolLink } from './components/MarkdownSymbolLink';
+import { MatIconRegistry } from '@angular/material/icon';
 
 @Component({
   selector: 'www-root',
@@ -20,10 +21,12 @@ export class AppComponent {
   injector = inject(Injector);
   platformId = inject(PLATFORM_ID);
 
-  constructor() {
+  constructor(iconRegistry: MatIconRegistry) {
     if (isPlatformBrowser(this.platformId)) {
       this.installCustomElements();
     }
+
+    iconRegistry.setDefaultFontSetClass('material-symbols-outlined');
   }
 
   async installCustomElements() {

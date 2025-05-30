@@ -130,6 +130,16 @@ import { RouterLink } from '@angular/router';
         padding: 128px 64px;
       }
     }
+
+    @media (width < 450px) {
+      .bleed {
+        > h2 {
+          font:
+            700 32px/48px Fredoka,
+            sans-serif;
+        }
+      }
+    }
   `,
 })
 export class OpenSource {}
