@@ -74,6 +74,8 @@ export function structuredCompletionResource<
     apiUrl,
   });
 
+  const debugNamePrefix = debugName ? debugName + '.' : '';
+
   effect(() => {
     const _input = input();
 
@@ -89,18 +91,21 @@ export function structuredCompletionResource<
     ]);
   });
 
-  const value = computed(() => {
-    const lastMessage = resource.value()[resource.value().length - 1];
-    if (
-      lastMessage &&
-      lastMessage.role === 'assistant' &&
-      lastMessage.content &&
-      lastMessage.content !== null
-    ) {
-      return lastMessage.content;
-    }
-    return null;
-  });
+  const value = computed(
+    () => {
+      const lastMessage = resource.value()[resource.value().length - 1];
+      if (
+        lastMessage &&
+        lastMessage.role === 'assistant' &&
+        lastMessage.content &&
+        lastMessage.content !== null
+      ) {
+        return lastMessage.content;
+      }
+      return null;
+    },
+    { debugName: `${debugNamePrefix}structuredCompletion.value` },
+  );
 
   const status = resource.status;
   const error = resource.error;

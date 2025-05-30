@@ -13,6 +13,7 @@ export function readSignalLike<T extends object | string | number | boolean>(
 
 export function toSignal<T>(
   source: (observer: (value: T) => void) => void,
+  debugName?: string,
 ): Signal<T> {
   // eslint-disable-next-line prefer-const
   let _signal: WritableSignal<T> | undefined;
@@ -26,8 +27,14 @@ export function toSignal<T>(
     }
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  _signal = signal(initialValue!);
+  _signal = signal(
+    initialValue!,
+    debugName
+      ? {
+          debugName,
+        }
+      : {},
+  );
 
   return _signal.asReadonly();
 }

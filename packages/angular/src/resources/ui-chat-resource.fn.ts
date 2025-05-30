@@ -82,45 +82,48 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     apiUrl: args.apiUrl,
   });
 
-  const value = computed(() => {
-    const messages = chat.value();
+  const value = computed(
+    () => {
+      const messages = chat.value();
 
-    return messages.map((message): UiChatMessage<Tools> => {
-      if (message.role === 'assistant') {
-        const content = message.content as
-          | s.Infer<typeof internalSchema>
-          | ''
-          | undefined;
+      return messages.map((message): UiChatMessage<Tools> => {
+        if (message.role === 'assistant') {
+          const content = message.content as
+            | s.Infer<typeof internalSchema>
+            | ''
+            | undefined;
 
-        if (!content) {
+          if (!content) {
+            return {
+              ...message,
+              [TAG_NAME_REGISTRY]: {},
+            };
+          }
+
           return {
             ...message,
-            [TAG_NAME_REGISTRY]: {},
+            [TAG_NAME_REGISTRY]:
+              args.components?.reduce((acc, component) => {
+                acc[component.name] = {
+                  props: component.props ?? {},
+                  component: component.component,
+                };
+                return acc;
+              }, {} as TagNameRegistry) ?? {},
           };
         }
+        if (message.role === 'user') {
+          return message;
+        }
+        if (message.role === 'error') {
+          return message;
+        }
 
-        return {
-          ...message,
-          [TAG_NAME_REGISTRY]:
-            args.components?.reduce((acc, component) => {
-              acc[component.name] = {
-                props: component.props ?? {},
-                component: component.component,
-              };
-              return acc;
-            }, {} as TagNameRegistry) ?? {},
-        };
-      }
-      if (message.role === 'user') {
-        return message;
-      }
-      if (message.role === 'error') {
-        return message;
-      }
-
-      throw new Error(`Unknown message role`);
-    });
-  });
+        throw new Error(`Unknown message role`);
+      });
+    },
+    { debugName: `${args.debugName ? args.debugName + '.' : ''}uiChat.value` },
+  );
 
   return {
     ...chat,
