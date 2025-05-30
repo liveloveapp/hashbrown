@@ -449,7 +449,7 @@ export class GettingStarted {
   });
 
   ctaHref = computed(() => {
-    return `/docs/${this.configService.sdk()}/recipes/chat`;
+    return `/docs/${this.configService.sdk()}/start/quick`;
   });
 
   computedExamples = computed(() => {

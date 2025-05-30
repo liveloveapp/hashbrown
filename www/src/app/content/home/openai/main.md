@@ -7,12 +7,17 @@ const app = express();
 
 app.post('/chat', async (req, res) => {
   const request = req.body as Chat.CompletionCreateParams;
-  const stream = HashbrownOpenAI.stream.text(OPENAI_API_KEY, request);
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: OPENAI_API_KEY,
+    request,
+  });
 
-  res.header('Content-Type', 'text/plain');
+  res.header('Content-Type', 'application/octet-stream');
+
   for await (const chunk of stream) {
-    res.write(JSON.stringify(chunk));
+    res.write(chunk);
   }
+
   res.end();
 });
 ```

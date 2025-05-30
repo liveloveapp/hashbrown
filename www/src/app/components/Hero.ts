@@ -10,7 +10,7 @@ import { ConfigService } from '../services/ConfigService';
       <div class="container">
         <div class="logo">
           <img
-            src="/image/logo/brand-and-word-mark.svg"
+            src="/image/logo/brand-mark.svg"
             alt="our friendly logo that looks like a hashbrown character from an animated tv show"
           />
           <p>
@@ -61,16 +61,16 @@ import { ConfigService } from '../services/ConfigService';
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 16px;
+        gap: 32px;
 
         img {
-          width: 260px;
+          width: 180px;
         }
 
         > p {
-          color: #3d3c3a;
+          color: #774625;
           font:
-            400 20px/28px 'KefirVariable',
+            400 28px/32px 'KefirVariable',
             sans-serif;
           text-align: center;
           font-variation-settings: 'wght' 800;
