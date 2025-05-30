@@ -22,7 +22,7 @@ export function defineFunction<OutputSchema extends s.HashbrownType>(args: {
   return {
     name: args.name,
     description: args.description,
-    input: s.nullType(),
+    input: s.nullish(),
     output: args.output,
     handler: function (input: null, abortSignal: AbortSignal) {
       return args.handler(abortSignal);
@@ -55,22 +55,24 @@ export function defineFunctionWithArgs<
 export function attachFunctionToContext(
   context: QuickJSAsyncContext,
   transport: RuntimeTransport,
-  definition: VMFunctionDefinition<any, any>,
+  definition: VMFunctionDefinition<any, Promise<any>>,
   attachTo: QuickJSHandle,
   abortSignal: AbortSignal,
 ) {
-  const { name, input: input, output, handler } = definition;
+  const { name, input, handler } = definition;
 
-  const fnHandle = context.newAsyncifiedFunction(name, async (...args) => {
+  const fnHandle = context.newAsyncifiedFunction(name, (...args) => {
     if (s.isNullType(input)) {
-      const result = await handler(null, abortSignal);
-      return transport.sendObject(output.parseJsonSchema(result));
+      return handler(null, abortSignal).then((result) => {
+        return transport.sendObject(result);
+      });
     }
 
     const resolvedInput = transport.receiveObject(args[0]);
-    const parsedInput = input.parseJsonSchema(resolvedInput);
-    const result = await handler(parsedInput, abortSignal);
-    return transport.sendObject(output.parseJsonSchema(result));
+
+    return handler(resolvedInput, abortSignal).then((result) => {
+      return transport.sendObject(result);
+    });
   });
 
   context.setProp(attachTo, name, fnHandle);

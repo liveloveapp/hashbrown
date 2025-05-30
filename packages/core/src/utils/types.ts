@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * A utility type that takes a type `T` and returns a new type
  * with the same properties as `T`. This type is primarily used

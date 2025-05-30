@@ -112,7 +112,7 @@ export class PlannerComponent {
           name: s.string('the name of the light'),
         }),
         handler: (name) =>
-          lastValueFrom(this.smartHome.addLight({ name, brightness: 100 })),
+          lastValueFrom(this.smartHome.addLight$({ name, brightness: 100 })),
       }),
       defineFunctionWithArgs({
         name: 'createScene',
@@ -131,7 +131,7 @@ export class PlannerComponent {
           id: s.string('the id of the scene'),
           name: s.string('the name of the scene'),
         }),
-        handler: (params) => lastValueFrom(this.smartHome.addScene(params)),
+        handler: (params) => lastValueFrom(this.smartHome.addScene$(params)),
       }),
       defineFunctionWithArgs({
         name: 'createScheduledScene',
@@ -149,79 +149,79 @@ export class PlannerComponent {
               'YEARLY',
             ]),
             until: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.string('End date-time (UNTIL) in UTC format YYYYMMDDTHHMMSSZ'),
             ]),
             count: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.number('Number of occurrences (COUNT)'),
             ]),
             interval: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.number('Interval between recurrences (INTERVAL); default is 1'),
             ]),
             bysecond: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Seconds list (BYSECOND)',
                 s.number('Second value between 0 and 59'),
               ),
             ]),
             byminute: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Minutes list (BYMINUTE)',
                 s.number('Minute value between 0 and 59'),
               ),
             ]),
             byhour: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Hours list (BYHOUR)',
                 s.number('Hour value between 0 and 23'),
               ),
             ]),
             bymonthday: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Month days list (BYMONTHDAY)',
                 s.number('Day of month between 1 and 31'),
               ),
             ]),
             byyearday: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Year days list (BYYEARDAY)',
                 s.number('Day of year between -366 and 366'),
               ),
             ]),
             byweekno: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Week numbers list (BYWEEKNO)',
                 s.number('ISO week number between -53 and 53'),
               ),
             ]),
             bymonth: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array('By month', s.number('Month value between 1 and 12')),
             ]),
             bysetpos: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Set positions list (BYSETPOS)',
                 s.number('Set position between -366 and 366'),
               ),
             ]),
             byday: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.array(
                 'Days of week list (BYDAY)',
                 s.string('Two-letter day code: MO, TU, WE, TH, FR, SA, SU'),
               ),
             ]),
             wkst: s.anyOf([
-              s.nullType(),
+              s.nullish(),
               s.string('Week start day code: MO, TU, WE, TH, FR, SA, SU'),
             ]),
           }),

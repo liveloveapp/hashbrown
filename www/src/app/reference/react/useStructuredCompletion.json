@@ -1,1 +1,95 @@
-{"name":"useStructuredCompletion","canonicalReference":"@hashbrownai/react!useStructuredCompletion:function","kind":"Function","fileUrlPath":"../dist/packages/react/hooks/use-structured-completion.d.ts","isDeprecated":false,"members":[{"kind":"Function","canonicalReference":"@hashbrownai/react!useStructuredCompletion:function(1)","docComment":"","excerptTokens":[{"kind":"Content","text":"useStructuredCompletion: <Schema extends "},{"kind":"Reference","text":"s.HashbrownType","canonicalReference":"!s.HashbrownType:type"},{"kind":"Content","text":", Tools extends "},{"kind":"Reference","text":"Chat.AnyTool","canonicalReference":"!Chat.AnyTool:type"},{"kind":"Content","text":">(options: "},{"kind":"Reference","text":"UseStructuredCompletionOptions","canonicalReference":"@hashbrownai/react!UseStructuredCompletionOptions:interface"},{"kind":"Content","text":"<Schema, Tools>"},{"kind":"Content","text":") => "},{"kind":"Reference","text":"UseStructuredCompletionResult","canonicalReference":"@hashbrownai/react!UseStructuredCompletionResult:interface"},{"kind":"Content","text":"<"},{"kind":"Reference","text":"s.Infer","canonicalReference":"!s.Infer:type"},{"kind":"Content","text":"<Schema>>"}],"fileUrlPath":"../dist/packages/react/hooks/use-structured-completion.d.ts","returnTypeTokenRange":{"startIndex":8,"endIndex":12},"releaseTag":"Public","overloadIndex":1,"parameters":[{"parameterName":"options","parameterTypeTokenRange":{"startIndex":5,"endIndex":7},"isOptional":false}],"typeParameters":[{"typeParameterName":"Schema","constraintTokenRange":{"startIndex":1,"endIndex":2},"defaultTypeTokenRange":{"startIndex":0,"endIndex":0}},{"typeParameterName":"Tools","constraintTokenRange":{"startIndex":3,"endIndex":4},"defaultTypeTokenRange":{"startIndex":0,"endIndex":0}}],"name":"useStructuredCompletion","docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "useStructuredCompletion",
+  "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function(1)",
+      "docComment": "/**\n * This React hook creates a completion instance that predicts structured data based on input context. The result object contains the predicted structured output and state for monitoring the completion.\n *\n * @description The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for: - Smart form field suggestions - Context-aware recommendations - Predictive UI generation - Intelligent defaults\n *\n * @returns {UseStructuredCompletionResult} An object containing the predicted structured output and completion state.\n *\n * @example\n *\n * In this example, the LLM will predict a color palette based on a given theme or mood.\n * ```tsx\n * const { output } = useStructuredCompletion({\n *   model: 'gpt-4o',\n *   system: `Predict a color palette based on the given mood or theme. For example,\n *   if the theme is \"Calm Ocean\", suggest appropriate colors.`,\n *   input: theme,\n *   schema: s.object('Color Palette', {\n *     colors: s.array(\n *       'The colors in the palette',\n *       s.string('Hex color code')\n *     )\n *   })\n * });\n * ```\n *\n */\n",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "useStructuredCompletion: <Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ", Tools extends " },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
+        {
+          "kind": "Reference",
+          "text": "UseStructuredCompletionOptions",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionOptions:interface"
+        },
+        { "kind": "Content", "text": "<Schema, Tools>" },
+        { "kind": "Content", "text": ") => " },
+        {
+          "kind": "Reference",
+          "text": "UseStructuredCompletionResult",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionResult:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>>" }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+      "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 7 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Schema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 4 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "useStructuredCompletion",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "This React hook creates a completion instance that predicts structured data based on input context. The result object contains the predicted structured output and state for monitoring the completion.\n\n The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for: - Smart form field suggestions - Context-aware recommendations - Predictive UI generation - Intelligent defaults\n\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": " {UseStructuredCompletionResult} An object containing the predicted structured output and completion state.\n\n",
+        "see": [],
+        "params": [],
+        "examples": [
+          "\n\nIn this example, the LLM will predict a color palette based on a given theme or mood.\n```tsx\nconst { output } = useStructuredCompletion({\n  model: 'gpt-4o',\n  system: `Predict a color palette based on the given mood or theme. For example,\n  if the theme is \"Calm Ocean\", suggest appropriate colors.`,\n  input: theme,\n  schema: s.object('Color Palette', {\n    colors: s.array(\n      'The colors in the palette',\n      s.string('Hex color code')\n    )\n  })\n});\n```\n\n"
+        ]
+      }
+    }
+  ]
+}

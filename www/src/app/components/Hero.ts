@@ -1,22 +1,18 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-hero',
-  imports: [RouterLink, Hashbrown],
+  imports: [RouterLink],
   template: `
     <div class="bleed">
       <div class="container">
         <div class="logo">
           <img
-            src="/logo/hashbrown.png"
+            src="/image/logo/brand-mark-alt.svg"
             alt="our friendly logo that looks like a hashbrown character from an animated tv show"
-            height="136"
-            width="134"
           />
-          <www-hashbrown />
           <p>
             a framework for building joyful,<br />AI-powered user experiences
           </p>
@@ -24,6 +20,14 @@ import { ConfigService } from '../services/ConfigService';
         <div class="cta">
           <a [routerLink]="docsUrl()"> read the documentation </a>
           <p>100% free, open-source, and MIT-Licensed</p>
+          <iframe
+            src="https://ghbtns.com/github-btn.html?user=liveloveapp&repo=hashbrown&type=star&count=true&size=large"
+            frameborder="0"
+            scrolling="0"
+            width="120"
+            height="30"
+            title="GitHub"
+          ></iframe>
         </div>
       </div>
     </div>
@@ -42,7 +46,7 @@ import { ConfigService } from '../services/ConfigService';
     .bleed {
       display: flex;
       flex-direction: column;
-      padding: 64px 32px;
+      padding: 32px 32px;
       width: 100%;
       max-width: 1024px;
     }
@@ -51,7 +55,7 @@ import { ConfigService } from '../services/ConfigService';
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 32px;
+      gap: 34px;
 
       > .logo {
         display: flex;
@@ -59,19 +63,24 @@ import { ConfigService } from '../services/ConfigService';
         align-items: center;
         gap: 16px;
 
+        img {
+          width: 180px;
+        }
+
         > p {
-          color: #3d3c3a;
+          color: #774625;
           font:
-            400 24px/28px Poppins,
+            400 28px/32px 'KefirVariable',
             sans-serif;
           text-align: center;
+          font-variation-settings: 'wght' 800;
         }
       }
 
       > .cta {
         display: flex;
         flex-direction: column;
-        align-content: center;
+        align-items: center;
         gap: 16px;
 
         a {
@@ -126,7 +135,7 @@ import { ConfigService } from '../services/ConfigService';
 
     @media screen and (min-width: 1024px) {
       .bleed {
-        padding: 128px 64px;
+        padding: 96px 64px;
       }
     }
   `,

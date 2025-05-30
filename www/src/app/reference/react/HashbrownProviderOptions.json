@@ -2,43 +2,67 @@
   "name": "HashbrownProviderOptions",
   "canonicalReference": "@hashbrownai/react!HashbrownProviderOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/lib/hashbrown-provider.d.ts",
+  "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!HashbrownProviderOptions:interface",
-      "docComment": "",
+      "docComment": "/**\n * The options for the Hashbrown provider.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
           "text": "export interface HashbrownProviderOptions "
         }
       ],
-      "fileUrlPath": "../dist/packages/react/lib/hashbrown-provider.d.ts",
+      "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
       "releaseTag": "Public",
       "name": "HashbrownProviderOptions",
       "preserveMemberOrder": false,
       "members": [
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/react!HashbrownProviderOptions#headers:member",
+          "canonicalReference": "@hashbrownai/react!HashbrownProviderOptions#middleware:member",
           "docComment": "/**\n * The headers to send with the POST request to the Hashbrown endpoint.\n */\n",
           "excerptTokens": [
-            { "kind": "Content", "text": "headers?: " },
+            { "kind": "Content", "text": "middleware?: " },
             {
               "kind": "Reference",
-              "text": "Record",
-              "canonicalReference": "!Record:type"
+              "text": "Array",
+              "canonicalReference": "!Array:interface"
             },
-            { "kind": "Content", "text": "<string, string>" },
+            { "kind": "Content", "text": "<(request: " },
+            {
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": ") => " },
+            {
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": ">>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": true,
           "releaseTag": "Public",
-          "name": "headers",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "name": "middleware",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 11 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -54,7 +78,8 @@
             "deprecated": "",
             "returns": "",
             "see": [],
-            "params": []
+            "params": [],
+            "examples": []
           }
         },
         {
@@ -86,7 +111,8 @@
             "deprecated": "",
             "returns": "",
             "see": [],
-            "params": []
+            "params": [],
+            "examples": []
           }
         }
       ],
@@ -100,13 +126,14 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "The options for the Hashbrown provider.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
         "returns": "",
         "see": [],
-        "params": []
+        "params": [],
+        "examples": []
       }
     }
   ]

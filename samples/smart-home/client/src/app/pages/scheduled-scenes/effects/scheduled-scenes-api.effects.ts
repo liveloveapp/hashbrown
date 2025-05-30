@@ -44,7 +44,7 @@ export const addScheduledScene$ = createEffect(
     return actions$.pipe(
       ofType(ScheduledScenesPageActions.addScheduledScene),
       mergeMap(({ scheduledScene }) => {
-        smartHome.addScheduledScene(scheduledScene);
+        smartHome.addScheduledScene$(scheduledScene);
         const newScheduledScene = smartHome
           .scheduledScenes()
           .find((s) => s.name === scheduledScene.name);
@@ -83,7 +83,7 @@ export const updateScheduledScene$ = createEffect(
     return actions$.pipe(
       ofType(ScheduledScenesPageActions.updateScheduledScene),
       mergeMap(({ id, scheduledScene }) => {
-        return smartHome.updateScheduledScene(id, scheduledScene).pipe(
+        return smartHome.updateScheduledScene$(id, scheduledScene).pipe(
           map((updatedScheduledScene) =>
             ScheduledScenesApiActions.updateScheduledSceneSuccess({
               scheduledScene: updatedScheduledScene,
@@ -111,7 +111,7 @@ export const deleteScheduledScene$ = createEffect(
     return actions$.pipe(
       ofType(ScheduledScenesPageActions.deleteScheduledScene),
       mergeMap(({ id }) => {
-        return smartHome.deleteScheduledScene(id).pipe(
+        return smartHome.deleteScheduledScene$(id).pipe(
           map((id) =>
             ScheduledScenesApiActions.deleteScheduledSceneSuccess({ id }),
           ),

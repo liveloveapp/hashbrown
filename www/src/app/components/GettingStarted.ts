@@ -319,7 +319,7 @@ const providerExamplesSources: Record<string, [string, string][]> = {
             padding: 16px;
             border-radius: 8px;
             background: #2b2a29;
-
+            overflow-x: scroll;
             > button {
               color: #fff;
               display: flex;
@@ -363,6 +363,42 @@ const providerExamplesSources: Record<string, [string, string][]> = {
             > dl {
               gap: 32px;
             }
+          }
+        }
+      }
+    }
+
+    @media (width < 450px) {
+      .bleed {
+        > .getting-started {
+          > .steps {
+            > h2 {
+              font:
+                700 32px/48px Fredoka,
+                sans-serif;
+            }
+          }
+        }
+      }
+    }
+
+    @media (width < 660px) {
+      .bleed {
+        > .getting-started {
+          > .examples {
+            > .controls {
+              flex-direction: column;
+            }
+          }
+        }
+      }
+    }
+
+    @media (width < 768px) {
+      .bleed {
+        > .getting-started {
+          > .examples {
+            max-width: calc(100dvw - 64px);
           }
         }
       }
@@ -413,7 +449,7 @@ export class GettingStarted {
   });
 
   ctaHref = computed(() => {
-    return `/docs/${this.configService.sdk()}/recipes/chat`;
+    return `/docs/${this.configService.sdk()}/start/quick`;
   });
 
   computedExamples = computed(() => {

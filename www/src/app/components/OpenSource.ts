@@ -43,7 +43,7 @@ import { RouterLink } from '@angular/router';
       gap: 16px;
       padding: 64px 32px;
       width: 100%;
-      max-width: 767px;
+      max-width: 650px;
 
       > h2 {
         font:
@@ -128,6 +128,16 @@ import { RouterLink } from '@angular/router';
     @media screen and (min-width: 1024px) {
       .bleed {
         padding: 128px 64px;
+      }
+    }
+
+    @media (width < 450px) {
+      .bleed {
+        > h2 {
+          font:
+            700 32px/48px Fredoka,
+            sans-serif;
+        }
       }
     }
   `,

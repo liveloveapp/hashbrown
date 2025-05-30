@@ -1,1 +1,79 @@
-{"name":"DecodeFramesOptions","canonicalReference":"@hashbrownai/core!DecodeFramesOptions:interface","kind":"Interface","fileUrlPath":"../packages/core/src/frames/decode-frames.ts","isDeprecated":false,"members":[{"kind":"Interface","canonicalReference":"@hashbrownai/core!DecodeFramesOptions:interface","docComment":"/**\n * Decode options.\n */\n","excerptTokens":[{"kind":"Content","text":"export interface DecodeFramesOptions "}],"fileUrlPath":"../packages/core/src/frames/decode-frames.ts","releaseTag":"Public","name":"DecodeFramesOptions","preserveMemberOrder":false,"members":[{"kind":"PropertySignature","canonicalReference":"@hashbrownai/core!DecodeFramesOptions#signal:member","docComment":"","excerptTokens":[{"kind":"Content","text":"signal: "},{"kind":"Reference","text":"AbortSignal","canonicalReference":"!AbortSignal:interface"},{"kind":"Content","text":";"}],"isReadonly":false,"isOptional":false,"releaseTag":"Public","name":"signal","propertyTypeTokenRange":{"startIndex":1,"endIndex":2},"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}],"extendsTokenRanges":[],"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"Decode options.\n","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "DecodeFramesOptions",
+  "canonicalReference": "@hashbrownai/core!DecodeFramesOptions:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../packages/core/src/frames/decode-frames.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/core!DecodeFramesOptions:interface",
+      "docComment": "/**\n * Decode options.\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export interface DecodeFramesOptions " }
+      ],
+      "fileUrlPath": "../packages/core/src/frames/decode-frames.ts",
+      "releaseTag": "Public",
+      "name": "DecodeFramesOptions",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!DecodeFramesOptions#signal:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "signal: " },
+            {
+              "kind": "Reference",
+              "text": "AbortSignal",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "signal",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "Decode options.\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

@@ -1,11 +1,11 @@
-import { Component, output } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-composer',
   template: `
     <textarea
       class="chat-composer"
-      placeholder="Show me all lights"
+      [placeholder]="placeholder()"
       (keydown.enter)="onHitEnter(textarea, $event)"
       #textarea
     ></textarea>
@@ -57,6 +57,7 @@ import { Component, output } from '@angular/core';
 })
 export class ComposerComponent {
   sendMessage = output<string>();
+  placeholder = input<string>('Show me all lights');
 
   onHitEnter(textarea: HTMLTextAreaElement, $event: Event) {
     $event.preventDefault();

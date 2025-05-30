@@ -4,7 +4,6 @@ import {
   computed,
   ElementRef,
   inject,
-  ResourceStatus,
   viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';

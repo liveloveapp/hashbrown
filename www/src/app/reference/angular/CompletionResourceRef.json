@@ -1,1 +1,85 @@
-{"name":"CompletionResourceRef","canonicalReference":"@hashbrownai/angular!CompletionResourceRef:interface","kind":"Interface","fileUrlPath":"../dist/packages/angular/completion-resource.fn.d.ts","isDeprecated":false,"members":[{"kind":"Interface","canonicalReference":"@hashbrownai/angular!CompletionResourceRef:interface","docComment":"","excerptTokens":[{"kind":"Content","text":"export interface CompletionResourceRef extends "},{"kind":"Reference","text":"Resource","canonicalReference":"@angular/core!Resource:interface"},{"kind":"Content","text":"<string | null>"},{"kind":"Content","text":" "}],"fileUrlPath":"../dist/packages/angular/completion-resource.fn.d.ts","releaseTag":"Public","name":"CompletionResourceRef","preserveMemberOrder":false,"members":[],"extendsTokenRanges":[{"startIndex":1,"endIndex":3}],"docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"","usageNotes":"","remarks":"","deprecated":"","returns":"","see":[],"params":[]}}]}
+{
+  "name": "CompletionResourceRef",
+  "canonicalReference": "@hashbrownai/angular!CompletionResourceRef:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/angular/index.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/angular!CompletionResourceRef:interface",
+      "docComment": "/**\n * A reference to the completion resource.\n */\n",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "interface CompletionResourceRef extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Resource",
+          "canonicalReference": "@angular/core!Resource:interface"
+        },
+        { "kind": "Content", "text": "<string | null>" },
+        { "kind": "Content", "text": " " }
+      ],
+      "fileUrlPath": "../dist/packages/angular/index.d.ts",
+      "releaseTag": "Public",
+      "name": "CompletionResourceRef",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceRef#reload:member",
+          "docComment": "/**\n * Reloads the resource.\n *\n * @returns Whether the resource was reloaded.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "reload: " },
+            { "kind": "Content", "text": "() => boolean" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "reload",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Reloads the resource.\n\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": " Whether the resource was reloaded.\n",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "A reference to the completion resource.\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

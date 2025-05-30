@@ -8,6 +8,7 @@ import { Hero } from '../components/Hero';
 import { OpenSource } from '../components/OpenSource';
 import { Providers } from '../components/Providers';
 import { LdpTour } from '../components/ldp/LdpTour';
+import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
 
 @Component({
   imports: [
@@ -20,6 +21,7 @@ import { LdpTour } from '../components/ldp/LdpTour';
     OpenSource,
     Providers,
     LdpTour,
+    LdpTourMobile,
   ],
   template: `
     <www-header />
@@ -27,6 +29,7 @@ import { LdpTour } from '../components/ldp/LdpTour';
       <www-hero />
       <www-providers />
       <www-ldp-tour />
+      <www-ldp-tour-mobile />
       <www-open-source />
       <www-adapters />
       <www-getting-started />
@@ -46,6 +49,20 @@ import { LdpTour } from '../components/ldp/LdpTour';
       flex-direction: column;
       justify-content: flex-start;
       align-items: stretch;
+    }
+
+    www-ldp-tour-mobile {
+      display: none;
+    }
+
+    @media (width < 768px) {
+      www-ldp-tour {
+        display: none;
+      }
+
+      www-ldp-tour-mobile {
+        display: block;
+      }
     }
   `,
 })

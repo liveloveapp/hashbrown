@@ -67,7 +67,7 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
       }
 
       mat-toolbar {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12);
         position: fixed;
         z-index: 100;
       }
@@ -77,7 +77,7 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
       }
 
       .active {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.1);
       }
     `,
   ],

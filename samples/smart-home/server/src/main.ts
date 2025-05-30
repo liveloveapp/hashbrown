@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Chat } from '@hashbrownai/core';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { HashbrownGoogle } from '@hashbrownai/google';
+import { HashbrownWriter } from '@hashbrownai/writer';
 import cors from 'cors';
 import 'dotenv/config';
 import express from 'express';
@@ -13,6 +15,7 @@ const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
+const WRITER_API_KEY = process.env['WRITER_API_KEY'] ?? '';
 
 if (!OPENAI_API_KEY) {
   console.warn('OPENAI_API_KEY is not set');
@@ -22,6 +25,9 @@ if (!AZURE_API_KEY) {
 }
 if (!GOOGLE_API_KEY) {
   console.warn('GOOGLE_API_KEY is not set');
+}
+if (!WRITER_API_KEY) {
+  console.warn('WRITER_API_KEY is not set');
 }
 
 const app = express();
@@ -58,16 +64,17 @@ app.post('/chat', async (req, res, next) => {
     request,
   });
 
+  // Writer
+  // const stream = HashbrownWriter.stream.text({
+  //   apiKey: WRITER_API_KEY,
+  //   request,
+  // });
+
   res.header('Content-Type', 'application/octet-stream');
 
-  try {
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-  } catch (error) {
-    console.error(error);
-    // Pass errors to Express error middleware so server doesn't crash
-    next(error);
+  for await (const chunk of stream) {
+    res.write(chunk);
   }
+
   res.end();
 });

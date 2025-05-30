@@ -1,7 +1,6 @@
 name: Base
 description: Base Angular template
 extends: '../../__base/stackblitz.yml'
-open: src/app/app.component.ts
 files:
   src/app/components/button-group.component.ts: './src/app/components/button-group.component.ts'
   src/app/components/card.component.ts: './src/app/components/card.component.ts'

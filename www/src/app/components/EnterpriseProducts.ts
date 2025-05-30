@@ -105,7 +105,7 @@ import { LiveLoveAppButton } from './LiveLoveAppButton';
           > h2 {
             color: #3d3c3a;
             font:
-              500 normal 18px/24px Wonder,
+              500 normal 18px/24px Fredoka,
               sans-serif;
           }
 

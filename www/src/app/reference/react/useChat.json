@@ -1,1 +1,79 @@
-{"name":"useChat","canonicalReference":"@hashbrownai/react!useChat:function","kind":"Function","fileUrlPath":"../dist/packages/react/hooks/use-chat.d.ts","isDeprecated":false,"members":[{"kind":"Function","canonicalReference":"@hashbrownai/react!useChat:function(1)","docComment":"/**\n * Custom React hook to manage chat interactions within a HashbrownProvider context. This hook provides functionalities to send messages, handle tool calls, and manage chat status.\n *\n * @param options - Configuration options for the chat.\n *\n * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.\n *\n * @example\n * ```tsx\n * const MyChatComponent = () => {\n *   const { messages, sendMessage, status } = useChat({\n *     model: 'gpt-4o',\n *     system: 'You are a helpful assistant.',\n *     tools: [],\n *   });\n *\n *   const handleSendMessage = () => {\n *     sendMessage({ role: 'user', content: 'Hello, how are you?' });\n *   };\n *\n *   return (\n *     <div>\n *       <button onClick={handleSendMessage}>Send Message</button>\n *       <div>Status: {status}</div>\n *       <ul>\n *         {messages.map((msg, index) => (\n *           <li key={index}>{msg.content}</li>\n *         ))}\n *       </ul>\n *     </div>\n *   );\n * };\n * ```\n *\n */\n","excerptTokens":[{"kind":"Content","text":"export declare function useChat<Tools extends "},{"kind":"Reference","text":"Chat.AnyTool","canonicalReference":"!Chat.AnyTool:type"},{"kind":"Content","text":">(options: "},{"kind":"Reference","text":"UseChatOptions","canonicalReference":"@hashbrownai/react!UseChatOptions:interface"},{"kind":"Content","text":"<Tools>"},{"kind":"Content","text":"): "},{"kind":"Reference","text":"UseChatResult","canonicalReference":"@hashbrownai/react!UseChatResult:interface"},{"kind":"Content","text":"<Tools>"},{"kind":"Content","text":";"}],"fileUrlPath":"../dist/packages/react/hooks/use-chat.d.ts","returnTypeTokenRange":{"startIndex":6,"endIndex":8},"releaseTag":"Public","overloadIndex":1,"parameters":[{"parameterName":"options","parameterTypeTokenRange":{"startIndex":3,"endIndex":5},"isOptional":false}],"typeParameters":[{"typeParameterName":"Tools","constraintTokenRange":{"startIndex":1,"endIndex":2},"defaultTypeTokenRange":{"startIndex":0,"endIndex":0}}],"name":"useChat","docs":{"modifiers":{"isInternal":false,"isPublic":false,"isAlpha":false,"isBeta":false,"isOverride":false,"isExperimental":false},"summary":"Custom React hook to manage chat interactions within a HashbrownProvider context. This hook provides functionalities to send messages, handle tool calls, and manage chat status.\n\n","usageNotes":"","remarks":"","deprecated":"","returns":" {UseChatResult} An object containing chat state and functions to interact with the chat.\n\n","see":[],"params":[{"name":"options","description":"Configuration options for the chat.\n\n"}]}}]}
+{
+  "name": "useChat",
+  "canonicalReference": "@hashbrownai/react!useChat:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useChat:function(1)",
+      "docComment": "/**\n * This React hook creates a chat instance used to interact with the LLM. The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.\n *\n * @description The `useChat` hook provides the most basic functionality for un-structured chats. Unstructured chats include things like general chats and natural language controls.\n *\n * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.\n *\n * @example\n *\n * This example demonstrates how to use the `useChat` hook to create a simple chat component.\n * ```tsx\n * const MyChatComponent = () => {\n *   const { messages, sendMessage, status } = useChat({\n *     model: 'gpt-4o',\n *     system: 'You are a helpful assistant.',\n *     tools: [],\n *   });\n *\n *   const handleSendMessage = () => {\n *     sendMessage({ role: 'user', content: 'Hello, how are you?' });\n *   };\n *\n *   return (\n *     <div>\n *       <button onClick={handleSendMessage}>Send Message</button>\n *       <div>Status: {status}</div>\n *       <ul>\n *         {messages.map((msg, index) => (\n *           <li key={index}>{msg.content}</li>\n *         ))}\n *       </ul>\n *     </div>\n *   );\n * };\n * ```\n *\n */\n",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useChat<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">(\noptions: " },
+        {
+          "kind": "Reference",
+          "text": "UseChatOptions",
+          "canonicalReference": "@hashbrownai/react!UseChatOptions:interface"
+        },
+        { "kind": "Content", "text": "<Tools>" },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "UseChatResult",
+          "canonicalReference": "@hashbrownai/react!UseChatResult:interface"
+        },
+        { "kind": "Content", "text": "<Tools>" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "options",
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Tools",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "useChat",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "This React hook creates a chat instance used to interact with the LLM. The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.\n\n The `useChat` hook provides the most basic functionality for un-structured chats. Unstructured chats include things like general chats and natural language controls.\n\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": " {UseChatResult} An object containing chat state and functions to interact with the chat.\n\n",
+        "see": [],
+        "params": [],
+        "examples": [
+          "\n\nThis example demonstrates how to use the `useChat` hook to create a simple chat component.\n```tsx\nconst MyChatComponent = () => {\n  const { messages, sendMessage, status } = useChat({\n    model: 'gpt-4o',\n    system: 'You are a helpful assistant.',\n    tools: [],\n  });\n\n  const handleSendMessage = () => {\n    sendMessage({ role: 'user', content: 'Hello, how are you?' });\n  };\n\n  return (\n    <div>\n      <button onClick={handleSendMessage}>Send Message</button>\n      <div>Status: {status}</div>\n      <ul>\n        {messages.map((msg, index) => (\n          <li key={index}>{msg.content}</li>\n        ))}\n      </ul>\n    </div>\n  );\n};\n```\n\n"
+        ]
+      }
+    }
+  ]
+}

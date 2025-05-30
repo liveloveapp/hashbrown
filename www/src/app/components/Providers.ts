@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Angular } from '../icons/Angular';
 import { BrandGoogle } from '../icons/BrandGoogle';
 import { BrandOpenAi } from '../icons/BrandOpenAi';
 import { BrandWriter } from '../icons/BrandWriter';
 import { React } from '../icons/React';
+import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-providers',
@@ -113,7 +114,7 @@ import { React } from '../icons/React';
           </svg>
           <www-react fill="#fff" class="icon" />
         </a>
-        <div class="open-ai">
+        <a [href]="openAiUrl()" class="open-ai">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="77"
@@ -127,8 +128,8 @@ import { React } from '../icons/React';
             />
           </svg>
           <www-brand-openai class="icon" />
-        </div>
-        <div class="google">
+        </a>
+        <a [href]="googleUrl()" class="google">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="74"
@@ -142,8 +143,8 @@ import { React } from '../icons/React';
             />
           </svg>
           <www-brand-google class="icon" />
-        </div>
-        <div class="writer">
+        </a>
+        <a [href]="writerUrl()" class="writer">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="71"
@@ -157,7 +158,7 @@ import { React } from '../icons/React';
             />
           </svg>
           <www-brand-writer class="icon" />
-        </div>
+        </a>
       </div>
       <div class="divider"></div>
       <p class="welcome">
@@ -169,6 +170,16 @@ import { React } from '../icons/React';
           friendlier, more accessible software</em
         >.
       </p>
+      <div class="divider"></div>
+      <div style="padding:64.9% 0 0 0;position:relative;width:100%;">
+        <iframe
+          src="https://player.vimeo.com/video/1088958585?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+          frameborder="0"
+          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;"
+          title="Introducing Hashbrown"
+        ></iframe>
+      </div>
     </div>
   `,
   styles: [
@@ -268,8 +279,7 @@ import { React } from '../icons/React';
         margin-top: 64px;
         color: #fff;
 
-        > a,
-        > div {
+        > a {
           position: relative;
           display: flex;
           justify-content: center;
@@ -328,4 +338,16 @@ import { React } from '../icons/React';
     `,
   ],
 })
-export class Providers {}
+export class Providers {
+  configService = inject(ConfigService);
+  sdk = this.configService.sdk;
+  openAiUrl = computed(() => {
+    return `/docs/${this.sdk()}/platform/openai`;
+  });
+  googleUrl = computed(() => {
+    return `/docs/${this.sdk()}/platform/google`;
+  });
+  writerUrl = computed(() => {
+    return `/docs/${this.sdk()}/platform/writer`;
+  });
+}

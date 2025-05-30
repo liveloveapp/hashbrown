@@ -1,0 +1,7 @@
+name: 'chat-with-tools'
+description: 'Angular chat with tools example'
+extends: '../__base/stackblitz.yml'
+open: src/app/components/chat.component.ts
+files:
+  src/app/components/chat.component.ts: './src/app/components/chat.component.ts'
+  src/app/app.component.ts: './src/app/app.component.ts'

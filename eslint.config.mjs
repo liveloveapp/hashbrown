@@ -44,8 +44,11 @@ export default [
       '**/*.jsx',
       '**/*.cjs',
       '**/*.mjs',
+      '**/*.json',
     ],
     // Override or add rules here
-    rules: {},
+    rules: {
+      'dependency-checks': 'off',
+    },
   },
 ];

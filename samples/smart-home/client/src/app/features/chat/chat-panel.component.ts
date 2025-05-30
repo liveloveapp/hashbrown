@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
   chatResource,
   createTool,
@@ -20,15 +20,14 @@ import {
   createToolJavaScript,
   defineAsyncRuntime,
   defineFunction,
+  defineFunctionWithArgs,
 } from '@hashbrownai/tool-javascript';
 import { Store } from '@ngrx/store';
-// import variant from '@jitl/quickjs-singlefile-browser-release-asyncify';
 import variant from '@jitl/quickjs-singlefile-browser-debug-asyncify';
-import { lastValueFrom, tap } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
 import { AuthService } from '../../shared/auth.service';
 import { ChatAiActions } from './actions/chat-ai.actions';
-import { CardComponent } from './components/card.component';
 import { ComposerComponent } from './components/composer.component';
 import { LightComponent, LightIconSchema } from '../lights/light.component';
 import { MarkdownComponent } from './components/markdown.component';
@@ -38,6 +37,7 @@ import {
   LightListComponent,
   LightListIconSchema,
 } from '../lights/light-list.component';
+import { SceneComponent } from '../scenes/scene.component';
 
 @Component({
   selector: 'app-chat-panel',
@@ -48,12 +48,14 @@ import {
     ComposerComponent,
     MessagesComponent,
     SimpleMessagesComponent,
-    MatProgressSpinnerModule,
+    MatProgressBarModule,
   ],
   template: `
-    <div class="chat-header">
-      <h3>Chat</h3>
-    </div>
+    @if (!simpleDemo && chat.isLoading()) {
+      <div class="chat-loading">
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      </div>
+    }
 
     <div #contentDiv class="chat-messages">
       @if (simpleDemo) {
@@ -65,10 +67,6 @@ import {
         />
       }
     </div>
-
-    @if (!simpleDemo && chat.isLoading()) {
-      <div class="chat-loading"><mat-spinner></mat-spinner></div>
-    }
 
     <div class="chat-composer">
       <app-chat-composer
@@ -107,15 +105,13 @@ import {
       }
 
       .chat-loading {
-        grid-area: loading;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         display: flex;
         justify-content: center;
-        align-items: center;
-      }
-
-      .chat-loading mat-spinner {
-        height: 32px !important;
-        width: 32px !important;
       }
 
       .chat-messages {
@@ -129,7 +125,7 @@ import {
 
       .chat-composer {
         grid-area: composer;
-        padding: 16px;
+        padding: 0 16px 16px;
       }
     `,
   ],
@@ -160,9 +156,9 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    debugName: 'simple-chat',
-    // model: 'gemini-2.5-flash-preview-04-17',
     model: 'gpt-4.1',
+    // model: 'gemini-2.5-flash-preview-04-17',
+    debugName: 'simple-chat',
     system: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
     tools: [
       createTool({
@@ -177,30 +173,7 @@ export class ChatPanelComponent {
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
-        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
-      }),
-      createToolWithArgs({
-        name: 'controlLight',
-        description: 'Control a light',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-        handler: (input) =>
-          lastValueFrom(
-            this.smartHomeService
-              .controlLight(input.lightId, input.brightness)
-              .pipe(
-                tap((light) => {
-                  this.store.dispatch(
-                    ChatAiActions.controlLight({
-                      lightId: light.id,
-                      brightness: light.brightness,
-                    }),
-                  );
-                }),
-              ),
-          ),
+        handler: () => this.smartHomeService.loadLights(),
       }),
     ],
   });
@@ -218,7 +191,65 @@ export class ChatPanelComponent {
             brightness: s.number('The brightness of the light'),
           }),
         ),
-        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+        handler: () => this.smartHomeService.loadLights(),
+      }),
+      defineFunctionWithArgs({
+        name: 'addLight',
+        description: 'Add a light',
+        input: s.object('Add light input', {
+          name: s.string('The name of the light'),
+          brightness: s.number('The brightness of the light'),
+        }),
+        output: s.object('The light', {
+          id: s.string('The id of the light'),
+          brightness: s.number('The brightness of the light'),
+        }),
+        handler: async (input) => {
+          const light = await this.smartHomeService.addLight(input);
+
+          this.store.dispatch(
+            ChatAiActions.addLight({
+              light,
+            }),
+          );
+
+          return light;
+        },
+      }),
+      defineFunctionWithArgs({
+        name: 'createScene',
+        description: 'Apply a scene',
+        input: s.object('Scene to Create', {
+          name: s.string('The name of the scene'),
+          lights: s.array(
+            'The lights to add to the scene',
+            s.object('Light in a Scene', {
+              lightId: s.string('The id of the light'),
+              brightness: s.number('The brightness of the light'),
+            }),
+          ),
+        }),
+        output: s.object('The scene', {
+          id: s.string('The id of the scene'),
+          lights: s.array(
+            'The lights in the scene',
+            s.object('Light in a Scene', {
+              lightId: s.string('The id of the light'),
+              brightness: s.number('The brightness of the light'),
+            }),
+          ),
+        }),
+        handler: async (input) => {
+          const scene = await this.smartHomeService.addScene(input);
+
+          this.store.dispatch(
+            ChatAiActions.addScene({
+              scene,
+            }),
+          );
+
+          return scene;
+        },
       }),
     ],
   });
@@ -233,8 +264,9 @@ export class ChatPanelComponent {
     model: 'gpt-4.1',
     // model: 'gemini-2.5-pro-preview-05-06',
     // model: 'gpt-4o@2025-01-01-preview',
+    debugName: 'ui-chat',
     system: `
-      You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments.
+      You are a helpful assistant that can answer questions and help with tasks.
     `,
     components: [
       exposeComponent(MarkdownComponent, {
@@ -259,11 +291,10 @@ export class ChatPanelComponent {
         },
         children: 'any',
       }),
-      exposeComponent(CardComponent, {
-        description: 'Show a card to the user',
-        children: 'any',
+      exposeComponent(SceneComponent, {
+        description: 'Show a scene to the user',
         input: {
-          title: s.streaming.string('The title of the card'),
+          sceneId: s.string('The id of the scene'),
         },
       }),
     ],
@@ -276,7 +307,12 @@ export class ChatPanelComponent {
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
-        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+        handler: () => lastValueFrom(this.smartHomeService.loadLights$()),
+      }),
+      createTool({
+        name: 'getScenes',
+        description: 'Get the current scenes',
+        handler: () => lastValueFrom(this.smartHomeService.loadScenes$()),
       }),
       createToolWithArgs({
         name: 'controlLight',
@@ -285,28 +321,26 @@ export class ChatPanelComponent {
           lightId: s.string('The id of the light'),
           brightness: s.number('The brightness of the light'),
         }),
-        handler: (input) =>
-          lastValueFrom(
-            this.smartHomeService
-              .controlLight(input.lightId, input.brightness)
-              .pipe(
-                tap((light) => {
-                  this.store.dispatch(
-                    ChatAiActions.controlLight({
-                      lightId: light.id,
-                      brightness: light.brightness,
-                    }),
-                  );
-                }),
-              ),
-          ),
+        handler: async (input) => {
+          const light = await this.smartHomeService.controlLight(
+            input.lightId,
+            input.brightness,
+          );
+
+          this.store.dispatch(
+            ChatAiActions.controlLight({
+              lightId: light.id,
+              brightness: light.brightness,
+            }),
+          );
+
+          return light;
+        },
       }),
       createToolJavaScript({
         runtime: this.runtime,
       }),
     ],
-    debugName: 'ui-chat',
-    // debounce: 10000,
   });
 
   sendMessage(message: string) {

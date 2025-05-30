@@ -6,59 +6,59 @@ import { link, Section, section } from '../models/menu.models';
 const DOCS_ANGULAR = section('Docs', [
   section('Start', [
     link('Quick Start', '/docs/angular/start/quick'),
+    link('Sample App', '/docs/angular/start/sample'),
     link('Platforms', '/docs/angular/start/platforms'),
   ]),
   section('Concepts', [
-    link('Functions', '/docs/angular/concept/functions'),
+    link('Function Calling', '/docs/angular/concept/functions'),
     link('Structured Output', '/docs/angular/concept/structured-output'),
+    link('Skillet Schema', '/docs/angular/concept/schema'),
     link('Streaming', '/docs/angular/concept/streaming'),
   ]),
-  section('Recipes', [
-    link('Chat', '/docs/angular/recipes/chat'),
-    link('Completion', '/docs/angular/recipes/completion'),
-  ]),
-  section('AI Guide', [
-    link('Prompt Engineering', '/docs/angular/guide/prompt-engineering'),
-    link('Ethics', '/docs/angular/guide/ethics'),
-    link('Choosing model', '/docs/angular/guide/choosing-model'),
-  ]),
+  // section('Recipes', [
+  //   link('Chat', '/docs/angular/recipes/chat'),
+  //   link('Completion', '/docs/angular/recipes/completion'),
+  // ]),
+  // section('AI Guide', [
+  //   link('Prompt Engineering', '/docs/angular/guide/prompt-engineering'),
+  //   link('Ethics', '/docs/angular/guide/ethics'),
+  //   link('Choosing model', '/docs/angular/guide/choosing-model'),
+  // ]),
   section('Platforms', [
-    link('Azure', '/docs/angular/platforms/azure'),
-    link('Google', '/docs/angular/platforms/google'),
-    link('OpenAI', '/docs/angular/platforms/openai'),
-    link('Writer', '/docs/angular/platforms/writer'),
-  ]),
-  section('Plugins', [
-    link('JavaScript VM', '/docs/angular/plugins/javascript'),
+    link('Azure', '/docs/angular/platform/azure'),
+    link('Google', '/docs/angular/platform/google'),
+    link('OpenAI', '/docs/angular/platform/openai'),
+    link('Writer', '/docs/angular/platform/writer'),
   ]),
 ]);
 
 const DOCS_REACT = section('Docs', [
   section('Start', [
     link('Quick Start', '/docs/react/start/quick'),
+    link('Sample App', '/docs/react/start/sample'),
     link('Platforms', '/docs/react/start/platforms'),
   ]),
   section('Concepts', [
-    link('Functions', '/docs/react/concept/functions'),
+    link('Function Calling', '/docs/react/concept/functions'),
     link('Structured Output', '/docs/react/concept/structured-output'),
+    link('Skillet Schema', '/docs/react/concept/schema'),
     link('Streaming', '/docs/react/concept/streaming'),
   ]),
-  section('Recipes', [
-    link('Chat', '/docs/react/recipes/chat'),
-    link('Completion', '/docs/react/recipes/completion'),
-  ]),
-  section('AI Guide', [
-    link('Prompt Engineering', '/docs/react/guide/prompt-engineering'),
-    link('Ethics', '/docs/react/guide/ethics'),
-    link('Choosing model', '/docs/react/guide/choosing-model'),
-  ]),
+  // section('Recipes', [
+  //   link('Chat', '/docs/react/recipes/chat'),
+  //   link('Completion', '/docs/react/recipes/completion'),
+  // ]),
+  // section('AI Guide', [
+  //   link('Prompt Engineering', '/docs/react/guide/prompt-engineering'),
+  //   link('Ethics', '/docs/react/guide/ethics'),
+  //   link('Choosing model', '/docs/react/guide/choosing-model'),
+  // ]),
   section('Platforms', [
-    link('Azure', '/docs/react/platforms/azure'),
-    link('Google', '/docs/react/platforms/google'),
-    link('OpenAI', '/docs/react/platforms/openai'),
-    link('Writer', '/docs/react/platforms/writer'),
+    link('Azure', '/docs/react/platform/azure'),
+    link('Google', '/docs/react/platform/google'),
+    link('OpenAI', '/docs/react/platform/openai'),
+    link('Writer', '/docs/react/platform/writer'),
   ]),
-  section('Plugins', [link('JavaScript VM', '/docs/react/plugins/javascript')]),
 ]);
 
 @Injectable({ providedIn: 'root' })

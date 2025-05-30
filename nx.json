@@ -54,12 +54,14 @@
   },
   "release": {
     "projects": [
-      "core",
-      "react",
+      "angular",
       "azure",
-      "tool-javascript",
+      "core",
+      "google",
       "openai",
-      "angular"
+      "react",
+      "tool-javascript",
+      "writer"
     ],
     "version": {
       "preVersionCommand": "npx nx run-many -t build"
