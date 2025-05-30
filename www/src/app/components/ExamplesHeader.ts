@@ -1,19 +1,18 @@
 import { Component, computed, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Angular } from '../icons/Angular';
-import { Hashbrown } from '../icons/Hashbrown';
 import { React } from '../icons/React';
 import { ConfigService } from '../services/ConfigService';
 import { DropdownMenu } from './DropDownMenu';
 
 @Component({
   selector: 'www-examples-header',
-  imports: [RouterLink, DropdownMenu, Angular, React, Hashbrown],
+  imports: [RouterLink, DropdownMenu, Angular, React],
   template: `
     <header>
       <div class="left">
         <a routerLink="/">
-          <www-hashbrown height="24" width="137.91" />
+          <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
         </a>
       </div>
       <div class="right">
@@ -94,8 +93,11 @@ import { DropdownMenu } from './DropDownMenu';
                 align-items: center;
 
                 > a {
-                  font: 600 16px/24px sans-serif;
+                  font:
+                    600 16px/16px 'KefirVariable',
+                    sans-serif;
                   color: #774625;
+                  font-variation-settings: 'wght' 800;
                   text-decoration: underline;
                   text-decoration-color: transparent;
                   transition: text-decoration-color ease-in-out 0.2s;

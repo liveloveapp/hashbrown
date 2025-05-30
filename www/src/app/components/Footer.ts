@@ -3,18 +3,17 @@ import { RouterLink } from '@angular/router';
 import { BrandBlueSky } from '../icons/BrandBlueSky';
 import { BrandGitHub } from '../icons/BrandGitHub';
 import { BrandLinkedIn } from '../icons/BrandLinkedIn';
-import { Hashbrown } from '../icons/Hashbrown';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-footer',
-  imports: [BrandBlueSky, BrandGitHub, BrandLinkedIn, Hashbrown, RouterLink],
+  imports: [BrandBlueSky, BrandGitHub, BrandLinkedIn, RouterLink],
   template: `
     <footer>
       <div class="links">
         <div class="brand">
           <div class="title">
-            <www-hashbrown height="24" width="137.91" stroke="#fff" />
+            <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
           </div>
           <small>© LiveLoveApp, LLC 2025.<br />Based in Oregon.</small>
         </div>
