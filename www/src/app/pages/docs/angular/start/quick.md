@@ -26,6 +26,7 @@ To follow along, you'll need to
 1. [Sign up for OpenAI's API](https://openai.com/api/)
 2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
 3. Copy the API key so you have it handy
+4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for hashbrown to concsume
 
 ---
 

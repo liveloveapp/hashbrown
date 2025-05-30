@@ -2,34 +2,69 @@
 
 First, install the Google adapter package:
 
-```shell
+```sh
 npm install @hashbrownai/google
 ```
 
-## Usage
+## Streaming Text Responses
 
-Currently, our Google Gemini adapter only supports text streaming:
+Hashbrown’s Google Gemini adapter lets you **stream chat completions** from Google Gemini models, handling function calls, response schemas, and request transforms.
+
+### API Reference
+
+#### `HashbrownGoogle.stream.text(options)`
+
+Streams a Gemini chat completion as a series of encoded frames. Handles content, tool calls, and errors, and yields each frame as a `Uint8Array`.
+
+**Options:**
+
+| Name                      | Type                                    | Description                                                                    |
+| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| `apiKey`                  | `string`                                | Your Google Gemini API key.                                                    |
+| `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.         |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final Gemini request before it is sent. |
+
+**Supported Features:**
+
+- **Roles:** `user`, `assistant`, `tool`, `error`
+- **Tools:** Supports function calling with OpenAPI schemas automatically converted to Gemini format.
+- **Response Format:** Optionally specify a JSON schema for model output validation.
+- **System Prompt:** Included as Gemini’s `systemInstruction`.
+- **Function Calling:** Handles Gemini’s tool/function-calling modes and emits tool call frames.
+- **Streaming:** Each chunk/frame is encoded using `@hashbrownai/core`’s `encodeFrame`.
+
+### How It Works
+
+- **Messages** are mapped to Gemini's `Content` objects, including tool calls and tool responses.
+- **Tools/Functions:** Tools are converted to Gemini `FunctionDeclaration` format, including parameter schema conversion via OpenAPI.
+- **Response Schema:** If you specify `responseFormat`, it's converted and set as `responseSchema` for Gemini.
+- **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
+- **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
+
+### Example: Using with Express
 
 ```ts
-import { Chat } from '@hashbrownai/core';
 import { HashbrownGoogle } from '@hashbrownai/google';
+import { decodeFrame } from '@hashbrownai/core';
 
 app.post('/chat', async (req, res) => {
-  const request = req.body as Chat.CompletionCreateParams;
-  const stream = HashbrownGoogle.stream.text(GOOGLE_API_KEY, request);
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    request: req.body, // must be Chat.Api.CompletionCreateParams
+  });
 
-  res.header('Content-Type', 'text/plain');
+  res.header('Content-Type', 'application/octet-stream');
   for await (const chunk of stream) {
-    res.write(JSON.stringify(chunk));
+    res.write(chunk); // Pipe each encoded frame as it arrives
   }
   res.end();
 });
 ```
 
-Let's break this down:
+---
 
-- `HashbrownOpenAI.stream.text` is a function that takes an API key and a request object, and returns an async iterable stream of text chunks.
-- `req.body` is the request object that contains the parameters for the chat completion.
-- `res.header` sets the response header to `text/plain`, which is required for streaming.
-- `res.write` writes each chunk to the response as it arrives.
-- `res.end` closes the response when the stream is finished.
+### Advanced: Tools, Function Calling, and Response Schema
+
+- **Tools:** Add tools using OpenAI-style function specs. They will be auto-converted for Gemini.
+- **Function Calling:** Supported via Gemini’s tool configuration, with control over `auto`, `required`, or `none` modes.
+- **Response Format:** Pass a JSON schema in `responseFormat` for structured output.
