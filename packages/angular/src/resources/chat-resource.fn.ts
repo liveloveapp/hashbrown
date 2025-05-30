@@ -9,9 +9,18 @@ import {
   Signal,
 } from '@angular/core';
 import { Chat, fryHashbrown } from '@hashbrownai/core';
-import { injectHashbrownConfig } from './provide-hashbrown.fn';
-import { readSignalLike, toSignal } from './utils';
+import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
+import { readSignalLike, toSignal } from '../utils/signals';
 
+/**
+ * Represents the reactive chat resource, including current messages and control methods.
+ *
+ * @interface ChatResourceRef
+ * @template Tools
+ * @extends {Resource<Chat.Message<string, Tools>[]>}
+ * @property {(message: Chat.UserMessage) => void} sendMessage - Send a new user message to the chat.
+ * @property {() => boolean} reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
+ */
 export interface ChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<string, Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
@@ -19,78 +28,65 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
 }
 
 /**
- * Chat resource configuration.
+ * Configuration options for the chat resource.
  *
- * @remarks The `ChatResourceOptions` interface defines the options for configuring the chat resource.
- *
- * @typedef {object} ChatResourceOptions
- * @param {string | Signal<string>} model - The model to use for the chat.
- * @param {BoundTool<string, any>[] | Signal<BoundTool<string, any>[]>} [tools] - The tools to use for the chat.
- * @param {Chat.Message[] | Signal<Chat.Message[]>} [messages] - The initial messages for the chat.
- * @param {number} [debounceTime] - The debounce time for the chat.
- * @param {s.HashbrownType | Signal<s.HashbrownType>} [θresponseFormat] - The response format for the chat.
+ * @interface ChatResourceOptions
+ * @template Tools
+ * @property {string | Signal<string>} system - The system (assistant) prompt.
+ * @property {string | Signal<string>} model - The model identifier to use for the chat.
+ * @property {Tools[]} [tools] - Optional array of bound tools available to the chat.
+ * @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.
+ * @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.
+ * @property {string} [debugName] - Optional name used for debugging in logs.
+ * @property {string} [apiUrl] - Optional override for the API base URL.
  */
 export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
+  /**
+   * The system prompt to use for the chat.
+   */
   system: string | Signal<string>;
+  /**
+   * The model to use for the chat.
+   */
   model: string | Signal<string>;
+  /**
+   * The tools to use for the chat.
+   */
   tools?: Tools[];
+  /**
+   * The initial messages for the chat.
+   */
   messages?:
     | Chat.Message<string, Tools>[]
     | Signal<Chat.Message<string, Tools>[]>;
+  /**
+   * The debounce time for the chat.
+   */
   debounce?: number;
+  /**
+   * The debug name for the chat.
+   */
   debugName?: string;
+  /**
+   * The API URL to use for the chat.
+   */
+  apiUrl?: string;
 }
 
 /**
- * Creates and returns a chat resource with reactive signals and message-handling functions.
+ * Creates a chat resource for managing LLM-driven conversations.
  *
- * @description
- * The `chatResource` function creates a chat resource that manages the state of chat messages, tools, and the structured response format configurations.
- * It provides a reactive interface for sending messages and handling responses with the LLM.
- * The `chatResource` function is the simplest way to communicate with the LLM via text.
- * The other resources exposed by hashbrown build on top of `chatResource` and provide additional functionality.
- *
- * @example
- * ```typescript
- * import { chatResource } from '@hashbrownai/angular';
- *
- * @Component({
- *    template: `
- *      <app-simple-chat-message [messages]="chat.value()" />
- *      <app-chat-composer (sendMessage)="sendMessage($event)" />
- *    `,
- * }) export class AppComponent {
- *   chat = chatResource({
- *     model: 'gpt-4o',
- *     messages: [
- *       {
- *         role: 'system',
- *         content:
- *           'You are a helpful guide for hashbrown, which enables Angular developers to build joyful and meaningful AI-powered experiences in their web apps.'
- *        },
- *     ]
- *   });
- *
- *   sendMessage() {
- *     this.chat.sendMessage({
- *       role: 'user',
- *       content: 'What is hashbrown?'
- *     });
- *   }
- * }
- * ```
- *
- * @param options - The configuration options for the chat resource.
- *
- * @returns An object with reactive signals and a sendMessage function.
+ * @template Tools
+ * @param {ChatResourceOptions<Tools>} options - Configuration for the chat resource.
+ * @returns {ChatResourceRef<Tools>} An object with reactive signals and methods for interacting with the chat.
  */
 export function chatResource<Tools extends Chat.AnyTool>(
   options: ChatResourceOptions<Tools>,
 ): ChatResourceRef<Tools> {
-  const config = injectHashbrownConfig();
+  const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
   const hashbrown = fryHashbrown({
-    apiUrl: config.baseUrl,
+    apiUrl: options.apiUrl ?? config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));

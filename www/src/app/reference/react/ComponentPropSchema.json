@@ -13,8 +13,8 @@
         { "kind": "Content", "text": "export type ComponentPropSchema<T> = " },
         {
           "kind": "Reference",
-          "text": "θtypes.Prettify",
-          "canonicalReference": "!θtypes.Prettify:type"
+          "text": "ɵtypes.Prettify",
+          "canonicalReference": "!ɵtypes.Prettify:type"
         },
         { "kind": "Content", "text": "<T extends " },
         {

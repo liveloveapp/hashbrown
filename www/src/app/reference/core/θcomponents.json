@@ -1,23 +1,23 @@
 {
-  "name": "θcomponents",
-  "canonicalReference": "@hashbrownai/core!θcomponents:namespace",
+  "name": "ɵcomponents",
+  "canonicalReference": "@hashbrownai/core!ɵcomponents:namespace",
   "kind": "Namespace",
   "fileUrlPath": "../packages/core/src/public_api.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Namespace",
-      "canonicalReference": "@hashbrownai/core!θcomponents:namespace",
+      "canonicalReference": "@hashbrownai/core!ɵcomponents:namespace",
       "docComment": "",
       "excerptTokens": [],
       "fileUrlPath": "../packages/core/src/public_api.ts",
       "releaseTag": "None",
-      "name": "θcomponents",
+      "name": "ɵcomponents",
       "preserveMemberOrder": false,
       "members": [
         {
           "kind": "Function",
-          "canonicalReference": "@hashbrownai/core!θcomponents.createComponentSchema:function(1)",
+          "canonicalReference": "@hashbrownai/core!ɵcomponents.createComponentSchema:function(1)",
           "docComment": "/**\n * Creates a schema for a list of exposed components, allowing for the definition of component structures and their relationships.\n *\n * @param components - An array of components to create schemas for.\n *\n * @returns {s.ObjectType<ComponentTree>} - A schema representing the structure of the components.\n */\n",
           "excerptTokens": [
             {

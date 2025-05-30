@@ -17,8 +17,10 @@ export default [
     },
   },
   {
-    files: ['**/*.ts'],
+    files: ['**/*.json'],
     // Override or add rules here
-    rules: {},
+    rules: {
+      '@nx/dependency-checks': 'off',
+    },
   },
 ];

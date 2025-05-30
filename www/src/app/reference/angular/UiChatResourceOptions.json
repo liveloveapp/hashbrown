@@ -1,18 +1,18 @@
 {
-  "name": "ChatResourceOptions",
-  "canonicalReference": "@hashbrownai/angular!ChatResourceOptions:interface",
+  "name": "UiChatResourceOptions",
+  "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions:interface",
   "kind": "Interface",
   "fileUrlPath": "../dist/packages/angular/index.d.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Interface",
-      "canonicalReference": "@hashbrownai/angular!ChatResourceOptions:interface",
-      "docComment": "/**\n * Configuration options for the chat resource.\n *\n * @interface ChatResourceOptions  @template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n */\n",
+      "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions:interface",
+      "docComment": "/**\n * Options for the UI chat resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "interface ChatResourceOptions<Tools extends "
+          "text": "interface UiChatResourceOptions<Tools extends "
         },
         {
           "kind": "Reference",
@@ -30,13 +30,13 @@
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
-      "name": "ChatResourceOptions",
+      "name": "UiChatResourceOptions",
       "preserveMemberOrder": false,
       "members": [
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#apiUrl:member",
-          "docComment": "/**\n * The API URL to use for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#apiUrl:member",
+          "docComment": "/**\n * The API URL to use for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "apiUrl?: " },
             { "kind": "Content", "text": "string" },
@@ -56,7 +56,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The API URL to use for the chat.\n",
+            "summary": "The API URL to use for the UI chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -68,8 +68,46 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#debounce:member",
-          "docComment": "/**\n * The debounce time for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#components:member",
+          "docComment": "/**\n * The components to use for the UI chat resource.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "components: " },
+            {
+              "kind": "Reference",
+              "text": "ExposedComponent",
+              "canonicalReference": "@hashbrownai/angular!ExposedComponent:interface"
+            },
+            { "kind": "Content", "text": "<any>[]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "components",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The components to use for the UI chat resource.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#debounce:member",
+          "docComment": "/**\n * The debounce time for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "debounce?: " },
             { "kind": "Content", "text": "number" },
@@ -89,7 +127,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The debounce time for the chat.\n",
+            "summary": "The debounce time for the UI chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -101,8 +139,8 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#debugName:member",
-          "docComment": "/**\n * The debug name for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#debugName:member",
+          "docComment": "/**\n * The debug name for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "debugName?: " },
             { "kind": "Content", "text": "string" },
@@ -122,7 +160,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The debug name for the chat.\n",
+            "summary": "The debug name for the UI chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -134,8 +172,8 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#messages:member",
-          "docComment": "/**\n * The initial messages for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#messages:member",
+          "docComment": "/**\n * The initial messages for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "messages?: " },
             {
@@ -143,26 +181,14 @@
               "text": "Chat.Message",
               "canonicalReference": "!Chat.Message:type"
             },
-            { "kind": "Content", "text": "<string, Tools>[] | " },
-            {
-              "kind": "Reference",
-              "text": "Signal",
-              "canonicalReference": "@angular/core!Signal:type"
-            },
-            { "kind": "Content", "text": "<" },
-            {
-              "kind": "Reference",
-              "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
-            },
-            { "kind": "Content", "text": "<string, Tools>[]>" },
+            { "kind": "Content", "text": "<string, Tools>[]" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": true,
           "releaseTag": "Public",
           "name": "messages",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -172,7 +198,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The initial messages for the chat.\n",
+            "summary": "The initial messages for the UI chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -184,8 +210,8 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#model:member",
-          "docComment": "/**\n * The model to use for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#model:member",
+          "docComment": "/**\n * The model to use for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "model: " },
             { "kind": "Content", "text": "string | " },
@@ -211,7 +237,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The model to use for the chat.\n",
+            "summary": "The model to use for the UI chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -223,8 +249,8 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#system:member",
-          "docComment": "/**\n * The system prompt to use for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#system:member",
+          "docComment": "/**\n * The system prompt to use for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "system: " },
             { "kind": "Content", "text": "string | " },
@@ -250,7 +276,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The system prompt to use for the chat.\n",
+            "summary": "The system prompt to use for the UI chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -262,8 +288,8 @@
         },
         {
           "kind": "PropertySignature",
-          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#tools:member",
-          "docComment": "/**\n * The tools to use for the chat.\n */\n",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions#tools:member",
+          "docComment": "/**\n * The tools to use for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "tools?: " },
             { "kind": "Content", "text": "Tools[]" },
@@ -283,7 +309,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The tools to use for the chat.\n",
+            "summary": "The tools to use for the UI chat resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -304,7 +330,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Configuration options for the chat resource.\n\n@interface ChatResourceOptions  @template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n",
+        "summary": "Options for the UI chat resource.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

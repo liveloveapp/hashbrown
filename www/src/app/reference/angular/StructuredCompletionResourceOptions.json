@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions:interface",
-      "docComment": "",
+      "docComment": "/**\n * Options for the structured completion resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -40,8 +40,41 @@
       "members": [
         {
           "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#apiUrl:member",
+          "docComment": "/**\n * The API URL to use for the structured completion resource.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "apiUrl?: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "apiUrl",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The API URL to use for the structured completion resource.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#debugName:member",
-          "docComment": "",
+          "docComment": "/**\n * The debug name for the structured completion resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "debugName?: " },
             { "kind": "Content", "text": "string" },
@@ -61,7 +94,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The debug name for the structured completion resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -74,7 +107,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#input:member",
-          "docComment": "",
+          "docComment": "/**\n * The input to the structured completion resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "input: " },
             {
@@ -99,7 +132,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The input to the structured completion resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -112,7 +145,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#model:member",
-          "docComment": "",
+          "docComment": "/**\n * The model to use for the structured completion resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "model: " },
             { "kind": "Content", "text": "string" },
@@ -132,7 +165,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The model to use for the structured completion resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -145,7 +178,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#schema:member",
-          "docComment": "",
+          "docComment": "/**\n * The schema to use for the structured completion resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "schema: " },
             { "kind": "Content", "text": "Schema" },
@@ -165,7 +198,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The schema to use for the structured completion resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -178,13 +211,13 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#system:member",
-          "docComment": "",
+          "docComment": "/**\n * The system prompt to use for the structured completion resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "system: " },
             {
               "kind": "Reference",
               "text": "SignalLike",
-              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
+              "canonicalReference": "@hashbrownai/angular!~SignalLike:type"
             },
             { "kind": "Content", "text": "<string>" },
             { "kind": "Content", "text": ";" }
@@ -203,7 +236,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The system prompt to use for the structured completion resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -216,7 +249,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions#tools:member",
-          "docComment": "",
+          "docComment": "/**\n * The tools to use for the structured completion resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "tools?: " },
             {
@@ -241,7 +274,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "The tools to use for the structured completion resource.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -262,7 +295,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Options for the structured completion resource.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

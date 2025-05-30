@@ -22,7 +22,7 @@ export function defineFunction<OutputSchema extends s.HashbrownType>(args: {
   return {
     name: args.name,
     description: args.description,
-    input: s.nullType(),
+    input: s.nullish(),
     output: args.output,
     handler: function (input: null, abortSignal: AbortSignal) {
       return args.handler(abortSignal);

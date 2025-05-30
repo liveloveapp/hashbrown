@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { s, θtypes } from '@hashbrownai/core';
+import { s, ɵtypes } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 
 /**
@@ -18,7 +18,7 @@ import type { ComponentType } from 'react';
  * });
  * ```
  */
-export type ComponentPropSchema<T> = θtypes.Prettify<
+export type ComponentPropSchema<T> = ɵtypes.Prettify<
   T extends ComponentType<infer P>
     ? {
         [K in keyof P]?: s.Schema<P[K]>;
@@ -94,7 +94,7 @@ export function exposeComponent<T extends ComponentType<any>>(
   /**
    * The configuration object for the component, excluding the component itself.
    */
-  config: θtypes.Prettify<Omit<ExposedComponent<T>, 'component'>>,
+  config: ɵtypes.Prettify<Omit<ExposedComponent<T>, 'component'>>,
 ): ExposedComponent<T> {
   return {
     component,

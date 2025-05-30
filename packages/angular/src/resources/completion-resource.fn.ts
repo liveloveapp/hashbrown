@@ -11,29 +11,59 @@ import {
   signal,
 } from '@angular/core';
 import { Chat, fryHashbrown } from '@hashbrownai/core';
-import { injectHashbrownConfig } from './provide-hashbrown.fn';
-import { SignalLike } from './types';
-import { readSignalLike, toSignal } from './utils';
+import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
+import { SignalLike } from '../utils/types';
+import { readSignalLike, toSignal } from '../utils/signals';
 
+/**
+ * A reference to the completion resource.
+ */
 export interface CompletionResourceRef extends Resource<string | null> {
+  /**
+   * Reloads the resource.
+   *
+   * @returns Whether the resource was reloaded.
+   */
   reload: () => boolean;
 }
 
+/**
+ * Options for the completion resource.
+ */
 export interface CompletionResourceOptions<Input> {
+  /**
+   * The model to use for the completion.
+   */
   model: SignalLike<string>;
+  /**
+   * The input to the completion.
+   */
   input: Signal<Input | null | undefined>;
+  /**
+   * The system prompt to use for the completion.
+   */
   system: SignalLike<string>;
+  /**
+   * The API URL to use for the completion.
+   */
+  apiUrl?: string;
 }
 
+/**
+ * Creates a completion resource.
+ *
+ * @param options - The options for the completion resource.
+ * @returns The completion resource.
+ */
 export function completionResource<Input>(
   options: CompletionResourceOptions<Input>,
 ): CompletionResourceRef {
   const { model, input, system } = options;
   const injector = inject(Injector);
-  const config = injectHashbrownConfig();
+  const config = ɵinjectHashbrownConfig();
   const hashbrown = fryHashbrown({
     debugName: 'completionResource',
-    apiUrl: config.baseUrl,
+    apiUrl: options.apiUrl ?? config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));

@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!completionResource:function(1)",
-      "docComment": "",
+      "docComment": "/**\n * Creates a completion resource.\n *\n * @param options - The options for the completion resource.\n *\n * @returns The completion resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -56,13 +56,18 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Creates a completion resource.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": "",
+        "returns": " The completion resource.\n",
         "see": [],
-        "params": [],
+        "params": [
+          {
+            "name": "options",
+            "description": "The options for the completion resource.\n\n"
+          }
+        ],
         "examples": []
       }
     }

@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!structuredChatResource:function(1)",
-      "docComment": "",
+      "docComment": "/**\n * Creates a structured chat resource.\n *\n * @param options - The options for the structured chat resource.\n *\n * @returns The structured chat resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -93,13 +93,18 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "Creates a structured chat resource.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": "",
+        "returns": " The structured chat resource.\n",
         "see": [],
-        "params": [],
+        "params": [
+          {
+            "name": "options",
+            "description": "The options for the structured chat resource.\n\n"
+          }
+        ],
         "examples": []
       }
     }

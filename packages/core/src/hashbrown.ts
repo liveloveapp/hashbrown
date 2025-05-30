@@ -166,7 +166,7 @@ export function fryHashbrown(init: {
       isSending: selectIsSending(state),
       isRunningToolCalls: selectIsRunningToolCalls(state),
       error: selectError(state),
-      θθinternal: state,
+      ɵɵinternal: state,
     }),
   });
 

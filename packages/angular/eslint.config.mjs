@@ -46,4 +46,10 @@ export default [
     // Override or add rules here
     rules: {},
   },
+  {
+    files: ['**/*.json'],
+    rules: {
+      '@nx/dependency-checks': 'off',
+    },
+  },
 ];

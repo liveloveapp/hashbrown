@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!UiChatResourceRef:interface",
-      "docComment": "",
+      "docComment": "/**\n * A reference to the UI chat resource.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -129,7 +129,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "A reference to the UI chat resource.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
