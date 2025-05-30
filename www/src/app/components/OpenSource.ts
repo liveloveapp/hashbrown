@@ -43,7 +43,7 @@ import { RouterLink } from '@angular/router';
       gap: 16px;
       padding: 64px 32px;
       width: 100%;
-      max-width: 767px;
+      max-width: 650px;
 
       > h2 {
         font:
