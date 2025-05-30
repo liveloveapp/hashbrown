@@ -45,11 +45,11 @@ import { DropdownMenu } from './DropDownMenu';
                   }
                 }
                 <div content>
-                  <a routerLink="/examples/angular/chat" (click)="close()">
+                  <a routerLink="/examples/angular/ui-chat" (click)="close()">
                     <www-angular fill="#774625" />
                     Angular
                   </a>
-                  <a routerLink="/examples/react/chat" (click)="close()">
+                  <a routerLink="/examples/react/ui-chat" (click)="close()">
                     <www-react fill="#774625" />
                     React
                   </a>
@@ -161,7 +161,7 @@ export class ExamplesHeader {
     return `/docs/${this.sdk()}/start/quick`;
   });
   examplesUrl = computed(() => {
-    return `/examples/${this.sdk()}/chat`;
+    return `/examples/${this.sdk()}/ui-chat`;
   });
   dropdownMenu = viewChild.required(DropdownMenu);
 

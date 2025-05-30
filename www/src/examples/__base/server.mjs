@@ -38,15 +38,18 @@ app.post('/chat', async (req, res) => {
   let stream;
   switch (config.provider) {
     case 'openai':
-      stream = HashbrownOpenAI.stream.text(config.apiKey, request);
+      stream = HashbrownOpenAI.stream.text({
+        apiKey: config.apiKey,
+        request,
+      });
       break;
     default:
       return res.status(400).send('Unsupported provider in x-hashbrown header');
   }
 
-  res.header('Content-Type', 'text/plain');
+  res.header('Content-Type', 'application/octet-stream');
   for await (const chunk of stream) {
-    res.write(JSON.stringify(chunk));
+    res.write(chunk);
   }
   res.end();
 });

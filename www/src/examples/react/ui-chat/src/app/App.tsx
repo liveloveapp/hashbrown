@@ -1,5 +1,10 @@
-import { exposeComponent, s } from '@hashbrownai/core';
-import { createTool, createToolWithArgs, useUiChat } from '@hashbrownai/react';
+import { s } from '@hashbrownai/core';
+import {
+  createTool,
+  createToolWithArgs,
+  exposeComponent,
+  useUiChat,
+} from '@hashbrownai/react';
 import React, { ReactElement, useCallback, useMemo, useState } from 'react';
 import styles from './App.module.css';
 import Composer from './components/Composer';
@@ -54,7 +59,7 @@ export default function App(): ReactElement {
       ],
       components: [
         exposeComponent(Light, {
-          name: 'Light',
+          name: 'light',
           description: 'A componenet that lets the user control a light',
           props: {
             lightId: s.string('The id of the light'),
