@@ -54,12 +54,13 @@
   },
   "release": {
     "projects": [
-      "core",
-      "react",
-      "azure",
-      "tool-javascript",
-      "openai",
       "angular",
+      "azure",
+      "core",
+      "google",
+      "openai",
+      "react",
+      "tool-javascript",
       "writer"
     ],
     "version": {
