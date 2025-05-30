@@ -1,12 +1,12 @@
 {
   "name": "@hashbrownai/openai",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
     "tslib": "^2.3.0",
-    "@hashbrownai/core": "0.0.3"
+    "@hashbrownai/core": "0.1.0"
   },
   "peerDependencies": {
     "openai": "^4.93.0"
