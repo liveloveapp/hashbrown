@@ -169,6 +169,16 @@ import { React } from '../icons/React';
           friendlier, more accessible software</em
         >.
       </p>
+      <div class="divider"></div>
+      <iframe
+        width="640"
+        height="416"
+        src="https://www.loom.com/embed/2ef3bafa9415476e92125701a2fe2c17?sid=888c5c57-e441-47a0-a520-46d45b754d79"
+        frameborder="0"
+        webkitallowfullscreen
+        mozallowfullscreen
+        allowfullscreen
+      ></iframe>
     </div>
   `,
   styles: [
