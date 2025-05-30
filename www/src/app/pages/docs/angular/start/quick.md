@@ -135,7 +135,7 @@ export class ChatComponent {
 
   chat = chatResource({
     model: 'gpt-4.1',
-    prompt: 'You are a helpful assistant that can answer questions and help with tasks',
+    system: 'You are a helpful assistant that can answer questions and help with tasks',
     tools: [
       createTool({
         name: 'getUser',
@@ -220,7 +220,7 @@ export class ChatComponent {
 
   chat = uiChatResource({
     model: 'gpt-4.1',
-    prompt: 'You are a helpful assistant that can answer questions and help with tasks',
+    system: 'You are a helpful assistant that can answer questions and help with tasks',
     components: [
       exposeComponent(MarkdownComponent, {
         name: 'markdown',
@@ -320,7 +320,7 @@ export class ChatComponent {
   chat = structuredChatResource({
     model: 'gpt-4.1',
     debugName: 'lights-chat',
-    prompt: `
+    system: `
       Please return a JSON object that contains the lights that the user mentions.
     `,
     output: s.object('Output', {

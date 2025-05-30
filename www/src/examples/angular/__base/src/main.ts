@@ -1,13 +1,13 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import {
   mergeApplicationConfig,
-  provideExperimentalZonelessChangeDetection,
+  provideZonelessChangeDetection,
 } from '@angular/core';
 import { App } from './app/app.component';
 import { appConfig } from './app/app.config';
 
 const config = mergeApplicationConfig(appConfig, {
-  providers: [provideExperimentalZonelessChangeDetection()],
+  providers: [provideZonelessChangeDetection()],
 });
 
 bootstrapApplication(App, config);

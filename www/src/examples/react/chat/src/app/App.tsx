@@ -20,7 +20,7 @@ export default function App(): ReactElement {
     useUiChat({
       model: 'gpt-4o',
       debugName: 'Example Chat',
-      prompt:
+      system:
         'You are a smart home assistant. You can control the lights in the house.',
       tools: [
         createTool({
