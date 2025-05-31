@@ -1,9 +1,8 @@
 # Skillet Schema Language
 
 Skillet is a Zod-like schema language that is LLM-optimized.
-What does that mean?
 
-- Skillet is strongly typed.
+- Skillet is strongly typed
 - Skillet purposefully limits the schema to that which is supported by LLMs
 - Skillet optimizes the schema for processing by an LLM
 - Skillet tightly integrates streaming
