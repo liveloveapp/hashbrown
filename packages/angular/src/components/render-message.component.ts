@@ -27,9 +27,6 @@ import { getTagNameRegistry, UiAssistantMessage } from '../utils';
         }
       </ng-template>
 
-      {{ node | json }}
-      {{ 'got here' }}
-
       @if (node) {
         <ng-container
           *ngComponentOutlet="
@@ -43,6 +40,7 @@ import { getTagNameRegistry, UiAssistantMessage } from '../utils';
 
     @if (content()) {
       @for (node of content(); track $index) {
+        {{ node | json }}
         <ng-template
           [ngTemplateOutlet]="nodeTemplateRef"
           [ngTemplateOutletContext]="node"
