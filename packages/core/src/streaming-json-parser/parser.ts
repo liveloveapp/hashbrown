@@ -10,7 +10,7 @@
  * @see https://github.com/promplate/partial-json-parser-js
  */
 
-import { Logger } from '../logger/logger';
+import { Logger, LoggerLevel } from '../logger/logger';
 import { s } from '../schema';
 import { isStreaming } from '../schema/is-streaming';
 import {
@@ -20,7 +20,9 @@ import {
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
 
-const ENABLE_LOGGING = false;
+const LOG_SETTINGS: { [name: string]: LoggerLevel } = {
+  all: 'none',
+};
 
 class PartialJSON extends Error {}
 
@@ -49,7 +51,7 @@ function parseJSON(jsonString: string, schema: s.HashbrownType): any {
 }
 
 const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
-  const logger = new Logger(ENABLE_LOGGING);
+  const logger = new Logger(LOG_SETTINGS);
 
   logger.log('In _parseJson');
   // Since each parse run is effectively starting over, this string should indicate
