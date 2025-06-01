@@ -156,7 +156,7 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    model: 'gpt-4.1',
+    model: 'palmyra-x5',
     // model: 'gemini-2.5-flash-preview-04-17',
     debugName: 'simple-chat',
     system: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
@@ -261,12 +261,12 @@ export class ChatPanelComponent {
    */
 
   chat = uiChatResource({
-    model: 'gpt-4.1',
+    model: 'palmyra-x5',
     // model: 'gemini-2.5-pro-preview-05-06',
     // model: 'gpt-4o@2025-01-01-preview',
     debugName: 'ui-chat',
     system: `
-      You are a helpful assistant that can answer questions and help with tasks.
+      You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments.
     `,
     components: [
       exposeComponent(MarkdownComponent, {
@@ -336,10 +336,21 @@ export class ChatPanelComponent {
 
           return light;
         },
+        /*
+{"ui":[
+  {"1":
+    {"$props":
+      {
+       "icon":"lightbulb","lightId":"Test 1"
+      },
+    "$tagName":"app-light"
+    }}]}
+
+        */
       }),
-      createToolJavaScript({
-        runtime: this.runtime,
-      }),
+      // createToolJavaScript({
+      //   runtime: this.runtime,
+      // }),
     ],
   });
 

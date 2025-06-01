@@ -11,12 +11,12 @@ import {
   TemplateRef,
   ViewContainerRef,
 } from '@angular/core';
-import { NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
+import { JsonPipe, NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
 import { getTagNameRegistry, UiAssistantMessage } from '../utils';
 
 @Component({
   selector: 'hb-render-message',
-  imports: [NgComponentOutlet, NgTemplateOutlet],
+  imports: [NgComponentOutlet, NgTemplateOutlet, JsonPipe],
   template: `
     <ng-template #nodeTemplateRef let-node="node">
       <ng-template #childrenTemplateRef>
@@ -26,6 +26,9 @@ import { getTagNameRegistry, UiAssistantMessage } from '../utils';
           />
         }
       </ng-template>
+
+      {{ node | json }}
+      {{ 'got here' }}
 
       @if (node) {
         <ng-container

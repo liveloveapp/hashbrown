@@ -84,6 +84,8 @@ export const generateMessage = createEffect((store) => {
           }
         }
 
+        console.log(params);
+
         const response = await fetch(apiUrl, requestInit);
 
         if (!response.ok) {
@@ -116,12 +118,15 @@ export const generateMessage = createEffect((store) => {
                 if (message) {
                   store.dispatch(apiActions.generateMessageChunk(message));
                 }
+
+                console.log(message);
                 break;
               }
               case 'error': {
                 // Assumption: a 'finish' will follow the 'error', but we know we need to retry
                 // as soon as we see the error.  Therefore, throw an exception to break out
                 // of the for loop.
+                console.log(frame.error);
                 throw new Error(frame.error);
                 break;
               }
@@ -201,6 +206,8 @@ function updateMessagesWithDelta(
   message: Chat.Api.AssistantMessage | null,
   delta: Chat.Api.CompletionChunk,
 ): Chat.Api.AssistantMessage | null {
+  console.log(message);
+  console.log(delta);
   if (message && message.role === 'assistant') {
     const updatedToolCalls = mergeToolCalls(
       message.toolCalls,
@@ -211,6 +218,7 @@ function updateMessagesWithDelta(
       content: (message.content ?? '') + (delta.choices[0].delta.content ?? ''),
       toolCalls: updatedToolCalls,
     };
+    console.log(updatedMessage);
     return updatedMessage;
   } else if (delta.choices[0]?.delta?.role === 'assistant') {
     return {

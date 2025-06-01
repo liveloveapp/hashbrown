@@ -36,6 +36,9 @@ export async function* text(
     apiKey,
   });
 
+  console.log('chunk:');
+  console.log(request);
+
   try {
     const baseRequestOptions: Writer.Chat.ChatChatParams = {
       stream: true,
@@ -135,12 +138,15 @@ export async function* text(
         ),
       };
 
+      console.log(chunk.choices[0]);
+
       yield encodeFrame({
         type: 'chunk',
         chunk: chunkMessage,
       });
     }
   } catch (error) {
+    console.log(error);
     yield encodeFrame({
       type: 'error',
       error: error instanceof Error ? error.message : String(error),

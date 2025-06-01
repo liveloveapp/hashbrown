@@ -7,6 +7,7 @@ import {
   UiChatMessage,
 } from '@hashbrownai/angular';
 import { ToolChipComponent } from './tool-chip.component';
+import { JsonPipe } from '@angular/common';
 
 @Component({
   selector: 'app-chat-messages',
@@ -16,8 +17,10 @@ import { ToolChipComponent } from './tool-chip.component';
     MatIconModule,
     MatButtonModule,
     ToolChipComponent,
+    JsonPipe,
   ],
   template: `
+    {{ messages() | json }}
     @for (message of collapsedMessages(); track $index) {
       @switch (message.role) {
         @case ('user') {
@@ -206,6 +209,7 @@ import { ToolChipComponent } from './tool-chip.component';
 export class MessagesComponent {
   retry = output<void>();
   messages = input.required<UiChatMessage[]>();
+
   collapsedMessages = computed(() => {
     const messages = this.messages();
     const collapsedMessages = [];

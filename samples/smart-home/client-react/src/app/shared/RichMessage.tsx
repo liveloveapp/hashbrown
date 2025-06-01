@@ -50,11 +50,11 @@ export const RichMessage = ({
         )}
 
         {message.role === 'assistant' && (
-          <div className="flex flex-col gap-2">message.ui</div>
+          <div className="flex flex-col gap-2">{message.ui}</div>
         )}
 
         {message.role === 'user' && (
-          <div className="flex flex-col gap-2">message.content</div>
+          <div className="flex flex-col gap-2">{message.content}</div>
         )}
       </div>
     </div>

@@ -59,16 +59,16 @@ app.post('/chat', async (req, res, next) => {
   // });
 
   // OpenAI
-  const stream = HashbrownOpenAI.stream.text({
-    apiKey: OPENAI_API_KEY,
-    request,
-  });
-
-  // Writer
-  // const stream = HashbrownWriter.stream.text({
-  //   apiKey: WRITER_API_KEY,
+  // const stream = HashbrownOpenAI.stream.text({
+  //   apiKey: OPENAI_API_KEY,
   //   request,
   // });
+
+  // Writer
+  const stream = HashbrownWriter.stream.text({
+    apiKey: WRITER_API_KEY,
+    request,
+  });
 
   res.header('Content-Type', 'application/octet-stream');
 
