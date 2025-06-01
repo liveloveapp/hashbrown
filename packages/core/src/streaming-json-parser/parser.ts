@@ -19,8 +19,9 @@ import {
   isObjectType,
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
+import { toJsonSchema } from '../schema/to-json-schema';
 
-const ENABLE_LOGGING = false;
+const ENABLE_LOGGING = true;
 
 class PartialJSON extends Error {}
 
@@ -39,6 +40,9 @@ function shouldBeWrappedPrimitive(schema: s.HashbrownType): boolean {
 }
 
 function parseJSON(jsonString: string, schema: s.HashbrownType): any {
+  console.log('schema:');
+  console.dir(toJsonSchema(schema));
+
   if (typeof jsonString !== 'string') {
     throw new TypeError(`expecting str, got ${typeof jsonString}`);
   }
