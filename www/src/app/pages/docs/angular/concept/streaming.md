@@ -4,28 +4,34 @@ We believe that streaming is both paramount to implementing AI generative techno
 
 How do we make this a reality?
 
-- First, we built an LLM-optimized schema language called Skillet.
-- Skillet has both streaming and partial parsing built into the core.
-- We make it easy - simply add the `streaming` keyword to your schema.
+- First, we built an LLM-optimized schema language called Skillet
+- Skillet has both streaming and partial parsing built into the core
+- We make it easy - simply add the `streaming` keyword to your schema
 
 ---
 
 ## What is Skillet?
 
-I don't know about you - but we love hot, crispy, and fresh hashbrowns.
 Skillet is a Zod-like schema language that is LLM-optimized.
-What does that mean?
 
+- Skillet is strongly typed
 - Skillet purposefully limits the schema to that which is supported by LLMs
+- Skillet optimizes the schema for processing by an LLM
 - Skillet tightly integrates streaming
 
 [Read our docs on the Skillet schema language](/docs/angular/concept/schema)
 
 ---
 
+## Demo
+
+<div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089273215?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown structured output"></iframe></div>
+
+---
+
 ## Streaming Responses
 
-First, let's look at a structured completion resource:
+Let's look at a structured completion resource:
 
 <www-code-example header="scene-form-dialog.component.ts">
 

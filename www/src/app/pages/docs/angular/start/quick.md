@@ -1,12 +1,13 @@
 # Angular Quick Start
 
-hashbrown is an open source library for building meaningful AI experiences with modern Angular.
+hashbrown is an open source library for building joyful AI experiences with modern Angular.
 
 ## Key Concepts
 
 - **Headless**: build your UI how you want
 - **Signal Based**: hashbrown uses signals for reactivity
 - **Platform Agnostic**: use any [supported platform](/docs/angular/start/platforms)
+- **Streaming**: LLMs can be slow, so streaming is baked into the core
 
 ---
 
@@ -26,7 +27,7 @@ To follow along, you'll need to
 1. [Sign up for OpenAI's API](https://openai.com/api/)
 2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
 3. Copy the API key so you have it handy
-4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for hashbrown to concsume
+4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for hashbrown to consume
 
 ---
 
@@ -38,9 +39,18 @@ npm install @hashbrown/{core,angular,openai} --save
 
 ---
 
+## Running Examples
+
+We have two ways for you to get your hands on the code and play with hashbrown.
+
+- Click the **run** button to launch the examples below.
+- Or, [clone the repository](https://github.com/liveloveapp/hashbrown) and run our samples. You can learn more in the README.
+
+---
+
 ## Create Chat Resource
 
-The @hashbrownai/angular!chatResource:function is the main resource for interacting with a Large Language Model (LLM) via text.
+The @hashbrownai/angular!chatResource:function is the basic resource for interacting with a Large Language Model (LLM) via text.
 It provides a set of methods for sending and receiving messages, as well as managing the chat state.
 
 <www-code-example header="chat.component.ts" run="/examples/angular/chat">
@@ -106,6 +116,34 @@ The component uses Angular's built-in template syntax and signal-based reactivit
 
 ---
 
+## Debugging with Redux Devtools
+
+hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
+We find that this provides direct access to the state internals of hashbrown - enabling you to debug your AI-powered user experiences.
+
+<div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089272009?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown debugging"></iframe></div>
+
+To enable debugging, specify the optional `debugName` configuration.
+
+<www-code-example header="chat.component.ts">
+
+```ts
+chat = chatResource({
+  model: 'gpt-4o',
+  debugName: 'chat',
+  messages: [
+    {
+      role: 'system',
+      content: 'You are a helpful assistant that can answer questions and help with tasks.',
+    },
+  ],
+});
+```
+
+</www-code-example>
+
+---
+
 ## Function Calling
 
 In this guide, we'll show you the basics of function calling.
@@ -117,8 +155,10 @@ We also suggest reading the [OpenAI documentation for function calling using the
 Some common use cases for function calling include:
 
 - Fetching additional data from your service layer
-- Provide the LLM with the latest application state
-- Enable the LLM to mutate state or take action
+- Providing the LLM with the latest application state
+- Enabling the LLM to mutate state or take action
+
+<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown function calling"></iframe></div>
 
 Let's look at an example of function calling using hashbrown.
 
@@ -193,6 +233,7 @@ We're glad you asked.
 - Skillet limits schema based on an LLM's capability. In other words, it works as you expect.
 - Skillet enables one-line streaming
 - Skillet enables partial parsing
+- Skillet is strongly typed
 
 [Read more about how Skillet supports streaming responses](/docs/angular/concept/streaming)
 
@@ -202,6 +243,8 @@ We're glad you asked.
 
 To build on top of the chat resource, we can expose Angular components that the LLM can use to generate UI.
 In this example, we'll use the @hashbrownai/angular!uiChatResource:function function.
+
+<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089273215?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown structured output"></iframe></div>
 
 <www-code-example header="chat.component.ts" run="/examples/angular/ui-chat">
 
@@ -223,24 +266,21 @@ export class ChatComponent {
     system: 'You are a helpful assistant that can answer questions and help with tasks',
     components: [
       exposeComponent(MarkdownComponent, {
-        name: 'markdown',
         description: 'Show markdown to the user',
-        props: {
+        input: {
           data: s.streaming.string('The markdown content'),
         },
       }),
       exposeComponent(LightComponent, {
-        name: 'light',
         description: 'Show a light to the user',
-        props: {
+        input: {
           lightId: s.string('The id of the light'),
         },
       }),
       exposeComponent(CardComponent, {
-        name: 'card',
         description: 'Show a card to the user',
         children: 'any',
-        props: {
+        input: {
           title: s.streaming.string('The title of the card'),
         },
       }),
@@ -286,19 +326,24 @@ Let's focus on the new `components` property.
 
 - The `components` property is an array of components that the LLM can use to generate UI.
 - The `exposeComponent` function defines a component that the LLM can use, with a name, description, and props.
-- The `props` property defines the properties that the component can accept, using the Skillet schema language.
+- The `input` property defines the input properties that the component can accept, using the Skillet schema language.
 - The `children` property allows the component to accept child components, enabling nested UI structures.
 - The `uiChatResource` function creates a chat resource that can generate UI components based on the LLM's responses.
+
+Did you catch the `streaming` keyword in the example above?
+
+- We are streaming generated markdown from the LLM into our `MarkdownComponent`.
+- We are streaming the card `title` property value.
 
 ---
 
 ## Structured Output
 
-Structured output allows the LLM to return data in a structured format.
+Structured output allows the LLM to return data in a structured format; mostly commonly JSON.
 
 Just think.
 Large Language Models are _incredibly_ powerful at natural language and text generation.
-Using this power, Angular developers can leverage the LLM to generate structured data that can be used in their applications.
+Using this power, Angular developers can leverage the LLM to generate structured data that can be used _anywhere_ in their applications.
 
 In this example, we'll use the @hashbrownai/angular!structuredChatResource:function function to generate structured data.
 
