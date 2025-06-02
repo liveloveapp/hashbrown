@@ -14,6 +14,7 @@ import { MarkdownComponent } from './MarkdownComponent';
 import { RichMessage } from './RichMessage';
 import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
+// import { SPEAKER_DATA } from '../data/speaker-data';
 
 export const RichChatPanel = () => {
   const {
@@ -24,15 +25,31 @@ export const RichChatPanel = () => {
     isReceiving,
     isRunningToolCalls,
   } = useUiChat({
-    model: 'gpt-4o',
-    system:
-      'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
+    // model: 'gpt-4o',
+    model: 'palmyra-x5',
+    system: `You are a smart home assistant. 
+      
+      You can control the lights in the house. 
+
+      You can also show cards for talks and speakers for a conference on AI.
+
+      The conference takes place from June 3rd, 2025 to June 5th, 2025.
+
+      A talk's time slot is captured in the "Scheduled At" property for each talk.
+      
+      You should not stringify (aka escape) function arguments`,
     tools: [
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
         handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
       }),
+      // createTool({
+      //   name: 'getSpeakerData',
+      //   description:
+      //     'Get the information for each speaker/event for the conference',
+      //   handler: () => Promise.resolve(SPEAKER_DATA),
+      // }),
       createToolWithArgs({
         name: 'controlLight',
         description:
@@ -73,7 +90,7 @@ export const RichChatPanel = () => {
       exposeComponent(CardComponent, {
         name: 'CardComponent',
         description: 'Show a card with children components to the user',
-        children: 'any',
+        // children: 'any',
         props: {
           title: s.string('The title of the card'),
           description: s.streaming.string('The description of the card'),

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Writer from 'writer-sdk';
 import { Chat, encodeFrame } from '@hashbrownai/core';
+import { createReadStream } from 'fs';
+import { ToolParam } from 'writer-sdk/resources/shared';
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * The options for the Writer text stream.
@@ -36,6 +40,59 @@ export async function* text(
     apiKey,
   });
 
+  // Upload talks file
+  const file = await writer.files.upload({
+    content: createReadStream('packages/writer/src/stream/speaker-data.txt'),
+    'Content-Disposition': 'attachment; filename=sessions.txt',
+    'Content-Type': 'application/text',
+  });
+  const fileId = file.id;
+
+  const graphInfo = await writer.graphs.create({ name: 'conference_talks' });
+  const graphId = graphInfo.id;
+
+  await writer.graphs.addFileToGraph(graphId, {
+    file_id: fileId,
+  });
+
+  let updatedGraphInfo = await writer.graphs.retrieve(graphId);
+
+  console.log('Waiting for file to finish...');
+  // NB: this takes many seconds, and needs to be moved out of the per-/chat code
+  while (updatedGraphInfo.file_status.completed === 0) {
+    sleep(200);
+
+    updatedGraphInfo = await writer.graphs.retrieve(graphId);
+    console.log(updatedGraphInfo);
+  }
+  console.log('File finished.');
+
+  const tools: any[] = [
+    {
+      type: 'graph',
+      function: {
+        description:
+          'Knowledge Graph containing information conference talks and sessions',
+        graph_ids: [graphId],
+        subqueries: true,
+      },
+    },
+  ];
+
+  if (request.tools && request.tools.length > 0) {
+    tools.push(
+      ...request.tools.map((tool) => ({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters as Record<string, object>,
+          strict: true,
+        },
+      })),
+    );
+  }
+
   try {
     const baseRequestOptions: Writer.Chat.ChatChatParams = {
       stream: true,
@@ -54,18 +111,7 @@ export async function* text(
             },
           }
         : undefined,
-      tools:
-        request.tools && request.tools.length > 0
-          ? request.tools.map((tool) => ({
-              type: 'function',
-              function: {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters as Record<string, object>,
-                strict: true,
-              },
-            }))
-          : undefined,
+      tools,
       messages: [
         {
           role: 'system',
@@ -122,6 +168,7 @@ export async function* text(
     });
 
     for await (const chunk of stream) {
+      console.log(chunk);
       const chunkMessage: Chat.Api.CompletionChunk = {
         choices: chunk.choices.map(
           (choice): Chat.Api.CompletionChunkChoice => ({
