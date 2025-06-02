@@ -10,7 +10,8 @@ import { Textarea } from './textarea';
 export const ChatPanel = () => {
   const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
     useChat({
-      model: 'gpt-4o-mini',
+      // model: 'gpt-4o-mini',
+      model: 'palmyra-x5',
       system:
         'You are a helpful assistant that can answer questions and help with tasks.',
       tools: [

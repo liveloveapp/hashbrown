@@ -26,8 +26,116 @@ export const RichChatPanel = () => {
   } = useUiChat({
     model: 'palmyra-x5',
     // model: 'gpt-4o',
-    system:
-      'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
+    system: `You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments.
+      
+          You should not double-escape (in the JSON meaning) function arguments.
+
+      If a user refers to a light by name, the light ID can be found by getting the 
+      list of light entities and finding the light ID for the given name.
+
+      For example, the light named "Office Light" would match the entity:
+      {
+        brightness: 100,
+        id: "16fece1a-3038-4394-83e3-ddac09fe4b66",
+        name: "Test 2"
+      }
+
+      So, the lightId property would be the entity's 'id' value (in this case "16fece1a-3038-4394-83e3-ddac09fe4b66").
+
+      Similarly, if a user refers to a scene by name, the scene ID can be found by getting the 
+      list of scene entities and finding the scene ID for the given name.
+
+      Response schema will be in JSONSchema format, but don't include bits of schema in the response.
+
+      For example, if the request format looks like this:
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+            "ui": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/$defs/anyOf"
+                },
+                "description": "List of elements"
+            }
+        },
+        "required": [
+            "ui"
+        ],
+        "additionalProperties": false,
+        "description": "UI",
+        "$defs": {
+            "anyOf": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "1"
+                        ],
+                        "properties": {
+                            "1": {
+                                "type": "object",
+                                "properties": {
+                                    "$tagName": {
+                                        "type": "string",
+                                        "const": "app-light",
+                                        "description": "app-light"
+                                    },
+                                    "$props": {
+                                        "type": "object",
+                                        "properties": {
+                                            "lightId": {
+                                                "type": "string",
+                                                "description": "The id of the light"
+                                            },
+                                            "icon": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "floor_lamp",
+                                                    "table_lamp",
+                                                    "wall_lamp",
+                                                    "lightbulb"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "lightId",
+                                            "icon"
+                                        ],
+                                        "additionalProperties": false,
+                                        "description": "Props"
+                                    }
+                                },
+                                "required": [
+                                    "$tagName",
+                                    "$props"
+                                ],
+                                "additionalProperties": false,
+                                "description": "This option shows a light to the user, with a dimmer for them to control the light.\n          Always prefer this option over printing a light's name. Always prefer putting these in a list.\n        \n          "
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    }
+
+    Then, the response could look like this:
+    {
+      "ui":[
+        {
+          "1":{
+            "$props":{
+              "icon":"lightbulb",
+              "lightId":"16fece1a-3038-4394-83e3-ddac09fe4b66"
+            },
+            "$tagName":"app-light"
+          }
+        }
+      ]
+    }`,
     tools: [
       createTool({
         name: 'getLights',
