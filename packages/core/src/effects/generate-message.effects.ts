@@ -84,29 +84,31 @@ export const generateMessage = createEffect((store) => {
           }
         }
 
-        const response = await fetch(apiUrl, requestInit);
-
-        if (!response.ok) {
-          store.dispatch(
-            apiActions.generateMessageError(
-              new Error(`HTTP error! Status: ${response.status}`),
-            ),
-          );
-          continue;
-        }
-
-        if (!response.body) {
-          store.dispatch(
-            apiActions.generateMessageError(new Error(`Response body is null`)),
-          );
-          continue;
-        }
-
-        store.dispatch(apiActions.generateMessageStart());
-
-        let message: Chat.Api.AssistantMessage | null = null;
-
         try {
+          const response = await fetch(apiUrl, requestInit);
+
+          if (!response.ok) {
+            store.dispatch(
+              apiActions.generateMessageError(
+                new Error(`HTTP error! Status: ${response.status}`),
+              ),
+            );
+            continue;
+          }
+
+          if (!response.body) {
+            store.dispatch(
+              apiActions.generateMessageError(
+                new Error(`Response body is null`),
+              ),
+            );
+            continue;
+          }
+
+          store.dispatch(apiActions.generateMessageStart());
+
+          let message: Chat.Api.AssistantMessage | null = null;
+
           for await (const frame of decodeFrames(response.body, {
             signal: effectAbortController.signal,
           })) {
