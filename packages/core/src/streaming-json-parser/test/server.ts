@@ -1,14 +1,15 @@
 import { createServer } from 'net';
 import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
+import { toJsonSchema } from '../../schema/to-json-schema';
 
-const TEST_JSON = {
-  // element: {
-  //   1: {
-  //     data: 'the markdown data',
-  //   },
-  // },
-  element: false,
-};
+// const TEST_JSON = {
+//   // element: {
+//   //   1: {
+//   //     data: 'the markdown data',
+//   //   },
+//   // },
+//   element: false,
+// };
 
 // const TEST_JSON = {
 //   ui: [
@@ -25,15 +26,15 @@ const TEST_JSON = {
 //   [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
 // };
 
-// const TEST_JSON = {
-//   booleanValue: false,
-//   value: 'Example glossary',
-//   array: ['string 1', 'string 2'],
-//   object: {
-//     a: 'make it do what it do',
-//     b: 'call the Ghost Busters',
-//   },
-// };
+const TEST_JSON = {
+  booleanValue: false,
+  value: 'Example glossary',
+  array: ['string 1', 'string 2'],
+  object: {
+    a: 'make it do what it do',
+    b: 'call the Ghost Busters',
+  },
+};
 
 // const TEST_JSON = [
 //   {

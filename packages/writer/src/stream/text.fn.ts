@@ -41,43 +41,47 @@ export async function* text(
   });
 
   // Upload talks file
-  const file = await writer.files.upload({
-    content: createReadStream('packages/writer/src/stream/speaker-data.txt'),
-    'Content-Disposition': 'attachment; filename=sessions.txt',
-    'Content-Type': 'application/text',
-  });
-  const fileId = file.id;
+  // const file = await writer.files.upload({
+  //   content: createReadStream('packages/writer/src/stream/speaker-data.txt'),
+  //   'Content-Disposition': 'attachment; filename=sessions.txt',
+  //   'Content-Type': 'application/text',
+  // });
+  // const fileId = file.id;
 
-  const graphInfo = await writer.graphs.create({ name: 'conference_talks' });
-  const graphId = graphInfo.id;
+  // const graphInfo = await writer.graphs.create({ name: 'conference_talks' });
+  // const graphId = graphInfo.id;
 
-  await writer.graphs.addFileToGraph(graphId, {
-    file_id: fileId,
-  });
+  // await writer.graphs.addFileToGraph(graphId, {
+  //   file_id: fileId,
+  // });
 
-  let updatedGraphInfo = await writer.graphs.retrieve(graphId);
+  // let updatedGraphInfo = await writer.graphs.retrieve(graphId);
 
-  console.log('Waiting for file to finish...');
-  // NB: this takes many seconds, and needs to be moved out of the per-/chat code
-  while (updatedGraphInfo.file_status.completed === 0) {
-    sleep(200);
+  // console.log('Waiting for file to finish...');
+  // // NB: this takes many seconds, and needs to be moved out of the per-/chat code
+  // while (updatedGraphInfo.file_status.completed === 0) {
+  //   sleep(200);
 
-    updatedGraphInfo = await writer.graphs.retrieve(graphId);
-    console.log(updatedGraphInfo);
-  }
-  console.log('File finished.');
+  //   updatedGraphInfo = await writer.graphs.retrieve(graphId);
+  //   console.log(updatedGraphInfo);
+  // }
+  // console.log('File finished.');
 
-  const tools: any[] = [
-    {
-      type: 'graph',
-      function: {
-        description:
-          'Knowledge Graph containing information conference talks and sessions',
-        graph_ids: [graphId],
-        subqueries: true,
-      },
-    },
-  ];
+  // const graphId = '27fbeb2d-9adf-4fad-aedd-deb6f455e553';
+
+  // const tools: any[] = [
+  //   {
+  //     type: 'graph',
+  //     function: {
+  //       description:
+  //         'Knowledge Graph containing talk/session information for an AI conference',
+  //       graph_ids: [graphId],
+  //       subqueries: true,
+  //     },
+  //   },
+  // ];
+
+  const tools: any[] = [];
 
   if (request.tools && request.tools.length > 0) {
     tools.push(
@@ -168,7 +172,7 @@ export async function* text(
     });
 
     for await (const chunk of stream) {
-      console.log(chunk);
+      console.log(JSON.stringify(chunk, null, 4));
       const chunkMessage: Chat.Api.CompletionChunk = {
         choices: chunk.choices.map(
           (choice): Chat.Api.CompletionChunkChoice => ({

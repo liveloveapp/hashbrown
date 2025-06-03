@@ -15,28 +15,28 @@ import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
   });
 
   // anyOf as a property (instead of in a container)
-  const responseSchema = s.object('gridArea', {
-    element: s.anyOf([
-      s.boolean('a boolean'),
-      s.object('Markdown', {
-        data: s.streaming.string('The markdown data'),
-      }),
-    ]),
-  });
-
-  // const responseSchema = s.object('UI', {
-  //   ui: s.streaming.array(
-  //     'list of elements',
-  //     s.anyOf([
-  //       s.object('Show markdown to the user', {
-  //         $tagName: s.constString('app-markdown'),
-  //         $props: s.object('Props', {
-  //           data: s.streaming.string('The markdown content'),
-  //         }),
-  //       }),
-  //     ]),
-  //   ),
+  // const responseSchema = s.object('gridArea', {
+  //   element: s.anyOf([
+  //     s.boolean('a boolean'),
+  //     s.object('Markdown', {
+  //       data: s.streaming.string('The markdown data'),
+  //     }),
+  //   ]),
   // });
+
+  const responseSchema = s.object('UI', {
+    ui: s.streaming.array(
+      'list of elements',
+      s.anyOf([
+        s.object('Show markdown to the user', {
+          $tagName: s.literal('app-markdown'),
+          $props: s.object('Props', {
+            data: s.streaming.string('The markdown content'),
+          }),
+        }),
+      ]),
+    ),
+  });
 
   // const responseSchema = s.number('top-level number');
 
@@ -55,7 +55,7 @@ import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
   //   [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
   // };
 
-  console.log(toJsonSchema(responseSchema).properties.element.anyOf);
+  console.log(JSON.stringify(toJsonSchema(responseSchema), null, 4));
 
   // console.log('parsed value:');
   const result = responseSchema.parseJsonSchema(data);
@@ -167,3 +167,38 @@ import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 })()
   .then(() => console.log('in then'))
   .catch((err) => console.log('Fatal error', err));
+
+/*
+
+  June 3
+Continental Breakfast.  7:15am - 9:45am.  Grand Assembly.
+Registration. 8:00am - 7:00pm.  Atrium: Event Hub.
+Rehearsals/Tech Check. 10:00am - 5:00pm.  Keynote/General Session (Yerba Buena 7&8)
+Morning Break. 10:30am - 11:15am.  Grand Assembly.
+Lunch. 12:00pm - 1:00pm.  Grand Assembly.
+Afternoon Break. 3:00pm - 3:30pm.  Grand Assembly.
+Welcome Reception.  4:00pm - 7:00pm.  Grand Assembly.
+Community Meetups.  5:30pm - 9:00pm.  Atrium: Event Hub
+
+  June 4
+Continental Breakfast.  7:15am - 9:55am.  Grand Assembly.
+Registration. 7:00am - 7:00pm.  Atrium: Event Hub.
+Rehearsals/Tech Check. 7:45am - 8:45am.  Keynote/General Session (Yerba Buena 7&8)
+Morning Break. 10:15am - 11:00am.  Salons 9-15: Expo Hall.
+Lunch. 12:00pm - 2:00pm.  Salons 9-15: Expo Hall.
+Afternoon Break. 3:00pm - 3:45pm.  Salons 9-15: Expo Hall.
+The Toolbit Afterparty. 5:15pm - 7:00pm.  Salons 9-15: Expo Hall.
+Community Meetups.  7:00pm - 10:40pm.  Atrium: Event Hub
+
+
+  June 5
+Continental Breakfast.  7:15am - 9:55am.  Grand Assembly.
+Registration. 7:00am - 3:00pm.  Atrium: Event Hub.
+Rehearsals/Tech Check. 7:45am - 8:45am.  Keynote/General Session (Yerba Buena 7&8)
+Morning Break. 10:30am - 11:15am.  Salons 9-15: Expo Hall.
+Lunch. 12:00pm - 2:00pm.  Salons 9-15: Expo Hall.
+Afternoon Break. 3:00pm - 3:45pm.  Salons 9-15: Expo Hall.
+Community Meetups.  5:30pm - 9:00pm.  Atrium: Event Hub
+
+
+  */
