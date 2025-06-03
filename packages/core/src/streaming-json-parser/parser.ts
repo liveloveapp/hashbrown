@@ -10,7 +10,7 @@
  * @see https://github.com/promplate/partial-json-parser-js
  */
 
-import { Logger } from '../logger/logger';
+import { Logger, NONE_LEVEL } from '../logger/logger';
 import { s } from '../schema';
 import { isStreaming } from '../schema/is-streaming';
 import {
@@ -20,7 +20,9 @@ import {
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
 
-const ENABLE_LOGGING = false;
+const LOG_SETTINGS: { [name: string]: number } = {
+  all: NONE_LEVEL,
+};
 
 class PartialJSON extends Error {}
 
@@ -49,12 +51,12 @@ function parseJSON(jsonString: string, schema: s.HashbrownType): any {
 }
 
 const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
-  const logger = new Logger(ENABLE_LOGGING);
+  const logger = new Logger(LOG_SETTINGS);
 
-  logger.log('In _parseJson');
+  logger.for('_parseJSON').info('In _parseJson');
   // Since each parse run is effectively starting over, this string should indicate
   // how far we can expect to get this time
-  logger.log(jsonString);
+  logger.for('_parseJSON').info(jsonString);
 
   const length = jsonString.length;
   let index = 0;
@@ -77,12 +79,12 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   ) => any = (currentKey, allowsIncomplete, insideArray) => {
     skipBlank();
 
-    logger.log(`Remaining string: ${jsonString.slice(index)}`);
+    logger.for('parseAny').info(`Remaining string: ${jsonString.slice(index)}`);
 
     const currentLastContainer = containerStack[containerStack.length - 1];
 
-    logger.log('Current last container:');
-    logger.log(currentLastContainer);
+    logger.for('parseAny').debug('Current last container:');
+    logger.for('parseAny').debug(currentLastContainer);
 
     if (index >= length) markPartialJSON('Unexpected end of input');
     if (jsonString[index] === '"') return parseStr(allowsIncomplete);
@@ -183,7 +185,9 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   const parseWrappedPrimitive = () => {
-    logger.log(`Parsing wrapped primitive object`);
+    logger
+      .for('parseWrappedPrimitive')
+      .info(`Parsing wrapped primitive object`);
     index++; // skip initial brace
     skipBlank();
     let value: any = undefined;
@@ -207,36 +211,38 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         skipBlank();
         index++; // skip colon
         try {
-          logger.log(`Handling key: ${key}`);
+          logger.for('parseWrappedPrimitive').debug(`Handling key: ${key}`);
 
           const matchingSchema = containerStack[containerStack.length - 1];
 
-          logger.log('Found top-level schema:');
-          logger.log(matchingSchema);
+          logger.for('parseWrappedPrimitive').debug('Found top-level schema:');
+          logger.for('parseWrappedPrimitive').debug(matchingSchema);
 
           // This isn't a real object, so don't pass the key name
           value = parseAny('', isStreaming(matchingSchema), false);
 
-          logger.log('Value:');
-          logger.log(value);
+          logger.for('parseWrappedPrimitive').debug('Value:');
+          logger.for('parseWrappedPrimitive').debug(value);
         } catch (e) {
-          logger.error(e);
+          logger.for('parseWrappedPrimitive').error(e);
           return handleIncompleteWrappedPrimitive(value);
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
       }
     } catch (e) {
-      logger.log(e);
+      logger.for('parseWrappedPrimitive').error(e);
 
       return handleIncompleteWrappedPrimitive(value);
     }
     index++; // skip final brace
 
     const completedContainer = containerStack.pop();
-    logger.log(
-      `Completed wrapped primitive container: ${completedContainer?.[internal].definition.description}`,
-    );
+    logger
+      .for('parseWrappedPrimitive')
+      .info(
+        `Completed wrapped primitive container: ${completedContainer?.[internal].definition.description}`,
+      );
 
     return value;
   };
@@ -250,7 +256,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   const parseAnyOf = (parentKey: string) => {
-    logger.log(`Parsing anyOf with parent: ${parentKey}`);
+    logger.for('parseAnyOf').info(`Parsing anyOf with parent: ${parentKey}`);
     index++; // skip initial brace
     skipBlank();
     let value: any = undefined;
@@ -269,19 +275,21 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         skipBlank();
         index++; // skip colon
         try {
-          logger.log(`Handling discriminator: ${key}`);
+          logger.for('parseAnyOf').debug(`Handling discriminator: ${key}`);
 
           const matchingSchema = (
             containerStack[currentContainerStackIndex] as any
           )[parseInt(key)];
 
-          logger.log(
-            `Found matching schema in current container for ${key}: ${!!matchingSchema}`,
-          );
+          logger
+            .for('parseAnyOf')
+            .debug(
+              `Found matching schema in current container for ${key}: ${!!matchingSchema}`,
+            );
 
           if (matchingSchema) {
-            logger.log('Adding schema for discriminator');
-            logger.log(matchingSchema);
+            logger.for('parseAnyOf').debug('Adding schema for discriminator');
+            logger.for('parseAnyOf').debug(matchingSchema);
 
             // If the matching schema is itself an anyOf, we need to push its options array
             // to the schema stack instead of the schema
@@ -301,20 +309,20 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
             value = parseAny(key, true, false);
 
-            logger.log('Value:');
-            logger.log(value);
+            logger.for('parseAnyOf').debug('Value:');
+            logger.for('parseAnyOf').debug(value);
           } else {
             throwMalformedError(`No schema found for discriminator: ${key}`);
           }
         } catch (e) {
-          logger.error(e);
+          logger.for('parseAnyOf').error(e);
           return handleIncompleteAnyOf(value);
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
       }
     } catch (e) {
-      logger.log(e);
+      logger.for('parseAnyOf').error(e);
 
       return handleIncompleteAnyOf(value);
     }
@@ -322,11 +330,13 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
     const completedContainer = containerStack.pop();
     if (Array.isArray(completedContainer)) {
-      logger.log(`Completed nested anyOf container`);
+      logger.for('parseAnyOf').debug(`Completed nested anyOf container`);
     } else {
-      logger.log(
-        `Completed anyOf container: ${completedContainer?.[internal].definition.description}`,
-      );
+      logger
+        .for('parseAnyOf')
+        .debug(
+          `Completed anyOf container: ${completedContainer?.[internal].definition.description}`,
+        );
     }
 
     return value;
@@ -339,22 +349,26 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     const currentContainer = containerStack[currentContainerStackIndex];
 
     if (s.isStreaming(currentContainer)) {
-      logger.log('Index >= length: returning partial object');
+      logger.for('parseObj').debug('Index >= length: returning partial object');
       return obj;
     }
 
-    logger.log(
-      'Index >= length: opting not to return partial obj if non-streaming properties are missing',
-    );
+    logger
+      .for('parseObj')
+      .debug(
+        'Index >= length: opting not to return partial obj if non-streaming properties are missing',
+      );
 
     // Are all non-streaming fields present?
     if (
       Object.entries(
         (currentContainer[internal].definition as any).shape,
       ).every(([key, subSchema]) => {
-        logger.log(
-          `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
-        );
+        logger
+          .for('parseObj')
+          .debug(
+            `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
+          );
 
         // if this key is streaming and not present, add an "empty" value
         if (s.isStreaming(subSchema as any)) {
@@ -394,7 +408,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
   };
 
   const parseObj = (parentKey: string, insideArray: boolean) => {
-    logger.log(`Parsing object with parent: ${parentKey}`);
+    logger.for('parseObj').info(`Parsing object with parent: ${parentKey}`);
     index++; // skip initial brace
     skipBlank();
     const obj: Record<string, any> = {};
@@ -413,8 +427,10 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         const nextContainer = (currentContainer[internal].definition as any)
           .shape[parentKey];
 
-        logger.log(`Starting new object with key: ${parentKey}`);
-        logger.log(nextContainer);
+        logger
+          .for('parseObj')
+          .debug(`Starting new object with key: ${parentKey}`);
+        logger.for('parseObj').debug(nextContainer);
 
         if (nextContainer == null) {
           throwMalformedError(`Key: ${parentKey} not expected in container`);
@@ -438,7 +454,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         skipBlank();
         index++; // skip colon
         try {
-          logger.log(`Handling key: ${key}`);
+          logger.for('parseObj').debug(`Handling key: ${key}`);
 
           const currentContainer = containerStack[currentContainerStackIndex];
 
@@ -449,17 +465,19 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
               (currentContainer as any)[internal].definition.options,
             );
 
-            logger.log(
-              `Object key ${key} in container ${currentContainerStackIndex} is anyOf`,
-            );
+            logger
+              .for('parseObj')
+              .debug(
+                `Object key ${key} in container ${currentContainerStackIndex} is anyOf`,
+              );
 
             // AnyOfs are never directly streaming
             const value = parseAny(key, false, false);
 
             inAnyOfWrapper = true;
 
-            logger.log('Value:');
-            logger.log(value);
+            logger.for('parseObj').debug('Value:');
+            logger.for('parseObj').debug(value);
             obj[key] = value;
           } else {
             // This is a regular object, so find the schema for the key
@@ -473,42 +491,46 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
                 (schemaFragmentForKey as any)[internal].definition.options,
               );
 
-              logger.log(
-                `Object key ${key} in container ${currentContainerStackIndex} is anyOf`,
-              );
+              logger
+                .for('parseObj')
+                .debug(
+                  `Object key ${key} in container ${currentContainerStackIndex} is anyOf`,
+                );
 
               // AnyOfs are never directly streaming
               const value = parseAny(key, false, false);
 
               inAnyOfWrapper = true;
 
-              logger.log('Value:');
-              logger.log(value);
+              logger.for('parseObj').debug('Value:');
+              logger.for('parseObj').debug(value);
               obj[key] = value;
             } else {
               const currentKeyAllowsIncomplete =
                 s.isStreaming(schemaFragmentForKey);
 
-              logger.log(
-                `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
-              );
+              logger
+                .for('parseObj')
+                .debug(
+                  `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
+                );
 
               const value = parseAny(key, currentKeyAllowsIncomplete, false);
 
-              logger.log('Value:');
-              logger.log(value);
+              logger.for('parseObj').debug('Value:');
+              logger.for('parseObj').debug(value);
               obj[key] = value;
             }
           }
         } catch (e) {
-          logger.error(e);
+          logger.for('parseObj').error(e);
           return handleIncompleteObject(currentContainerStackIndex, obj);
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
       }
     } catch (e) {
-      logger.log(e);
+      logger.for('parseObj').error(e);
 
       return handleIncompleteObject(currentContainerStackIndex, obj);
     }
@@ -519,16 +541,22 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       // If we just completed an anyOf wrapper, we need to pop the options array off the stack
       if (!insideArray && inAnyOfWrapper) {
         const completedContainer = containerStack.pop();
-        logger.log(`Also completed anyOf container: ${completedContainer}`);
+        logger
+          .for('parseObj')
+          .debug(`Also completed anyOf container: ${completedContainer}`);
       }
 
       // Done with this container, so pop off stack
       const completedContainer = containerStack.pop();
-      logger.log(
-        `Completed object container: ${completedContainer?.[internal].definition.description}`,
-      );
+      logger
+        .for('parseObj')
+        .debug(
+          `Completed object container: ${completedContainer?.[internal].definition.description}`,
+        );
     } else {
-      logger.log('Inside array. Object completed, but keeping container stack');
+      logger
+        .for('parseObj')
+        .debug('Inside array. Object completed, but keeping container stack');
     }
     return obj;
   };
@@ -540,7 +568,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     }
 
     index++; // skip initial bracket
-    logger.log('parseArr: Start');
+    logger.for('parseArr').info('parseArr: Start');
     const arr = [];
 
     let arrayContainer = (
@@ -553,10 +581,10 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
       ).shape[currentKey][internal].definition.element;
     }
 
-    logger.log('Array container: ');
-    logger.log(arrayContainer);
+    logger.for('parseArr').debug('Array container: ');
+    logger.for('parseArr').debug(arrayContainer);
 
-    logger.log(`Allows streaming? ${allowsIncomplete}`);
+    logger.for('parseArr').debug(`Allows streaming? ${allowsIncomplete}`);
 
     // logger.log(`Is anyOf? ${s.isAnyOfType(arrayContainer)}`);
 
@@ -565,30 +593,34 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
 
     // If this array is of objects, push the container onto the stack
     if (s.isObjectType(arrayContainer)) {
-      logger.log('Array container is object type');
+      logger.for('parseArr').debug('Array container is object type');
       containerStack.push(arrayContainer);
       containerNeedsPopping = true;
     } else if (s.isAnyOfType(arrayContainer)) {
-      logger.log(
-        'Array container is anyOf. Pushing anyOf array to container stack',
-      );
+      logger
+        .for('parseArr')
+        .debug(
+          'Array container is anyOf. Pushing anyOf array to container stack',
+        );
       containerStack.push((arrayContainer as any)[internal].definition.options);
       containerNeedsPopping = true;
     } else {
-      logger.log('Array container is primitive');
+      logger.for('parseArr').debug('Array container is primitive');
       // It's not an object, so check if it is a streaming primitive
       contentsAllowIncomplete = isStreaming(arrayContainer);
 
-      logger.log(
-        `Array primitive content allows streaming: ${contentsAllowIncomplete}`,
-      );
+      logger
+        .for('parseArr')
+        .debug(
+          `Array primitive content allows streaming: ${contentsAllowIncomplete}`,
+        );
     }
 
     try {
       while (jsonString[index] !== ']') {
-        logger.log(
-          `Array content allows incomplete: ${contentsAllowIncomplete}`,
-        );
+        logger
+          .for('parseArr')
+          .debug(`Array content allows incomplete: ${contentsAllowIncomplete}`);
         arr.push(parseAny('', contentsAllowIncomplete, true));
         skipBlank();
         if (jsonString[index] === ',') {
@@ -596,7 +628,7 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
         }
       }
     } catch (e) {
-      // console.log(e);
+      // logger.for('parseArr').error(e);
       if (allowsIncomplete) {
         return arr;
       }
@@ -666,25 +698,31 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     return result;
   } catch (e) {
     if (e instanceof IncompleteNonStreamingObject) {
-      logger.log('Got incomplete object error at top level');
+      logger
+        .for('_parseJSON')
+        .error('Got incomplete object error at top level');
 
       return '';
     }
 
     if (e instanceof PartialJSON) {
-      logger.log('Got unterminated container');
+      logger.for('_parseJSON').error('Got unterminated container');
 
       return '';
     }
 
     if (e instanceof MalformedJSON) {
       if (e.message.includes('Exponent part is missing a number')) {
-        logger.log('Found number with exponent sans number');
+        logger
+          .for('_parseJSON')
+          .error('Found number with exponent sans number');
         return '';
       }
 
       if (e.message.includes('Unterminated fractional number')) {
-        logger.log('Found number with decimal point sans numbers');
+        logger
+          .for('_parseJSON')
+          .error('Found number with decimal point sans numbers');
         return '';
       }
     }
