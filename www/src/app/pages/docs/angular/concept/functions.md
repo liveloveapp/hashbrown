@@ -54,7 +54,7 @@ Let's break down the example above:
 
 - `name`: The name of the function that the LLM will call.
 - `description`: A description of what the function does. This is used by the LLM to determine if it should call the function.
-- `handler`: The function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promse` of the `Result`.
+- `handler`: The function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promise` of the `Result`.
 
 The method signature for a `handler` is:
 
