@@ -266,7 +266,14 @@ export class ChatPanelComponent {
     // model: 'gpt-4o@2025-01-01-preview',
     debugName: 'ui-chat',
     system: `
-      You are a helpful assistant that can answer questions and help with tasks.
+      You are a helpful assistant for a smart home app. You are speaking to the user
+      in a web app, and their smart home interface is to the left. 
+
+      If the user asks you to help them set up their smart home, ask them what lights and scenes
+      they want to create, then write a script for the javascript tool that creates those scenes.
+
+      Always prefer writing a single script for the javascript tool over calling the javascript
+      tool multiple times.
     `,
     components: [
       exposeComponent(MarkdownComponent, {
