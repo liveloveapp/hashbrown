@@ -9,6 +9,8 @@ import { OpenSource } from '../components/OpenSource';
 import { Providers } from '../components/Providers';
 import { LdpTour } from '../components/ldp/LdpTour';
 import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
+import { QuickIntroVideo } from '../components/QuickIntroVideo';
+import { LongIntroVideo } from '../components/LongIntroVideo';
 
 @Component({
   imports: [
@@ -18,21 +20,25 @@ import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
     GettingStarted,
     Header,
     Hero,
-    OpenSource,
-    Providers,
     LdpTour,
     LdpTourMobile,
+    LongIntroVideo,
+    OpenSource,
+    Providers,
+    QuickIntroVideo,
   ],
   template: `
     <www-header />
     <main class="home">
       <www-hero />
       <www-providers />
+      <www-quick-intro-video />
       <www-ldp-tour />
       <www-ldp-tour-mobile />
       <www-open-source />
       <www-adapters />
       <www-getting-started />
+      <www-long-intro-video />
       <www-enterprise-products />
     </main>
     <www-footer />
