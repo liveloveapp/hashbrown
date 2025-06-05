@@ -15,7 +15,7 @@
       "!{projectRoot}/.storybook/**/*",
       "!{projectRoot}/tsconfig.storybook.json"
     ],
-    "sharedGlobals": []
+    "sharedGlobals": ["{workspaceRoot}/.github/workflows/pr-main.yml"]
   },
   "targetDefaults": {
     "@nx/angular:package": {
