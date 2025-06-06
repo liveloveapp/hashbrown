@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Chat } from '@hashbrownai/core';
 import { HashbrownAzure } from '@hashbrownai/azure';
+import { HashbrownGenkit } from '@hashbrownai/genkit';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { HashbrownGoogle } from '@hashbrownai/google';
 import { HashbrownWriter } from '@hashbrownai/writer';
@@ -59,10 +60,10 @@ app.post('/chat', async (req, res, next) => {
   // });
 
   // OpenAI
-  const stream = HashbrownOpenAI.stream.text({
-    apiKey: OPENAI_API_KEY,
-    request,
-  });
+  // const stream = HashbrownOpenAI.stream.text({
+  //   apiKey: OPENAI_API_KEY,
+  //   request,
+  // });
 
   // Writer
   // const stream = HashbrownWriter.stream.text({
@@ -70,9 +71,19 @@ app.post('/chat', async (req, res, next) => {
   //   request,
   // });
 
+  // Genkit (supports multiple vendors/models)
+
+  // TODO: how to handle selecting a model?  For now, assume OPEN_AI
+  // Is it passed per request like the hooks already do?
+  const stream = HashbrownGenkit.stream.text({
+    apiKey: OPENAI_API_KEY,
+    request,
+  });
+
   res.header('Content-Type', 'application/octet-stream');
 
   for await (const chunk of stream) {
+    // console.log(chunk);
     res.write(chunk);
   }
 

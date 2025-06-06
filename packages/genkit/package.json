@@ -1,0 +1,15 @@
+{
+  "name": "@hashbrownai/genkit",
+  "version": "0.1.1",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@hashbrownai/core": "0.1.1",
+    "openai": "^4.93.0",
+    "genkit": "^1.11.1",
+    "genkitx-openai": "0.22.3"
+  },
+  "peerDependencies": {}
+}

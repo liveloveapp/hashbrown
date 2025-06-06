@@ -57,6 +57,7 @@
       "angular",
       "azure",
       "core",
+      "genkit",
       "google",
       "openai",
       "react",

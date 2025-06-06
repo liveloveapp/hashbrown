@@ -112,6 +112,7 @@ export const generateMessage = createEffect((store) => {
           for await (const frame of decodeFrames(response.body, {
             signal: effectAbortController.signal,
           })) {
+            console.log(frame);
             switch (frame.type) {
               case 'chunk': {
                 message = updateMessagesWithDelta(message, frame.chunk);
