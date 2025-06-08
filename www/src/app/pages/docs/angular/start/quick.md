@@ -40,7 +40,7 @@ To follow along, you'll need to
 ## Install
 
 ```sh
-npm install @hashbrown/{core,angular,openai} --save
+npm install @hashbrownai/{core,angular,openai} --save
 ```
 
 ---
