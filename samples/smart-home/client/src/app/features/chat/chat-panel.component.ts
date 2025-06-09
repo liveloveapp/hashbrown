@@ -37,6 +37,7 @@ import {
   LightListComponent,
   LightListIconSchema,
 } from '../lights/light-list.component';
+import { ListComponent, ListItemComponent } from './components/list.component';
 import { SceneComponent } from '../scenes/scene.component';
 
 @Component({
@@ -297,6 +298,21 @@ export class ChatPanelComponent {
           sceneId: s.string('The id of the scene'),
         },
       }),
+      // exposeComponent(ListComponent, {
+      //   description: 'Show a list of items to the user',
+      //   children: [
+      //     exposeComponent(ListItemComponent, {
+      //       description: 'Show an item in the list',
+      //       input: {
+      //         content: s.string('The content of the list item'),
+      //       },
+      //     }),
+      //   ],
+      //   input: {
+      //     name: s.string('The name of the list'),
+      //     description: s.string('The description of the list'),
+      //   },
+      // }),
     ],
     tools: [
       createTool({

@@ -57,6 +57,28 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 }
 
 /**
+ * Flattens a component hierarchy into a map of component names to their definitions.
+ * This includes nested components defined in the children property.
+ */
+function flattenComponents(
+  components: ExposedComponent<any>[],
+): Map<string, ExposedComponent<any>> {
+  const componentMap = new Map<string, ExposedComponent<any>>();
+
+  function processComponent(component: ExposedComponent<any>) {
+    componentMap.set(component.name, component);
+
+    if (component.children && Array.isArray(component.children)) {
+      component.children.forEach(processComponent);
+    }
+  }
+
+  components.forEach(processComponent);
+
+  return componentMap;
+}
+
+/**
  * Creates a UI chat resource.
  *
  * @param args - The arguments for the UI chat resource.
@@ -65,6 +87,9 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 export function uiChatResource<Tools extends Chat.AnyTool>(
   args: UiChatResourceOptions<Tools>,
 ): UiChatResourceRef<Tools> {
+  const flattenedComponents = computed(() =>
+    flattenComponents(args.components),
+  );
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
@@ -103,13 +128,16 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
           return {
             ...message,
             [TAG_NAME_REGISTRY]:
-              args.components?.reduce((acc, component) => {
-                acc[component.name] = {
-                  props: component.props ?? {},
-                  component: component.component,
-                };
-                return acc;
-              }, {} as TagNameRegistry) ?? {},
+              Array.from(flattenedComponents().values()).reduce(
+                (acc, component) => {
+                  acc[component.name] = {
+                    props: component.props ?? {},
+                    component: component.component,
+                  };
+                  return acc;
+                },
+                {} as TagNameRegistry,
+              ) ?? {},
           };
         }
         if (message.role === 'user') {
