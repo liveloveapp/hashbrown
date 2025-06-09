@@ -98,24 +98,6 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   debugName?: string;
 }
 
-const flattenComponents = (
-  components: ExposedComponent<any>[],
-): Map<string, ExposedComponent<any>> => {
-  const componentMap = new Map<string, ExposedComponent<any>>();
-
-  function processComponent(component: ExposedComponent<any>) {
-    componentMap.set(component.name, component);
-
-    if (component.children && Array.isArray(component.children)) {
-      component.children.forEach(processComponent);
-    }
-  }
-
-  components.forEach(processComponent);
-
-  return componentMap;
-};
-
 /**
  * This React hook creates a chat instance that can generate and render UI components.
  * The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.
