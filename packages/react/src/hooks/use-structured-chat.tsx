@@ -88,6 +88,11 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   resendMessages: () => void;
 
   /**
+   * Function to stop the chat.
+   */
+  stop: () => void;
+
+  /**
    * Reload the chat, useful for retrying when an error occurs.
    */
   reload: () => void;
@@ -225,6 +230,10 @@ export function useStructuredChat<
     [hashbrown],
   );
 
+  const stop = useCallback(() => {
+    hashbrown?.stop();
+  }, [hashbrown]);
+
   const resendMessages = useCallback(() => {
     hashbrown?.resendMessages();
   }, [hashbrown]);
@@ -285,6 +294,7 @@ export function useStructuredChat<
 
   return {
     messages: internalMessages,
+    stop,
     sendMessage,
     resendMessages,
     setMessages,

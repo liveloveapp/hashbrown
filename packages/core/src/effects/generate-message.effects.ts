@@ -3,6 +3,7 @@ import { DeepPartial } from '../utils';
 import { sleep, switchAsync } from '../utils/async';
 import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
+import { decodeFrames } from '../frames/decode-frames';
 import { Chat } from '../models';
 import {
   selectApiMessages,
@@ -17,10 +18,12 @@ import {
   selectShouldGenerateMessage,
   selectSystem,
 } from '../reducers';
-import { decodeFrames } from '../frames/decode-frames';
+
+let currentAbortController: AbortController | null = null;
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
+  currentAbortController = effectAbortController;
 
   store.when(
     devActions.init,
@@ -162,8 +165,16 @@ export const generateMessage = createEffect((store) => {
     }, effectAbortController.signal),
   );
 
+  store.when(apiActions.stopMessageGeneration, () => {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+  });
+
   return () => {
     effectAbortController.abort();
+    currentAbortController = null;
   };
 });
 
