@@ -79,19 +79,6 @@ export const RichChatPanel = () => {
           description: s.streaming.string('The description of the card'),
         },
       }),
-      // exposeComponent(List, {
-      //   name: 'List',
-      //   description: 'Show a list of items to the user',
-      //   children: [
-      //     exposeComponent(ListItem, {
-      //       name: 'ListItem',
-      //       description: 'Show an item in the list',
-      //       props: {
-      //         content: s.string('The content of the list item'),
-      //       },
-      //     }),
-      //   ],
-      // }),
     ],
   });
 
