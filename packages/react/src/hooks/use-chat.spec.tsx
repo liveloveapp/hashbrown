@@ -23,6 +23,7 @@ vi.mock('@hashbrownai/core', async () => {
         teardown: vi.fn(),
         setMessages: vi.fn(),
         sendMessage: vi.fn(),
+        stop: vi.fn(),
         resendMessages: vi.fn(),
         updateOptions,
         observeIsReceiving: vi.fn(),

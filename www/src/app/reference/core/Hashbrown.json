@@ -488,6 +488,42 @@
         },
         {
           "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!Hashbrown#stop:member",
+          "docComment": "/**\n * Stop the current LLM interaction.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "stop: " },
+            {
+              "kind": "Content",
+              "text": "(clearStreamingMessage?: boolean) => void"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "stop",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Stop the current LLM interaction.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/core!Hashbrown#teardown:member",
           "docComment": "/**\n * Clean up resources and listeners associated with this Hashbrown instance.\n */\n",
           "excerptTokens": [

@@ -59,6 +59,47 @@
             "params": [],
             "examples": []
           }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceRef#stop:member",
+          "docComment": "/**\n * Stops any currently-streaming message.\n *\n * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "stop: " },
+            {
+              "kind": "Content",
+              "text": "(clearStreamingMessage?: boolean) => void"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "stop",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Stops any currently-streaming message.\n\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [
+              {
+                "name": "clearStreamingMessage",
+                "description": "Whether the currently-streaming message should be removed from state.\n"
+              }
+            ],
+            "examples": []
+          }
         }
       ],
       "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],

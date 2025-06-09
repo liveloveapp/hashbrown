@@ -25,6 +25,11 @@ export interface CompletionResourceRef extends Resource<string | null> {
    * @returns Whether the resource was reloaded.
    */
   reload: () => boolean;
+  /**
+   * Stops any currently-streaming message.
+   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   */
+  stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**
@@ -144,12 +149,17 @@ export function completionResource<Input>(
     return Boolean(value());
   }
 
+  function stop(clearStreamingMessage = false) {
+    hashbrown.stop(clearStreamingMessage);
+  }
+
   return {
     value,
     status,
     error,
     isLoading,
     reload,
+    stop,
     hasValue: hasValue as any,
   };
 }

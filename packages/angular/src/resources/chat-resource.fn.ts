@@ -24,6 +24,11 @@ import { readSignalLike, toSignal } from '../utils/signals';
 export interface ChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<string, Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
+  /**
+   * Stops any currently-streaming message.
+   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   */
+  stop: (clearStreamingMessage?: boolean) => void;
   reload: () => boolean;
 }
 
@@ -169,12 +174,17 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hashbrown.sendMessage(message);
   }
 
+  function stop(clearStreamingMessage = false) {
+    hashbrown.stop(clearStreamingMessage);
+  }
+
   return {
     hasValue: hasValue as any,
     status,
     isLoading,
     reload,
     sendMessage,
+    stop,
     value,
     error,
   };
