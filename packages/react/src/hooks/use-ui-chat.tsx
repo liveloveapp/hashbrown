@@ -98,6 +98,24 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   debugName?: string;
 }
 
+const flattenComponents = (
+  components: ExposedComponent<any>[],
+): Map<string, ExposedComponent<any>> => {
+  const componentMap = new Map<string, ExposedComponent<any>>();
+
+  function processComponent(component: ExposedComponent<any>) {
+    componentMap.set(component.name, component);
+
+    if (component.children && Array.isArray(component.children)) {
+      component.children.forEach(processComponent);
+    }
+  }
+
+  components.forEach(processComponent);
+
+  return componentMap;
+};
+
 /**
  * This React hook creates a chat instance that can generate and render UI components.
  * The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.
@@ -135,6 +153,9 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 ) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
+  const [flattenedComponents, setFlattenedComponents] = useState(
+    flattenComponents(initialComponents),
+  );
   const ui = useMemo(() => {
     return s.object('UI', {
       ui: s.streaming.array(
@@ -158,9 +179,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 
         const componentName = element.$tagName;
         const componentInputs = element.$props;
-        const componentType = components?.find(
-          (c) => c.name === componentName,
-        )?.component;
+        const componentType = flattenedComponents.get(componentName)?.component;
 
         if (componentName && componentInputs && componentType) {
           const children: React.ReactNode[] | null = element.$children
