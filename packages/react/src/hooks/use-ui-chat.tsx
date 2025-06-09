@@ -154,7 +154,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
   const [flattenedComponents, setFlattenedComponents] = useState(
-    flattenComponents(initialComponents),
+    ɵcomponents.flattenComponents(initialComponents),
   );
   const ui = useMemo(() => {
     return s.object('UI', {

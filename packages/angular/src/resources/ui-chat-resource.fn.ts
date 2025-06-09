@@ -57,28 +57,6 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 }
 
 /**
- * Flattens a component hierarchy into a map of component names to their definitions.
- * This includes nested components defined in the children property.
- */
-function flattenComponents(
-  components: ExposedComponent<any>[],
-): Map<string, ExposedComponent<any>> {
-  const componentMap = new Map<string, ExposedComponent<any>>();
-
-  function processComponent(component: ExposedComponent<any>) {
-    componentMap.set(component.name, component);
-
-    if (component.children && Array.isArray(component.children)) {
-      component.children.forEach(processComponent);
-    }
-  }
-
-  components.forEach(processComponent);
-
-  return componentMap;
-}
-
-/**
  * Creates a UI chat resource.
  *
  * @param args - The arguments for the UI chat resource.
@@ -88,7 +66,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
   args: UiChatResourceOptions<Tools>,
 ): UiChatResourceRef<Tools> {
   const flattenedComponents = computed(() =>
-    flattenComponents(args.components),
+    ɵcomponents.flattenComponents(args.components),
   );
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(

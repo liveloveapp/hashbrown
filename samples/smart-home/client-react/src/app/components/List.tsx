@@ -6,7 +6,7 @@ export interface ListProps {
 
 export const List = ({ name, description, children }: ListProps) => {
   return (
-    <div className="flex flex-col gap-2 border border-red-500 ">
+    <div className="flex flex-col gap-2 border border-red-500 p-2">
       <div>{name}</div>
       <div>{description}</div>
       <div className="flex flex-col gap-2">{children}</div>
