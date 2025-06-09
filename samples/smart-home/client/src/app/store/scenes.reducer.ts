@@ -4,6 +4,7 @@ import { Scene } from '../models/scene.model';
 import { ScenesApiActions } from '../features/scenes/actions/scenes-api.actions';
 import { ScenesPageActions } from '../features/scenes/actions/scenes-page.actions';
 import { ChatAiActions } from '../features/chat/actions/chat-ai.actions';
+import { DashboardApiActions } from '../features/dashboard/actions';
 
 export interface ScenesState extends EntityState<Scene> {
   loading: boolean;
@@ -26,8 +27,10 @@ export const scenesReducer = createReducer(
     loading: true,
     error: null,
   })),
-  on(ScenesApiActions.loadScenesSuccess, (state, { scenes }) =>
-    adapter.setAll(scenes, { ...state, loading: false }),
+  on(
+    ScenesApiActions.loadScenesSuccess,
+    DashboardApiActions.loadHomeStateSuccess,
+    (state, { scenes }) => adapter.setAll(scenes, { ...state, loading: false }),
   ),
   on(ScenesApiActions.loadScenesFailure, (state, { error }) => ({
     ...state,

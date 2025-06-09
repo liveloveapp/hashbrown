@@ -26,6 +26,14 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
     <mat-toolbar color="primary">
       <span>Smart Home</span>
       <div class="spacer"></div>
+      <button
+        mat-button
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        Home
+      </button>
       <button mat-button routerLink="/lights" routerLinkActive="active">
         Lights
       </button>
