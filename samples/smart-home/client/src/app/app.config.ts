@@ -15,6 +15,7 @@ import { routes } from './app.routes';
 import * as lightApiEffects from './features/lights/effects/light-api.effects';
 import * as scenesApiEffects from './features/scenes/effects/scenes-api.effects';
 import * as scheduledScenesApiEffects from './pages/scheduled-scenes/effects/scheduled-scenes-api.effects';
+import * as dashboardEffects from './features/dashboard/effects/dashboard.effects';
 import { reducers } from './store';
 
 export const appConfig: ApplicationConfig = {
@@ -31,6 +32,7 @@ export const appConfig: ApplicationConfig = {
       lightApiEffects,
       scenesApiEffects,
       scheduledScenesApiEffects,
+      dashboardEffects,
     ]),
     provideMarkdown(),
     provideHashbrown({

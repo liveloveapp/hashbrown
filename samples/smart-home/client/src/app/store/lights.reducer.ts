@@ -5,6 +5,7 @@ import { LightsApiActions } from '../features/lights/actions/lights-api.actions'
 import { LightsPageActions } from '../features/lights/actions/lights-page.actions';
 import { ChatAiActions } from '../features/chat/actions';
 import { ScenesApiActions } from '../features/scenes/actions';
+import { DashboardApiActions } from '../features/dashboard/actions';
 
 export interface LightsState extends EntityState<Light> {
   isLoading: boolean;
@@ -26,8 +27,11 @@ export const lightsReducer = createReducer(
     ...state,
     isLoading: true,
   })),
-  on(LightsApiActions.loadLightsSuccess, (state, action) =>
-    adapter.setAll(action.lights, { ...state, isLoading: false }),
+  on(
+    LightsApiActions.loadLightsSuccess,
+    DashboardApiActions.loadHomeStateSuccess,
+    (state, action) =>
+      adapter.setAll(action.lights, { ...state, isLoading: false }),
   ),
   on(LightsApiActions.loadLightsFailure, (state, action) => ({
     ...state,
