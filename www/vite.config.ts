@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
               theme: shikiHashbrown as any,
             },
             highlighter: {
-              additionalLangs: ['sh'],
+              additionalLangs: ['sh', 'markdown'],
             },
           },
           markedOptions: {
