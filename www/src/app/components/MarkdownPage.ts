@@ -85,24 +85,44 @@ type Heading = { level: number; text: string; id: string; url: string };
       article ::ng-deep analog-markdown-route > div {
         display: flex;
         flex-direction: column;
-        gap: 32px;
 
         h1 {
           font:
             500 32px/40px Fredoka,
             sans-serif;
+          margin-top: 8px;
+          margin-bottom: 16px;
         }
 
         h2 {
           font:
             500 24px/32px Fredoka,
             sans-serif;
+          margin-top: 8px;
+          margin-bottom: 12px;
         }
 
         h3 {
           font:
             500 20px/28px Fredoka,
             sans-serif;
+          margin-top: 8px;
+          margin-bottom: 12px;
+        }
+
+        h4 {
+          margin-top: 8px;
+          margin-bottom: 12px;
+        }
+
+        p {
+          margin: 0 0 12px;
+          line-height: 1.8;
+        }
+
+        ul,
+        ol {
+          margin-bottom: 16px;
         }
 
         hr {
@@ -163,6 +183,7 @@ type Heading = { level: number; text: string; id: string; url: string };
           border-radius: 8px;
           background: #2b2a29 !important;
           overflow-x: auto;
+          margin-bottom: 16px;
         }
 
         code:not(pre code) {
@@ -174,7 +195,7 @@ type Heading = { level: number; text: string; id: string; url: string };
         table {
           border-collapse: collapse;
           border-radius: 12px;
-          margin: 24px 0;
+          margin: 0 0 24px;
           overflow: hidden;
           box-shadow: inset 0 0 0 1px #000;
 

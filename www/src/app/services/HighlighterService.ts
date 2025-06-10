@@ -11,7 +11,7 @@ export class HighlighterService {
   async loadHighlighter() {
     this.highlighter = await createHighlighter({
       themes: [shikiHashbrown as any],
-      langs: ['css', 'html', 'shell', 'typescript'],
+      langs: ['css', 'html', 'shell', 'typescript', 'markdown'],
     });
   }
 
