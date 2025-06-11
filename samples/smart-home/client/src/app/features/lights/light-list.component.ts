@@ -30,7 +30,7 @@ export const LightListIconSchema = s.enumeration('Icon for a Group of Lights', [
       <div class="list-icon">
         <mat-icon>{{ icon() }}</mat-icon>
       </div>
-      <h2 class="list-title" aria->
+      <h2 class="list-title">
         {{ title() }}
       </h2>
     </div>

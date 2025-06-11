@@ -46,8 +46,6 @@ export function createToolJavaScript({
       code: s.string('The JavaScript code to run'),
     }),
     handler: async ({ code }, abortSignal) => {
-      console.log('in tool javascript');
-      console.log(code);
       const timeoutSignal = AbortSignal.timeout(timeout);
       const combinedSignal = AbortSignal.any([abortSignal, timeoutSignal]);
 

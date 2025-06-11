@@ -426,9 +426,6 @@ export class ChatPanelComponent {
           // Based on https://github.com/lucgagan/auto-playwright/blob/main/src/createActions.ts
           const element = document.querySelector(input.cssSelector);
 
-          console.log(input.cssSelector);
-          console.log(element);
-
           if (element) {
             const elementId = uuid();
             element.setAttribute('data-element-id', elementId);
@@ -448,12 +445,7 @@ export class ChatPanelComponent {
         handler: (input) => {
           const result = document.evaluate(input.xpathSelector, document);
 
-          console.log(input.xpathSelector);
-          console.log(result);
-
           const foundElement = result.iterateNext();
-
-          console.log(foundElement);
 
           if (foundElement) {
             const elementId = uuid();
@@ -482,8 +474,6 @@ export class ChatPanelComponent {
           const element = document.querySelector(
             `[data-element-id="${input.elementId}`,
           );
-
-          console.log(element);
 
           if (!element) {
             return Promise.resolve(false);
