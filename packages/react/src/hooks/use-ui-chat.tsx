@@ -135,6 +135,9 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 ) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
+  const [flattenedComponents, setFlattenedComponents] = useState(
+    ɵcomponents.flattenComponents(initialComponents),
+  );
   const ui = useMemo(() => {
     return s.object('UI', {
       ui: s.streaming.array(
@@ -158,9 +161,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 
         const componentName = element.$tagName;
         const componentInputs = element.$props;
-        const componentType = components?.find(
-          (c) => c.name === componentName,
-        )?.component;
+        const componentType = flattenedComponents.get(componentName)?.component;
 
         if (componentName && componentInputs && componentType) {
           const children: React.ReactNode[] | null = element.$children

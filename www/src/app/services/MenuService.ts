@@ -10,6 +10,7 @@ const DOCS_ANGULAR = section('Docs', [
     link('Platforms', '/docs/angular/start/platforms'),
   ]),
   section('Concepts', [
+    link('System Instructions', '/docs/angular/concept/system-instructions'),
     link('Function Calling', '/docs/angular/concept/functions'),
     link('Structured Output', '/docs/angular/concept/structured-output'),
     link('Skillet Schema', '/docs/angular/concept/schema'),
@@ -39,6 +40,7 @@ const DOCS_REACT = section('Docs', [
     link('Platforms', '/docs/react/start/platforms'),
   ]),
   section('Concepts', [
+    link('System Instructions', '/docs/react/concept/system-instructions'),
     link('Function Calling', '/docs/react/concept/functions'),
     link('Structured Output', '/docs/react/concept/structured-output'),
     link('Skillet Schema', '/docs/react/concept/schema'),
