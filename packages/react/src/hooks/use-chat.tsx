@@ -69,6 +69,11 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
   sendMessage: (message: Chat.Message<string, Tools>) => void;
 
   /**
+   * Function to stop the chat.
+   */
+  stop: () => void;
+
+  /**
    * Reload the chat, useful for retrying when an error occurs.
    */
   reload: () => void;
@@ -209,6 +214,10 @@ export function useChat<Tools extends Chat.AnyTool>(
     [hashbrown],
   );
 
+  const stop = useCallback(() => {
+    hashbrown?.stop();
+  }, [hashbrown]);
+
   const setMessages = useCallback(
     (messages: Chat.Message<string, Tools>[]) => {
       hashbrown?.setMessages(messages);
@@ -267,6 +276,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     messages: internalMessages,
     sendMessage,
     setMessages,
+    stop,
     reload,
     error,
     isReceiving,
