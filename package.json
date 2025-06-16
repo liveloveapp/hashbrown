@@ -155,6 +155,7 @@
     "angular-eslint": "^19.3.0",
     "autoprefixer": "^10.4.0",
     "babel-jest": "^29.7.0",
+    "chart.js": "^4.4.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
