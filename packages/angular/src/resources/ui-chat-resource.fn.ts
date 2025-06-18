@@ -8,10 +8,9 @@ import {
   TagNameRegistry,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
-import { ComponentTreeSchema } from 'packages/core/src/utils';
 
 type UiChatMessageOutput = s.ObjectType<{
-  ui: s.ArrayType<s.ObjectType<ComponentTreeSchema>>;
+  ui: s.ArrayType<s.ObjectType<ɵcomponents.ComponentTreeSchema>>;
 }>;
 
 /**
