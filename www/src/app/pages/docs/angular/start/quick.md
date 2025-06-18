@@ -11,6 +11,12 @@ hashbrown is an open source library for building joyful AI experiences with mode
 
 ---
 
+## Demo
+
+<div style="padding:64.9% 0 0 0;position:relative;width:100%"><iframe src="https://player.vimeo.com/video/1088958585?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Introducing Hashbrown"></iframe></div>
+
+---
+
 ## Prerequisites
 
 - Node.js v18+
@@ -34,7 +40,7 @@ To follow along, you'll need to
 ## Install
 
 ```sh
-npm install @hashbrown/{core,angular,openai} --save
+npm install @hashbrownai/{core,angular,openai} --save
 ```
 
 ---

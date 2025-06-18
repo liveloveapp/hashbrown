@@ -9,6 +9,10 @@ import {
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
 
+type UiChatMessageOutput = s.ObjectType<{
+  ui: s.ArrayType<s.ObjectType<ɵcomponents.ComponentTreeSchema>>;
+}>;
+
 /**
  * Options for the UI chat resource.
  */
@@ -28,7 +32,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The initial messages for the UI chat resource.
    */
-  messages?: Chat.Message<string, Tools>[];
+  messages?: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[];
   /**
    * The tools to use for the UI chat resource.
    */
@@ -65,6 +69,9 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 export function uiChatResource<Tools extends Chat.AnyTool>(
   args: UiChatResourceOptions<Tools>,
 ): UiChatResourceRef<Tools> {
+  const flattenedComponents = computed(() =>
+    ɵcomponents.flattenComponents(args.components),
+  );
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
@@ -77,6 +84,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
     system: args.system,
+    messages: [...(args.messages ?? [])],
     debugName: args.debugName,
     debounce: args.debounce,
     apiUrl: args.apiUrl,
@@ -103,13 +111,16 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
           return {
             ...message,
             [TAG_NAME_REGISTRY]:
-              args.components?.reduce((acc, component) => {
-                acc[component.name] = {
-                  props: component.props ?? {},
-                  component: component.component,
-                };
-                return acc;
-              }, {} as TagNameRegistry) ?? {},
+              Array.from(flattenedComponents().values()).reduce(
+                (acc, component) => {
+                  acc[component.name] = {
+                    props: component.props ?? {},
+                    component: component.component,
+                  };
+                  return acc;
+                },
+                {} as TagNameRegistry,
+              ) ?? {},
           };
         }
         if (message.role === 'user') {

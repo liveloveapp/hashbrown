@@ -36,9 +36,31 @@ type ComponentTree = {
   $props: Record<string, any>;
 };
 
-type ComponentTreeSchema = {
+export type ComponentTreeSchema = {
   [k in keyof ComponentTree]: s.Schema<ComponentTree[k]>;
 };
+
+/**
+ * Flattens a component hierarchy into a map of component names to their definitions.
+ * This includes nested components defined in the children property.
+ */
+export function flattenComponents(
+  components: ExposedComponent<any>[],
+): Map<string, ExposedComponent<any>> {
+  const componentMap = new Map<string, ExposedComponent<any>>();
+
+  function processComponent(component: ExposedComponent<any>) {
+    componentMap.set(component.name, component);
+
+    if (component.children && Array.isArray(component.children)) {
+      component.children.forEach(processComponent);
+    }
+  }
+
+  components.forEach(processComponent);
+
+  return componentMap;
+}
 
 /**
  * Creates a schema for a list of exposed components, allowing for the definition

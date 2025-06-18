@@ -38,6 +38,11 @@ import {
   LightListIconSchema,
 } from '../lights/light-list.component';
 import { SceneComponent } from '../scenes/scene.component';
+import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
+import { ComponentPortal } from '@angular/cdk/portal';
+import sanitizeHtml from 'sanitize-html';
+import { HelpTopicMarkerComponent } from '../../components/help-topic-marker.component';
+import { v4 as uuid } from 'uuid';
 
 @Component({
   selector: 'app-chat-panel',
@@ -49,6 +54,7 @@ import { SceneComponent } from '../scenes/scene.component';
     MessagesComponent,
     SimpleMessagesComponent,
     MatProgressBarModule,
+    OverlayModule,
   ],
   template: `
     @if (!simpleDemo && chat.isLoading()) {
@@ -67,6 +73,14 @@ import { SceneComponent } from '../scenes/scene.component';
         />
       }
     </div>
+
+    @if (helpMarkerOverlayRefs.length > 0) {
+      <div class="overlay-clear">
+        <button extended matButton="filled" (click)="clearOverlays()">
+          Clear Help Markers
+        </button>
+      </div>
+    }
 
     <div class="chat-composer">
       <app-chat-composer
@@ -89,6 +103,7 @@ import { SceneComponent } from '../scenes/scene.component';
         grid-template-areas:
           'header'
           'messages'
+          'clearHelp'
           'loading'
           'composer';
         grid-template-rows: auto 1fr auto;
@@ -127,6 +142,15 @@ import { SceneComponent } from '../scenes/scene.component';
         grid-area: composer;
         padding: 0 16px 16px;
       }
+
+      .overlay-clear {
+        grid-area: clearHelp;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
     `,
   ],
 })
@@ -134,8 +158,11 @@ export class ChatPanelComponent {
   store = inject(Store);
   authService = inject(AuthService);
   smartHomeService = inject(SmartHomeService);
+  overlay = inject(Overlay);
 
   simpleDemo = false;
+
+  helpMarkerOverlayRefs: OverlayRef[] = [];
 
   @ViewChild('contentDiv') private contentDiv: ElementRef = {} as ElementRef;
 
@@ -150,6 +177,14 @@ export class ChatPanelComponent {
     });
   }
 
+  clearOverlays() {
+    this.helpMarkerOverlayRefs.forEach((overlayRef) => {
+      overlayRef.dispose();
+    });
+
+    this.helpMarkerOverlayRefs.length = 0;
+  }
+
   /**
    * --------------------------------------------------------------------------
    * Simple chat
@@ -158,6 +193,7 @@ export class ChatPanelComponent {
   simpleChat = chatResource({
     model: 'gpt-4.1',
     // model: 'gemini-2.5-flash-preview-04-17',
+    // model: 'palmyra-x5',
     debugName: 'simple-chat',
     system: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
     tools: [
@@ -259,14 +295,57 @@ export class ChatPanelComponent {
    * UI chat
    * --------------------------------------------------------------------------
    */
-
   chat = uiChatResource({
     model: 'gpt-4.1',
     // model: 'gemini-2.5-pro-preview-05-06',
     // model: 'gpt-4o@2025-01-01-preview',
+    // model: 'palmyra-x5',
     debugName: 'ui-chat',
     system: `
-      You are a helpful assistant that can answer questions and help with tasks.
+      You are a helpful assistant for a smart home app. You are speaking to the user
+      in a web app, and their smart home interface is to the left. 
+
+      You can help with various things like:
+      * setting up a smart home (with lights, scenes and scheduling)
+      * page navigation (ex: Go to "lights")
+      * showing views of entities in the chat window (ex: "Show me my living room lights")
+      * explaining whatever the current page is to varying levels of detail
+
+      If the user asks you to help them set up their smart home, ask them what lights and scenes
+      they want to create, then write a script for the javascript tool that creates those scenes.
+
+      Always prefer writing a single script for the javascript tool over calling the javascript
+      tool multiple times.
+
+      You can locate important elements via findHTMLElementBySelector:
+      * the argument for findHTMLElementBySelector is a precise CSS selector
+      * When creating CSS selectors, ensure they are unique and specific enough to select only one element, even if there are multiple elements of the same type (like multiple h1 elements).
+      * Avoid using generic tags like 'h1' alone. Instead, combine them with other attributes or structural relationships to form a unique selector.
+      * Selectors should not include "main.chatPanelOpen"
+      * If you cannot locate an element after 3 tries, **give up** and the user know.
+      
+      Prefer findHTMLElementBySelector, unless you are trying ot find a button or link by text (i.e. "take me to the scenes page" -> click the Scenes button).
+      In those cases, use findHTMLElementByXPathSelector, whose argument is a precise XPath selector.  Xpath selectors can be based on text matching,
+      making them more suitable for finding interactive elements by name.
+
+      When a user asks for an explanation of or help with a page:
+      * ignore the chat panel and its contents unless the user explicitly asks about the chat panel
+      * always re-retrieve the HTML for the page (via getPageHTML)
+      * only mark the 3 most important parts of the page
+      * don't callout individual elements in a vertical list (i.e. describe a list of lights, but not each light)
+      * place markers overlayed on the page that match up with sections in the description  
+      
+      **Important Rules**
+      * When a user requests navigation (such as 'go to the lights page'), do not show light controls, explanations, or summaries unless the user explicitly asks for them. Only perform the navigation action. Do not generate any output in the main chat window unless further instructions are given.
+        * Example 1: "Take me to the schedule scenes page" should cause navigation but no explanation or controls.
+        * Example 2: "Navigate to the lights page" should cause navigation but no explanation or controls.
+        * Example 3: "Walk me through the Lights page" (when on the Scenes page) should cause navigation and _also_ explanation.
+      * If a user does not ask for an explanation or help understanding, don't provide any explanation. For example, if a user asks to click an element or go to a different page, just do that without providing page explanation.
+      * If a user asks for navigation (like, "go the lights page" or "take me to the lights page"), don't show controls in the chat.
+        * Example: "Navigate to the lights page" should not lead to any controls being rendered in chat.
+
+      Please do not stringify (aka escape) function arguments.  Also, make sure not to include bits of JSON Schema in the function 
+      arguments and returned structured data. 
     `,
     components: [
       exposeComponent(MarkdownComponent, {
@@ -313,6 +392,145 @@ export class ChatPanelComponent {
         name: 'getScenes',
         description: 'Get the current scenes',
         handler: () => lastValueFrom(this.smartHomeService.loadScenes$()),
+      }),
+      createTool({
+        name: 'getPageHTML',
+        description: 'Get the currently rendered page HTML',
+        handler: () => {
+          const fullHTML = document.documentElement.outerHTML;
+
+          const sanitized = sanitizeHtml(fullHTML, {
+            allowedAttributes: {
+              '*': [
+                'href',
+                'data-*',
+                'alt',
+                'class',
+                'style',
+                'aria-*',
+                'role',
+                'routerLink',
+              ],
+            },
+          });
+
+          return Promise.resolve(sanitized);
+        },
+      }),
+      createToolWithArgs({
+        name: 'findHTMLElementByCSSSelector',
+        description: 'Find the html element via a unique CSS selector.',
+        schema: s.object('Args', {
+          cssSelector: s.string(
+            'A unique CSS selector that is crafted to only return one element',
+          ),
+        }),
+        handler: (input) => {
+          // Based on https://github.com/lucgagan/auto-playwright/blob/main/src/createActions.ts
+          const element = document.querySelector(input.cssSelector);
+
+          if (element) {
+            const elementId = uuid();
+            element.setAttribute('data-element-id', elementId);
+            return Promise.resolve(elementId);
+          }
+          return Promise.resolve('');
+        },
+      }),
+      createToolWithArgs({
+        name: 'findHTMLElementByXPathSelector',
+        description: 'Find the html element via a unique XPath.',
+        schema: s.object('Args', {
+          xpathSelector: s.string(
+            'A unique XPath selector that is crafted to only return one element',
+          ),
+        }),
+        handler: (input) => {
+          const result = document.evaluate(input.xpathSelector, document);
+
+          const foundElement = result.iterateNext();
+
+          if (foundElement) {
+            const elementId = uuid();
+
+            if (foundElement instanceof Element) {
+              (foundElement as Element).setAttribute(
+                'data-element-id',
+                elementId,
+              );
+
+              return Promise.resolve(elementId);
+            }
+          }
+          return Promise.resolve('');
+        },
+      }),
+      createToolWithArgs({
+        name: 'clickElement',
+        description: 'Click.',
+        schema: s.object('Click an element', {
+          elementId: s.string(
+            'A uuid that is a unique data-element-id value for the target of the topic marker',
+          ),
+        }),
+        handler: (input) => {
+          const element = document.querySelector(
+            `[data-element-id="${input.elementId}`,
+          );
+
+          if (!element) {
+            return Promise.resolve(false);
+          }
+
+          (element as HTMLElement).click();
+
+          return Promise.resolve(true);
+        },
+      }),
+      createToolWithArgs({
+        name: 'drawTopicMarker',
+        description:
+          'Create a circle with a letter.  Used to visually associate things in the UI with topics in chat.',
+        schema: s.object('Create marker on UI', {
+          elementId: s.string(
+            'A uuid that is a unique data-element-id value for the target of the topic marker',
+          ),
+          label: s.string(
+            'A single capital letter that should match a label in the explanatory text',
+          ),
+        }),
+        handler: (input) => {
+          const element = document.querySelector(
+            `[data-element-id="${input.elementId}`,
+          );
+
+          if (!element) {
+            return Promise.resolve(false);
+          }
+
+          const overlayRef = this.overlay.create({
+            positionStrategy: this.overlay
+              .position()
+              .flexibleConnectedTo(element)
+              .withPositions([
+                {
+                  originX: 'center',
+                  originY: 'center',
+                  overlayX: 'center',
+                  overlayY: 'top',
+                },
+              ]),
+            scrollStrategy: this.overlay.scrollStrategies.reposition(),
+            hasBackdrop: false,
+          });
+
+          this.helpMarkerOverlayRefs.push(overlayRef);
+
+          const marker = new ComponentPortal(HelpTopicMarkerComponent);
+          const markerRef = overlayRef.attach(marker);
+          markerRef.setInput('markerLabel', input.label);
+          return Promise.resolve(true);
+        },
       }),
       createToolWithArgs({
         name: 'controlLight',

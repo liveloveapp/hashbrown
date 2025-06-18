@@ -51,14 +51,14 @@ import { LightListComponent } from './light-list.component';
       :host {
         display: block;
         width: 100%;
-        height: 100%;
+        height: calc(100dvh - 80px);
         position: relative;
       }
 
       .add-light-button {
-        position: fixed;
+        position: absolute;
         bottom: 20px;
-        right: 20px;
+        right: 0px;
       }
 
       .lights-container {
