@@ -33,7 +33,7 @@ export class Logger {
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= DEBUG_LEVEL)
         ) {
-          console.debug(args);
+          console.log(args);
         }
       },
       info: (args: any) => {
@@ -51,7 +51,7 @@ export class Logger {
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= ERROR_LEVEL)
         ) {
-          console.error(args);
+          console.warn(args);
         }
       },
       error: (args: any) => {
@@ -60,7 +60,7 @@ export class Logger {
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= TRACE_LEVEL)
         ) {
-          console.trace(args);
+          console.error(args);
         }
       },
     };

@@ -193,6 +193,7 @@ export class ChatPanelComponent {
   simpleChat = chatResource({
     model: 'gpt-4.1',
     // model: 'gemini-2.5-flash-preview-04-17',
+    // model: 'palmyra-x5',
     debugName: 'simple-chat',
     system: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
     tools: [
@@ -298,6 +299,7 @@ export class ChatPanelComponent {
     model: 'gpt-4.1',
     // model: 'gemini-2.5-pro-preview-05-06',
     // model: 'gpt-4o@2025-01-01-preview',
+    // model: 'palmyra-x5',
     debugName: 'ui-chat',
     system: `
       You are a helpful assistant for a smart home app. You are speaking to the user
@@ -342,6 +344,8 @@ export class ChatPanelComponent {
       * If a user asks for navigation (like, "go the lights page" or "take me to the lights page"), don't show controls in the chat.
         * Example: "Navigate to the lights page" should not lead to any controls being rendered in chat.
 
+      Please do not stringify (aka escape) function arguments.  Also, make sure not to include bits of JSON Schema in the function 
+      arguments and returned structured data. 
     `,
     components: [
       exposeComponent(MarkdownComponent, {

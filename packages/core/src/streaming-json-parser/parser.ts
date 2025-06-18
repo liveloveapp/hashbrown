@@ -10,7 +10,7 @@
  * @see https://github.com/promplate/partial-json-parser-js
  */
 
-import { Logger, NONE_LEVEL } from '../logger/logger';
+import { DEBUG_LEVEL, Logger, NONE_LEVEL } from '../logger/logger';
 import { s } from '../schema';
 import { isStreaming } from '../schema/is-streaming';
 import {
