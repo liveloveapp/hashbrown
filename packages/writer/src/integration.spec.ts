@@ -110,6 +110,7 @@ test('Writer with structured output', async () => {
     debounce: 0,
     apiUrl: server.url,
     model: 'palmyra-x5',
+    emulateStructuredOutput: true,
     system: `
      I am writing an integration test against Writer. Respond
      exactly with the text "Hello, world!" in JSON format.

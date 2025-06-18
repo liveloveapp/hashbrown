@@ -36,7 +36,7 @@ type ComponentTree = {
   $props: Record<string, any>;
 };
 
-type ComponentTreeSchema = {
+export type ComponentTreeSchema = {
   [k in keyof ComponentTree]: s.Schema<ComponentTree[k]>;
 };
 
