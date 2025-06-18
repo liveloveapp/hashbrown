@@ -8,6 +8,11 @@ import {
   TagNameRegistry,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
+import { ComponentTreeSchema } from 'packages/core/src/utils';
+
+type UiChatMessageOutput = s.ObjectType<{
+  ui: s.ArrayType<s.ObjectType<ComponentTreeSchema>>;
+}>;
 
 /**
  * Options for the UI chat resource.
@@ -28,7 +33,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The initial messages for the UI chat resource.
    */
-  messages?: Chat.Message<string, Tools>[];
+  messages?: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[];
   /**
    * The tools to use for the UI chat resource.
    */
@@ -80,6 +85,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
     system: args.system,
+    messages: [...(args.messages ?? [])],
     debugName: args.debugName,
     debounce: args.debounce,
     apiUrl: args.apiUrl,

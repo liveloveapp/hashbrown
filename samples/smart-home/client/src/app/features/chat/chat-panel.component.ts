@@ -294,7 +294,6 @@ export class ChatPanelComponent {
    * UI chat
    * --------------------------------------------------------------------------
    */
-
   chat = uiChatResource({
     model: 'gpt-4.1',
     // model: 'gemini-2.5-pro-preview-05-06',

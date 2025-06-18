@@ -91,6 +91,7 @@ export function structuredChatResource<
         runInInjectionContext(injector, () => m(requestInit));
     }),
     system: readSignalLike(options.system),
+    messages: [...(options.messages ?? [])],
     model: readSignalLike(options.model),
     tools: options.tools,
     responseSchema: options.schema,
