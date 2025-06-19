@@ -8,6 +8,7 @@
     "build": {
       "executor": "@analogjs/platform:vite",
       "defaultConfiguration": "production",
+      "cache": true,
       "configurations": {
         "development": {
           "mode": "development"
@@ -52,6 +53,7 @@
     "test": {
       "executor": "@analogjs/vitest-angular:test",
       "outputs": ["{projectRoot}/coverage"],
+      "cache": true,
       "options": {
         "passWithNoTests": true
       }
