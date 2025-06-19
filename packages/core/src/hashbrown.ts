@@ -4,6 +4,7 @@
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
  */
 import { devActions } from './actions';
+import apiActions from './actions/api.actions';
 import effects from './effects';
 import { Chat } from './models';
 import {
@@ -83,6 +84,9 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
 
   /** Clean up resources and listeners associated with this Hashbrown instance. */
   teardown: () => void;
+
+  /** Stop the current LLM interaction. */
+  stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**
@@ -258,6 +262,11 @@ export function fryHashbrown(init: {
     state.teardown();
   }
 
+  function stop(clearStreamingMessage = false) {
+    console.log('stopping');
+    state.dispatch(apiActions.stopMessageGeneration());
+  }
+
   return {
     setMessages,
     sendMessage,
@@ -271,6 +280,7 @@ export function fryHashbrown(init: {
     observeExhaustedRetries,
     updateOptions,
     teardown,
+    stop,
     get messages() {
       return state.read(selectViewMessages);
     },
