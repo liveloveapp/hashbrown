@@ -12,6 +12,12 @@ import { DropdownMenu } from './DropDownMenu';
     <header>
       <div class="left">
         <a routerLink="/">
+          <img
+            class="shake"
+            src="/image/logo/brand-mark.svg"
+            alt="our friendly logo that looks like a hashbrown character from an animated tv show"
+            height="48"
+          />
           <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
         </a>
       </div>
@@ -72,12 +78,18 @@ import { DropdownMenu } from './DropDownMenu';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 24px 32px;
+        padding: 12px 32px;
 
         > .left {
           display: flex;
           gap: 24px;
           align-items: center;
+
+          > a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
         }
 
         > .right {
@@ -112,8 +124,11 @@ import { DropdownMenu } from './DropDownMenu';
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                    font: 600 16px/24px sans-serif;
+                    font:
+                      600 16px/16px 'KefirVariable',
+                      sans-serif;
                     color: #774625;
+                    font-variation-settings: 'wght' 700;
                     text-decoration-line: underline;
                     text-decoration-color: transparent;
                     transition: text-decoration-color 0.2s ease-in-out;

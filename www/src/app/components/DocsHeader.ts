@@ -123,8 +123,11 @@ import { DropdownMenu } from './DropDownMenu';
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                    font: 600 16px/24px sans-serif;
+                    font:
+                      600 16px/16px 'KefirVariable',
+                      sans-serif;
                     color: #774625;
+                    font-variation-settings: 'wght' 700;
                     text-decoration-line: underline;
                     text-decoration-color: transparent;
                     transition: text-decoration-color 0.2s ease-in-out;
