@@ -3,17 +3,19 @@ import {
   Component,
   computed,
   ElementRef,
-  NgZone,
+  inject,
   signal,
   viewChildren,
 } from '@angular/core';
-import { LpdNaturalLanguage } from './LpdNaturalLanguage';
+import { RouterLink } from '@angular/router';
+import { ConfigService } from '../../services/ConfigService';
 import { LdpCompletions } from './LdpCompletions';
 import { LdpVibeCode } from './LdpVibeCode';
+import { LpdNaturalLanguage } from './LpdNaturalLanguage';
 
 @Component({
   selector: 'www-ldp-tour',
-  imports: [LpdNaturalLanguage, LdpCompletions, LdpVibeCode],
+  imports: [LpdNaturalLanguage, LdpCompletions, LdpVibeCode, RouterLink],
   template: `
     <section class="product-tour">
       <!-- Left: sticky animation area -->
@@ -21,12 +23,12 @@ import { LdpVibeCode } from './LdpVibeCode';
         <div class="feature-animation">
           <div class="anim" [class.active]="1 === activeStep()" data-step="1">
             @if (activeStep() === 1) {
-              <www-lpd-natural-language />
+              <www-lpd-completions />
             }
           </div>
           <div class="anim" [class.active]="2 === activeStep()" data-step="2">
             @if (activeStep() === 2) {
-              <www-lpd-completions />
+              <www-lpd-natural-language />
             }
           </div>
           <div class="anim" [class.active]="3 === activeStep()" data-step="3">
@@ -46,22 +48,25 @@ import { LdpVibeCode } from './LdpVibeCode';
       <div class="tour-content">
         <section class="step" data-step="1" #step>
           <h2 [class.active]="1 === activeStep()">
-            translate natural language into structured data
+            speed up workflows with suggestions and completions
           </h2>
           <p [class.active]="1 === activeStep()">
-            Simplify complex forms & filters by leveraging large language models
-            to accept your user's natural language translated into your app's
-            existing data structures.
+            Use hashbrown to streamline your users' workflows by intelligently
+            predicting their next steps or guessing their next input. Subtly
+            there when it helps speed them up, and totally ignorable when they
+            are focused.
           </p>
         </section>
         <section class="step" data-step="2" #step>
           <h2 [class.active]="2 === activeStep()">
-            speed up workflows with suggestions and completions
+            Simplify complex forms & filters with natural language input
           </h2>
           <p [class.active]="2 === activeStep()">
-            Streamline your users' workflows by intelligently guessing their
-            next steps. Subtly there when it helps speed them up, and totally
-            ignorable when they are focused.
+            Simplify complex forms & filters by accepting your users' natural
+            language. Hashbrown uses AI under-the-hood along with
+            <a [routerLink]="schemaDocsUrl()">Skillet</a>, our LLM-optimized
+            schema language, to translate text into your app's existing data
+            structures.
           </p>
         </section>
         <section class="step" data-step="3" #step>
@@ -81,9 +86,13 @@ import { LdpVibeCode } from './LdpVibeCode';
             vibe code directly in the browser, safely & securely
           </h2>
           <p [class.active]="4 === activeStep()">
-            What if we could leverage vibe coding as an app capability? Turn
-            user intent and your data into code using LLMs, then use Hashbrown
-            to safely and securely run that code in a sandboxed environment.
+            Hashbrown ships with a JavaScript VM to safely and securely run
+            LLM-authored scripts in the browser. Useful for grounding
+            mathematical operations, the JavaScript VM can also be leveraged for
+            file creation and analysis. You can even use
+            <a [routerLink]="schemaDocsUrl()">Skillet</a> to expose custom APIs
+            into the runtime. Imagine letting your users safely "vibe code" in
+            the context of your service and component layer.
           </p>
         </section>
       </div>
@@ -143,28 +152,39 @@ import { LdpVibeCode } from './LdpVibeCode';
         display: flex;
         flex-direction: column;
         justify-content: center;
-        gap: 8px;
+        gap: 16px;
         padding: 2rem;
         opacity: 1;
         transition: opacity 0.5s ease;
+
+        > h2 {
+          color: rgba(94, 92, 90, 0.88);
+          font:
+            600 32px/38px 'KefirVariable',
+            sans-serif;
+          font-variation-settings: 'wght' 600;
+          margin: 0;
+        }
+
+        > p {
+          color: #5e5c5a;
+          font:
+            400 16px/24px 'Poppins',
+            sans-serif;
+        }
       }
 
       .step.active {
         opacity: 1;
       }
-
-      h2 {
-        color: #5e5c5a;
-        font-family: 'Fredoka';
-        font-size: 28px;
-        font-style: normal;
-        font-weight: 600;
-        line-height: 38px; /* 118.75% */
-      }
     `,
   ],
 })
 export class LdpTour implements AfterViewInit {
+  configService = inject(ConfigService);
+  schemaDocsUrl = computed(() => {
+    return `/docs/${this.configService.sdk()}/concept/schema`;
+  });
   steps = viewChildren<ElementRef<HTMLElement>>('step');
   observations = signal<{ step: number; ratio: number }[]>([]);
   sortedObservations = computed(() =>
@@ -172,8 +192,6 @@ export class LdpTour implements AfterViewInit {
   );
   bestObservation = computed(() => this.sortedObservations()[0]);
   activeStep = signal(0);
-
-  constructor(private zone: NgZone) {}
 
   ngAfterViewInit() {
     if (

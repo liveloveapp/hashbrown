@@ -13,21 +13,22 @@ import { ConfigService } from '../services/ConfigService';
             src="/image/logo/brand-mark-alt.svg"
             alt="our friendly logo that looks like a hashbrown character from an animated tv show"
           />
-          <p>
-            a framework for building joyful,<br />AI-powered user experiences
-          </p>
+          <div class="underline">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
         </div>
         <div class="cta">
-          <a [routerLink]="docsUrl()"> read the documentation </a>
-          <p>100% free, open-source, and MIT-Licensed</p>
-          <iframe
-            src="https://ghbtns.com/github-btn.html?user=liveloveapp&repo=hashbrown&type=star&count=true&size=large"
-            frameborder="0"
-            scrolling="0"
-            width="120"
-            height="30"
-            title="GitHub"
-          ></iframe>
+          <h1>A framework for generative user interfaces</h1>
+          <p>
+            Hashbrown is a framework for building joyful, AI-powered user
+            interfaces that predict users' next steps, speeds them through
+            forms, and intelligently reorganizes views based on context. It's
+            made for Angular and React, with support for large language models
+            from OpenAI, Google, and Writer.
+          </p>
+          <a [routerLink]="docsUrl()">read the documentation</a>
         </div>
       </div>
     </div>
@@ -46,47 +47,45 @@ import { ConfigService } from '../services/ConfigService';
     .bleed {
       display: flex;
       flex-direction: column;
-      padding: 32px 32px;
+      padding: 48px 32px;
       width: 100%;
-      max-width: 1024px;
+      max-width: 962px;
     }
 
     .container {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 34px;
+      gap: 48px;
 
       > .logo {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-
-        img {
-          width: 180px;
-        }
-
-        > p {
-          color: #774625;
-          font:
-            400 28px/32px 'KefirVariable',
-            sans-serif;
-          text-align: center;
-          font-variation-settings: 'wght' 800;
-        }
+        display: none;
       }
 
       > .cta {
         display: flex;
         flex-direction: column;
-        align-items: center;
         gap: 16px;
+
+        > h1 {
+          color: #774625;
+          font:
+            400 32px/40px 'KefirVariable',
+            sans-serif;
+          font-variation-settings: 'wght' 800;
+        }
+
+        > p {
+          color: rgba(0, 0, 0, 0.64);
+          font:
+            400 18px/24px 'Fredoka',
+            sans-serif;
+        }
 
         a {
           display: flex;
           justify-content: center;
           align-items: center;
+          align-self: flex-start;
           color: rgba(255, 255, 255, 0.88);
           font:
             500 18px/24px 'Fredoka',
@@ -102,14 +101,6 @@ import { ConfigService } from '../services/ConfigService';
           &:hover {
             color: #fff;
           }
-        }
-
-        > p {
-          color: #774625;
-          font:
-            700 10px/16px Poppins,
-            sans-serif;
-          text-align: center;
         }
       }
     }
@@ -136,6 +127,69 @@ import { ConfigService } from '../services/ConfigService';
     @media screen and (min-width: 1024px) {
       .bleed {
         padding: 96px 64px;
+      }
+
+      .container {
+        flex-direction: row;
+        gap: 96px;
+
+        > .logo {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+
+          img {
+            width: 180px;
+          }
+
+          > .underline {
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            border-radius: 8px;
+            overflow: hidden;
+
+            > span {
+              width: 176px;
+              height: 8px;
+
+              &:nth-child(1) {
+                background: linear-gradient(
+                  90deg,
+                  rgba(232, 140, 77, 0) 0%,
+                  #e88c4d 100%
+                );
+              }
+
+              &:nth-child(2) {
+                background: linear-gradient(
+                  90deg,
+                  rgba(184, 96, 96, 0) 0%,
+                  #b86060 100%
+                );
+              }
+
+              &:nth-child(3) {
+                background: linear-gradient(
+                  90deg,
+                  rgba(158, 207, 215, 0) 0%,
+                  #9ecfd7 100%
+                );
+              }
+            }
+          }
+        }
+
+        > .cta {
+          > h1 {
+            font:
+              400 48px/56px 'KefirVariable',
+              sans-serif;
+            font-variation-settings: 'wght' 800;
+          }
+        }
       }
     }
   `,

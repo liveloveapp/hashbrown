@@ -1,4 +1,10 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
