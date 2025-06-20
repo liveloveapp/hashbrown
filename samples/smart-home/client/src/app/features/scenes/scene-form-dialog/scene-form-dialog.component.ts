@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -95,7 +95,7 @@ import { selectAllLights, selectLightEntities } from '../../../store';
               <span>{{ suggestedLight?.name }}</span>
               <span>Brightness: {{ light.brightness }}%</span>
               <button
-                mat-mini-button
+                matButton
                 type="button"
                 (click)="addPredictedLightToScene(light)"
               >
@@ -196,20 +196,22 @@ export class SceneFormDialogComponent {
    */
   predictedLightsResource = structuredCompletionResource({
     model: 'gpt-4.1',
-    input: this.sceneNameSignal,
-    system: computed(
-      () => `
-      Predict the lights that will be added to the scene based on the name. For example,
-      if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
-      be in the bedroom at a lower brightness.
-
-      Here's the list of lights:
-      ${this.lights()
-        .map((light) => `${light.id}: ${light.name}`)
-        .join('\n')}
+    system: `
+      Predict the lights that will be added to the scene based on the name. 
+      For example, if the scene name is "Dim Bedroom Lights", suggest adding
+      any lights that might be in the bedroom at a lower brightness.
     `,
-    ),
-    debugName: 'Predict Lights',
+    input: computed(() => {
+      if (!this.sceneNameSignal()) return null;
+
+      return {
+        input: this.sceneNameSignal(),
+        lights: untracked(() => this.lights()).map((light) => ({
+          id: light.id,
+          name: light.name,
+        })),
+      };
+    }),
     schema: s.streaming.array(
       'The lights to add to the scene',
       s.object('A join between a light and a scene', {

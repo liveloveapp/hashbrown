@@ -85,7 +85,7 @@ export const LightIconSchema = s.enumeration(
   ],
 })
 export class LightComponent {
-  icon = input.required<s.Infer<typeof LightIconSchema>>();
+  icon = input<s.Infer<typeof LightIconSchema>>('lightbulb');
   lightId = input.required<string>();
   store = inject(Store);
   lightEntities = this.store.selectSignal(selectLightEntities);

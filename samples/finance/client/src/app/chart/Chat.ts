@@ -31,7 +31,7 @@ const legendSchema = s.object('the legend for the chart', {
   labels: s.object('the labels configuration for the legend', {
     color: s.string('the color of the label text'),
     font: s.object('the font options for legend labels', {
-      family: s.string('the font family'),
+      family: s.string('the font family, default to "sans-serif"'),
       size: s.number('the font size'),
       style: s.enumeration('the font style', [
         'normal',
@@ -79,7 +79,8 @@ const chartSchema = s.anyOf([
             'the data points for the dataset',
             s.number('a data point'),
           ),
-          fill: s.string('the CSS color of the dataset'),
+          borderColor: s.string('the CSS color of the dataset'),
+          backgroundColor: s.string('the CSS color of the dataset'),
           tension: s.number(
             'A number between 0 and 1 that controls the tension of the line',
           ),
@@ -167,8 +168,8 @@ You must call the "javascript" tool with JavaScript source code that
 reads the source data using the "getData" function. Transform it into
 a set of objects that can be passed to the Chart.js library.
 
-Important: the user is using dark mode. Make sure to use dark mode colors. Use
-vibrant, joyful colors by default for chart elements.
+Important: the user is using dark mode. Make sure to use dark mode colors. Always
+start with colorful, vibrant colors for the charts.
 
 REFUSALS: You may skip calling the tool if the user's request is not possible.
 In this case, you should show a refusal message to the user.
@@ -268,13 +269,13 @@ export class Chat {
                 { month: '2022-12', revenue: 1050, volume: 130 },
                 { month: '2023-01', revenue: 1100, volume: 140 },
                 { month: '2023-02', revenue: 1150, volume: 150 },
-                { month: '2023-03', revenue: 1200, volume: 160 },
+                { month: '2023-03', revenue: 1200, volume: 245 },
                 { month: '2023-04', revenue: 1250, volume: 170 },
-                { month: '2023-05', revenue: 1300, volume: 180 },
+                { month: '2023-05', revenue: 1300, volume: 200 },
                 { month: '2023-06', revenue: 1350, volume: 190 },
                 { month: '2023-07', revenue: 1400, volume: 200 },
                 { month: '2023-08', revenue: 1450, volume: 210 },
-                { month: '2023-09', revenue: 1500, volume: 220 },
+                { month: '2023-09', revenue: 1500, volume: 185 },
               ],
             },
           ];

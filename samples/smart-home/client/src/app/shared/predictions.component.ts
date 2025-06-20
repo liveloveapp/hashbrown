@@ -1,4 +1,10 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  untracked,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
@@ -11,14 +17,9 @@ import {
   selectLightEntities,
   selectScenesEntities,
 } from '../store';
-import { createTool, structuredCompletionResource } from '@hashbrownai/angular';
+import { structuredCompletionResource } from '@hashbrownai/angular';
 
 const PREDICTIONS_SCHEMA = s.anyOf([
-  s.object('Suggests adding a light to the system', {
-    type: s.literal('Add Light'),
-    name: s.string('The suggested name of the light'),
-    brightness: s.integer('A number between 0-100'),
-  }),
   s.object('Suggest adding a scene to the system', {
     type: s.literal('Add Scene'),
     name: s.string('The suggested name of the scene'),
@@ -30,27 +31,16 @@ const PREDICTIONS_SCHEMA = s.anyOf([
       }),
     ),
   }),
-  s.object('Suggest scheduling a scene to the system', {
-    type: s.literal('Schedule Scene'),
-    sceneId: s.string('The ID of the scene'),
-    datetime: s.string('The datetime of the scene'),
-  }),
   s.object('Suggest adding a light to a scene', {
     type: s.literal('Add Light to Scene'),
     lightId: s.string('The ID of the light'),
     sceneId: s.string('The ID of the scene'),
     brightness: s.integer('A number between 0-100'),
   }),
-  s.object('Suggest removing a light from a scene', {
-    type: s.literal('Remove Light from Scene'),
-    lightId: s.string('The ID of the light'),
-    sceneId: s.string('The ID of the scene'),
-  }),
 ]);
 
 @Component({
   selector: 'app-predictions',
-  standalone: true,
   template: `
     @if (lostService()) {
       <div class="error">
@@ -60,39 +50,6 @@ const PREDICTIONS_SCHEMA = s.anyOf([
     <!-- Loop over predictions and display according to type -->
     @for (prediction of output(); track $index) {
       @switch (prediction.type) {
-        @case ('Add Light') {
-          <div class="prediction">
-            <div class="predictionIcon">
-              <mat-icon inline>bolt</mat-icon>
-            </div>
-            <p>
-              Add Light called "<span class="predictionValue">{{
-                prediction.name
-              }}</span
-              >" with brightness
-              <span class="predictionValue">{{ prediction.brightness }}</span>
-            </p>
-            <div class="predictionActions">
-              <button
-                class="rejectPrediction"
-                (click)="removePrediction($index)"
-              >
-                Dismiss
-              </button>
-              <button
-                class="acceptPrediction"
-                (click)="
-                  addLight($index, {
-                    name: prediction.name,
-                    brightness: prediction.brightness,
-                  })
-                "
-              >
-                Accept
-              </button>
-            </div>
-          </div>
-        }
         @case ('Add Scene') {
           <div class="prediction">
             <div class="predictionIcon">
@@ -129,39 +86,6 @@ const PREDICTIONS_SCHEMA = s.anyOf([
             </div>
           </div>
         }
-        @case ('Schedule Scene') {
-          <div class="prediction">
-            <div class="predictionIcon">
-              <mat-icon inline>bolt</mat-icon>
-            </div>
-            <p>
-              Schedule Scene "<span class="predictionValue">{{
-                prediction.sceneId
-              }}</span
-              >" at
-              <span class="predictionValue">{{ prediction.datetime }}</span>
-            </p>
-            <div class="predictionActions">
-              <button
-                class="rejectPrediction"
-                (click)="removePrediction($index)"
-              >
-                Dismiss
-              </button>
-              <button
-                class="acceptPrediction"
-                (click)="
-                  scheduleScene($index, {
-                    sceneId: prediction.sceneId,
-                    datetime: prediction.datetime,
-                  })
-                "
-              >
-                Accept
-              </button>
-            </div>
-          </div>
-        }
         @case ('Add Light to Scene') {
           @let light = lightEntities()[prediction.lightId];
           @let scene = sceneEntities()[prediction.sceneId];
@@ -190,44 +114,6 @@ const PREDICTIONS_SCHEMA = s.anyOf([
                     lightId: prediction.lightId,
                     sceneId: prediction.sceneId,
                     brightness: prediction.brightness,
-                  })
-                "
-              >
-                Accept
-              </button>
-            </div>
-          </div>
-        }
-        @case ('Remove Light from Scene') {
-          @let light = lightEntities()[prediction.lightId];
-          @let scene = sceneEntities()[prediction.sceneId];
-
-          <div class="prediction">
-            <div class="predictionIcon">
-              <mat-icon inline>remove_circle</mat-icon>
-            </div>
-            <p>
-              Remove Light "<span class="predictionValue">{{
-                light?.name
-              }}</span
-              >" from Scene "<span class="predictionValue">{{
-                scene?.name
-              }}</span
-              >"
-            </p>
-            <div class="predictionActions">
-              <button
-                class="rejectPrediction"
-                (click)="removePrediction($index)"
-              >
-                Dismiss
-              </button>
-              <button
-                class="acceptPrediction"
-                (click)="
-                  removeLightFromScene($index, {
-                    lightId: prediction.lightId,
-                    sceneId: prediction.sceneId,
                   })
                 "
               >
@@ -349,63 +235,54 @@ export class PredictionsComponent {
    */
   predictions = structuredCompletionResource({
     model: 'gpt-4.1',
-    input: this.lastAction,
+    input: computed(() => {
+      if (!this.lastAction()) return null;
+
+      return {
+        lastAction: this.lastAction(),
+        context: untracked(() => ({
+          lights: this.smartHomeService.lights(),
+          scenes: this.smartHomeService.scenes(),
+        })),
+      };
+    }),
     system: `
       You are an AI smart home assistant tasked with predicting the next possible user action in a 
       smart home configuration app. Your suggestions will be displayed as floating cards in the 
       bottom right of the screen.
 
-      Important Guidelines:
+      # Guidelines
       - The user already owns all necessary hardware. Do not suggest purchasing hardware.
-      - Every prediction must include a concise 'reasonForSuggestion' that explains the suggestion 
-        in one sentence.
       - Each prediction must be fully detailed with all required fields based on its type.
 
-      Additional Rules:
+      # Rules
       - Always check the current lights and scenes states to avoid suggesting duplicates.
-      - If a new light has just been added, consider suggesting complementary lights or adding it 
-        to an existing scene.
+      - If a new light has just been added, consider adding it to an existing scene.
       - When recommending scene modifications, ensure that the scene does not already contain the 
         light in question.
       - You do not always need to make a prediction. Returning an empty array is also a valid 
         response.
       - You may make multiple predictions. Just add multiple predictions to the array.
     `,
-    tools: [
-      createTool({
-        name: 'getLights',
-        description: 'Get all lights in the smart home',
-        handler: () => this.smartHomeService.loadLights(),
-      }),
-      createTool({
-        name: 'getScenes',
-        description: 'Get all scenes in the smart home',
-        handler: () => this.smartHomeService.loadScenes(),
-      }),
-    ],
-    schema: s.object('The result', {
-      predictions: s.streaming.array('The predictions', PREDICTIONS_SCHEMA),
-    }),
+    schema: s.streaming.array('Your predictions', PREDICTIONS_SCHEMA),
   });
-
-  protected lostService = computed(() => this.predictions.status() === 'error');
 
   output = linkedSignal({
     source: this.predictions.value,
     computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] => {
       if (source === undefined || source === null) return [];
 
-      return source.predictions;
+      return source;
     },
   });
 
-  addLight(
-    predictionIndex: number,
-    light: { name: string; brightness: number },
-  ) {
-    this.removePrediction(predictionIndex);
-    this.store.dispatch(PredictionsAiActions.addLight({ light }));
-  }
+  /**
+   * --------------------------------------------------------------------------
+   * End Predictions Resource
+   * --------------------------------------------------------------------------
+   */
+
+  protected lostService = computed(() => this.predictions.status() === 'error');
 
   addScene(
     predictionIndex: number,
@@ -418,18 +295,6 @@ export class PredictionsComponent {
     this.store.dispatch(PredictionsAiActions.addScene({ scene }));
   }
 
-  scheduleScene(
-    predictionIndex: number,
-    scene: { sceneId: string; datetime: string },
-  ) {
-    this.store.dispatch(
-      PredictionsAiActions.scheduleScene({
-        sceneId: scene.sceneId,
-        datetime: scene.datetime,
-      }),
-    );
-  }
-
   addLightToScene(
     predictionIndex: number,
     sceneLight: {
@@ -440,19 +305,6 @@ export class PredictionsComponent {
   ) {
     this.removePrediction(predictionIndex);
     this.store.dispatch(PredictionsAiActions.addLightToScene(sceneLight));
-  }
-
-  removeLightFromScene(
-    predictionIndex: number,
-    sceneLight: { lightId: string; sceneId: string },
-  ) {
-    this.removePrediction(predictionIndex);
-    this.store.dispatch(PredictionsAiActions.removeLightFromScene(sceneLight));
-  }
-
-  applyScene(predictionIndex: number, sceneId: string) {
-    this.removePrediction(predictionIndex);
-    this.store.dispatch(PredictionsAiActions.applyScene({ sceneId }));
   }
 
   removePrediction(index: number) {

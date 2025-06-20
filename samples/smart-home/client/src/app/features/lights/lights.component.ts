@@ -56,9 +56,9 @@ import { LightListComponent } from './light-list.component';
       }
 
       .add-light-button {
-        position: absolute;
+        position: fixed;
         bottom: 20px;
-        right: 0px;
+        right: 20px;
       }
 
       .lights-container {

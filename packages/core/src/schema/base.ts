@@ -218,7 +218,7 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return `string`;
+    return `string /* ${schema[internal].definition.description} */`;
   },
 );
 
@@ -295,7 +295,10 @@ export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return JSON.stringify(schema[internal].definition.value);
+    return (
+      JSON.stringify(schema[internal].definition.value) +
+      ` /* ${schema[internal].definition.description} */`
+    );
   },
 );
 
@@ -358,7 +361,7 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return `number`;
+    return `number /* ${schema[internal].definition.description} */`;
   },
 );
 
@@ -417,7 +420,7 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return 'boolean';
+    return `boolean /* ${schema[internal].definition.description} */`;
   },
 );
 
@@ -478,7 +481,7 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return `integer`;
+    return `integer /* ${schema[internal].definition.description} */`;
   },
 );
 
@@ -569,9 +572,9 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor(
       // clone pathSeen for each branch
       return `${' '.repeat(depth + 2)}${key}: ${(child as any).toTypeScript(new Set(pathSeen))};`;
     });
-    return `{
+    return `/* ${schema[internal].definition.description} */ {
 ${lines.join('\n')}
-${' '.repeat(depth)}}`;
+${' '.repeat(depth)}} `;
   },
 );
 
@@ -659,7 +662,7 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor(
 
     return `Array<${schema[internal].definition.element.toTypeScript(
       new Set(pathSeen),
-    )}>`;
+    )}> /* ${schema[internal].definition.description} */`;
   },
 );
 

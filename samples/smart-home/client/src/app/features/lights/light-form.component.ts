@@ -12,14 +12,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { SmartHomeService } from '../../services/smart-home.service';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs/operators';
 import { LightsPageActions } from './actions/lights-page.actions';
 import { Store } from '@ngrx/store';
-import { completionResource } from '@hashbrownai/angular';
 import { MatIconModule } from '@angular/material/icon';
+import { completionResource } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-light-form',
@@ -38,9 +37,7 @@ import { MatIconModule } from '@angular/material/icon';
     <div class="form-container">
       <mat-card>
         <mat-card-header>
-          <mat-card-title
-            >{{ isEditing() ? 'Edit' : 'Add' }} Light</mat-card-title
-          >
+          <mat-card-title>Add Light</mat-card-title>
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="form" (ngSubmit)="onSubmit()">
@@ -81,7 +78,7 @@ import { MatIconModule } from '@angular/material/icon';
                 type="submit"
                 [disabled]="!form.valid"
               >
-                {{ isEditing() ? 'Save' : 'Add' }}
+                Add
               </button>
             </div>
           </form>
@@ -154,22 +151,20 @@ import { MatIconModule } from '@angular/material/icon';
 export class LightFormComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private route = inject(ActivatedRoute);
-  private smartHome = inject(SmartHomeService);
   private store = inject(Store);
-
+  private smartHome = inject(SmartHomeService);
   protected form = this.fb.group({
     name: ['', Validators.required],
   });
-
   protected nameSignal = toSignal(this.form.get('name')!.valueChanges);
-  protected lightNames = this.smartHome.lights().map((l) => l.name);
+  readonly nameInputRef = viewChild<ElementRef<HTMLInputElement>>('nameInput');
+  private readonly lightNames = computed(() =>
+    this.smartHome.lights().map((l) => l.name),
+  );
 
   readonly nameCompletion = completionResource({
-    model: 'gpt-4o-mini',
-    input: this.nameSignal,
-    system: computed(
-      () => `
+    model: 'gpt-4.1',
+    system: `
       Help the user generate a name for a light. The input will be what
       they have typed so far, and the output should be a prediction for
       the name of the light. Just give me the next bit of text to add to
@@ -180,38 +175,23 @@ export class LightFormComponent {
       not a trailing space in the input and you are predicting a full word.
 
       Never include quote marks around your prediction.
-      
-      The user already has these lights in their home:
-      ${this.lightNames.join(', ')}
-    `,
-    ),
+      `,
+    input: computed(() => {
+      if (!this.nameSignal()) return null;
+
+      return {
+        input: this.nameSignal(),
+        existingNames: this.lightNames(),
+      };
+    }),
   });
-
-  readonly nameInputRef = viewChild<ElementRef<HTMLInputElement>>('nameInput');
-
-  protected isEditing = toSignal(
-    this.route.params.pipe(map((params) => Boolean(params['id']))),
-  );
 
   protected lostService = computed(
     () => this.nameCompletion.status() === 'error',
   );
 
-  constructor() {
-    const id = this.route.snapshot.params['id'];
-    if (id) {
-      const light = this.smartHome.lights().find((l) => l.id === id);
-      if (light) {
-        this.form.patchValue({
-          name: light.name,
-        });
-      }
-    }
-  }
-
   protected onSubmit() {
     if (this.form.valid) {
-      const id = this.route.snapshot.params['id'];
       const formValue = this.form.value;
       const name = formValue.name;
 
@@ -219,24 +199,13 @@ export class LightFormComponent {
         throw new Error('Name is required');
       }
 
-      if (id) {
-        this.store.dispatch(
-          LightsPageActions.updateLight({
-            id,
-            changes: {
-              name,
-            },
-          }),
-        );
-      } else {
-        this.store.dispatch(
-          LightsPageActions.addLight({
-            light: {
-              name,
-            },
-          }),
-        );
-      }
+      this.store.dispatch(
+        LightsPageActions.addLight({
+          light: {
+            name,
+          },
+        }),
+      );
 
       this.router.navigate(['/lights']);
     }

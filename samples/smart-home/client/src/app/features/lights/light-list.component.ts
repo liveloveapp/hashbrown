@@ -76,6 +76,6 @@ export const LightListIconSchema = s.enumeration('Icon for a Group of Lights', [
   ],
 })
 export class LightListComponent {
-  icon = input.required<s.Infer<typeof LightListIconSchema>>();
+  icon = input<s.Infer<typeof LightListIconSchema>>('bed');
   title = input.required<string>();
 }
