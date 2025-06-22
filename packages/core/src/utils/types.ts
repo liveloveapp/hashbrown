@@ -128,3 +128,16 @@ export type UnionToTuple<T, L = LastOf<T>> = [T] extends [never]
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
+
+/**
+ * A utility type that represents a JSON value.
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | {
+      [key: string]: JsonValue;
+    };

@@ -155,7 +155,10 @@ export function toApiMessagesFromInternal(
       return [
         {
           role: 'user',
-          content: message.content,
+          content:
+            typeof message.content === 'string'
+              ? message.content
+              : JSON.stringify(message.content),
         },
       ];
     }

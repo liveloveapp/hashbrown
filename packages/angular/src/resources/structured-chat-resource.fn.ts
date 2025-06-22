@@ -101,27 +101,25 @@ export function structuredChatResource<
     retries: options.retries,
   });
 
-  const debugNamePrefix = options.debugName ? options.debugName + '.' : '';
-
   const value = toSignal(
     hashbrown.observeMessages,
-    `${debugNamePrefix}structuredChat.value`,
+    options.debugName && `${options.debugName}.value`,
   );
   const isReceiving = toSignal(
     hashbrown.observeIsReceiving,
-    `${debugNamePrefix}structuredChat.isReceiving`,
+    options.debugName && `${options.debugName}.isReceiving`,
   );
   const isSending = toSignal(
     hashbrown.observeIsSending,
-    `${debugNamePrefix}structuredChat.isSending`,
+    options.debugName && `${options.debugName}.isSending`,
   );
   const isRunningToolCalls = toSignal(
     hashbrown.observeIsRunningToolCalls,
-    `${debugNamePrefix}structuredChat.isRunningToolCalls`,
+    options.debugName && `${options.debugName}.isRunningToolCalls`,
   );
   const error = toSignal(
     hashbrown.observeError,
-    `${debugNamePrefix}structuredChat.error`,
+    options.debugName && `${options.debugName}.error`,
   );
 
   const exhaustedRetries = toSignal(hashbrown.observeExhaustedRetries);
@@ -146,14 +144,14 @@ export function structuredChatResource<
 
       return 'idle';
     },
-    { debugName: `${debugNamePrefix}structuredChat.status` },
+    { debugName: options.debugName && `${options.debugName}.status` },
   );
 
   const isLoading = computed(
     () => {
       return isReceiving() || isSending() || isRunningToolCalls();
     },
-    { debugName: `${debugNamePrefix}structuredChat.isLoading` },
+    { debugName: options.debugName && `${options.debugName}.isLoading` },
   );
 
   function reload() {

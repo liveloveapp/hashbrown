@@ -1,6 +1,6 @@
 import { s } from '@hashbrownai/core';
 import { useStructuredCompletion } from '@hashbrownai/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   SceneLight as SceneLightModel,
@@ -54,16 +54,33 @@ export const SceneDialogForm = (
   );
   const [open, setOpen] = useState(false);
 
+  const input = useMemo(() => {
+    if (!open) return null;
+    if (!sceneName) return null;
+
+    return {
+      input: sceneName,
+      availableLights: lights.map((light) => ({
+        id: light.id,
+        name: light.name,
+      })),
+    };
+  }, [open, sceneName, lights]);
+
   const { output, isSending, exhaustedRetries } = useStructuredCompletion({
     debugName: 'SceneDialogForm',
-    input: open ? sceneName : null,
-    model: 'gpt-4o-mini',
-    system: `Predict the lights that will be added to the scene based on the name. For example,
-    if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
-    be in the bedroom at a lower brightness.
+    input,
+    model: 'gpt-4.1-mini',
+    system: `
+      You are an assistant that helps the user configure a lighting scene.
+      The user will choose a name for the scene, and you will predict the
+      lights that should be added to the scene based on the name. The input
+      will be the scene name and the list of lights that are available.
 
-    Here's the list of lights:
-    ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}`,
+      # Rules
+      - Only suggest lights from the provided "availableLights" input list.
+      - Pick a brightness level for each light that is appropriate for the scene.
+    `,
     schema: s.object('Your response', {
       lights: s.array(
         'The lights to add to the scene',

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -195,21 +195,29 @@ export class SceneFormDialogComponent {
    * --------------------------------------------------------------------------
    */
   predictedLightsResource = structuredCompletionResource({
-    model: 'gpt-4.1',
-    input: this.sceneNameSignal,
-    system: computed(
-      () => `
-      Predict the lights that will be added to the scene based on the name. For example,
-      if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
-      be in the bedroom at a lower brightness.
+    model: 'gpt-4.1-mini',
+    debugName: 'predictedLightsResource',
+    system: `
+      You are an assistant that helps the user configure a lighting scene.
+      The user will choose a name for the scene, and you will predict the
+      lights that should be added to the scene based on the name. The input
+      will be the scene name and the list of lights that are available.
 
-      Here's the list of lights:
-      ${this.lights()
-        .map((light) => `${light.id}: ${light.name}`)
-        .join('\n')}
+      # Rules
+      - Only suggest lights from the provided "availableLights" input list.
+      - Pick a brightness level for each light that is appropriate for the scene.
     `,
-    ),
-    debugName: 'Predict Lights',
+    input: computed(() => {
+      if (!this.sceneNameSignal()) return null;
+
+      return {
+        input: this.sceneNameSignal(),
+        availableLights: untracked(() => this.lights()).map((light) => ({
+          id: light.id,
+          name: light.name,
+        })),
+      };
+    }),
     schema: s.streaming.array(
       'The lights to add to the scene',
       s.object('A join between a light and a scene', {

@@ -13,13 +13,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { SmartHomeService } from '../../services/smart-home.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
-import { LightsPageActions } from './actions/lights-page.actions';
 import { Store } from '@ngrx/store';
 import { completionResource } from '@hashbrownai/angular';
 import { MatIconModule } from '@angular/material/icon';
+import { SmartHomeService } from '../../services/smart-home.service';
+import { selectLightNames } from '../../store';
+import { LightsPageActions } from './actions/lights-page.actions';
 
 @Component({
   selector: 'app-light-form',
@@ -163,28 +164,37 @@ export class LightFormComponent {
   });
 
   protected nameSignal = toSignal(this.form.get('name')!.valueChanges);
-  protected lightNames = this.smartHome.lights().map((l) => l.name);
+  protected lightNames = this.store.selectSignal(selectLightNames);
 
   readonly nameCompletion = completionResource({
-    model: 'gpt-4o-mini',
-    input: this.nameSignal,
-    system: computed(
-      () => `
-      Help the user generate a name for a light. The input will be what
-      they have typed so far, and the output should be a prediction for
-      the name of the light. Just give me the next bit of text to add to
-      the name. Don't include any other text.
-      
-      If the name looks complete or sounds like a good name, just return
-      an empty string. Don't forget to include a leading space if there's
-      not a trailing space in the input and you are predicting a full word.
+    model: 'gemini-2.5-flash',
+    debugName: 'nameCompletion',
+    system: `
+      You are an assistant that helps the user finish typing a name for a light.
+      They are using a web app to add a new light to their home. Each time
+      the user types in the light name field, predict the exact characters
+      they are likely to append next. The input includes the user's current
+      input and the list of names they have already used.
 
-      Never include quote marks around your prediction.
-      
-      The user already has these lights in their home:
-      ${this.lightNames.join(', ')}
+      # Rules
+      - Return only the text to append; include no extra words or quotation marks.
+      - Preserve all punctuation exactly as it should follow the input.
+      - Ensure spacing is correct:
+          - Do not trim leading or trailing whitespace in your suggestion.
+          - If your suggestion begins with a letter or punctuation and the user's
+            input does not already end with a space, start your suggestion with a space.
+      - If the name is already complete, return an empty string.
+      - NEVER predict more than a few words or characters at a time.
+      - Names must be unique.
     `,
-    ),
+    input: computed(() => {
+      if (!this.nameSignal()) return null;
+
+      return {
+        input: this.nameSignal(),
+        existingNames: this.lightNames(),
+      };
+    }),
   });
 
   readonly nameInputRef = viewChild<ElementRef<HTMLInputElement>>('nameInput');

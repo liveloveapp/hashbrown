@@ -6,13 +6,13 @@ import { useStructuredChat } from './use-structured-chat';
  * Options for the `useStructuredCompletion` hook.
  */
 export interface UseStructuredCompletionOptions<
+  Input,
   Schema extends s.HashbrownType,
-  Tools extends Chat.AnyTool,
 > {
   /**
    * The input string to predict from.
    */
-  input: string | null | undefined;
+  input: Input | null | undefined;
 
   /**
    * The LLM model to use for the chat.
@@ -33,7 +33,7 @@ export interface UseStructuredCompletionOptions<
    * The tools to make available for the chat.
    * default: []
    */
-  tools?: Tools[];
+  tools?: Chat.AnyTool[];
 
   /**
    * The debounce time between sends to the endpoint.
@@ -123,12 +123,9 @@ export interface UseStructuredCompletionResult<Output> {
  * });
  * ```
  */
-export const useStructuredCompletion = <
-  Schema extends s.HashbrownType,
-  Tools extends Chat.AnyTool,
->(
-  options: UseStructuredCompletionOptions<Schema, Tools>,
-): UseStructuredCompletionResult<s.Infer<Schema>> => {
+export function useStructuredCompletion<Input, Schema extends s.HashbrownType>(
+  options: UseStructuredCompletionOptions<Input, Schema>,
+): UseStructuredCompletionResult<s.Infer<Schema>> {
   const { setMessages, ...chat } = useStructuredChat({
     ...options,
   });
@@ -158,4 +155,4 @@ export const useStructuredCompletion = <
     isRunningToolCalls: chat.isRunningToolCalls,
     exhaustedRetries: chat.exhaustedRetries,
   };
-};
+}

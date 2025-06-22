@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '../schema';
-import { Prettify } from '../utils';
+import { JsonValue, Prettify } from '../utils';
 
 export type Middleware = (
   fetchInit: RequestInit,
@@ -17,7 +17,7 @@ export type AnyTool = Tool<string, any, any>;
 
 export type UserMessage = {
   role: 'user';
-  content: string;
+  content: JsonValue;
 };
 
 export type ToolCall<ToolUnion extends AnyTool> = Prettify<

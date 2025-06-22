@@ -47,6 +47,10 @@ export interface CompletionResourceOptions<Input> {
    * The API URL to use for the completion.
    */
   apiUrl?: string;
+  /**
+   * The debug name for the completion resource.
+   */
+  debugName?: string;
 }
 
 /**
@@ -62,7 +66,7 @@ export function completionResource<Input>(
   const injector = inject(Injector);
   const config = ɵinjectHashbrownConfig();
   const hashbrown = fryHashbrown({
-    debugName: 'completionResource',
+    debugName: options.debugName,
     apiUrl: options.apiUrl ?? config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
@@ -75,8 +79,6 @@ export function completionResource<Input>(
     retries: 3,
   });
 
-  const debugNamePrefix = 'completionResource.';
-
   const messages = toSignal(hashbrown.observeMessages);
   const internalMessages = computed(() => {
     const _input = input();
@@ -88,19 +90,19 @@ export function completionResource<Input>(
     return [
       {
         role: 'user' as const,
-        content: typeof _input === 'string' ? _input : JSON.stringify(_input),
+        content: _input,
       },
     ];
   });
 
   const error = toSignal(
     hashbrown.observeError,
-    `${debugNamePrefix}completion.error`,
+    options.debugName && `${options.debugName}.error`,
   );
 
   const exhaustedRetries = toSignal(
     hashbrown.observeExhaustedRetries,
-    `${debugNamePrefix}completion.exhaustedRetries`,
+    options.debugName && `${options.debugName}.exhaustedRetries`,
   );
 
   effect(() => {
@@ -123,7 +125,7 @@ export function completionResource<Input>(
       }
       return null;
     },
-    { debugName: `${debugNamePrefix}completion.value` },
+    { debugName: options.debugName && `${options.debugName}.value` },
   );
 
   const status = computed((): ResourceStatus => {

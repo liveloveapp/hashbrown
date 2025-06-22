@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '../schema';
+import { JsonValue } from '../utils';
 
 export interface Tool {
   name: string;
@@ -25,7 +26,7 @@ export interface AssistantMessage {
 
 export interface UserMessage {
   role: 'user';
-  content: string;
+  content: JsonValue;
 }
 
 export interface ErrorMessage {
