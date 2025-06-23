@@ -1,60 +1,40 @@
 import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
-import OpenAI from 'openai';
-import { FunctionParameters } from 'openai/resources/shared';
 import { genkit } from 'genkit';
-import openAI, { gpt35Turbo, gpt4o } from 'genkitx-openai';
-
-// TODO: a mapping between type strings and model Types?
-
+// NB: getting genkit from beta to have access to defineInterrupt
+// import { genkit } from 'genkit/beta';
+import openAI from 'genkitx-openai';
 export interface GenkitTextStreamOptions {
   apiKey: string;
   request: Chat.Api.CompletionCreateParams;
-  // transformRequestOptions?: (
-  //   options: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
-  // ) =>
-  //   | OpenAI.Chat.ChatCompletionCreateParamsStreaming
-  //   | Promise<OpenAI.Chat.ChatCompletionCreateParamsStreaming>;
 }
 
-// TODO: need better types throughout
-// TODO: can I get genkit types?
+// TODO: also bring in azure-open AI plugin
+
+// TODO: add logic to decide which plugin (or no plugin) to use based on
+// provided model (ex: openai/ means use the openAI plugin)
+
+// TODO: verify tool calling with each set of supported models, since there is
+// some indication it may be different
+
+type GenkitToolCall = {
+  name: string;
+  input: string;
+  ref: string;
+};
 
 export async function* text(
   options: GenkitTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const {
-    apiKey,
-    request,
-    // transformRequestOptions
-  } = options;
+  const { apiKey, request } = options;
   const { messages, model, tools, responseFormat, toolChoice, system } =
     request;
-
   const ai = genkit({
     plugins: [openAI({ apiKey })],
-    // model,
-    // TODO: mapp models to model types?
-    // TODO: Or, figure out how to construct the strings instead
-    model: gpt4o,
+    model,
   });
 
-  console.log(model);
-
-  // TODO: if it does Zod + streaming, can I say that a particular
-  // string or field shouldn't be streamed, or does it do it for
-  // everything?
-
-  // TODO: why wrap a wrapper?
-
-  // TODO: do we need to suppport flows out of hte box?
-
-  // TODO: do I need to convert to Zod for schema before passing in?
-
   try {
-    // const baseOptions: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
     // const baseOptions: any = {
-    //   stream: true,
-    //   // model: model,
     //   messages: [
     //     {
     //       role: 'system',
@@ -95,85 +75,134 @@ export async function* text(
     //       throw new Error(`Invalid message role`);
     //     }),
     //   ],
-    //   tools:
-    //     tools && tools.length > 0
-    //       ? tools.map((tool) => ({
-    //           type: 'function',
-    //           function: {
-    //             name: tool.name,
-    //             description: tool.description,
-    //             parameters: tool.parameters as FunctionParameters,
-    //             strict: true,
-    //           },
-    //         }))
-    //       : undefined,
     //   tool_choice: toolChoice,
-    //   response_format: responseFormat
-    //     ? {
-    //         type: 'json_schema',
-    //         json_schema: {
-    //           strict: true,
-    //           name: 'schema',
-    //           description: '',
-    //           schema: responseFormat as Record<string, unknown>,
-    //         },
-    //       }
-    //     : undefined,
     // };
 
-    // const resolvedOptions: OpenAI.Chat.ChatCompletionCreateParams =
-    //   transformRequestOptions
-    //     ? await transformRequestOptions(baseOptions)
-    //     : baseOptions;
+    console.log(messages);
 
-    // const { stream } = ai.generateStream(baseOptions);
+    // console.log(tools);
+
+    // const answers = messages
+    //   .filter((message) => message.role === 'tool')
+    //   .map((message) => {});
+
     const { stream } = ai.generateStream({
       system,
-      // TODO: Remove this and translate our messages to their messages schema
-      prompt: 'Generate a set of components for my smart home UI.',
+      messages: messages.map((message) => {
+        return {
+          content: [
+            {
+              text: message.content,
+            },
+          ],
+          role: message.role === 'assistant' ? 'model' : message.role,
+        };
+      }) as any[],
       output: {
         jsonSchema: responseFormat,
       },
+      tools:
+        tools && tools.length > 0
+          ? tools.map((tool) => {
+              return ai.defineTool(
+                {
+                  name: tool.name,
+                  description: tool.description,
+                  inputJsonSchema: tool.parameters,
+                },
+                async () => {
+                  console.log('in function call');
+                  return 'noop';
+                },
+              );
+            })
+          : undefined,
+      toolChoice,
+      // ...()
+      // resume: {
+      //   respond:
+      // },
     });
 
-    // TODO: what to do with messages with role "model"?
+    /*
+    reference:
+
+      GenerateResponseChunk {                                                     ┃
+      ┃    index: 0,                                                                 ┃
+      ┃    role: 'model',                                                            ┃
+      ┃    content: [ { toolRequest: [Object] } ],                                   ┃
+      ┃    custom: undefined,                                                        ┃
+      ┃    previousChunks: [],                                                       ┃
+      ┃    parser: [Function: parseChunk]                                            ┃
+      ┃  }                                                                           ┃
+      ┃  {                                                                           ┃
+      ┃    toolRequest: {                                                            ┃
+      ┃      name: 'getPageHTML',                                                    ┃
+      ┃      ref: 'call_jvX7EMjI8VRS1iQZvAARbsHE',                                   ┃
+      ┃      input: ''                                                               ┃
+      ┃    }                                                                         ┃
+      ┃  }
+    */
+
+    // TODO: build or find types for response, tool calls, etc.
+
+    /*
+      ok, so, streaming cannot do interrupts.  And interrupts appear to require 
+      state (gotta answer on a question object) that Hashbrown doesn't need, and feels icky.
+
+      Therefore, interruptions don't seem to fit out goals. 
+
+      I can try one of two things instead:
+      * let the tool call as a no-op and try to catch this on the frontend, 
+        send back a response for the tool, and "inject" it into the message stream
+      * Try to define tools for, say, openai without going through Genkit's defineTool to see 
+        if I can handle them in the usual way, but requiring model awareness.
+
+    */
+
+    // NB: Can't do streaming yet with interrupts.
+    // See: https://github.com/firebase/genkit/issues/1816
 
     for await (const chunk of stream) {
-      // console.log(chunk);
-      console.log('showing chunk');
-      console.log(chunk.content);
-      // console.log('!!!!!!!!!! text');
-      // console.log(chunk.text);
-      console.log('!!!!!!!!!!!!!! accum text');
-      console.log(chunk.accumulatedText);
-      // console.log(JSON.stringify(chunk.output));
-      // const chunkMessage: Chat.Api.CompletionChunk = {
-      //   choices: chunk.choices.map(
-      //     (choice): Chat.Api.CompletionChunkChoice => ({
-      //       index: choice.index,
-      //       delta: {
-      //         content: choice.delta.content,
-      //         role: choice.delta.role,
-      //         toolCalls: choice.delta.tool_calls,
-      //       },
-      //       finishReason: choice.finish_reason,
-      //     }),
-      //   ),
-      // };
+      console.log(chunk);
+      if (chunk.content.length > 0) {
+        console.log(chunk.content[0]);
+      }
+
+      // console.log(chunk.interrupts());
+
       const chunkMessage: Chat.Api.CompletionChunk = {
-        choices: [
-          {
-            index: chunk.index,
+        choices: chunk.content.map((content, index) => {
+          return {
+            index,
             delta: {
-              content: chunk.content[0].text,
+              content: content.text,
               role: chunk.role === 'model' ? 'assistant' : chunk.role,
-              toolCalls: [],
+              toolCalls:
+                content.toolRequest && content.toolRequest.name != null
+                  ? [
+                      {
+                        index,
+                        id: content.toolRequest.ref,
+                        type: 'function',
+                        function: {
+                          name: content.toolRequest.name,
+                          // TODO: find a way to remove 'as string'
+                          arguments:
+                            content.toolRequest.input === ''
+                              ? '{}'
+                              : (content.toolRequest.input as string),
+                        },
+                      },
+                    ]
+                  : [],
             },
-            // TODO: what should this be?
             finishReason: null,
-          },
-        ],
+          };
+        }),
       };
+
+      // console.log(chunk);
 
       const frame: Frame = {
         type: 'chunk',
@@ -183,6 +212,7 @@ export async function* text(
       yield encodeFrame(frame);
     }
   } catch (error: unknown) {
+    console.log(error);
     if (error instanceof Error) {
       const frame: Frame = {
         type: 'error',
@@ -200,6 +230,7 @@ export async function* text(
       yield encodeFrame(frame);
     }
   } finally {
+    console.log('sending finish');
     const frame: Frame = {
       type: 'finish',
     };

@@ -26,6 +26,8 @@ const initialState: ConfigState = {
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action): ConfigState => {
+    // console.log(action.payload.responseSchema);
+    console.log(action.payload);
     return {
       ...state,
       apiUrl: action.payload.apiUrl,

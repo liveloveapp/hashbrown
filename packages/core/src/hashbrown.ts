@@ -170,6 +170,8 @@ export function fryHashbrown(init: {
     }),
   });
 
+  console.log(init.responseSchema);
+
   state.dispatch(
     devActions.init({
       apiUrl: init.apiUrl,

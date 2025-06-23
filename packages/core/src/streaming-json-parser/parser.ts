@@ -21,7 +21,7 @@ import {
 } from '../schema/base';
 
 const LOG_SETTINGS: { [name: string]: number } = {
-  all: NONE_LEVEL,
+  all: DEBUG_LEVEL,
 };
 
 class PartialJSON extends Error {}

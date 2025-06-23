@@ -17,6 +17,8 @@ export const runTools = createEffect((store) => {
       return;
     }
 
+    console.log(toolCalls);
+
     const toolCallResults = toolCalls.map((toolCall) => {
       const tool = toolEntities[toolCall.name];
 

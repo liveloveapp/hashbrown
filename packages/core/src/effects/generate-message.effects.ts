@@ -41,6 +41,8 @@ export const generateMessage = createEffect((store) => {
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
 
+      console.log(responseSchema);
+
       if (!shouldGenerateMessage) {
         return;
       }
@@ -57,6 +59,8 @@ export const generateMessage = createEffect((store) => {
             ? s.toJsonSchema(responseSchema)
             : undefined,
       };
+
+      console.log(params);
 
       await sleep(debounce, switchSignal);
 
