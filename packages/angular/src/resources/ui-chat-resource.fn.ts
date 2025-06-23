@@ -133,7 +133,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
         throw new Error(`Unknown message role`);
       });
     },
-    { debugName: `${args.debugName ? args.debugName + '.' : ''}uiChat.value` },
+    { debugName: args.debugName && `${args.debugName}.value` },
   );
 
   return {

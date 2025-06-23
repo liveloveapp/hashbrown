@@ -1,18 +1,26 @@
-import { Component, output } from '@angular/core';
+import { Component, output, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
 
 @Component({
   selector: 'app-chat-composer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule],
+  imports: [MatIconModule, MatButtonModule, TextFieldModule],
   template: `
-    <textarea
-      class="chat-composer"
-      placeholder="Message..."
-      (keydown.enter)="onHitEnter(textarea, $event)"
-      #textarea
-    ></textarea>
+    <div class="textareaWrapper">
+      <textarea
+        name="Message"
+        #textarea
+        matInput
+        cdkTextareaAutosize
+        cdkAutosizeMinRows="1"
+        cdkAutosizeMaxRows="5"
+        class="chat-composer"
+        placeholder="Message..."
+        (keydown.enter)="onHitEnter(textarea, $event)"
+      ></textarea>
+    </div>
     <button
       mat-icon-button
       class="send-button"
@@ -29,14 +37,21 @@ import { MatButtonModule } from '@angular/material/button';
         position: relative;
       }
 
-      textarea {
-        width: 100%;
-        height: 48px;
-        padding: 16px;
-        border: none;
+      .textareaWrapper {
+        padding: 16px 48px 16px 16px;
         border-radius: 24px;
         background-color: var(--mat-sys-surface-container-high);
+      }
+
+      textarea {
+        width: 100%;
+        border: none;
         color: var(--mat-sys-on-surface);
+        background: none;
+        outline: none;
+        overflow: none;
+        padding: 0;
+        margin: 0;
       }
 
       .send-button {
@@ -49,6 +64,8 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class ComposerComponent {
   sendMessage = output<string>();
+
+  autosize = viewChild.required(CdkTextareaAutosize);
 
   onHitEnter(textarea: HTMLTextAreaElement, $event: Event) {
     $event.preventDefault();
@@ -64,5 +81,6 @@ export class ComposerComponent {
     this.sendMessage.emit(textarea.value);
 
     textarea.value = '';
+    this.autosize().reset();
   }
 }

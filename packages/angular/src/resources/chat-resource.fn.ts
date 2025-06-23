@@ -98,27 +98,25 @@ export function chatResource<Tools extends Chat.AnyTool>(
     debugName: options.debugName,
   });
 
-  const debugNamePrefix = options.debugName ? options.debugName + '.' : '';
-
   const value = toSignal(
     hashbrown.observeMessages,
-    `${debugNamePrefix}chat.value`,
+    options.debugName && `${options.debugName}.value`,
   );
   const isReceiving = toSignal(
     hashbrown.observeIsReceiving,
-    `${debugNamePrefix}chat.isReceiving`,
+    options.debugName && `${options.debugName}.isReceiving`,
   );
   const isSending = toSignal(
     hashbrown.observeIsSending,
-    `${debugNamePrefix}chat.isSending`,
+    options.debugName && `${options.debugName}.isSending`,
   );
   const isRunningToolCalls = toSignal(
     hashbrown.observeIsRunningToolCalls,
-    `${debugNamePrefix}chat.isRunningToolCalls`,
+    options.debugName && `${options.debugName}.isRunningToolCalls`,
   );
   const error = toSignal(
     hashbrown.observeError,
-    `${debugNamePrefix}chat.error`,
+    options.debugName && `${options.debugName}.error`,
   );
 
   const status = computed(
@@ -141,14 +139,14 @@ export function chatResource<Tools extends Chat.AnyTool>(
 
       return 'idle';
     },
-    { debugName: `${debugNamePrefix}chat.status` },
+    { debugName: options.debugName && `${options.debugName}.status` },
   );
 
   const isLoading = computed(
     () => {
       return isReceiving() || isSending() || isRunningToolCalls();
     },
-    { debugName: `${debugNamePrefix}chat.isLoading` },
+    { debugName: options.debugName && `${options.debugName}.isLoading` },
   );
 
   function reload() {

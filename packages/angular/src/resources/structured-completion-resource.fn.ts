@@ -74,8 +74,6 @@ export function structuredCompletionResource<
     apiUrl,
   });
 
-  const debugNamePrefix = debugName ? debugName + '.' : '';
-
   effect(() => {
     const _input = input();
 
@@ -86,7 +84,7 @@ export function structuredCompletionResource<
     resource.setMessages([
       {
         role: 'user',
-        content: typeof _input === 'string' ? _input : JSON.stringify(_input),
+        content: _input,
       },
     ]);
   });
@@ -104,7 +102,7 @@ export function structuredCompletionResource<
       }
       return null;
     },
-    { debugName: `${debugNamePrefix}structuredCompletion.value` },
+    { debugName: debugName && `${debugName}.value` },
   );
 
   const status = resource.status;

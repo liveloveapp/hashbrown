@@ -38,6 +38,10 @@ export const selectLightsError = createSelector(
   selectLightsState,
   fromLights.selectError,
 );
+export const selectLightNames = createSelector(
+  selectLightsState,
+  fromLights.selectLightNames,
+);
 
 export const selectLastUserActionState = (state: AppState) =>
   state.lastUserAction;

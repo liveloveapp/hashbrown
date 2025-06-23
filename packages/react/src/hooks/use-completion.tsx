@@ -5,11 +5,11 @@ import { useChat } from './use-chat';
 /**
  * Options for the `useCompletion` hook.
  */
-export interface UseCompletionOptions<Tools extends Chat.AnyTool> {
+export interface UseCompletionOptions<Input> {
   /**
    * The input string to predict from.
    */
-  input: string | null | undefined;
+  input: Input | null | undefined;
 
   /**
    * The LLM model to use for the chat.
@@ -26,7 +26,7 @@ export interface UseCompletionOptions<Tools extends Chat.AnyTool> {
    * The tools to make available use for the completion.
    * default: []
    */
-  tools?: Tools[];
+  tools?: Chat.AnyTool[];
 
   /**
    * The debounce time between sends to the endpoint.
@@ -99,12 +99,12 @@ export interface UseCompletionResult {
  * });
  * ```
  */
-export const useCompletion = <Tools extends Chat.AnyTool>(
+export function useCompletion<Input>(
   /**
    * The options to configure the completion chat.
    */
-  options: UseCompletionOptions<Tools>,
-): UseCompletionResult => {
+  options: UseCompletionOptions<Input>,
+): UseCompletionResult {
   const { setMessages, ...chat } = useChat({
     ...options,
   });
@@ -138,4 +138,4 @@ export const useCompletion = <Tools extends Chat.AnyTool>(
     isRunningToolCalls: chat.isRunningToolCalls,
     exhaustedRetries: chat.exhaustedRetries,
   };
-};
+}

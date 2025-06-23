@@ -1,5 +1,5 @@
 import { createEntityAdapter, EntityAdapter, EntityState } from '@ngrx/entity';
-import { createReducer, on } from '@ngrx/store';
+import { createReducer, createSelector, on } from '@ngrx/store';
 import { Light } from '../models/light.model';
 import { LightsApiActions } from '../features/lights/actions/lights-api.actions';
 import { LightsPageActions } from '../features/lights/actions/lights-page.actions';
@@ -87,3 +87,6 @@ export const { selectAll, selectEntities, selectIds, selectTotal } =
   adapter.getSelectors();
 export const selectIsLoading = (state: LightsState) => state.isLoading;
 export const selectError = (state: LightsState) => state.error;
+export const selectLightNames = createSelector(selectAll, (lights) =>
+  lights.map((light) => light.name),
+);
