@@ -15,7 +15,14 @@ import { ConfigService } from '../services/ConfigService';
           <div class="title">
             <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
           </div>
-          <small>© LiveLoveApp, LLC 2025.<br />Based in Oregon.</small>
+          <small>
+            © LiveLoveApp, LLC 2025.
+            <br />Based in Oregon. <br /><a
+              href="https://analogjs.org"
+              target="_blank"
+              >Built with AnalogJS</a
+            >
+          </small>
         </div>
         <div class="docs">
           <div class="title">Documentation</div>
