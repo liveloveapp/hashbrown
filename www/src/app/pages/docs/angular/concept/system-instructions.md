@@ -16,6 +16,8 @@ _server side_. There are strategic concerns to consider when selecting a
 strategy for your application. Additionally, you may find that a mix of
 both approaches is suitable.
 
+---
+
 ## Authoring System Instructions
 
 Creating a well-crafted system instruction is a key part of building
@@ -214,6 +216,8 @@ Don't:
 - ❌ Concatenate user input directly into instructions
 - ❌ Trust that the model will ignore injection attempts
 - ❌ Skip validation for length or structure
+
+---
 
 ## Client-Side vs Server-Side System Instructions
 

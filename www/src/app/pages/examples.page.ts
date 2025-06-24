@@ -6,14 +6,14 @@ import {
   signal,
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ExamplesHeader } from '../components/ExamplesHeader';
-import { Alert } from '../components/Alert';
 import { isPlatformBrowser } from '@angular/common';
+import { Alert } from '../components/Alert';
+import { Header } from '../components/Header';
 
 @Component({
-  imports: [RouterOutlet, ExamplesHeader, Alert],
+  imports: [RouterOutlet, Header, Alert],
   template: `
-    <www-examples-header />
+    <www-header />
     <main class="examples">
       @if (isSafari()) {
         <div class="alert">

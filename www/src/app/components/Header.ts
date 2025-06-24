@@ -1,13 +1,20 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { ConfigService } from '../services/ConfigService';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
+import { BrandGitHub } from '../icons/BrandGitHub';
+import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-header',
-  imports: [RouterLink, MatButtonModule, MatMenuModule, MatIconModule],
+  imports: [
+    BrandGitHub,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    RouterLink,
+  ],
   template: `
     <header>
       <div class="left">
@@ -33,6 +40,15 @@ import { MatButtonModule } from '@angular/material/button';
             </li>
             <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
+            </li>
+            <li>
+              <a
+                href="https://github.com/liveloveapp/hashbrown"
+                target="_blank"
+                class="underline"
+              >
+                <www-brand-github />
+              </a>
             </li>
           </ul>
         </nav>

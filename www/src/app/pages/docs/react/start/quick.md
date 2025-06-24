@@ -94,7 +94,7 @@ npm install @hashbrownai/react
 
 ### The @hashbrownai/react!HashbrownProvider:function Provider
 
-The @hashbrownai/react!HashbrownProvider:function provider manages context for the various hooks hashbrown provides. In the simplest application, it can be wrapped around your `<App/>`.
+The @hashbrownai/react!HashbrownProvider:function provider manages context for the various hooks hashbrown provides. In the simplest application, it can be wrapped around your `&lt;App/&gt;`.
 
 ```tsx
 <HashbrownProvider url="http://localhost:3000/chat">

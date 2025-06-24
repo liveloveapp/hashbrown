@@ -16,7 +16,7 @@ hashbrown uses the adapter pattern for supporting multiple platforms.
 | OpenAI          | ✅   | ✅        | ✅    | ✅                |
 | Microsoft Azure | ✅   | ✅        | ✅    | ✅                |
 | Google Gemini   | ✅   | ✅        | ✅    | ✅                |
-| Writer          | ❌   | ❌        | ❌    | ❌                |
+| Writer          | ✅   | ✅        | ✅    | ✅                |
 
 ## Platform Limitations
 
