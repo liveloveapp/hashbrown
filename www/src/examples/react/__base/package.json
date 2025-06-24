@@ -17,6 +17,7 @@
     "@hashbrownai/openai": "<hashbrown-version>",
     "@hashbrownai/react": "<hashbrown-version>",
     "@hashbrownai/tool-javascript": "<hashbrown-version>",
+    "@hashbrownai/vercelai": "<hashbrown-version>",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "zustand": "<zustand-version>"

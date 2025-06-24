@@ -3,6 +3,7 @@ import { Chat } from '@hashbrownai/core';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { HashbrownGoogle } from '@hashbrownai/google';
+import { HashbrownVercelAI } from '@hashbrownai/vercelai';
 import { HashbrownWriter } from '@hashbrownai/writer';
 import cors from 'cors';
 import 'dotenv/config';
@@ -78,6 +79,8 @@ if (!WRITER_API_KEY) {
   console.warn('WRITER_API_KEY is not set');
 }
 
+// TODO: deal with using different vercel plugins based on model name
+
 const app = express();
 
 app.use(express.json());
@@ -106,10 +109,17 @@ app.post('/chat', async (req, res, next) => {
       request,
     });
   } else if (KNOWN_OPENAI_MODEL_NAMES.includes(modelName)) {
-    stream = HashbrownOpenAI.stream.text({
-      apiKey: OPENAI_API_KEY,
-      request,
-    });
+    if (modelName.startsWith('vercel/')) {
+      stream = HashbrownVercelAI.stream.text({
+        apiKey: OPENAI_API_KEY,
+        request,
+      });
+    } else {
+      stream = HashbrownOpenAI.stream.text({
+        apiKey: OPENAI_API_KEY,
+        request,
+      });
+    }
   } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName)) {
     stream = HashbrownWriter.stream.text({
       apiKey: WRITER_API_KEY,

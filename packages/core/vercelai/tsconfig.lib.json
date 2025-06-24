@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "declaration": true,
+    "types": ["node"]
+  },
+  "include": ["../../vercelai/src/**/*.ts"],
+  "exclude": [
+    "../../vercelai/jest.config.ts",
+    "../../vercelai/src/**/*.spec.ts",
+    "../../vercelai/src/**/*.test.ts"
+  ]
+}

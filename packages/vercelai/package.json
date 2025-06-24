@@ -1,0 +1,15 @@
+{
+  "name": "@hashbrownai/vercelai",
+  "version": "0.1.1",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@hashbrownai/core": "0.1.1"
+  },
+  "peerDependencies": {
+    "@ai-sdk/openai": "^1.3.22",
+    "ai": "^4.3.16"
+  }
+}
