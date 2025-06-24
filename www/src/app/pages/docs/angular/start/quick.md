@@ -1,13 +1,15 @@
 # Angular Quick Start
 
-hashbrown is an open source library for building joyful AI experiences with modern Angular.
+hashbrown is an open source framework for building joyful AI-powereed user experiences with modern Angular.
 
 ## Key Concepts
 
 - **Headless**: build your UI how you want
 - **Signal Based**: hashbrown uses signals for reactivity
-- **Platform Agnostic**: use any [supported platform](/docs/angular/start/platforms)
-- **Streaming**: LLMs can be slow, so streaming is baked into the core
+- **[Platform Agnostic](/docs/angular/start/platforms)**: use any supported LLM provider
+- **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
+- **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular components
+- **[Runtime](/docs/angular/concept/runtime)**: safely execute LLM-generated JavaScript code in the client
 
 ---
 
@@ -431,5 +433,7 @@ Here is what the LLM will return based on the response format specified:
 
 Now that you've seen the basics of hashbrown, you can explore more advanced features and concepts:
 
-- [Function Calling](/docs/angular/concept/functions)
-- [Streaming Responses](/docs/angular/concept/streaming)
+- [Get started with writing system instructions](/docs/angular/concept/system-instructions)
+- [Use your Angular components for generative UI](/docs/angular/concept/components)
+- [Learn how to implement function calling](/docs/angular/concept/functions)
+- [Learn more about streaming responses](/docs/angular/concept/streaming)

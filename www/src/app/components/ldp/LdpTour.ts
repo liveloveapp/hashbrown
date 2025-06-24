@@ -56,6 +56,12 @@ import { LpdNaturalLanguage } from './LpdNaturalLanguage';
             there when it helps speed them up, and totally ignorable when they
             are focused.
           </p>
+          <a
+            [routerLink]="[docsUrl(), 'concept', 'structured-output']"
+            class="btn"
+          >
+            learn more
+          </a>
         </section>
         <section class="step" data-step="2" #step>
           <h2 [class.active]="2 === activeStep()">
@@ -64,10 +70,16 @@ import { LpdNaturalLanguage } from './LpdNaturalLanguage';
           <p [class.active]="2 === activeStep()">
             Simplify complex forms & filters by accepting your users' natural
             language. Hashbrown uses AI under-the-hood along with
-            <a [routerLink]="schemaDocsUrl()">Skillet</a>, our LLM-optimized
-            schema language, to translate text into your app's existing data
-            structures.
+            <a [routerLink]="[docsUrl(), 'concept', 'schema']">Skillet</a>, our
+            LLM-optimized schema language, to translate text into your app's
+            existing data structures.
           </p>
+          <a
+            [routerLink]="[docsUrl(), 'concept', 'structured-output']"
+            class="btn"
+          >
+            learn more
+          </a>
         </section>
         <section class="step" data-step="3" #step>
           <h2 [class.active]="3 === activeStep()">
@@ -80,6 +92,9 @@ import { LpdNaturalLanguage } from './LpdNaturalLanguage';
             perfect for those times when a structured user interface would slow
             them down.
           </p>
+          <a [routerLink]="[docsUrl(), 'concept', 'components']" class="btn">
+            learn more
+          </a>
         </section>
         <section class="step" data-step="4" #step>
           <h2 [class.active]="4 === activeStep()">
@@ -90,10 +105,14 @@ import { LpdNaturalLanguage } from './LpdNaturalLanguage';
             LLM-authored scripts in the browser. Useful for grounding
             mathematical operations, the JavaScript VM can also be leveraged for
             file creation and analysis. You can even use
-            <a [routerLink]="schemaDocsUrl()">Skillet</a> to expose custom APIs
-            into the runtime. Imagine letting your users safely "vibe code" in
-            the context of your service and component layer.
+            <a [routerLink]="[docsUrl(), 'concept', 'schema']">Skillet</a> to
+            expose custom APIs into the runtime. Imagine letting your users
+            safely "vibe code" in the context of your service and component
+            layer.
           </p>
+          <a [routerLink]="[docsUrl(), 'concept', 'runtime']" class="btn">
+            learn more
+          </a>
         </section>
       </div>
     </section>
@@ -169,7 +188,19 @@ import { LpdNaturalLanguage } from './LpdNaturalLanguage';
         > p {
           color: #5e5c5a;
           font:
-            400 16px/24px 'Poppins',
+            400 16px/24px Fredoka,
+            sans-serif;
+        }
+
+        > a {
+          display: inline-block;
+          align-self: flex-start;
+          padding: 8px 16px;
+          background-color: #fbbb52;
+          color: #fff;
+          border-radius: 24px;
+          font:
+            400 14px/20px Fredoka,
             sans-serif;
         }
       }
@@ -182,9 +213,7 @@ import { LpdNaturalLanguage } from './LpdNaturalLanguage';
 })
 export class LdpTour implements AfterViewInit {
   configService = inject(ConfigService);
-  schemaDocsUrl = computed(() => {
-    return `/docs/${this.configService.sdk()}/concept/schema`;
-  });
+  docsUrl = computed(() => `/docs/${this.configService.sdk()}`);
   steps = viewChildren<ElementRef<HTMLElement>>('step');
   observations = signal<{ step: number; ratio: number }[]>([]);
   sortedObservations = computed(() =>

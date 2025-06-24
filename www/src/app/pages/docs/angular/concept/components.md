@@ -1,6 +1,6 @@
 # Generative UI with Angular Components
 
-Angular developers can expose **trusted**, **compliant**, **authoratative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
+Angular developers can expose **trusted**, **tested**, **compliant**, and **authoratative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
 
 ---
 
@@ -15,7 +15,7 @@ Let's first look at how this function works.
 exposeComponent(MarkdownComponent, {
   description: 'Show markdown to the user',
   input: {
-    data: s.streaming.string('The markdown content'),
+    data: s.string('The markdown content'),
   },
 });
 ```
@@ -27,7 +27,43 @@ Let's break down the example above:
 - `MarkdownComponent` is the Angular component that we want to expose.
 - `description` is a human-readable description of the component that will be used by the LLM to understand what the component does.
 - `input` is an object that defines the inputs that the component accepts. In this case, it accepts a single input called `data`, which is a streaming string representing the markdown content to be displayed.
-- The `s.streaming.string()` function is used to define the type of the input, indicating that it can be a string that will be streamed in chunks.
+- The `s.string()` function is used to define the type of the input.
+
+We should mention here that Skillet, our LLM-optimized schema language, is **type safe**.
+
+- The `data` input is expected to be a `string` type.
+- The schema specified is a `string()`.
+- If the schema does not match the Angular component's input type, you'll see an error in both your editor and when you attempt to build the application.
+
+---
+
+## Streaming
+
+Streaming generative user interfaces is baked into the core of hashbrown.
+hashbrown ships with an LLM-optimized schema language called Skillet.
+
+Skillet supports streaming for:
+
+- arrays
+- objects
+- strings
+
+Let's update the previous example to support streaming of the markdown string into the `Markdown` component.
+
+<www-code-example header="chat.component.ts">
+
+```ts
+exposeComponent(MarkdownComponent, {
+  description: 'Show markdown to the user',
+  input: {
+    data: s.streaming.string('The markdown content'),
+  },
+});
+```
+
+</www-code-example>
+
+The `s.streaming.string()` function is used to define the type of the input, indicating that it can be a string that will be streamed in chunks.
 
 A note on the `streaming` keyword: this is a Skillet-specific keyword that indicates that the input can be streamed in chunks, which is useful for large content like markdown.
 You can [learn more about streaming with Skillet](/docs/angular/concept/streaming).
@@ -54,11 +90,38 @@ exposeComponent(LightListComponent, {
 
 In the example above, we're allowing `any` children to be rendered within the `LightListComponent` using the `&lt;ng-content&gt;` element.
 
+However, if we wanted to explicitly limit the children that the LLM can generate, we can provide an array of exposed components.
+
+<www-code-example header="chat.component.ts">
+
+```ts
+exposeComponent(LightListComponent, {
+  description: 'Show a list of lights to the user',
+  input: {
+    title: s.string('The name of the list'),
+    icon: LightListIconSchema,
+  },
+  children: [
+    exposeComponent(LightComponent, {
+      description: 'Show a light to the user',
+      input: {
+        lightId: s.string('The id of the light'),
+        icon: LightIconSchema,
+      },
+    }),
+  ],
+}),
+```
+
+</www-code-example>
+
+In the example above, the `LightListComponent` children is limited to the `LightComponent`.
+
 ---
 
 ## Chat Example
 
-Now, let's look at creating a `uiChatResource()`.
+Now, let's look at creating a `uiChatResource()` to generates Angular components in our application.
 
 <www-code-example header="chat.component.ts">
 
@@ -119,7 +182,7 @@ Let's break this down:
 
 ## Rendering Components
 
-Now, let's look at how we can render the messages using the `<hb-render-message>` component.
+Now, let's look at how we can render the messages using the @hashbrownai/angular!RenderMessageComponent:class component.
 
 <www-code-example header="chat.component.ts">
 
@@ -152,12 +215,12 @@ export class MessagesComponent {}
 Let's learn how the `MessagesComponent` above works.
 
 - The `MessagesComponent` is responsible for rendering the chat messages.
-- It uses the `@for` directive to iterate over the messages in the chat resource.
-- The `@switch` directive is used to determine the role of the message (either 'user' or 'assistant').
-- For user messages, it simply displays the content in a `<p>` tag.
-- For assistant messages, it uses the `<hb-render-message>` component to render the message content.
-- The `<hb-render-message>` component is responsible for rendering the exposed components based on the message content.
-- The `message` input is passed to the `<hb-render-message>` component, which will handle rendering the components defined in the chat resource.
+- It uses the `@for` control-flow syntax to iterate over the messages in the chat resource `value()` signal.
+- The `@switch` control-flow is used to determine the role of the message (either 'user' or 'assistant').
+- For user messages, it simply displays the content in a paragraph tag.
+- For assistant messages, it uses the @hashbrownai/angular!RenderMessageComponent:class component to render the message content.
+- The @hashbrownai/angular!RenderMessageComponent:class component is responsible for rendering the exposed components based on the message content.
+- The `message` input is passed to the @hashbrownai/angular!RenderMessageComponent:class component, which will handle rendering the components defined in the chat resource.
 
 ---
 

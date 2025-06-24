@@ -25,6 +25,15 @@ exposeComponent(MarkdownComponent, {
 
 Let's break down the example above:
 
+- `MarkdownComponent` is the React component that we want to expose.
+- `name` is a human-readable name of the component that will be used by the LLM to understand what the component does.
+- `description` is a human-readable description of the component that will be used by the LLM to understand what the component does.
+- `props` is an object that defines the properties that the component accepts. In this case, it accepts a single property called `content`, which is a streaming string representing the markdown content to be displayed.
+- The `s.streaming.string()` function is used to define the type of the property, indicating that it can be a string that will be streamed in chunks.
+
+A note on the `streaming` keyword: this is a Skillet-specific keyword that indicates that the input can be streamed in chunks, which is useful for large content like markdown.
+You can [learn more about streaming with Skillet](/docs/react/concept/streaming).
+
 ---
 
 ## Children
@@ -96,6 +105,13 @@ const { messages, sendMessage } = useUiChat({
 </www-code-example>
 
 Let's break this down:
+
+- `useUiChat` is a hook that allows you to interact with the LLM and send messages.
+- `model` is the model that you want to use for the chat. In this case, we're using `gpt-4o`.
+- `system` is a system prompt that provides context to the LLM about what it should do. In this case, we're telling it that it is a smart home assistant and can control lights.
+- `components` is an array of components that you want to expose to the LLM. Each component is defined using the `exposeComponent` function, which we discussed earlier.
+- `messages` is an array of messages that have been sent and received in the chat.
+- `sendMessage` is a function that allows you to send a message to the LLM.
 
 ---
 
