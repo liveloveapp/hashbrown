@@ -533,7 +533,16 @@
             },
             {
               "kind": "Content",
-              "text": "<{\n        debugName?: string;\n        apiUrl: string;\n        model: string;\n        system: string;\n        tools: Tools[];\n        responseSchema: "
+              "text": "<{\n        debugName?: string;\n        apiUrl: string;\n        model: "
+            },
+            {
+              "kind": "Reference",
+              "text": "KnownModelIds",
+              "canonicalReference": "@hashbrownai/core!KnownModelIds:type"
+            },
+            {
+              "kind": "Content",
+              "text": ";\n        system: string;\n        tools: Tools[];\n        responseSchema: "
             },
             {
               "kind": "Reference",
@@ -556,7 +565,7 @@
           "isOptional": false,
           "releaseTag": "Public",
           "name": "updateOptions",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 8 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 10 },
           "docs": {
             "modifiers": {
               "isInternal": false,

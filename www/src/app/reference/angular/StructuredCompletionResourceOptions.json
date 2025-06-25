@@ -148,7 +148,11 @@
           "docComment": "/**\n * The model to use for the structured completion resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "model: " },
-            { "kind": "Content", "text": "string" },
+            {
+              "kind": "Reference",
+              "text": "KnownModelIds",
+              "canonicalReference": "!unknown"
+            },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,

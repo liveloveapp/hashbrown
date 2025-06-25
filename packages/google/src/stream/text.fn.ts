@@ -128,7 +128,7 @@ export async function* text(
     };
 
     const params: GenerateContentParameters = {
-      model,
+      model: model as string,
       config,
       contents,
     };

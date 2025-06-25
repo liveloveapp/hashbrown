@@ -1,11 +1,12 @@
 import { devActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
+import { KnownModelIds } from '../utils';
 import { createReducer, on } from '../utils/micro-ngrx';
 
 export interface ConfigState {
   apiUrl: string;
-  model: string;
+  model: KnownModelIds;
   system: string;
   debounce: number;
   responseSchema?: s.HashbrownType;

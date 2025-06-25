@@ -8,7 +8,7 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import { Chat, fryHashbrown, s } from '@hashbrownai/core';
+import { Chat, fryHashbrown, KnownModelIds, s } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toSignal } from '../utils/signals';
 
@@ -34,7 +34,7 @@ export interface StructuredChatResourceOptions<
   /**
    * The model to use for the structured chat resource.
    */
-  model: string | Signal<string>;
+  model: KnownModelIds | Signal<KnownModelIds>;
   /**
    * The system prompt to use for the structured chat resource.
    */

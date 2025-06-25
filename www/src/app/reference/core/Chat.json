@@ -571,7 +571,11 @@
                   "docComment": "",
                   "excerptTokens": [
                     { "kind": "Content", "text": "model: " },
-                    { "kind": "Content", "text": "string" },
+                    {
+                      "kind": "Reference",
+                      "text": "KnownModelIds",
+                      "canonicalReference": "@hashbrownai/core!KnownModelIds:type"
+                    },
                     { "kind": "Content", "text": ";" }
                   ],
                   "isReadonly": false,
@@ -2486,7 +2490,11 @@
                   "docComment": "",
                   "excerptTokens": [
                     { "kind": "Content", "text": "content: " },
-                    { "kind": "Content", "text": "string" },
+                    {
+                      "kind": "Reference",
+                      "text": "JsonValue",
+                      "canonicalReference": "@hashbrownai/core!ɵtypes.JsonValue:type"
+                    },
                     { "kind": "Content", "text": ";" }
                   ],
                   "isReadonly": false,
@@ -2867,14 +2875,20 @@
             { "kind": "Content", "text": "export type UserMessage = " },
             {
               "kind": "Content",
-              "text": "{\n    role: 'user';\n    content: string;\n}"
+              "text": "{\n    role: 'user';\n    content: "
             },
+            {
+              "kind": "Reference",
+              "text": "JsonValue",
+              "canonicalReference": "@hashbrownai/core!ɵtypes.JsonValue:type"
+            },
+            { "kind": "Content", "text": ";\n}" },
             { "kind": "Content", "text": ";" }
           ],
           "fileUrlPath": "../packages/core/src/models/view.models.ts",
           "releaseTag": "Public",
           "name": "UserMessage",
-          "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "typeTokenRange": { "startIndex": 1, "endIndex": 4 },
           "docs": {
             "modifiers": {
               "isInternal": false,
