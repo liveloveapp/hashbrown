@@ -39,6 +39,9 @@ import { ConfigService } from '../services/ConfigService';
               <a [routerLink]="examplesUrl()" class="underline">example</a>
             </li>
             <li>
+              <a routerLink="/blog" class="underline">blog</a>
+            </li>
+            <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
             <li>
