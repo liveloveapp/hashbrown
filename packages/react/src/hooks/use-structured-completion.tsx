@@ -1,4 +1,4 @@
-import { Chat, s } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s } from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useStructuredChat } from './use-structured-chat';
 
@@ -17,7 +17,7 @@ export interface UseStructuredCompletionOptions<
   /**
    * The LLM model to use for the chat.
    */
-  model: string;
+  model: KnownModelIds;
 
   /**
    * The system message to use for the chat.

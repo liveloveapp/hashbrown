@@ -62,6 +62,39 @@
         },
         {
           "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#debugName:member",
+          "docComment": "/**\n * The debug name for the completion resource.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "debugName?: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": true,
+          "releaseTag": "Public",
+          "name": "debugName",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The debug name for the completion resource.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions#input:member",
           "docComment": "/**\n * The input to the completion.\n */\n",
           "excerptTokens": [

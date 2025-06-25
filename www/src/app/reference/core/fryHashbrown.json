@@ -22,7 +22,16 @@
         { "kind": "Content", "text": ">(init: " },
         {
           "kind": "Content",
-          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: string;\n    system: string;\n    messages?: "
+          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: "
+        },
+        {
+          "kind": "Reference",
+          "text": "KnownModelIds",
+          "canonicalReference": "@hashbrownai/core!KnownModelIds:type"
+        },
+        {
+          "kind": "Content",
+          "text": ";\n    system: string;\n    messages?: "
         },
         {
           "kind": "Reference",
@@ -52,13 +61,13 @@
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../packages/core/src/hashbrown.ts",
-      "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
+      "returnTypeTokenRange": { "startIndex": 11, "endIndex": 13 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "init",
-          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 8 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 10 },
           "isOptional": false
         }
       ],
@@ -168,7 +177,16 @@
         { "kind": "Content", "text": ">(init: " },
         {
           "kind": "Content",
-          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: string;\n    system: string;\n    messages?: "
+          "text": "{\n    debugName?: string;\n    apiUrl: string;\n    model: "
+        },
+        {
+          "kind": "Reference",
+          "text": "KnownModelIds",
+          "canonicalReference": "@hashbrownai/core!KnownModelIds:type"
+        },
+        {
+          "kind": "Content",
+          "text": ";\n    system: string;\n    messages?: "
         },
         {
           "kind": "Reference",
@@ -198,13 +216,13 @@
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../packages/core/src/hashbrown.ts",
-      "returnTypeTokenRange": { "startIndex": 17, "endIndex": 19 },
+      "returnTypeTokenRange": { "startIndex": 19, "endIndex": 21 },
       "releaseTag": "Public",
       "overloadIndex": 2,
       "parameters": [
         {
           "parameterName": "init",
-          "parameterTypeTokenRange": { "startIndex": 11, "endIndex": 16 },
+          "parameterTypeTokenRange": { "startIndex": 11, "endIndex": 18 },
           "isOptional": false
         }
       ],

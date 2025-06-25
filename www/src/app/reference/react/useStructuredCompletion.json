@@ -12,18 +12,12 @@
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "useStructuredCompletion: <Schema extends "
+          "text": "export declare function useStructuredCompletion<Input, Schema extends "
         },
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
           "canonicalReference": "!s.HashbrownType:type"
-        },
-        { "kind": "Content", "text": ", Tools extends " },
-        {
-          "kind": "Reference",
-          "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
         },
         { "kind": "Content", "text": ">(options: " },
         {
@@ -31,8 +25,8 @@
           "text": "UseStructuredCompletionOptions",
           "canonicalReference": "@hashbrownai/react!UseStructuredCompletionOptions:interface"
         },
-        { "kind": "Content", "text": "<Schema, Tools>" },
-        { "kind": "Content", "text": ") => " },
+        { "kind": "Content", "text": "<Input, Schema>" },
+        { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "UseStructuredCompletionResult",
@@ -44,28 +38,29 @@
           "text": "s.Infer",
           "canonicalReference": "!s.Infer:type"
         },
-        { "kind": "Content", "text": "<Schema>>" }
+        { "kind": "Content", "text": "<Schema>>" },
+        { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
-      "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 10 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "options",
-          "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 7 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
         }
       ],
       "typeParameters": [
         {
-          "typeParameterName": "Schema",
-          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "typeParameterName": "Input",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         },
         {
-          "typeParameterName": "Tools",
-          "constraintTokenRange": { "startIndex": 3, "endIndex": 4 },
+          "typeParameterName": "Schema",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, s, ɵcomponents } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s, ɵcomponents } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import {
@@ -24,7 +24,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The model to use for the UI chat resource.
    */
-  model: string | Signal<string>;
+  model: KnownModelIds;
   /**
    * The system prompt to use for the UI chat resource.
    */

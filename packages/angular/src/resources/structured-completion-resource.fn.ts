@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, effect, Resource, Signal } from '@angular/core';
-import { Chat, s } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s } from '@hashbrownai/core';
 import { SignalLike } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
@@ -22,7 +22,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * The model to use for the structured completion resource.
    */
-  model: string;
+  model: KnownModelIds;
   /**
    * The input to the structured completion resource.
    */

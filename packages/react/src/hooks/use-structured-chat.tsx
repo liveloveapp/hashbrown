@@ -1,4 +1,10 @@
-import { Chat, fryHashbrown, Hashbrown, s } from '@hashbrownai/core';
+import {
+  Chat,
+  fryHashbrown,
+  Hashbrown,
+  KnownModelIds,
+  s,
+} from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTools } from '../create-tool.fn';
 import { HashbrownContext } from '../hashbrown-provider';
@@ -15,7 +21,7 @@ export interface UseStructuredChatOptions<
    * The LLM model to use for the chat.
    *
    */
-  model: string;
+  model: KnownModelIds;
 
   /**
    * The system message to use for the chat.

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, s, ɵcomponents } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s, ɵcomponents } from '@hashbrownai/core';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
@@ -62,7 +62,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * The LLM model to use for the chat.
    */
-  model: string;
+  model: KnownModelIds;
 
   /**
    * The system message to use for the chat.

@@ -26,7 +26,7 @@ export async function* text(
   try {
     const baseOptions: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
       stream: true,
-      model: model,
+      model: model as string,
       messages: [
         {
           role: 'system',
