@@ -21,7 +21,6 @@ import {
   IsUnion,
   UnionToTuple,
 } from '../utils/types';
-import { needsDiscriminatorWrapperInAnyOf } from './to-json-schema';
 
 export const internal = '~schema';
 export type internal = typeof internal;
@@ -218,7 +217,7 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return `string`;
+    return `/* ${schema[internal].definition.description} */ string`;
   },
 );
 
@@ -358,7 +357,7 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return `number`;
+    return `/* ${schema[internal].definition.description} */ number`;
   },
 );
 
@@ -417,7 +416,7 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return 'boolean';
+    return `/* ${schema[internal].definition.description} */ boolean`;
   },
 );
 
@@ -478,7 +477,7 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return `integer`;
+    return `/* ${schema[internal].definition.description} */ integer`;
   },
 );
 
@@ -569,7 +568,8 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor(
       // clone pathSeen for each branch
       return `${' '.repeat(depth + 2)}${key}: ${(child as any).toTypeScript(new Set(pathSeen))};`;
     });
-    return `{
+
+    return `/* ${schema[internal].definition.description} */ {
 ${lines.join('\n')}
 ${' '.repeat(depth)}}`;
   },
@@ -657,9 +657,9 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor(
     }
     pathSeen.add(schema);
 
-    return `Array<${schema[internal].definition.element.toTypeScript(
-      new Set(pathSeen),
-    )}>`;
+    return `/* ${schema[internal].definition.description} */ Array<${schema[
+      internal
+    ].definition.element.toTypeScript(new Set(pathSeen))}>`;
   },
 );
 
@@ -771,9 +771,11 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor(
     }
     pathSeen.add(schema);
 
-    return schema[internal].definition.options
+    return `/* ${schema[internal].definition.description} */ (${schema[
+      internal
+    ].definition.options
       .map((opt: any) => opt.toTypeScript(new Set(pathSeen)))
-      .join(' | ');
+      .join(' | ')})`;
   },
 );
 
@@ -925,7 +927,7 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor(
     return object;
   },
   (schema: any) => {
-    return `null`;
+    return `/* ${schema[internal].definition.description} */ null`;
   },
 );
 
@@ -935,6 +937,31 @@ export function isNullType(type: HashbrownType): type is NullType {
 
 export function nullish(): NullType {
   return new NullType({ type: 'null', description: '', streaming: false });
+}
+/**
+ * --------------------------------------
+ * --------------------------------------
+ *           Streaming Helpers
+ * --------------------------------------
+ * --------------------------------------
+ */
+export function needsDiscriminatorWrapperInAnyOf(
+  schema: HashbrownType,
+): boolean {
+  if (
+    isAnyOfType(schema) ||
+    isArrayType(schema) ||
+    isObjectType(schema) ||
+    (isStringType(schema) && isStreaming(schema))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isStreaming(schema: HashbrownType): boolean {
+  return schema[internal].definition.streaming;
 }
 
 /**

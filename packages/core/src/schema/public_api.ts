@@ -34,6 +34,5 @@ export {
   type Schema,
 } from './base';
 export { getDescription } from './get-description';
-export { isStreaming } from './is-streaming';
 export * as streaming from './streaming';
 export { toJsonSchema } from './to-json-schema';
