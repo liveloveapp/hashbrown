@@ -1,16 +1,13 @@
 import { computed, Injectable, signal } from '@angular/core';
 import {
+  createRuntime,
+  createRuntimeFunction,
+  createToolJavaScript,
   exposeComponent,
   UiAssistantMessage,
   uiChatResource,
 } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
-import {
-  createToolJavaScript,
-  defineAsyncRuntime,
-  defineFunction,
-  defineFunctionWithArgs,
-} from '@hashbrownai/tool-javascript';
 import { AiSuccess } from './AiSuccess';
 import { AiRefusal } from './AiRefusal';
 import { AiClarification } from './AiClarification';
@@ -79,7 +76,8 @@ const chartSchema = s.anyOf([
             'the data points for the dataset',
             s.number('a data point'),
           ),
-          fill: s.string('the CSS color of the dataset'),
+          borderColor: s.string('the CSS color of the dataset'),
+          backgroundColor: s.string('the CSS color of the dataset'),
           tension: s.number(
             'A number between 0 and 1 that controls the tension of the line',
           ),
@@ -198,16 +196,12 @@ Assistant:
 export class Chat {
   readonly chart = signal<s.Infer<typeof chartSchema> | null>(null);
   readonly options = signal<s.Infer<typeof optionsSchema> | null>(null);
-  private readonly runtime = defineAsyncRuntime({
-    loadVariant: () =>
-      import('@jitl/quickjs-singlefile-browser-debug-asyncify').then(
-        (m) => m.default,
-      ),
+  readonly runtime = createRuntime({
     functions: [
-      defineFunction({
+      createRuntimeFunction({
         name: 'getData',
         description: 'Get the data for the chart',
-        output: s.array(
+        result: s.array(
           'the data for the chart',
           s.object('a data point', {
             product: s.string('the product of the data point'),
@@ -280,18 +274,16 @@ export class Chat {
           ];
         },
       }),
-      defineFunctionWithArgs({
+      createRuntimeFunction({
         name: 'renderChart',
         description: 'Render a chart',
-        input: s.object('a description of the chart', {
+        args: s.object('a description of the chart', {
           chart: chartSchema,
           options: optionsSchema,
         }),
-        output: s.nullish(),
         handler: async (args) => {
           this.chart.set(args.chart);
           this.options.set(args.options);
-          return null;
         },
       }),
     ],
