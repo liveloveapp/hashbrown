@@ -35,6 +35,7 @@
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "cache": true,
       "options": {
         "jestConfig": "packages/core/jest.config.ts",
         "passWithNoTests": true
