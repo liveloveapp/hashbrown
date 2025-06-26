@@ -10,20 +10,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
   chatResource,
+  createRuntime,
+  createRuntimeFunction,
   createTool,
-  createToolWithArgs,
+  createToolJavaScript,
   exposeComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
-import {
-  createToolJavaScript,
-  defineAsyncRuntime,
-  defineFunction,
-  defineFunctionWithArgs,
-} from '@hashbrownai/tool-javascript';
 import { Store } from '@ngrx/store';
-import variant from '@jitl/quickjs-singlefile-browser-debug-asyncify';
 import { lastValueFrom } from 'rxjs';
 import { SmartHomeService } from '../../services/smart-home.service';
 import { AuthService } from '../../shared/auth.service';
@@ -214,13 +209,12 @@ export class ChatPanelComponent {
     ],
   });
 
-  runtime = defineAsyncRuntime({
-    loadVariant: () => Promise.resolve(variant),
+  runtime = createRuntime({
     functions: [
-      defineFunction({
+      createRuntimeFunction({
         name: 'getLights',
         description: 'Get the current lights',
-        output: s.array(
+        result: s.array(
           'The lights',
           s.object('A light', {
             id: s.string('The id of the light'),
@@ -229,14 +223,14 @@ export class ChatPanelComponent {
         ),
         handler: () => this.smartHomeService.loadLights(),
       }),
-      defineFunctionWithArgs({
+      createRuntimeFunction({
         name: 'addLight',
         description: 'Add a light',
-        input: s.object('Add light input', {
+        args: s.object('Add light input', {
           name: s.string('The name of the light'),
           brightness: s.number('The brightness of the light'),
         }),
-        output: s.object('The light', {
+        result: s.object('The light', {
           id: s.string('The id of the light'),
           brightness: s.number('The brightness of the light'),
         }),
@@ -252,10 +246,10 @@ export class ChatPanelComponent {
           return light;
         },
       }),
-      defineFunctionWithArgs({
+      createRuntimeFunction({
         name: 'createScene',
         description: 'Apply a scene',
-        input: s.object('Scene to Create', {
+        args: s.object('Scene to Create', {
           name: s.string('The name of the scene'),
           lights: s.array(
             'The lights to add to the scene',
@@ -265,7 +259,7 @@ export class ChatPanelComponent {
             }),
           ),
         }),
-        output: s.object('The scene', {
+        result: s.object('The scene', {
           id: s.string('The id of the scene'),
           lights: s.array(
             'The lights in the scene',
@@ -417,7 +411,7 @@ export class ChatPanelComponent {
           return Promise.resolve(sanitized);
         },
       }),
-      createToolWithArgs({
+      createTool({
         name: 'findHTMLElementByCSSSelector',
         description: 'Find the html element via a unique CSS selector.',
         schema: s.object('Args', {
@@ -437,7 +431,7 @@ export class ChatPanelComponent {
           return Promise.resolve('');
         },
       }),
-      createToolWithArgs({
+      createTool({
         name: 'findHTMLElementByXPathSelector',
         description: 'Find the html element via a unique XPath.',
         schema: s.object('Args', {
@@ -465,7 +459,7 @@ export class ChatPanelComponent {
           return Promise.resolve('');
         },
       }),
-      createToolWithArgs({
+      createTool({
         name: 'clickElement',
         description: 'Click.',
         schema: s.object('Click an element', {
@@ -487,7 +481,7 @@ export class ChatPanelComponent {
           return Promise.resolve(true);
         },
       }),
-      createToolWithArgs({
+      createTool({
         name: 'drawTopicMarker',
         description:
           'Create a circle with a letter.  Used to visually associate things in the UI with topics in chat.',
@@ -532,7 +526,7 @@ export class ChatPanelComponent {
           return Promise.resolve(true);
         },
       }),
-      createToolWithArgs({
+      createTool({
         name: 'controlLight',
         description: 'Control a light',
         schema: s.object('Control light input', {

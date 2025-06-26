@@ -1,15 +1,13 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { SmartHomeService } from '../../services/smart-home.service';
+import { lastValueFrom } from 'rxjs';
 import { s } from '@hashbrownai/core';
 import {
-  defineAsyncRuntime,
-  defineFunctionWithArgs,
-} from '@hashbrownai/tool-javascript';
-import { lastValueFrom } from 'rxjs';
-import {
+  createRuntime,
+  createRuntimeFunction,
   structuredChatResource,
   structuredCompletionResource,
 } from '@hashbrownai/angular';
+import { SmartHomeService } from '../../services/smart-home.service';
 
 @Component({
   selector: 'app-planner',
@@ -97,27 +95,23 @@ export class PlannerComponent {
     return planText;
   });
 
-  runtime = defineAsyncRuntime({
-    loadVariant: () =>
-      import('@jitl/quickjs-singlefile-browser-debug-asyncify').then(
-        (m) => m.default,
-      ),
+  runtime = createRuntime({
     functions: [
-      defineFunctionWithArgs({
+      createRuntimeFunction({
         name: 'createLight',
         description: 'Create a light',
-        input: s.string('the name of the light'),
-        output: s.object('Light', {
+        args: s.string('the name of the light'),
+        result: s.object('Light', {
           id: s.string('the id of the light'),
           name: s.string('the name of the light'),
         }),
         handler: (name) =>
           lastValueFrom(this.smartHome.addLight$({ name, brightness: 100 })),
       }),
-      defineFunctionWithArgs({
+      createRuntimeFunction({
         name: 'createScene',
         description: 'Create a scene',
-        input: s.object('Create Scene Params', {
+        args: s.object('Create Scene Params', {
           name: s.string('the name of the scene'),
           lights: s.array(
             'lights in the scene',
@@ -127,16 +121,16 @@ export class PlannerComponent {
             }),
           ),
         }),
-        output: s.object('Scene', {
+        result: s.object('Scene', {
           id: s.string('the id of the scene'),
           name: s.string('the name of the scene'),
         }),
         handler: (params) => lastValueFrom(this.smartHome.addScene$(params)),
       }),
-      defineFunctionWithArgs({
+      createRuntimeFunction({
         name: 'createScheduledScene',
         description: 'Create a scheduled scene',
-        input: s.object('Create Scheduled Scene Params', {
+        args: s.object('Create Scheduled Scene Params', {
           sceneId: s.string('the id of the scene'),
           rrule: s.object('Recurrence Rule', {
             freq: s.enumeration('Recurrence frequency (FREQ)', [
@@ -226,7 +220,7 @@ export class PlannerComponent {
             ]),
           }),
         }),
-        output: s.object('Scheduled Scene', {
+        result: s.object('Scheduled Scene', {
           id: s.string('the id of the scheduled scene'),
           sceneId: s.string('the id of the scene'),
         }),
