@@ -18,17 +18,19 @@ export {
 } from './resources';
 export { provideHashbrown, type ProvideHashbrownOptions } from './providers';
 export {
+  createRuntime,
+  createRuntimeFunction,
   createTool,
-  createToolWithArgs,
+  createToolJavaScript,
   exposeComponent,
-  type CreateToolInput,
-  type CreateToolWithArgsInput,
+  type ComponentPropSchema,
+  type CreateRuntimeOptions,
+  type CreateToolJavaScriptOptions,
+  type ExposedComponent,
+  type UiAssistantMessage,
   type UiChatMessage,
   type UiChatSchema,
   type UiChatSchemaComponent,
-  type UiUserMessage,
-  type UiAssistantMessage,
   type UiErrorMessage,
-  type ComponentPropSchema,
-  type ExposedComponent,
+  type UiUserMessage,
 } from './utils';
