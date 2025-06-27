@@ -35,8 +35,8 @@ export function createToolJavaScript({ runtime }: CreateToolJavaScriptOptions) {
       'The following functions are available to you:',
       runtime.describe(),
     ].join('\n'),
-    schema: s.object('The result', {
-      code: s.string('The JavaScript code to run'),
+    schema: s.streaming.object('The result', {
+      code: s.streaming.string('The JavaScript code to run'),
     }),
     handler: async ({ code }, abortSignal) => {
       return runtime.run(code, abortSignal);
