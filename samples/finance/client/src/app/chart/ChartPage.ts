@@ -15,6 +15,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { CodeModal } from './CodeModal';
 import { CodeLoader } from './CodeLoader';
+import { Ingredients } from './Ingredients';
+import { ChartExamples } from './ChartExamples';
 
 ChartJS.defaults.color = '#ffffff';
 ChartJS.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
@@ -28,6 +30,7 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
     MatProgressBarModule,
     MatDialogModule,
     CodeLoader,
+    ChartExamples,
   ],
   template: `
     <div class="header">
@@ -38,7 +41,12 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
         [disabled]="disabled()"
         (keyup.enter)="sendMessage()"
       />
-      <button matButton="tonal" (click)="sendMessage()" [disabled]="disabled()">
+      <button
+        class="send-button"
+        matButton="tonal"
+        (click)="sendMessage(input.value)"
+        [disabled]="disabled()"
+      >
         @if (chat.lastAssistantMessage()) {
           Remix
         } @else {
@@ -52,6 +60,9 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
       }
     </div>
     <div class="chartArea">
+      @if (chat.isEmpty()) {
+        <app-chart-examples (selectExample)="sendMessage($event.prompt)" />
+      }
       @if (chat.code() && !hasRenderedAChart()) {
         <app-code-loader [code]="chat.code()!" />
       }
@@ -74,8 +85,8 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
       height: 100vh;
       max-height: 100vh;
       grid-template-rows: 64px 4px 1fr;
-      color: #ffffff;
-      background-color: #1e1e1e;
+      color: rgba(0, 0, 0, 0.8);
+      background-color: #faf9f0;
     }
 
     .header {
@@ -86,8 +97,8 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
       justify-content: center;
       width: 100%;
       height: 100%;
-      border-bottom: 1px solid #333333;
-      background-color: #1e1e1e;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      background-color: #faf9f0;
     }
 
     input {
@@ -97,13 +108,21 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
       outline: none;
       padding: 16px;
       border-radius: 8px;
-      background-color: #2c2c2c;
-      color: #ffffff;
+      background-color: #faf9f0;
+      color: rgba(0, 0, 0, 0.8);
       font-size: 16px;
+      font-family: 'Fredoka';
     }
 
     input:disabled {
       opacity: 0.5;
+    }
+
+    button.send-button {
+      background-color: #fbbb52;
+      color: #774625;
+      text-transform: lowercase;
+      font-weight: 900;
     }
 
     .chartArea {
@@ -134,11 +153,11 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
     .toastArea {
       position: fixed;
       bottom: 16px;
-      left: 16px;
+      right: 16px;
       width: 100%;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
+      align-items: flex-end;
       justify-content: flex-end;
       gap: 16px;
     }
@@ -154,11 +173,24 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
     button.open-code-modal:hover {
       opacity: 1;
     }
+
+    app-chart-examples {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    mat-progress-bar {
+      --mat-progress-bar-track-color: #fde4ba;
+      --mat-progress-bar-active-indicator-color: #e8a23d;
+    }
   `,
 })
 export class ChartPage {
   chat = inject(Chat);
   dialog = inject(MatDialog);
+  ingredients = inject(Ingredients);
   canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvasRef');
   inputRef = viewChild.required<ElementRef<HTMLInputElement>>('input');
   disabled = computed(() => this.chat.isLoading());
@@ -193,7 +225,13 @@ export class ChartPage {
           options: {
             responsive: true,
             maintainAspectRatio: true,
+            borderColor: 'rgba(0, 0, 0, 0.1)',
             ...chartOptions,
+            interaction: {
+              mode: chartOptions.interaction?.mode ?? undefined,
+              axis: chartOptions.interaction?.axis ?? undefined,
+              intersect: chartOptions.interaction?.intersect ?? undefined,
+            },
           },
         });
 
@@ -215,8 +253,10 @@ export class ChartPage {
     });
   }
 
-  sendMessage() {
-    this.chat.sendMessage(this.inputRef().nativeElement.value);
+  sendMessage(value?: string) {
+    if (!value) return;
+
+    this.chat.sendMessage(value);
   }
 
   openCodeModal() {

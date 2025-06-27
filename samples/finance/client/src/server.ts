@@ -11,6 +11,7 @@ import { HashbrownWriter } from '@hashbrownai/writer';
 import express from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { INGREDIENTS } from './server/ingredients';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -139,6 +140,45 @@ app.get('/api/health', (req, res) => {
       writer: !!WRITER_API_KEY,
     },
   });
+});
+
+/**
+ * Ingredients endpoint
+ */
+app.get('/api/ingredients', (req, res) => {
+  const {
+    startDate: startDateString,
+    endDate: endDateString,
+    ingredientIds,
+  } = req.query;
+
+  if (!startDateString || !endDateString) {
+    return res
+      .status(400)
+      .json({ error: 'startDate and endDate are required' });
+  }
+  const startDate = new Date(startDateString as string);
+  const endDate = new Date(endDateString as string);
+  const ingredients = INGREDIENTS.filter((ingredient) => {
+    if (
+      ingredientIds &&
+      Array.isArray(ingredientIds) &&
+      !ingredientIds.includes(ingredient.id)
+    ) {
+      return false;
+    }
+
+    return true;
+  }).map((ingredient) => ({
+    ...ingredient,
+    dailyReports: ingredient.dailyReports.filter((report) => {
+      return (
+        new Date(report.date) >= startDate && new Date(report.date) <= endDate
+      );
+    }),
+  }));
+
+  return res.json(ingredients);
 });
 
 /**

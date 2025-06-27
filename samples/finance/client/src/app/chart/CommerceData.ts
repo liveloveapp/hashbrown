@@ -3,10 +3,15 @@ import { faker } from '@faker-js/faker';
 faker.seed(123);
 
 function generateProductData(count: number) {
+  const minPrice = 100;
+  const maxPrice = 1000;
+  const price = faker.number.int({ min: minPrice, max: maxPrice });
+
   return Array.from({ length: count }, () => ({
     id: faker.string.uuid(),
     name: faker.commerce.productName(),
-    price: faker.commerce.price(),
+    price,
+    cost: price * 0.75,
     description: faker.commerce.productDescription(),
   }));
 }

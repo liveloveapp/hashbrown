@@ -12,14 +12,14 @@ import {
   selector: 'app-code-loader',
   template: `
     @for (line of lines(); track $index) {
-      <div class="line" [style.width.ch]="line / 3"></div>
+      <div class="line" [style.width.ch]="line / 2"></div>
     }
   `,
   styles: `
     :host {
-      width: 120px;
+      width: 240px;
       height: 200px;
-      background-color: #000;
+      background-color: #fff;
       padding: 8px;
       display: flex;
       flex-direction: column;
