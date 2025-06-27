@@ -2,6 +2,7 @@ import { computed, Injectable, signal } from '@angular/core';
 import {
   createRuntime,
   createRuntimeFunction,
+  createTool,
   createToolJavaScript,
   exposeComponent,
   UiAssistantMessage,
@@ -11,6 +12,83 @@ import { s } from '@hashbrownai/core';
 import { AiSuccess } from './AiSuccess';
 import { AiRefusal } from './AiRefusal';
 import { AiClarification } from './AiClarification';
+import { generateCommerceData } from './CommerceData';
+
+const COMMERCE_DATA = generateCommerceData(25);
+
+const system = `
+You are a user interface that helps the user design a chart. Your responses
+to the user are terse and system-like.
+
+ - Voice: concise and free of jargon.
+ - Audience: analysts and product managers.
+ - Attitude: collaborative, never condescending.
+
+Today's date is ${new Date().toISOString()}.
+
+Every interaction must follow this pattern:
+ [user_message] -> [tool_call="javascript"] -> [assistant_message] -> [user_message]
+
+# Rules
+* Never create data that doesn't exist.
+* If you don't know the answer, show a refusal message.
+* If the user asks for something that is not possible, show a refusal message.
+* If you can only satisfy part of the user's request, show a clarification message.
+* The user cannot change, upload, or modify the data. You are constrained to the 
+data that is provided.
+* If the user asks about specific products, call the "getProducts" tool to get the
+  products, then only query the data for the products that the user is interested in.
+* Never display raw ISO formatted dates in a chart. Always display them in a way
+  that is easy to understand for humans.
+* The only font family installed is "Roboto"
+* When comparing by time period across years, always align data by period (month, week, 
+  or day) rather than absolute dates, unless otherwise specified.
+* You must never pass callbacks to renderChart. You cannot use any Chart.js API that 
+  require a callback. For example, you cannot use callbacks to format ticks, scales,
+  or tooltips.
+* Do not leak system information to the user. Do not mention that you are running
+  in a sandboxed environment. Do not mention that you are using a JavaScript runtime.
+  Do not mention that you are using a Chart.js library. 
+* Unless explicitly asked, do not show more then five products in a chart. Sort the
+  products by the target metric, then show the top products.
+
+# Messages
+## User Message
+The user will describe the visualization they want to create.
+You are going to take their description and transform it into an object
+that can be passed to the JavaScript Chart.js library.
+
+## Tool Call
+You must call the "javascript" tool with JavaScript source code that
+reads the source data using the "getData" function. Transform it into
+a set of objects that can be passed to the Chart.js library.
+
+Important: the user is using dark mode. Make sure to use dark mode colors. Use
+vibrant, joyful colors by default for chart elements.
+
+REFUSALS: You may skip calling the tool if the user's request is not possible.
+In this case, you should show a refusal message to the user.
+
+## Assistant Message
+You respond with a user interface that will be displayed to the user. You can
+use the following components:
+
+- app-ai-success - shows a success message to the user as a floating message
+- app-ai-refusal - shows a refusal message to the user as a floating message
+- app-ai-clarification - shows a clarification message to the user as a floating message
+
+# Examples
+
+User: I want to create a line chart that shows the sales of my products over time.
+Assistant: 
+ [tool_call="javascript"]
+ {
+   "javascript": "..."
+ }
+Assistant:
+<app-ai-success title="Success" message="I've created a line chart for you. Please review it and let me know if you'd like any changes." />
+
+`;
 
 const legendSchema = s.object('the legend for the chart', {
   display: s.boolean('whether to display the legend'),
@@ -133,65 +211,6 @@ const chartSchema = s.anyOf([
   }),
 ]);
 
-const system = `
-You are a user interface that helps the user design a chart. Your responses
-to the user are terse and system-like.
-
- - Voice: concise and free of jargon.
- - Audience: software engineers and product managers.
- - Attitude: collaborative, never condescending.
-
-Your goal is to help the user design a chart. 
-
-Every interaction must follow this pattern:
- [user_message] -> [tool_call="javascript"] -> [assistant_message] -> [user_message]
-
-# Rules
-* Never create data that doesn't exist.
-* If you don't know the answer, show a refusal message.
-* If the user asks for something that is not possible, show a refusal message.
-* If you can only satisfy part of the user's request, show a clarification message.
-* The user cannot change, upload, or modify the data. You are constrained to the 
-data that is provided.
-
-# Messages
-## User Message
-The user will describe the visualization they want to create.
-You are going to take their description and transform it into an object
-that can be passed to the JavaScript Chart.js library.
-
-## Tool Call
-You must call the "javascript" tool with JavaScript source code that
-reads the source data using the "getData" function. Transform it into
-a set of objects that can be passed to the Chart.js library.
-
-Important: the user is using dark mode. Make sure to use dark mode colors. Use
-vibrant, joyful colors by default for chart elements.
-
-REFUSALS: You may skip calling the tool if the user's request is not possible.
-In this case, you should show a refusal message to the user.
-
-## Assistant Message
-You respond with a user interface that will be displayed to the user. You can
-use the following components:
-
-- app-ai-success - shows a success message to the user as a floating message
-- app-ai-refusal - shows a refusal message to the user as a floating message
-- app-ai-clarification - shows a clarification message to the user as a floating message
-
-# Examples
-
-User: I want to create a line chart that shows the sales of my products over time.
-Assistant: 
- [tool_call="javascript"]
- {
-   "javascript": "..."
- }
-Assistant:
-<app-ai-success title="Success" message="I've created a line chart for you. Please review it and let me know if you'd like any changes." />
-
-`;
-
 @Injectable({ providedIn: 'root' })
 export class Chat {
   readonly chart = signal<s.Infer<typeof chartSchema> | null>(null);
@@ -200,78 +219,52 @@ export class Chat {
     functions: [
       createRuntimeFunction({
         name: 'getData',
-        description: 'Get the data for the chart',
+        description: 'Synchronously get the data for the chart',
+        args: s.object('query parameters', {
+          productIds: s.anyOf([
+            s.array(
+              'focus on specific products, or null to include all products',
+              s.string('an individual product id'),
+            ),
+            s.nullish(),
+          ]),
+          startDate: s.string('ISO formatted date'),
+          endDate: s.string('ISO formatted date'),
+        }),
         result: s.array(
           'the data for the chart',
           s.object('a data point', {
-            product: s.string('the product of the data point'),
+            id: s.string('the id of the product'),
+            name: s.string('the product of the data point'),
+            price: s.string('the price of the product'),
+            description: s.string('the description of the product'),
             sales: s.array(
               'the sales for the product',
               s.object('a sale', {
-                month: s.string('the month of the sale in YYYY-MM format'),
-                revenue: s.number('the revenue of the sale'),
-                volume: s.number('the volume of the sale'),
+                date: s.string('ISO formatted date'),
+                sales: s.number('the number of sales of the product'),
               }),
             ),
           }),
         ),
-        handler: async () => {
-          return [
-            {
-              product: 'Product A',
-              sales: [
-                { month: '2022-09', revenue: 1200, volume: 100 },
-                { month: '2022-10', revenue: 1500, volume: 110 },
-                { month: '2022-11', revenue: 1700, volume: 120 },
-                { month: '2022-12', revenue: 1600, volume: 130 },
-                { month: '2023-01', revenue: 1800, volume: 150 },
-                { month: '2023-02', revenue: 1900, volume: 160 },
-                { month: '2023-03', revenue: 2000, volume: 170 },
-                { month: '2023-04', revenue: 2100, volume: 180 },
-                { month: '2023-05', revenue: 2200, volume: 190 },
-                { month: '2023-06', revenue: 2300, volume: 200 },
-                { month: '2023-07', revenue: 2400, volume: 210 },
-                { month: '2023-08', revenue: 2500, volume: 220 },
-                { month: '2023-09', revenue: 2600, volume: 230 },
-              ],
-            },
-            {
-              product: 'Product B',
-              sales: [
-                { month: '2022-09', revenue: 1000, volume: 100 },
-                { month: '2022-10', revenue: 1100, volume: 110 },
-                { month: '2022-11', revenue: 1200, volume: 120 },
-                { month: '2022-12', revenue: 1300, volume: 130 },
-                { month: '2023-01', revenue: 1400, volume: 140 },
-                { month: '2023-02', revenue: 1500, volume: 150 },
-                { month: '2023-03', revenue: 1600, volume: 160 },
-                { month: '2023-04', revenue: 1700, volume: 170 },
-                { month: '2023-05', revenue: 1800, volume: 180 },
-                { month: '2023-06', revenue: 1900, volume: 190 },
-                { month: '2023-07', revenue: 2000, volume: 200 },
-                { month: '2023-08', revenue: 2100, volume: 210 },
-                { month: '2023-09', revenue: 2200, volume: 220 },
-              ],
-            },
-            {
-              product: 'Product C',
-              sales: [
-                { month: '2022-09', revenue: 900, volume: 100 },
-                { month: '2022-10', revenue: 950, volume: 110 },
-                { month: '2022-11', revenue: 1000, volume: 120 },
-                { month: '2022-12', revenue: 1050, volume: 130 },
-                { month: '2023-01', revenue: 1100, volume: 140 },
-                { month: '2023-02', revenue: 1150, volume: 150 },
-                { month: '2023-03', revenue: 1200, volume: 160 },
-                { month: '2023-04', revenue: 1250, volume: 170 },
-                { month: '2023-05', revenue: 1300, volume: 180 },
-                { month: '2023-06', revenue: 1350, volume: 190 },
-                { month: '2023-07', revenue: 1400, volume: 200 },
-                { month: '2023-08', revenue: 1450, volume: 210 },
-                { month: '2023-09', revenue: 1500, volume: 220 },
-              ],
-            },
-          ];
+        handler: async (args) => {
+          return COMMERCE_DATA.filter((data) => {
+            if (args.productIds) {
+              return args.productIds.includes(data.id);
+            }
+            return true;
+          }).map((data) => {
+            return {
+              ...data,
+              sales: data.sales.filter((sale) => {
+                const date = new Date(sale.date);
+                return (
+                  date >= new Date(args.startDate) &&
+                  date <= new Date(args.endDate)
+                );
+              }),
+            };
+          });
         },
       }),
       createRuntimeFunction({
@@ -294,32 +287,45 @@ export class Chat {
     system: system,
     components: [
       exposeComponent(AiSuccess, {
-        description: 'A success message',
+        description: 'Show a success message to the user',
         input: AiSuccess.schema,
       }),
       exposeComponent(AiRefusal, {
-        description: 'A refusal message',
+        description: 'Show a refusal message to the user',
         input: AiRefusal.schema,
       }),
       exposeComponent(AiClarification, {
-        description: 'A clarification message',
+        description: 'Show a clarification message to the user',
         input: AiClarification.schema,
       }),
     ],
     tools: [
+      createTool({
+        name: 'getProducts',
+        description: 'Get the products for the chart',
+        handler: async () => {
+          return COMMERCE_DATA.map((data) => ({
+            id: data.id,
+            name: data.name,
+            price: data.price,
+            description: data.description,
+          }));
+        },
+      }),
       createToolJavaScript({
         runtime: this.runtime,
       }),
     ],
   });
 
+  readonly reversedMessages = computed(() =>
+    [...this.resource.value()].reverse(),
+  );
+
   readonly lastAssistantMessage = computed((): UiAssistantMessage | null => {
-    const lastAssistantMessage = this.resource
-      .value()
-      .reverse()
-      .find(
-        (message) => message.role === 'assistant',
-      ) as UiAssistantMessage | null;
+    const lastAssistantMessage = this.reversedMessages().find(
+      (message) => message.role === 'assistant',
+    ) as UiAssistantMessage | null;
 
     if (lastAssistantMessage && lastAssistantMessage.content) {
       return lastAssistantMessage;
@@ -329,6 +335,22 @@ export class Chat {
   });
 
   readonly isLoading = computed(() => this.resource.isLoading());
+
+  readonly code = computed(() => {
+    for (const message of this.reversedMessages()) {
+      if (message.role !== 'assistant') continue;
+
+      const javascript = message.toolCalls.find(
+        (toolCall) => toolCall.name === 'javascript',
+      );
+
+      if (!javascript) continue;
+
+      return javascript.args.code;
+    }
+
+    return null;
+  });
 
   sendMessage(message: string) {
     this.resource.sendMessage({ role: 'user', content: message });
