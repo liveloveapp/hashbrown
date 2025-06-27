@@ -28,8 +28,7 @@ import { MatIcon } from '@angular/material/icon';
   styles: `
     :host {
       display: block;
-      width: 100%;
-      max-width: 320px;
+      width: 320px;
       height: auto;
       padding: 16px;
       border-radius: 12px;
@@ -37,6 +36,7 @@ import { MatIcon } from '@angular/material/icon';
       transition: background-color 0.3s ease;
       backdrop-filter: blur(5px);
       border: 1px solid rgba(255, 255, 255, 0.1);
+      font-family: 'Fredoka';
       transition:
         opacity 0.3s ease,
         transform 0.3s ease;
@@ -44,7 +44,7 @@ import { MatIcon } from '@angular/material/icon';
 
     :host(.closing) {
       opacity: 0;
-      transform: translateX(-100%);
+      transform: translateX(100%);
     }
 
     :host(.closed) {
@@ -54,7 +54,7 @@ import { MatIcon } from '@angular/material/icon';
     .title {
       font-size: 15px;
       font-weight: 700;
-      color: #ffffff;
+      color: rgba(0, 0, 0, 0.8);
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
@@ -73,7 +73,7 @@ import { MatIcon } from '@angular/material/icon';
     .message {
       font-size: 13px;
       line-height: 1.2;
-      color: #d1d1d1;
+      color: rgba(0, 0, 0, 0.8);
     }
 
     .title-text {
@@ -85,15 +85,15 @@ import { MatIcon } from '@angular/material/icon';
     }
 
     :host(.refusal) {
-      background-color: rgba(255, 76, 76, 0.72);
+      background-color: rgba(226, 118, 118, 0.72);
     }
 
     :host(.success) {
-      background-color: rgba(76, 175, 80, 0.72);
+      background-color: rgba(255, 255, 255, 0.72);
     }
 
     :host(.info) {
-      background-color: rgba(33, 150, 243, 0.72);
+      background-color: rgba(216, 236, 239, 0.72);
     }
   `,
 })

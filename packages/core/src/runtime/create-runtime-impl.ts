@@ -4,6 +4,7 @@ import {
   RuntimeFunctionRef,
 } from './create-runtime-function-impl';
 import { RuntimeTransport } from './transport';
+import { installIntl } from './proxies/intl';
 
 /**
  * A reference to a JavaScript runtime.
@@ -111,6 +112,7 @@ export function createRuntimeImpl(options: {
       });
       const vm = runtime.newContext();
       const transport = new RuntimeTransport(vm);
+      installIntl(vm);
       options.functions.forEach((fn) => {
         attachFunctionToContext(vm, transport, fn, vm.global, signal);
       });

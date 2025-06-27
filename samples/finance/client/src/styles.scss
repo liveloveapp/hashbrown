@@ -137,14 +137,14 @@ table {
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   @include mat.theme(
     (
       color: mat.$azure-palette,
       accent: mat.$orange-palette,
       typography: (
-        plain-family: Roboto,
-        brand-family: Open Sans,
+        plain-family: 'Fredoka',
+        brand-family: 'Fredoka',
         bold-weight: 900,
         medium-weight: 500,
         regular-weight: 300,
