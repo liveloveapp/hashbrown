@@ -109,6 +109,17 @@ import { PostAttributes } from '../../models/blog.models';
         line-height: 1.8;
       }
 
+      a {
+        text-decoration: underline;
+        text-decoration-color: #774625;
+        color: #774625;
+        font-weight: 600;
+
+        &:hover {
+          text-decoration-color: #fbbb52;
+        }
+      }
+
       ul,
       ol {
         margin-bottom: 24px;
