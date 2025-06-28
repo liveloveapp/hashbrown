@@ -23,8 +23,7 @@
         "server": "samples/finance/client/src/main.server.ts",
         "ssr": {
           "entry": "samples/finance/client/src/server.ts"
-        },
-        "outputMode": "server"
+        }
       },
       "configurations": {
         "production": {
