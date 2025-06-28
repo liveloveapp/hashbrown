@@ -623,6 +623,10 @@ export interface DevtoolsChromeExtensionConnection {
 export function connectToChromeExtension(options: {
   name: string;
 }): DevtoolsChromeExtensionConnection | undefined {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   const extension = (window as any).__REDUX_DEVTOOLS_EXTENSION__ as
     | DevtoolsChromeExtension
     | undefined;

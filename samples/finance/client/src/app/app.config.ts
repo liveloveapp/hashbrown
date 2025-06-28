@@ -15,7 +15,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(appRoutes, withComponentInputBinding()),
     provideAnimations(),
     provideHashbrown({
-      baseUrl: 'http://localhost:3000/chat',
+      baseUrl: '/api/chat',
       emulateStructuredOutput: true,
       middleware: [
         function (request: RequestInit) {

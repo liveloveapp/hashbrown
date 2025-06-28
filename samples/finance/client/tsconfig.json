@@ -1,6 +1,7 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
+    "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
@@ -21,9 +22,6 @@
   "files": [],
   "include": [],
   "references": [
-    {
-      "path": "./tsconfig.editor.json"
-    },
     {
       "path": "./tsconfig.app.json"
     }
