@@ -148,6 +148,7 @@ export const selectViewMessages = select(
           toolCalls,
           tools,
           responseSchema,
+          false,
         ),
     );
 

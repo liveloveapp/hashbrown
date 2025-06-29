@@ -339,7 +339,7 @@ function sleep(ms: number) {
 }
 
 const server = createServer(async function (socket) {
-  const TEST_STRING = JSON.stringify(TEST_JSON);
+  const TEST_STRING = JSON.stringify(TEST_JSON) + 'extraextraextra';
 
   console.log(`Test string length: ${TEST_STRING.length}`);
 
