@@ -1,7 +1,5 @@
-// Polyfill for global in Edge Functions environment
-if (typeof global === 'undefined') {
-  (globalThis as any).global = globalThis;
-}
+// Minimal global polyfill for Edge Functions - must be first line
+(globalThis as any).global = (globalThis as any).global || globalThis;
 
 import { AngularAppEngine, createRequestHandler } from '@angular/ssr';
 import { getContext } from '@netlify/angular-runtime/context.mjs';
