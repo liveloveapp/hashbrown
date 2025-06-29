@@ -6,3 +6,12 @@
 
 [[plugins]]
   package = "@netlify/angular-runtime"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Environment variables for API keys (set these in Netlify dashboard)
+[context.production.environment]
+  # OPENAI_API_KEY = "your-openai-key"
+  # GOOGLE_API_KEY = "your-google-key"  
+  # WRITER_API_KEY = "your-writer-key"

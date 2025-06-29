@@ -22,7 +22,7 @@
         "styles": ["samples/finance/client/src/styles.scss"],
         "server": "samples/finance/client/src/main.server.ts",
         "ssr": {
-          "entry": "samples/finance/client/src/server.ts"
+          "entry": "samples/finance/client/src/netlify-server.ts"
         }
       },
       "configurations": {
@@ -44,7 +44,10 @@
         "development": {
           "optimization": false,
           "extractLicenses": false,
-          "sourceMap": true
+          "sourceMap": true,
+          "ssr": {
+            "entry": "samples/finance/client/src/server.ts"
+          }
         }
       },
       "defaultConfiguration": "production"
