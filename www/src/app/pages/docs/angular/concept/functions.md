@@ -45,7 +45,7 @@ createTool({
     const authService = inject(AuthService);
     return authService.getUser();
   },
-}),
+});
 ```
 
 </www-code-example>
@@ -66,9 +66,9 @@ The method signature for a `handler` is:
 
 ## Functions with Arguments
 
-hashbrown's @hashbrownai/angular!createToolWithArgs:function enables Angular developers to define functions that require arguments by specifying the `schema`.
+hashbrown's @hashbrownai/angular!createToolWithArgs:function enables Angular developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
 
-Of course, we'll be using Skillet - hasbrown's LLM-optimized schema language - for defining the function arguments.
+We'll be using Skillet - hasbrown's LLM-optimized schema language - for defining the function arguments.
 Let's look at an example function that enables the LLM to control the lights in our smart home client application.
 
 <www-code-example header="chat.component.ts">
@@ -81,19 +81,10 @@ createToolWithArgs({
     lightId: s.string('The id of the light'),
     brightness: s.number('The brightness of the light'),
   }),
-  handler: (input) =>
-    lastValueFrom(
-      this.smartHomeService.controlLight(input.lightId, input.brightness).pipe(
-        tap((light) => {
-          this.store.dispatch(
-            ChatAiActions.controlLight({
-              lightId: light.id,
-              brightness: light.brightness,
-            }),
-          );
-        }),
-      ),
-    ),
+  handler: async (input) =>
+    this.lightsStore.updateLight(input.lightId, {
+      brightness: input.brightness,
+    }),
 });
 ```
 
@@ -107,7 +98,8 @@ Let's review the code above.
 - `handler`: The function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promise` of the `Result`.
 
 In this example, we expect that the `input` will be an object with the properties `lightId` and `brightness`, which are defined in the `schema`.
-We're using NgRx for dispatching an action to update the state of the application with the new light brightness.
+
+Note that the `input` arguments are strongly-typed based on the provided schema.
 
 ---
 

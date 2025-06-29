@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Chat } from '@hashbrownai/core';
+import { Chat, KnownModelIds } from '@hashbrownai/core';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { HashbrownGoogle } from '@hashbrownai/google';
@@ -17,14 +17,7 @@ const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
 const WRITER_API_KEY = process.env['WRITER_API_KEY'] ?? '';
 
-// Known model names by provider
-const KNOWN_AZURE_MODEL_NAMES = [
-  'gpt-35-turbo',
-  'gpt-4',
-  'gpt-4o', // add other Azure deployment/model names here
-];
-
-const KNOWN_GOOGLE_MODEL_NAMES = [
+const KNOWN_GOOGLE_MODEL_NAMES: KnownModelIds[] = [
   'gemini-2.5-pro',
   'gemini-2.5-flash',
   'gemini-2.0-flash',
@@ -34,12 +27,11 @@ const KNOWN_GOOGLE_MODEL_NAMES = [
   'gemini-1.5-pro',
 ];
 
-const KNOWN_OPENAI_MODEL_NAMES = [
+const KNOWN_OPENAI_MODEL_NAMES: KnownModelIds[] = [
   'gpt-3.5',
   'gpt-4',
   'gpt-4o',
   'gpt-4o-mini',
-  'o1-preview',
   'o1-mini',
   'o1',
   'o1-pro',
@@ -55,7 +47,7 @@ const KNOWN_OPENAI_MODEL_NAMES = [
   'gpt-4.5',
 ];
 
-const KNOWN_WRITER_MODEL_NAMES = [
+const KNOWN_WRITER_MODEL_NAMES: KnownModelIds[] = [
   'palmyra-x5',
   'palmyra-x4',
   'palmyra-x-003-instruct',
@@ -94,23 +86,17 @@ app.post('/chat', async (req, res, next) => {
   const modelName = request.model;
   let stream: AsyncIterable<Uint8Array>;
 
-  if (KNOWN_AZURE_MODEL_NAMES.includes(modelName)) {
-    stream = HashbrownAzure.stream.text({
-      apiKey: AZURE_API_KEY,
-      endpoint: AZURE_ENDPOINT,
-      request,
-    });
-  } else if (KNOWN_GOOGLE_MODEL_NAMES.includes(modelName)) {
+  if (KNOWN_GOOGLE_MODEL_NAMES.includes(modelName as KnownModelIds)) {
     stream = HashbrownGoogle.stream.text({
       apiKey: GOOGLE_API_KEY,
       request,
     });
-  } else if (KNOWN_OPENAI_MODEL_NAMES.includes(modelName)) {
+  } else if (KNOWN_OPENAI_MODEL_NAMES.includes(modelName as KnownModelIds)) {
     stream = HashbrownOpenAI.stream.text({
       apiKey: OPENAI_API_KEY,
       request,
     });
-  } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName)) {
+  } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName as KnownModelIds)) {
     stream = HashbrownWriter.stream.text({
       apiKey: WRITER_API_KEY,
       request,

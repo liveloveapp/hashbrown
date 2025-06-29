@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as s from './base';
 import { HashbrownType, internal } from './base';
-import { isStreaming } from './is-streaming';
 
 /**
  * Convert an arbitrary description into a camelCase identifier.
@@ -20,21 +19,6 @@ export function descriptionToCamelCase(description: string): string {
   const core =
     first + rest.map((w) => w[0].toUpperCase() + w.slice(1)).join('');
   return /^\d/.test(core) ? `_${core}` : core;
-}
-
-export function needsDiscriminatorWrapperInAnyOf(
-  schema: HashbrownType,
-): boolean {
-  if (
-    s.isAnyOfType(schema) ||
-    s.isArrayType(schema) ||
-    s.isObjectType(schema) ||
-    (s.isStringType(schema) && isStreaming(schema))
-  ) {
-    return true;
-  }
-
-  return false;
 }
 
 /**
@@ -131,10 +115,10 @@ export function toJsonSchema(schema: HashbrownType) {
       const shapeWithStreamingAtEnd = Object.entries(
         n[internal].definition.shape,
       ).sort((a, b) => {
-        if (!isStreaming(a[1]) && isStreaming(b[1])) {
+        if (!s.isStreaming(a[1]) && s.isStreaming(b[1])) {
           return -1;
         }
-        if (isStreaming(a[1]) && !isStreaming(b[1])) {
+        if (s.isStreaming(a[1]) && !s.isStreaming(b[1])) {
           return 1;
         }
 
@@ -170,7 +154,7 @@ export function toJsonSchema(schema: HashbrownType) {
     } else if (s.isAnyOfType(n)) {
       result = n.toJsonSchema();
       result.anyOf = n[internal].definition.options.map((opt, index) => {
-        if (needsDiscriminatorWrapperInAnyOf(opt)) {
+        if (s.needsDiscriminatorWrapperInAnyOf(opt)) {
           const indexAsStr = `${index}`;
           return {
             type: 'object',

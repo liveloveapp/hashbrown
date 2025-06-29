@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { DeepPartial } from '../utils';
+import { DeepPartial, KnownModelIds } from '../utils';
 
 export interface Tool {
   name: string;
@@ -63,7 +63,7 @@ export interface CompletionChunk {
 export type CompletionToolChoiceOption = 'auto' | 'none' | 'required';
 
 export interface CompletionCreateParams {
-  model: string;
+  model: KnownModelIds;
   system: string;
   messages: Message[];
   responseFormat?: object;

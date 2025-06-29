@@ -188,20 +188,31 @@
           "docComment": "/**\n * The model to use for the chat.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "model: " },
-            { "kind": "Content", "text": "string | " },
+            {
+              "kind": "Reference",
+              "text": "KnownModelIds",
+              "canonicalReference": "!unknown"
+            },
+            { "kind": "Content", "text": " | " },
             {
               "kind": "Reference",
               "text": "Signal",
               "canonicalReference": "@angular/core!Signal:type"
             },
-            { "kind": "Content", "text": "<string>" },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "KnownModelIds",
+              "canonicalReference": "!unknown"
+            },
+            { "kind": "Content", "text": ">" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
           "name": "model",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
           "docs": {
             "modifiers": {
               "isInternal": false,

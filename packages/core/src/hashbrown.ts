@@ -18,6 +18,7 @@ import {
 } from './reducers';
 import { s } from './schema';
 import { createStore } from './utils/micro-ngrx';
+import { KnownModelIds } from './utils';
 
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
@@ -70,7 +71,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
     options: Partial<{
       debugName?: string;
       apiUrl: string;
-      model: string;
+      model: KnownModelIds;
       system: string;
       tools: Tools[];
       responseSchema: s.HashbrownType;
@@ -107,7 +108,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
 export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
   apiUrl: string;
-  model: string;
+  model: KnownModelIds;
   system: string;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
@@ -123,7 +124,7 @@ export function fryHashbrown<
 >(init: {
   debugName?: string;
   apiUrl: string;
-  model: string;
+  model: KnownModelIds;
   system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
@@ -136,7 +137,7 @@ export function fryHashbrown<
 export function fryHashbrown(init: {
   debugName?: string;
   apiUrl: string;
-  model: string;
+  model: KnownModelIds;
   system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
@@ -241,7 +242,7 @@ export function fryHashbrown(init: {
     options: Partial<{
       debugName?: string;
       apiUrl: string;
-      model: string;
+      model: KnownModelIds;
       system: string;
       tools: Chat.AnyTool[];
       responseSchema: s.HashbrownType;

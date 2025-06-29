@@ -16,6 +16,7 @@ const DOCS_ANGULAR = section('Docs', [
     link('Structured Output', '/docs/angular/concept/structured-output'),
     link('Skillet Schema', '/docs/angular/concept/schema'),
     link('Streaming', '/docs/angular/concept/streaming'),
+    link('JS Runtime', '/docs/angular/concept/runtime'),
   ]),
   // section('Recipes', [
   //   link('Chat', '/docs/angular/recipes/chat'),

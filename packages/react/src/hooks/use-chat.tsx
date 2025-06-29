@@ -1,4 +1,9 @@
-import { Chat, fryHashbrown, Hashbrown } from '@hashbrownai/core';
+import {
+  Chat,
+  fryHashbrown,
+  Hashbrown,
+  KnownModelIds,
+} from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTools } from '../create-tool.fn';
 import { HashbrownContext } from '../hashbrown-provider';
@@ -11,7 +16,7 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
    * The LLM model to use for the chat.
    *
    */
-  model: string;
+  model: KnownModelIds;
 
   /**
    * The system message to use for the chat.

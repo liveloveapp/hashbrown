@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Skillet is an LLM-optimized streaming JSON Parser - perfectly suited for streaming hot and fresh JSON.
  *
@@ -10,9 +11,8 @@
  * @see https://github.com/promplate/partial-json-parser-js
  */
 
-import { DEBUG_LEVEL, Logger, NONE_LEVEL } from '../logger/logger';
-import { s } from '../schema';
-import { isStreaming } from '../schema/is-streaming';
+import { Logger, NONE_LEVEL } from '../logger/logger';
+import * as s from '../schema/base';
 import {
   internal,
   isAnyOfType,
@@ -172,7 +172,7 @@ const _parseJSON = (
         return JSON.parse(
           jsonString.substring(start, index - Number(escape)) + '"',
         );
-      } catch (e) {
+      } catch {
         // SyntaxError: Invalid escape sequence
         return JSON.parse(
           jsonString.substring(start, jsonString.lastIndexOf('\\')) + '"',
@@ -227,7 +227,7 @@ const _parseJSON = (
           logger.for('parseWrappedPrimitive').debug(matchingSchema);
 
           // This isn't a real object, so don't pass the key name
-          value = parseAny('', isStreaming(matchingSchema), false);
+          value = parseAny('', s.isStreaming(matchingSchema), false);
 
           logger.for('parseWrappedPrimitive').debug('Value:');
           logger.for('parseWrappedPrimitive').debug(value);
@@ -615,7 +615,7 @@ const _parseJSON = (
     } else {
       logger.for('parseArr').debug('Array container is primitive');
       // It's not an object, so check if it is a streaming primitive
-      contentsAllowIncomplete = isStreaming(arrayContainer);
+      contentsAllowIncomplete = s.isStreaming(arrayContainer);
 
       logger
         .for('parseArr')
@@ -635,7 +635,7 @@ const _parseJSON = (
           index++; // skip comma
         }
       }
-    } catch (e) {
+    } catch {
       // logger.for('parseArr').error(e);
       if (allowsIncomplete) {
         return arr;
@@ -676,7 +676,7 @@ const _parseJSON = (
 
     try {
       return JSON.parse(jsonString.substring(start, index));
-    } catch (e) {
+    } catch {
       if (jsonString.substring(start, index) === '-')
         markPartialJSON("Not sure what '-' is");
       try {

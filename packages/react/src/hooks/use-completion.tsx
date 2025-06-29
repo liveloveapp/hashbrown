@@ -1,4 +1,4 @@
-import { Chat } from '@hashbrownai/core';
+import { Chat, KnownModelIds } from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useChat } from './use-chat';
 
@@ -15,7 +15,7 @@ export interface UseCompletionOptions<Input> {
    * The LLM model to use for the chat.
    *
    */
-  model: string;
+  model: KnownModelIds;
 
   /**
    * The system message to use for the completion.

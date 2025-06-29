@@ -1,27 +1,32 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { DocsHeader } from '../components/DocsHeader';
 import { DocsMenu } from '../components/DocsMenu';
+import { DocsSdkMenu } from '../components/DocsSdkMenu';
 import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
 import { MarkdownPage } from '../components/MarkdownPage';
+import { Header } from '../components/Header';
 
 @Component({
   imports: [
-    DocsHeader,
+    Header,
     DocsMenu,
+    DocsSdkMenu,
     EnterpriseProducts,
     Footer,
     MarkdownPage,
     RouterOutlet,
   ],
   template: `
-    <www-docs-header />
+    <www-header />
     <main class="docs">
       <www-docs-menu />
-      <www-markdown-page>
-        <router-outlet></router-outlet>
-      </www-markdown-page>
+      <div>
+        <www-docs-sdk-menu />
+        <www-markdown-page>
+          <router-outlet></router-outlet>
+        </www-markdown-page>
+      </div>
     </main>
     <www-enterprise-products />
     <www-footer />
@@ -40,6 +45,10 @@ import { MarkdownPage } from '../components/MarkdownPage';
 
       > www-docs-menu {
         display: none;
+      }
+
+      > div {
+        overflow: hidden;
       }
     }
 

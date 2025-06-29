@@ -39,7 +39,7 @@ export async function* text(
   try {
     const baseRequestOptions: Writer.Chat.ChatChatParams = {
       stream: true,
-      model: request.model,
+      model: request.model as string,
       tool_choice: request.toolChoice
         ? { value: request.toolChoice }
         : undefined,

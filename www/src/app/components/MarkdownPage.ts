@@ -3,10 +3,10 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  inject,
   OnDestroy,
   PLATFORM_ID,
   Signal,
-  inject,
   signal,
   viewChild,
 } from '@angular/core';
@@ -41,10 +41,8 @@ type Heading = { level: number; text: string; id: string; url: string };
     `
       :host {
         display: block;
-        width: 100%;
-        max-width: 767px;
         position: relative;
-        padding: 32px;
+        padding: 0 32px 32px;
         overflow: hidden;
       }
 
@@ -54,7 +52,7 @@ type Heading = { level: number; text: string; id: string; url: string };
         flex-direction: column;
         gap: 6px;
         position: fixed;
-        top: 120px;
+        top: 160px;
         right: 32px;
         margin: 0;
         padding: 0;
@@ -232,11 +230,8 @@ type Heading = { level: number; text: string; id: string; url: string };
 
       @media screen and (min-width: 1024px) {
         :host {
+          padding-right: 250px;
           max-width: 1024px;
-        }
-
-        article {
-          padding-right: 218px;
         }
 
         menu {

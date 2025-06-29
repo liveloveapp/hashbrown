@@ -1,10 +1,46 @@
 {
   "name": "@hashbrownai/core",
   "version": "0.1.1",
+  "description": "Runtime helpers for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/core"
+  },
   "type": "commonjs",
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "main": "./index.cjs.js",
+  "module": "./index.esm.mjs",
+  "exports": {
+    ".": {
+      "import": "./index.esm.mjs",
+      "require": "./index.cjs.js"
+    }
+  },
+  "types": "./index.d.ts",
+  "files": [
+    "index.*",
+    "dist/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
+    "@jitl/quickjs-singlefile-browser-debug-asyncify": "^0.31.0",
+    "quickjs-emscripten-core": "^0.31.0",
     "tslib": "^2.3.0"
+  },
+  "keywords": [
+    "hashbrown",
+    "generative-ui",
+    "llm",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

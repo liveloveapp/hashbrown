@@ -19,7 +19,7 @@ import { CodeExampleGroup } from './CodeExampleGroup';
 import { CodeExampleGroupItem } from './CodeExampleGroupItem';
 
 const angularExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/app/content/home/angular/**/*.md', {
+  import.meta.glob('/src/content/home/angular/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -30,7 +30,7 @@ const angularExamples: [string, string][] = Object.entries(
 ]);
 
 const reactExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/app/content/home/react/**/*.md', {
+  import.meta.glob('/src/content/home/react/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -46,7 +46,7 @@ const sdkExamplesSources: Record<string, [string, string][]> = {
 };
 
 const openaiExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/app/content/home/openai/**/*.md', {
+  import.meta.glob('/src/content/home/openai/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -57,7 +57,7 @@ const openaiExamples: [string, string][] = Object.entries(
 ]);
 
 const googleExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/app/content/home/google/**/*.md', {
+  import.meta.glob('/src/content/home/google/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -68,7 +68,7 @@ const googleExamples: [string, string][] = Object.entries(
 ]);
 
 const writerExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/app/content/home/writer/**/*.md', {
+  import.meta.glob('/src/content/home/writer/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',

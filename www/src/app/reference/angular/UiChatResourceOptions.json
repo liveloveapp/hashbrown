@@ -181,14 +181,26 @@
               "text": "Chat.Message",
               "canonicalReference": "!Chat.Message:type"
             },
-            { "kind": "Content", "text": "<string, Tools>[]" },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "s.Infer",
+              "canonicalReference": "!s.Infer:type"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "UiChatMessageOutput",
+              "canonicalReference": "@hashbrownai/angular!~UiChatMessageOutput:type"
+            },
+            { "kind": "Content", "text": ">, Tools>[]" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": true,
           "releaseTag": "Public",
           "name": "messages",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 7 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -214,20 +226,18 @@
           "docComment": "/**\n * The model to use for the UI chat resource.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "model: " },
-            { "kind": "Content", "text": "string | " },
             {
               "kind": "Reference",
-              "text": "Signal",
-              "canonicalReference": "@angular/core!Signal:type"
+              "text": "KnownModelIds",
+              "canonicalReference": "!unknown"
             },
-            { "kind": "Content", "text": "<string>" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
           "name": "model",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "docs": {
             "modifiers": {
               "isInternal": false,

@@ -12,24 +12,27 @@
       "options": {
         "outputPath": "dist/samples/finance/client",
         "browser": "samples/finance/client/src/main.ts",
-        "polyfills": ["zone.js"],
         "tsConfig": "samples/finance/client/tsconfig.app.json",
-        "inlineStyleLanguage": "scss",
         "assets": [
           {
             "glob": "**/*",
             "input": "samples/finance/client/public"
           }
         ],
-        "styles": ["samples/finance/client/src/styles.scss"]
+        "styles": ["samples/finance/client/src/styles.scss"],
+        "server": "samples/finance/client/src/main.server.ts",
+        "ssr": {
+          "entry": "samples/finance/client/src/server.ts"
+        },
+        "outputMode": "server"
       },
       "configurations": {
         "production": {
           "budgets": [
             {
               "type": "initial",
-              "maximumWarning": "500kb",
-              "maximumError": "1mb"
+              "maximumWarning": "2mb",
+              "maximumError": "4mb"
             },
             {
               "type": "anyComponentStyle",
@@ -58,10 +61,7 @@
           "buildTarget": "finance-angular-client:build:development"
         }
       },
-      "defaultConfiguration": "development",
-      "options": {
-        "proxyConfig": "samples/finance/client/proxy.conf.json"
-      }
+      "defaultConfiguration": "development"
     },
     "extract-i18n": {
       "executor": "@angular/build:extract-i18n",
@@ -74,6 +74,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "finance-angular-client:build",
+        "port": 4200,
         "staticFilePath": "dist/samples/finance/client/browser",
         "spa": true
       }

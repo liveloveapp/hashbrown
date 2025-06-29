@@ -8,7 +8,7 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import { Chat, fryHashbrown } from '@hashbrownai/core';
+import { Chat, fryHashbrown, KnownModelIds } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toSignal } from '../utils/signals';
 
@@ -48,7 +48,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The model to use for the chat.
    */
-  model: string | Signal<string>;
+  model: KnownModelIds | Signal<KnownModelIds>;
   /**
    * The tools to use for the chat.
    */

@@ -10,41 +10,39 @@
       "canonicalReference": "@hashbrownai/react!useCompletion:function(1)",
       "docComment": "/**\n * This React hook creates a change instance used to interact with the LLM. The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.\n *\n * @description The `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs. This is useful for things like natural language autocompletions.\n *\n * @example\n * ```ts\n * const { output } = useCompletion({\n *   model: 'gpt-4o-mini',\n *   input: firstName,\n *   system: `Help the user generate a last name for the given first name.`,\n * });\n * ```\n *\n */\n",
       "excerptTokens": [
-        { "kind": "Content", "text": "useCompletion: <Tools extends " },
         {
-          "kind": "Reference",
-          "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "kind": "Content",
+          "text": "export declare function useCompletion<Input>(\noptions: "
         },
-        { "kind": "Content", "text": ">(\noptions: " },
         {
           "kind": "Reference",
           "text": "UseCompletionOptions",
           "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface"
         },
-        { "kind": "Content", "text": "<Tools>" },
-        { "kind": "Content", "text": ") => " },
+        { "kind": "Content", "text": "<Input>" },
+        { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "UseCompletionResult",
           "canonicalReference": "@hashbrownai/react!UseCompletionResult:interface"
-        }
+        },
+        { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
-      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 7 },
+      "returnTypeTokenRange": { "startIndex": 4, "endIndex": 5 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "options",
-          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
           "isOptional": false
         }
       ],
       "typeParameters": [
         {
-          "typeParameterName": "Tools",
-          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "typeParameterName": "Input",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
