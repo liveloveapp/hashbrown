@@ -190,6 +190,8 @@ test('Missing closing brace at EOF results in empty string', () => {
 test('Extra data after valid JSON throws error', () => {
   const schema = s.object('obj', { a: s.number('a') });
 
+  expect(parse(schema, '{"a":1}garbage')).toEqual('');
+
   expect(() => parse(schema, '{"a":1}garbage')).toThrow();
 });
 
