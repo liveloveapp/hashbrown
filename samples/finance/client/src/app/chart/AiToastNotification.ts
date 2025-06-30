@@ -1,4 +1,12 @@
-import { Component, ElementRef, inject, input } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  ElementRef,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 
@@ -6,18 +14,26 @@ import { MatIcon } from '@angular/material/icon';
   selector: 'app-ai-toast-notification',
   imports: [MatIconButton, MatIcon],
   template: `
-    <div class="title">
-      <span class="title-text">
-        {{ title() }}
-      </span>
-      <button matIconButton (click)="onClose()">
-        <mat-icon inline>close</mat-icon>
-      </button>
-    </div>
-    <div class="message">
-      <span class="message-text">
-        {{ message() }}
-      </span>
+    <div class="content" #content>
+      <div class="title">
+        <span class="title-text">
+          {{ title() }}
+        </span>
+        <button matIconButton (click)="onClose()">
+          <mat-icon inline>close</mat-icon>
+        </button>
+      </div>
+      <div class="message" #messageContainer>
+        @for (line of lines(); track $index) {
+          <span class="line">
+            {{ line }}
+          </span>
+        }
+      </div>
+      <div
+        #measureElement
+        style="position:absolute; visibility:hidden; white-space:pre; top:0; left:0; pointer-events:none;"
+      ></div>
     </div>
   `,
   host: {
@@ -29,7 +45,8 @@ import { MatIcon } from '@angular/material/icon';
     :host {
       display: block;
       width: 320px;
-      height: auto;
+      height: 0;
+      overflow: hidden;
       padding: 16px;
       border-radius: 12px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -39,7 +56,8 @@ import { MatIcon } from '@angular/material/icon';
       font-family: 'Fredoka';
       transition:
         opacity 0.3s ease,
-        transform 0.3s ease;
+        transform 0.3s ease,
+        height 0.3s ease;
     }
 
     :host(.closing) {
@@ -84,6 +102,19 @@ import { MatIcon } from '@angular/material/icon';
       color: inherit;
     }
 
+    .line {
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
+
+      @starting-style {
+        opacity: 0;
+        transform: translateY(-16px);
+      }
+    }
+
     :host(.refusal) {
       background-color: rgba(226, 118, 118, 0.72);
     }
@@ -101,10 +132,55 @@ export class AiToastNotification {
   title = input.required<string>();
   message = input.required<string>();
   type = input.required<'refusal' | 'success' | 'info'>();
-  host = inject(ElementRef<HTMLElement>);
+  host: ElementRef<HTMLElement> = inject(ElementRef);
+  messageContainerRef =
+    viewChild.required<ElementRef<HTMLDivElement>>('messageContainer');
+  measureRef = viewChild.required<ElementRef<HTMLDivElement>>('measureElement');
+  contentRef = viewChild.required<ElementRef<HTMLDivElement>>('content');
+  lines = signal<string[]>([]);
+
+  constructor() {
+    afterRenderEffect(() => {
+      const text = this.message();
+      const segmener = new Intl.Segmenter(navigator.language, {
+        granularity: 'word',
+      });
+      const segments = segmener.segment(text);
+      const testElement = this.measureRef().nativeElement;
+      const style = getComputedStyle(this.messageContainerRef().nativeElement);
+      const lines: string[] = [];
+      const maxWidth = this.messageContainerRef().nativeElement.clientWidth;
+
+      testElement.style.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+
+      let line = '';
+      for (const { segment } of segments) {
+        const test = line + segment;
+        testElement.textContent = test;
+        const width = testElement.offsetWidth;
+        if (width <= maxWidth) {
+          line = test;
+        } else {
+          lines.push(line);
+          line = segment.trimStart();
+        }
+      }
+      if (line) lines.push(line);
+      this.lines.set(lines);
+
+      requestAnimationFrame(() => {
+        const verticalPadding =
+          parseFloat(getComputedStyle(this.host.nativeElement).paddingTop) +
+          parseFloat(getComputedStyle(this.host.nativeElement).paddingBottom);
+        this.host.nativeElement.style.height =
+          this.contentRef().nativeElement.scrollHeight + verticalPadding + 'px';
+      });
+    });
+  }
 
   onClose() {
     this.host.nativeElement.classList.add('closing');
+
     setTimeout(() => {
       this.host.nativeElement.classList.add('closed');
     }, 300);

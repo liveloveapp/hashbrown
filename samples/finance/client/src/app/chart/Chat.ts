@@ -14,6 +14,9 @@ import { AiRefusal } from './AiRefusal';
 import { AiClarification } from './AiClarification';
 import { Ingredients } from './Ingredients';
 import { lastValueFrom } from 'rxjs';
+import { chartSchema } from './schema/chartSchema';
+import { ingredientSchema } from './schema/ingredientSchema';
+import { queryIngredientsSchema } from './schema/queryIngredientsSchema';
 
 const system = `
 You are a user interface that helps the user design a chart. Your responses
@@ -27,6 +30,10 @@ Today's date is ${new Date().toISOString()}.
 
 Every interaction must follow this pattern:
  [user_message] -> [tool_call="javascript"] -> [assistant_message] -> [user_message]
+
+Sometimes, you may need the ingredients to know which UUIDs to use. In this case,
+turn order may look like this:
+ [user_message] -> [tool_call="getIngredients"] -> [tool_call="javascript"] -> [assistant_message] -> [user_message]
 
 # Rules
 * Never create data that doesn't exist.
@@ -57,6 +64,8 @@ Every interaction must follow this pattern:
 * Unless explicitly asked, do not show more then five ingredients in a chart. Sort the
   ingredients by the target metric, then show the top ingredients.
 * Every user message is a description of a chart. You must create a chart based on the user's
+  request.
+* Default to year-to-date for the date range if the user does not specify.
 
 # Theming
 When creating a chart, you must use the following fonts and colors:
@@ -76,19 +85,31 @@ When creating a chart, you must use the following fonts and colors:
 * For axis lines and grid lines, use a transparent black (i.e. rgba(0,0,0,0.12))
 
 # Coding Standards
-- **Deterministic dates**: Pass the reporting window as parameters; set times to UTC midnight to avoid TZ drift.  
-- **Pure functions**: Isolate data fetching, transformation, and rendering into separately testable functions; no shared mutable state.  
-- **Intl reuse**: Create one Intl.DateTimeFormat instance instead of calling toLocaleDateString repeatedly.  
-- **Config constants**: Lift magic numbers (e.g., top-N, tension, fonts) into config vars so callers can override.  
-- **Early exits with context**: Throw rich errors (code + message) *before* expensive work; avoid generic 'No data...' strings.  
-- **Immutability**: Prefer spread ({ ...p }) or Array.map over direct mutation; never push into external arrays inside loops.  
-- **i18n-ready labels**: Inject locale and numeral options; never hard-code month abbreviations.  
-- **Avoid double iteration**: Aggregate totals and collect date keys in a single pass when possible.  
-- **Functional pipeline**: Chain "map → reduce → sort" declaratively; avoid building interim objects you immediately transform.  
-- **Safe default colors**: Ensure background colors include opacity (e.g., "rgba(r,g,b,0.2)") for overlapping lines.  
+- **Deterministic dates**: Pass the reporting window as parameters; set times to UTC 
+  midnight to avoid TZ drift.  
+- **Pure functions**: Isolate data fetching, transformation, and rendering into separately 
+  testable functions; no shared mutable state.  
+- **Intl reuse**: Create one Intl.DateTimeFormat instance instead of calling 
+  toLocaleDateString repeatedly.  
+- **Config constants**: Lift magic numbers (e.g., top-N, tension, fonts) into config vars 
+  so callers can override.  
+- **Early exits with context**: Throw rich errors (code + message) *before* expensive work; 
+  avoid generic 'No data...' strings.  
+- **Immutability**: Prefer spread ({ ...p }) or Array.map over direct mutation; never push 
+  into external arrays inside loops.  
+- **i18n-ready labels**: Inject locale and numeral options; never hard-code month 
+  abbreviations.  
+- **Avoid double iteration**: Aggregate totals and collect date keys in a single pass when 
+  possible.  
+- **Functional pipeline**: Chain "map → reduce → sort" declaratively; avoid building interim 
+  objects you immediately transform.  
+- **Safe default colors**: Ensure background colors include opacity (e.g., "rgba(r,g,b,0.2)") 
+  for overlapping lines.  
 - **Deterministic sort**: Provide tie-breakers (e.g., product name) when totals match.  
-- **Lint rules**: Enforce via ESLint/Prettier—no unused vars, consistent quotes, semi-colons, trailing commas.  
-- **Pure helpers, thin glue**: Move every calculation (selectTopN, buildDatasets) into pure functions
+- **Lint rules**: Enforce via ESLint/Prettier—no unused vars, consistent quotes, semi-colons, 
+  trailing commas.  
+- **Pure helpers, thin glue**: Move every calculation (selectTopN, buildDatasets) into pure 
+  functions
 
 
 # Domain-Specific Chart Scenarios
@@ -324,247 +345,15 @@ renderChart({
 \`\`\`
 `;
 
-const ingredientUnitSchema = s.enumeration('the unit of the ingredient', [
-  'each',
-  'dozen',
-  'pound',
-  'ounce',
-  'gallon',
-  'case',
-  'bag',
-  'box',
-  'liter',
-  'kilogram',
-]);
-
-const dailyReportSchema = s.object('a daily report', {
-  date: s.string('the date of the daily report'),
-  price: s.number('the price of the ingredient on this day'),
-  inventory: s.number('the inventory of the ingredient on this day'),
-  consumption: s.number('the consumption of the ingredient on this day'),
-  wastage: s.number('the wastage of the ingredient on this day'),
-  delivered: s.number('the quantity of the delivery on this day'),
-});
-
-const ingredientCategorySchema = s.enumeration(
-  'the category of the ingredient',
-  ['Food', 'Beverage', 'Packaging', 'Cleaning', 'Non-food Supply'],
-);
-
-const ingredientSchema = s.object('an ingredient', {
-  id: s.string('the id of the ingredient'),
-  name: s.string('the name of the ingredient'),
-  category: ingredientCategorySchema,
-  unit: ingredientUnitSchema,
-  safetyStock: s.number('the safety stock of the ingredient'),
-  reorderPoint: s.number('the reorder point of the ingredient'),
-  leadTimeDays: s.number('the lead time of the ingredient'),
-  currentInventory: s.number('the current inventory of the ingredient'),
-  currentUnitCostUSD: s.number('the current unit cost of the ingredient'),
-  dailyReports: s.array(
-    'the daily reports of the ingredient',
-    dailyReportSchema,
-  ),
-});
-
-const legendSchema = s.object('the legend for the chart', {
-  display: s.boolean('whether to display the legend'),
-  position: s.enumeration('the position of the legend', [
-    'top',
-    'bottom',
-    'left',
-    'right',
-  ]),
-  align: s.enumeration('alignment of the legend items', [
-    'start',
-    'center',
-    'end',
-  ]),
-  labels: s.object('the labels configuration for the legend', {
-    color: s.string('the color of the label text'),
-    font: s.object('the font options for legend labels', {
-      family: s.string('the font family'),
-      size: s.number('the font size'),
-      style: s.enumeration('the font style', [
-        'normal',
-        'italic',
-        'oblique',
-        'initial',
-        'inherit',
-      ]),
-      weight: s.number('the font weight'),
-      lineHeight: s.number('the line height for labels'),
-    }),
-  }),
-  title: s.object('the title configuration for the chart', {
-    display: s.boolean('whether to display the title'),
-    text: s.string('the title text'),
-    color: s.string('the color of the title'),
-    font: s.object('the font options for the title', {
-      family: s.string('the font family'),
-      weight: s.number('the font weight'),
-      size: s.number('the font size'),
-      lineHeight: s.number('the line height for the title'),
-    }),
-  }),
-});
-
-const interactionSchema = s.object('the interaction for the chart', {
-  mode: s.anyOf([
-    s.enumeration('the mode of the interaction', [
-      'index',
-      'dataset',
-      'point',
-      'nearest',
-      'x',
-      'y',
-    ]),
-    s.nullish(),
-  ]),
-  axis: s.anyOf([
-    s.enumeration('the axis of the interaction', ['x', 'y', 'xy']),
-    s.nullish(),
-  ]),
-  intersect: s.boolean('whether to intersect the interaction'),
-});
-
-const optionsSchema = s.object('the options for the chart', {
-  plugins: s.object('the plugins for the chart', {
-    legend: legendSchema,
-    title: s.object('the title configuration for the chart', {
-      display: s.boolean('whether to display the title'),
-      text: s.string('the title text'),
-      position: s.enumeration('the position of the title', ['top', 'bottom']),
-      color: s.string('the color of the title'),
-      align: s.enumeration('alignment of the title', [
-        'start',
-        'center',
-        'end',
-      ]),
-    }),
-  }),
-  scales: s.object('the scales for the chart', {
-    x: s.object('the x-axis scale', {
-      grid: s.object('the grid configuration for the x-axis', {
-        color: s.string('the color of the grid'),
-      }),
-      ticks: s.object('the ticks configuration for the x-axis', {
-        color: s.string('the color of the label text'),
-        font: s.object('the font options for x-axis labels', {
-          family: s.string('the font family'),
-          size: s.number('the font size'),
-        }),
-      }),
-    }),
-    y: s.object('the y-axis scale', {
-      grid: s.object('the grid configuration for the y-axis', {
-        color: s.string('the color of the grid'),
-      }),
-      ticks: s.object('the ticks configuration for the y-axis', {
-        color: s.string('the color of the label text'),
-        font: s.object('the font options for y-axis labels', {
-          family: s.string('the font family'),
-          size: s.number('the font size'),
-        }),
-      }),
-    }),
-  }),
-  interaction: interactionSchema,
-});
-
-const chartSchema = s.anyOf([
-  s.object('a line chart', {
-    type: s.literal('line'),
-    data: s.object('The data for a line chart', {
-      labels: s.array(
-        'The labels for the x-axis',
-        s.string('an individual label'),
-      ),
-      datasets: s.array(
-        'The datasets for the chart',
-        s.object('a dataset', {
-          label: s.string('the label of the dataset'),
-          data: s.array(
-            'the data points for the dataset',
-            s.number('a data point'),
-          ),
-          borderColor: s.string('the CSS color of the dataset'),
-          backgroundColor: s.string('the CSS color of the dataset'),
-          tension: s.number(
-            'A number between 0 and 1 that controls the tension of the line',
-          ),
-        }),
-      ),
-    }),
-  }),
-  s.object('a bar chart', {
-    type: s.literal('bar'),
-    data: s.object('The data for a bar chart', {
-      labels: s.array(
-        'The labels for the x-axis',
-        s.string('an individual label'),
-      ),
-      datasets: s.array(
-        'The datasets for the chart',
-        s.object('a dataset', {
-          label: s.string('the label of the dataset'),
-          data: s.array(
-            'the data points for the dataset',
-            s.number('a data point'),
-          ),
-          backgroundColor: s.array(
-            'the CSS colors for the dataset',
-            s.string('a CSS color'),
-          ),
-        }),
-      ),
-    }),
-  }),
-  s.object('a pie chart', {
-    type: s.literal('pie'),
-    data: s.object('The data for a pie chart', {
-      labels: s.array(
-        'The labels for the pie chart',
-        s.string('an individual label'),
-      ),
-      datasets: s.array(
-        'The datasets for the pie chart',
-        s.object('a dataset', {
-          label: s.string('the label of the dataset'),
-          data: s.array(
-            'the data points for the dataset',
-            s.number('a data point'),
-          ),
-          backgroundColor: s.array(
-            'the CSS colors for the dataset',
-            s.string('a CSS color'),
-          ),
-        }),
-      ),
-    }),
-  }),
-]);
-
 @Injectable({ providedIn: 'root' })
 export class Chat {
   readonly chart = signal<s.Infer<typeof chartSchema> | null>(null);
-  readonly options = signal<s.Infer<typeof optionsSchema> | null>(null);
   readonly runtime = createRuntime({
     functions: [
       createRuntimeFunction({
         name: 'getData',
         description: 'Synchronously get the data for the chart',
-        args: s.object('query parameters', {
-          ingredientIds: s.anyOf([
-            s.array(
-              'focus on specific products, or null to include all products',
-              s.string('an individual product id'),
-            ),
-            s.nullish(),
-          ]),
-          startDate: s.string('ISO formatted start date'),
-          endDate: s.string('ISO formatted end date'),
-        }),
+        args: queryIngredientsSchema,
         result: s.array('the ingredients', ingredientSchema),
         handler: async (args) => {
           const ingredients = inject(Ingredients);
@@ -588,13 +377,9 @@ export class Chat {
       createRuntimeFunction({
         name: 'renderChart',
         description: 'Render a chart',
-        args: s.object('a description of the chart', {
-          chart: chartSchema,
-          options: optionsSchema,
-        }),
+        args: chartSchema,
         handler: async (args) => {
-          this.chart.set(args.chart);
-          this.options.set(args.options);
+          this.chart.set(args);
         },
       }),
     ],
