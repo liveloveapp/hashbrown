@@ -11,12 +11,6 @@
       "options": {
         "command": "echo 'Skipping build for client-react'"
       }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "echo 'Skipping test for client-react'"
-      }
     }
   }
 }

@@ -20,7 +20,7 @@ describe('App', () => {
       </BrowserRouter>,
     );
     expect(
-      getAllByText(new RegExp('Welcome client-react', 'gi')).length > 0,
+      getAllByText(new RegExp('Smart Home', 'gi')).length > 0,
     ).toBeTruthy();
   });
 });
