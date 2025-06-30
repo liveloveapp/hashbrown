@@ -91,6 +91,12 @@ app.post('/api/chat', async (req, res) => {
       stream = HashbrownOpenAI.stream.text({
         apiKey: OPENAI_API_KEY,
         request,
+        transformRequestOptions: (options) => {
+          return {
+            ...options,
+            // reasoning_effort: 'low',
+          };
+        },
       });
     } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName as KnownModelIds)) {
       if (!WRITER_API_KEY) {

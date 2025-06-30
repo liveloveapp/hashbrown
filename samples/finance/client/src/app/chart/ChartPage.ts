@@ -18,10 +18,6 @@ import { CodeLoader } from './CodeLoader';
 import { Ingredients } from './Ingredients';
 import { ChartExamples } from './ChartExamples';
 
-ChartJS.defaults.color = '#ffffff';
-ChartJS.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
-ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-
 @Component({
   selector: 'app-chart-page',
   imports: [
@@ -39,7 +35,7 @@ ChartJS.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
         #input
         [placeholder]="placeholder()"
         [disabled]="disabled()"
-        (keyup.enter)="sendMessage()"
+        (keyup.enter)="sendMessage(input.value)"
       />
       <button
         class="send-button"
@@ -206,8 +202,6 @@ export class ChartPage {
     effect(async (onCleanup) => {
       const canvas = this.canvasRef().nativeElement;
       const chartConfig = this.chat.chart();
-      const chartOptions = this.chat.options();
-
       canvas.classList.add('rendering');
 
       await new Promise((resolve, reject) => {
@@ -219,18 +213,19 @@ export class ChartPage {
         });
       });
 
-      if (chartConfig && chartOptions) {
+      if (chartConfig) {
         const chart = new ChartJS(canvas, {
-          ...chartConfig,
+          ...chartConfig.chart,
           options: {
             responsive: true,
             maintainAspectRatio: true,
             borderColor: 'rgba(0, 0, 0, 0.1)',
-            ...chartOptions,
+            ...chartConfig.options,
             interaction: {
-              mode: chartOptions.interaction?.mode ?? undefined,
-              axis: chartOptions.interaction?.axis ?? undefined,
-              intersect: chartOptions.interaction?.intersect ?? undefined,
+              mode: chartConfig.options.interaction?.mode ?? undefined,
+              axis: chartConfig.options.interaction?.axis ?? undefined,
+              intersect:
+                chartConfig.options.interaction?.intersect ?? undefined,
             },
           },
         });
@@ -256,6 +251,7 @@ export class ChartPage {
   sendMessage(value?: string) {
     if (!value) return;
 
+    this.inputRef().nativeElement.value = value;
     this.chat.sendMessage(value);
   }
 
