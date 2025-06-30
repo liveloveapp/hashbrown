@@ -40,17 +40,25 @@ function shouldBeWrappedPrimitive(schema: s.HashbrownType): boolean {
   return true;
 }
 
-function parseJSON(jsonString: string, schema: s.HashbrownType): any {
+function parseJSON(
+  jsonString: string,
+  schema: s.HashbrownType,
+  assumeFinishedMessage: boolean,
+): any {
   if (typeof jsonString !== 'string') {
     throw new TypeError(`expecting str, got ${typeof jsonString}`);
   }
   if (!jsonString.trim()) {
     return '';
   }
-  return _parseJSON(jsonString.trim(), schema);
+  return _parseJSON(jsonString.trim(), schema, assumeFinishedMessage);
 }
 
-const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
+const _parseJSON = (
+  jsonString: string,
+  schema: s.HashbrownType,
+  assumeFinishedMessage: boolean,
+) => {
   const logger = new Logger(LOG_SETTINGS);
 
   logger.for('_parseJSON').info('In _parseJson');
@@ -691,8 +699,26 @@ const _parseJSON = (jsonString: string, schema: s.HashbrownType) => {
     const result = parseAny('', false, false);
 
     // We returned, but have we not consumed the whole length?
-    if (index < length) {
-      throwMalformedError('Extra data after end of parsing');
+    // We only check this on finished messages so as not to spam
+    // the warning on each few-character chunk of a streaming
+    // message.
+    if (assumeFinishedMessage && index < length) {
+      // NB: We call console.warn directly here instead of using the
+      // logger mechanism, because getting here almost always means the
+      // LLM hallucinated, adding extra stuff after the response or encoded
+      // it in a strange way (like escaping part or all of the JSON).
+      console.warn(`Extra data detected after parsing.\n
+Parsed: ${JSON.stringify(result)}\n
+Left over: ${jsonString.substring(index)}\n
+This is often caused by extra or incorrectly formatted data being returned by the 
+LLM, despite requesting data with a particular structure.
+
+Different models, by default, handle complex structured data with varied levels of accuracy.
+
+Model behavior can typically be improved by:
+- Adding 1-3 examples of correct output to your prompt (aka few-shot).
+- Adding guardrails to the prompt like "Do not escape tool function arguments."
+`);
     }
 
     return result;

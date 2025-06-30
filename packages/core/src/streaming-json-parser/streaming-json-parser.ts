@@ -10,10 +10,14 @@ export class StreamSchemaParser {
     this.schema = schema;
   }
 
-  parse(item: string) {
+  parse(item: string, assumeFinishedMessage: boolean) {
     this.dataString += item;
 
-    const currResult = parseJSON(this.dataString, this.schema);
+    const currResult = parseJSON(
+      this.dataString,
+      this.schema,
+      assumeFinishedMessage,
+    );
 
     return currResult;
   }
@@ -27,7 +31,7 @@ export async function* AsyncParserIterable(
   const streamParser = new StreamSchemaParser(schema);
 
   for await (const item of iterable) {
-    const doc = streamParser.parse(item);
+    const doc = streamParser.parse(item, false);
 
     yield doc;
   }

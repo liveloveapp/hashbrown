@@ -50,6 +50,7 @@ export function toViewMessagesFromInternal(
   toolCalls: Record<string, Chat.Internal.ToolCall>,
   tools: Chat.AnyTool[],
   outputSchema?: s.HashbrownType,
+  streaming = true,
 ): Chat.AnyMessage[] {
   switch (message.role) {
     case 'user': {
@@ -76,7 +77,7 @@ export function toViewMessagesFromInternal(
       let content = message.content;
 
       if (message.content && tater) {
-        content = tater.parse(message.content);
+        content = tater.parse(message.content, !streaming);
       }
 
       return [
@@ -102,6 +103,7 @@ export function toViewMessagesFromInternal(
                       toolCallId,
                       args: new StreamSchemaParser(tool.schema).parse(
                         toolCall.arguments,
+                        !streaming,
                       ),
                       // The internal models don't use a union, since that tends to
                       // complicate reducer logic. This is necessary to uplift our
@@ -121,6 +123,7 @@ export function toViewMessagesFromInternal(
                       progress: toolCall.progress,
                       args: new StreamSchemaParser(tool.schema).parse(
                         toolCall.arguments,
+                        !streaming,
                       ),
                     },
                   ];
