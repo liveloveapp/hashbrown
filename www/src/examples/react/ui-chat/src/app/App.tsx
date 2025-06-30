@@ -1,10 +1,5 @@
 import { s } from '@hashbrownai/core';
-import {
-  createTool,
-  createToolWithArgs,
-  exposeComponent,
-  useUiChat,
-} from '@hashbrownai/react';
+import { useTool, exposeComponent, useUiChat } from '@hashbrownai/react';
 import React, { ReactElement, useCallback, useMemo, useState } from 'react';
 import styles from './App.module.css';
 import Composer from './components/Composer';
@@ -21,42 +16,38 @@ export default function App(): ReactElement {
   const setApiKey = useConfigStore((state) => state.setApiKey);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
 
+  const getLights = useTool({
+    name: 'getLights',
+    description: 'Get the current lights',
+    handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+  });
+
+  const controlLight = useTool({
+    name: 'controlLight',
+    description: 'Control the light. Brightness is a number between 0 and 100.',
+    schema: s.object('Control light input', {
+      lightId: s.string('The id of the light'),
+      brightness: s.number('The brightness of the light, between 0 and 100'),
+    }),
+    handler: (input: object) => {
+      const { lightId, brightness } = input as {
+        lightId: string;
+        brightness: number;
+      };
+      useSmartHomeStore.getState().updateLight(lightId, {
+        brightness,
+      });
+      return Promise.resolve(true);
+    },
+  });
+
   const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
     useUiChat({
       model: 'gpt-4o',
       debugName: 'Example Chat',
       system:
         'You are a smart home assistant. You can control the lights in the house.',
-      tools: [
-        createTool({
-          name: 'getLights',
-          description: 'Get the current lights',
-          handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-        }),
-        createToolWithArgs({
-          name: 'controlLight',
-          description:
-            'Control the light. Brightness is a number between 0 and 100.',
-          schema: s.object('Control light input', {
-            lightId: s.string('The id of the light'),
-            brightness: s.number(
-              'The brightness of the light, between 0 and 100',
-            ),
-          }) as unknown as s.ObjectType<
-            Record<string, s.HashbrownType<unknown>>
-          >,
-          handler: (input: object) => {
-            const { lightId, brightness } = input as {
-              lightId: string;
-              brightness: number;
-            };
-            useSmartHomeStore.getState().updateLight(lightId, {
-              brightness,
-            });
-            return Promise.resolve(true);
-          },
-        }),
-      ],
+      tools: [getLights, controlLight],
       components: [
         exposeComponent(Light, {
           name: 'light',
