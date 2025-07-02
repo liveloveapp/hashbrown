@@ -1,11 +1,11 @@
 {
   "name": "@hashbrownai/writer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "peerDependencies": {
-    "@hashbrownai/core": "0.1.1"
+    "@hashbrownai/core": "0.1.2"
   },
   "dependencies": {
     "tslib": "^2.3.0",

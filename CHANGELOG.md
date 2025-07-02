@@ -1,3 +1,13 @@
+## 0.1.2 (2025-07-02)
+
+### 🩹 Fixes
+
+- **core:** Handle situations where no choices are generated ([70f3028](https://github.com/liveloveapp/project-cassini/commit/70f3028))
+
+### ❤️ Thank You
+
+- Mike Ryan @MikeRyanDev
+
 ## 0.1.1 (2025-06-02)
 
 ### 🚀 Features
