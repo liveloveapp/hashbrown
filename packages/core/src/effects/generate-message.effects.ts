@@ -114,7 +114,7 @@ export const generateMessage = createEffect((store) => {
           })) {
             switch (frame.type) {
               case 'chunk': {
-                message = updateMessagesWithDelta(message, frame.chunk);
+                message = _updateMessagesWithDelta(message, frame.chunk);
                 if (message) {
                   store.dispatch(apiActions.generateMessageChunk(message));
                 }
@@ -132,6 +132,12 @@ export const generateMessage = createEffect((store) => {
                   store.dispatch(
                     apiActions.generateMessageSuccess(
                       message as unknown as Chat.Api.AssistantMessage,
+                    ),
+                  );
+                } else {
+                  store.dispatch(
+                    apiActions.generateMessageError(
+                      new Error('No message was generated'),
                     ),
                   );
                 }
@@ -199,11 +205,11 @@ function mergeToolCalls(
  * @param delta - The incoming message delta.
  * @returns The updated messages array.
  */
-function updateMessagesWithDelta(
+export function _updateMessagesWithDelta(
   message: Chat.Api.AssistantMessage | null,
   delta: Chat.Api.CompletionChunk,
 ): Chat.Api.AssistantMessage | null {
-  if (message && message.role === 'assistant') {
+  if (message && message.role === 'assistant' && delta.choices.length) {
     const updatedToolCalls = mergeToolCalls(
       message.toolCalls,
       delta.choices[0].delta.toolCalls ?? [],
@@ -214,7 +220,10 @@ function updateMessagesWithDelta(
       toolCalls: updatedToolCalls,
     };
     return updatedMessage;
-  } else if (delta.choices[0]?.delta?.role === 'assistant') {
+  } else if (
+    delta.choices.length &&
+    delta.choices[0]?.delta?.role === 'assistant'
+  ) {
     return {
       role: 'assistant',
       content: delta.choices[0].delta.content ?? '',
