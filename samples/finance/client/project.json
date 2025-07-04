@@ -40,12 +40,30 @@
               "maximumError": "8kb"
             }
           ],
+          "ssr": {
+            "entry": "samples/finance/client/src/node.ts"
+          },
           "outputHashing": "all"
         },
         "development": {
           "optimization": false,
           "extractLicenses": false,
-          "sourceMap": true
+          "sourceMap": true,
+          "ssr": {
+            "entry": "samples/finance/client/src/node.ts"
+          }
+        },
+        "netlify": {
+          "ssr": {
+            "entry": "samples/finance/client/src/server.ts"
+          },
+          "outputHashing": "all",
+          "allowedCommonJsDependencies": [
+            "formdata-node",
+            "node-domexception",
+            "web-streams-polyfill",
+            "fetch-blob"
+          ]
         }
       },
       "defaultConfiguration": "production"

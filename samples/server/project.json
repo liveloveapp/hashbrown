@@ -1,7 +1,7 @@
 {
   "name": "server",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "samples/smart-home/server/src",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/server/src",
   "projectType": "application",
   "tags": [],
   "targets": {
@@ -11,11 +11,11 @@
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
-        "outputPath": "dist/samples/smart-home/server",
+        "outputPath": "dist/samples/server",
         "format": ["cjs"],
         "bundle": false,
-        "main": "samples/smart-home/server/src/main.ts",
-        "tsConfig": "samples/smart-home/server/tsconfig.app.json",
+        "main": "samples/server/src/main.ts",
+        "tsConfig": "samples/server/tsconfig.app.json",
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
