@@ -140,6 +140,7 @@
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
     "@testing-library/dom": "10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "16.1.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

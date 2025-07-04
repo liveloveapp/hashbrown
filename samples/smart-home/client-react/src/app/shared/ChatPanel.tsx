@@ -1,5 +1,5 @@
 import { Chat, s } from '@hashbrownai/core';
-import { createTool, createToolWithArgs, useChat } from '@hashbrownai/react';
+import { useChat, useTool } from '@hashbrownai/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { Button } from './button';
@@ -8,35 +8,38 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const ChatPanel = () => {
+  const getLights = useTool(
+    {
+      name: 'getLights',
+      description: 'Get the current lights',
+      handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+    },
+    [],
+  );
+  const controlLight = useTool(
+    {
+      name: 'controlLight',
+      description:
+        'Control the light. Brightness is a number between 0 and 100.',
+      schema: s.object('Control light input', {
+        lightId: s.string('The id of the light'),
+        brightness: s.number('The brightness of the light, between 0 and 100'),
+      }),
+      handler: (input) => {
+        useSmartHomeStore.getState().updateLight(input.lightId, {
+          brightness: input.brightness,
+        });
+        return Promise.resolve(true);
+      },
+    },
+    [],
+  );
   const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
     useChat({
       model: 'gpt-4o-mini',
       system:
         'You are a helpful assistant that can answer questions and help with tasks.',
-      tools: [
-        createTool({
-          name: 'getLights',
-          description: 'Get the current lights',
-          handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-        }),
-        createToolWithArgs({
-          name: 'controlLight',
-          description:
-            'Control the light. Brightness is a number between 0 and 100.',
-          schema: s.object('Control light input', {
-            lightId: s.string('The id of the light'),
-            brightness: s.number(
-              'The brightness of the light, between 0 and 100',
-            ),
-          }),
-          handler: (input) => {
-            useSmartHomeStore.getState().updateLight(input.lightId, {
-              brightness: input.brightness,
-            });
-            return Promise.resolve(true);
-          },
-        }),
-      ],
+      tools: [getLights, controlLight],
     });
 
   const isWorking = useMemo(() => {

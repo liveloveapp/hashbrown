@@ -4,8 +4,7 @@ import {
   Hashbrown,
   KnownModelIds,
 } from '@hashbrownai/core';
-import { useCallback, useContext, useEffect, useState } from 'react';
-import { useTools } from '../create-tool.fn';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { HashbrownContext } from '../hashbrown-provider';
 
 /**
@@ -148,7 +147,11 @@ export function useChat<Tools extends Chat.AnyTool>(
    */
   options: UseChatOptions<Tools>,
 ): UseChatResult<Tools> {
-  const tools: Tools[] = useTools(options.tools ?? []);
+  const tools: Tools[] = useMemo(
+    () => options.tools ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    options.tools ?? [],
+  );
   const config = useContext(HashbrownContext);
 
   const [hashbrown, setHashbrown] = useState<Hashbrown<string, Tools> | null>(

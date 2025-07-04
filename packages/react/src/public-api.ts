@@ -1,4 +1,3 @@
-export { createTool, createToolWithArgs } from './create-tool.fn';
 export {
   HashbrownProvider,
   type HashbrownProviderOptions,
@@ -30,3 +29,4 @@ export {
   type UiChatOptions,
   type UiUserMessage,
 } from './hooks/use-ui-chat';
+export { useTool, type ToolOptions } from './hooks/use-tool';
