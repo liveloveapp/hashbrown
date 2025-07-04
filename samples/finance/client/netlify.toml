@@ -1,0 +1,7 @@
+[build]
+  command   = "npx nx run finance-angular-client:build:netlify"
+  publish   = "dist/samples/finance/client/browser"
+  ignore    = "npx nx-ignore finance-angular-client"
+  
+[[plugins]]
+  package = "@netlify/angular-runtime"

@@ -1,0 +1,5 @@
+[build]
+  command   = "npx nx run www:build"
+  publish   = "dist/www/analog/public"
+  functions = "dist/www/analog"
+  ignore    = "npx nx-ignore www"

@@ -1,0 +1,5 @@
+[build]
+  command   = "npx nx run server:build"
+  publish   = "dist/samples/server"
+  functions = "dist/samples/server"
+  ignore    = "npx nx-ignore server"
