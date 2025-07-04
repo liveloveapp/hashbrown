@@ -3,3 +3,4 @@
   publish   = "dist/www/analog/public"
   functions = "dist/www/analog"
   ignore    = "npx nx-ignore www"
+  NODE_OPTIONS = "--max-old-space-size=8192"
