@@ -59,3 +59,9 @@ vitest.config.*.timestamp*
 
 # Storybook
 storybook-static
+
+# API Extractor
+reports
+tsdoc-metadata.json
+temp
+packages/*/*.api.md

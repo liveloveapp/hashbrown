@@ -10,7 +10,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { Light } from '../../models/light.model';
 import { Store } from '@ngrx/store';
 import { LightsPageActions } from './actions/lights-page.actions';
-import { selectAllLights } from '../../store';
+import { selectAllLights, selectIsChatPanelOpen } from '../../store';
 import { LightComponent } from './light.component';
 import { LightListComponent } from './light-list.component';
 
@@ -37,6 +37,7 @@ import { LightListComponent } from './light-list.component';
       </app-light-list>
       <button
         class="add-light-button"
+        [class.chat-panel-open]="isChatPanelOpen()"
         mat-fab
         extended
         color="primary"
@@ -56,14 +57,19 @@ import { LightListComponent } from './light-list.component';
       }
 
       .add-light-button {
-        position: absolute;
+        position: fixed;
         bottom: 20px;
-        right: 0px;
+        right: 20px;
+      }
+
+      .add-light-button.chat-panel-open {
+        right: calc(40% + 20px);
       }
 
       .lights-container {
         padding: 20px;
       }
+
       .light-item {
         display: flex;
         align-items: center;
@@ -103,6 +109,7 @@ export class LightsComponent {
   private dialog = inject(MatDialog);
   private store = inject(Store);
   lights = this.store.selectSignal(selectAllLights);
+  isChatPanelOpen = this.store.selectSignal(selectIsChatPanelOpen);
 
   constructor() {
     this.store.dispatch(LightsPageActions.enter());

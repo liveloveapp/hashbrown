@@ -1,0 +1,7 @@
+{
+  "extends": "../../api-extractor.base.json",
+  "compiler": {
+    "tsconfigFilePath": "<projectFolder>/tsconfig.lib.json"
+  },
+  "mainEntryPointFilePath": "../../dist/packages/core/index.d.ts"
+}

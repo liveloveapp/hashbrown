@@ -7,6 +7,7 @@ import {
   UiChatMessage,
 } from '@hashbrownai/angular';
 import { ToolChipComponent } from './tool-chip.component';
+import { CodeToolChipComponent } from './code-tool-chip.component';
 
 @Component({
   selector: 'app-chat-messages',
@@ -16,6 +17,7 @@ import { ToolChipComponent } from './tool-chip.component';
     MatIconModule,
     MatButtonModule,
     ToolChipComponent,
+    CodeToolChipComponent,
   ],
   template: `
     @for (message of collapsedMessages(); track $index) {
@@ -72,10 +74,43 @@ import { ToolChipComponent } from './tool-chip.component';
                     />
                   }
                   @case ('javascript') {
-                    <app-tool-chip
+                    <app-code-tool-chip
                       [toolCall]="toolCall"
+                      [code]="toolCall.args.code"
                       pending="Running a script..."
                       done="Ran a script"
+                    />
+                  }
+
+                  @case ('getPageHTML') {
+                    <app-tool-chip
+                      [toolCall]="toolCall"
+                      pending="Looking at the page..."
+                      done="Looked at the page"
+                    />
+                  }
+
+                  @case ('findHTMLElementByXPathSelector') {
+                    <app-tool-chip
+                      [toolCall]="toolCall"
+                      pending="Looking for an element..."
+                      done="Found an element"
+                    />
+                  }
+
+                  @case ('drawTopicMarker') {
+                    <app-tool-chip
+                      [toolCall]="toolCall"
+                      pending="Showing an element..."
+                      done="Showing an element"
+                    />
+                  }
+
+                  @case ('clickElement') {
+                    <app-tool-chip
+                      [toolCall]="toolCall"
+                      [pending]="'Clicking on ' + toolCall.args.name + '...'"
+                      [done]="'Clicked on ' + toolCall.args.name"
                     />
                   }
 

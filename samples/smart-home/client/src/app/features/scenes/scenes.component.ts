@@ -9,7 +9,7 @@ import { Scene } from '../../models/scene.model';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SceneFormDialogComponent } from './scene-form-dialog/scene-form-dialog.component';
 import { ScenesPageActions } from './actions/scenes-page.actions';
-import { selectAllScenes } from '../../store';
+import { selectAllScenes, selectIsChatPanelOpen } from '../../store';
 import { SceneComponent } from './scene.component';
 
 @Component({
@@ -34,6 +34,7 @@ import { SceneComponent } from './scene.component';
     </div>
     <button
       class="add-scene-button"
+      [class.chat-panel-open]="isChatPanelOpen()"
       mat-fab
       extended
       color="primary"
@@ -57,6 +58,10 @@ import { SceneComponent } from './scene.component';
         right: 20px;
       }
 
+      .add-scene-button.chat-panel-open {
+        right: calc(40% + 20px);
+      }
+
       .scenes-list {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -73,6 +78,7 @@ export class ScenesComponent {
   private store = inject(Store);
 
   scenes = this.store.selectSignal(selectAllScenes);
+  isChatPanelOpen = this.store.selectSignal(selectIsChatPanelOpen);
 
   constructor() {
     this.store.dispatch(ScenesPageActions.enter());

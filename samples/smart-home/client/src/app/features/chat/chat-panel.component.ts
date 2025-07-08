@@ -38,6 +38,8 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import sanitizeHtml from 'sanitize-html';
 import { HelpTopicMarkerComponent } from '../../components/help-topic-marker.component';
 import { v4 as uuid } from 'uuid';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmComponent } from './components/confirm.component';
 
 @Component({
   selector: 'app-chat-panel',
@@ -154,31 +156,9 @@ export class ChatPanelComponent {
   authService = inject(AuthService);
   smartHomeService = inject(SmartHomeService);
   overlay = inject(Overlay);
-
-  simpleDemo = false;
-
   helpMarkerOverlayRefs: OverlayRef[] = [];
-
   @ViewChild('contentDiv') private contentDiv: ElementRef = {} as ElementRef;
-
-  constructor() {
-    effect(() => {
-      // React when messages change
-      this.chat.value();
-      if (this.contentDiv.nativeElement) {
-        this.contentDiv.nativeElement.scrollTop =
-          this.contentDiv.nativeElement.scrollHeight;
-      }
-    });
-  }
-
-  clearOverlays() {
-    this.helpMarkerOverlayRefs.forEach((overlayRef) => {
-      overlayRef.dispose();
-    });
-
-    this.helpMarkerOverlayRefs.length = 0;
-  }
+  simpleDemo = false;
 
   /**
    * --------------------------------------------------------------------------
@@ -186,29 +166,38 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    model: 'gpt-4.1',
-    // model: 'gemini-2.5-flash-preview-04-17',
-    // model: 'palmyra-x5',
-    debugName: 'simple-chat',
-    system: `You are a helpful assistant that can answer questions and help with tasks. You should not stringify (aka escape) function arguments`,
-    tools: [
-      createTool({
-        name: 'getUser',
-        description: 'Get information about the current user',
-        handler: () => {
-          const auth = inject(AuthService);
-
-          return auth.getUser();
-        },
-      }),
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: () => this.smartHomeService.loadLights(),
-      }),
-    ],
+    model: 'gemini-2.5-flash',
+    system: `
+      You are a helpful assistant that can answer questions and help with tasks.
+    `,
   });
 
+  /**
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   *
+   * --------------------------------------------------------------------------
+   * Runtime
+   * --------------------------------------------------------------------------
+   */
   runtime = createRuntime({
     functions: [
       createRuntimeFunction({
@@ -291,7 +280,7 @@ export class ChatPanelComponent {
    */
   chat = uiChatResource({
     model: 'gpt-4.1',
-    // model: 'gemini-2.5-pro-preview-05-06',
+    // model: 'gemini-2.5-pro',
     // model: 'gpt-4o@2025-01-01-preview',
     // model: 'palmyra-x5',
     debugName: 'ui-chat',
@@ -312,20 +301,18 @@ export class ChatPanelComponent {
       tool multiple times.
 
       You can locate important elements via findHTMLElementBySelector:
-      * the argument for findHTMLElementBySelector is a precise CSS selector
-      * When creating CSS selectors, ensure they are unique and specific enough to select only one element, even if there are multiple elements of the same type (like multiple h1 elements).
+      * the argument for findHTMLElementByXPathSelector is a precise XPath selector
       * Avoid using generic tags like 'h1' alone. Instead, combine them with other attributes or structural relationships to form a unique selector.
       * Selectors should not include "main.chatPanelOpen"
       * If you cannot locate an element after 3 tries, **give up** and the user know.
       
-      Prefer findHTMLElementBySelector, unless you are trying ot find a button or link by text (i.e. "take me to the scenes page" -> click the Scenes button).
-      In those cases, use findHTMLElementByXPathSelector, whose argument is a precise XPath selector.  Xpath selectors can be based on text matching,
+      Prefer findHTMLElementByXPathSelector, whose argument is a precise XPath selector.  Xpath selectors can be based on text matching,
       making them more suitable for finding interactive elements by name.
 
       When a user asks for an explanation of or help with a page:
       * ignore the chat panel and its contents unless the user explicitly asks about the chat panel
       * always re-retrieve the HTML for the page (via getPageHTML)
-      * only mark the 3 most important parts of the page
+      * only mark the 3-5 most important parts of the page
       * don't callout individual elements in a vertical list (i.e. describe a list of lights, but not each light)
       * place markers overlayed on the page that match up with sections in the description  
       
@@ -336,7 +323,8 @@ export class ChatPanelComponent {
         * Example 3: "Walk me through the Lights page" (when on the Scenes page) should cause navigation and _also_ explanation.
       * If a user does not ask for an explanation or help understanding, don't provide any explanation. For example, if a user asks to click an element or go to a different page, just do that without providing page explanation.
       * If a user asks for navigation (like, "go the lights page" or "take me to the lights page"), don't show controls in the chat.
-        * Example: "Navigate to the lights page" should not lead to any controls being rendered in chat.
+        * Example: "Navigate to the lights page"
+      * Ground your mathematical calculations using the javascript tool.
 
       Please do not stringify (aka escape) function arguments.  Also, make sure not to include bits of JSON Schema in the function 
       arguments and returned structured data. 
@@ -412,26 +400,6 @@ export class ChatPanelComponent {
         },
       }),
       createTool({
-        name: 'findHTMLElementByCSSSelector',
-        description: 'Find the html element via a unique CSS selector.',
-        schema: s.object('Args', {
-          cssSelector: s.string(
-            'A unique CSS selector that is crafted to only return one element',
-          ),
-        }),
-        handler: (input) => {
-          // Based on https://github.com/lucgagan/auto-playwright/blob/main/src/createActions.ts
-          const element = document.querySelector(input.cssSelector);
-
-          if (element) {
-            const elementId = uuid();
-            element.setAttribute('data-element-id', elementId);
-            return Promise.resolve(elementId);
-          }
-          return Promise.resolve('');
-        },
-      }),
-      createTool({
         name: 'findHTMLElementByXPathSelector',
         description: 'Find the html element via a unique XPath.',
         schema: s.object('Args', {
@@ -463,22 +431,38 @@ export class ChatPanelComponent {
         name: 'clickElement',
         description: 'Click.',
         schema: s.object('Click an element', {
+          name: s.streaming.string(
+            'User-friendly name of the element to click',
+          ),
           elementId: s.string(
             'A uuid that is a unique data-element-id value for the target of the topic marker',
           ),
         }),
-        handler: (input) => {
-          const element = document.querySelector(
-            `[data-element-id="${input.elementId}`,
-          );
+        handler: async (input) => {
+          const dialog = inject(MatDialog);
 
-          if (!element) {
-            return Promise.resolve(false);
+          const dialogRef = dialog.open(ConfirmComponent, {
+            data: {
+              title: 'Click Element',
+              message: `Are you sure you want to click ${input.name}?`,
+            },
+          });
+
+          const result = await lastValueFrom(dialogRef.afterClosed());
+
+          if (result) {
+            const element = document.querySelector(
+              `[data-element-id="${input.elementId}`,
+            );
+
+            if (element) {
+              (element as HTMLElement).click();
+            }
+
+            return true;
           }
 
-          (element as HTMLElement).click();
-
-          return Promise.resolve(true);
+          return false;
         },
       }),
       createTool({
@@ -554,6 +538,25 @@ export class ChatPanelComponent {
       }),
     ],
   });
+
+  constructor() {
+    effect(() => {
+      // React when messages change
+      this.chat.value();
+      if (this.contentDiv.nativeElement) {
+        this.contentDiv.nativeElement.scrollTop =
+          this.contentDiv.nativeElement.scrollHeight;
+      }
+    });
+  }
+
+  clearOverlays() {
+    this.helpMarkerOverlayRefs.forEach((overlayRef) => {
+      overlayRef.dispose();
+    });
+
+    this.helpMarkerOverlayRefs.length = 0;
+  }
 
   sendMessage(message: string) {
     if (this.simpleDemo) {
