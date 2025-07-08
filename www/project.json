@@ -67,6 +67,26 @@
           "target": "build"
         }
       ]
+    },
+    "review-docs": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "review-docs"
+      },
+      "dependsOn": [
+        {
+          "projects": [
+            "angular",
+            "azure",
+            "core",
+            "google",
+            "openai",
+            "react",
+            "writer"
+          ],
+          "target": "build-api-report"
+        }
+      ]
     }
   }
 }

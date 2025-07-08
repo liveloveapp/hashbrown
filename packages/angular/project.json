@@ -38,6 +38,19 @@
     },
     "lint": {
       "executor": "@nx/eslint:lint"
+    },
+    "build-api-report": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx api-extractor run --local --config packages/angular/api-extractor.json",
+        "parallel": true
+      },
+      "dependsOn": [
+        {
+          "projects": ["angular"],
+          "target": "build"
+        }
+      ]
     }
   }
 }

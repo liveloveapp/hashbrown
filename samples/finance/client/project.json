@@ -71,6 +71,9 @@
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "options": {
+        "port": 4600
+      },
       "configurations": {
         "production": {
           "buildTarget": "finance-angular-client:build:production"
@@ -92,7 +95,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "finance-angular-client:build",
-        "port": 4200,
+        "port": 4600,
         "staticFilePath": "dist/samples/finance/client/browser",
         "spa": true
       }

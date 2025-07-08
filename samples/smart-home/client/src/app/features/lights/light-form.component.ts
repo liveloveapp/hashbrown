@@ -186,6 +186,10 @@ export class LightFormComponent {
       - If the name is already complete, return an empty string.
       - NEVER predict more than a few words or characters at a time.
       - Names must be unique.
+
+      # Examples
+      - Input: {input: 'Living Room - Entertainment Ambi', existingNames: ['Living Room - Entertainment Ambient Light 1']}
+      - Output: ent Light 2
     `,
     input: computed(() => {
       if (!this.nameSignal()) return null;
