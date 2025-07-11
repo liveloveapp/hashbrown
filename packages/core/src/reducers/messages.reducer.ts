@@ -48,6 +48,27 @@ export const reducer = createReducer(
       messages: [...state.messages, errorMessage],
     };
   }),
+  on(apiActions.stopMessageGeneration, (state, action) => {
+    if (action.payload.clearStreamingMessage) {
+      return state;
+    }
+
+    const message = action.payload.currentStreamingMessage;
+    if (!message) {
+      return state;
+    }
+
+    const canceledMessage: Chat.Internal.AssistantMessage = {
+      role: 'assistant',
+      content: message.content,
+      toolCallIds: [],
+    };
+
+    return {
+      ...state,
+      messages: [...state.messages, canceledMessage],
+    };
+  }),
   on(devActions.setMessages, (state, action) => {
     const messages = action.payload.messages;
     const internalMessages = messages.flatMap((message) =>
@@ -60,6 +81,7 @@ export const reducer = createReducer(
   }),
   on(devActions.sendMessage, (state, action) => {
     const message = action.payload.message;
+    // @todo: proooobably why the last message gets out of sequence
     const internalMessages = Chat.helpers.toInternalMessagesFromView(message);
 
     return {

@@ -3,6 +3,7 @@ import { DeepPartial } from '../utils';
 import { sleep, switchAsync } from '../utils/async';
 import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
+import { decodeFrames } from '../frames/decode-frames';
 import { Chat } from '../models';
 import {
   selectApiMessages,
@@ -17,10 +18,15 @@ import {
   selectShouldGenerateMessage,
   selectSystem,
 } from '../reducers';
-import { decodeFrames } from '../frames/decode-frames';
+
+let currentAbortController: AbortController | null = null;
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
+  currentAbortController = effectAbortController;
+  // This controller is used to cancel the current message generation
+  // when a new message is sent or the user stops the generation.
+  let cancelAbortController = new AbortController();
 
   store.when(
     devActions.init,
@@ -65,7 +71,15 @@ export const generateMessage = createEffect((store) => {
       do {
         attempt++;
 
-        if (effectAbortController.signal.aborted || switchSignal.aborted) {
+        if (
+          effectAbortController.signal.aborted ||
+          switchSignal.aborted ||
+          cancelAbortController.signal.aborted
+        ) {
+          // we need to reset the cancelAbortController for the next messsage
+          if (cancelAbortController.signal.aborted) {
+            cancelAbortController = new AbortController();
+          }
           return;
         }
 
@@ -110,7 +124,10 @@ export const generateMessage = createEffect((store) => {
           let message: Chat.Api.AssistantMessage | null = null;
 
           for await (const frame of decodeFrames(response.body, {
-            signal: effectAbortController.signal,
+            signal: AbortSignal.any([
+              cancelAbortController.signal,
+              effectAbortController.signal,
+            ]),
           })) {
             switch (frame.type) {
               case 'chunk': {
@@ -150,6 +167,11 @@ export const generateMessage = createEffect((store) => {
             store.dispatch(apiActions.generateMessageError(e));
           }
           continue;
+        } finally {
+          // Reset the cancelAbortController for the next message
+          if (cancelAbortController.signal.aborted) {
+            cancelAbortController = new AbortController();
+          }
         }
 
         break;
@@ -162,8 +184,14 @@ export const generateMessage = createEffect((store) => {
     }, effectAbortController.signal),
   );
 
+  store.when(apiActions.stopMessageGeneration, () => {
+    cancelAbortController.abort();
+  });
+
   return () => {
     effectAbortController.abort();
+    currentAbortController = null;
+    cancelAbortController.abort();
   };
 });
 
