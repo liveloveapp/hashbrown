@@ -7,5 +7,8 @@ export default createActionGroup('api', {
   generateMessageSuccess: props<Chat.Api.AssistantMessage>(),
   generateMessageError: props<Error>(),
   generateMessageExhaustedRetries: props<void>(),
-  stopMessageGeneration: props<void>(),
+  stopMessageGeneration: props<{
+    clearStreamingMessage: boolean;
+    currentStreamingMessage: Chat.Api.AssistantMessage | null;
+  }>(),
 });

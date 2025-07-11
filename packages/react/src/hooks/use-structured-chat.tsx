@@ -90,7 +90,7 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   /**
    * Function to stop the chat.
    */
-  stop: () => void;
+  stop: (clearStreamingMessage?: boolean) => void;
 
   /**
    * Reload the chat, useful for retrying when an error occurs.
@@ -230,9 +230,12 @@ export function useStructuredChat<
     [hashbrown],
   );
 
-  const stop = useCallback(() => {
-    hashbrown?.stop();
-  }, [hashbrown]);
+  const stop = useCallback(
+    (clearStreamingMessage = false) => {
+      hashbrown?.stop(clearStreamingMessage);
+    },
+    [hashbrown],
+  );
 
   const resendMessages = useCallback(() => {
     hashbrown?.resendMessages();

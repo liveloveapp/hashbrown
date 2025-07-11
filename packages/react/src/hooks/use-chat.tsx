@@ -75,7 +75,7 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
   /**
    * Function to stop the chat.
    */
-  stop: () => void;
+  stop: (clearStreamingMessage?: boolean) => void;
 
   /**
    * Reload the chat, useful for retrying when an error occurs.
@@ -222,9 +222,12 @@ export function useChat<Tools extends Chat.AnyTool>(
     [hashbrown],
   );
 
-  const stop = useCallback(() => {
-    hashbrown?.stop();
-  }, [hashbrown]);
+  const stop = useCallback(
+    (clearStreamingMessage = false) => {
+      hashbrown?.stop(clearStreamingMessage);
+    },
+    [hashbrown],
+  );
 
   const setMessages = useCallback(
     (messages: Chat.Message<string, Tools>[]) => {

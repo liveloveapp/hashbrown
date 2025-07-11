@@ -265,7 +265,15 @@ export function fryHashbrown(init: {
 
   function stop(clearStreamingMessage = false) {
     console.log('stopping');
-    state.dispatch(apiActions.stopMessageGeneration());
+    const currentStreamingMessage = state.read(
+      (s) => s.streamingMessage,
+    ).message;
+    state.dispatch(
+      apiActions.stopMessageGeneration({
+        clearStreamingMessage,
+        currentStreamingMessage,
+      }),
+    );
   }
 
   return {

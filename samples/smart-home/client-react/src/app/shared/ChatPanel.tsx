@@ -34,13 +34,19 @@ export const ChatPanel = () => {
     },
     [],
   );
-  const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =
-    useChat({
-      model: 'gpt-4o-mini',
-      system:
-        'You are a helpful assistant that can answer questions and help with tasks.',
-      tools: [getLights, controlLight],
-    });
+  const {
+    messages,
+    sendMessage,
+    isSending,
+    isReceiving,
+    isRunningToolCalls,
+    stop,
+  } = useChat({
+    model: 'gpt-4o-mini',
+    system:
+      'You are a helpful assistant that can answer questions and help with tasks.',
+    tools: [getLights, controlLight],
+  });
 
   const isWorking = useMemo(() => {
     return isSending || isReceiving || isRunningToolCalls;
@@ -118,6 +124,7 @@ export const ChatPanel = () => {
             variant="outline"
             onClick={() => {
               console.log('stop');
+              stop();
             }}
           >
             Stop

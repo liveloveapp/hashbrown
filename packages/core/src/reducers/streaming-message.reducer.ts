@@ -47,6 +47,13 @@ export const reducer = createReducer(
       message: null,
     };
   }),
+  on(apiActions.stopMessageGeneration, (state, action) => {
+    return {
+      ...state,
+      message: action.payload ? null : state.message,
+      toolCalls: [],
+    };
+  }),
 );
 
 export const selectRawStreamingMessage = (state: StreamingMessageState) =>
