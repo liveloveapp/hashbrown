@@ -1,5 +1,12 @@
 import { Chat, s } from '@hashbrownai/core';
-import { exposeComponent, useTool, useUiChat } from '@hashbrownai/react';
+import {
+  exposeComponent,
+  useRuntime,
+  useRuntimeFunction,
+  useTool,
+  useToolJavaScript,
+  useUiChat,
+} from '@hashbrownai/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSmartHomeStore } from '../store/smart-home.store';
 import { LightChatComponent } from '../views/components/LightChatComponent';
@@ -9,6 +16,7 @@ import { MarkdownComponent } from './MarkdownComponent';
 import { RichMessage } from './RichMessage';
 import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
+import { Light } from '../models/light.model';
 
 export const RichChatPanel = () => {
   const getLights = useTool({
@@ -35,6 +43,35 @@ export const RichChatPanel = () => {
     },
     deps: [],
   });
+  const createLight = useRuntimeFunction({
+    name: 'createLight',
+    description: 'Create a new light',
+    args: s.object('Create light input', {
+      name: s.string('The name of the light'),
+    }),
+    result: s.object('Create light result', {
+      lightId: s.string('The id of the light'),
+    }),
+    deps: [],
+    handler: (input) => {
+      const { name } = input;
+      const light: Light = {
+        id: crypto.randomUUID(),
+        name,
+        brightness: 0,
+      };
+
+      useSmartHomeStore.getState().addLight(light);
+
+      return Promise.resolve({ lightId: light.id });
+    },
+  });
+  const runtime = useRuntime({
+    functions: [createLight],
+  });
+  const toolJavaScript = useToolJavaScript({
+    runtime,
+  });
 
   const {
     messages,
@@ -45,11 +82,16 @@ export const RichChatPanel = () => {
     isRunningToolCalls,
     stop,
   } = useUiChat({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4.1',
     debugName: 'RichChatPanel',
-    system:
-      'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
-    tools: [getLights, controlLight],
+    system: `
+      You are a smart home assistant. You can control the lights in the house. 
+      You should not stringify (aka escape) function arguments
+
+      Always prefer writing a single script for the javascript tool over calling 
+      the javascript tool multiple times.
+    `,
+    tools: [getLights, controlLight, toolJavaScript],
     components: [
       exposeComponent(LightChatComponent, {
         name: 'LightChatComponent',
