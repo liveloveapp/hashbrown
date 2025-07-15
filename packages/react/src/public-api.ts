@@ -30,3 +30,14 @@ export {
   type UiUserMessage,
 } from './hooks/use-ui-chat';
 export { useTool, type ToolOptions } from './hooks/use-tool';
+export { useRuntimeFunction } from './hooks/use-runtime-function';
+export { useRuntime, type UseRuntimeOptions } from './hooks/use-runtime';
+export {
+  useToolJavaScript,
+  type UseToolJavaScriptOptions,
+} from './hooks/use-tool-javascript';
+export {
+  exposeComponent,
+  type ComponentPropSchema,
+  type ExposedComponent,
+} from './expose-component.fn';
