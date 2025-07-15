@@ -8,14 +8,12 @@ it('should populate an empty schema if no schema is provided', () => {
   const expected = s.object('Empty schema', {});
 
   const { result } = renderHook(() =>
-    useTool(
-      {
-        name: 'test-tool',
-        description: 'A test tool without schema',
-        handler: async () => 'result',
-      },
-      [],
-    ),
+    useTool({
+      name: 'test-tool',
+      description: 'A test tool without schema',
+      handler: async () => 'result',
+      deps: [],
+    }),
   );
 
   expect(result.current.schema).toEqual(expected);
@@ -25,15 +23,13 @@ it('should return the provided schema if it exists', () => {
   const expected = s.string('A string schema');
 
   const { result } = renderHook(() =>
-    useTool(
-      {
-        name: 'test-tool',
-        description: 'A test tool with schema',
-        schema: expected,
-        handler: async () => 'result',
-      },
-      [],
-    ),
+    useTool({
+      name: 'test-tool',
+      description: 'A test tool with schema',
+      schema: expected,
+      handler: async () => 'result',
+      deps: [],
+    }),
   );
 
   expect(result.current.schema).toEqual(expected);
@@ -61,14 +57,12 @@ it('should re-render if the name changes', () => {
   const handler = async () => 'result';
   const { result, rerender } = renderHook(
     ({ name }) =>
-      useTool(
-        {
-          name,
-          description: 'A test tool with empty deps',
-          handler,
-        },
-        [],
-      ),
+      useTool({
+        name,
+        description: 'A test tool with empty deps',
+        handler,
+        deps: [],
+      }),
     {
       initialProps: { name: oldName },
     },
@@ -87,14 +81,12 @@ it('should re-render if the description changes', () => {
   const handler = async () => 'result';
   const { result, rerender } = renderHook(
     ({ description }) =>
-      useTool(
-        {
-          name: 'test-tool',
-          description,
-          handler,
-        },
-        [],
-      ),
+      useTool({
+        name: 'test-tool',
+        description,
+        handler,
+        deps: [],
+      }),
     {
       initialProps: { description: oldDescription },
     },
@@ -113,15 +105,13 @@ it('should NOT re-render if the schema changes', () => {
   const handler = async () => 'result';
   const { result, rerender } = renderHook(
     ({ schema }) =>
-      useTool(
-        {
-          name: 'test-tool',
-          description: 'A test tool with empty deps',
-          schema,
-          handler,
-        },
-        [],
-      ),
+      useTool({
+        name: 'test-tool',
+        description: 'A test tool with empty deps',
+        schema,
+        handler,
+        deps: [],
+      }),
     {
       initialProps: { schema: oldSchema },
     },
@@ -138,14 +128,12 @@ it('should NOT re-render if the handler changes', () => {
   const newHandler = async () => 'new result';
   const { result, rerender } = renderHook(
     ({ handler }) =>
-      useTool(
-        {
-          name: 'test-tool',
-          description: 'A test tool with empty deps',
-          handler,
-        },
-        [],
-      ),
+      useTool({
+        name: 'test-tool',
+        description: 'A test tool with empty deps',
+        handler,
+        deps: [],
+      }),
     {
       initialProps: { handler: oldHandler },
     },
@@ -160,14 +148,12 @@ it('should NOT re-render if the handler changes', () => {
 it('should only calculate tool once, on initial render, if the deps array is empty, but a re-render occurs with the same props', () => {
   const handler = async () => 'result';
   const { result, rerender } = renderHook(() =>
-    useTool(
-      {
-        name: 'test-tool',
-        description: 'A test tool with empty deps',
-        handler,
-      },
-      [],
-    ),
+    useTool({
+      name: 'test-tool',
+      description: 'A test tool with empty deps',
+      handler,
+      deps: [],
+    }),
   );
   const initialTool = result.current;
 
@@ -183,14 +169,12 @@ it('should only calculate tool once, on initial render, if the deps array is emp
 it('should re-calculate tool if any of the deps in the deps array changes', async () => {
   const { result, rerender } = renderHook(
     ({ foo }) =>
-      useTool(
-        {
-          name: 'test-tool',
-          description: 'A test tool with empty deps',
-          handler: async () => foo,
-        },
-        [foo],
-      ),
+      useTool({
+        name: 'test-tool',
+        description: 'A test tool with empty deps',
+        handler: async () => foo,
+        deps: [foo],
+      }),
     {
       initialProps: { foo: 100 },
     },
@@ -207,14 +191,12 @@ it('should re-calculate tool if any of the deps in the deps array changes', asyn
 it('should not re-calculate tool if deps array has contents, but those values do not change', () => {
   const { result, rerender } = renderHook(
     ({ foo }) =>
-      useTool(
-        {
-          name: 'test-tool',
-          description: 'A test tool with empty deps',
-          handler: async () => foo,
-        },
-        [foo],
-      ),
+      useTool({
+        name: 'test-tool',
+        description: 'A test tool with empty deps',
+        handler: async () => foo,
+        deps: [foo],
+      }),
     {
       initialProps: { foo: 100 },
     },

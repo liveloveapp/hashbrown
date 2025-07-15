@@ -55,19 +55,17 @@ const ProviderWrapper = ({ children }: { children: React.ReactNode }) => (
 let shouldRegenerateHandler = false;
 
 const TestComponent = () => {
-  const searchRestaurantTool = useTool(
-    {
-      name: 'Restaurant Search',
-      description: 'Search for restaurants based on location and cuisine.',
-      schema: s.object('RestaurantSearchParams', {
-        location: s.string('Location'),
-        cuisine: s.string('Cuisine'),
-        radius: s.number('Radius'), // in miles
-      }),
-      handler: async () => vi.fn(),
-    },
-    [shouldRegenerateHandler],
-  );
+  const searchRestaurantTool = useTool({
+    name: 'Restaurant Search',
+    description: 'Search for restaurants based on location and cuisine.',
+    schema: s.object('RestaurantSearchParams', {
+      location: s.string('Location'),
+      cuisine: s.string('Cuisine'),
+      radius: s.number('Radius'), // in miles
+    }),
+    handler: async () => vi.fn(),
+    deps: [shouldRegenerateHandler],
+  });
   const { messages } = useStructuredChat({
     model: 'gpt-4o',
     tools: [searchRestaurantTool],
