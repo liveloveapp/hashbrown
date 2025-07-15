@@ -8,32 +8,27 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const ChatPanel = () => {
-  const getLights = useTool(
-    {
-      name: 'getLights',
-      description: 'Get the current lights',
-      handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+  const getLights = useTool({
+    name: 'getLights',
+    description: 'Get the current lights',
+    handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+    deps: [],
+  });
+  const controlLight = useTool({
+    name: 'controlLight',
+    description: 'Control the light. Brightness is a number between 0 and 100.',
+    schema: s.object('Control light input', {
+      lightId: s.string('The id of the light'),
+      brightness: s.number('The brightness of the light, between 0 and 100'),
+    }),
+    handler: (input) => {
+      useSmartHomeStore.getState().updateLight(input.lightId, {
+        brightness: input.brightness,
+      });
+      return Promise.resolve(true);
     },
-    [],
-  );
-  const controlLight = useTool(
-    {
-      name: 'controlLight',
-      description:
-        'Control the light. Brightness is a number between 0 and 100.',
-      schema: s.object('Control light input', {
-        lightId: s.string('The id of the light'),
-        brightness: s.number('The brightness of the light, between 0 and 100'),
-      }),
-      handler: (input) => {
-        useSmartHomeStore.getState().updateLight(input.lightId, {
-          brightness: input.brightness,
-        });
-        return Promise.resolve(true);
-      },
-    },
-    [],
-  );
+    deps: [],
+  });
   const {
     messages,
     sendMessage,

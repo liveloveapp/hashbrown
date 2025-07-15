@@ -4,6 +4,7 @@ export const ChatPanel = () => {
     name: 'getLights',
     description: 'Get the current lights',
     handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+    deps: [],
   });
   const controlLight = useTool({
     name: 'controlLight',
@@ -18,6 +19,7 @@ export const ChatPanel = () => {
       });
       return Promise.resolve(true);
     },
+    deps: [],
   });
   const { messages, sendMessage, status, stop } = useChat({
     model: 'gpt-4o-mini',

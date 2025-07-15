@@ -20,6 +20,7 @@ export default function App(): ReactElement {
     name: 'getLights',
     description: 'Get the current lights',
     handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+    deps: [],
   });
 
   const controlLight = useTool({
@@ -39,6 +40,7 @@ export default function App(): ReactElement {
       });
       return Promise.resolve(true);
     },
+    deps: [],
   });
 
   const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =

@@ -11,35 +11,30 @@ import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 
 export const RichChatPanel = () => {
-  const getLights = useTool(
-    {
-      name: 'getLights',
-      description: 'Get the current lights',
-      handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-    },
-    [],
-  );
-  const controlLight = useTool(
-    {
-      name: 'controlLight',
-      description:
-        'Control the light. Brightness is a number between 0 and 100.',
-      schema: s.object('Control light input', {
-        lightId: s.string('The id of the light'),
-        brightness: s.number('The brightness of the light, between 0 and 100'),
-      }),
-      handler: (input) => {
-        const { lightId, brightness } = input;
+  const getLights = useTool({
+    name: 'getLights',
+    description: 'Get the current lights',
+    handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+    deps: [],
+  });
+  const controlLight = useTool({
+    name: 'controlLight',
+    description: 'Control the light. Brightness is a number between 0 and 100.',
+    schema: s.object('Control light input', {
+      lightId: s.string('The id of the light'),
+      brightness: s.number('The brightness of the light, between 0 and 100'),
+    }),
+    handler: (input) => {
+      const { lightId, brightness } = input;
 
-        useSmartHomeStore.getState().updateLight(lightId, {
-          brightness,
-        });
+      useSmartHomeStore.getState().updateLight(lightId, {
+        brightness,
+      });
 
-        return Promise.resolve(true);
-      },
+      return Promise.resolve(true);
     },
-    [],
-  );
+    deps: [],
+  });
 
   const {
     messages,
