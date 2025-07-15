@@ -45,7 +45,8 @@ export const RichChatPanel = () => {
     isRunningToolCalls,
     stop,
   } = useUiChat({
-    model: 'gpt-4o',
+    model: 'gpt-4.1-mini',
+    debugName: 'RichChatPanel',
     system:
       'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
     tools: [getLights, controlLight],

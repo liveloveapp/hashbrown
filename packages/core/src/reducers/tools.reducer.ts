@@ -17,7 +17,7 @@ export const reducer = createReducer(
   on(devActions.init, devActions.updateOptions, (state, action) => {
     const tools = action.payload.tools;
 
-    if (!tools) {
+    if (!tools || tools.length === 0) {
       return state;
     }
 

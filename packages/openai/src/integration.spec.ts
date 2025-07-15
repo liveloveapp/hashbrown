@@ -24,6 +24,11 @@ test('OpenAI Text Streaming', async () => {
      exactly with the text "Hello, world!"
 
      DO NOT respond with any other text.
+
+     # Examples
+     User: "Please respond with the correct text"
+     Assistant: "Hello, world!"
+
     `,
     messages: [
       {
@@ -35,9 +40,9 @@ test('OpenAI Text Streaming', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages.find(
-    (message) => message.role === 'assistant',
-  );
+  const assistantMessage = hashbrown
+    .messages()
+    .find((message) => message.role === 'assistant');
 
   expect(assistantMessage?.content).toBe('Hello, world!');
 });
@@ -91,7 +96,8 @@ test('OpenAI Tool Calling', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages
+  const assistantMessage = hashbrown
+    .messages()
     .reverse()
     .find((message) => message.role === 'assistant');
 
@@ -127,7 +133,8 @@ test('OpenAI with structured output', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages
+  const assistantMessage = hashbrown
+    .messages()
     .reverse()
     .find((message) => message.role === 'assistant');
 
@@ -184,7 +191,8 @@ test('OpenAI with tool calling and structured output', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages
+  const assistantMessage = hashbrown
+    .messages()
     .reverse()
     .find((message) => message.role === 'assistant');
 
@@ -224,9 +232,19 @@ async function createServer(
 }
 
 async function waitUntilHashbrownIsSettled(hashbrown: Hashbrown<any, any>) {
+  const teardown = hashbrown.sizzle();
+
   await new Promise((resolve) => {
-    hashbrown.observeIsLoading((isLoading) => {
+    hashbrown.isLoading.subscribe((isLoading) => {
       if (!isLoading) resolve(null);
     });
   });
+
+  const errorMessage = hashbrown
+    .messages()
+    .find((message) => message.role === 'error');
+
+  if (errorMessage) console.error(errorMessage);
+
+  teardown();
 }

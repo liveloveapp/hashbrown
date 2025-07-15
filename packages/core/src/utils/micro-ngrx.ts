@@ -29,7 +29,72 @@ export interface Store<State> {
   >(
     ...params: [...Actions, Handler]
   ) => () => void;
-  teardown: () => void;
+  createSignal: <Result>(
+    selector: (state: State) => Result,
+  ) => StateSignal<Result>;
+  runEffects: () => () => void;
+}
+
+/**
+ * ================================
+ * ===        Scheduler         ===
+ * ================================
+ */
+export interface Scheduler {
+  scheduleTask(fn: () => void): number;
+  cancelTask(id: number): void;
+}
+
+/**
+ * Synchronous “trampoline” scheduler.
+ *
+ * All work executes in the same macrotask, but stack-safe:
+ * tasks scheduled from inside other tasks are queued
+ * and processed after the current one finishes.
+ */
+export class TrampolineScheduler implements Scheduler {
+  private nextId = 0;
+  private queue = new Map<number, () => void>();
+  private active = false;
+
+  private flush(): void {
+    if (this.active) return;
+
+    this.active = true;
+
+    while (this.queue.size) {
+      const entry = this.queue.entries().next().value;
+      if (!entry) break;
+
+      const [id, task] = entry;
+      this.queue.delete(id);
+
+      try {
+        task();
+      } catch (err) {
+        // Surface errors asynchronously so one failure
+        // doesn’t prevent later tasks from running
+        setTimeout(() => {
+          throw err;
+        }, 0);
+      }
+    }
+
+    this.active = false;
+  }
+
+  scheduleTask(fn: () => void): number {
+    const id = ++this.nextId;
+    this.queue.set(id, fn);
+
+    this.flush();
+
+    return id;
+  }
+
+  cancelTask(id: number): void {
+    this.queue.delete(id);
+  }
 }
 
 /**
@@ -251,6 +316,10 @@ export function createEffect(effectFn: EffectFn) {
  * ================================
  */
 
+interface SelectConfig {
+  debugName?: string;
+}
+
 /**
  * Creates a memoized selector from one or more input selectors and a projector function.
  * @param {...Function, Function} params - Input selector functions followed by a projector.
@@ -259,17 +328,20 @@ export function createEffect(effectFn: EffectFn) {
 export function select<S, T0, R>(
   t0: (state: S) => T0,
   projectFn: (t0: T0) => R,
+  config?: SelectConfig,
 ): (state: S) => R;
 export function select<S, T0, T1, R>(
   t0: (state: S) => T0,
   t1: (state: S) => T1,
   projectFn: (t0: T0, t1: T1) => R,
+  config?: SelectConfig,
 ): (state: S) => R;
 export function select<S, T0, T1, T2, R>(
   t0: (state: S) => T0,
   t1: (state: S) => T1,
   t2: (state: S) => T2,
   projectFn: (t0: T0, t1: T1, t2: T2) => R,
+  config?: SelectConfig,
 ): (state: S) => R;
 export function select<S, T0, T1, T2, T3, R>(
   t0: (state: S) => T0,
@@ -277,6 +349,7 @@ export function select<S, T0, T1, T2, T3, R>(
   t2: (state: S) => T2,
   t3: (state: S) => T3,
   projectFn: (t0: T0, t1: T1, t2: T2, t3: T3) => R,
+  config?: SelectConfig,
 ): (state: S) => R;
 export function select<S, T0, T1, T2, T3, T4, R>(
   t0: (state: S) => T0,
@@ -285,6 +358,7 @@ export function select<S, T0, T1, T2, T3, T4, R>(
   t3: (state: S) => T3,
   t4: (state: S) => T4,
   projectFn: (t0: T0, t1: T1, t2: T2, t3: T3, t4: T4) => R,
+  config?: SelectConfig,
 ): (state: S) => R;
 export function select<S, T0, T1, T2, T3, T4, T5, R>(
   t0: (state: S) => T0,
@@ -294,6 +368,7 @@ export function select<S, T0, T1, T2, T3, T4, T5, R>(
   t4: (state: S) => T4,
   t5: (state: S) => T5,
   projectFn: (t0: T0, t1: T1, t2: T2, t3: T3, t4: T4, t5: T5) => R,
+  config?: SelectConfig,
 ): (state: S) => R;
 export function select<S, T0, T1, T2, T3, T4, T5, T6, R>(
   t0: (state: S) => T0,
@@ -303,22 +378,59 @@ export function select<S, T0, T1, T2, T3, T4, T5, T6, R>(
   t4: (state: S) => T4,
   t5: (state: S) => T5,
   t6: (state: S) => T6,
+  projectFn: (t0: T0, t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) => R,
+  config?: SelectConfig,
 ): (state: S) => R;
 export function select(...params: any[]): (state: any) => any {
-  const inputs = params.slice(0, -1) as unknown as ((state: any) => any)[];
-  const selectFn = params[params.length - 1] as (...args: any[]) => any;
+  let inputs = params.slice(0, -1) as unknown as ((state: any) => any)[];
+  let selectFn = params[params.length - 1] as (...args: any[]) => any;
+  let config: SelectConfig | undefined;
+
+  if (typeof selectFn !== 'function') {
+    config = selectFn;
+    selectFn = params[params.length - 2];
+    inputs = params.slice(0, -2) as unknown as ((state: any) => any)[];
+  }
 
   let lastInputValues: any[] = [];
   let lastOutput: any;
 
   return (state: any) => {
     const inputValues = inputs.map((input) => input(state)) as any[];
-    if (inputValues.some((value, index) => value !== lastInputValues[index])) {
+    if (
+      inputValues.some((value, index) => {
+        const isMismatched = value !== lastInputValues[index];
+
+        if (isMismatched && config && config.debugName) {
+          console.log(
+            'Select Argument Mismatch:',
+            config.debugName,
+            `input[${index}]`,
+            'last:',
+            lastInputValues[index],
+            'now:',
+            value,
+          );
+        }
+
+        return isMismatched;
+      })
+    ) {
       lastInputValues = inputValues;
       lastOutput = selectFn(...inputValues);
     }
     return lastOutput;
   };
+}
+
+/**
+ * ================================
+ * ===    State Observable      ===
+ * ================================
+ */
+export interface StateSignal<State> {
+  (): State;
+  subscribe(onChange: (value: State) => void): () => void;
 }
 
 /**
@@ -352,6 +464,7 @@ export function createStore<
   effects: EffectFn[];
   projectStateForDevtools?: (state: State) => object;
 }): Store<State> {
+  const scheduler = new TrampolineScheduler();
   const devtools = config.debugName
     ? connectToChromeExtension({ name: config.debugName })
     : undefined;
@@ -369,19 +482,19 @@ export function createStore<
     Array<(action: AnyAction) => void>
   >();
   const selectCallbackFns: Array<() => void> = [];
-  const effectCleanupFns: (() => void)[] = [];
+
   let state = reducerFn(undefined, { type: '@@init' });
 
-  devtools?.init(config.projectStateForDevtools?.(state) ?? state);
-
   function dispatch(action: AnyAction) {
-    state = reducerFn(state, action);
+    scheduler.scheduleTask(() => {
+      state = reducerFn(state, action);
 
-    const whenCallbackFns = whenCallbackFnMap.get(action.type) ?? [];
-    whenCallbackFns.forEach((callback) => callback(action));
-    selectCallbackFns.forEach((callback) => callback());
+      const whenCallbackFns = whenCallbackFnMap.get(action.type) ?? [];
+      whenCallbackFns.forEach((callback) => callback(action));
+      selectCallbackFns.forEach((callback) => callback());
 
-    devtools?.send(action, config.projectStateForDevtools?.(state) ?? state);
+      devtools?.send(action, config.projectStateForDevtools?.(state) ?? state);
+    });
   }
 
   function when<
@@ -425,11 +538,6 @@ export function createStore<
     return cleanupFn;
   }
 
-  function teardown() {
-    effectCleanupFns.forEach((fn) => fn());
-    devtools?.unsubscribe();
-  }
-
   function read<T>(selector: (state: State) => T): T {
     return selector(state);
   }
@@ -457,18 +565,35 @@ export function createStore<
     };
   }
 
+  function createSignal<Result>(
+    selector: (state: State) => Result,
+  ): StateSignal<Result> {
+    return Object.assign(() => read(selector), {
+      subscribe: (onChange: (value: Result) => void) =>
+        select(selector, onChange),
+    });
+  }
+
+  function runEffects() {
+    devtools?.init(config.projectStateForDevtools?.(state) ?? state);
+
+    const cleanupFns = config.effects.map((effect) => effect(store));
+
+    return () => {
+      cleanupFns.forEach((fn) => fn());
+      devtools?.unsubscribe();
+    };
+  }
+
   const store: Store<State> = {
     dispatch,
     read,
     select,
     when: when as Store<State>['when'],
     whenOnce: whenOnce as Store<State>['whenOnce'],
-    teardown,
+    createSignal,
+    runEffects,
   };
-
-  config.effects.forEach((effect) => {
-    effect(store);
-  });
 
   return store;
 }
@@ -577,15 +702,15 @@ export function createEntityAdapter<Entity>(config: {
 
   function removeOne(
     state: EntityState<Entity>,
-    id: string,
+    idToRemove: string,
   ): EntityState<Entity> {
     const updatedEntities = { ...state.entities };
 
-    delete updatedEntities[id];
+    delete updatedEntities[idToRemove];
 
     return {
       ...state,
-      ids: state.ids.filter((id) => id !== id),
+      ids: state.ids.filter((id) => id !== idToRemove),
       entities: updatedEntities,
     };
   }

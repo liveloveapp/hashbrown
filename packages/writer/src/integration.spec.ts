@@ -35,9 +35,9 @@ test('Writer Text Streaming', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages.find(
-    (message) => message.role === 'assistant',
-  );
+  const assistantMessage = hashbrown
+    .messages()
+    .find((message) => message.role === 'assistant');
 
   expect(assistantMessage?.content).toBe('Hello, world!');
 });
@@ -91,7 +91,8 @@ test('Writer Tool Calling', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages
+  const assistantMessage = hashbrown
+    .messages()
     .reverse()
     .find((message) => message.role === 'assistant');
 
@@ -128,7 +129,8 @@ test('Writer with structured output', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages
+  const assistantMessage = hashbrown
+    .messages()
     .reverse()
     .find((message) => message.role === 'assistant');
 
@@ -191,7 +193,8 @@ test('Writer with tool calling and structured output', async () => {
 
   await waitUntilHashbrownIsSettled(hashbrown);
 
-  const assistantMessage = hashbrown.messages
+  const assistantMessage = hashbrown
+    .messages()
     .reverse()
     .find((message) => message.role === 'assistant');
 
@@ -231,11 +234,19 @@ async function createServer(
 }
 
 async function waitUntilHashbrownIsSettled(hashbrown: Hashbrown<any, any>) {
-  await new Promise((resolve, reject) => {
-    hashbrown.observeIsLoading((isLoading) => {
-      if (!isLoading && hashbrown.error) {
-        reject(hashbrown.error);
-      } else if (!isLoading) resolve(null);
+  const teardown = hashbrown.sizzle();
+
+  await new Promise((resolve) => {
+    hashbrown.isLoading.subscribe((isLoading) => {
+      if (!isLoading) resolve(null);
     });
   });
+
+  const errorMessage = hashbrown
+    .messages()
+    .find((message) => message.role === 'error');
+
+  if (errorMessage) console.error(errorMessage);
+
+  teardown();
 }

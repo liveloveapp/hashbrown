@@ -29,7 +29,7 @@ export const generateMessage = createEffect((store) => {
   let cancelAbortController = new AbortController();
 
   store.when(
-    devActions.init,
+    internalActions.sizzle,
     devActions.setMessages,
     devActions.sendMessage,
     devActions.resendMessages,

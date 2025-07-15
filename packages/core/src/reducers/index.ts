@@ -126,43 +126,45 @@ export const selectEmulateStructuredOutput = select(
 /**
  * Top-level selectors
  */
-export const selectViewMessages = select(
+const selectNonStreamingViewMessages = select(
   selectMessages,
   selectToolCallEntities,
-  selectStreamingMessage,
-  selectStreamingToolCallEntities,
   selectTools,
   selectResponseSchema,
-  (
-    messages,
-    toolCalls,
-    streamingMessage,
-    streamingToolCalls,
-    tools,
-    responseSchema,
-  ): Chat.AnyMessage[] => {
-    const nonStreamingMessages = messages.flatMap(
-      (message): Chat.AnyMessage[] =>
-        Chat.helpers.toViewMessagesFromInternal(
-          message,
-          toolCalls,
-          tools,
-          responseSchema,
-          false,
-        ),
-    );
-
-    const streamingMessages = (
-      streamingMessage ? [streamingMessage] : []
-    ).flatMap((message): Chat.AnyMessage[] =>
+  (messages, toolCalls, tools, responseSchema) => {
+    return messages.flatMap((message): Chat.AnyMessage[] =>
       Chat.helpers.toViewMessagesFromInternal(
         message,
-        streamingToolCalls,
+        toolCalls,
         tools,
         responseSchema,
       ),
     );
+  },
+);
 
+const selectStreamingViewMessages = select(
+  selectStreamingMessage,
+  selectStreamingToolCallEntities,
+  selectTools,
+  selectResponseSchema,
+  (streamingMessage, streamingToolCalls, tools, responseSchema) => {
+    return (streamingMessage ? [streamingMessage] : []).flatMap(
+      (message): Chat.AnyMessage[] =>
+        Chat.helpers.toViewMessagesFromInternal(
+          message,
+          streamingToolCalls,
+          tools,
+          responseSchema,
+        ),
+    );
+  },
+);
+
+export const selectViewMessages = select(
+  selectNonStreamingViewMessages,
+  selectStreamingViewMessages,
+  (nonStreamingMessages, streamingMessages) => {
     return [...nonStreamingMessages, ...streamingMessages];
   },
 );

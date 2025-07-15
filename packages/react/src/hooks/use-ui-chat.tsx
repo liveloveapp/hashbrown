@@ -135,7 +135,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 ) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  const [flattenedComponents, setFlattenedComponents] = useState(
+  const [flattenedComponents] = useState(
     ɵcomponents.flattenComponents(initialComponents),
   );
   const ui = useMemo(() => {
@@ -180,7 +180,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 
       return elements;
     },
-    [components],
+    [flattenedComponents],
   );
 
   const uiChatMessages = useMemo(() => {

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   computed,
+  DestroyRef,
   effect,
   inject,
   Injector,
@@ -13,7 +14,7 @@ import {
 import { Chat, fryHashbrown } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { SignalLike } from '../utils/types';
-import { readSignalLike, toSignal } from '../utils/signals';
+import { readSignalLike, toNgSignal } from '../utils/signals';
 
 /**
  * A reference to the completion resource.
@@ -69,6 +70,7 @@ export function completionResource<Input>(
 ): CompletionResourceRef {
   const { model, input, system } = options;
   const injector = inject(Injector);
+  const destroyRef = inject(DestroyRef);
   const config = ɵinjectHashbrownConfig();
   const hashbrown = fryHashbrown({
     debugName: options.debugName,
@@ -84,7 +86,11 @@ export function completionResource<Input>(
     retries: 3,
   });
 
-  const messages = toSignal(hashbrown.observeMessages);
+  const teardown = hashbrown.sizzle();
+
+  destroyRef.onDestroy(() => teardown());
+
+  const messages = toNgSignal(hashbrown.messages);
   const internalMessages = computed(() => {
     const _input = input();
 
@@ -100,13 +106,13 @@ export function completionResource<Input>(
     ];
   });
 
-  const error = toSignal(
-    hashbrown.observeError,
+  const error = toNgSignal(
+    hashbrown.error,
     options.debugName && `${options.debugName}.error`,
   );
 
-  const exhaustedRetries = toSignal(
-    hashbrown.observeExhaustedRetries,
+  const exhaustedRetries = toNgSignal(
+    hashbrown.exhaustedRetries,
     options.debugName && `${options.debugName}.exhaustedRetries`,
   );
 
