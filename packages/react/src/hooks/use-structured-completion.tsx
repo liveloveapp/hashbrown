@@ -70,7 +70,7 @@ export interface UseStructuredCompletionResult<Output> {
   /**
    * The error encountered during chat operations, if any.
    */
-  error: Error | null;
+  error: Error | undefined;
 
   /**
    * Whether the chat is receiving a response.

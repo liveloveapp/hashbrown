@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   computed,
+  DestroyRef,
   inject,
   Injector,
   Resource,
@@ -10,7 +11,7 @@ import {
 } from '@angular/core';
 import { Chat, fryHashbrown, KnownModelIds } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
-import { readSignalLike, toSignal } from '../utils/signals';
+import { readSignalLike, toNgSignal } from '../utils/signals';
 
 /**
  * Represents the reactive chat resource, including current messages and control methods.
@@ -90,6 +91,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
 ): ChatResourceRef<Tools> {
   const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
+  const destroyRef = inject(DestroyRef);
   const hashbrown = fryHashbrown({
     apiUrl: options.apiUrl ?? config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
@@ -103,24 +105,28 @@ export function chatResource<Tools extends Chat.AnyTool>(
     debugName: options.debugName,
   });
 
-  const value = toSignal(
-    hashbrown.observeMessages,
+  const teardown = hashbrown.sizzle();
+
+  destroyRef.onDestroy(() => teardown());
+
+  const value = toNgSignal(
+    hashbrown.messages,
     options.debugName && `${options.debugName}.value`,
   );
-  const isReceiving = toSignal(
-    hashbrown.observeIsReceiving,
+  const isReceiving = toNgSignal(
+    hashbrown.isReceiving,
     options.debugName && `${options.debugName}.isReceiving`,
   );
-  const isSending = toSignal(
-    hashbrown.observeIsSending,
+  const isSending = toNgSignal(
+    hashbrown.isSending,
     options.debugName && `${options.debugName}.isSending`,
   );
-  const isRunningToolCalls = toSignal(
-    hashbrown.observeIsRunningToolCalls,
+  const isRunningToolCalls = toNgSignal(
+    hashbrown.isRunningToolCalls,
     options.debugName && `${options.debugName}.isRunningToolCalls`,
   );
-  const error = toSignal(
-    hashbrown.observeError,
+  const error = toNgSignal(
+    hashbrown.error,
     options.debugName && `${options.debugName}.error`,
   );
 

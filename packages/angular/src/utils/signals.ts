@@ -1,4 +1,10 @@
-import { Signal, signal, WritableSignal } from '@angular/core';
+import {
+  DestroyRef,
+  inject,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { SignalLike } from './types';
 
 export function readSignalLike<T extends object | string | number | boolean>(
@@ -11,30 +17,29 @@ export function readSignalLike<T extends object | string | number | boolean>(
   return signalLike;
 }
 
-export function toSignal<T>(
-  source: (observer: (value: T) => void) => void,
+type TeardownFn = () => void;
+
+type HashbrownSignal<T> = {
+  (): T;
+  subscribe(onChange: (newValue: T) => void): TeardownFn;
+};
+
+export function toNgSignal<T>(
+  source: HashbrownSignal<T>,
   debugName?: string,
 ): Signal<T> {
-  // eslint-disable-next-line prefer-const
-  let _signal: WritableSignal<T> | undefined;
-  let initialValue: T;
-
-  source((value) => {
-    if (_signal) {
-      _signal.set(value);
-    } else {
-      initialValue = value;
-    }
+  const destroyRef = inject(DestroyRef);
+  const _signal: WritableSignal<T> = signal(source(), {
+    debugName,
   });
 
-  _signal = signal(
-    initialValue!,
-    debugName
-      ? {
-          debugName,
-        }
-      : {},
-  );
+  const teardown = source.subscribe((value) => {
+    _signal.set(value);
+  });
+
+  destroyRef.onDestroy(() => {
+    teardown();
+  });
 
   return _signal.asReadonly();
 }

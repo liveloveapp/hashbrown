@@ -5,8 +5,16 @@ import {
   KnownModelIds,
   s,
 } from '@hashbrownai/core';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { HashbrownContext } from '../hashbrown-provider';
+import { useHashbrownSignal } from './use-hashbrown-signal';
 
 /**
  * Options for the `useStructuredChat` hook.
@@ -100,7 +108,7 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   /**
    * The error encountered during chat operations, if any.
    */
-  error: Error | null;
+  error: Error | undefined;
 
   /**
    * Whether the chat is receiving a response.
@@ -157,63 +165,64 @@ export function useStructuredChat<
 >(
   options: UseStructuredChatOptions<Schema, Tools, Output>,
 ): UseStructuredChatResult<Output, Tools> {
-  // assumes the tools array is populated with valid tools
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const tools: Tools[] = useMemo(() => options.tools ?? [], options.tools!);
   const config = useContext(HashbrownContext);
 
-  const [hashbrown, setHashbrown] = useState<Hashbrown<Output, Tools> | null>(
-    null,
+  if (!config) {
+    throw new Error('HashbrownContext not found');
+  }
+
+  const tools: Tools[] = useMemo(
+    () => options.tools ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    options.tools ?? [],
   );
 
   const [schema] = useState<Schema>(options.schema);
+  const hashbrown = useRef<Hashbrown<Output, Tools> | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (hashbrown) {
-        hashbrown.teardown();
-        setHashbrown(null);
-      }
-    };
-  }, [hashbrown]);
+  if (!hashbrown.current) {
+    hashbrown.current = fryHashbrown<Schema, Tools, Output>({
+      apiUrl: config.url,
+      middleware: config.middleware,
+      model: options.model,
+      system: options.system,
+      responseSchema: schema,
+      tools,
+      debugName: options.debugName,
+      debounce: options.debounceTime,
+      retries: options.retries,
+    });
+  }
 
-  useEffect(() => {
-    if (!config) {
-      throw new Error('HashbrownContext not found');
+  function getHashbrown() {
+    const instance = hashbrown.current;
+
+    if (!instance) {
+      throw new Error('Hashbrown not found');
     }
 
-    const instance =
-      hashbrown ??
-      fryHashbrown<Schema, Tools, Output>({
-        apiUrl: config.url,
-        middleware: config.middleware,
-        model: options.model,
-        system: options.system,
-        responseSchema: schema,
-        tools,
-        debugName: options.debugName,
-        debounce: options.debounceTime,
-        retries: options.retries,
-      });
+    return instance;
+  }
 
-    if (!hashbrown) {
-      setHashbrown(instance);
-    } else {
-      instance.updateOptions({
-        apiUrl: config.url,
-        middleware: config.middleware,
-        model: options.model,
-        system: options.system,
-        responseSchema: schema,
-        tools,
-        debugName: options.debugName,
-        debounce: options.debounceTime,
-        retries: options.retries,
-      });
-    }
+  useEffect(() => {
+    return getHashbrown().sizzle();
+  }, []);
+
+  useEffect(() => {
+    getHashbrown().updateOptions({
+      apiUrl: config.url,
+      middleware: config.middleware,
+      model: options.model,
+      system: options.system,
+      responseSchema: schema,
+      tools,
+      debugName: options.debugName,
+      debounce: options.debounceTime,
+      retries: options.retries,
+    });
   }, [
-    hashbrown,
-    config,
+    config.url,
+    config.middleware,
     options.model,
     options.system,
     options.debugName,
@@ -223,77 +232,44 @@ export function useStructuredChat<
     options.retries,
   ]);
 
-  const sendMessage = useCallback(
-    (message: Chat.Message<Output, Tools>) => {
-      hashbrown?.sendMessage(message);
-    },
-    [hashbrown],
+  const internalMessages = useHashbrownSignal(hashbrown.current.messages);
+  const isReceiving = useHashbrownSignal(hashbrown.current.isReceiving);
+  const isSending = useHashbrownSignal(hashbrown.current.isSending);
+  const isRunningToolCalls = useHashbrownSignal(
+    hashbrown.current.isRunningToolCalls,
   );
+  const exhaustedRetries = useHashbrownSignal(
+    hashbrown.current.exhaustedRetries,
+  );
+  const error = useHashbrownSignal(hashbrown.current.error);
 
-  const stop = useCallback(
-    (clearStreamingMessage = false) => {
-      hashbrown?.stop(clearStreamingMessage);
-    },
-    [hashbrown],
-  );
+  const sendMessage = useCallback((message: Chat.Message<Output, Tools>) => {
+    getHashbrown().sendMessage(message);
+  }, []);
+
+  const stop = useCallback((clearStreamingMessage = false) => {
+    getHashbrown().stop(clearStreamingMessage);
+  }, []);
 
   const resendMessages = useCallback(() => {
-    hashbrown?.resendMessages();
-  }, [hashbrown]);
+    getHashbrown().resendMessages();
+  }, []);
 
-  const setMessages = useCallback(
-    (messages: Chat.Message<Output, Tools>[]) => {
-      hashbrown?.setMessages(messages);
-    },
-    [hashbrown],
-  );
-
-  const [internalMessages, setInternalMessages] = useState<
-    Chat.Message<Output, Tools>[]
-  >(options.messages ?? []);
-  const [isReceiving, setIsReceiving] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [isRunningToolCalls, setIsRunningToolCalls] = useState(false);
-  const [exhaustedRetries, setExhaustedRetries] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    hashbrown?.observeMessages((messages) => {
-      setInternalMessages(messages);
-    });
-
-    hashbrown?.observeIsReceiving((isReceiving) => {
-      setIsReceiving(isReceiving);
-    });
-
-    hashbrown?.observeIsSending((isSending) => {
-      setIsSending(isSending);
-    });
-
-    hashbrown?.observeIsRunningToolCalls((isRunningToolCalls) => {
-      setIsRunningToolCalls(isRunningToolCalls);
-    });
-
-    hashbrown?.observeError((error) => {
-      setError(error);
-    });
-
-    hashbrown?.observeExhaustedRetries((exhaustedRetries) => {
-      setExhaustedRetries(exhaustedRetries);
-    });
-  }, [hashbrown]);
+  const setMessages = useCallback((messages: Chat.Message<Output, Tools>[]) => {
+    getHashbrown().setMessages(messages);
+  }, []);
 
   const reload = useCallback(() => {
     const lastMessage = internalMessages[internalMessages.length - 1];
 
     if (lastMessage.role === 'assistant') {
-      hashbrown?.setMessages(internalMessages.slice(0, -1));
+      getHashbrown().setMessages(internalMessages.slice(0, -1));
 
       return true;
     }
 
     return false;
-  }, [hashbrown, internalMessages]);
+  }, [internalMessages]);
 
   return {
     messages: internalMessages,

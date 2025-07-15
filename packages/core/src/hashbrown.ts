@@ -3,8 +3,7 @@
  * Core entry point for the Hashbrown framework.
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
  */
-import { devActions } from './actions';
-import apiActions from './actions/api.actions';
+import { devActions, internalActions } from './actions';
 import effects from './effects';
 import { Chat } from './models';
 import {
@@ -18,7 +17,7 @@ import {
   selectViewMessages,
 } from './reducers';
 import { s } from './schema';
-import { createStore } from './utils/micro-ngrx';
+import { createStore, StateSignal } from './utils/micro-ngrx';
 import { KnownModelIds } from './utils';
 
 /**
@@ -28,6 +27,14 @@ import { KnownModelIds } from './utils';
  * @template Tools - The set of tools available to the chat instance.
  */
 export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
+  messages: StateSignal<Chat.Message<Output, Tools>[]>;
+  error: StateSignal<Error | undefined>;
+  isReceiving: StateSignal<boolean>;
+  isSending: StateSignal<boolean>;
+  isRunningToolCalls: StateSignal<boolean>;
+  isLoading: StateSignal<boolean>;
+  exhaustedRetries: StateSignal<boolean>;
+
   /** Replace the current set of messages in the chat state. */
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
 
@@ -35,37 +42,6 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   sendMessage: (message: Chat.Message<Output, Tools>) => void;
   /** Resend messages and update state. Often used manually after an error.*/
   resendMessages: () => void;
-  /** Subscribe to message updates; invokes callback on state changes. */
-  observeMessages: (
-    onChange: (messages: Chat.Message<Output, Tools>[]) => void,
-  ) => void;
-
-  /** Subscribe to receiving state; true when awaiting LLM response. */
-  observeIsReceiving: (onChange: (isReceiving: boolean) => void) => void;
-
-  /** Subscribe to sending state; true when a message is queued for sending. */
-  observeIsSending: (onChange: (isSending: boolean) => void) => void;
-
-  /** Subscribe to tool call execution state. */
-  observeIsRunningToolCalls: (
-    onChange: (isRunningToolCalls: boolean) => void,
-  ) => void;
-
-  /** Subscribe to loading state; true when the chat is loading. */
-  observeIsLoading: (onChange: (isLoading: boolean) => void) => void;
-
-  /** Subscribe to error state; invokes callback if an error occurs. */
-  observeError: (onChange: (error: Error | undefined) => void) => void;
-  /** Subscribe to exhausted retries state; invokes callback if an retries are exhausted on a single request. */
-  observeExhaustedRetries: (
-    onChange: (exhaustedRetries: boolean) => void,
-  ) => void;
-
-  /** The current messages in the chat. */
-  readonly messages: Chat.Message<Output, Tools>[];
-
-  /** The current error state of the chat. */
-  readonly error: Error | undefined;
 
   /** Update the chat options after initialization */
   updateOptions: (
@@ -83,11 +59,11 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
     }>,
   ) => void;
 
-  /** Clean up resources and listeners associated with this Hashbrown instance. */
-  teardown: () => void;
-
   /** Stop the current LLM interaction. */
   stop: (clearStreamingMessage?: boolean) => void;
+
+  /** Start the Hashbrown effect loop. */
+  sizzle: () => () => void;
 }
 
 /**
@@ -206,42 +182,6 @@ export function fryHashbrown(init: {
     state.dispatch(devActions.resendMessages());
   }
 
-  function observeMessages(
-    onChange: (messages: Chat.Message<any, Chat.AnyTool>[]) => void,
-  ) {
-    return state.select(selectViewMessages, (messages) =>
-      onChange(messages as Chat.Message<any, Chat.AnyTool>[]),
-    );
-  }
-
-  function observeIsReceiving(onChange: (isReceiving: boolean) => void) {
-    return state.select(selectIsReceiving, onChange);
-  }
-
-  function observeIsSending(onChange: (isSending: boolean) => void) {
-    return state.select(selectIsSending, onChange);
-  }
-
-  function observeIsRunningToolCalls(
-    onChange: (isRunningToolCalls: boolean) => void,
-  ) {
-    return state.select(selectIsRunningToolCalls, onChange);
-  }
-
-  function observeIsLoading(onChange: (isLoading: boolean) => void) {
-    return state.select(selectIsLoading, onChange);
-  }
-
-  function observeError(onChange: (error: Error | undefined) => void) {
-    return state.select(selectError, onChange);
-  }
-
-  function observeExhaustedRetries(
-    onChange: (exhaustedRetries: boolean) => void,
-  ) {
-    return state.select(selectExhaustedRetries, onChange);
-  }
-
   function updateOptions(
     options: Partial<{
       debugName?: string;
@@ -259,8 +199,24 @@ export function fryHashbrown(init: {
     state.dispatch(devActions.updateOptions(options));
   }
 
-  function teardown() {
-    state.teardown();
+  function sizzle() {
+    const abortController = new AbortController();
+    let effectCleanupFn: () => void;
+
+    Promise.resolve().then(() => {
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      effectCleanupFn = state.runEffects();
+
+      state.dispatch(internalActions.sizzle());
+    });
+
+    return () => {
+      abortController.abort('Initialization aborted');
+      effectCleanupFn?.();
+    };
   }
 
   function stop(clearStreamingMessage = false) {
@@ -277,21 +233,15 @@ export function fryHashbrown(init: {
     setMessages,
     sendMessage,
     resendMessages,
-    observeMessages,
-    observeIsReceiving,
-    observeIsSending,
-    observeIsRunningToolCalls,
-    observeIsLoading,
-    observeError,
-    observeExhaustedRetries,
     updateOptions,
-    teardown,
     stop,
-    get messages() {
-      return state.read(selectViewMessages);
-    },
-    get error() {
-      return state.read(selectError);
-    },
+    sizzle,
+    messages: state.createSignal(selectViewMessages),
+    error: state.createSignal(selectError),
+    isReceiving: state.createSignal(selectIsReceiving),
+    isSending: state.createSignal(selectIsSending),
+    isRunningToolCalls: state.createSignal(selectIsRunningToolCalls),
+    isLoading: state.createSignal(selectIsLoading),
+    exhaustedRetries: state.createSignal(selectExhaustedRetries),
   };
 }
