@@ -16,12 +16,24 @@ export default function App(): ReactElement {
   const setApiKey = useConfigStore((state) => state.setApiKey);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
 
+  const getLightsHandler = useCallback(() => {
+    return Promise.resolve(useSmartHomeStore.getState().lights);
+  }, []);
   const getLights = useTool({
     name: 'getLights',
     description: 'Get the current lights',
-    handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
+    handler: getLightsHandler,
   });
 
+  const controlLightHandler = useCallback(
+    (input: { lightId: string; brightness: number }) => {
+      useSmartHomeStore.getState().updateLight(input.lightId, {
+        brightness: input.brightness,
+      });
+      return Promise.resolve(true);
+    },
+    [],
+  );
   const controlLight = useTool({
     name: 'controlLight',
     description: 'Control the light. Brightness is a number between 0 and 100.',
@@ -29,16 +41,7 @@ export default function App(): ReactElement {
       lightId: s.string('The id of the light'),
       brightness: s.number('The brightness of the light, between 0 and 100'),
     }),
-    handler: (input: object) => {
-      const { lightId, brightness } = input as {
-        lightId: string;
-        brightness: number;
-      };
-      useSmartHomeStore.getState().updateLight(lightId, {
-        brightness,
-      });
-      return Promise.resolve(true);
-    },
+    handler: controlLightHandler,
   });
 
   const { messages, sendMessage, isSending, isReceiving, isRunningToolCalls } =

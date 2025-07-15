@@ -44,30 +44,31 @@ vi.mock('@hashbrownai/core', async () => {
   };
 });
 
-afterEach(() => {
+vi.spyOn(console, 'warn').mockImplementation(() => null);
+
+beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterAll(() => {
+  vi.resetAllMocks();
 });
 
 const ProviderWrapper = ({ children }: { children: React.ReactNode }) => (
   <HashbrownProvider url="localhost">{children}</HashbrownProvider>
 );
 
-let shouldRegenerateHandler = false;
-
 const TestComponent = () => {
-  const searchRestaurantTool = useTool(
-    {
-      name: 'Restaurant Search',
-      description: 'Search for restaurants based on location and cuisine.',
-      schema: s.object('RestaurantSearchParams', {
-        location: s.string('Location'),
-        cuisine: s.string('Cuisine'),
-        radius: s.number('Radius'), // in miles
-      }),
-      handler: async () => vi.fn(),
-    },
-    [shouldRegenerateHandler],
-  );
+  const searchRestaurantTool = useTool({
+    name: 'Restaurant Search',
+    description: 'Search for restaurants based on location and cuisine.',
+    schema: s.object('RestaurantSearchParams', {
+      location: s.string('Location'),
+      cuisine: s.string('Cuisine'),
+      radius: s.number('Radius'), // in miles
+    }),
+    handler: async () => vi.fn(),
+  });
   const { messages } = useStructuredChat({
     model: 'gpt-4o',
     tools: [searchRestaurantTool],
@@ -120,7 +121,6 @@ it('should not regenerate Hashbrown even when a tool has a changed dependency', 
   expect(fryHashbrown).toHaveBeenCalledTimes(1);
   expect((fryHashbrown as any).updateOptions).toHaveBeenCalledTimes(1);
 
-  shouldRegenerateHandler = true; // Change the handler to trigger re-render
   rerender(<TestComponent />);
 
   expect(fryHashbrown).toHaveBeenCalledTimes(1);

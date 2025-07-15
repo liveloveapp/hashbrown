@@ -1,7 +1,6 @@
 import { Chat, s } from '@hashbrownai/core';
-import { exposeComponent, useTool, useUiChat } from '@hashbrownai/react';
+import { exposeComponent, useUiChat } from '@hashbrownai/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSmartHomeStore } from '../store/smart-home.store';
 import { LightChatComponent } from '../views/components/LightChatComponent';
 import { Button } from './button';
 import { CardComponent } from './CardComponent';
@@ -9,38 +8,9 @@ import { MarkdownComponent } from './MarkdownComponent';
 import { RichMessage } from './RichMessage';
 import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
+import { useControlLightTool, useGetLightsTool } from '../tools';
 
 export const RichChatPanel = () => {
-  const getLights = useTool(
-    {
-      name: 'getLights',
-      description: 'Get the current lights',
-      handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-    },
-    [],
-  );
-  const controlLight = useTool(
-    {
-      name: 'controlLight',
-      description:
-        'Control the light. Brightness is a number between 0 and 100.',
-      schema: s.object('Control light input', {
-        lightId: s.string('The id of the light'),
-        brightness: s.number('The brightness of the light, between 0 and 100'),
-      }),
-      handler: (input) => {
-        const { lightId, brightness } = input;
-
-        useSmartHomeStore.getState().updateLight(lightId, {
-          brightness,
-        });
-
-        return Promise.resolve(true);
-      },
-    },
-    [],
-  );
-
   const {
     messages,
     sendMessage,
@@ -53,7 +23,7 @@ export const RichChatPanel = () => {
     model: 'gpt-4o',
     system:
       'You are a smart home assistant. You can control the lights in the house. You should not stringify (aka escape) function arguments',
-    tools: [getLights, controlLight],
+    tools: [useGetLightsTool(), useControlLightTool()],
     components: [
       exposeComponent(LightChatComponent, {
         name: 'LightChatComponent',

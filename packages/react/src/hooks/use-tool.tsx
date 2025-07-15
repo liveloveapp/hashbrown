@@ -1,6 +1,6 @@
 /* eslint no-redeclare: off */
 import { Chat, s } from '@hashbrownai/core';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useRef } from 'react';
 
 export interface ToolOptionsWithInput<
   Name extends string,
@@ -66,9 +66,6 @@ export type ToolOptions<
  * @param input.description - The description of the tool.
  * @param input.schema - The schema of the tool.
  * @param input.handler - The handler of the tool.
- * @param deps - Dependencies that should trigger tool recreation.
- *               The hook will automatically memoize the handler based on these dependencies,
- *               so you can safely pass anonymous functions.
  * @param Name - The name of the tool.
  * @param Schema - The schema of the tool.
  * @param Result - The result of the tool.
@@ -80,7 +77,6 @@ export function useTool<
   Result,
 >(
   input: ToolOptionsWithInput<Name, Schema, Result>,
-  deps: unknown[],
 ): Chat.Tool<Name, s.Infer<Schema>, Result>;
 
 /**
@@ -91,9 +87,6 @@ export function useTool<
  * @param input.description - The description of the tool.
  * @param input.schema - The schema of the tool.
  * @param input.handler - The handler of the tool.
- * @param deps - Dependencies that should trigger tool recreation.
- *               The hook will automatically memoize the handler based on these dependencies,
- *               so you can safely pass anonymous functions.
  * @param Name - The name of the tool.
  * @param Schema - The schema of the tool.
  * @param Result - The result of the tool.
@@ -101,7 +94,6 @@ export function useTool<
  */
 export function useTool<const Name extends string, Result>(
   input: ToolOptionsWithoutInput<Name, Result>,
-  deps: unknown[],
 ): Chat.Tool<Name, void, Result>;
 
 export function useTool<const Name extends string>(
@@ -109,7 +101,7 @@ export function useTool<const Name extends string>(
     | {
         name: Name;
         description: string;
-        schema: s.HashbrownType;
+        schema?: s.HashbrownType;
         handler: (a: unknown, s: AbortSignal) => Promise<unknown>;
       }
     | {
@@ -117,30 +109,33 @@ export function useTool<const Name extends string>(
         description: string;
         handler: (s: AbortSignal) => Promise<unknown>;
       },
-  deps: unknown[],
 ): unknown {
-  if (!Array.isArray(deps)) {
-    throw new Error('useTool requires a deps array');
-  }
-
-  const { name, description, handler: inputHandler } = input;
+  const { name, description, handler } = input;
+  const schema =
+    'schema' in input ? input.schema : s.object('Empty schema', {});
   // assumes the schema will never change
-  const [schema] = useState(
-    'schema' in input ? input.schema : s.object('Empty schema', {}),
-  );
-  // assumes the handler should only change if its deps change,
-  //   which enables the use of anonymous functions in the handler.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handler = useCallback(inputHandler, deps);
+  const schemaRef = useRef(schema);
+
+  const prevHandler = useRef(handler);
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    prevHandler.current !== handler
+  ) {
+    console.warn(
+      `Handler for tool "${name}" changed between renders. ` +
+        'Wrap it in useCallback or expect unnecessary re‑creates.',
+    );
+  }
+  prevHandler.current = handler;
 
   const tool = useMemo(() => {
     return {
       name,
       description,
-      schema,
+      schema: schemaRef.current,
       handler,
     };
-  }, [name, description, schema, handler]);
+  }, [name, description, handler]);
 
   return tool;
 }

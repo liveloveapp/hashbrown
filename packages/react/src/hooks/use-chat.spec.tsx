@@ -45,9 +45,14 @@ vi.mock('@hashbrownai/core', async () => {
   };
 });
 
-afterEach(() => {
-  shouldRegenerateHandler = false;
+vi.spyOn(console, 'warn').mockImplementation(() => null);
+
+beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterAll(() => {
+  vi.resetAllMocks();
 });
 
 const ProviderWrapper = ({ children }: { children: React.ReactNode }) => (
