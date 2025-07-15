@@ -1,6 +1,6 @@
 import { createReducer, on, select } from '../utils/micro-ngrx';
 import { Chat } from '../models';
-import { apiActions } from '../actions';
+import { apiActions, devActions } from '../actions';
 import { toInternalToolCallsFromApi } from '../models/internal_helpers';
 
 export interface StreamingMessageState {
@@ -45,6 +45,13 @@ export const reducer = createReducer(
     return {
       ...state,
       message: null,
+    };
+  }),
+  on(devActions.stopMessageGeneration, (state, action) => {
+    return {
+      ...state,
+      message: action.payload ? null : state.message,
+      toolCalls: [],
     };
   }),
 );

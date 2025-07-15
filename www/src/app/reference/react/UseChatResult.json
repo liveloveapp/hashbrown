@@ -361,6 +361,42 @@
             ],
             "examples": []
           }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseChatResult#stop:member",
+          "docComment": "/**\n * Function to stop the chat.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "stop: " },
+            {
+              "kind": "Content",
+              "text": "(clearStreamingMessage?: boolean) => void"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "stop",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Function to stop the chat.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
         }
       ],
       "extendsTokenRanges": [],

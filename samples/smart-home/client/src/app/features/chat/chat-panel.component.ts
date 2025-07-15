@@ -80,9 +80,20 @@ import { ConfirmComponent } from './components/confirm.component';
     }
 
     <div class="chat-composer">
-      <app-chat-composer
-        (sendMessage)="sendMessage($event)"
-      ></app-chat-composer>
+      @if (simpleChat.isLoading() || chat.isLoading()) {
+        <button
+          class="cancel-button"
+          extended
+          matButton="outlined"
+          (click)="stop()"
+        >
+          Cancel
+        </button>
+      } @else {
+        <app-chat-composer
+          (sendMessage)="sendMessage($event)"
+        ></app-chat-composer>
+      }
     </div>
   `,
   styles: [
@@ -138,6 +149,12 @@ import { ConfirmComponent } from './components/confirm.component';
       .chat-composer {
         grid-area: composer;
         padding: 0 16px 16px;
+      }
+
+      .cancel-button {
+        width: 100%;
+        padding: 24px 0;
+        border-radius: 32px;
       }
 
       .overlay-clear {
@@ -568,5 +585,13 @@ export class ChatPanelComponent {
 
   retryMessages() {
     this.chat.resendMessages();
+  }
+
+  stop() {
+    if (this.simpleDemo) {
+      this.simpleChat.stop();
+    } else {
+      this.chat.stop();
+    }
   }
 }

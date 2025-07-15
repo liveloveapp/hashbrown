@@ -48,6 +48,7 @@ export const RichChatPanel = () => {
     isSending,
     isReceiving,
     isRunningToolCalls,
+    stop,
   } = useUiChat({
     model: 'gpt-4o',
     system:
@@ -174,7 +175,7 @@ export const RichChatPanel = () => {
           <Button
             variant="outline"
             onClick={() => {
-              console.log('stop');
+              stop();
             }}
           >
             Stop

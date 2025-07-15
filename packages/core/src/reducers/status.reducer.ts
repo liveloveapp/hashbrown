@@ -93,6 +93,16 @@ export const reducer = createReducer(
       exhaustedRetries: true,
     };
   }),
+  on(devActions.stopMessageGeneration, (state) => {
+    return {
+      ...state,
+      isReceiving: false,
+      isSending: false,
+      isRunningToolCalls: false,
+      error: undefined,
+      exhaustedRetries: false,
+    };
+  }),
   on(internalActions.skippedToolCalls, (state) => {
     return {
       ...state,

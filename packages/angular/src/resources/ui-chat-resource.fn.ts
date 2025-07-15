@@ -58,6 +58,11 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<UiChatMessage<Tools>[]> {
   sendMessage: (message: Chat.UserMessage) => void;
   resendMessages: () => void;
+  /**
+   * Stops any currently-streaming message.
+   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   */
+  stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**

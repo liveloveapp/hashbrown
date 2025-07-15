@@ -10,6 +10,11 @@ import { structuredChatResource } from './structured-chat-resource.fn';
 export interface StructuredCompletionResourceRef<Output>
   extends Resource<Output | null> {
   reload: () => boolean;
+  /**
+   * Stops any currently-streaming message.
+   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   */
+  stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**
@@ -109,6 +114,7 @@ export function structuredCompletionResource<
   const error = resource.error;
   const isLoading = resource.isLoading;
   const reload = resource.reload;
+  const stop = resource.stop;
 
   function hasValue(this: StructuredCompletionResourceRef<Output>) {
     return Boolean(value());
@@ -120,6 +126,7 @@ export function structuredCompletionResource<
     error,
     isLoading,
     reload,
+    stop,
     hasValue: hasValue as any,
   };
 }

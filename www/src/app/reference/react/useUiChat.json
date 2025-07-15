@@ -80,7 +80,7 @@
         },
         {
           "kind": "Content",
-          "text": ", Tools>) => void;\n    resendMessages: () => void;\n    reload: () => void;\n    error: "
+          "text": ", Tools>) => void;\n    resendMessages: () => void;\n    stop: (clearStreamingMessage?: boolean) => void;\n    reload: () => void;\n    error: "
         },
         {
           "kind": "Reference",

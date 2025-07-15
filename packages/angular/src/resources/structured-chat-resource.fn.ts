@@ -21,6 +21,11 @@ export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
   resendMessages: () => void;
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
   reload: () => boolean;
+  /**
+   * Stops any currently-streaming message.
+   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   */
+  stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**
@@ -182,6 +187,10 @@ export function structuredChatResource<
     hashbrown.setMessages(messages);
   }
 
+  function stop(clearStreamingMessage = false) {
+    hashbrown.stop(clearStreamingMessage);
+  }
+
   return {
     hasValue: hasValue as any,
     status,
@@ -189,6 +198,7 @@ export function structuredChatResource<
     reload,
     sendMessage,
     resendMessages,
+    stop,
     value,
     error,
     setMessages,

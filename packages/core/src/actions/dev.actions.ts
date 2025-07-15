@@ -35,4 +35,5 @@ export default createActionGroup('dev', {
     debounce?: number;
     retries?: number;
   }>(),
+  stopMessageGeneration: props<boolean>(),
 });
