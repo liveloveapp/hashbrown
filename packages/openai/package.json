@@ -1,6 +1,13 @@
 {
   "name": "@hashbrownai/openai",
   "version": "0.1.1",
+  "description": "OpenAI provider for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/openai"
+  },
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -10,5 +17,19 @@
   },
   "peerDependencies": {
     "openai": "^4.93.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "openai",
+    "generative-ui",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

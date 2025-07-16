@@ -1,6 +1,13 @@
 {
   "name": "@hashbrownai/writer",
   "version": "0.1.1",
+  "description": "Writer provider for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/writer"
+  },
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -10,5 +17,19 @@
   "dependencies": {
     "tslib": "^2.3.0",
     "writer-sdk": "^2.2.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "writer",
+    "generative-ui",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -1,10 +1,30 @@
 {
   "name": "@hashbrownai/angular",
   "version": "0.1.1",
+  "description": "Angular bindings for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/angular"
+  },
   "peerDependencies": {
     "@angular/core": "^20.0.0",
     "@hashbrownai/core": "0.1.1",
     "@angular/common": "^20.0.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "angular",
+    "generative-ui",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
