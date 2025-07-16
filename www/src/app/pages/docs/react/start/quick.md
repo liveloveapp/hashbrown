@@ -272,10 +272,7 @@ In this example, we'll use the `useUiChat` hook from `@hashbrownai/react`.
 import React, { useState } from 'react';
 import { useUiChat, exposeComponent, useTool } from '@hashbrownai/react';
 import { s } from '@hashbrownai/core';
-
-function MarkdownComponent({ data }: { data: string }) {
-  return <div dangerouslySetInnerHTML={{ __html: data }} />;
-}
+import ReactMarkdown from 'react-markdown';
 
 function LightComponent({ lightId }: { lightId: string }) {
   return <div>Light: {lightId}</div>;
@@ -292,25 +289,6 @@ function CardComponent({ title, children }: { title: string; children?: React.Re
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
-  const markdown = exposeComponent(MarkdownComponent, {
-    description: 'Show markdown to the user',
-    props: {
-      data: s.streaming.string('The markdown content'),
-    },
-  });
-  const light = exposeComponent(LightComponent, {
-    description: 'Show a light to the user',
-    props: {
-      lightId: s.string('The id of the light'),
-    },
-  });
-  const card = exposeComponent(CardComponent, {
-    description: 'Show a card to the user',
-    children: 'any',
-    props: {
-      title: s.streaming.string('The title of the card'),
-    },
-  });
 
   const getUserTool = useTool({
     name: 'getUser',
@@ -341,8 +319,31 @@ export function ChatPanel() {
   const chat = useUiChat({
     model: 'gpt-4.1',
     system: 'You are a helpful assistant that can answer questions and help with tasks',
-    components: [markdown, light, card],
     tools: [getUserTool, getLightsTool, controlLightTool],
+    components: [
+      exposeComponent(ReactMarkdown, {
+        name: 'markdown',
+        description: 'Show markdown to the user',
+        props: {
+          children: s.streaming.string('The markdown content'),
+        },
+      }),
+      exposeComponent(LightComponent, {
+        name: 'light',
+        description: 'Show a light to the user',
+        props: {
+          lightId: s.string('The id of the light'),
+        },
+      }),
+      exposeComponent(CardComponent, {
+        name: 'card,'
+        description: 'Show a card to the user',
+        children: 'any',
+        props: {
+          title: s.streaming.string('The title of the card'),
+        },
+      }),
+    ],
   });
 
   const handleSend = () => {
