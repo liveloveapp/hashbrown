@@ -34,7 +34,7 @@ app.post('/chat', async (req, res) => {
 
 Let's break this down:
 
-- `HashbrownAzure.stream.text` is a function that takes an API key, an endpoint, and a Hashbrown request object, and returns an async iterable stream of encoded data ready to be sent to your frontend.
+- `HashbrownAzure.stream.text` is a function that takes an API Key, an endpoint, and a Hashbrown request object, and returns an async iterable stream of encoded data ready to be sent to your frontend. It handles any internal errors that may occur, and forwards them to your frontend.
 - `req.body` is the request object that contains the parameters for the chat completion.
 - `res.header` sets the response header to `application/octet-stream`, which is required for streaming binary data to your app.
 - `res.write` writes each chunk to the response as it arrives.

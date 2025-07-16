@@ -1,4 +1,4 @@
-# Google Gemini
+# Google Gemini (React)
 
 First, install the Google adapter package:
 
@@ -20,7 +20,7 @@ Streams a Gemini chat completion as a series of encoded frames. Handles content,
 
 | Name                      | Type                                    | Description                                                                    |
 | ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `apiKey`                  | `string`                                | Your Google Gemini API key.                                                    |
+| `apiKey`                  | `string`                                | Your Google Gemini API Key.                                                    |
 | `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.         |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final Gemini request before it is sent. |
 

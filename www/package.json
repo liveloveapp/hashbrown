@@ -2,6 +2,7 @@
   "type": "module",
   "scripts": {
     "collect-docs": "npx tsx src/tools/extract-docs-content.ts",
-    "review-docs": "npx tsx src/tools/review-docs.ts"
+    "review-docs": "npx tsx src/tools/review-docs.ts",
+    "translate-docs": "npx tsx src/tools/translate-docs.ts"
   }
 }

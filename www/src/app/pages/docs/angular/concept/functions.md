@@ -24,7 +24,7 @@ Here are few that we've implemented in our Angular applications:
 
 A few notes:
 
-- First, you will need an OpenAI API key.
+- First, you will need an OpenAI API Key.
 - Try the prompt: `"Who am I?"`. That will invoke the `getUser` function.
 - Try the prompt: `"Show me all the lights"`. This will invoke the `getLights` function.
 - Try the prompt: `"Turn off all lights"`. This will invoke the `controlLights` function.
@@ -66,7 +66,7 @@ The method signature for a `handler` is:
 
 ## Functions with Arguments
 
-hashbrown's @hashbrownai/angular!createToolWithArgs:function enables Angular developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
+hashbrown's @hashbrownai/angular!createTool:function enables Angular developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
 
 We'll be using Skillet - hasbrown's LLM-optimized schema language - for defining the function arguments.
 Let's look at an example function that enables the LLM to control the lights in our smart home client application.
@@ -74,7 +74,7 @@ Let's look at an example function that enables the LLM to control the lights in 
 <www-code-example header="chat.component.ts">
 
 ```ts
-createToolWithArgs({
+createTool({
   name: 'controlLight',
   description: 'Control a light',
   schema: s.object('Control light input', {
@@ -120,7 +120,7 @@ export class ChatComponent {
 
   chat = chatResource({
     model: 'gpt-4.1',
-    prompt: 'You are a helpful assistant that can answer questions and help with tasks',
+    system: 'You are a helpful assistant that can answer questions and help with tasks',
     tools: [
       createTool({
         name: 'getUser',
@@ -135,7 +135,7 @@ export class ChatComponent {
         description: 'Get the current lights',
         handler: async () => this.lightsStore.entities(),
       }),
-      createToolWithArgs({
+      createTool({
         name: 'controlLight',
         description: 'Control a light',
         schema: s.object('Control light input', {
@@ -161,11 +161,11 @@ export class ChatComponent {
 Let's review the code above.
 
 - First, we define the `tools` array in the `chatResource` configuration.
-- We use the @hashbrownai/angular!createTool:function and @hashbrownai/angular!createToolWithArgs:function functions to define the functions that the LLM can call.
+- We use the @hashbrownai/angular!createTool:function function to define the functions that the LLM can call.
 - The `handler` functions are defined to perform the necessary logic, such as fetching data from services or updating the state.
 - Finally, we can use the `sendMessage` method to send a message to the LLM, which can then invoke the defined functions as needed.
 
 ## Conclusion
 
 Function calling is a powerful feature that allows you to define functions that the LLM can invoke.
-By using hashbrown's @hashbrownai/angular!createTool:function and @hashbrownai/angular!createToolWithArgs:function functions, you can easily define functions with or without arguments that the LLM can call.
+By using hashbrown's @hashbrownai/angular!createTool:function function, you can easily define functions with or without arguments that the LLM can call.

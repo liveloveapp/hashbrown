@@ -26,33 +26,16 @@ Overall, we believe that the JS runtime provides:
 
 ---
 
-## Install
-
-First, install the hashbrown JavaScript tool.
-
-```sh
-npm install @hashbrownai/tool-javascript
-```
-
-Next, install the QuickJS WebAssembly variant:
-
-```sh
-npm install @jitl/quickjs-singlefile-browser-debug-asyncify
-```
-
----
-
 ## Defining Runtime
 
-The next step is to define a `runtime`.
+The first step is to define a `runtime`.
 
 <www-code-example header="chat.component.ts">
 
 ```ts
-import variant from '@jitl/quickjs-singlefile-browser-debug-asyncify';
+import { createRuntime } from '@hashbrownai/angular';
 
-runtime = defineAsyncRuntime({
-  loadVariant: () => Promise.resolve(variant),
+runtime = createRuntime({
   functions: [],
 });
 ```
@@ -61,15 +44,34 @@ runtime = defineAsyncRuntime({
 
 Let's review the code above:
 
-- We import the QuickJS variant from `@jitl/quickjs-singlefile-browser-debug-asyncify`.
-- We define a `runtime` using `defineAsyncRuntime()`, which takes a `loadVariant` function that returns the QuickJS variant.
+- We define a `runtime` using `createRuntime()`, which takes a list of functions.
 - We'll learn next about defining functions.
+
+---
+
+## Running Code in the Runtime
+
+With the runtime created, you can run JavaScript inside of the runtime:
+
+```ts
+const result = await this.runtime.run('2 + 2', AbortSignal.timeout(1000));
+
+console.log(result);
+```
+
+Here's what's happening
+
+- The runtime is asynchronous by default, and may take an arbitrary amount of time to complete.
+- We use the `await` keyword to await the result.
+- We must pass in an abort signal as the second parameter. We recommend using `AbortSignal.timeout` to control
+  how long the provided script may run.
+- The `run` method will return a promise of whatever the evaluation result is.
 
 ---
 
 ## Define Functions
 
-The hashbrown JS runtime has the capability to define functions using `defineFunction` and `defineFunctionWithArgs` functions.
+The hashbrown JS runtime has the capability to define functions using the `createRuntimeFunction` function.
 
 **Options**
 
@@ -77,8 +79,8 @@ The hashbrown JS runtime has the capability to define functions using `defineFun
 | ------------- | --------------------- | ---------------------------------------------------------------------------------- |
 | `name`        | `string`              | The name of the function that will be called in the JS runtime.                    |
 | `description` | `string`              | A description of the function, which will be used in the LLM prompt.               |
-| `input`       | `Schema`              | The input schema for the function, which will be used to validate the input.       |
-| `output`      | `Schema`              | The output schema for the function, which will be used to validate the output.     |
+| `args`        | `Schema`              | The args schema for the function, which will be used to validate the args.         |
+| `result`      | `Schema`              | The result schema for the function, which will be used to validate the result.     |
 | `handler`     | `(input: any) => any` | The function that will be executed in the JS runtime. It can be an async function. |
 
 Next, let's define several functions that are callable within the JS runtime.
@@ -89,15 +91,14 @@ This enables the LLM to write procedural code that improves the sucess rate of t
 <www-code-example header="chat.component.ts">
 
 ```ts
-import variant from '@jitl/quickjs-singlefile-browser-debug-asyncify';
+import { createRuntime, createRuntimeFunction } from '@hashbrownai/angular';
 
-runtime = defineAsyncRuntime({
-  loadVariant: () => Promise.resolve(variant),
+runtime = createRuntime({
   functions: [
-    defineFunction({
+    createRuntimeFunction({
       name: 'getLights',
       description: 'Get the current lights',
-      output: s.array(
+      args: s.array(
         'The lights',
         s.object('A light', {
           id: s.string('The id of the light'),
@@ -106,14 +107,14 @@ runtime = defineAsyncRuntime({
       ),
       handler: () => this.smartHomeService.loadLights(),
     }),
-    defineFunctionWithArgs({
+    createRuntimeFunction({
       name: 'addLight',
       description: 'Add a light',
-      input: s.object('Add light input', {
+      args: s.object('Add light input', {
         name: s.string('The name of the light'),
         brightness: s.number('The brightness of the light'),
       }),
-      output: s.object('The light', {
+      result: s.object('The light', {
         id: s.string('The id of the light'),
         brightness: s.number('The brightness of the light'),
       }),
@@ -128,8 +129,6 @@ runtime = defineAsyncRuntime({
 
 </www-code-example>
 
-Let's review each of the functions defined above.
-
 ---
 
 ## Providing the Tool
@@ -139,6 +138,8 @@ Similar to [function calling](/docs/angular/concept/functions), the JS runtime i
 <www-code-example header="chat.component.ts">
 
 ```ts
+import { createToolJavaScript } from '@hashbrownai/angular';
+
 chat = uiChatResource({
   model: 'gpt-4.1',
   tools: [

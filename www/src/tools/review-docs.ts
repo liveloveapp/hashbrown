@@ -62,6 +62,17 @@ async function review({
           Each Issue: { "severity": "minor"|"important"|"breaking", "message": string }.
           List only REAL mismatches or missing explanations.
 
+          # Rules
+          - If the doc has an obvious syntax error or miscalls an API, that's a breaking
+            issue
+          - Grammar, spelling, and formatting issues are important
+          - Issues that you are not certain about are minor
+          - Documentation should have these qualities:
+            - Clear and concise
+            - Easy to understand
+            - Friendly and approachable
+
+          # API Reports
           ${apiReports.join('\n\n\n')}
         `,
       },
@@ -82,6 +93,11 @@ async function main() {
     recursive: true,
   });
   for (const f of mdFiles.filter((p) => p.endsWith('.md'))) {
+    // uncomment if you want to review a specific package
+    // if (!f.includes('react')) {
+    //   continue;
+    // }
+
     const mdText = await readFile(join('src/app/pages/docs', f), 'utf8');
 
     const apiReports = await Promise.all([
@@ -110,7 +126,7 @@ async function main() {
     console.log(out.summary);
 
     if (out.issues.length) {
-      console.log(`\n🔎 ${f}`);
+      console.log(chalk.bgGreen.bold.black(`FILE: ${f}`));
       for (const i of out.issues) {
         switch (i.severity) {
           case 'minor':

@@ -48,6 +48,7 @@ const DOCS_REACT = section('Docs', [
     link('Structured Output', '/docs/react/concept/structured-output'),
     link('Skillet Schema', '/docs/react/concept/schema'),
     link('Streaming', '/docs/react/concept/streaming'),
+    link('JS Runtime', '/docs/react/concept/runtime'),
   ]),
   // section('Recipes', [
   //   link('Chat', '/docs/react/recipes/chat'),

@@ -106,7 +106,7 @@ export default function App(): ReactElement {
         onClose={() => setShowApiKeyDialog(false)}
         title="API Key"
       >
-        <p>Please enter your API key. We do not store or transmit this.</p>
+        <p>Please enter your API Key. We do not store or transmit this.</p>
         <input
           type="password"
           placeholder="API Key"

@@ -1,0 +1,71 @@
+{
+  "name": "useToolJavaScript",
+  "canonicalReference": "@hashbrownai/react!useToolJavaScript:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/react/hooks/use-tool-javascript.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/react!useToolJavaScript:function(1)",
+      "docComment": "/**\n * Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n *\n * @param options - The options for creating the tool.\n *\n * @returns The tool.\n */\n",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useToolJavaScript({ runtime, }: "
+        },
+        {
+          "kind": "Reference",
+          "text": "UseToolJavaScriptOptions",
+          "canonicalReference": "@hashbrownai/react!UseToolJavaScriptOptions:interface"
+        },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
+        },
+        {
+          "kind": "Content",
+          "text": "<'javascript', {\n    code: string;\n}, unknown>"
+        },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/react/hooks/use-tool-javascript.d.ts",
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "{ runtime, }",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isOptional": false
+        }
+      ],
+      "name": "useToolJavaScript",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": " The tool.\n",
+        "see": [],
+        "params": [
+          {
+            "name": "options",
+            "description": "The options for creating the tool.\n\n"
+          }
+        ],
+        "examples": []
+      }
+    }
+  ]
+}

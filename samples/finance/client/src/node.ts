@@ -19,7 +19,7 @@ const browserDistFolder = resolve(serverDistFolder, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
-// Environment variables for API keys
+// Environment variables for API Keys
 const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
 const WRITER_API_KEY = process.env['WRITER_API_KEY'] ?? '';
@@ -78,7 +78,7 @@ app.post('/api/chat', async (req, res) => {
 
     if (KNOWN_GOOGLE_MODEL_NAMES.includes(modelName as KnownModelIds)) {
       if (!GOOGLE_API_KEY) {
-        return res.status(500).json({ error: 'Google API key not configured' });
+        return res.status(500).json({ error: 'Google API Key not configured' });
       }
       stream = HashbrownGoogle.stream.text({
         apiKey: GOOGLE_API_KEY,
@@ -86,7 +86,7 @@ app.post('/api/chat', async (req, res) => {
       });
     } else if (KNOWN_OPENAI_MODEL_NAMES.includes(modelName as KnownModelIds)) {
       if (!OPENAI_API_KEY) {
-        return res.status(500).json({ error: 'OpenAI API key not configured' });
+        return res.status(500).json({ error: 'OpenAI API Key not configured' });
       }
       stream = HashbrownOpenAI.stream.text({
         apiKey: OPENAI_API_KEY,
@@ -100,7 +100,7 @@ app.post('/api/chat', async (req, res) => {
       });
     } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName as KnownModelIds)) {
       if (!WRITER_API_KEY) {
-        return res.status(500).json({ error: 'Writer API key not configured' });
+        return res.status(500).json({ error: 'Writer API Key not configured' });
       }
       stream = HashbrownWriter.stream.text({
         apiKey: WRITER_API_KEY,

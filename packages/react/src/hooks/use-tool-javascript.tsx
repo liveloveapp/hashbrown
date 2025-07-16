@@ -1,4 +1,4 @@
-import { RuntimeRef, s } from '@hashbrownai/core';
+import { Chat, RuntimeRef, s } from '@hashbrownai/core';
 import { useTool } from './use-tool';
 
 /**
@@ -19,7 +19,15 @@ export interface UseToolJavaScriptOptions {
  * @param options - The options for creating the tool.
  * @returns The tool.
  */
-export function useToolJavaScript({ runtime }: UseToolJavaScriptOptions) {
+export function useToolJavaScript({
+  runtime,
+}: UseToolJavaScriptOptions): Chat.Tool<
+  'javascript',
+  {
+    code: string;
+  },
+  unknown
+> {
   return useTool({
     name: 'javascript',
     description: [

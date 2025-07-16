@@ -61,7 +61,7 @@ s.object('rrule', {
 
 ## AnyOf
 
-Skillet a logical OR using the `anyOf()` function.
+Skillet supports a logical OR using the `anyOf()` function.
 This is similar to [Zod's union types](https://zod.dev/api?id=unions)
 
 In this example, we'll define a set of possible predictions we want the LLM to generate based on the previous action the user has taken.
@@ -108,6 +108,10 @@ const PREDICTIONS_SCHEMA = s.anyOf([
 - We use `s.literal` to define a literal value for each type.
 - The `s.literal() function accepts a `boolean`, `number`, or `string` value that the LLM must return.
 
+We can use `s.anyOf()` to model optional properties by relying on `s.nullish()`:
+
+````ts
+someOptionalProperty: s.anyOf([s.number('a number'), s.nullish()])
 ---
 
 ## Numeric Types
@@ -134,6 +138,6 @@ s.streaming.array(
     brightness: s.number('the brightness of the light from 0 to 100'),
   }),
 );
-```
+````
 
 Skillet eagerly parses fragments of the streamed response from the LLM.

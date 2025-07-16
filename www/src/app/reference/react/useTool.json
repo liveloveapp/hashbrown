@@ -1,18 +1,18 @@
 {
-  "name": "createTool",
-  "canonicalReference": "@hashbrownai/angular!createTool:function",
+  "name": "useTool",
+  "canonicalReference": "@hashbrownai/react!useTool:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/angular/index.d.ts",
+  "fileUrlPath": "../dist/packages/react/hooks/use-tool.d.ts",
   "isDeprecated": false,
   "members": [
     {
       "kind": "Function",
-      "canonicalReference": "@hashbrownai/angular!createTool:function(1)",
-      "docComment": "/**\n * Creates a tool with a schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
+      "canonicalReference": "@hashbrownai/react!useTool:function(1)",
+      "docComment": "/**\n * Creates a tool with a schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param deps - Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "declare function createTool<const Name extends "
+          "text": "export declare function useTool<const Name extends "
         },
         { "kind": "Content", "text": "string" },
         { "kind": "Content", "text": ", Schema extends " },
@@ -23,27 +23,11 @@
         },
         { "kind": "Content", "text": ", Result>(input: " },
         {
-          "kind": "Content",
-          "text": "{\n    name: Name;\n    description: string;\n    schema: Schema;\n    handler: (input: "
-        },
-        {
           "kind": "Reference",
-          "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "text": "ToolOptionsWithInput",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithInput:interface"
         },
-        { "kind": "Content", "text": "<Schema>, abortSignal: " },
-        {
-          "kind": "Reference",
-          "text": "AbortSignal",
-          "canonicalReference": "!AbortSignal:interface"
-        },
-        { "kind": "Content", "text": ") => " },
-        {
-          "kind": "Reference",
-          "text": "Promise",
-          "canonicalReference": "!Promise:interface"
-        },
-        { "kind": "Content", "text": "<Result>;\n}" },
+        { "kind": "Content", "text": "<Name, Schema, Result>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
@@ -59,14 +43,14 @@
         { "kind": "Content", "text": "<Schema>, Result>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/angular/index.d.ts",
-      "returnTypeTokenRange": { "startIndex": 13, "endIndex": 17 },
+      "fileUrlPath": "../dist/packages/react/hooks/use-tool.d.ts",
+      "returnTypeTokenRange": { "startIndex": 8, "endIndex": 12 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
           "parameterName": "input",
-          "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 12 },
+          "parameterTypeTokenRange": { "startIndex": 5, "endIndex": 7 },
           "isOptional": false
         }
       ],
@@ -87,7 +71,7 @@
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
-      "name": "createTool",
+      "name": "useTool",
       "docs": {
         "modifiers": {
           "isInternal": false,
@@ -121,6 +105,10 @@
             "name": "",
             "description": "  - input.handler - The handler of the tool.\n\n"
           },
+          {
+            "name": "deps",
+            "description": "Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n\n"
+          },
           { "name": "Name", "description": "The name of the tool.\n\n" },
           { "name": "Schema", "description": "The schema of the tool.\n\n" },
           { "name": "Result", "description": "The result of the tool.\n\n" }
@@ -130,31 +118,21 @@
     },
     {
       "kind": "Function",
-      "canonicalReference": "@hashbrownai/angular!createTool:function(2)",
-      "docComment": "/**\n * Creates a tool without a schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param Name - The name of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
+      "canonicalReference": "@hashbrownai/react!useTool:function(2)",
+      "docComment": "/**\n * Creates a tool.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param deps - Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "declare function createTool<const Name extends "
+          "text": "export declare function useTool<const Name extends "
         },
         { "kind": "Content", "text": "string" },
         { "kind": "Content", "text": ", Result>(input: " },
         {
-          "kind": "Content",
-          "text": "{\n    name: Name;\n    description: string;\n    handler: (abortSignal: "
-        },
-        {
           "kind": "Reference",
-          "text": "AbortSignal",
-          "canonicalReference": "!AbortSignal:interface"
+          "text": "ToolOptionsWithoutInput",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithoutInput:interface"
         },
-        { "kind": "Content", "text": ") => " },
-        {
-          "kind": "Reference",
-          "text": "Promise",
-          "canonicalReference": "!Promise:interface"
-        },
-        { "kind": "Content", "text": "<Result>;\n}" },
+        { "kind": "Content", "text": "<Name, Result>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
@@ -164,14 +142,14 @@
         { "kind": "Content", "text": "<Name, void, Result>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/angular/index.d.ts",
-      "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
+      "fileUrlPath": "../dist/packages/react/hooks/use-tool.d.ts",
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
       "releaseTag": "Public",
       "overloadIndex": 2,
       "parameters": [
         {
           "parameterName": "input",
-          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 8 },
+          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
           "isOptional": false
         }
       ],
@@ -187,7 +165,7 @@
           "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
-      "name": "createTool",
+      "name": "useTool",
       "docs": {
         "modifiers": {
           "isInternal": false,
@@ -197,7 +175,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Creates a tool without a schema.\n\n",
+        "summary": "Creates a tool.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -215,9 +193,18 @@
           },
           {
             "name": "",
+            "description": "  - input.schema - The schema of the tool.\n\n"
+          },
+          {
+            "name": "",
             "description": "  - input.handler - The handler of the tool.\n\n"
           },
+          {
+            "name": "deps",
+            "description": "Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n\n"
+          },
           { "name": "Name", "description": "The name of the tool.\n\n" },
+          { "name": "Schema", "description": "The schema of the tool.\n\n" },
           { "name": "Result", "description": "The result of the tool.\n\n" }
         ],
         "examples": []

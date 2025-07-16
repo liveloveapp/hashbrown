@@ -7,7 +7,7 @@ import { Chat, encodeFrame } from '@hashbrownai/core';
  */
 export interface WriterTextStreamOptions {
   /**
-   * The API key for the Writer API.
+   * The API Key for the Writer API.
    */
   apiKey: string;
   /**

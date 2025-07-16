@@ -1,6 +1,6 @@
 # Generative UI with Angular Components
 
-Angular developers can expose **trusted**, **tested**, **compliant**, and **authoratative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
+Angular developers can expose **trusted**, **tested**, **compliant**, and **authoritative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
 
 ---
 
@@ -12,6 +12,8 @@ Let's first look at how this function works.
 <www-code-example header="chat.component.ts">
 
 ```ts
+import { exposeComponent } from '@hashbrownai/angular';
+
 exposeComponent(MarkdownComponent, {
   description: 'Show markdown to the user',
   input: {
@@ -26,7 +28,7 @@ Let's break down the example above:
 
 - `MarkdownComponent` is the Angular component that we want to expose.
 - `description` is a human-readable description of the component that will be used by the LLM to understand what the component does.
-- `input` is an object that defines the inputs that the component accepts. In this case, it accepts a single input called `data`, which is a streaming string representing the markdown content to be displayed.
+- `input` is an object that defines the inputs that the component accepts. In this case, it accepts a single input called `data`, which is a string representing the markdown content to be displayed.
 - The `s.string()` function is used to define the type of the input.
 
 We should mention here that Skillet, our LLM-optimized schema language, is **type safe**.
@@ -207,14 +209,14 @@ Now, let's look at how we can render the messages using the @hashbrownai/angular
     }
   `,
 })
-export class MessagesComponent {}
+export class Messages {}
 ```
 
 </www-code-example>
 
-Let's learn how the `MessagesComponent` above works.
+Let's learn how the `Messages` component above works.
 
-- The `MessagesComponent` is responsible for rendering the chat messages.
+- The `Messages` component is responsible for rendering the chat messages.
 - It uses the `@for` control-flow syntax to iterate over the messages in the chat resource `value()` signal.
 - The `@switch` control-flow is used to determine the role of the message (either 'user' or 'assistant').
 - For user messages, it simply displays the content in a paragraph tag.
