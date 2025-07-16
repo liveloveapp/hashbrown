@@ -3,3 +3,5 @@
   publish   = "dist/www/analog/public"
   functions = "dist/www/analog"
   ignore    = "npx nx-ignore www"
+[build.environment]
+  NODE_OPTIONS = "--max_old_space_size=4096" 
