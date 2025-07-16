@@ -33,7 +33,7 @@
 
 ## Examples
 
-To see hashbrown in action, bring your own LLM provider API key and try a bite of hashbrown:
+To see hashbrown in action, bring your own LLM provider API Key and try a bite of hashbrown:
 
 - [Angular example app](https://hashbrown.dev/examples/angular/ui-chat)
 - [React example app](https://hashbrown.dev/examples/react/ui-chat)

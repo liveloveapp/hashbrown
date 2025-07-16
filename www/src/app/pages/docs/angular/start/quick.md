@@ -1,11 +1,11 @@
 # Angular Quick Start
 
-hashbrown is an open source framework for building joyful AI-powereed user experiences with modern Angular.
+hashbrown is an open source framework for building generative user interfaces in Angular.
 
 ## Key Concepts
 
 - **Headless**: build your UI how you want
-- **Signal Based**: hashbrown uses signals for reactivity
+- **Signal Based**: hashbrown uses signals and resources for reactivity
 - **[Platform Agnostic](/docs/angular/start/platforms)**: use any supported LLM provider
 - **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
 - **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular components
@@ -34,7 +34,7 @@ To follow along, you'll need to
 
 1. [Sign up for OpenAI's API](https://openai.com/api/)
 2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
-3. Copy the API key so you have it handy
+3. Copy the API Key so you have it handy
 4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for hashbrown to consume
 
 ---
@@ -61,12 +61,12 @@ We have two ways for you to get your hands on the code and play with hashbrown.
 The @hashbrownai/angular!chatResource:function is the basic resource for interacting with a Large Language Model (LLM) via text.
 It provides a set of methods for sending and receiving messages, as well as managing the chat state.
 
-<www-code-example header="chat.component.ts" run="/examples/angular/chat">
+<www-code-example header="chat-panel.ts" run="/examples/angular/chat">
 
 ```ts
 @Component({
   selector: 'app-chat',
-  imports: [ComposerComponent, MessagesComponent],
+  imports: [Composer, Messages],
   template: `
     <div class="messages">
       @for (message of chat.value(); track $index) {
@@ -87,15 +87,10 @@ It provides a set of methods for sending and receiving messages, as well as mana
     <app-composer (sendMessage)="sendMessage($event)" />
   `,
 })
-export class ChatPanelComponent {
+export class ChatPanel {
   chat = chatResource({
     model: 'gpt-4o',
-    messages: [
-      {
-        role: 'system',
-        content: 'You are a helpful assistant that can answer questions and help with tasks.',
-      },
-    ],
+    system: 'You are a helpful assistant that can answer questions and help with tasks.',
   });
 
   sendMessage(message: string) {
@@ -139,12 +134,7 @@ To enable debugging, specify the optional `debugName` configuration.
 chat = chatResource({
   model: 'gpt-4o',
   debugName: 'chat',
-  messages: [
-    {
-      role: 'system',
-      content: 'You are a helpful assistant that can answer questions and help with tasks.',
-    },
-  ],
+  system: 'You are a helpful assistant that can answer questions and help with tasks.',
 });
 ```
 
@@ -198,7 +188,7 @@ export class ChatComponent {
         description: 'Get the current lights',
         handler: async () => this.lightsStore.entities(),
       }),
-      createToolWithArgs({
+      createTool({
         name: 'controlLight',
         description: 'Control a light',
         schema: s.object('Control light input', {
@@ -225,8 +215,7 @@ Let's review the key parts of this code:
 
 - The @hashbrownai/angular!chatResource:function function creates a new chat resource with the specified model and tools.
 - The `tools` array contains functions that the LLM can call.
-- The `createTool` function defines a tool that the LLM can call, with a name, description, and handler function.
-- The `createToolWithArgs` function defines a tool that takes arguments, with a schema for the input.
+- The `createTool` function defines a tool that the LLM can call, with a name, description, optional arguments, and handler function.
 - The `handler` function is called when the LLM invokes the tool, allowing you to perform actions like fetching data or updating state.
 
 ---
@@ -376,7 +365,7 @@ export class ChatComponent {
     system: `
       Please return a JSON object that contains the lights that the user mentions.
     `,
-    output: s.object('Output', {
+    schema: s.object('Output', {
       lights: s.array(
         s.object('Light', {
           id: s.string('The id of the light'),
@@ -404,11 +393,11 @@ export class ChatComponent {
 Let's take a look at using the @hashbrownai/angular!structuredChatResource:function resource.
 
 - The `structuredChatResource` function creates a chat resource that can generate structured data.
-- The `output` property defines the structure of the data that the LLM will return, using the Skillet schema language.
+- The `schema` property defines the structure of the data that the LLM will return, using the Skillet schema language.
 - The `debugName` property is used to identify the chat resource in the redux devtools.
 - The `tools` property defines the tools that the LLM can use to fetch data or perform actions.
 
-When the LLM generates a response, it will return data in the structured format defined by the `output` property.
+When the LLM generates a response, it will return data in the structured format defined by the `schema` property.
 
 Here is what the LLM will return based on the response format specified:
 

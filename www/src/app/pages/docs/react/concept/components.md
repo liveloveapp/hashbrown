@@ -1,37 +1,67 @@
 # Generative UI with React Components
 
-React developers can expose **trusted**, **compliant**, **authoratative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
+React developers can expose **trusted**, **tested**, **compliant**, and **authoritative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
 
 ---
 
 ## Exposing React Components
 
-The @hashbrownai/react!exposeComponent:function function exposes React components to the LLM that can be generated.
+The `@hashbrownai/react` [`exposeComponent`](https://hashbrownai.dev/docs/react/api/modules.html#exposecomponent) function exposes React components to the LLM that can be generated.
 Let's first look at how this function works.
 
-<www-code-example header="RichChatPanel.ts">
-
 ```ts
-exposeComponent(MarkdownComponent, {
-  name: 'MarkdownComponent',
-  description: 'Show markdown content to the user',
+import { exposeComponent } from '@hashbrownai/react';
+import { s } from '@hashbrownai/core';
+import { Markdown } from './Markdown';
+
+exposeComponent(Markdown, {
+  description: 'Show markdown to the user',
   props: {
-    content: s.streaming.string('The content of the markdown'),
+    data: s.string('The markdown content'),
   },
 });
 ```
 
-</www-code-example>
-
 Let's break down the example above:
 
-- `MarkdownComponent` is the React component that we want to expose.
-- `name` is a human-readable name of the component that will be used by the LLM to understand what the component does.
+- `Markdown` is the React component that we want to expose.
 - `description` is a human-readable description of the component that will be used by the LLM to understand what the component does.
-- `props` is an object that defines the properties that the component accepts. In this case, it accepts a single property called `content`, which is a streaming string representing the markdown content to be displayed.
-- The `s.streaming.string()` function is used to define the type of the property, indicating that it can be a string that will be streamed in chunks.
+- `props` is an object that defines the props that the component accepts. In this case, it accepts a single prop called `data`, which is a string representing the markdown content to be displayed.
+- The `s.string()` function is used to define the type of the prop.
 
-A note on the `streaming` keyword: this is a Skillet-specific keyword that indicates that the input can be streamed in chunks, which is useful for large content like markdown.
+We should mention here that Skillet, our LLM-optimized schema language, is **type safe**.
+
+- The `data` prop is expected to be a `string` type.
+- The schema specified is a `string()`.
+- If the schema does not match the React component's prop type, you'll see an error in both your editor and when you attempt to build the application.
+
+---
+
+## Streaming
+
+Streaming generative user interfaces is baked into the core of hashbrown.
+hashbrown ships with an LLM-optimized schema language called Skillet.
+
+Skillet supports streaming for:
+
+- arrays
+- objects
+- strings
+
+Let's update the previous example to support streaming of the markdown string into the `Markdown` component.
+
+```ts
+exposeComponent(Markdown, {
+  description: 'Show markdown to the user',
+  props: {
+    data: s.streaming.string('The markdown content'),
+  },
+});
+```
+
+The `s.streaming.string()` function is used to define the type of the prop, indicating that it can be a string that will be streamed in chunks.
+
+A note on the `streaming` keyword: this is a Skillet-specific keyword that indicates that the prop can be streamed in chunks, which is useful for large content like markdown.
 You can [learn more about streaming with Skillet](/docs/react/concept/streaming).
 
 ---
@@ -40,111 +70,154 @@ You can [learn more about streaming with Skillet](/docs/react/concept/streaming)
 
 When exposing components, you can also define the `children` that the component can accept.
 
-<www-code-example header="RichChatPanel.ts">
-
 ```ts
-exposeComponent(CardComponent, {
-  name: 'CardComponent',
-  description: 'Show a card with children components to the user',
-  children: 'any',
+exposeComponent(LightList, {
+  description: 'Show a list of lights to the user',
   props: {
-    title: s.string('The title of the card'),
-    description: s.streaming.string('The description of the card'),
+    title: s.string('The name of the list'),
   },
-}),
+  children: 'any',
+});
 ```
 
-</www-code-example>
+In the example above, we're allowing `any` children to be rendered within the `LightList` component using the `children` prop.
 
-In the example above, we're allowing `any` children to be rendered within the `CardComponent`.
-
----
-
-## Chat Example
-
-Now, let's look at using the @hashbrownai/react!useUiChat:function hook.
-
-<www-code-example header="RichChatPanel.ts">
+However, if we wanted to explicitly limit the children that the LLM can generate, we can provide an array of exposed components.
 
 ```ts
-const { messages, sendMessage } = useUiChat({
-  model: 'gpt-4o',
-  system: `
-    You are a smart home assistant. 
-    You can control the lights in the house. 
-    You should not stringify (aka escape) function arguments
-  `,
-  components: [
-    exposeComponent(LightChatComponent, {
-      name: 'LightChatComponent',
-      description: 'A component that lets the user control a light',
+exposeComponent(LightList, {
+  description: 'Show a list of lights to the user',
+  props: {
+    title: s.string('The name of the list'),
+    icon: LightListIconSchema,
+  },
+  children: [
+    exposeComponent(Light, {
+      description: 'Show a light to the user',
       props: {
         lightId: s.string('The id of the light'),
-      },
-    }),
-    exposeComponent(MarkdownComponent, {
-      name: 'MarkdownComponent',
-      description: 'Show markdown content to the user',
-      props: {
-        content: s.streaming.string('The content of the markdown'),
-      },
-    }),
-    exposeComponent(CardComponent, {
-      name: 'CardComponent',
-      description: 'Show a card with children components to the user',
-      children: 'any',
-      props: {
-        title: s.string('The title of the card'),
-        description: s.streaming.string('The description of the card'),
+        icon: LightIconSchema,
       },
     }),
   ],
 });
 ```
 
-</www-code-example>
+In the example above, the `LightList` children is limited to the `Light` component.
+
+---
+
+## Chat Example
+
+Now, let's look at creating a `useUiChat()` hook to generate React components in our application.
+
+```ts
+import { useUiChat, exposeComponent } from '@hashbrownai/react';
+import { s } from '@hashbrownai/core';
+import { Markdown } from './Markdown';
+import { Light } from './Light';
+import { LightList } from './LightList';
+import { Scene } from './Scene';
+
+const components = [
+  exposeComponent(Markdown, {
+    description: 'Show markdown to the user',
+    props: {
+      data: s.streaming.string('The markdown content'),
+    },
+  }),
+  exposeComponent(Light, {
+    description: `
+      This option shows a light to the user, with a dimmer for them to control the light.
+      Always prefer this option over printing a light's name. 
+      Always prefer putting these in a list.
+    `,
+    props: {
+      lightId: s.string('The id of the light'),
+    },
+  }),
+  exposeComponent(LightList, {
+    description: 'Show a list of lights to the user',
+    props: {
+      title: s.string('The name of the list'),
+    },
+    children: 'any',
+  }),
+  exposeComponent(Scene, {
+    description: 'Show a scene to the user',
+    props: {
+      sceneId: s.string('The id of the scene'),
+    },
+  }),
+];
+
+const chat = useUiChat({
+  model: 'gpt-4.1',
+  debugName: 'ui-chat',
+  system: `You are a helpful assistant for a smart home app.`,
+  components,
+});
+```
 
 Let's break this down:
 
-- `useUiChat` is a hook that allows you to interact with the LLM and send messages.
-- `model` is the model that you want to use for the chat. In this case, we're using `gpt-4o`.
-- `system` is a system prompt that provides context to the LLM about what it should do. In this case, we're telling it that it is a smart home assistant and can control lights.
-- `components` is an array of components that you want to expose to the LLM. Each component is defined using the `exposeComponent` function, which we discussed earlier.
-- `messages` is an array of messages that have been sent and received in the chat.
-- `sendMessage` is a function that allows you to send a message to the LLM.
+- `useUiChat()` is a hook that creates a chat resource that can be used to interact with the LLM.
+- `model` is the LLM model that will be used for the chat.
+- `debugName` is the Redux DevTools name for the chat resource, which is useful for debugging.
+- `system` is the system prompt that provides context to the LLM about what it should do.
+- `components` is an array of components that are exposed to the LLM, allowing it to use them in its responses.
+- Each component is defined using the `exposeComponent()` function, which includes a description and prop schema for the component.
+- The `children` property allows the component to accept any children, which can be rendered within the component.
+- The `Light`, `LightList`, and `Scene` components are examples of components that can be used in the chat.
+- The `Markdown` component is used to display markdown content in the chat.
 
 ---
 
 ## Rendering Components
 
-To render the components, use the `ui` property of the `message` for assistant messages.
+Now, let's look at how we can render the messages using the output of the `useUiChat()` hook.
 
-<www-code-example header="RichChatPanel.ts">
+```tsx
+import React from 'react';
 
-```ts
-function Messages() {
-  // code omitted for brevity
-
+function Messages({ chat }) {
   return (
-    {messages.map((message) => {
-      switch (message.role) {
-        case 'assistant':
-          return <div>{message.ui}</div>;
-        case 'user':
-          return <div>{message.content}</div>
-        default:
-          return null
-      }
-    })}
+    <>
+      {chat.messages.map((message, idx) => {
+        switch (message.role) {
+          case 'user':
+            return (
+              <div className="chat-message user" key={idx}>
+                <p>{message.content}</p>
+              </div>
+            );
+          case 'assistant':
+            return (
+              <div className="chat-message assistant" key={idx}>
+                {message.ui}
+              </div>
+            );
+          default:
+            return null;
+        }
+      })}
+    </>
   );
 }
 ```
 
-</www-code-example>
+Let's learn how the `Messages` component above works.
+
+- The `Messages` component is responsible for rendering the chat messages.
+- It iterates over the messages in the chat resource returned by `useUiChat()`.
+- The `switch` statement is used to determine the role of the message (either 'user' or 'assistant').
+- For user messages, it simply displays the content in a paragraph tag.
+- For assistant messages, it renders the UI elements generated by the LLM using the `ui` property of the message.
+- The `ui` property contains the rendered React elements based on the message content and the exposed components.
 
 ---
 
 ## Conclusion
 
-In this guide, we explored how to expose React components to a large language model (LLM) using the @hashbrownai/react!exposeComponent:function function.
-We also looked at the @hashbrownai/react!useUiChat:function hook that can interact with the LLM and render the exposed components in a web application.
+In this guide, we explored how to expose React components to a large language model (LLM) using the `@hashbrownai/react` `exposeComponent` function.
+We also looked at how to create a chat resource that can interact with the LLM and render the exposed components in a web application.

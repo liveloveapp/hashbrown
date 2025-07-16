@@ -71,6 +71,6 @@ predictedLights = structuredCompletionResource({
 - The `s.object` inside the array indicates that each item in the array will be an object with the specified properties.
 - Note that the `streaming` keyword is _not_ specified for each light object in the array. This is because our Angular application requires both the `lightId` and the `brightness` properties.
 
-Here's where it get's good.
+Here's where it gets good.
 Skillet will eagerly parse the chunks streamed to the resource `value()` signal.
 Combining this with Angular's reactivity, streaming UI to your frontend is a one-line code change with hashbrown.

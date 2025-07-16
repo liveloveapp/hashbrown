@@ -1,0 +1,201 @@
+{
+  "name": "RuntimeRef",
+  "canonicalReference": "@hashbrownai/core!RuntimeRef:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../packages/core/src/runtime/create-runtime-impl.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/core!RuntimeRef:interface",
+      "docComment": "/**\n * A reference to a JavaScript runtime.\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export interface RuntimeRef " }
+      ],
+      "fileUrlPath": "../packages/core/src/runtime/create-runtime-impl.ts",
+      "releaseTag": "Public",
+      "name": "RuntimeRef",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!RuntimeRef#describe:member",
+          "docComment": "/**\n * Describes the runtime to the LLM.\n *\n * Example:\n * ```js\n * const description = runtime.describe();\n * ```\n *\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "readonly describe: " },
+            { "kind": "Content", "text": "() => string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": true,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "describe",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Describes the runtime to the LLM.\n\nExample:\n```js\nconst description = runtime.describe();\n```\n\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!RuntimeRef#functions:member",
+          "docComment": "/**\n * The functions that are available in the runtime.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "readonly functions: " },
+            { "kind": "Content", "text": "[..." },
+            {
+              "kind": "Reference",
+              "text": "RuntimeFunctionRef",
+              "canonicalReference": "@hashbrownai/core!RuntimeFunctionRef:type"
+            },
+            { "kind": "Content", "text": "<any, any>[]]" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": true,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "functions",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 4 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The functions that are available in the runtime.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!RuntimeRef#run:member",
+          "docComment": "/**\n * Run JavaScript code in the runtime.\n *\n * Example:\n * ```js\n * const result = await runtime.run('return 1 + 1;', AbortSignal.timeout(1000));\n * ```\n *\n * @param code - The JavaScript code to run.\n *\n * @param abortSignal - An optional abort signal to cancel the operation.\n *\n * @returns The result of the code execution.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "readonly run: " },
+            { "kind": "Content", "text": "(code: string, abortSignal: " },
+            {
+              "kind": "Reference",
+              "text": "AbortSignal",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ") => " },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": "<any>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": true,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "run",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 6 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Run JavaScript code in the runtime.\n\nExample:\n```js\nconst result = await runtime.run('return 1 + 1;', AbortSignal.timeout(1000));\n```\n\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": " The result of the code execution.\n",
+            "see": [],
+            "params": [
+              {
+                "name": "code",
+                "description": "The JavaScript code to run.\n\n"
+              },
+              {
+                "name": "abortSignal",
+                "description": "An optional abort signal to cancel the operation.\n\n"
+              }
+            ],
+            "examples": []
+          }
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!RuntimeRef#timeout:member",
+          "docComment": "/**\n * The timeout for the runtime.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "readonly timeout: " },
+            { "kind": "Content", "text": "number" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": true,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "timeout",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The timeout for the runtime.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          }
+        }
+      ],
+      "extendsTokenRanges": [],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "A reference to a JavaScript runtime.\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      }
+    }
+  ]
+}

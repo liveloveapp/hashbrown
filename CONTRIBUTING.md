@@ -19,7 +19,7 @@ Thank you for your interest in contributing to hashbrown.
 
 2. **Create the environment configuration:**
 
-   Copy `.env.example` to `.env` and replace placeholder values with your actual API keys. For example:
+   Copy `.env.example` to `.env` and replace placeholder values with your actual API Keys. For example:
 
    ```
    OPENAI_API_KEY=your-key-here

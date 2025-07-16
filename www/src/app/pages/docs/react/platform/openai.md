@@ -1,4 +1,4 @@
-# OpenAI
+# OpenAI (React)
 
 First, install the OpenAI adapter package:
 
@@ -20,7 +20,7 @@ Streams an OpenAI chat completion as a series of encoded frames. Handles content
 
 | Name                      | Type                                    | Description                                                                    |
 | ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `apiKey`                  | `string`                                | Your OpenAI API key.                                                           |
+| `apiKey`                  | `string`                                | Your OpenAI API Key.                                                           |
 | `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.         |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final OpenAI request before it is sent. |
 
@@ -45,7 +45,6 @@ Streams an OpenAI chat completion as a series of encoded frames. Handles content
 
 ```ts
 import { HashbrownOpenAI } from '@hashbrownai/openai';
-import { decodeFrame } from '@hashbrownai/core';
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownOpenAI.stream.text({
@@ -54,9 +53,11 @@ app.post('/chat', async (req, res) => {
   });
 
   res.header('Content-Type', 'application/octet-stream');
+
   for await (const chunk of stream) {
     res.write(chunk); // Pipe each encoded frame as it arrives
   }
+
   res.end();
 });
 ```

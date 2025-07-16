@@ -18,7 +18,7 @@ We think these are just a few of the use cases, and we're excited to see what yo
 
 A few notes:
 
-- First, you will need an OpenAI API key.
+- First, you will need an OpenAI API Key.
 - Try the prompt: `"List the lights"`. That will provide you with
 
 ---
@@ -61,7 +61,7 @@ chat = structuredChatResource({
     Your job is to parse the provided input and return a JSON object using the
     recurrence rule specification.
   `,
-  output: s.object('rrule', {
+  schema: s.object('rrule', {
     freq: s.enumeration('Recurrence frequency (FREQ)', [
       'SECONDLY',
       'MINUTELY',
@@ -157,11 +157,11 @@ sendMessage(message: string) {
 
 </www-code-example>
 
-The example above levarages the natural language capabilities of an LLM to generate a recurrence rule for input into a calendar scheduling service.
+The example above leverages the natural language capabilities of an LLM to generate a recurrence rule for input into a calendar scheduling service.
 
 Let's quickly review:
 
-- The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource where the schema of the the structured output is specified.
+- The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource where the schema of the structured output is specified.
 - The `prompt` provides context to the LLM, instructing it to act as a scheduling assistant.
 - The `output` defines the expected structure of the response, using a schema that describes the recurrence rule format using hashbrown's LLM-optimized schema language.
 
@@ -198,29 +198,37 @@ Let's look at the [scene form dialog from our sample application](https://github
 ```ts
 predictedLights = structuredCompletionResource({
   model: 'gpt-4.1',
-  input: this.sceneNameSignal,
-  system: computed(
-    () => `
-    Predict the lights that will be added to the scene based on the name. For example,
-    if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
-    be in the bedroom at a lower brightness.
-
-    Here's the list of lights:
-    ${this.lights()
-      .map((light) => `${light.id}: ${light.name}`)
-      .join('\n')}
-  `,
-  ),
   debugName: 'Predict Lights',
-  schema: s.object('Your response', {
-    lights: s.streaming.array(
-      'The lights to add to the scene',
-      s.object('A join between a light and a scene', {
-        lightId: s.string('the ID of the light to add'),
-        brightness: s.number('the brightness of the light from 0 to 100'),
+  system: `
+    You are an assistant that helps the user configure a lighting scene.
+    The user will choose a name for the scene, and you will predict the
+    lights that should be added to the scene based on the name. The input
+    will be the scene name and the list of lights that are available.
+
+    # Rules
+    - Only suggest lights from the provided "availableLights" input list.
+    - Pick a brightness level for each light that is appropriate for the scene.
+  `,
+  input: computed(() => {
+    if (!this.sceneNameSignal()) return null;
+
+    return {
+      input: this.sceneNameSignal(),
+      availableLights: untracked(() => {
+        return this.lights().map((light) => ({
+          id: light.id,
+          name: light.name,
+        }));
       }),
-    ),
+    };
   }),
+  schema: s.array(
+    'The lights to add to the scene',
+    s.object('A join between a light and a scene', {
+      lightId: s.string('the ID of the light to add'),
+      brightness: s.number('the brightness of the light from 0 to 100'),
+    }),
+  ),
 });
 ```
 
@@ -229,7 +237,7 @@ predictedLights = structuredCompletionResource({
 Let's review the code above.
 
 - The @hashbrownai/angular!structuredCompletionResource:function function is used to create a resource that predicts lights based on the scene name.
-- The `input` option is set to a signal that contains the scene name, allowing the resource to reactively update when the scene name changes.
+- The `input` option is set to a signal that contains the scene name and additional untracked context. This signal updates each time the scene name signal changes, and reads the list of light names and sends them along.
 - The `system` option provides context to the LLM, instructing it to predict lights based on the scene name.
 - The `schema` defines the expected structure of the response, which includes an array of lights with their IDs and brightness levels.
 

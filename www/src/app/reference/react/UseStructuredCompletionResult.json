@@ -38,7 +38,7 @@
               "text": "Error",
               "canonicalReference": "!Error:interface"
             },
-            { "kind": "Content", "text": " | null" },
+            { "kind": "Content", "text": " | undefined" },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,

@@ -1,13 +1,13 @@
 # Platforms
 
-hashbrown uses the adapter pattern for supporting multiple platforms.
+Hashbrown uses the adapter pattern to support multiple platforms.
 
-| Platform                                      | Adapter Package       |
-| --------------------------------------------- | --------------------- |
-| [OpenAI](/docs/react/platform/openai)         | `@hashbrownai/openai` |
-| [Microsoft Azure](/docs/react/platform/azure) | `@hashbrownai/azure`  |
-| [Google Gemini](/docs/react/platform/google)  | `@hashbrownai/google` |
-| [Writer](/docs/react/platform/writer)         | `@hashbrownai/writer` |
+| Platform                                        | Adapter Package       |
+| ----------------------------------------------- | --------------------- |
+| [OpenAI](/docs/react/platform/openai)           | `@hashbrownai/openai` |
+| [Microsoft Azure](/docs/react/platform/azure)   | `@hashbrownai/azure`  |
+| [Google Gemini](/docs/react/platform/google)    | `@hashbrownai/google` |
+| [Writer](/docs/react/platform/writer)           | `@hashbrownai/writer` |
 
 ## Platform Capabilities
 
@@ -16,16 +16,18 @@ hashbrown uses the adapter pattern for supporting multiple platforms.
 | OpenAI          | ✅   | ✅        | ✅    | ✅                |
 | Microsoft Azure | ✅   | ✅        | ✅    | ✅                |
 | Google Gemini   | ✅   | ✅        | ✅    | ✅                |
-| Writer          | ❌   | ❌        | ❌    | ❌                |
+| Writer          | ✅   | ✅        | ✅    | ✅                |
 
 ## Platform Limitations
 
-| Platform        | Limitations                              |
-| --------------- | ---------------------------------------- |
-| OpenAI          | None                                     |
-| Microsoft Azure | None                                     |
-| Google Gemini   | Structured output overrides tool calling |
-| Writer          | None                                     |
+| Platform        | Limitations                          |
+| --------------- | ------------------------------------ |
+| OpenAI          | None                                 |
+| Microsoft Azure | None                                 |
+| Google Gemini   | Requires emulated structured outputs |
+| Writer          | Requires emulated structured outputs |
+
+\
 
 ## Where is X platform?
 

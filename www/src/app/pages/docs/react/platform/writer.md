@@ -1,4 +1,4 @@
-# Writer
+# Writer (React)
 
 First, install the Writer adapter package:
 
@@ -20,7 +20,7 @@ Streams a Writer chat completion as a series of encoded frames. Handles content,
 
 | Name                      | Type                                    | Description                                                                    |
 | ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `apiKey`                  | `string`                                | Your Writer API key.                                                           |
+| `apiKey`                  | `string`                                | Your Writer API Key.                                                           |
 | `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.         |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final Writer request before it is sent. |
 

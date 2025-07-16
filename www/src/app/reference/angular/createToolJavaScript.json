@@ -1,0 +1,71 @@
+{
+  "name": "createToolJavaScript",
+  "canonicalReference": "@hashbrownai/angular!createToolJavaScript:function",
+  "kind": "Function",
+  "fileUrlPath": "../dist/packages/angular/index.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Function",
+      "canonicalReference": "@hashbrownai/angular!createToolJavaScript:function(1)",
+      "docComment": "/**\n * Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n *\n * @param options - The options for creating the tool.\n *\n * @returns The tool.\n */\n",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function createToolJavaScript({ runtime }: "
+        },
+        {
+          "kind": "Reference",
+          "text": "CreateToolJavaScriptOptions",
+          "canonicalReference": "@hashbrownai/angular!CreateToolJavaScriptOptions:interface"
+        },
+        { "kind": "Content", "text": "): " },
+        {
+          "kind": "Reference",
+          "text": "dist_packages_core_src_models_view_models.Tool",
+          "canonicalReference": "@hashbrownai/angular!~Tool:type"
+        },
+        {
+          "kind": "Content",
+          "text": "<\"javascript\", {\n    code: string;\n}, any>"
+        },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/angular/index.d.ts",
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+      "releaseTag": "Public",
+      "overloadIndex": 1,
+      "parameters": [
+        {
+          "parameterName": "{ runtime }",
+          "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "isOptional": false
+        }
+      ],
+      "name": "createToolJavaScript",
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": " The tool.\n",
+        "see": [],
+        "params": [
+          {
+            "name": "options",
+            "description": "The options for creating the tool.\n\n"
+          }
+        ],
+        "examples": []
+      }
+    }
+  ]
+}

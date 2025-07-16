@@ -89,7 +89,7 @@
         },
         {
           "kind": "Content",
-          "text": " | null;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n    exhaustedRetries: boolean;\n}"
+          "text": " | undefined;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n    exhaustedRetries: boolean;\n}"
         }
       ],
       "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
