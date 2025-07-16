@@ -1,11 +1,32 @@
 {
   "name": "@hashbrownai/react",
   "version": "0.1.1",
+  "description": "React components for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/react"
+  },
   "main": "./index.js",
   "types": "./index.d.ts",
   "peerDependencies": {
     "react": "~18.3.1 || ~19.0.0",
     "react-dom": "~18.3.1 || ~19.0.0",
     "@hashbrownai/core": "0.1.1"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "react",
+    "generative-ui",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

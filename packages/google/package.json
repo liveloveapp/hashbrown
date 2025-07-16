@@ -1,6 +1,13 @@
 {
   "name": "@hashbrownai/google",
   "version": "0.1.1",
+  "description": "Google provider for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/google"
+  },
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -10,5 +17,19 @@
   "peerDependencies": {
     "@google/genai": "^0.8.0",
     "@hashbrownai/core": "0.1.1"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "google",
+    "generative-ui",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

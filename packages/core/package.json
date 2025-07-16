@@ -28,11 +28,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@jitl/quickjs-singlefile-browser-debug-asyncify": "^0.31.0",
-    "quickjs-emscripten-core": "^0.31.0",
-    "tslib": "^2.3.0"
-  },
   "keywords": [
     "hashbrown",
     "generative-ui",
