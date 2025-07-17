@@ -14,6 +14,7 @@ import {
   selectIsReceiving,
   selectIsRunningToolCalls,
   selectIsSending,
+  selectLastAssistantMessage,
   selectViewMessages,
 } from './reducers';
 import { s } from './schema';
@@ -34,6 +35,9 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   isRunningToolCalls: StateSignal<boolean>;
   isLoading: StateSignal<boolean>;
   exhaustedRetries: StateSignal<boolean>;
+  lastAssistantMessage: StateSignal<
+    Chat.AssistantMessage<Output, Tools> | undefined
+  >;
 
   /** Replace the current set of messages in the chat state. */
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
@@ -243,5 +247,6 @@ export function fryHashbrown(init: {
     isRunningToolCalls: state.createSignal(selectIsRunningToolCalls),
     isLoading: state.createSignal(selectIsLoading),
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
+    lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
   };
 }

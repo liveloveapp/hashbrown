@@ -63,6 +63,12 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
    * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+  /**
+   * The last assistant message for the UI chat resource.
+   */
+  lastAssistantMessage: Signal<
+    Chat.AssistantMessage<s.Infer<UiChatMessageOutput>, Tools> | undefined
+  >;
 }
 
 /**
@@ -141,9 +147,14 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     { debugName: args.debugName && `${args.debugName}.value` },
   );
 
+  const lastAssistantMessage = computed(() => {
+    return value().findLast((message) => message.role === 'assistant');
+  });
+
   return {
     ...chat,
     hasValue: chat.hasValue as any,
     value,
+    lastAssistantMessage,
   };
 }

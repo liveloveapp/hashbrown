@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat } from '../models';
 import { Prettify } from '../utils/types';
 import { s } from '../schema';
@@ -166,6 +167,13 @@ export const selectViewMessages = select(
   selectStreamingViewMessages,
   (nonStreamingMessages, streamingMessages) => {
     return [...nonStreamingMessages, ...streamingMessages];
+  },
+);
+
+export const selectLastAssistantMessage = select(
+  selectViewMessages,
+  (messages): Chat.AssistantMessage<any, any> | undefined => {
+    return messages.findLast((message) => message.role === 'assistant');
   },
 );
 

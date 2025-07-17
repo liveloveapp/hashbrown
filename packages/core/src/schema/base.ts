@@ -1000,7 +1000,7 @@ export type Schema<T> =
             ? StringType
             : LiteralType<T>
           : T extends number
-            ? NumberType | IntegerType
+            ? NumberType
             : T extends boolean
               ? BooleanType
               : T extends null

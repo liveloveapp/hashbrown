@@ -129,6 +129,11 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
    * Whether the current request has exhausted retries.
    */
   exhaustedRetries: boolean;
+
+  /**
+   * The last assistant message.
+   */
+  lastAssistantMessage: Chat.AssistantMessage<Output, Tools> | undefined;
 }
 
 /**
@@ -242,6 +247,9 @@ export function useStructuredChat<
     hashbrown.current.exhaustedRetries,
   );
   const error = useHashbrownSignal(hashbrown.current.error);
+  const lastAssistantMessage = useHashbrownSignal(
+    hashbrown.current.lastAssistantMessage,
+  );
 
   const sendMessage = useCallback((message: Chat.Message<Output, Tools>) => {
     getHashbrown().sendMessage(message);
@@ -283,5 +291,6 @@ export function useStructuredChat<
     isSending,
     isRunningToolCalls,
     exhaustedRetries,
+    lastAssistantMessage,
   };
 }

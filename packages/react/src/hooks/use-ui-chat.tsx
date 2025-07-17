@@ -196,9 +196,14 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
     });
   }, [buildContent, chat.messages]);
 
+  const lastAssistantMessage = useMemo(() => {
+    return uiChatMessages.findLast((message) => message.role === 'assistant');
+  }, [uiChatMessages]);
+
   return {
     ...chat,
     messages: uiChatMessages,
     setComponents,
+    lastAssistantMessage,
   };
 };

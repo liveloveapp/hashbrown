@@ -1,8 +1,8 @@
 import {
-  Chat,
+  type Chat,
   fryHashbrown,
   Hashbrown,
-  KnownModelIds,
+  type KnownModelIds,
 } from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { HashbrownContext } from '../hashbrown-provider';
@@ -107,6 +107,11 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
    * Whether the current request has exhausted retries.
    */
   exhaustedRetries: boolean;
+
+  /**
+   * The last assistant message.
+   */
+  lastAssistantMessage: Chat.AssistantMessage<string, Tools> | undefined;
 }
 
 /**
@@ -225,6 +230,9 @@ export function useChat<Tools extends Chat.AnyTool>(
     hashbrownRef.current.exhaustedRetries,
   );
   const error = useHashbrownSignal(hashbrownRef.current.error);
+  const lastAssistantMessage = useHashbrownSignal(
+    hashbrownRef.current.lastAssistantMessage,
+  );
 
   const sendMessage = useCallback((message: Chat.Message<string, Tools>) => {
     getHashbrown().sendMessage(message);
@@ -261,5 +269,6 @@ export function useChat<Tools extends Chat.AnyTool>(
     isSending,
     isRunningToolCalls,
     exhaustedRetries,
+    lastAssistantMessage,
   };
 }
