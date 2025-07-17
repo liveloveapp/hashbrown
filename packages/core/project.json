@@ -22,7 +22,19 @@
         "tsConfig": "packages/core/tsconfig.lib.json",
         "outputPath": "dist/packages/core",
         "format": ["esm", "cjs"],
-        "generateExportsField": true
+        "generateExportsField": true,
+        "assets": [
+          {
+            "input": "packages/core",
+            "glob": "LICENSE",
+            "output": "."
+          },
+          {
+            "input": "packages/core",
+            "glob": "README.md",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {

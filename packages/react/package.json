@@ -3,30 +3,56 @@
   "version": "0.2.0",
   "description": "React components for Hashbrown AI",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/hashbrownai/hashbrown.git",
-    "directory": "packages/react"
-  },
-  "main": "./index.js",
-  "types": "./index.d.ts",
-  "peerDependencies": {
-    "react": "~18.3.1 || ~19.0.0",
-    "react-dom": "~18.3.1 || ~19.0.0",
-    "@hashbrownai/core": "0.2.0"
-  },
   "sideEffects": false,
+  "type": "module",
+  "module": "./index.esm.js",
+  "main": "./index.cjs.js",
+  "types": "./index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./index.esm.js",
+      "require": "./index.cjs.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "src/**/*",
+    "index.*",
+    "LICENSE",
+    "package.json",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20",
+    "@hashbrownai/core": "0.2.x"
+  },
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "keywords": [
-    "hashbrown",
-    "react",
-    "generative-ui",
     "ai",
+    "react",
+    "generative ui",
+    "generative-ui",
+    "hashbrown",
     "typescript"
   ],
-  "engines": {
-    "node": ">=18.0.0"
+  "homepage": "https://hashbrown.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liveloveapp/hashbrown.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/liveloveapp/hashbrown/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/liveloveapp"
   }
 }
