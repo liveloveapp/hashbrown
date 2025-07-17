@@ -27,6 +27,9 @@ export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
    * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+  lastAssistantMessage: Signal<
+    Chat.AssistantMessage<Output, Tools> | undefined
+  >;
 }
 
 /**
@@ -132,7 +135,10 @@ export function structuredChatResource<
     hashbrown.error,
     options.debugName && `${options.debugName}.error`,
   );
-
+  const lastAssistantMessage = toNgSignal(
+    hashbrown.lastAssistantMessage,
+    options.debugName && `${options.debugName}.lastAssistantMessage`,
+  );
   const exhaustedRetries = toNgSignal(hashbrown.exhaustedRetries);
 
   const status = computed(
@@ -208,5 +214,6 @@ export function structuredChatResource<
     value,
     error,
     setMessages,
+    lastAssistantMessage,
   };
 }

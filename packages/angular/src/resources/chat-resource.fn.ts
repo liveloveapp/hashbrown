@@ -31,6 +31,9 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
    */
   stop: (clearStreamingMessage?: boolean) => void;
   reload: () => boolean;
+  lastAssistantMessage: Signal<
+    Chat.AssistantMessage<string, Tools> | undefined
+  >;
 }
 
 /**
@@ -129,6 +132,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hashbrown.error,
     options.debugName && `${options.debugName}.error`,
   );
+  const lastAssistantMessage = toNgSignal(
+    hashbrown.lastAssistantMessage,
+    options.debugName && `${options.debugName}.lastAssistantMessage`,
+  );
 
   const status = computed(
     (): ResourceStatus => {
@@ -193,5 +200,6 @@ export function chatResource<Tools extends Chat.AnyTool>(
     stop,
     value,
     error,
+    lastAssistantMessage,
   };
 }
