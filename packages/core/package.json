@@ -22,7 +22,9 @@
     "index.*",
     "LICENSE",
     "package.json",
-    "README.md"
+    "README.md",
+    "emscripten-module.*",
+    "ffi.*"
   ],
   "publishConfig": {
     "access": "public"
