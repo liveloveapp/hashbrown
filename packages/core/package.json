@@ -3,30 +3,32 @@
   "version": "0.2.0",
   "description": "Runtime helpers for Hashbrown AI",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/hashbrownai/hashbrown.git",
-    "directory": "packages/core"
-  },
-  "type": "commonjs",
+  "sideEffects": false,
+  "type": "module",
+  "module": "./index.esm.js",
   "main": "./index.cjs.js",
-  "module": "./index.esm.mjs",
+  "types": "./index.d.ts",
   "exports": {
+    "./package.json": "./package.json",
     ".": {
-      "import": "./index.esm.mjs",
-      "require": "./index.cjs.js"
+      "import": "./index.esm.js",
+      "require": "./index.cjs.js",
+      "default": "./index.cjs.js",
+      "types": "./index.d.ts"
     }
   },
-  "types": "./index.d.ts",
   "files": [
+    "src/**/*",
     "index.*",
-    "dist/**",
-    "README.md",
-    "LICENSE"
+    "LICENSE",
+    "package.json",
+    "README.md"
   ],
-  "sideEffects": false,
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": [
     "hashbrown",
@@ -35,7 +37,17 @@
     "ai",
     "typescript"
   ],
-  "engines": {
-    "node": ">=18.0.0"
+  "homepage": "https://hashbrown.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liveloveapp/hashbrown.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/liveloveapp/hashbrown/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/liveloveapp"
   }
 }
