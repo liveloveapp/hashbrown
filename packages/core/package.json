@@ -12,7 +12,7 @@
     "./package.json": "./package.json",
     ".": {
       "import": "./index.esm.js",
-      "require": "./index.cjs.js",
+      "require": "./index.esm.js",
       "default": "./index.cjs.js",
       "types": "./index.d.ts"
     }
