@@ -10,6 +10,8 @@
     "hashbrown"
   ],
   "scripts": {
+    "angular": "npx nx serve server && npx nx serve client",
+    "react": "npx nx serve server && npx nx serve client-react",
     "build": "npx nx run-many -t build",
     "clean": "git clean -xdf",
     "lint": "npx nx run-many -t lint",
