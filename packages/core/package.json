@@ -4,7 +4,7 @@
   "description": "Runtime helpers for Hashbrown AI",
   "license": "MIT",
   "sideEffects": false,
-  "type": "module",
+  "type": "commonjs",
   "module": "./index.esm.js",
   "main": "./index.cjs.js",
   "types": "./index.d.ts",
@@ -49,5 +49,10 @@
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/liveloveapp"
+  },
+  "dependencies": {
+    "@jitl/quickjs-singlefile-browser-debug-asyncify": "0.31.0",
+    "quickjs-emscripten-core": "0.31.0",
+    "tslib": "^2.3.0"
   }
 }

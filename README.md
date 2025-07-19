@@ -47,7 +47,7 @@ Run the Angular sample app:
 ```shell
 nvm use
 npm install
-npx nx serve server && npx nx serve client
+npm run-script angular
 ```
 
 Run the React sample app:
@@ -55,7 +55,7 @@ Run the React sample app:
 ```shell
 nvm use
 npm install
-npx nx serve server && npx nx serve client-react
+npm run-script react
 ```
 
 ## Contributing
