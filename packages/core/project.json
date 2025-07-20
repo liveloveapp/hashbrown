@@ -15,13 +15,17 @@
   "tags": ["shared"],
   "targets": {
     "build": {
-      "executor": "@nx/rollup:rollup",
       "outputs": ["{options.outputPath}"],
+      "executor": "@nx/rollup:rollup",
       "options": {
         "main": "packages/core/src/index.ts",
         "tsConfig": "packages/core/tsconfig.lib.json",
         "outputPath": "dist/packages/core",
         "format": ["esm", "cjs"],
+        "generateExportsField": true,
+        "outputFileName": "index",
+        "outputFileExtensionForEsm": ".mjs",
+        "outputFileExtensionForCjs": ".cjs",
         "assets": [
           {
             "input": "packages/core",
