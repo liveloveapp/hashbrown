@@ -42,7 +42,7 @@ To see hashbrown in action, bring your own LLM provider API Key and try a bite o
 
 **Want more than a quick bite?**
 
-Run the Angular sample app:
+### Angular Smart Home App
 
 ```shell
 nvm use
@@ -50,12 +50,37 @@ npm install
 npx nx serve server && npx nx serve client
 ```
 
-Run the React sample app:
+### React Smart Home App
 
 ```shell
 nvm use
 npm install
 npx nx serve server && npx nx serve client-react
+```
+
+### Angular Finance App
+
+```shell
+nvm use
+npm install
+npx nx serve finance-angular-client
+```
+
+### Angular MCP App
+
+In one shell,
+
+```shell
+nvm use
+npm install
+npx nx-mcp . --sse --port 9921
+```
+
+Then, in another:
+
+```shell
+nvm use
+npx nx serve mcp-angular-client
 ```
 
 ## Contributing
