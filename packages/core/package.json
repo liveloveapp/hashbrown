@@ -4,19 +4,6 @@
   "description": "Runtime helpers for Hashbrown AI",
   "license": "MIT",
   "sideEffects": false,
-  "type": "module",
-  "module": "./index.esm.js",
-  "main": "./index.cjs.js",
-  "types": "./index.d.ts",
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "import": "./index.esm.js",
-      "require": "./index.esm.js",
-      "default": "./index.cjs.js",
-      "types": "./index.d.ts"
-    }
-  },
   "files": [
     "src/**/*",
     "index.*",
