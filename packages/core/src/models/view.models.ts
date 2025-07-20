@@ -9,7 +9,7 @@ export type Middleware = (
 export type Tool<Name, Args, Result> = {
   name: Name;
   description: string;
-  schema: s.HashbrownType;
+  schema: s.HashbrownType | object;
   handler: (input: Args, abortSignal: AbortSignal) => Promise<Result>;
 };
 

@@ -22,6 +22,7 @@ export {
   isNumberType,
   isObjectType,
   isStringType,
+  isHashbrownType,
   nullish,
   NullType,
   number,

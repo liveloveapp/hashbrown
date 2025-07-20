@@ -1,0 +1,16 @@
+{
+  "/sse": {
+    "target": "http://localhost:9921",
+    "secure": false,
+    "changeOrigin": true,
+    "ws": true,
+    "logLevel": "debug"
+  },
+  "/messages": {
+    "target": "http://localhost:9921",
+    "secure": false,
+    "changeOrigin": true,
+    "ws": true,
+    "logLevel": "debug"
+  }
+}

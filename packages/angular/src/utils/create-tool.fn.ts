@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat, s } from '@hashbrownai/core';
 import {
   inject,
@@ -34,6 +35,26 @@ export function createTool<
 }): Chat.Tool<Name, s.Infer<Schema>, Result>;
 
 /**
+ * Creates a tool with a unknown JSON schema.
+ *
+ * @param input - The input for the tool.
+ * @param input.name - The name of the tool.
+ * @param input.description - The description of the tool.
+ * @param input.schema - The schema of the tool.
+ * @param input.handler - The handler of the tool.
+ * @param Name - The name of the tool.
+ * @param Schema - The schema of the tool.
+ * @param Result - The result of the tool.
+ * @returns The tool.
+ */
+export function createTool<const Name extends string, Result>(input: {
+  name: Name;
+  description: string;
+  schema: object;
+  handler: (input: any, abortSignal: AbortSignal) => Promise<Result>;
+}): Chat.Tool<Name, any, Result>;
+
+/**
  * Creates a tool without a schema.
  *
  * @param input - The input for the tool.
@@ -62,6 +83,12 @@ export function createTool(
         name: string;
         description: string;
         handler: (s: AbortSignal) => Promise<unknown>;
+      }
+    | {
+        name: string;
+        description: string;
+        schema: object;
+        handler: (a: unknown, s: AbortSignal) => Promise<unknown>;
       },
 ): unknown {
   const injector = inject(Injector);

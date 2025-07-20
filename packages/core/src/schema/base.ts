@@ -964,6 +964,10 @@ export function isStreaming(schema: HashbrownType): boolean {
   return schema[internal].definition.streaming;
 }
 
+export function isHashbrownType(type: any): type is HashbrownType {
+  return type[internal] !== undefined;
+}
+
 /**
  * --------------------------------------
  * --------------------------------------
