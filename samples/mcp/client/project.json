@@ -83,7 +83,8 @@
           "buildTarget": "mcp-angular-client:build:development"
         }
       },
-      "defaultConfiguration": "development"
+      "defaultConfiguration": "development",
+      "dependsOn": ["spotify-mcp-server:serve"]
     },
     "extract-i18n": {
       "executor": "@angular/build:extract-i18n",
