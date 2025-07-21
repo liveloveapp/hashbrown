@@ -50,7 +50,7 @@ npm install
 npx nx serve server && npx nx serve client
 ```
 
-Run the React sample app:
+### React Smart Home App
 
 ```shell
 nvm use
