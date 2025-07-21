@@ -83,6 +83,7 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
+    "-": "^0.0.1",
     "@analogjs/platform": "1.17.1-beta.2",
     "@analogjs/vite-plugin-angular": "1.17.1-beta.2",
     "@analogjs/vitest-angular": "1.17.1-beta.2",
@@ -101,6 +102,7 @@
     "@faker-js/faker": "^9.8.0",
     "@microsoft/api-extractor": "^7.52.5",
     "@microsoft/tsdoc": "^0.15.1",
+    "@modelcontextprotocol/sdk": "^1.16.0",
     "@netlify/angular-runtime": "^2.4.0",
     "@ngrx/store-devtools": "^19.1.0",
     "@nx/angular": "21.2.0-beta.1",

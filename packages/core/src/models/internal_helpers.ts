@@ -101,10 +101,12 @@ export function toViewMessagesFromInternal(
                       status: 'done',
                       name: toolCall.name,
                       toolCallId,
-                      args: new StreamSchemaParser(tool.schema).parse(
-                        toolCall.arguments,
-                        !streaming,
-                      ),
+                      args: s.isHashbrownType(tool.schema)
+                        ? new StreamSchemaParser(tool.schema).parse(
+                            toolCall.arguments,
+                            !streaming,
+                          )
+                        : JSON.parse(toolCall.arguments),
                       // The internal models don't use a union, since that tends to
                       // complicate reducer logic. This is necessary to uplift our
                       // internal model into the view union.
@@ -121,10 +123,12 @@ export function toViewMessagesFromInternal(
                       name: toolCall.name,
                       toolCallId,
                       progress: toolCall.progress,
-                      args: new StreamSchemaParser(tool.schema).parse(
-                        toolCall.arguments,
-                        !streaming,
-                      ),
+                      args: s.isHashbrownType(tool.schema)
+                        ? new StreamSchemaParser(tool.schema).parse(
+                            toolCall.arguments,
+                            !streaming,
+                          )
+                        : null,
                     },
                   ];
                 }
@@ -225,7 +229,9 @@ export function toApiToolsFromInternal(
   const apiTools = tools.map((tool) => ({
     description: tool.description,
     name: tool.name,
-    parameters: s.toJsonSchema(tool.schema),
+    parameters: s.isHashbrownType(tool.schema)
+      ? s.toJsonSchema(tool.schema)
+      : tool.schema,
   }));
 
   if (emulateStructuredOutput) {

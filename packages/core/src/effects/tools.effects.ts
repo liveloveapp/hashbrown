@@ -3,6 +3,7 @@ import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { selectPendingToolCalls, selectToolEntities } from '../reducers';
+import { s } from '../schema';
 
 export const runTools = createEffect((store) => {
   const abortController = new AbortController();
@@ -25,7 +26,9 @@ export const runTools = createEffect((store) => {
       }
 
       try {
-        const args = tool.schema.parseJsonSchema(toolCall.arguments);
+        const args = s.isHashbrownType(tool.schema)
+          ? tool.schema.parseJsonSchema(toolCall.arguments)
+          : JSON.parse(toolCall.arguments as any);
 
         return Promise.resolve(tool.handler(args, abortController.signal));
       } catch (error) {
@@ -36,9 +39,11 @@ export const runTools = createEffect((store) => {
           error.message.includes('Expected an object at')
         ) {
           try {
-            const args = tool.schema.parseJsonSchema(
-              JSON.parse(toolCall.arguments as any),
-            );
+            const args = s.isHashbrownType(tool.schema)
+              ? tool.schema.parseJsonSchema(
+                  JSON.parse(toolCall.arguments as any),
+                )
+              : JSON.parse(toolCall.arguments as any);
 
             return Promise.resolve(tool.handler(args, abortController.signal));
           } catch (error) {
