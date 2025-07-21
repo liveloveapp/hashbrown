@@ -58,6 +58,17 @@ npm install
 npx nx serve server && npx nx serve client-react
 ```
 
+Run the documentation website locally:
+
+```shell
+nvm use
+npm install
+# Build dependencies and run the docs site
+npx nx run www:collect-docs && npx nx serve www
+# If dependencies are already built
+npx nx serve www
+```
+
 ## Contributing
 
 hashbrown is a community-driven project. Read our [contributing guidelines](./CONTRIBUTING.md) on how to get involved.
