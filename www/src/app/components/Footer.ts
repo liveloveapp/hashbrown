@@ -16,10 +16,8 @@ import { ConfigService } from '../services/ConfigService';
             <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
           </div>
           <small>
-            © LiveLoveApp, LLC 2025.
-            <br />Based in Oregon. <br /><a
-              href="https://analogjs.org"
-              target="_blank"
+            © LiveLoveApp, LLC {{ currentYear }}. <br />Based in Oregon.
+            <br /><a href="https://analogjs.org" target="_blank"
               >Built with AnalogJS</a
             >
           </small>
@@ -327,6 +325,13 @@ import { ConfigService } from '../services/ConfigService';
 })
 export class Footer {
   configService = inject(ConfigService);
+  /**
+   * Retrieves the full year (4 digits) for the current date.
+   *
+   * @returns {number} The current year as a four-digit number (e.g., 2025).
+   */
+  currentYear = new Date().getFullYear();
+
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/quick`;
   });
