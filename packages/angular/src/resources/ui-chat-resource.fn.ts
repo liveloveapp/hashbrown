@@ -6,6 +6,7 @@ import { structuredChatResource } from './structured-chat-resource.fn';
 import {
   TAG_NAME_REGISTRY,
   TagNameRegistry,
+  UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
 
@@ -66,9 +67,7 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   /**
    * The last assistant message for the UI chat resource.
    */
-  lastAssistantMessage: Signal<
-    Chat.AssistantMessage<s.Infer<UiChatMessageOutput>, Tools> | undefined
-  >;
+  lastAssistantMessage: Signal<UiAssistantMessage<Tools> | undefined>;
 }
 
 /**
