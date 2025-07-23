@@ -9,7 +9,12 @@ import { Component, input, signal } from '@angular/core';
       [style.backgroundColor]="color()"
     >
       <span class="player-name">{{ player() }}</span>
-      <button (click)="hidden.set(false)">Start Turn</button>
+      <button
+        (click)="hidden.set(false)"
+        [style.backgroundColor]="darkenedColor()"
+      >
+        Start Turn
+      </button>
     </div>
     <div class="player-turn-content" [class.hidden]="hidden()">
       <ng-content></ng-content>
@@ -21,6 +26,7 @@ import { Component, input, signal } from '@angular/core';
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-direction: column;
       gap: 10px;
       width: max(200vh, 200vw);
       height: max(200vh, 200vw);
@@ -53,6 +59,22 @@ import { Component, input, signal } from '@angular/core';
     .player-turn-content.hidden {
       opacity: 0;
       pointer-events: none;
+    }
+
+    .player-name {
+      font-size: 48px;
+      font-weight: 600;
+    }
+
+    button {
+      border: none;
+      outline: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
     }
   `,
 })

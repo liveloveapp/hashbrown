@@ -94,6 +94,9 @@ export class GameSetupComponent implements ChatService {
             s.object('Device', {
               deviceId: s.string('The device ID'),
               name: s.string('The device name'),
+              materialSymbolIcon: s.string(
+                'The material symbol icon that best represents the device',
+              ),
             }),
           ),
         },

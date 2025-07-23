@@ -40,6 +40,10 @@ import { SpotifyService } from '../services/spotify';
         object-fit: cover;
       }
 
+      .album-artwork-placeholder {
+        background-color: #f0f0f0;
+      }
+
       h3 {
         grid-area: name;
       }
