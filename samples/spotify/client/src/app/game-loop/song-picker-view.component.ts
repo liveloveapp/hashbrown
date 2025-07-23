@@ -59,7 +59,10 @@ import { LoaderComponent } from '../loader';
     @if (message && message.content) {
       <hb-render-message [message]="message" class="generated-ui" />
     } @else {
-      <spot-loader />
+      @if (songPickerUi.isLoading()) {
+        <spot-loader />
+      }
+
       <div class="tool-calls">
         @for (toolCall of toolCallsForTurn(); track toolCall.toolCallId) {
           @switch (toolCall.name) {

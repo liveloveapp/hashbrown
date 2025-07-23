@@ -47,6 +47,8 @@ export class GameLoopComponent implements ChatService {
       When a song is selected, queue it on the spotify device then advance
       the turn order.
 
+      NEVER show more than one player turn at a time.
+
       Pick unique colors for each player to use in the UI. Base the colors
       on the following color palette:
        - sunshine-yellow: #fbbb52;
@@ -69,8 +71,10 @@ export class GameLoopComponent implements ChatService {
         },
       }),
       exposeComponent(PlayerTurnComponent, {
+        children: 'any',
         description: `
-          Starts a player's turn. 
+          Show a player's turn. Only show one player turn at a time, for the
+          player that is currently in their turn.
         `,
         input: {
           player: s.string(
