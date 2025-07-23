@@ -8,6 +8,7 @@ import { McpServerService } from '../services/mcp-server';
 import { SongPickerViewComponent } from './song-picker-view.component';
 import { PlayerTurnComponent } from './player-turn';
 import { s } from '@hashbrownai/core';
+import { ChatService } from '../services/chat';
 
 @Component({
   selector: 'spot-game-loop',
@@ -19,8 +20,14 @@ import { s } from '@hashbrownai/core';
       <hb-render-message [message]="message" />
     }
   `,
+  providers: [
+    {
+      provide: ChatService,
+      useExisting: GameLoopComponent,
+    },
+  ],
 })
-export class GameLoopComponent {
+export class GameLoopComponent implements ChatService {
   mcp = inject(McpServerService);
   gameDescription = input.required<{
     players: string[];
@@ -36,6 +43,9 @@ export class GameLoopComponent {
       The user has already defined the game rules, spotify device to use,
       and the list of players. Your responsibility is to show the right
       game screen and manage the game flow.
+
+      When a song is selected, queue it on the spotify device then advance
+      the turn order.
     `,
     components: [
       exposeComponent(SongPickerViewComponent, {
@@ -60,7 +70,7 @@ export class GameLoopComponent {
         },
       }),
     ],
-    tools: [...this.mcp.tools()],
+    tools: [...this.mcp.tools().filter((tool) => tool.name === 'queue_track')],
   });
 
   constructor() {
@@ -69,6 +79,13 @@ export class GameLoopComponent {
         role: 'user',
         content: `game_rules:\n${JSON.stringify(this.gameDescription())}`,
       });
+    });
+  }
+
+  sendMessage(message: string) {
+    this.gameMaster.sendMessage({
+      role: 'user',
+      content: message,
     });
   }
 }

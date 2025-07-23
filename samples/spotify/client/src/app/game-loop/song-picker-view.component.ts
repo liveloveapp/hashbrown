@@ -70,7 +70,7 @@ export class SongPickerViewComponent {
         },
       }),
     ],
-    tools: [...this.mcp.tools()],
+    tools: [...this.mcp.tools().filter((tool) => tool.name === 'search')],
   });
 
   onSubmit($event: Event) {
