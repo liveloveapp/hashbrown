@@ -25,6 +25,18 @@ import { McpServerService } from '../services/mcp-server';
       <hb-render-message [message]="message" />
     }
   `,
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      height: 100%;
+
+      > hb-render-message {
+        flex: 1 auto;
+      }
+    }
+  `,
   providers: [{ provide: ChatService, useExisting: GameSetupComponent }],
 })
 export class GameSetupComponent implements ChatService {

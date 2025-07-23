@@ -105,6 +105,8 @@ section {
 body {
   line-height: 1;
   font-family: 'Fredoka', sans-serif;
+  width: 100%;
+  height: 100%;
 }
 
 ol,
@@ -166,4 +168,6 @@ table {
 html {
   color-scheme: light;
   background-color: var(--vanilla-ivory);
+  width: 100%;
+  height: 100%;
 }

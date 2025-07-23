@@ -8,11 +8,13 @@ import { s } from '@hashbrownai/core';
   imports: [FormsModule],
   selector: 'spot-games-rules-view',
   template: `
-    <div>
+    <div class="container">
       <h1>Games Rules</h1>
+      <p>What are the rules of the game?</p>
       <form>
         <textarea
           name="rules"
+          rows="6"
           [ngModel]="rulesDescription()"
           (ngModelChange)="rulesDescription.set($event)"
         ></textarea>
@@ -27,11 +29,87 @@ import { s } from '@hashbrownai/core';
 
       @if (rulesResult) {
         <div class="rules">{{ rulesResult }}</div>
-        <button (click)="onConfirmRules(rulesResult)">Submit</button>
       }
     </div>
+
+    @if (rulesResult) {
+      <button (click)="onConfirmRules(rulesResult)">Next</button>
+    }
   `,
-  styles: ``,
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      height: 100%;
+      padding: 32px;
+    }
+
+    .container {
+      flex: 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      height: 100%;
+      gap: 32px;
+
+      > h1 {
+        font:
+          600 24px/32px 'Fredoka',
+          sans-serif;
+        text-align: center;
+      }
+
+      > p {
+        font:
+          400 16px/24px 'Fredoka',
+          sans-serif;
+        text-align: center;
+      }
+
+      > form {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+
+        > textarea {
+          flex: 1 auto;
+          border-radius: 16px;
+          border: 4px solid var(--sunshine-yellow-light);
+          background: #faf9f0;
+          padding: 8px;
+          font:
+            400 16px/24px 'Fredoka',
+            sans-serif;
+        }
+      }
+    }
+
+    button {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      align-self: flex-start;
+      color: rgba(255, 255, 255, 0.88);
+      font:
+        500 18px/24px 'Fredoka',
+        sans-serif;
+      padding: 12px 24px;
+      border-radius: 48px;
+      border: 6px solid #e8a23d;
+      background: #e88c4d;
+      cursor: pointer;
+      transition:
+        color 0.2s ease-in-out,
+        border 0.2s ease-in-out;
+
+      &:hover {
+        color: #fff;
+      }
+    }
+  `,
 })
 export class GamesRulesViewComponent {
   chat = inject(ChatService);
