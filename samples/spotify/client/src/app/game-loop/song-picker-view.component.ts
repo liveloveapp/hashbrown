@@ -49,6 +49,10 @@ export class SongPickerViewComponent {
 
       Each message will contain the user's query, and the active
       constraint. You should use the tools query songs from Spotify.
+
+      You must show the <spot-song> component to the user if there
+      are valid songs to pick from, otherwise the user cannot
+      select a song.
     `,
     components: [
       exposeComponent(MarkdownComponent, {
