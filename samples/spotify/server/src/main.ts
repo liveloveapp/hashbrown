@@ -159,7 +159,7 @@ mcpServer.registerTool(
  */
 
 mcpServer.registerTool(
-  'queue-track',
+  'queue_track',
   {
     title: 'Queue Track',
     description: "Add a track URI to the user's playback queue",
