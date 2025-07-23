@@ -1,14 +1,24 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import express from 'express';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { IResponseDeserializer, SpotifyApi } from '@spotify/web-api-ts-sdk';
 import cors from 'cors';
+import { randomUUID } from 'node:crypto';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 5150;
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: '*',
+    exposedHeaders: ['Mcp-Session-Id'],
+    allowedHeaders: ['*'],
+  }),
+);
 
 app.use(
   express.json({
@@ -16,15 +26,75 @@ app.use(
   }),
 );
 
+class UnhealthyResponseDeserializer implements IResponseDeserializer {
+  async deserialize<T>(response: Response): Promise<T> {
+    const text = await response.text();
+    if (text.length > 0) {
+      try {
+        const json = JSON.parse(text) as T;
+        return json;
+      } catch (e: any) {
+        console.error(e);
+      }
+    }
+
+    return null as T;
+  }
+}
+
+function getAccessToken(context: any): string {
+  // check for auth token on request headers
+  const authToken = context.requestInfo.headers['authorization'];
+  if (!authToken) {
+    throw new Error('No authorization token provided');
+  }
+
+  // decode the token
+  const decoded = decodeURIComponent(authToken.split(' ')[1]);
+  return decoded;
+}
+
+async function getSpotifyClient(accessToken: string): Promise<SpotifyApi> {
+  return SpotifyApi.withAccessToken(
+    process.env.SPOTIFY_CLIENT_ID!,
+    JSON.parse(decodeURIComponent(accessToken)) as any,
+    {
+      deserializer: new UnhealthyResponseDeserializer(),
+    },
+  );
+}
+
 /**************************************************
  * MCP Server
  **************************************************/
+
+const mcpServer = new McpServer({
+  name: 'spotify',
+  version: '1.0.0',
+  description: 'Spotify server to list devices, search songs, and queue songs',
+});
 
 /**
  * Register tool
  *
  * name: list_devices
  */
+
+mcpServer.registerTool(
+  'list_devices',
+  {
+    title: 'List devices',
+    description: 'List all devices connected to the Spotify account',
+  },
+  async (context) => {
+    const accessToken = getAccessToken(context);
+    const spotify = await getSpotifyClient(accessToken);
+    const devices = await spotify.player.getAvailableDevices();
+    return {
+      content: [{ type: 'text', text: JSON.stringify(devices, null, 2) }],
+    };
+  },
+);
 
 /**
  * Register tool
@@ -51,6 +121,47 @@ app.use(
  *      device_id:
  *        type: string
  */
+
+const transports: Record<string, StreamableHTTPServerTransport> = {};
+
+function ensureTransport(sessionId: string) {
+  if (transports[sessionId]) return transports[sessionId];
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => sessionId,
+  });
+  transports[sessionId] = transport;
+  // async – never await here or you'll block the first HTTP request
+  mcpServer.connect(transport).catch(console.error);
+  transport.onclose = () => delete transports[sessionId];
+  return transport;
+}
+
+/* Client → Server (JSON-RPC over HTTP POST) */
+app.post('/mcp', async (req, res) => {
+  const sessionId = (req.headers['mcp-session-id'] as string) ?? randomUUID();
+  res.setHeader('Mcp-Session-Id', sessionId);
+  const transport = ensureTransport(sessionId);
+  await transport.handleRequest(req, res, req.body);
+});
+
+/* Server → Client notifications (SSE via HTTP GET) */
+app.get('/mcp', async (req, res) => {
+  const sessionId = (req.headers['mcp-session-id'] as string) ?? randomUUID();
+
+  res.setHeader('Mcp-Session-Id', sessionId);
+
+  const transport = ensureTransport(sessionId);
+  await transport.handleRequest(req, res);
+});
+
+/* Cleanup */
+app.delete('/mcp', async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string;
+  if (sessionId && transports[sessionId]) {
+    await transports[sessionId].close();
+  }
+  res.sendStatus(204);
+});
 
 /**************************************************
  * API
