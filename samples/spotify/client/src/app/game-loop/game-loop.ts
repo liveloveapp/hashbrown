@@ -36,7 +36,6 @@ export class GameLoopComponent {
       The user has already defined the game rules, spotify device to use,
       and the list of players. Your responsibility is to show the right
       game screen and manage the game flow.
-
     `,
     components: [
       exposeComponent(SongPickerViewComponent, {
@@ -44,6 +43,11 @@ export class GameLoopComponent {
           A view that lets a player pick a song from the play list. This
           must always be a child of the <spot-player-turn> component.
         `,
+        input: {
+          constraint: s.string(
+            'The constraint that the player must pick a song that matches.',
+          ),
+        },
       }),
       exposeComponent(PlayerTurnComponent, {
         description: `
