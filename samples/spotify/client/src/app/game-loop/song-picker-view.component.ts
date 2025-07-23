@@ -20,9 +20,15 @@ import { McpServerService } from '../services/mcp-server';
 import { FormsModule } from '@angular/forms';
 import { MarkdownComponent } from 'ngx-markdown';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
+import { LoaderComponent } from '../loader';
 
 @Component({
-  imports: [RenderMessageComponent, FormsModule, CdkTextareaAutosize],
+  imports: [
+    RenderMessageComponent,
+    FormsModule,
+    CdkTextareaAutosize,
+    LoaderComponent,
+  ],
   selector: 'spot-song-picker-view',
   template: `
     <form (ngSubmit)="onSubmit($event)">
@@ -46,6 +52,10 @@ import { CdkTextareaAutosize } from '@angular/cdk/text-field';
     </form>
 
     @let message = songPickerUi.lastAssistantMessage();
+
+    @if (songPickerUi.isLoading()) {
+      <spot-loader />
+    }
 
     @if (message) {
       <hb-render-message [message]="message" class="generated-ui" />

@@ -14,12 +14,17 @@ import { SpotifyService } from '../services/spotify';
 import { ChatService } from '../services/chat';
 import { s } from '@hashbrownai/core';
 import { McpServerService } from '../services/mcp-server';
+import { LoaderComponent } from '../loader';
 
 @Component({
   selector: 'spot-game-setup',
-  imports: [RenderMessageComponent],
+  imports: [RenderMessageComponent, LoaderComponent],
   template: `
     @let message = ui.lastAssistantMessage();
+
+    @if (ui.isLoading()) {
+      <spot-loader />
+    }
 
     @if (message) {
       <hb-render-message [message]="message" />
