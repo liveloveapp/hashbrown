@@ -261,10 +261,15 @@ app.get('/', (req, res) => {
 });
 
 app.get('/lyrics', async (req, res) => {
-  const genius = new GeniusClient();
-  const song = await genius.songs.search(req.query.searchTerm as string);
-  const lyrics = await song?.[0].lyrics();
-  res.send(lyrics);
+  try {
+    const genius = new GeniusClient();
+    const song = await genius.songs.search(req.query.searchTerm as string);
+    const lyrics = await song?.[0].lyrics();
+    res.send(lyrics);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Failed to get lyrics');
+  }
 });
 
 app.post('/chat', async (req, res) => {

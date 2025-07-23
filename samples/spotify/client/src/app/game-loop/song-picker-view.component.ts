@@ -2,6 +2,7 @@
 import {
   afterNextRender,
   Component,
+  computed,
   inject,
   input,
   signal,
@@ -20,6 +21,7 @@ import { McpServerService } from '../services/mcp-server';
 import { FormsModule } from '@angular/forms';
 import { MarkdownComponent } from 'ngx-markdown';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
+import { ToolChipComponent } from '../tool-chip';
 import { LoaderComponent } from '../loader';
 
 @Component({
@@ -28,6 +30,7 @@ import { LoaderComponent } from '../loader';
     FormsModule,
     CdkTextareaAutosize,
     LoaderComponent,
+    ToolChipComponent,
   ],
   selector: 'spot-song-picker-view',
   template: `
@@ -53,12 +56,30 @@ import { LoaderComponent } from '../loader';
 
     @let message = songPickerUi.lastAssistantMessage();
 
-    @if (songPickerUi.isLoading()) {
-      <spot-loader />
-    }
-
-    @if (message) {
+    @if (message && message.content) {
       <hb-render-message [message]="message" class="generated-ui" />
+    } @else {
+      <spot-loader />
+      <div class="tool-calls">
+        @for (toolCall of toolCallsForTurn(); track toolCall.toolCallId) {
+          @switch (toolCall.name) {
+            @case ('search') {
+              <spot-tool-chip
+                [toolCall]="toolCall"
+                [pending]="'Searching for songs...'"
+                [done]="'Songs found!'"
+              />
+            }
+            @case ('javascript') {
+              <spot-tool-chip
+                [toolCall]="toolCall"
+                [pending]="'Running script...'"
+                [done]="'Script ran!'"
+              />
+            }
+          }
+        }
+      </div>
     }
   `,
   styles: `
@@ -91,6 +112,14 @@ import { LoaderComponent } from '../loader';
       display: flex;
       flex-direction: column;
       gap: 12px;
+    }
+
+    .tool-calls {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 24px;
     }
   `,
 })
@@ -188,11 +217,16 @@ export class SongPickerViewComponent {
       are valid songs to pick from, otherwise the user cannot
       select a song.
 
-      Tool JavaScript is available to you. You can use it to ground your answers. Additionally,
-      some games may require that you leverage AI to determine if a song selection is valid. For
-      example, if the game is to select songs that mention food, you can use the "getLyrics"
-      function in the VM to get the lyrics of the song and then use the "getCompletion" function
-      to determine if the song mentions food.
+      Tool JavaScript is available to you. You can use it to ground 
+      your answers. Additionally, some games may require that you 
+      leverage AI to determine if a song selection is valid. For
+      example, if the game is to select songs that mention food, you 
+      can use the "getLyrics" function in the VM to get the lyrics of 
+      the song and then use the "getCompletion" function to determine 
+      if the song mentions food.
+
+      Important: Verify the song exists in Spotify before using the
+      "getLyrics" function. 
 
       Example Script (must be valid JavaScript):
       
@@ -234,6 +268,21 @@ export class SongPickerViewComponent {
         runtime: this.runtime,
       }),
     ],
+  });
+
+  toolCallsForTurn = computed(() => {
+    const messages = this.songPickerUi.value();
+    const lastUserMessageIndex = messages.findLastIndex(
+      (message) => message.role === 'user',
+    );
+    const subsequentMessages = messages.slice(lastUserMessageIndex + 1);
+
+    return subsequentMessages.flatMap((message) => {
+      if (message.role === 'assistant') {
+        return message.toolCalls;
+      }
+      return [];
+    });
   });
 
   constructor() {
