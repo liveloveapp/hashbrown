@@ -13,6 +13,7 @@ import { ConnectToDeviceViewComponent } from './connect-to-device-view.component
 import { SpotifyService } from '../services/spotify';
 import { ChatService } from '../services/chat';
 import { s } from '@hashbrownai/core';
+import { McpServerService } from '../services/mcp-server';
 
 @Component({
   selector: 'spot-game-setup',
@@ -27,6 +28,7 @@ import { s } from '@hashbrownai/core';
   providers: [{ provide: ChatService, useExisting: GameSetupComponent }],
 })
 export class GameSetupComponent implements ChatService {
+  mcp = inject(McpServerService);
   ui = uiChatResource({
     model: 'gpt-4.1',
     debugName: 'Game Setup',
@@ -99,6 +101,7 @@ export class GameSetupComponent implements ChatService {
       }),
     ],
     tools: [
+      ...this.mcp.tools(),
       createTool({
         name: 'is_authenticated',
         description: 'Check if the user is authenticated with Spotify',
@@ -106,16 +109,6 @@ export class GameSetupComponent implements ChatService {
           const spotify = inject(SpotifyService);
 
           return { authenticated: spotify.isAuthenticated() };
-        },
-      }),
-      createTool({
-        name: 'list_devices',
-        description: 'List all devices the user has connected to Spotify',
-        handler: async () => {
-          return [
-            { deviceId: '123', name: 'Device 1' },
-            { deviceId: '456', name: 'Device 2' },
-          ];
         },
       }),
     ],
