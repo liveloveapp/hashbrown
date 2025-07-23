@@ -1,4 +1,11 @@
-import { Component, inject, input, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import {
   exposeComponent,
   RenderMessageComponent,
@@ -9,32 +16,75 @@ import { s } from '@hashbrownai/core';
 import { McpServerService } from '../services/mcp-server';
 import { FormsModule } from '@angular/forms';
 import { MarkdownComponent } from 'ngx-markdown';
+import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 
 @Component({
-  imports: [RenderMessageComponent, FormsModule],
+  imports: [RenderMessageComponent, FormsModule, CdkTextareaAutosize],
   selector: 'spot-song-picker-view',
   template: `
     <form (ngSubmit)="onSubmit($event)">
-      <input
-        type="text"
+      <textarea
         name="query"
+        placeholder="Search for a song or ask for suggestions"
         [ngModel]="query()"
         (ngModelChange)="query.set($event)"
-      />
-      <button type="submit" (click)="onSubmit($event)">Search</button>
+        (keydown.enter)="onSubmitViaKeyboard($event)"
+        rows="1"
+        matInput
+        cdkTextareaAutosize
+        #textarea
+        #autosize="cdkTextareaAutosize"
+        cdkAutosizeMinRows="1"
+        cdkAutosizeMaxRows="5"
+      ></textarea>
+      <button type="submit" (click)="onSubmit($event)">
+        <span class="material-symbols-outlined"> search </span>
+      </button>
     </form>
 
     @let message = songPickerUi.lastAssistantMessage();
 
     @if (message) {
-      <hb-render-message [message]="message" />
+      <hb-render-message [message]="message" class="generated-ui" />
     }
   `,
-  styles: ``,
+  styles: `
+    form {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 32px;
+      background-color: white;
+      padding: 24px 0 24px 24px;
+    }
+
+    textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      background-color: transparent;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      display: flex;
+    }
+
+    .generated-ui {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+  `,
 })
 export class SongPickerViewComponent {
   mcp = inject(McpServerService);
   query = signal('');
+  textarea = viewChild.required<CdkTextareaAutosize>('autosize');
   constraint = input.required<string>();
   songPickerUi = uiChatResource({
     model: 'gpt-4.1',
@@ -76,6 +126,19 @@ export class SongPickerViewComponent {
     ],
     tools: [...this.mcp.tools().filter((tool) => tool.name === 'search')],
   });
+
+  constructor() {
+    afterNextRender(() => {
+      this.textarea().resizeToFitContent(true);
+    });
+  }
+
+  onSubmitViaKeyboard($event: Event) {
+    const keyboardEvent = $event as KeyboardEvent;
+    if (keyboardEvent.key === 'Enter' && !keyboardEvent.shiftKey) {
+      this.onSubmit($event);
+    }
+  }
 
   onSubmit($event: Event) {
     $event.preventDefault();

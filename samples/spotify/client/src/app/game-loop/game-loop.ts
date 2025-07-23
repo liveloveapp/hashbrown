@@ -46,6 +46,15 @@ export class GameLoopComponent implements ChatService {
 
       When a song is selected, queue it on the spotify device then advance
       the turn order.
+
+      Pick unique colors for each player to use in the UI. Base the colors
+      on the following color palette:
+       - sunshine-yellow: #fbbb52;
+       - sky-blue: #64afb5;
+       - sunset-orange: #e88c4d;
+       - olive-green: #616f36;
+       - indian-red: #b86060;
+       - chocolate-brown: #774625;
     `,
     components: [
       exposeComponent(SongPickerViewComponent, {
@@ -66,6 +75,12 @@ export class GameLoopComponent implements ChatService {
         input: {
           player: s.string(
             'The name of the player that is starting their turn.',
+          ),
+          color: s.string(
+            'The color of the player that is starting their turn.',
+          ),
+          darkenedColor: s.string(
+            'The darkened color of the player that is starting their turn.',
           ),
         },
       }),

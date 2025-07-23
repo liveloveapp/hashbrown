@@ -3,11 +3,15 @@ import { Component, input, signal } from '@angular/core';
 @Component({
   selector: 'spot-player-turn',
   template: `
-    <div class="player-turn-preview" [class.hidden]="!hidden()">
+    <div
+      class="player-turn-preview"
+      [class.hidden]="!hidden()"
+      [style.backgroundColor]="color()"
+    >
       <span class="player-name">{{ player() }}</span>
       <button (click)="hidden.set(false)">Start Turn</button>
     </div>
-    <div [class.hidden]="hidden()">
+    <div class="player-turn-content" [class.hidden]="hidden()">
       <ng-content></ng-content>
     </div>
   `,
@@ -20,7 +24,6 @@ import { Component, input, signal } from '@angular/core';
       gap: 10px;
       width: max(200vh, 200vw);
       height: max(200vh, 200vw);
-      background-color: var(--sunshine-yellow);
       color: rgba(0, 0, 0, 0.6);
       transition: all 0.5s ease-in-out;
       transform-origin: center;
@@ -41,9 +44,21 @@ import { Component, input, signal } from '@angular/core';
       transform: scale(0);
       pointer-events: none;
     }
+
+    .player-turn-content {
+      opacity: 1;
+      transition: all 0.5s ease-in-out;
+    }
+
+    .player-turn-content.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
   `,
 })
 export class PlayerTurnComponent {
   player = input.required<string>();
+  color = input.required<string>();
+  darkenedColor = input.required<string>();
   hidden = signal(true);
 }
