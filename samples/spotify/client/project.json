@@ -1,0 +1,88 @@
+{
+  "name": "spotify-angular-client",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "spot",
+  "sourceRoot": "samples/spotify/client/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/samples/spotify/client",
+        "browser": "samples/spotify/client/src/main.ts",
+        "polyfills": ["zone.js"],
+        "tsConfig": "samples/spotify/client/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "samples/spotify/client/public"
+          }
+        ],
+        "styles": ["samples/spotify/client/src/styles.scss"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "options": {
+        "port": 5100,
+        "proxyConfig": "samples/spotify/client/proxy.conf.json"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "spotify-angular-client:build:production"
+        },
+        "development": {
+          "buildTarget": "spotify-angular-client:build:development"
+        }
+      },
+      "defaultConfiguration": "development",
+      "dependsOn": ["spotify-server:serve"]
+    },
+    "extract-i18n": {
+      "executor": "@angular/build:extract-i18n",
+      "options": {
+        "buildTarget": "spotify-angular-client:build"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "spotify-angular-client:build",
+        "port": 5100,
+        "staticFilePath": "dist/samples/spotify/client/browser",
+        "spa": true
+      }
+    }
+  }
+}
