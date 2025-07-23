@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import express from 'express';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 5150;
@@ -77,6 +79,21 @@ app.get('/', (req, res) => {
  *    - lyrics: string
  *
  */
+
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: req.body,
+  });
+
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+
+  res.end();
+});
 
 app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
