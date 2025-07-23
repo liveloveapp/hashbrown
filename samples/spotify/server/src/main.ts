@@ -158,6 +158,37 @@ mcpServer.registerTool(
  *        type: string
  */
 
+mcpServer.registerTool(
+  'queue-track',
+  {
+    title: 'Queue Track',
+    description: "Add a track URI to the user's playback queue",
+    inputSchema: {
+      uri: z
+        .string()
+        .describe('spotify:track:<id> or https://open.spotify.com/track/<id>'),
+      deviceId: z
+        .string()
+        .optional()
+        .describe('The ID of the device to queue the track on'),
+    },
+  },
+  async ({ uri, deviceId }, context) => {
+    try {
+      const accessToken = getAccessToken(context);
+      const spotify = await getSpotifyClient(accessToken);
+
+      await spotify.player.addItemToPlaybackQueue(uri, deviceId); // may 403 if token lacks scope
+      return {
+        content: [{ type: 'text', text: `Queued ${uri}` }],
+      };
+    } catch (error) {
+      console.error(error);
+      throw new Error('Failed to queue track');
+    }
+  },
+);
+
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 
 function ensureTransport(sessionId: string) {
