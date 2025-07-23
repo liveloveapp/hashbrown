@@ -35,6 +35,7 @@ import { ChatService } from '../services/chat';
       flex-direction: column;
       align-items: stretch;
       height: 100%;
+      padding: 32px;
     }
 
     .container {
@@ -42,7 +43,6 @@ import { ChatService } from '../services/chat';
       flex-direction: column;
       align-items: stretch;
       height: 100%;
-      padding: 64px;
       gap: 64px;
 
       > h1 {
@@ -53,12 +53,14 @@ import { ChatService } from '../services/chat';
       }
 
       > form {
+        flex: 1 auto;
         display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 16px;
 
         > .players {
+          flex: 1 auto;
           display: flex;
           flex-direction: column;
           align-items: stretch;
@@ -75,19 +77,19 @@ import { ChatService } from '../services/chat';
           }
 
           > button {
-            margin: 0 auto;
+            width: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
             align-self: flex-start;
             color: rgba(255, 255, 255, 0.88);
             font:
-              500 18px/24px 'Fredoka',
+              500 14px/18px 'Fredoka',
               sans-serif;
-            padding: 12px 24px;
+            padding: 8px 24px;
             border-radius: 48px;
-            border: 6px solid #e8a23d;
-            background: #e88c4d;
+            border: 4px solid var(--chocolate-brown-light);
+            background: var(--chocolate-brown);
             cursor: pointer;
             transition:
               color 0.2s ease-in-out,
@@ -100,7 +102,7 @@ import { ChatService } from '../services/chat';
         }
 
         > button {
-          margin: 0 auto;
+          width: 100%;
           display: flex;
           justify-content: center;
           align-items: center;
