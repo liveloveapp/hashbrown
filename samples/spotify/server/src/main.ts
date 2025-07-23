@@ -6,7 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { IResponseDeserializer, SpotifyApi } from '@spotify/web-api-ts-sdk';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
-import z from 'zod';
+import z, { ZodSchema } from 'zod';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 5150;
@@ -75,92 +75,66 @@ const mcpServer = new McpServer({
   description: 'Spotify server to list devices, search songs, and queue songs',
 });
 
-/**
- * Register tool
- *
- * name: list_devices
- */
+export interface ToolDefinition {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema?: Record<string, ZodSchema>;
+  handler: (
+    args: any,
+    context: any,
+  ) => Promise<{ content: Array<{ type: 'text'; text: string }> }>;
+}
 
-mcpServer.registerTool(
-  'list_devices',
+const tools: ToolDefinition[] = [
   {
+    name: 'list_devices',
     title: 'List devices',
     description: 'List all devices connected to the Spotify account',
+    handler: async (context: any) => {
+      const accessToken = getAccessToken(context);
+      const spotify = await getSpotifyClient(accessToken);
+      const devices = await spotify.player.getAvailableDevices();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(devices, null, 2) }],
+      };
+    },
   },
-  async (context) => {
-    const accessToken = getAccessToken(context);
-    const spotify = await getSpotifyClient(accessToken);
-    const devices = await spotify.player.getAvailableDevices();
-    return {
-      content: [{ type: 'text', text: JSON.stringify(devices, null, 2) }],
-    };
-  },
-);
-
-/**
- * Register tool
- *
- * name: search_song
- * description: Search for a song on Spotify
- * parameters:
- *  - type: object
- *    properties:
- *      query:
- *        type: string
- */
-mcpServer.registerTool(
-  'search',
   {
+    name: 'search',
     title: 'search',
     description: 'Search tracks, artists or albums on Spotify',
     inputSchema: {
       query: z.string().describe('Search keywords'),
       type: z.enum(['track', 'artist', 'album']).optional(),
     },
+    handler: async ({ query, type = 'track' }: any, context: any) => {
+      try {
+        const accessToken = getAccessToken(context);
+        const spotify = await getSpotifyClient(accessToken);
+        const result = await spotify.search(query, [type]);
+        const minimalResult = result.tracks?.items.map((track: any) => ({
+          name: track.name,
+          artist: track.artists[0].name,
+          album: track.album.name,
+          uri: track.uri,
+        }));
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(minimalResult, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        console.error(error);
+        throw new Error('Failed to search Spotify');
+      }
+    },
   },
-  async ({ query, type = 'track' }, context) => {
-    try {
-      const accessToken = getAccessToken(context);
-      const spotify = await getSpotifyClient(accessToken);
-      const result = await spotify.search(query, [type]);
-      const minimalResult = result.tracks?.items.map((track) => ({
-        name: track.name,
-        artist: track.artists[0].name,
-        album: track.album.name,
-        uri: track.uri,
-      }));
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(minimalResult, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      console.error(error);
-      throw new Error('Failed to search Spotify');
-    }
-  },
-);
-
-/**
- * Register tool
- *
- * name: queue_song
- * description: Queue a song on Spotify
- * parameters:
- *  - type: object
- *    properties:
- *      uri:
- *        type: string
- *      device_id:
- *        type: string
- */
-
-mcpServer.registerTool(
-  'queue_track',
   {
+    name: 'queue_track',
     title: 'Queue Track',
     description: "Add a track URI to the user's playback queue",
     inputSchema: {
@@ -172,22 +146,37 @@ mcpServer.registerTool(
         .optional()
         .describe('The ID of the device to queue the track on'),
     },
-  },
-  async ({ uri, deviceId }, context) => {
-    try {
-      const accessToken = getAccessToken(context);
-      const spotify = await getSpotifyClient(accessToken);
+    handler: async ({ uri, deviceId }: any, context: any) => {
+      try {
+        const accessToken = getAccessToken(context);
+        const spotify = await getSpotifyClient(accessToken);
 
-      await spotify.player.addItemToPlaybackQueue(uri, deviceId); // may 403 if token lacks scope
-      return {
-        content: [{ type: 'text', text: `Queued ${uri}` }],
-      };
-    } catch (error) {
-      console.error(error);
-      throw new Error('Failed to queue track');
-    }
+        await spotify.player.addItemToPlaybackQueue(uri, deviceId); // may 403 if token lacks scope
+        return {
+          content: [{ type: 'text', text: `Queued ${uri}` }],
+        };
+      } catch (error) {
+        console.error(error);
+        throw new Error('Failed to queue track');
+      }
+    },
   },
-);
+];
+
+function registerTools(server: McpServer) {
+  tools.forEach((tool) => {
+    server.registerTool(
+      tool.name,
+      {
+        title: tool.title,
+        description: tool.description,
+      },
+      tool.handler,
+    );
+  });
+}
+
+registerTools(mcpServer);
 
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 
@@ -245,8 +234,28 @@ app.delete('/mcp', async (req, res) => {
  *    - sessions: number
  *    - tools: object
  */
+function getActiveSessions() {
+  return Object.keys(transports).length;
+}
+
+function getAvailableTools() {
+  return tools.map((tool) => ({
+    name: tool.name,
+    title: tool.title,
+    description: tool.description,
+  }));
+}
+
 app.get('/', (req, res) => {
-  res.send({ message: 'Hello API' });
+  const activeSessions = getActiveSessions();
+  const availableTools = getAvailableTools();
+
+  res.json({
+    message: 'MCP Server Running',
+    endpoint: '/mcp',
+    tools: availableTools.map((tool) => tool.name),
+    sessions: activeSessions,
+  });
 });
 
 /**
