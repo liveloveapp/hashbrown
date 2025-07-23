@@ -1,9 +1,11 @@
-import { effect, Injectable } from '@angular/core';
+import { effect, Injectable, signal } from '@angular/core';
 
 @Injectable({
   providedIn: 'root',
 })
 export class McpServerService {
+  connected = signal(false);
+
   constructor() {
     effect(() => {
       this.connect().catch(console.error);
@@ -11,6 +13,6 @@ export class McpServerService {
   }
 
   async connect() {
-    // todo: connect to mcp server
+    this.connected.set(true);
   }
 }

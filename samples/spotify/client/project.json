@@ -52,6 +52,7 @@
       "executor": "@angular/build:dev-server",
       "options": {
         "port": 5100,
+        "host": "127.0.0.1",
         "proxyConfig": "samples/spotify/client/proxy.conf.json"
       },
       "configurations": {

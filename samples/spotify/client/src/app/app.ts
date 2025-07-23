@@ -1,9 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { GameSetupComponent } from './game-setup/game-setup';
+import { McpServerService } from './services/mcp-server';
 
 @Component({
-  imports: [],
+  imports: [GameSetupComponent],
   selector: 'spot-root',
-  template: `<h1>Welcome spotify-angular-client</h1> `,
+  template: `
+    @if (mcp.connected()) {
+      <spot-game-setup></spot-game-setup>
+    }
+  `,
   styles: ``,
 })
-export class App {}
+export class App {
+  mcp = inject(McpServerService);
+
+  constructor() {
+    this.mcp.connect();
+  }
+}

@@ -1,11 +1,20 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import express from 'express';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
+import cors from 'cors';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 5150;
 
 const app = express();
+
+app.use(cors());
+
+app.use(
+  express.json({
+    limit: '30mb',
+  }),
+);
 
 /**************************************************
  * MCP Server
