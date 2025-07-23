@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { IResponseDeserializer, SpotifyApi } from '@spotify/web-api-ts-sdk';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
+import z from 'zod';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 5150;
@@ -107,6 +108,41 @@ mcpServer.registerTool(
  *      query:
  *        type: string
  */
+mcpServer.registerTool(
+  'search',
+  {
+    title: 'search',
+    description: 'Search tracks, artists or albums on Spotify',
+    inputSchema: {
+      query: z.string().describe('Search keywords'),
+      type: z.enum(['track', 'artist', 'album']).optional(),
+    },
+  },
+  async ({ query, type = 'track' }, context) => {
+    try {
+      const accessToken = getAccessToken(context);
+      const spotify = await getSpotifyClient(accessToken);
+      const result = await spotify.search(query, [type]);
+      const minimalResult = result.tracks?.items.map((track) => ({
+        name: track.name,
+        artist: track.artists[0].name,
+        album: track.album.name,
+        uri: track.uri,
+      }));
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(minimalResult, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      console.error(error);
+      throw new Error('Failed to search Spotify');
+    }
+  },
+);
 
 /**
  * Register tool
