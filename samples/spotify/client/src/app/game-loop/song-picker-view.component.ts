@@ -184,7 +184,7 @@ export class SongPickerViewComponent {
       function in the VM to get the lyrics of the song and then use the "getCompletion" function
       to determine if the song mentions food.
 
-      Example Script:
+      Example Script (must be valid JavaScript):
       
       <script>
         const lyrics = getLyrics({ title: 'Song Title', artist: 'Artist Name' });
