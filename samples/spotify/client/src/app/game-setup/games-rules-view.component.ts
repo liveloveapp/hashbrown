@@ -137,9 +137,9 @@ export class GamesRulesViewComponent {
       achievable within this app.
 
       # Rules
-       - Get songs (title, artist, album) from Spotify. We don't have lyrics.
+       - Get songs (title, artist, album) from Spotify.
        - Add songs to a playlist
-
+       - Get lyrics from Genius
 
       If the game description requires mechanisms beyond those listed above, respond
       with a validation error. This error should be clear and friendly. I will show

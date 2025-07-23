@@ -7,12 +7,14 @@ import {
   viewChild,
 } from '@angular/core';
 import {
+  createToolJavaScript,
   exposeComponent,
   RenderMessageComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
 import { SongComponent } from './song';
-import { s } from '@hashbrownai/core';
+import { fryHashbrown, s } from '@hashbrownai/core';
+import { createRuntime, createRuntimeFunction } from '@hashbrownai/angular';
 import { McpServerService } from '../services/mcp-server';
 import { FormsModule } from '@angular/forms';
 import { MarkdownComponent } from 'ngx-markdown';
@@ -86,6 +88,77 @@ export class SongPickerViewComponent {
   query = signal('');
   textarea = viewChild.required<CdkTextareaAutosize>('autosize');
   constraint = input.required<string>();
+
+  runtime = createRuntime({
+    timeout: 20_000,
+    functions: [
+      createRuntimeFunction({
+        name: 'getCompletion',
+        description: `
+          Synchronously uses gpt-4.1-mini to get a completion for the given prompt
+          and input data.
+        `,
+        args: s.object('The args for the function', {
+          system: s.string('The system prompt to use'),
+          input: s.string('The input data to use'),
+        }),
+        result: s.string('The completion'),
+        handler: ({ system, input }, abortSignal) => {
+          const hashbrown = fryHashbrown({
+            apiUrl: 'http://localhost:5150/chat',
+            model: 'gpt-4.1-mini',
+            debugName: 'inception completion',
+            system,
+            messages: [{ role: 'user', content: input }],
+          });
+
+          const teardown = hashbrown.sizzle();
+
+          return new Promise<string>((resolve, reject) => {
+            const unsubscribe = hashbrown.messages.subscribe((messages) => {
+              const assistantMessage = messages.find(
+                (m) => m.role === 'assistant',
+              );
+              if (assistantMessage && assistantMessage.content) {
+                resolve(assistantMessage.content);
+              }
+              const errorMessage = messages.find((m) => m.role === 'error');
+              if (errorMessage) {
+                reject(errorMessage.content);
+                teardown();
+              }
+            });
+
+            abortSignal?.addEventListener('abort', () => {
+              unsubscribe();
+              teardown();
+            });
+          });
+        },
+      }),
+      createRuntimeFunction({
+        name: 'getLyrics',
+        description: 'Get the lyrics of a song using Genius',
+        args: s.object('The args for the function', {
+          title: s.string('The title of the song'),
+          artist: s.string('The artist of the song'),
+        }),
+        result: s.string('The lyrics of the song'),
+        handler: async ({ title, artist }, abortSignal) => {
+          const req = await fetch(
+            `http://localhost:5150/lyrics?searchTerm=${`${title} by ${artist}`}`,
+            {
+              signal: abortSignal,
+            },
+          );
+          const lyrics = await req.text();
+          console.log(lyrics);
+          return lyrics;
+        },
+      }),
+    ],
+  });
+
   songPickerUi = uiChatResource({
     model: 'gpt-4.1',
     debugName: 'Song Picker',
@@ -103,6 +176,26 @@ export class SongPickerViewComponent {
       You must show the <spot-song> component to the user if there
       are valid songs to pick from, otherwise the user cannot
       select a song.
+
+      Tool JavaScript is available to you. You can use it to ground your answers. Additionally,
+      some games may require that you leverage AI to determine if a song selection is valid. For
+      example, if the game is to select songs that mention food, you can use the "getLyrics"
+      function in the VM to get the lyrics of the song and then use the "getCompletion" function
+      to determine if the song mentions food.
+
+      Example Script:
+      
+      <script>
+        const lyrics = getLyrics({ title: 'Song Title', artist: 'Artist Name' });
+        const completion = getCompletion({
+          system: \`
+            You are a helpful assistant that can determine if a song mentions food.
+            Respond exactly with "true" or "false" if the song mentions food.
+          \`,
+          input: lyrics,
+        });
+        return completion;
+      </script>
     `,
     components: [
       exposeComponent(MarkdownComponent, {
@@ -124,7 +217,12 @@ export class SongPickerViewComponent {
         },
       }),
     ],
-    tools: [...this.mcp.tools().filter((tool) => tool.name === 'search')],
+    tools: [
+      ...this.mcp.tools().filter((tool) => tool.name === 'search'),
+      createToolJavaScript({
+        runtime: this.runtime,
+      }),
+    ],
   });
 
   constructor() {
