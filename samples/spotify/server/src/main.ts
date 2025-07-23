@@ -7,6 +7,7 @@ import { IResponseDeserializer, SpotifyApi } from '@spotify/web-api-ts-sdk';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
 import z from 'zod';
+import { Client as GeniusClient } from 'genius-lyrics';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 5150;
@@ -259,23 +260,12 @@ app.get('/', (req, res) => {
   });
 });
 
-/**
- * Auth callback endpoint
- *
- * GET /callback
- */
-
-/**
- * Lyrics
- *
- * GET /lyrics
- *
- * Response:
- *  - 200 OK
- *  - body:
- *    - lyrics: string
- *
- */
+app.get('/lyrics', async (req, res) => {
+  const genius = new GeniusClient();
+  const song = await genius.songs.search(req.query.searchTerm as string);
+  const lyrics = await song?.[0].lyrics();
+  res.send(lyrics);
+});
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownOpenAI.stream.text({
