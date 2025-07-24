@@ -5,11 +5,11 @@ import {
   RenderMessageComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { LoginViewComponent } from './login-view.component';
-import { PlayersViewComponent } from './players-view.component';
-import { GamesRulesViewComponent } from './games-rules-view.component';
+import { LoginViewComponent } from './login-view';
+import { PlayersViewComponent } from './players-view';
+import { GamesRulesViewComponent } from './games-rules-view';
 import { GameLoopComponent } from '../game-loop/game-loop';
-import { ConnectToDeviceViewComponent } from './connect-to-device-view.component';
+import { ConnectToDeviceViewComponent } from './connect-to-device-view';
 import { SpotifyService } from '../services/spotify';
 import { ChatService } from '../services/chat';
 import { s } from '@hashbrownai/core';

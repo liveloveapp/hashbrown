@@ -5,7 +5,7 @@ import {
   uiChatResource,
 } from '@hashbrownai/angular';
 import { McpServerService } from '../services/mcp-server';
-import { SongPickerViewComponent } from './song-picker-view.component';
+import { SongPickerViewComponent } from './song-picker-view';
 import { PlayerTurnComponent } from './player-turn';
 import { s } from '@hashbrownai/core';
 import { ChatService } from '../services/chat';
