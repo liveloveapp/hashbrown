@@ -76,10 +76,10 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
       </div>
 
       <div class="events">
-        <h2>Hashbrown + Angular - August 2025</h2>
+        <h2>Hashbrown + Angular - September 2025</h2>
         <tito-widget event="hashbrown/hashbrown-angular-aug-2025"></tito-widget>
 
-        <h2>Hashbrown + React - August 2025</h2>
+        <h2>Hashbrown + React - September 2025</h2>
         <tito-widget
           event="hashbrown/hashbrown-react-late-aug-2025"
         ></tito-widget>
