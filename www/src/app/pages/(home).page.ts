@@ -11,6 +11,7 @@ import { LdpTour } from '../components/ldp/LdpTour';
 import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
 import { QuickIntroVideo } from '../components/QuickIntroVideo';
 import { LongIntroVideo } from '../components/LongIntroVideo';
+import { Announcements } from '../components/Announcements';
 
 @Component({
   imports: [
@@ -19,6 +20,7 @@ import { LongIntroVideo } from '../components/LongIntroVideo';
     Footer,
     GettingStarted,
     Header,
+    Announcements,
     Hero,
     LdpTour,
     LdpTourMobile,
@@ -30,6 +32,7 @@ import { LongIntroVideo } from '../components/LongIntroVideo';
   template: `
     <www-header />
     <main class="home">
+      <www-announcements />
       <www-hero />
       <www-providers />
       <www-quick-intro-video />

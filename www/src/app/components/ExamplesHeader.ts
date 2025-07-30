@@ -25,6 +25,9 @@ import { DropdownMenu } from './DropDownMenu';
         <nav>
           <ul>
             <li>
+              <a routerLink="/workshops" class="underline">workshops</a>
+            </li>
+            <li>
               <a [routerLink]="docsUrl()" class="underline">docs</a>
             </li>
             <li><a routerLink="/api" class="underline">api</a></li>

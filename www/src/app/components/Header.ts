@@ -32,6 +32,9 @@ import { ConfigService } from '../services/ConfigService';
         <nav>
           <ul>
             <li>
+              <a routerLink="/workshops" class="underline">workshops</a>
+            </li>
+            <li>
               <a [routerLink]="docsUrl()" class="underline">docs</a>
             </li>
             <li><a routerLink="/api" class="underline">api</a></li>
@@ -44,6 +47,7 @@ import { ConfigService } from '../services/ConfigService';
             <li>
               <a routerLink="/enterprise" class="underline">enterprise</a>
             </li>
+
             <li>
               <a
                 href="https://github.com/liveloveapp/hashbrown"
@@ -65,6 +69,9 @@ import { ConfigService } from '../services/ConfigService';
           <mat-icon>menu</mat-icon>
         </button>
         <mat-menu #menu="matMenu">
+          <a mat-menu-item routerLink="/workshops" class="underline"
+            >workshops</a
+          >
           <a mat-menu-item [routerLink]="docsUrl()" class="underline">docs</a>
           <a mat-menu-item routerLink="/api" class="underline">api</a>
           <a mat-menu-item [routerLink]="examplesUrl()" class="underline"
