@@ -82,6 +82,16 @@ Then, in another:
 nvm use
 npx nx serve mcp-angular-client
 ```
+Run the documentation website locally:
+
+```shell
+nvm use
+npm install
+# Build dependencies and run the docs site
+npx nx run www:collect-docs && npx nx serve www
+# If dependencies are already built
+npx nx serve www
+```
 
 Run the documentation website locally:
 
