@@ -24,4 +24,4 @@ import { Header } from '../components/Header';
     }
   `,
 })
-export default class EnterprisePage {}
+export default class BlogPage {}

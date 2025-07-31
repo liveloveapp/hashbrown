@@ -1,11 +1,11 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Angular } from '../icons/Angular';
-import { BrandGoogle } from '../icons/BrandGoogle';
-import { BrandOpenAi } from '../icons/BrandOpenAi';
-import { BrandWriter } from '../icons/BrandWriter';
-import { React } from '../icons/React';
-import { ConfigService } from '../services/ConfigService';
+import { Angular } from '../../icons/Angular';
+import { BrandGoogle } from '../../icons/BrandGoogle';
+import { BrandOpenAi } from '../../icons/BrandOpenAi';
+import { BrandWriter } from '../../icons/BrandWriter';
+import { React } from '../../icons/React';
+import { ConfigService } from '../../services/ConfigService';
 
 @Component({
   selector: 'www-providers',

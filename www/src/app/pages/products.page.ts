@@ -7,7 +7,7 @@ import { Header } from '../components/Header';
   imports: [RouterOutlet, Footer, Header],
   template: `
     <www-header />
-    <main class="enterprise">
+    <main class="products">
       <router-outlet></router-outlet>
     </main>
     <www-footer />
@@ -19,9 +19,9 @@ import { Header } from '../components/Header';
       height: 100%;
     }
 
-    .enterprise {
+    .products {
       border-bottom: 1px solid rgba(61, 60, 58, 0.24);
     }
   `,
 })
-export default class EnterprisePage {}
+export default class ProductsPage {}

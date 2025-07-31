@@ -13,10 +13,12 @@ import { RouterLink } from '@angular/router';
         ><span>o</span><span>u</span><span>r</span><span>c</span><span>e</span>
       </h2>
       <p>
-        Hashbrown is proudly free, MIT-licensed, and open source.<br />If you’d
-        like to support the project, please consider purchasing
-        <a routerLink="/enterprise" class="enterprise">Enterprise Support</a> or
-        sponsoring our work on
+        Hashbrown is proudly free, MIT-licensed, and open source.<br />We offer
+        <a routerLink="/products/ai-engineering-sprint" class="product"
+          >AI engineering sprints</a
+        >, <a routerLink="/products/workshops" class="product">workshops</a>,
+        and <a routerLink="/products/consulting" class="product">consulting</a>.
+        You can also sponsor our work on
         <a
           href="https://github.com/liveloveapp/hashbrown"
           rel="noopener"
@@ -106,7 +108,7 @@ import { RouterLink } from '@angular/router';
           text-decoration-color: transparent;
           transition: text-decoration-color ease-in-out 0.2s;
 
-          &.enterprise {
+          &.product {
             color: #fbbb52;
 
             &:hover {

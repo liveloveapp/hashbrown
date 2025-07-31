@@ -35,7 +35,7 @@ import { DropdownMenu } from './DropDownMenu';
               <a [routerLink]="examplesUrl()" class="underline">example</a>
             </li>
             <li>
-              <a routerLink="/enterprise" class="underline">enterprise</a>
+              <a routerLink="/products" class="underline">products</a>
             </li>
             <li>
               <www-dropdown-menu [placement]="['right', 'bottom']">

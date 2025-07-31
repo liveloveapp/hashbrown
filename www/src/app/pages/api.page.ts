@@ -1,12 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { EnterpriseProducts } from '../components/EnterpriseProducts';
+import { Products } from '../components/Products';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { ApiMenu } from '../components/ApiMenu';
 
 @Component({
-  imports: [RouterOutlet, Footer, Header, ApiMenu, EnterpriseProducts],
+  imports: [RouterOutlet, Footer, Header, ApiMenu, Products],
   template: `
     <www-header />
     <main class="api">
@@ -15,7 +15,7 @@ import { ApiMenu } from '../components/ApiMenu';
         <router-outlet></router-outlet>
       </div>
     </main>
-    <www-enterprise-products />
+    <www-products />
     <www-footer />
   `,
   styles: `

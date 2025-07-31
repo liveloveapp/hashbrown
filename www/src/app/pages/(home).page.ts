@@ -1,48 +1,40 @@
 import { Component } from '@angular/core';
-import { Adapters } from '../components/Adapters';
-import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
-import { GettingStarted } from '../components/GettingStarted';
 import { Header } from '../components/Header';
-import { Hero } from '../components/Hero';
-import { OpenSource } from '../components/OpenSource';
-import { Providers } from '../components/Providers';
+import { Adapters } from '../components/home/Adapters';
+import { GettingStarted } from '../components/home/GettingStarted';
+import { Hero } from '../components/home/Hero';
+import { OpenSource } from '../components/home/OpenSource';
+import { TheGravy } from '../components/home/TheGravy';
 import { LdpTour } from '../components/ldp/LdpTour';
 import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
-import { QuickIntroVideo } from '../components/QuickIntroVideo';
-import { LongIntroVideo } from '../components/LongIntroVideo';
-import { Announcements } from '../components/Announcements';
+import { Texture } from '../components/Texture';
 
 @Component({
   imports: [
     Adapters,
-    EnterpriseProducts,
     Footer,
     GettingStarted,
     Header,
-    Announcements,
     Hero,
     LdpTour,
     LdpTourMobile,
-    LongIntroVideo,
     OpenSource,
-    Providers,
-    QuickIntroVideo,
+    Texture,
+    TheGravy,
   ],
   template: `
-    <www-header />
-    <main class="home">
-      <www-announcements />
+    <www-texture>
+      <www-header />
       <www-hero />
-      <www-providers />
-      <www-quick-intro-video />
+    </www-texture>
+    <main class="home">
       <www-ldp-tour />
       <www-ldp-tour-mobile />
       <www-open-source />
       <www-adapters />
       <www-getting-started />
-      <www-long-intro-video />
-      <www-enterprise-products />
+      <www-the-gravy />
     </main>
     <www-footer />
   `,

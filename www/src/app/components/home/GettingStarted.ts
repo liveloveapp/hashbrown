@@ -6,17 +6,17 @@ import {
   signal,
   Type,
 } from '@angular/core';
-import { ButtonGroup } from './ButtonGroup';
-import { Angular } from '../icons/Angular';
-import { BrandGoogle } from '../icons/BrandGoogle';
-import { BrandOpenAi } from '../icons/BrandOpenAi';
-import { BrandWriter } from '../icons/BrandWriter';
-import { Copy } from '../icons/Copy';
-import { React } from '../icons/React';
-import { CodeHighlight } from '../pipes/CodeHighlight';
-import { AppConfig, ConfigService } from '../services/ConfigService';
-import { CodeExampleGroup } from './CodeExampleGroup';
-import { CodeExampleGroupItem } from './CodeExampleGroupItem';
+import { ButtonGroup } from '../ButtonGroup';
+import { Angular } from '../../icons/Angular';
+import { BrandGoogle } from '../../icons/BrandGoogle';
+import { BrandOpenAi } from '../../icons/BrandOpenAi';
+import { BrandWriter } from '../../icons/BrandWriter';
+import { Copy } from '../../icons/Copy';
+import { React } from '../../icons/React';
+import { CodeHighlight } from '../../pipes/CodeHighlight';
+import { AppConfig, ConfigService } from '../../services/ConfigService';
+import { CodeExampleGroup } from '../CodeExampleGroup';
+import { CodeExampleGroupItem } from '../CodeExampleGroupItem';
 
 const angularExamples: [string, string][] = Object.entries(
   import.meta.glob('/src/content/home/angular/**/*.md', {

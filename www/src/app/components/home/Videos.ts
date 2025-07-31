@@ -1,10 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { ConfigService } from '../services/ConfigService';
+import { ConfigService } from '../../services/ConfigService';
 
 @Component({
-  selector: 'www-long-intro-video',
-  imports: [RouterLink],
+  selector: 'www-videos',
   template: `
     <div class="bleed">
       <div class="container">
@@ -85,7 +83,7 @@ import { ConfigService } from '../services/ConfigService';
     }
   `,
 })
-export class LongIntroVideo {
+export class Videos {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/quick`;

@@ -1,0 +1,234 @@
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { ConfigService } from '../../services/ConfigService';
+
+@Component({
+  selector: 'www-hero',
+  imports: [RouterLink],
+  template: `
+    <div class="bleed">
+      <div class="hero">
+        <div class="logo">
+          <img
+            src="/image/logo/brand-mark-alt.svg"
+            alt="our friendly logo that looks like a hashbrown character from an animated tv show"
+          />
+        </div>
+        <div class="container">
+          <div class="heading">
+            <h1>Build user interfaces that delight users with intelligence</h1>
+            <p>
+              Hashbrown is an open-source framework for building generative user
+              interfaces that speed users through workflows, simplify data
+              entry, dynamically reorganize, and even code themselves.
+            </p>
+          </div>
+          <div class="actions">
+            <button>Watch a Demo</button>
+            <a [routerLink]="docsUrl()">Read the Docs</a>
+          </div>
+        </div>
+      </div>
+      <div class="news">
+        <div class="alert">
+          <p>
+            <strong>New!</strong> Workshop tickets for
+            <a href="">Build Generative UIs in React</a> are on sale now
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="gradient"></div>
+  `,
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .bleed {
+      display: flex;
+      flex-direction: column;
+      gap: 192px;
+      align-self: center;
+
+      > .hero {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        align-self: stretch;
+        width: 100%;
+        max-width: 600px;
+
+        > .logo {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+
+          img {
+            width: 94px;
+            height: 100px;
+            aspect-ratio: 47/50;
+          }
+        }
+
+        > .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
+          align-self: stretch;
+
+          > .heading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            align-self: stretch;
+
+            > h1 {
+              color: var(--gray-dark, #3d3c3a);
+              text-align: center;
+              font:
+                900 32px/40px 'KefirVariable',
+                sans-serif;
+              font-variation-settings: 'wght' 900;
+            }
+
+            > p {
+              color: var(--gray, #5e5c5a);
+              text-align: center;
+              font:
+                500 18px/24px 'Fredoka',
+                sans-serif;
+            }
+
+            a {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              align-self: flex-start;
+              color: rgba(255, 255, 255, 0.88);
+              font:
+                500 18px/24px 'Fredoka',
+                sans-serif;
+              padding: 12px 24px;
+              border-radius: 48px;
+              border: 6px solid #e8a23d;
+              background: #e88c4d;
+              transition:
+                color 0.2s ease-in-out,
+                border 0.2s ease-in-out;
+
+              &:hover {
+                color: #fff;
+              }
+            }
+          }
+
+          > .actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            align-self: stretch;
+
+            > button,
+            > a {
+              display: flex;
+              padding: 12px 24px;
+              justify-content: center;
+              align-items: center;
+              border-radius: 8px;
+              color: rgba(0, 0, 0, 0.64);
+              font:
+                700 14px/16px 'Fredoka',
+                sans-serif;
+            }
+
+            > button {
+              background: var(--sunshine-yellow, #fbbb52);
+            }
+
+            > a {
+              background: #e1e1e1;
+            }
+          }
+        }
+      }
+
+      .news {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        max-width: 800px;
+
+        > .alert {
+          display: flex;
+          padding: 11px 24px 12px 24px;
+          justify-content: center;
+          align-items: center;
+          border-radius: 16px;
+          border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
+          background: rgba(251, 187, 82, 0.24);
+
+          > p {
+            color: rgba(0, 0, 0, 0.64);
+            text-align: center;
+            font:
+              400 13px/140% 'Fredoka',
+              sans-serif;
+
+            > strong {
+              font-weight: 700;
+            }
+          }
+        }
+      }
+    }
+
+    .gradient {
+      height: 32px;
+      width: 100%;
+      background: linear-gradient(
+        to right,
+        #fbbb52 0%,
+        var(--sunset-orange) 25%,
+        var(--indian-red-light) 50%,
+        var(--sky-blue-dark) 75%,
+        var(--olive-green-light) 100%
+      );
+      background-clip: border-box;
+    }
+
+    @media screen and (min-width: 1024px) {
+      .bleed {
+        padding: 96px 64px;
+
+        > .hero {
+          > .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            img {
+              width: 148px;
+              height: 100px;
+              aspect-ratio: 47/50;
+            }
+          }
+        }
+      }
+    }
+  `,
+})
+export class Hero {
+  configService = inject(ConfigService);
+  docsUrl = computed(() => {
+    return `/docs/${this.configService.sdk()}/start/quick`;
+  });
+}

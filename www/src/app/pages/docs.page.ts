@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DocsMenu } from '../components/DocsMenu';
 import { DocsSdkMenu } from '../components/DocsSdkMenu';
-import { EnterpriseProducts } from '../components/EnterpriseProducts';
+import { Products } from '../components/Products';
 import { Footer } from '../components/Footer';
 import { MarkdownPage } from '../components/MarkdownPage';
 import { Header } from '../components/Header';
@@ -12,7 +12,7 @@ import { Header } from '../components/Header';
     Header,
     DocsMenu,
     DocsSdkMenu,
-    EnterpriseProducts,
+    Products,
     Footer,
     MarkdownPage,
     RouterOutlet,
@@ -28,7 +28,7 @@ import { Header } from '../components/Header';
         </www-markdown-page>
       </div>
     </main>
-    <www-enterprise-products />
+    <www-products />
     <www-footer />
   `,
   styles: `
