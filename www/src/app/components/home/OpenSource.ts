@@ -13,19 +13,18 @@ import { RouterLink } from '@angular/router';
         ><span>o</span><span>u</span><span>r</span><span>c</span><span>e</span>
       </h2>
       <p>
-        Hashbrown is proudly free, MIT-licensed, and open source.<br />We offer
-        <a routerLink="/products/ai-engineering-sprint" class="product"
-          >AI engineering sprints</a
-        >, <a routerLink="/products/workshops" class="product">workshops</a>,
-        and <a routerLink="/products/consulting" class="product">consulting</a>.
-        You can also sponsor our work on
+        Hashbrown, our demos, and our prompts are free, MIT-licensed, and
+        open-source.<br />You bring your own LLM providers and server-side
+        stack. If you'd like to support the project, please consider
+        <a routerLink="/products/workshops" class="product"
+          >attending our workshops</a
+        >, or
         <a
           href="https://github.com/liveloveapp/hashbrown"
           rel="noopener"
           target="_blank"
           class="github"
-        >
-          GitHub </a
+          >sponsoring us on GitHub</a
         >.
       </p>
     </div>
@@ -34,8 +33,12 @@ import { RouterLink } from '@angular/router';
     :host {
       display: flex;
       justify-content: center;
-      width: 100%;
-      background: #3d3c3a;
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     .bleed {
@@ -45,62 +48,61 @@ import { RouterLink } from '@angular/router';
       gap: 16px;
       padding: 64px 32px;
       width: 100%;
-      max-width: 650px;
 
       > h2 {
         font:
-          700 56px/64px Fredoka,
+          700 64px/72px Fredoka,
           sans-serif;
 
         > span:nth-child(1) {
-          color: #fbbb52;
+          color: var(--sunshine-yellow-dark, #e8a23d);
         }
         > span:nth-child(2) {
-          color: #64afb5;
+          color: var(--sunset-orange, #e88c4d);
         }
         > span:nth-child(3) {
-          color: #e88c4d;
+          color: var(--indian-red, #b86060);
         }
         > span:nth-child(4) {
-          color: #a0a985;
+          color: var(--olive-green, #616f36);
         }
         > span:nth-child(5) {
-          color: #ad907c;
+          color: var(--sky-blue-dark, #64afb5);
         }
         > span:nth-child(6) {
-          color: #e27676;
+          color: var(--sunshine-yellow-dark, #e8a23d);
         }
         > span:nth-child(7) {
-          color: #fbbb52;
+          color: var(--sunset-orange, #e88c4d);
         }
         > span:nth-child(8) {
-          color: #64afb5;
+          color: var(--indian-red, #b86060);
         }
         > span:nth-child(9) {
-          color: #e88c4d;
+          color: var(--olive-green, #616f36);
         }
         > span:nth-child(10) {
-          color: #a0a985;
+          color: var(--sky-blue-dark, #64afb5);
         }
         > span:nth-child(11) {
-          color: #ad907c;
+          color: var(--sunshine-yellow-dark, #e8a23d);
         }
         > span:nth-child(12) {
-          color: #e27676;
+          color: var(--sunset-orange, #e88c4d);
         }
         > span:nth-child(13) {
-          color: #fbbb52;
+          color: var(--indian-red, #b86060);
         }
         > span:nth-child(14) {
-          color: #64afb5;
+          color: var(--olive-green, #616f36);
         }
       }
 
       > p {
-        color: rgba(250, 249, 240, 0.8);
+        color: var(--gray-dark, #3d3c3a);
         text-align: center;
         font:
-          700 16px/24px Poppins,
+          500 18px/24px Fredoka,
           sans-serif;
 
         > a {
@@ -109,18 +111,18 @@ import { RouterLink } from '@angular/router';
           transition: text-decoration-color ease-in-out 0.2s;
 
           &.product {
-            color: #fbbb52;
+            color: var(--sunset-orange, #e88c4d);
 
             &:hover {
-              text-decoration-color: #fbbb52;
+              text-decoration-color: var(--sunset-orange, #e88c4d);
             }
           }
 
           &.github {
-            color: #9ecfd7;
+            color: var(--sky-blue-dark, #64afb5);
 
             &:hover {
-              text-decoration-color: #9ecfd7;
+              text-decoration-color: var(--sky-blue-dark, #64afb5);
             }
           }
         }
@@ -129,7 +131,8 @@ import { RouterLink } from '@angular/router';
 
     @media screen and (min-width: 1024px) {
       .bleed {
-        padding: 128px 64px;
+        max-width: 800px;
+        padding: 256px 32px;
       }
     }
 

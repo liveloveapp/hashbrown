@@ -52,6 +52,7 @@ import { ConfigService } from '../../services/ConfigService';
       flex-direction: column;
       gap: 192px;
       align-self: center;
+      padding: 32px;
 
       > .hero {
         display: flex;
@@ -69,7 +70,7 @@ import { ConfigService } from '../../services/ConfigService';
 
           img {
             width: 94px;
-            height: 100px;
+            height: auto;
             aspect-ratio: 47/50;
           }
         }
@@ -217,7 +218,7 @@ import { ConfigService } from '../../services/ConfigService';
 
             img {
               width: 148px;
-              height: 100px;
+              height: auto;
               aspect-ratio: 47/50;
             }
           }

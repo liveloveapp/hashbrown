@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 @Component({
   imports: [RouterOutlet, Footer, Header],
   template: `
-    <www-header />
+    <www-header class="texture" />
     <main class="products">
       <router-outlet></router-outlet>
     </main>
@@ -19,8 +19,13 @@ import { Header } from '../components/Header';
       height: 100%;
     }
 
-    .products {
-      border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+    .texture {
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
   `,
 })

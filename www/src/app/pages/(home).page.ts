@@ -8,7 +8,6 @@ import { OpenSource } from '../components/home/OpenSource';
 import { TheGravy } from '../components/home/TheGravy';
 import { LdpTour } from '../components/ldp/LdpTour';
 import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
-import { Texture } from '../components/Texture';
 
 @Component({
   imports: [
@@ -20,19 +19,17 @@ import { Texture } from '../components/Texture';
     LdpTour,
     LdpTourMobile,
     OpenSource,
-    Texture,
     TheGravy,
   ],
   template: `
-    <www-texture>
+    <div class="texture">
       <www-header />
       <www-hero />
-    </www-texture>
+    </div>
     <main class="home">
       <www-ldp-tour />
       <www-ldp-tour-mobile />
       <www-open-source />
-      <www-adapters />
       <www-getting-started />
       <www-the-gravy />
     </main>
@@ -43,6 +40,15 @@ import { Texture } from '../components/Texture';
       display: flex;
       flex-direction: column;
       height: 100%;
+    }
+
+    .texture {
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     .home {

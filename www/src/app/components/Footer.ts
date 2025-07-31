@@ -38,16 +38,20 @@ import { ConfigService } from '../services/ConfigService';
             </li>
           </ul>
         </div>
-        <div class="products">
-          <div class="title">Products</div>
+        <div class="learn">
+          <div class="title">Learn</div>
           <ul>
+            <li>
+              <a routerLink="/products/workshops" class="underline">
+                Workshops
+              </a>
+            </li>
             <li>
               <a routerLink="/products/ai-engineering-sprint" class="underline">
                 AI Engineering Sprint
               </a>
-              <a routerLink="/products/workshops" class="underline">
-                Workshops
-              </a>
+            </li>
+            <li>
               <a routerLink="/products/consulting" class="underline">
                 Consulting
               </a>
@@ -247,12 +251,12 @@ import { ConfigService } from '../services/ConfigService';
           grid-column: span 6;
         }
 
-        > .products {
+        > .learn {
           grid-column: span 6;
         }
 
         > .docs,
-        > .products {
+        > .learn {
           display: flex;
           flex-direction: column;
           gap: 8px;
@@ -305,7 +309,7 @@ import { ConfigService } from '../services/ConfigService';
             grid-column: 7 / span 3;
           }
 
-          > .products {
+          > .learn {
             grid-column: 10 / span 3;
           }
         }
@@ -323,7 +327,7 @@ import { ConfigService } from '../services/ConfigService';
             grid-column: 9 / span 2;
           }
 
-          > .products {
+          > .learn {
             grid-column: 11 / span 2;
           }
         }

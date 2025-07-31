@@ -12,10 +12,11 @@ import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { BrandGitHub } from '../icons/BrandGitHub';
 import { ConfigService } from '../services/ConfigService';
+import { Menu } from '../icons/Menu';
 
 @Component({
   selector: 'www-header',
-  imports: [BrandGitHub, RouterLink],
+  imports: [BrandGitHub, Menu, RouterLink],
   template: `
     <header>
       <div class="left">
@@ -58,21 +59,7 @@ import { ConfigService } from '../services/ConfigService';
           aria-label="Navigation menu"
           class="menu-button"
         >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M3 12H21M3 6H21M3 18H21"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
+          <www-menu />
         </button>
       </div>
     </header>

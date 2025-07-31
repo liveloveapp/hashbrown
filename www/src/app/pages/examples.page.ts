@@ -13,7 +13,7 @@ import { Header } from '../components/Header';
 @Component({
   imports: [RouterOutlet, Header, Alert],
   template: `
-    <www-header />
+    <www-header class="texture" />
     <main class="examples">
       @if (isSafari()) {
         <div class="alert">
@@ -36,6 +36,15 @@ import { Header } from '../components/Header';
       display: flex;
       flex-direction: column;
       height: 100%;
+    }
+
+    .texture {
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     .examples {

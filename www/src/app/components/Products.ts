@@ -1,12 +1,10 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { BrandLiveLoveApp } from '../icons/BrandLiveLoveApp';
-import { LiveLoveAppButton } from './LiveLoveAppButton';
-import { CircleCheck } from '../icons/CircleCheck';
+import { Check } from '../icons/Check';
 
 @Component({
   selector: 'www-products',
-  imports: [RouterLink, BrandLiveLoveApp, LiveLoveAppButton, CircleCheck],
+  imports: [RouterLink, Check],
   template: `
     <div class="bleed">
       <div class="products">
@@ -17,11 +15,9 @@ import { CircleCheck } from '../icons/CircleCheck';
           </div>
           <div class="details">
             <ul>
-              <li><www-circle-check />1 day AI engineering workshop</li>
-              <li><www-circle-check />1 day hashbrown workshop</li>
-              <li>
-                <www-circle-check />32 hours to bring your AI idea to life
-              </li>
+              <li><www-check />1 day AI engineering workshop</li>
+              <li><www-check />1 day hashbrown workshop</li>
+              <li><www-check />32 hours to bring your AI idea to life</li>
             </ul>
           </div>
           <div class="action">
@@ -35,16 +31,13 @@ import { CircleCheck } from '../icons/CircleCheck';
           </div>
           <div class="details">
             <ul>
+              <li><www-check />Learn the fundamentals of AI Engineering</li>
               <li>
-                <www-circle-check />Learn the fundamentals of AI Engineering
+                <www-check />Learn how to build intelligent Angular and React
+                applications using hashbrown
               </li>
               <li>
-                <www-circle-check />Learn how to build intelligent Angular and
-                React applications using hashbrown
-              </li>
-              <li>
-                <www-circle-check />Learn how to build generative user
-                interfaces
+                <www-check />Learn how to build generative user interfaces
               </li>
             </ul>
           </div>
@@ -59,11 +52,11 @@ import { CircleCheck } from '../icons/CircleCheck';
           </div>
           <div class="details">
             <ul>
-              <li><www-circle-check />Architecture reviews</li>
-              <li><www-circle-check />Custom integrations</li>
-              <li><www-circle-check />Proof-of-concept builds</li>
-              <li><www-circle-check />Performance tuning</li>
-              <li><www-circle-check />Expert guidance on best practices</li>
+              <li><www-check />Architecture reviews</li>
+              <li><www-check />Custom integrations</li>
+              <li><www-check />Proof-of-concept builds</li>
+              <li><www-check />Performance tuning</li>
+              <li><www-check />Expert guidance on best practices</li>
             </ul>
           </div>
           <div class="action">

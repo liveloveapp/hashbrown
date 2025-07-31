@@ -2,23 +2,23 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DocsMenu } from '../components/DocsMenu';
 import { DocsSdkMenu } from '../components/DocsSdkMenu';
-import { Products } from '../components/Products';
 import { Footer } from '../components/Footer';
-import { MarkdownPage } from '../components/MarkdownPage';
 import { Header } from '../components/Header';
+import { MarkdownPage } from '../components/MarkdownPage';
+import { TheGravy } from '../components/home/TheGravy';
 
 @Component({
   imports: [
     Header,
     DocsMenu,
     DocsSdkMenu,
-    Products,
     Footer,
     MarkdownPage,
+    TheGravy,
     RouterOutlet,
   ],
   template: `
-    <www-header />
+    <www-header class="texture" />
     <main class="docs">
       <www-docs-menu />
       <div>
@@ -28,7 +28,7 @@ import { Header } from '../components/Header';
         </www-markdown-page>
       </div>
     </main>
-    <www-products />
+    <www-the-gravy />
     <www-footer />
   `,
   styles: `
@@ -36,6 +36,15 @@ import { Header } from '../components/Header';
       display: flex;
       flex-direction: column;
       height: 100%;
+    }
+
+    .texture {
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     .docs {

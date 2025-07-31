@@ -1,21 +1,21 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { Products } from '../components/Products';
+import { ApiMenu } from '../components/ApiMenu';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
-import { ApiMenu } from '../components/ApiMenu';
+import { TheGravy } from '../components/home/TheGravy';
 
 @Component({
-  imports: [RouterOutlet, Footer, Header, ApiMenu, Products],
+  imports: [RouterOutlet, Footer, Header, ApiMenu, TheGravy],
   template: `
-    <www-header />
+    <www-header class="texture" />
     <main class="api">
       <www-ref-menu />
       <div>
         <router-outlet></router-outlet>
       </div>
     </main>
-    <www-products />
+    <www-the-gravy />
     <www-footer />
   `,
   styles: `
@@ -23,6 +23,15 @@ import { ApiMenu } from '../components/ApiMenu';
       display: flex;
       flex-direction: column;
       height: 100%;
+    }
+
+    .texture {
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     .api {
