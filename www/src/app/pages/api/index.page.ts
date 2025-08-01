@@ -130,15 +130,28 @@ import { ReferenceService } from '../../services/ReferenceService';
           width: 100%;
           padding: 0 24px;
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: 1fr;
           gap: 16px;
           border-left: 1px solid rgba(255, 255, 255, 0.12);
         }
       }
 
-      @media screen and (min-width: 1024px) {
+      @media screen and (min-width: 768px) {
+        .packages {
+          > .symbols {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+      }
+
+      @media screen and (min-width: 1281px) {
         .packages {
           max-width: 1024px;
+
+          > .symbols {
+            border-left: 1px solid rgba(255, 255, 255, 0.12);
+            grid-template-columns: repeat(3, 1fr);
+          }
         }
       }
     `,

@@ -8,7 +8,7 @@ import { TheGravy } from '../components/home/TheGravy';
 @Component({
   imports: [RouterOutlet, Footer, Header, ApiMenu, TheGravy],
   template: `
-    <www-header class="texture" />
+    <www-header position="fixed" />
     <main class="api">
       <www-ref-menu />
       <div>
@@ -25,21 +25,10 @@ import { TheGravy } from '../components/home/TheGravy';
       height: 100%;
     }
 
-    .texture {
-      background-color: var(--vanilla-ivory, #faf9f0);
-      background-image: url('/image/texture/fabric.png');
-      background-size: auto;
-      background-repeat: repeat;
-      background-position: center;
-      background-attachment: fixed;
-    }
-
     .api {
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
-      border-top: 1px solid rgba(61, 60, 58, 0.24);
-      border-bottom: 1px solid rgba(61, 60, 58, 0.24);
 
       > www-ref-menu {
         display: none;

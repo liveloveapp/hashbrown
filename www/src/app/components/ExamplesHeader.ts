@@ -109,7 +109,7 @@ import { DropdownMenu } from './DropDownMenu';
 
                 > a {
                   font:
-                    600 16px/16px 'KefirVariable',
+                    700 16px/16px 'KefirVariable',
                     sans-serif;
                   color: #774625;
                   font-variation-settings: 'wght' 700;
@@ -128,7 +128,7 @@ import { DropdownMenu } from './DropDownMenu';
                     align-items: center;
                     gap: 8px;
                     font:
-                      600 16px/16px 'KefirVariable',
+                      700 16px/16px 'KefirVariable',
                       sans-serif;
                     color: #774625;
                     font-variation-settings: 'wght' 700;

@@ -1,152 +1,317 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { Angular } from '../../icons/Angular';
+import { Check } from '../../icons/Check';
+import { React } from '../../icons/React';
+import { Calendar } from '../../components/Calendar';
 
 @Component({
-  imports: [],
+  imports: [Angular, Calendar, Check, React, RouterLink],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
+    <div class="hero">
+      <img
+        src="/image/product/workshop/brian-whiteboard.jpg"
+        alt="Mike Ryan and Brian Love drawing software architecture diagrams on a whiteboard"
+      />
+    </div>
     <div class="bleed">
-      <div class="title">
-        <h1>Workshops</h1>
-      </div>
       <p>
-        Sign up for our live, virtual workshops to see how to integrate
-        Hashbrown in Angular and React applications.
+        Our workshops are live, hands-on, and taught by the core hashbrown team.
       </p>
-
-      <div>
-        <h2>What You'll Learn</h2>
-
-        <div class="learn-box">
-          AI Fundamentals
-          <ul>
-            <li>How to generate a completion with an LLM</li>
-            <li>What factors to consider when choosing an LLM</li>
-            <li>
-              What are tokens, how much do they cost, and how do you measure
-              token usage
-            </li>
-
-            <li>How tool calling works</li>
-          </ul>
+      <div class="courses">
+        <div class="course">
+          <div class="title">
+            <h2>Build Generative UI</h2>
+            <small
+              ><www-angular
+                fill="var(--gray-dark, #3d3c3a)"
+                height="18px"
+                width="18px"
+              />
+              Angular</small
+            >
+          </div>
+          <div class="details">
+            <ul>
+              <li><www-check />Generate completions</li>
+              <li><www-check />LLM models, capabilities, and limitations</li>
+              <li><www-check />Tokens and token usage</li>
+              <li><www-check />Skillet - hashbrown's schema language</li>
+              <li><www-check />Debugging</li>
+              <li><www-check />Function calling</li>
+              <li><www-check />Structured output</li>
+              <li>
+                <www-check />Running code in hashbrown's JavaScript runtime
+              </li>
+              <li><www-check />Exposing components</li>
+              <li><www-check />Generative user interfaces</li>
+              <li><www-check />Agentic user interfaces</li>
+              <li>
+                <www-check />Generating user interfaces using JavaScript Runtime
+              </li>
+            </ul>
+          </div>
+          <div class="calendar">
+            <www-calendar [month]="month()" [dates]="['2025-09-08']" />
+          </div>
+          <div class="price">
+            <span>$350</span>
+            <span>/ seat</span>
+          </div>
+          <div class="action">
+            <tito-button event="liveloveapp/hashbrown-angular-sep-2025">
+              Sep 8, 10am - 5pm ET
+            </tito-button>
+          </div>
         </div>
-
-        <div class="learn-box">
-          Intro to Hashbrown
-          <ul>
-            <li>Creating completions with Hashbrown</li>
-            <li>Debugging completions</li>
-            <li>
-              Getting structured data out of LLMs with Skillet, Hashbrown’s
-              schema language
-            </li>
-          </ul>
+        <div class="course">
+          <div class="title">
+            <h2>Build Generative UI</h2>
+            <small
+              ><www-react
+                fill="var(--gray-dark, #3d3c3a)"
+                height="18px"
+                width="18px"
+              />
+              React</small
+            >
+          </div>
+          <div class="details">
+            <ul>
+              <li><www-check />Generate completions</li>
+              <li><www-check />LLM models, capabilities, and limitations</li>
+              <li><www-check />Tokens and token usage</li>
+              <li><www-check />Skillet - hashbrown's schema language</li>
+              <li><www-check />Debugging</li>
+              <li><www-check />Function calling</li>
+              <li><www-check />Structured output</li>
+              <li>
+                <www-check />Running code in hashbrown's JavaScript runtime
+              </li>
+              <li><www-check />Exposing components</li>
+              <li><www-check />Generative user interfaces</li>
+              <li><www-check />Agentic user interfaces</li>
+              <li>
+                <www-check />Generating user interfaces using JavaScript Runtime
+              </li>
+            </ul>
+          </div>
+          <div class="calendar">
+            <www-calendar [month]="month()" [dates]="['2025-09-09']" />
+          </div>
+          <div class="price">
+            <span>$350</span>
+            <span>/ seat</span>
+          </div>
+          <div class="action">
+            <tito-button event="liveloveapp/hashbrown-react-sep-2025">
+              Sep 9, 10am - 5pm ET
+            </tito-button>
+          </div>
         </div>
-
-        <div class="learn-box">
-          Generative User Interfaces
-          <ul>
-            <li>Teaching LLMs how to render rich user interfaces</li>
-            <li>
-              Composing multiple AI-powered components to create agentic user
-              interfaces
-            </li>
-            <li>
-              Generating glue code on the fly and running it in Hashbrown’s
-              JavaScript Runtime
-            </li>
-          </ul>
+        <div class="course">
+          <div class="title">
+            <h2>Customized</h2>
+            <small>Customized engagements</small>
+          </div>
+          <div class="details">
+            <ul>
+              <li><www-check />Onsite, online, or hybrid</li>
+              <li><www-check />Volume discount</li>
+              <li><www-check />Customized content</li>
+            </ul>
+          </div>
+          <div class="action">
+            <a routerLink="/contact-us">Contact Us</a>
+          </div>
         </div>
       </div>
-
-      <div>
-        <h2>What You'll Build</h2>
-
-        <div class="learn-box">
-          <ul>
-            <li>
-              UI chat bot that can take action on behalf of the user (smart
-              lighting demo)
-            </li>
-            <li>
-              Natural language exploration tool of data (fully generative UI)
-              (finance demo that works like the Spotify demo)
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="events">
-        <h2>Hashbrown + Angular - September 8th, 2025</h2>
-        <tito-widget
-          event="liveloveapp/hashbrown-angular-sep-2025"
-        ></tito-widget>
-
-        <h2>Hashbrown + React - September 9th, 2025</h2>
-        <tito-widget event="liveloveapp/hashbrown-react-sep-2025"></tito-widget>
-      </div>
-      <div class="posts"></div>
     </div>
   `,
   styles: `
     :host {
       display: flex;
-      justify-content: center;
-      width: 100%;
-    }
-
-    .bleed {
-      display: flex;
       flex-direction: column;
-      gap: 32px;
-      padding: 64px 32px;
-      max-width: 767px;
       width: 100%;
+      height: 100%;
     }
 
-    .title {
+    .hero {
+      width: 100%;
+      height: 100%;
+      max-height: 600px;
       display: flex;
-      align-items: flex-end;
-      gap: 32px;
+      justify-content: center;
+      align-items: center;
 
-      > h1 {
-        color: #774625;
-        font:
-          400 40px/56px 'KefirVariable',
-          sans-serif;
-        font-variation-settings: 'wght' 800;
+      > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
     }
 
-    h2 {
-      color: #3d3c3a;
-      font:
-        700 normal 24px / 32px Fredoka,
-        sans-serif;
-    }
-
-    .learn-box {
-      color: rgba(61, 60, 58, 1);
-      border: 1px solid #3d3c3a;
-      padding: 16px;
+    .bleed {
+      align-self: center;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 56px;
+      padding: 32px;
+      width: 100%;
+      max-width: 1024px;
 
-      border-radius: 16px;
-      margin-bottom: 8px;
-      margin-top: 8px;
+      > p {
+        color: var(--gray, #5e5c5a);
+        text-align: center;
+        font:
+          500 normal 18px/24px Fredoka,
+          sans-serif;
+      }
+
+      > .courses {
+        display: grid;
+        grid-template-columns: 1fr;
+        border-top: 1px solid rgba(61, 60, 58, 0.24);
+        border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+
+        > .course {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+
+          > .title {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 32px;
+            border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+
+            > h2 {
+              color: var(--gray-dark, #3d3c3a);
+              font:
+                400 24px/32px 'KefirVariable',
+                sans-serif;
+              font-variation-settings: 'wght' 400;
+            }
+
+            > small {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              color: var(--gray, #5e5c5a);
+              font:
+                400 normal 16px/24px Fredoka,
+                sans-serif;
+            }
+          }
+
+          > .details {
+            flex: 1 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 32px;
+
+            > p {
+              color: var(--gray-dark, #3d3c3a);
+              font:
+                400 normal 14px/18px Poppins,
+                sans-serif;
+            }
+
+            > ul {
+              display: flex;
+              flex-direction: column;
+              gap: 16px;
+
+              > li {
+                display: flex;
+                gap: 8px;
+                font:
+                  300 normal 14px/20px Fredoka,
+                  sans-serif;
+              }
+            }
+          }
+
+          > .calendar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 32px;
+          }
+
+          > .price {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 32px;
+
+            > span:first-child {
+              color: var(--gray-dark, #3d3c3a);
+              font:
+                400 32px/40px 'KefirVariable',
+                sans-serif;
+              font-variation-settings: 'wght' 400;
+            }
+
+            > span:last-child {
+              color: var(--gray, #5e5c5a);
+              font:
+                400 normal 14px/20px Fredoka,
+                sans-serif;
+            }
+          }
+
+          > .action {
+            display: flex;
+            justify-content: stretch;
+            padding: 32px;
+
+            > a,
+            > tito-button button {
+              width: 100%;
+              display: flex;
+              padding: 12px 24px;
+              justify-content: center;
+              align-items: center;
+              border-radius: 8px;
+              color: rgba(0, 0, 0, 0.64);
+              background: #e1e1e1;
+              font:
+                700 14px/16px 'Fredoka',
+                sans-serif;
+            }
+
+            > tito-button {
+              width: 100%;
+
+              > button {
+                background: var(--sunshine-yellow, #fbbb52);
+              }
+            }
+          }
+        }
+
+        > div:not(:nth-child(3n)) {
+          border-right: 1px solid rgba(61, 60, 58, 0.24);
+        }
+      }
     }
 
-    ul {
-      list-style: disc;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-left: 24px;
-      font:
-        400 normal 14px / 18px Poppins,
-        sans-serif;
+    @media screen and (min-width: 1024px) {
+      .bleed {
+        padding: 64px;
+
+        > .courses {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
     }
   `,
 })
-export default class WorkshopsIndexPage {}
+export default class WorkshopsIndexPage {
+  readonly month = signal<Date>(new Date(2025, 8, 1));
+}

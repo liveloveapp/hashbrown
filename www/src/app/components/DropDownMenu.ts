@@ -1,34 +1,40 @@
 import {
   Component,
-  Input,
-  signal,
-  HostListener,
   ElementRef,
+  HostListener,
   input,
+  signal,
 } from '@angular/core';
-import { ChevronDown } from '../icons/ChevronDown';
+import {
+  CdkConnectedOverlay,
+  CdkOverlayOrigin,
+  ConnectedPosition,
+} from '@angular/cdk/overlay';
+import { Glass } from './Glass';
 
 @Component({
   selector: 'www-dropdown-menu',
-  imports: [ChevronDown],
+  imports: [CdkConnectedOverlay, CdkOverlayOrigin, Glass],
   template: `
-    <button (click)="toggle()">
-      <ng-content select="label"></ng-content>
-      <www-chevron-down />
-    </button>
-    <div
-      role="menu"
-      class="dropdown-panel"
-      [style.visibility]="open() ? 'visible' : 'hidden'"
-      [style.position]="'absolute'"
-      [style.z-index]="'1000'"
-      [style.top]="placement()[1] === 'bottom' ? 'calc(100% + 8px)' : null"
-      [style.bottom]="placement()[1] === 'top' ? 'calc(100% + 8px)' : null"
-      [style.left]="placement()[0] === 'left' ? '0' : null"
-      [style.right]="placement()[0] === 'right' ? '0' : null"
+    <button
+      (click)="open.set(!open())"
+      type="button"
+      cdkOverlayOrigin
+      #trigger="cdkOverlayOrigin"
     >
-      <ng-content select="[content]"></ng-content>
-    </div>
+      <ng-content select="label"></ng-content>
+    </button>
+    <ng-template
+      cdkConnectedOverlay
+      [cdkConnectedOverlayOrigin]="trigger"
+      [cdkConnectedOverlayOpen]="open()"
+      [cdkConnectedOverlayPanelClass]="'dropdown-panel'"
+      (detach)="open.set(false)"
+    >
+      <www-glass>
+        <ng-content select="[content]"></ng-content>
+      </www-glass>
+    </ng-template>
   `,
   styles: [
     `
@@ -50,9 +56,7 @@ import { ChevronDown } from '../icons/ChevronDown';
         }
       }
 
-      .dropdown-panel {
-        max-width: 280px;
-        background: #fff;
+      ::ng-deep www-glass {
         display: flex;
         gap: 4px;
         padding: 16px;
@@ -65,14 +69,15 @@ import { ChevronDown } from '../icons/ChevronDown';
   ],
 })
 export class DropdownMenu {
-  placement = input<['left' | 'right', 'top' | 'bottom']>(['left', 'bottom']);
+  positions = input<ConnectedPosition[]>([
+    {
+      originX: 'start',
+      originY: 'bottom',
+      overlayX: 'start',
+      overlayY: 'top',
+    },
+  ]);
   open = signal(false);
-
-  constructor(private el: ElementRef<HTMLElement>) {}
-
-  toggle() {
-    this.open.update((v) => !v);
-  }
 
   @HostListener('document:click', ['$event.target'])
   onClickOutside(target: HTMLElement) {
@@ -80,4 +85,13 @@ export class DropdownMenu {
       this.open.set(false);
     }
   }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && this.open()) {
+      this.open.set(false);
+    }
+  }
+
+  constructor(private el: ElementRef<HTMLElement>) {}
 }

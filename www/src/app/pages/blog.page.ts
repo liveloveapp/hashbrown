@@ -2,14 +2,16 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
+import { TheGravy } from '../components/home/TheGravy';
 
 @Component({
-  imports: [RouterOutlet, Footer, Header],
+  imports: [RouterOutlet, Footer, Header, TheGravy],
   template: `
-    <www-header class="texture" />
+    <www-header position="fixed" />
     <main class="blog">
       <router-outlet></router-outlet>
     </main>
+    <www-the-gravy />
     <www-footer />
   `,
   styles: `
@@ -19,17 +21,8 @@ import { Header } from '../components/Header';
       height: 100%;
     }
 
-    .texture {
-      background-color: var(--vanilla-ivory, #faf9f0);
-      background-image: url('/image/texture/fabric.png');
-      background-size: auto;
-      background-repeat: repeat;
-      background-position: center;
-      background-attachment: fixed;
-    }
-
-    .blog {
-      border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+    www-header ::ng-deep .spacer {
+      display: none;
     }
   `,
 })

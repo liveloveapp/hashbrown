@@ -102,8 +102,9 @@ import { Check } from '../icons/Check';
             > h2 {
               color: #3d3c3a;
               font:
-                600 24px/32px 'KefirVariable',
+                400 24px/32px 'KefirVariable',
                 sans-serif;
+              font-variation-settings: 'wght' 400;
             }
 
             > p {
@@ -167,7 +168,7 @@ import { Check } from '../icons/Check';
           }
         }
 
-        > div:not(:last-child) {
+        > div:not(:nth-child(3n)) {
           border-right: 1px solid rgba(61, 60, 58, 0.24);
         }
       }

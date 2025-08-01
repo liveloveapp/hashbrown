@@ -316,10 +316,29 @@ code {
   }
 }
 
-.mat-mdc-menu-panel {
-  background-color: #774625 !important;
-}
+.glass {
+  --glass-background-color-a: rgba(255, 255, 255, 0.12);
+  --glass-background-color-b: rgba(255, 255, 255, 0.08);
+  --glass-background-color-c: rgba(255, 255, 255, 0.12);
+  --glass-border-radius: 8px;
+  --glass-border-opacity: 24%;
+  border-radius: var(--glass-border-radius);
+  background:
+    paint(glassBorder),
+    radial-gradient(
+      circle at 0% 0%,
+      var(--glass-background-color-a) 0%,
+      var(--glass-background-color-b) 75%,
+      var(--glass-background-color-c) 100%
+    );
+  backdrop-filter: blur(24px);
 
-.mat-mdc-menu-item-text {
-  color: #faf9f0;
+  @supports (background: -webkit-named-image(i)) {
+    background: radial-gradient(
+      circle at 0% 0%,
+      var(--glass-background-color-a) 0%,
+      var(--glass-background-color-b) 75%,
+      var(--glass-background-color-c) 100%
+    );
+  }
 }

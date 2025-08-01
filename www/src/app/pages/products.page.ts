@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 @Component({
   imports: [RouterOutlet, Footer, Header],
   template: `
-    <www-header class="texture" />
+    <www-header position="fixed" />
     <main class="products">
       <router-outlet></router-outlet>
     </main>
@@ -19,13 +19,8 @@ import { Header } from '../components/Header';
       height: 100%;
     }
 
-    .texture {
-      background-color: var(--vanilla-ivory, #faf9f0);
-      background-image: url('/image/texture/fabric.png');
-      background-size: auto;
-      background-repeat: repeat;
-      background-position: center;
-      background-attachment: fixed;
+    www-header ::ng-deep .spacer {
+      display: none;
     }
   `,
 })

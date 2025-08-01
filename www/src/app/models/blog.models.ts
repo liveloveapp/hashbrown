@@ -1,6 +1,7 @@
 export interface PostAttributes {
   title: string;
   slug: string;
+  date?: Date;
   description: string;
   tags: string[];
   team: string[];

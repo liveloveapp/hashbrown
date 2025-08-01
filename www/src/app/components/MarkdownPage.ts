@@ -52,7 +52,7 @@ type Heading = { level: number; text: string; id: string; url: string };
         flex-direction: column;
         gap: 6px;
         position: fixed;
-        top: 160px;
+        top: 128px;
         right: 32px;
         margin: 0;
         padding: 0;

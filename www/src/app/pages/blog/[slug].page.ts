@@ -56,7 +56,7 @@ import { PostAttributes } from '../../models/blog.models';
         > h1 {
           color: #774625;
           font:
-            400 40px/56px 'KefirVariable',
+            800 40px/56px 'KefirVariable',
             sans-serif;
           font-variation-settings: 'wght' 800;
         }

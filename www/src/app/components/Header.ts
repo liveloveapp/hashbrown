@@ -1,146 +1,258 @@
-import {
-  Component,
-  computed,
-  ElementRef,
-  HostListener,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { Overlay, OverlayRef } from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
-import { BrandGitHub } from '../icons/BrandGitHub';
+import { Component, computed, inject, input } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ConfigService } from '../services/ConfigService';
 import { Menu } from '../icons/Menu';
+import { DropdownMenu } from './DropDownMenu';
+import { Angular } from '../icons/Angular';
+import { React } from '../icons/React';
+
+type HeaderPosition = 'fixed' | 'relative';
 
 @Component({
   selector: 'www-header',
-  imports: [BrandGitHub, Menu, RouterLink],
+  imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu, Angular, React],
   template: `
-    <header>
-      <div class="left">
-        <a routerLink="/">
-          <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
-        </a>
-      </div>
-      <div class="right">
-        <nav>
-          <ul>
-            <li>
-              <a routerLink="/">home</a>
-            </li>
-            <li>
-              <a [routerLink]="docsUrl()">docs</a>
-            </li>
-            <li>
-              <a routerLink="/products/workshops">workshops</a>
-            </li>
-            <li>
-              <a routerLink="/blog">blog</a>
-            </li>
-            <li>
+    <header [class]="position()">
+      <menu [class.glass]="position() === 'fixed'">
+        <div class="left">
+          <a routerLink="/">
+            <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
+          </a>
+        </div>
+        <div class="right">
+          <nav>
+            <ul>
+              <li>
+                <a
+                  routerLink="/"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="{ exact: true }"
+                  >home</a
+                >
+              </li>
+              <li>
+                <a [routerLink]="docsUrl()" routerLinkActive="active">docs</a>
+              </li>
+              <li>
+                <a routerLink="/products/workshops" routerLinkActive="active">
+                  workshops
+                </a>
+              </li>
+              <li>
+                <a routerLink="/blog" routerLinkActive="active">blog</a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/liveloveapp/hashbrown"
+                  target="_blank"
+                  class="github"
+                >
+                  github
+                </a>
+              </li>
+              <li>
+                <www-dropdown-menu
+                  [positions]="[
+                    {
+                      originX: 'end',
+                      originY: 'bottom',
+                      overlayX: 'end',
+                      overlayY: 'top',
+                    },
+                  ]"
+                >
+                  @switch (sdk()) {
+                    @case ('angular') {
+                      <label>
+                        <www-angular
+                          height="16px"
+                          width="16px"
+                          fill="#774625"
+                        />
+                      </label>
+                    }
+                    @case ('react') {
+                      <label>
+                        <www-react height="16px" width="16px" fill="#774625" />
+                      </label>
+                    }
+                  }
+                  <div content>
+                    <a routerLink="/docs/angular/start/quick" class="menu-item">
+                      <www-angular fill="#774625" />
+                      Angular
+                    </a>
+                    <a routerLink="/docs/react/start/quick" class="menu-item">
+                      <www-react fill="#774625" />
+                      React
+                    </a>
+                  </div>
+                </www-dropdown-menu>
+              </li>
+            </ul>
+          </nav>
+        </div>
+        <div class="menu">
+          <www-dropdown-menu
+            [positions]="[
+              {
+                originX: 'start',
+                originY: 'bottom',
+                overlayX: 'start',
+                overlayY: 'top',
+              },
+            ]"
+          >
+            <label><www-menu /></label>
+            <div content>
+              <a routerLink="/" class="menu-item">home</a>
+              <a [routerLink]="docsUrl()" class="menu-item">docs</a>
+              <a routerLink="/products/workshops" class="menu-item">
+                workshops
+              </a>
+              <a routerLink="/blog" class="menu-item">blog</a>
               <a
                 href="https://github.com/liveloveapp/hashbrown"
                 target="_blank"
-                class="github"
+                class="menu-item"
+                >github</a
               >
-                <www-brand-github height="16" width="16" />
-                github
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </div>
-      <div class="menu">
-        <button
-          #menuTrigger
-          (click)="toggleMenu()"
-          aria-label="Navigation menu"
-          class="menu-button"
-        >
-          <www-menu />
-        </button>
-      </div>
+            </div>
+          </www-dropdown-menu>
+        </div>
+      </menu>
     </header>
+    @if (position() === 'fixed') {
+      <div class="spacer"></div>
+    }
   `,
   styles: [
     `
       :host {
         display: flex;
+        justify-content: stretch;
+        height: 80px;
       }
 
       header {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 24px 32px;
+        justify-content: center;
         width: 100%;
-        max-width: 1080px;
-        margin: 0 auto;
+        padding: 12px 32px;
 
-        > .left {
-          display: flex;
+        &.fixed {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 1000;
           align-items: center;
+          height: 80px;
 
-          > a {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+          > menu {
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+            transition: background-color 0.2s ease;
+
+            &:hover {
+              background: rgba(250, 249, 240, 0.56);
+            }
           }
         }
 
-        > .right {
-          > nav {
-            > ul {
+        > menu {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          max-width: 1080px;
+          padding: 12px 32px;
+
+          > .left {
+            display: flex;
+            align-items: center;
+
+            > a {
               display: flex;
               align-items: center;
-              gap: 24px;
+              gap: 8px;
+            }
+          }
 
-              > li {
+          > .right {
+            display: none;
+
+            > nav {
+              > ul {
                 display: flex;
-                justify-content: center;
                 align-items: center;
+                gap: 24px;
 
-                > a {
+                > li {
                   display: flex;
+                  justify-content: center;
                   align-items: center;
-                  gap: 4px;
-                  color: var(--gray, #5e5c5a);
-                  font:
-                    500 16px/140% Fredoka,
-                    sans-serif;
 
-                  &:hover {
-                    font-weight: 700;
-                    color: var(--sunset-orange, #e88c4d);
+                  > a {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    color: var(--gray, #5e5c5a);
+                    font:
+                      500 16px/140% Fredoka,
+                      sans-serif;
+
+                    &:hover,
+                    &.active {
+                      color: var(--sunset-orange, #e88c4d);
+                    }
                   }
                 }
               }
             }
           }
-        }
 
-        > .menu {
-          display: none;
+          > .menu {
+            display: flex;
+            margin-top: -4px;
+            margin-bottom: -4px;
+
+            ::ng-deep button {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 4px;
+              color: var(--gray, #5e5c5a);
+              border-radius: 4px;
+              transition: background-color 0.2s ease;
+
+              &:hover {
+                background-color: rgba(0, 0, 0, 0.04);
+              }
+            }
+          }
         }
       }
 
-      .menu-button {
+      .spacer {
+        height: 80px;
+      }
+
+      .menu-item {
         display: flex;
         align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border: none;
-        background: none;
-        cursor: pointer;
-        color: var(--gray, #5e5c5a);
-        border-radius: 4px;
+        gap: 8px;
+        padding: 12px 16px;
+        color: #774625;
+        text-decoration: none;
+        font:
+          600 16px/24px Poppins,
+          sans-serif;
         transition: background-color 0.2s ease;
 
         &:hover {
-          background-color: rgba(0, 0, 0, 0.04);
+          background-color: rgba(119, 70, 37, 0.04);
+          text-decoration: underline;
+          text-decoration-color: #774625;
         }
       }
 
@@ -148,152 +260,35 @@ import { Menu } from '../icons/Menu';
         header {
           display: none;
         }
-      }
 
-      @media (width < 600px) {
-        header .right {
+        .spacer {
           display: none;
         }
+      }
 
-        header .menu {
-          display: block;
+      @media screen and (min-width: 768px) {
+        header {
+          > menu {
+            > .right {
+              display: flex;
+            }
+
+            > .menu {
+              display: none;
+            }
+          }
         }
       }
     `,
   ],
 })
 export class Header {
-  configService = inject(ConfigService);
-  overlay = inject(Overlay);
-  menuTrigger = viewChild.required<ElementRef<HTMLElement>>('menuTrigger');
+  position = input<HeaderPosition>('relative');
 
-  private overlayRef: OverlayRef | null = null;
-  private menuOpen = signal(false);
+  configService = inject(ConfigService);
+  sdk = this.configService.sdk;
 
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/quick`;
   });
-
-  examplesUrl = computed(() => {
-    return `/examples/${this.configService.sdk()}/ui-chat`;
-  });
-
-  toggleMenu() {
-    if (this.menuOpen()) {
-      this.closeMenu();
-    } else {
-      this.openMenu();
-    }
-  }
-
-  private openMenu() {
-    if (this.overlayRef) {
-      return;
-    }
-
-    const triggerElement = this.menuTrigger().nativeElement;
-    const positionStrategy = this.overlay
-      .position()
-      .flexibleConnectedTo(triggerElement)
-      .withPositions([
-        {
-          originX: 'end',
-          originY: 'bottom',
-          overlayX: 'end',
-          overlayY: 'top',
-          offsetY: 8,
-        },
-      ]);
-
-    this.overlayRef = this.overlay.create({
-      positionStrategy,
-      scrollStrategy: this.overlay.scrollStrategies.close(),
-      hasBackdrop: true,
-      backdropClass: 'cdk-overlay-transparent-backdrop',
-    });
-
-    const menuPortal = new ComponentPortal(MobileMenuComponent);
-    const menuComponentRef = this.overlayRef.attach(menuPortal);
-
-    // Pass data to the menu component
-    menuComponentRef.instance.docsUrl = this.docsUrl();
-    menuComponentRef.instance.examplesUrl = this.examplesUrl();
-    menuComponentRef.instance.closeMenu = () => this.closeMenu();
-
-    this.overlayRef.backdropClick().subscribe(() => {
-      this.closeMenu();
-    });
-
-    this.menuOpen.set(true);
-  }
-
-  private closeMenu() {
-    if (this.overlayRef) {
-      this.overlayRef.dispose();
-      this.overlayRef = null;
-      this.menuOpen.set(false);
-    }
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscapeKey() {
-    if (this.menuOpen()) {
-      this.closeMenu();
-    }
-  }
-}
-
-// Mobile Menu Component
-@Component({
-  selector: 'www-mobile-menu',
-  imports: [RouterLink],
-  template: `
-    <div class="mobile-menu">
-      <a [routerLink]="docsUrl" (click)="closeMenu()" class="menu-item">
-        docs
-      </a>
-      <a routerLink="/api" (click)="closeMenu()" class="menu-item"> api </a>
-      <a [routerLink]="examplesUrl" (click)="closeMenu()" class="menu-item">
-        example
-      </a>
-      <a routerLink="/products" (click)="closeMenu()" class="menu-item">
-        products
-      </a>
-    </div>
-  `,
-  styles: `
-    .mobile-menu {
-      background: #fff;
-      border-radius: 8px;
-      box-shadow:
-        0 10px 15px -3px rgba(0, 0, 0, 0.16),
-        0 4px 6px -4px rgba(0, 0, 0, 0.16);
-      padding: 8px 0;
-      min-width: 200px;
-    }
-
-    .menu-item {
-      display: block;
-      padding: 12px 16px;
-      color: #774625;
-      text-decoration: none;
-      font:
-        600 16px/24px Poppins,
-        sans-serif;
-      transition: background-color 0.2s ease;
-
-      &:hover {
-        background-color: rgba(119, 70, 37, 0.04);
-        text-decoration: underline;
-        text-decoration-color: #774625;
-      }
-    }
-  `,
-})
-class MobileMenuComponent {
-  docsUrl = '';
-  examplesUrl = '';
-  closeMenu = () => {
-    // This will be set by the parent component
-  };
 }

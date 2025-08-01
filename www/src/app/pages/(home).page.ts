@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
-import { Adapters } from '../components/home/Adapters';
 import { GettingStarted } from '../components/home/GettingStarted';
 import { Hero } from '../components/home/Hero';
 import { OpenSource } from '../components/home/OpenSource';
@@ -11,7 +10,6 @@ import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
 
 @Component({
   imports: [
-    Adapters,
     Footer,
     GettingStarted,
     Header,
@@ -23,7 +21,7 @@ import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
   ],
   template: `
     <div class="texture">
-      <www-header />
+      <www-header position="relative" />
       <www-hero />
     </div>
     <main class="home">

@@ -1,28 +1,18 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DocsMenu } from '../components/DocsMenu';
-import { DocsSdkMenu } from '../components/DocsSdkMenu';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { MarkdownPage } from '../components/MarkdownPage';
 import { TheGravy } from '../components/home/TheGravy';
 
 @Component({
-  imports: [
-    Header,
-    DocsMenu,
-    DocsSdkMenu,
-    Footer,
-    MarkdownPage,
-    TheGravy,
-    RouterOutlet,
-  ],
+  imports: [Header, DocsMenu, Footer, MarkdownPage, TheGravy, RouterOutlet],
   template: `
-    <www-header class="texture" />
+    <www-header position="fixed" />
     <main class="docs">
       <www-docs-menu />
       <div>
-        <www-docs-sdk-menu />
         <www-markdown-page>
           <router-outlet></router-outlet>
         </www-markdown-page>
@@ -38,19 +28,11 @@ import { TheGravy } from '../components/home/TheGravy';
       height: 100%;
     }
 
-    .texture {
-      background-color: var(--vanilla-ivory, #faf9f0);
-      background-image: url('/image/texture/fabric.png');
-      background-size: auto;
-      background-repeat: repeat;
-      background-position: center;
-      background-attachment: fixed;
-    }
-
     .docs {
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
+      padding-top: 16px;
 
       > www-docs-menu {
         display: none;
