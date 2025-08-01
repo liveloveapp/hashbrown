@@ -33,7 +33,10 @@ import { ConfigService } from '../../services/ConfigService';
         <div class="alert">
           <p>
             <strong>New!</strong> Workshop tickets for
-            <a href="">Build Generative UIs in React</a> are on sale now
+            <a routerLink="/products/workshops"
+              >Build Generative UIs in React</a
+            >
+            are on sale now.
           </p>
         </div>
       </div>
@@ -185,6 +188,11 @@ import { ConfigService } from '../../services/ConfigService';
 
             > strong {
               font-weight: 700;
+            }
+
+            > a {
+              text-decoration-line: underline;
+              text-decoration-style: solid;
             }
           }
         }

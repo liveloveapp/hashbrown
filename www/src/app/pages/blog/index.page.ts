@@ -105,13 +105,7 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
       }
     }
 
-    @media screen and (min-width: 768px) {
-      .title {
-        > .filters {
-          display: flex;
-        }
-      }
-
+    @media screen and (min-width: 768px) and (max-width: 1023px) {
       .bleed {
         > .filters {
           display: flex;
@@ -153,8 +147,45 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
     }
 
     @media screen and (min-width: 1024px) {
-      .posts {
-        grid-template-columns: repeat(3, 1fr);
+      .bleed {
+        > .filters {
+          display: flex;
+        }
+
+        > .posts {
+          grid-template-columns: repeat(3, 1fr);
+          row-gap: 0;
+          border-top: 1px solid rgba(61, 60, 58, 0.24);
+          border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+
+          > * {
+            border-top: none;
+            border-right: 1px solid rgba(61, 60, 58, 0.24);
+            border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+            border-left: none;
+          }
+
+          > *:first-child {
+            grid-column: 1 / -1;
+            margin-bottom: 64px;
+          }
+
+          > *:nth-child(3n + 1) {
+            border-right: none;
+          }
+
+          > *:nth-child(2),
+          > *:nth-child(3),
+          > *:nth-child(4) {
+            border-top: 1px solid rgba(61, 60, 58, 0.24);
+          }
+
+          > *:nth-last-child(1),
+          > *:nth-last-child(2):not(:nth-child(3n + 1)),
+          > *:nth-last-child(3):not(:nth-child(3n + 1)) {
+            border-bottom: none;
+          }
+        }
       }
     }
   `,
@@ -162,10 +193,9 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
 export default class BlogIndexPage {
   readonly filters = [
     filter('All blogs', ''),
-    filter('Stories', 'stories'),
-    filter('Talks', 'talks'),
-    filter('Workshops', 'workshops'),
-    filter('Podcasts', 'podcasts'),
+    filter('Stories', 'story'),
+    filter('Talks', 'talk'),
+    filter('Releases', 'release'),
   ];
   selectedFilter = signal<Filter>(this.filters[0]);
 
