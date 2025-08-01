@@ -36,6 +36,7 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
       flex-direction: column;
       width: 100%;
       height: 100%;
+      margin-top: -80px;
     }
 
     .hero {

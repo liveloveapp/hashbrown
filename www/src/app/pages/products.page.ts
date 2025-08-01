@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 @Component({
   imports: [RouterOutlet, Footer, Header],
   template: `
-    <www-header position="fixed" />
+    <www-header position="fixed" [spacer]="false" />
     <main class="products">
       <router-outlet></router-outlet>
     </main>
@@ -17,10 +17,6 @@ import { Header } from '../components/Header';
       display: flex;
       flex-direction: column;
       height: 100%;
-    }
-
-    www-header ::ng-deep .spacer {
-      display: none;
     }
   `,
 })

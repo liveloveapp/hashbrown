@@ -1,9 +1,14 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  CUSTOM_ELEMENTS_SCHEMA,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Calendar } from '../../components/Calendar';
 import { Angular } from '../../icons/Angular';
 import { Check } from '../../icons/Check';
 import { React } from '../../icons/React';
-import { Calendar } from '../../components/Calendar';
 
 @Component({
   imports: [Angular, Calendar, Check, React, RouterLink],
@@ -11,8 +16,8 @@ import { Calendar } from '../../components/Calendar';
   template: `
     <div class="hero">
       <img
-        src="/image/product/workshop/brian-whiteboard.jpg"
-        alt="Mike Ryan and Brian Love drawing software architecture diagrams on a whiteboard"
+        src="/image/product/workshop/mike-whiteboard.jpg"
+        alt="Mike Ryan drawing software architecture diagrams on a whiteboard"
       />
     </div>
     <div class="bleed">
@@ -52,8 +57,10 @@ import { Calendar } from '../../components/Calendar';
               </li>
             </ul>
           </div>
-          <div class="calendar">
-            <www-calendar [month]="month()" [dates]="['2025-09-08']" />
+          <div class="calendars">
+            @for (month of angularMonths(); track month) {
+              <www-calendar [month]="month" [dates]="angular()" />
+            }
           </div>
           <div class="price">
             <span>$350</span>
@@ -97,8 +104,10 @@ import { Calendar } from '../../components/Calendar';
               </li>
             </ul>
           </div>
-          <div class="calendar">
-            <www-calendar [month]="month()" [dates]="['2025-09-09']" />
+          <div class="calendars">
+            @for (month of reactMonths(); track month) {
+              <www-calendar [month]="month" [dates]="react()" />
+            }
           </div>
           <div class="price">
             <span>$350</span>
@@ -235,11 +244,15 @@ import { Calendar } from '../../components/Calendar';
             }
           }
 
-          > .calendar {
+          > .calendars {
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
+            gap: 16px;
             padding: 32px;
+
+            > www-calendar {
+              width: 100%;
+            }
           }
 
           > .price {
@@ -313,5 +326,27 @@ import { Calendar } from '../../components/Calendar';
   `,
 })
 export default class WorkshopsIndexPage {
-  readonly month = signal<Date>(new Date(2025, 8, 1));
+  readonly angular = signal<Date[]>([
+    new Date(2025, 9, 6),
+    new Date(2025, 9, 20),
+  ]);
+
+  readonly react = signal<Date[]>([
+    new Date(2025, 8, 8),
+    new Date(2025, 8, 16),
+    new Date(2025, 8, 22),
+    new Date(2025, 8, 30),
+  ]);
+
+  readonly angularMonths = computed<Date[]>(() => {
+    return [...new Set(this.angular().map((date) => date.getMonth()))].map(
+      (month) => new Date(2025, month, 1),
+    );
+  });
+
+  readonly reactMonths = computed<Date[]>(() => {
+    return [...new Set(this.react().map((date) => date.getMonth()))].map(
+      (month) => new Date(2025, month, 1),
+    );
+  });
 }

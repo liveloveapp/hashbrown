@@ -20,10 +20,6 @@ import { TheGravy } from '../components/home/TheGravy';
       flex-direction: column;
       height: 100%;
     }
-
-    www-header ::ng-deep .spacer {
-      display: none;
-    }
   `,
 })
 export default class BlogPage {}

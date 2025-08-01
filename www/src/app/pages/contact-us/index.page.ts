@@ -1,6 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { addDoc, collection, getFirestore } from 'firebase/firestore';
+import { Header } from '../../components/Header';
+import { BrandLiveLoveApp } from '../../icons/BrandLiveLoveApp';
+import { Footer } from '../../components/Footer';
 import { FirebaseService } from '../../services/FirebaseService';
 
 const STATUS = {
@@ -11,48 +14,28 @@ const STATUS = {
 };
 
 @Component({
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, Header, BrandLiveLoveApp, Footer],
   template: `
-    <div class="container">
+    <www-header position="fixed" [spacer]="false" />
+    <div class="hero">
+      <img
+        src="/image/contact-us/whiteboard.jpg"
+        alt="People working on a whiteboard"
+      />
+    </div>
+    <div class="bleed">
       <div class="about">
         <h1>Talk to our team</h1>
         <p>
-          Work with us to accelerate the AI story of your web application using
-          hashbrown.
+          We're a team of engineers, designers, and developers who are
+          passionate about building the next generation of web applications -
+          and we work at a software consultancy called LiveLoveApp.
         </p>
-        <div>
-          <h2>Enterprise Support</h2>
-          <p>
-            LiveLoveApp provides dedicated support via email and GitHub with
-            guaranteed response times, bug fixes, and direct access to hashbrown
-            engineers engineers for our enterprise customers.
-          </p>
-        </div>
-        <div>
-          <h2>AI Engineering</h2>
-          <p>
-            LiveLoveApp is a team of industry respected innovators and early
-            adopters of AI technology. Let's work together to build the next
-            generation of web apps that leverage the power of natural language
-            and human interactions.
-          </p>
-        </div>
-        <div>
-          <h2>Workshops</h2>
-          <p>
-            We're all kind of new to building with AI. Let us share our
-            knowledge with you and your team with our hands-on workshops.
-          </p>
-        </div>
-        <div>
-          <h2>Design</h2>
-          <p>
-            The team at LiveLoveApp is focused on helping companies build the
-            next generation of banking, accounting, and finance applications. We
-            design and build powerful web applications that have AI built into
-            the core of the user experience.
-          </p>
-        </div>
+        <p>
+          Work with LiveLoveApp to accelerate the intelligence of your web
+          application using hashbrown.
+        </p>
+        <www-brand-liveloveapp />
       </div>
       <div class="contact-us">
         @if (status() === STATUS.SUCCESS) {
@@ -99,14 +82,32 @@ const STATUS = {
         }
       </div>
     </div>
+    <www-footer />
   `,
   styles: `
     :host {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      height: 100%;
     }
 
-    .container {
+    .hero {
+      width: 100%;
+      height: 100%;
+      max-height: 600px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .bleed {
+      align-self: center;
       padding: 32px;
       display: grid;
       grid-template-columns: 1fr;
@@ -124,10 +125,12 @@ const STATUS = {
         > h1 {
           display: flex;
           flex-direction: column;
-          color: #5e5c5a;
+          color: var(--gray-dark, #3d3c3a);
+          transition: color 0.2s ease-in-out;
           font:
-            400 32px/40px Fredoka,
+            400 24px/32px 'KefirVariable',
             sans-serif;
+          font-variation-settings: 'wght' 400;
         }
 
         > p {
@@ -219,7 +222,7 @@ const STATUS = {
     }
 
     @media screen and (min-width: 1024px) {
-      .container {
+      .bleed {
         grid-template-columns: 1fr 1fr;
 
         > .about {
@@ -229,7 +232,7 @@ const STATUS = {
     }
   `,
 })
-export default class EnterpriseIndexPage {
+export default class ContactUsPage {
   firebaseService = inject(FirebaseService);
   formBuilder = inject(FormBuilder);
   form = this.formBuilder.group({

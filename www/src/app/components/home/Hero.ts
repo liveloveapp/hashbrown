@@ -1,10 +1,11 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ConfigService } from '../../services/ConfigService';
+import { VideoOverlay } from '../VideoOverlay';
 
 @Component({
   selector: 'www-hero',
-  imports: [RouterLink],
+  imports: [RouterLink, VideoOverlay],
   template: `
     <div class="bleed">
       <div class="hero">
@@ -24,7 +25,7 @@ import { ConfigService } from '../../services/ConfigService';
             </p>
           </div>
           <div class="actions">
-            <button>Watch a Demo</button>
+            <button (click)="openDemoVideo()">Watch a Demo</button>
             <a [routerLink]="docsUrl()">Read the Docs</a>
           </div>
         </div>
@@ -42,6 +43,20 @@ import { ConfigService } from '../../services/ConfigService';
       </div>
     </div>
     <div class="gradient"></div>
+    <www-video-overlay
+      [open]="demoVideoOpen()"
+      (closed)="demoVideoOpen.set(false)"
+    >
+      <div style="padding:64.9% 0 0 0;position:relative;" class="video">
+        <iframe
+          src="https://player.vimeo.com/video/1088958585?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+          frameborder="0"
+          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;"
+          title="Introducing Hashbrown"
+        ></iframe>
+      </div>
+    </www-video-overlay>
   `,
   styles: `
     :host {
@@ -236,8 +251,14 @@ import { ConfigService } from '../../services/ConfigService';
   `,
 })
 export class Hero {
+  demoVideoOpen = signal(false);
+
   configService = inject(ConfigService);
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/quick`;
   });
+
+  openDemoVideo() {
+    this.demoVideoOpen.set(true);
+  }
 }

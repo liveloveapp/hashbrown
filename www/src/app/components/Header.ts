@@ -13,7 +13,7 @@ type HeaderPosition = 'fixed' | 'relative';
   imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu, Angular, React],
   template: `
     <header [class]="position()">
-      <menu [class.glass]="position() === 'fixed'">
+      <menu [class.glass]="isFixed()">
         <div class="left">
           <a routerLink="/">
             <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
@@ -122,7 +122,7 @@ type HeaderPosition = 'fixed' | 'relative';
         </div>
       </menu>
     </header>
-    @if (position() === 'fixed') {
+    @if (isFixed() && spacer()) {
       <div class="spacer"></div>
     }
   `,
@@ -284,6 +284,9 @@ type HeaderPosition = 'fixed' | 'relative';
 })
 export class Header {
   position = input<HeaderPosition>('relative');
+  spacer = input<boolean>(true);
+
+  isFixed = computed(() => this.position() === 'fixed');
 
   configService = inject(ConfigService);
   sdk = this.configService.sdk;
