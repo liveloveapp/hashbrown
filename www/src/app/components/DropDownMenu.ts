@@ -10,11 +10,10 @@ import {
   CdkOverlayOrigin,
   ConnectedPosition,
 } from '@angular/cdk/overlay';
-import { Glass } from './Glass';
 
 @Component({
   selector: 'www-dropdown-menu',
-  imports: [CdkConnectedOverlay, CdkOverlayOrigin, Glass],
+  imports: [CdkConnectedOverlay, CdkOverlayOrigin],
   template: `
     <button
       (click)="open.set(!open())"
@@ -28,12 +27,11 @@ import { Glass } from './Glass';
       cdkConnectedOverlay
       [cdkConnectedOverlayOrigin]="trigger"
       [cdkConnectedOverlayOpen]="open()"
+      [cdkConnectedOverlayPositions]="positions()"
       [cdkConnectedOverlayPanelClass]="'dropdown-panel'"
       (detach)="open.set(false)"
     >
-      <www-glass>
-        <ng-content select="[content]"></ng-content>
-      </www-glass>
+      <ng-content select="[content]"></ng-content>
     </ng-template>
   `,
   styles: [
@@ -56,14 +54,13 @@ import { Glass } from './Glass';
         }
       }
 
-      ::ng-deep www-glass {
+      ::ng-deep.dropdown-panel {
         display: flex;
-        gap: 4px;
         padding: 16px;
-        border-radius: 8px;
-        box-shadow:
-          0 10px 15px -3px rgba(0, 0, 0, 0.16),
-          0 4px 6px -4px rgba(0, 0, 0, 0.16);
+        border-radius: 16px;
+        box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
+        background: #fff;
+        backdrop-filter: blur(24px);
       }
     `,
   ],

@@ -16,13 +16,7 @@ const STATUS = {
 @Component({
   imports: [ReactiveFormsModule, Header, BrandLiveLoveApp, Footer],
   template: `
-    <www-header position="fixed" [spacer]="false" />
-    <div class="hero">
-      <img
-        src="/image/contact-us/whiteboard.jpg"
-        alt="People working on a whiteboard"
-      />
-    </div>
+    <www-header position="fixed" />
     <div class="bleed">
       <div class="about">
         <h1>Talk to our team</h1>
@@ -86,24 +80,10 @@ const STATUS = {
   `,
   styles: `
     :host {
+      flex: 1 auto;
       display: flex;
       flex-direction: column;
       height: 100%;
-    }
-
-    .hero {
-      width: 100%;
-      height: 100%;
-      max-height: 600px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-
-      > img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
     }
 
     .bleed {

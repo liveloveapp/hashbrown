@@ -13,7 +13,7 @@ type HeaderPosition = 'fixed' | 'relative';
   imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu, Angular, React],
   template: `
     <header [class]="position()">
-      <menu [class.glass]="isFixed()">
+      <menu>
         <div class="left">
           <a routerLink="/">
             <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
@@ -58,6 +58,7 @@ type HeaderPosition = 'fixed' | 'relative';
                       originY: 'bottom',
                       overlayX: 'end',
                       overlayY: 'top',
+                      offsetY: 16,
                     },
                   ]"
                 >
@@ -150,11 +151,13 @@ type HeaderPosition = 'fixed' | 'relative';
           height: 80px;
 
           > menu {
+            border-radius: 32px;
             box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+            background: rgba(250, 249, 240, 0.56);
             transition: background-color 0.2s ease;
 
             &:hover {
-              background: rgba(250, 249, 240, 0.56);
+              background: rgba(250, 249, 240, 0.86);
             }
           }
         }

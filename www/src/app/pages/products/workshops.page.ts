@@ -67,9 +67,11 @@ import { React } from '../../icons/React';
             <span>/ seat</span>
           </div>
           <div class="action">
-            <tito-button event="liveloveapp/hashbrown-angular-sep-2025">
-              Sep 8, 10am - 5pm ET
-            </tito-button>
+            @defer {
+              <tito-button event="liveloveapp/hashbrown-angular-sep-2025">
+                Sep 8, 10am - 5pm ET
+              </tito-button>
+            }
           </div>
         </div>
         <div class="course">
@@ -114,9 +116,11 @@ import { React } from '../../icons/React';
             <span>/ seat</span>
           </div>
           <div class="action">
-            <tito-button event="liveloveapp/hashbrown-react-sep-2025">
-              Sep 9, 10am - 5pm ET
-            </tito-button>
+            @defer {
+              <tito-button event="liveloveapp/hashbrown-react-sep-2025">
+                Sep 9, 10am - 5pm ET
+              </tito-button>
+            }
           </div>
         </div>
         <div class="course">
