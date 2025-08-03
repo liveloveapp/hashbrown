@@ -1,15 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Content,
+  ContentListUnion,
   FunctionCallingConfigMode,
   FunctionDeclaration,
   GenerateContentConfig,
   GenerateContentParameters,
+  GenerateContentResponseUsageMetadata,
   GoogleGenAI,
   Part,
   Schema,
 } from '@google/genai';
-import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
+import {
+  Chat,
+  encodeFrame,
+  Frame,
+  ɵupdateMessagesWithDelta,
+} from '@hashbrownai/core';
 import convertToOpenApiSchema from '@openapi-contrib/json-schema-to-openapi-schema';
 
 export interface GoogleTextStreamOptions {
@@ -18,12 +25,24 @@ export interface GoogleTextStreamOptions {
   transformRequestOptions?: (
     options: GenerateContentParameters,
   ) => GenerateContentParameters | Promise<GenerateContentParameters>;
+  onChatCompletion?: (
+    message: ContentListUnion,
+    completionMessage: Chat.Api.AssistantMessage | null,
+    usage: GenerateContentResponseUsageMetadata | undefined,
+  ) => Promise<void>;
+  includeUsage?: boolean;
 }
 
 export async function* text(
   options: GoogleTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, request, transformRequestOptions } = options;
+  const {
+    apiKey,
+    request,
+    transformRequestOptions,
+    onChatCompletion,
+    includeUsage = true,
+  } = options;
   const { messages, model, tools, responseFormat, toolChoice, system } =
     request;
 
@@ -147,6 +166,9 @@ export async function* text(
       return toolCallIndicesToStringId[index];
     };
 
+    const chunks = [];
+    let usage: GenerateContentResponseUsageMetadata | undefined;
+
     for await (const chunk of await response) {
       const firstPart = chunk.candidates?.[0]?.content?.parts?.[0];
       if (firstPart && firstPart.functionCall) {
@@ -206,7 +228,21 @@ export async function* text(
         type: 'chunk',
         chunk: chunkMessage,
       };
+
+      if (onChatCompletion) {
+        chunks.push(chunkMessage);
+      }
+
+      if (includeUsage && chunk.usageMetadata) {
+        usage = chunk.usageMetadata;
+      }
+
       yield encodeFrame(frame);
+    }
+
+    if (onChatCompletion) {
+      const latestMessage = chunks.reduce(ɵupdateMessagesWithDelta, null);
+      onChatCompletion(resolvedParams.contents, latestMessage, usage);
     }
   } catch (error) {
     if (error instanceof Error) {

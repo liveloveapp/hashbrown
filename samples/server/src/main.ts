@@ -104,7 +104,6 @@ app.post('/chat', async (req, res, next) => {
     stream = HashbrownOpenAI.stream.text({
       apiKey: OPENAI_API_KEY,
       request,
-      onChatCompletion: onCompletion,
     });
   } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName as KnownModelIds)) {
     stream = HashbrownWriter.stream.text({
