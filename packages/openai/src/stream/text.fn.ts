@@ -98,9 +98,10 @@ export async function* text(
         ? await transformRequestOptions(baseOptions)
         : baseOptions;
 
-    const stream = openai.beta.chat.completions.stream(resolvedOptions);
+    const stream = openai.chat.completions.stream(resolvedOptions);
 
     for await (const chunk of stream) {
+      console.log('chunk', chunk);
       const chunkMessage: Chat.Api.CompletionChunk = {
         choices: chunk.choices.map(
           (choice): Chat.Api.CompletionChunkChoice => ({

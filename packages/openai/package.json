@@ -16,7 +16,7 @@
     "@hashbrownai/core": "0.2.3"
   },
   "peerDependencies": {
-    "openai": "^4.93.0"
+    "openai": "^5.11.0"
   },
   "sideEffects": false,
   "publishConfig": {

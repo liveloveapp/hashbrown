@@ -116,7 +116,7 @@ export async function* text(
         ? await transformRequestOptions(baseOptions)
         : baseOptions;
 
-    const stream = client.beta.chat.completions.stream(resolvedOptions);
+    const stream = client.chat.completions.stream(resolvedOptions);
 
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {

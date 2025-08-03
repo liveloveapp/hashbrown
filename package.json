@@ -187,7 +187,7 @@
     "ng-packagr": "20.0.0",
     "nx": "21.2.0-beta.1",
     "nx-ignore": "^19.8.0",
-    "openai": "^4.93.0",
+    "openai": "^5.11.0",
     "portfinder": "^1.0.37",
     "postcss": "^8.4.5",
     "postcss-url": "~10.1.3",
