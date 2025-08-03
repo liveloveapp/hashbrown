@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Writer from 'writer-sdk';
 import { Chat, encodeFrame } from '@hashbrownai/core';
+import { ɵupdateMessagesWithDelta } from '@hashbrownai/core';
 
 /**
  * The options for the Writer text stream.
@@ -20,6 +21,12 @@ export interface WriterTextStreamOptions {
   transformRequestOptions?: (
     options: Writer.Chat.ChatChatParams,
   ) => Writer.Chat.ChatChatParams | Promise<Writer.Chat.ChatChatParams>;
+  onChatCompletion?: (
+    messages: Writer.Chat.ChatChatParams.Message[],
+    completionMessage: Chat.Api.AssistantMessage | null,
+    usage: Writer.Chat.ChatCompletionUsage | undefined,
+  ) => Promise<void>;
+  includeUsage?: boolean;
 }
 
 /**
@@ -31,7 +38,13 @@ export interface WriterTextStreamOptions {
 export async function* text(
   options: WriterTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, request, transformRequestOptions } = options;
+  const {
+    apiKey,
+    request,
+    transformRequestOptions,
+    onChatCompletion,
+    includeUsage = true,
+  } = options;
   const writer = new Writer({
     apiKey,
   });
@@ -54,6 +67,7 @@ export async function* text(
             },
           }
         : undefined,
+      ...(includeUsage ? { stream_options: { include_usage: true } } : {}),
       tools:
         request.tools && request.tools.length > 0
           ? request.tools.map((tool) => ({
@@ -121,6 +135,9 @@ export async function* text(
       stream: true,
     });
 
+    const chunks = [];
+    let usage: Writer.Chat.ChatCompletionUsage | undefined;
+
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {
         choices: chunk.choices.map(
@@ -135,10 +152,23 @@ export async function* text(
         ),
       };
 
+      if (onChatCompletion) {
+        chunks.push(chunkMessage);
+      }
+
+      if (includeUsage && chunk.usage) {
+        usage = chunk.usage;
+      }
+
       yield encodeFrame({
         type: 'chunk',
         chunk: chunkMessage,
       });
+    }
+
+    if (onChatCompletion) {
+      const latestMessage = chunks.reduce(ɵupdateMessagesWithDelta, null);
+      onChatCompletion(requestOptions.messages, latestMessage, usage);
     }
   } catch (error) {
     yield encodeFrame({
