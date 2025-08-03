@@ -6,7 +6,16 @@ import { HashbrownWriter } from '@hashbrownai/writer';
 import cors from 'cors';
 import 'dotenv/config';
 import express from 'express';
-import OpenAI from 'openai';
+
+// import OpenAI from 'openai';
+//
+// const onCompletion = async (
+//   messages: OpenAI.ChatCompletionMessageParam[],
+//   completionMessage: Chat.Api.AssistantMessage | null,
+//   usage: OpenAI.Completions.CompletionUsage | undefined,
+// ) => {
+//   console.log('onCompletion', messages, completionMessage, usage);
+// };
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
@@ -79,14 +88,6 @@ app.use(cors());
 app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
 });
-
-const onCompletion = async (
-  messages: OpenAI.ChatCompletionMessageParam[],
-  completionMessage: Chat.Api.AssistantMessage | null,
-  usage: OpenAI.Completions.CompletionUsage | undefined,
-) => {
-  console.log('onCompletion', messages, completionMessage, usage);
-};
 
 app.post('/chat', async (req, res, next) => {
   const request = req.body as Chat.Api.CompletionCreateParams;
