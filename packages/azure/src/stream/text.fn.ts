@@ -109,6 +109,9 @@ export async function* text(
             },
           }
         : undefined,
+      stream_options: {
+        include_usage: true,
+      },
     };
 
     const resolvedOptions: OpenAI.Chat.ChatCompletionCreateParams =
