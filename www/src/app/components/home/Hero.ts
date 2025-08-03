@@ -2,10 +2,11 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ConfigService } from '../../services/ConfigService';
 import { VideoOverlay } from '../VideoOverlay';
+import { Squircle } from '../Squircle';
 
 @Component({
   selector: 'www-hero',
-  imports: [RouterLink, VideoOverlay],
+  imports: [RouterLink, VideoOverlay, Squircle],
   template: `
     <div class="bleed">
       <div class="hero">
@@ -25,8 +26,10 @@ import { VideoOverlay } from '../VideoOverlay';
             </p>
           </div>
           <div class="actions">
-            <button (click)="openDemoVideo()">Watch a Demo</button>
-            <a [routerLink]="docsUrl()">Read the Docs</a>
+            <button (click)="openDemoVideo()" wwwSquircle="8">
+              Watch a Demo
+            </button>
+            <a [routerLink]="docsUrl()" wwwSquircle="8">Read the Docs</a>
           </div>
         </div>
       </div>
@@ -160,7 +163,6 @@ import { VideoOverlay } from '../VideoOverlay';
               padding: 12px 24px;
               justify-content: center;
               align-items: center;
-              border-radius: 8px;
               color: rgba(0, 0, 0, 0.64);
               font:
                 700 14px/16px 'Fredoka',
