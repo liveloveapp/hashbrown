@@ -12,3 +12,4 @@ export * as ɵcomponents from './utils/expose-component';
 export * as ɵtypes from './utils/types';
 export type { KnownModelIds } from './utils';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
+export { updateMessagesWithDelta as ɵupdateMessagesWithDelta } from './utils/update-message';
