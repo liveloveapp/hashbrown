@@ -1,5 +1,5 @@
 import { Chat } from '../models';
-import { _updateMessagesWithDelta } from './generate-message.effects';
+import { updateMessagesWithDelta } from '../utils/update-message';
 
 test('updateMessagesWithDelta works without an initial message', () => {
   const delta: Chat.Api.CompletionChunk = {
@@ -15,7 +15,7 @@ test('updateMessagesWithDelta works without an initial message', () => {
     ],
   };
 
-  const message = _updateMessagesWithDelta(null, delta);
+  const message = updateMessagesWithDelta(null, delta);
 
   expect(message).toEqual({
     role: 'assistant',
@@ -38,7 +38,7 @@ test('updateMessagesWithDelta works with an initial message', () => {
     ],
   };
 
-  const message = _updateMessagesWithDelta(
+  const message = updateMessagesWithDelta(
     {
       role: 'assistant',
       content: 'Hello,',
@@ -67,7 +67,7 @@ test('updateMessagesWithDelta works with an initial message and a tool call', ()
     ],
   };
 
-  const message = _updateMessagesWithDelta(
+  const message = updateMessagesWithDelta(
     {
       role: 'assistant',
       content: 'Hello,',
@@ -108,7 +108,7 @@ test('updateMessagesWithDelta works when there are no choices in the delta', () 
     choices: [],
   };
 
-  const message = _updateMessagesWithDelta(
+  const message = updateMessagesWithDelta(
     {
       role: 'assistant',
       content: 'Hello,',
@@ -149,7 +149,7 @@ test('updateMessagesWithDelta adds a first tool call', () => {
     ],
   };
 
-  const message = _updateMessagesWithDelta(null, delta);
+  const message = updateMessagesWithDelta(null, delta);
 
   expect(message).toEqual({
     role: 'assistant',
@@ -199,7 +199,7 @@ test('updateMessagesWithDelta merges tool-call arguments when index matches', ()
     ],
   };
 
-  const message = _updateMessagesWithDelta(
+  const message = updateMessagesWithDelta(
     {
       role: 'assistant',
       content: '',
@@ -243,7 +243,7 @@ test('updateMessagesWithDelta appends a new tool call when index differs', () =>
     ],
   };
 
-  const message = _updateMessagesWithDelta(
+  const message = updateMessagesWithDelta(
     {
       role: 'assistant',
       content: '',
@@ -284,7 +284,7 @@ test('updateMessagesWithDelta treats undefined content as empty string', () => {
     ],
   };
 
-  const message = _updateMessagesWithDelta(
+  const message = updateMessagesWithDelta(
     {
       role: 'assistant',
       toolCalls: [],
@@ -298,7 +298,7 @@ test('updateMessagesWithDelta treats undefined content as empty string', () => {
 test('updateMessagesWithDelta returns null when nothing to update', () => {
   const delta: Chat.Api.CompletionChunk = { choices: [] };
 
-  const message = _updateMessagesWithDelta(null, delta);
+  const message = updateMessagesWithDelta(null, delta);
 
   expect(message).toBeNull();
 });
