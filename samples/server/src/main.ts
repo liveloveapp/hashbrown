@@ -1,21 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Chat, KnownModelIds } from '@hashbrownai/core';
-import { HashbrownGoogle } from '@hashbrownai/google';
+import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { HashbrownGoogle } from '@hashbrownai/google';
 import { HashbrownWriter } from '@hashbrownai/writer';
 import cors from 'cors';
 import 'dotenv/config';
 import express from 'express';
-
-// import OpenAI from 'openai';
-//
-// const onCompletion = async (
-//   messages: OpenAI.ChatCompletionMessageParam[],
-//   completionMessage: Chat.Api.AssistantMessage | null,
-//   usage: OpenAI.Completions.CompletionUsage | undefined,
-// ) => {
-//   console.log('onCompletion', messages, completionMessage, usage);
-// };
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
