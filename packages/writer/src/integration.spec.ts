@@ -202,6 +202,104 @@ test('Writer with tool calling and structured output', async () => {
   expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
 });
 
+test('Writer with onChatCompletion callback', async () => {
+  const logMock = jest.spyOn(console, 'log').mockImplementation();
+  const server = await createServer((request) =>
+    HashbrownWriter.stream.text({
+      apiKey: WRITER_API_KEY,
+      request,
+      onChatCompletion: async (messages, completionMessage, usage) => {
+        console.log(
+          'Writer chat completion:',
+          messages,
+          completionMessage,
+          usage,
+        );
+      },
+    }),
+  );
+  const hashbrown = fryHashbrown({
+    debounce: 0,
+    apiUrl: server.url,
+    model: 'palmyra-x5',
+    system: `
+      I am writing an integration test against Writer. Respond
+      exactly with the text "Hello, world!"
+      DO NOT respond with any other text.
+    `,
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+  });
+
+  await waitUntilHashbrownIsSettled(hashbrown);
+
+  const assistantMessage = hashbrown
+    .messages()
+    .reverse()
+    .find((message) => message.role === 'assistant');
+
+  expect(assistantMessage?.content).toEqual('Hello, world!');
+  expect(console.log).toHaveBeenCalledWith(
+    'Writer chat completion:',
+    expect.any(Array),
+    assistantMessage,
+    expect.any(Object),
+  );
+  expect(console.log).toHaveBeenCalledTimes(1);
+  logMock.mockRestore();
+});
+
+test('Writer with onChatCompletion callback and no usage', async () => {
+  const logMock = jest.spyOn(console, 'log').mockImplementation();
+  const server = await createServer((request) =>
+    HashbrownWriter.stream.text({
+      apiKey: WRITER_API_KEY,
+      request,
+      onChatCompletion: async (messages, latestMessage, usage) => {
+        console.log('Writer chat completion:', messages, latestMessage, usage);
+      },
+      includeUsage: false,
+    }),
+  );
+
+  const hashbrown = fryHashbrown({
+    debounce: 0,
+    apiUrl: server.url,
+    model: 'palmyra-x5',
+    system: `
+     I am writing an integration test against Writer. Respond
+     exactly with the text "Hello, world!".
+    `,
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+  });
+
+  await waitUntilHashbrownIsSettled(hashbrown);
+
+  const assistantMessage = hashbrown
+    .messages()
+    .reverse()
+    .find((message) => message.role === 'assistant');
+
+  expect(assistantMessage?.content).toBe('Hello, world!');
+  expect(console.log).toHaveBeenCalledWith(
+    'Writer chat completion:',
+    expect.any(Array),
+    assistantMessage,
+    undefined,
+  );
+  expect(console.log).toHaveBeenCalledTimes(1);
+  logMock.mockRestore();
+});
+
 async function createServer(
   iteratorFactory: (
     request: Chat.Api.CompletionCreateParams,

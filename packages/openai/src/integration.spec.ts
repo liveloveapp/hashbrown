@@ -200,6 +200,105 @@ test('OpenAI with tool calling and structured output', async () => {
   expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
 });
 
+test('OpenAI with onChatCompletion callback', async () => {
+  const logMock = jest.spyOn(console, 'log').mockImplementation();
+  const server = await createServer((request) =>
+    HashbrownOpenAI.stream.text({
+      apiKey: OPENAI_API_KEY,
+      request,
+      onChatCompletion: async (messages, latestMessage, usage) => {
+        console.log('OpenAI chat completion:', messages, latestMessage, usage);
+      },
+    }),
+  );
+
+  const hashbrown = fryHashbrown({
+    debounce: 0,
+    apiUrl: server.url,
+    model: 'gpt-4.1-mini',
+    system: `
+     I am writing an integration test against OpenAI. Respond
+     exactly with the text "Hello, world!"
+
+     DO NOT respond with any other text.
+    `,
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+  });
+
+  await waitUntilHashbrownIsSettled(hashbrown);
+
+  const assistantMessage = hashbrown
+    .messages()
+    .find((message) => message.role === 'assistant');
+
+  expect(assistantMessage?.content).toBe('Hello, world!');
+  expect(console.log).toHaveBeenCalledWith(
+    'OpenAI chat completion:',
+    expect.any(Array),
+    assistantMessage,
+    expect.any(Object),
+  );
+  expect(console.log).toHaveBeenCalledTimes(1);
+  logMock.mockRestore();
+});
+test('OpenAI with onChatCompletion callback and no usage', async () => {
+  const logMock = jest.spyOn(console, 'log').mockImplementation();
+  const server = await createServer((request) =>
+    HashbrownOpenAI.stream.text({
+      apiKey: OPENAI_API_KEY,
+      request,
+      onChatCompletion: async (messages, latestMessage) => {
+        console.log(
+          'OpenAI chat completion:',
+          messages,
+          latestMessage,
+          undefined,
+        );
+      },
+      includeUsage: false,
+    }),
+  );
+
+  const hashbrown = fryHashbrown({
+    debounce: 0,
+    apiUrl: server.url,
+    model: 'gpt-4.1-mini',
+    system: `
+     I am writing an integration test against OpenAI. Respond
+     exactly with the text "Hello, world!"
+
+     DO NOT respond with any other text.
+    `,
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+  });
+
+  await waitUntilHashbrownIsSettled(hashbrown);
+
+  const assistantMessage = hashbrown
+    .messages()
+    .find((message) => message.role === 'assistant');
+
+  expect(assistantMessage?.content).toBe('Hello, world!');
+  expect(console.log).toHaveBeenCalledWith(
+    'OpenAI chat completion:',
+    expect.any(Array),
+    assistantMessage,
+    undefined,
+  );
+  expect(console.log).toHaveBeenCalledTimes(1);
+  logMock.mockRestore();
+});
+
 async function createServer(
   iteratorFactory: (
     request: Chat.Api.CompletionCreateParams,
