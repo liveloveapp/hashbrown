@@ -1,4 +1,9 @@
-import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
+import {
+  Chat,
+  encodeFrame,
+  Frame,
+  ɵupdateMessagesWithDelta,
+} from '@hashbrownai/core';
 import OpenAI, { AzureOpenAI } from 'openai';
 import type { FunctionParameters } from 'openai/resources/shared';
 
@@ -11,12 +16,25 @@ export interface AzureTextStreamOptions {
   ) =>
     | OpenAI.Chat.ChatCompletionCreateParamsStreaming
     | Promise<OpenAI.Chat.ChatCompletionCreateParamsStreaming>;
+  onChatCompletion?: (
+    messages: OpenAI.ChatCompletionMessageParam[],
+    completionMessage: Chat.Api.AssistantMessage | null,
+    usage: OpenAI.Completions.CompletionUsage | undefined,
+  ) => Promise<void>;
+  includeUsage?: boolean;
 }
 
 export async function* text(
   options: AzureTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, endpoint, request, transformRequestOptions } = options;
+  const {
+    apiKey,
+    endpoint,
+    request,
+    transformRequestOptions,
+    onChatCompletion,
+    includeUsage = true,
+  } = options;
   const {
     messages,
     model: modelAndVersion,
@@ -109,9 +127,7 @@ export async function* text(
             },
           }
         : undefined,
-      stream_options: {
-        include_usage: true,
-      },
+      ...(includeUsage ? { stream_options: { include_usage: true } } : {}),
     };
 
     const resolvedOptions: OpenAI.Chat.ChatCompletionCreateParams =
@@ -120,6 +136,9 @@ export async function* text(
         : baseOptions;
 
     const stream = client.chat.completions.stream(resolvedOptions);
+
+    const chunks: Array<Chat.Api.CompletionChunk> = [];
+    let usage: OpenAI.Completions.CompletionUsage | undefined;
 
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {
@@ -141,7 +160,21 @@ export async function* text(
         chunk: chunkMessage,
       };
 
+      if (onChatCompletion) {
+        chunks.push(chunkMessage);
+      }
+
+      if (includeUsage && chunk.usage) {
+        usage = chunk.usage;
+      }
+
       yield encodeFrame(frame);
+    }
+
+    if (onChatCompletion) {
+      const completionMessage = chunks.reduce(ɵupdateMessagesWithDelta, null);
+
+      onChatCompletion(resolvedOptions.messages, completionMessage, usage);
     }
   } catch (error: unknown) {
     if (error instanceof Error) {

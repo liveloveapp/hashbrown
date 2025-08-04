@@ -123,7 +123,6 @@ export async function* text(
     let usage: OpenAI.Completions.CompletionUsage | undefined;
 
     for await (const chunk of stream) {
-      console.log('chunk', chunk);
       const chunkMessage: Chat.Api.CompletionChunk = {
         choices: chunk.choices.map(
           (choice): Chat.Api.CompletionChunkChoice => ({
