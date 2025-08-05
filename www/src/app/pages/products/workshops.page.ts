@@ -5,18 +5,19 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Calendar } from '../../components/Calendar';
-import { Angular } from '../../icons/Angular';
-import { Check } from '../../icons/Check';
-import { React } from '../../icons/React';
+import { Sell } from '../../icons/Sell';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
-  imports: [Angular, Calendar, Check, React, RouterLink],
+  imports: [Sell, RouterLink, MatIcon],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="bleed">
-      <h1>Generative UI Workshops</h1>
-      <p>
+      <div class="header">
+        <h1>Generative UI Workshops</h1>
+      </div>
+
+      <p class="under-header">
         Learn the fundamentals of AI engineering and how to create generative
         user interfaces in this hands-on workshop from the team behind Hashbrown
       </p>
@@ -49,14 +50,41 @@ import { React } from '../../icons/React';
 
       <div class="courses">
         <div class="course">
-          <div class="price">
-            <span>$350</span>
-            <span>/ seat</span>
-          </div>
+          <span class="course-title"> React: Intro To Generative UIs </span>
+          <span class="when">September 8 - 8am to 3pm PT</span>
+          <span class="price">
+            <www-sell
+              height="14px"
+              width="14px"
+              stroke="#E88C4D"
+              fill="#E88C4D"
+            />
+            $350 per person. Group discounts available.
+          </span>
           <div class="action">
             @defer {
               <tito-button event="liveloveapp/hashbrown-react-sep-2025">
-                Sep 9, 10am - 5pm ET
+                Reserve to Attend Online
+              </tito-button>
+            }
+          </div>
+        </div>
+        <div class="course">
+          <span class="course-title">Angular: Intro To Generative UIs</span>
+          <span class="when">September 9 - 8am to 3pm PT</span>
+          <span class="price">
+            <www-sell
+              height="14px"
+              width="14px"
+              stroke="#E88C4D"
+              fill="#E88C4D"
+            />
+            $350 per person. Group discounts available.
+          </span>
+          <div class="action">
+            @defer {
+              <tito-button event="liveloveapp/hashbrown-angular-sep-2025">
+                Reserve to Attend Online
               </tito-button>
             }
           </div>
@@ -72,47 +100,49 @@ import { React } from '../../icons/React';
       height: 100%;
     }
 
-    // .hero {
-    //   width: calc(100%-200px);
-    //   height: 100%;
-    //   max-height: 600px;
-    //   display: flex;
-    //   justify-content: center;
-    //   align-items: center;
-    //   padding: 32px;
-
-    //   > img {
-    //     width: 100%;
-    //     height: 100%;
-    //     object-fit: cover;
-    //   }
-    // }
-
     .bleed {
-      // align-self: center;
       display: flex;
       flex-direction: column;
-      gap: 56px;
+      gap: 16px;
       padding: 32px;
-      width: calc(100% - 200px);
+      width: calc(100% - 316px);
       max-width: 1024px;
 
-      > h1 {
+      > .header {
+        width: fit-content;
+      }
+
+      > .header h1 {
         color: var(--gray-dark, #3d3c3a);
         transition: color 0.2s ease-in-out;
         font:
-          400 24px / 32px 'KefirVariable',
+          400 32px / 40px 'KefirVariable',
           sans-serif;
-        font-variation-settings: 'wght' 400;
+        font-variation-settings: 'wght' 800;
+        margin-top: 32px;
+      }
+
+      > .header h1:after {
+        content: '';
+        height: 4px;
+        // width: 100%;
+        display: block;
+        background-image: linear-gradient(
+          to right,
+          #fbbb52 0%,
+          var(--sunset-orange) 25%,
+          var(--indian-red-light) 50%,
+          var(--sky-blue-dark) 75%,
+          var(--olive-green-light) 100%
+        );
       }
 
       > h2 {
         color: var(--gray-dark, #3d3c3a);
         transition: color 0.2s ease-in-out;
         font:
-          400 16px / 24px 'KefirVariable',
+          400 18px / 24px 'Fredoka',
           sans-serif;
-        font-variation-settings: 'wght' 400;
       }
 
       > img {
@@ -123,7 +153,13 @@ import { React } from '../../icons/React';
 
       > p {
         color: var(--gray, #5e5c5a);
-        text-align: center;
+        text-align: left;
+        font:
+          300 normal 16px/22px Fredoka,
+          sans-serif;
+      }
+
+      > .under-header {
         font:
           500 normal 18px/24px Fredoka,
           sans-serif;
@@ -131,69 +167,45 @@ import { React } from '../../icons/React';
 
       > .courses {
         position: fixed;
-        top: 80;
+        top: 124px;
         right: 0;
-        width: 200px;
+        width: 316px;
         height: 100dvh;
+        padding-right: 16px;
 
         > .course {
           display: flex;
           flex-direction: column;
-          gap: 8px;
 
-          > .title {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding: 32px;
-            border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+          > .course-title {
+            color: var(--gray, #3d3c3a);
+            font:
+              400 17px / 25px 'KefirVariable',
+              sans-serif;
+            font-variation-settings: 'wght' 800;
+          }
 
-            > h2 {
-              color: var(--gray-dark, #3d3c3a);
-              font:
-                400 24px/32px 'KefirVariable',
-                sans-serif;
-              font-variation-settings: 'wght' 400;
-            }
-
-            > small {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              color: var(--gray, #5e5c5a);
-              font:
-                400 normal 16px/24px Fredoka,
-                sans-serif;
-            }
+          > .when {
+            color: var(--gray, #3d3c3a);
+            font:
+              400 16px / 24px 'Fredoka',
+              sans-serif;
           }
 
           > .price {
             display: flex;
-            justify-content: center;
-            align-items: flex-end;
             gap: 4px;
-            padding: 32px;
-
-            > span:first-child {
-              color: var(--gray-dark, #3d3c3a);
-              font:
-                400 32px/40px 'KefirVariable',
-                sans-serif;
-              font-variation-settings: 'wght' 400;
-            }
-
-            > span:last-child {
-              color: var(--gray, #5e5c5a);
-              font:
-                400 normal 14px/20px Fredoka,
-                sans-serif;
-            }
+            color: var(--gray, #3d3c3a);
+            font:
+              400 14px / 20px 'Fredoka',
+              sans-serif;
           }
 
           > .action {
             display: flex;
             justify-content: stretch;
-            padding: 32px;
+            padding-bottom: 32px;
+            padding-top: 8px;
 
             > a,
             > tito-button button {
@@ -206,7 +218,7 @@ import { React } from '../../icons/React';
               color: rgba(0, 0, 0, 0.64);
               background: #e1e1e1;
               font:
-                700 14px/16px 'Fredoka',
+                400 16px/18px 'Fredoka',
                 sans-serif;
             }
 
@@ -214,14 +226,10 @@ import { React } from '../../icons/React';
               width: 100%;
 
               > button {
-                background: var(--sunshine-yellow, #fbbb52);
+                background: var(--sunshine-yellow-light, #fde4ba);
               }
             }
           }
-        }
-
-        > div:not(:nth-child(3n)) {
-          border-right: 1px solid rgba(61, 60, 58, 0.24);
         }
       }
     }
