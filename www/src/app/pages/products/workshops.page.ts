@@ -19,7 +19,7 @@ import { MatIcon } from '@angular/material/icon';
 
       <p class="under-header">
         Learn the fundamentals of AI engineering and how to create generative
-        user interfaces in this hands-on workshop from the team behind Hashbrown
+        user interfaces in hands-on workshops from the team behind Hashbrown
       </p>
 
       <img
@@ -105,7 +105,8 @@ import { MatIcon } from '@angular/material/icon';
       flex-direction: column;
       gap: 16px;
       padding: 32px;
-      width: calc(100% - 316px);
+      margin-top: 32px;
+      width: calc(100% - 364px);
       max-width: 1024px;
 
       > .header {
@@ -167,7 +168,7 @@ import { MatIcon } from '@angular/material/icon';
 
       > .courses {
         position: fixed;
-        top: 124px;
+        top: 154px;
         right: 0;
         width: 316px;
         height: 100dvh;
@@ -234,14 +235,7 @@ import { MatIcon } from '@angular/material/icon';
       }
     }
 
-    @media screen and (min-width: 1024px) {
-      .bleed {
-        padding: 64px;
-
-        > .courses {
-          grid-template-columns: repeat(3, 1fr);
-        }
-      }
+    @media screen and (max-width: 768px) {
     }
   `,
 })
