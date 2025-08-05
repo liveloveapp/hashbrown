@@ -9,10 +9,14 @@ import {
 } from '@angular/core';
 import { getSvgPath } from 'figma-squircle';
 
+declare const Buffer: any;
+
 @Directive({
   selector: '[wwwSquircle]',
   host: {
     '[style.clip-path]': 'clipPathPropertyValue()',
+    '[style.--www-squircle-border-image-url]': 'borderImageUrl()',
+    '[style.--www-squircle-border-color]': 'wwwSquircleBorderColor()',
   },
 })
 export class Squircle {
@@ -20,9 +24,20 @@ export class Squircle {
   readonly wwwSquircle = input.required<string>();
   readonly wwwSquircleSmoothing = input<number>(1);
   readonly wwwSquirclePreserveSmoothing = input<boolean>(true);
+  readonly wwwSquircleBorderWidth = input<number>(0);
+  readonly wwwSquircleBorderColor = input<string>('transparent');
   readonly box = signal<{ width: number; height: number }>({
     width: 0,
     height: 0,
+  });
+  readonly borderBox = computed(() => {
+    const { width, height } = this.box();
+    const border = this.wwwSquircleBorderWidth();
+
+    return {
+      width: width + border * 2,
+      height: height + border * 2,
+    };
   });
   readonly cornerRadius = computed(() => {
     const parts = this.wwwSquircle().split(' ');
@@ -73,8 +88,36 @@ export class Squircle {
   readonly clipPathPropertyValue = computed(() => {
     return `path('${this.path()}')`;
   });
+  readonly borderImageUrl = computed(() => {
+    const path = this.path();
+    const border = this.wwwSquircleBorderWidth();
+    const computedBorderColor = getComputedStyle(
+      this.host.nativeElement,
+    ).getPropertyValue('--www-squircle-border-color');
 
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+        <path d="${path}" fill="none" style="stroke: ${computedBorderColor}; stroke-width: ${border};" />
+      </svg>
+    `;
+
+    const base64 =
+      typeof btoa === 'function'
+        ? btoa(svg)
+        : Buffer.from(svg).toString('base64');
+
+    return `url("data:image/svg+xml;base64,${base64}")`;
+  });
   constructor() {
+    afterRenderEffect({
+      read: () => {
+        const width = this.host.nativeElement.clientWidth;
+        const height = this.host.nativeElement.clientHeight;
+
+        this.box.set({ width, height });
+      },
+    });
+
     afterRenderEffect({
       read: () => {
         const width = this.host.nativeElement.clientWidth;

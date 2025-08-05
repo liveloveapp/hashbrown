@@ -34,7 +34,12 @@ import { Squircle } from '../Squircle';
         </div>
       </div>
       <div class="news">
-        <div class="alert">
+        <div
+          class="alert"
+          wwwSquircle="8"
+          [wwwSquircleBorderWidth]="1"
+          [wwwSquircleBorderColor]="'var(--sunshine-yellow-dark)'"
+        >
           <p>
             <strong>New!</strong> Workshop tickets for
             <a routerLink="/products/workshops"
@@ -192,8 +197,6 @@ import { Squircle } from '../Squircle';
           padding: 11px 24px 12px 24px;
           justify-content: center;
           align-items: center;
-          border-radius: 16px;
-          border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
           background: rgba(251, 187, 82, 0.24);
 
           > p {
