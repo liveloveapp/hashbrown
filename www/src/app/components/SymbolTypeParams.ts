@@ -30,21 +30,21 @@ import { SymbolExcerpt } from './SymbolExcerpt';
 
         > code {
           font:
-            500 12px/16px 'Operator Mono',
+            700 12px/16px 'JetBrains Mono',
             monospace;
           font-variant-ligatures: none;
         }
 
         > .symbol {
           font:
-            700 14px/18px 'Operator Mono',
+            700 14px/18px 'JetBrains Mono',
             monospace;
           color: #fbbb52;
         }
 
         > .name {
           font:
-            700 14px/18px 'Operator Mono',
+            700 14px/18px 'JetBrains Mono',
             monospace;
           color: #ffa657;
         }

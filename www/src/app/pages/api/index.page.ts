@@ -116,7 +116,7 @@ import { ReferenceService } from '../../services/ReferenceService';
 
         > h2 {
           font:
-            700 14px/18px 'Operator Mono',
+            700 14px/18px 'JetBrains Mono',
             monospace;
           color: #774625;
           margin-top: 32px;

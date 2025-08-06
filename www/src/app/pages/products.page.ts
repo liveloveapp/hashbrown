@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 @Component({
   imports: [RouterOutlet, Footer, Header],
   template: `
-    <www-header position="fixed" [spacer]="false" />
+    <www-header />
     <main class="products">
       <router-outlet></router-outlet>
     </main>

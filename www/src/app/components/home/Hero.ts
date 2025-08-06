@@ -211,8 +211,14 @@ import { Squircle } from '../Squircle';
             }
 
             > a {
-              text-decoration-line: underline;
+              text-decoration: underline;
               text-decoration-style: solid;
+              text-decoration-thickness: 1px;
+              transition: text-decoration-thickness 0.2s ease-in-out;
+
+              &:hover {
+                text-decoration-thickness: 2px;
+              }
             }
           }
         }

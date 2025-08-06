@@ -8,7 +8,7 @@ import { TheGravy } from '../components/home/TheGravy';
 @Component({
   imports: [RouterOutlet, Footer, Header, ApiMenu, TheGravy],
   template: `
-    <www-header position="fixed" />
+    <www-header />
     <main class="api">
       <www-ref-menu />
       <div>

@@ -29,7 +29,7 @@ import { ApiMember } from '../models/api-report.models';
         > code {
           grid-area: returns;
           font:
-            700 14px/18px 'Operator Mono',
+            700 14px/18px 'JetBrains Mono',
             monospace;
           color: #fbbb52;
         }

@@ -21,7 +21,7 @@ import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
   ],
   template: `
     <div class="texture">
-      <www-header position="relative" />
+      <www-header />
       <www-hero />
     </div>
     <main class="home">

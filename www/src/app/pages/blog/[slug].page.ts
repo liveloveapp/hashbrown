@@ -161,7 +161,7 @@ import { PostAttributes } from '../../models/blog.models';
 
       code:not(pre code) {
         font:
-          600 16px/24px 'Operator mono',
+          700 16px/24px 'JetBrains Mono',
           monospace;
       }
 

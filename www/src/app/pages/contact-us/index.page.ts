@@ -16,7 +16,7 @@ const STATUS = {
 @Component({
   imports: [ReactiveFormsModule, Header, BrandLiveLoveApp, Footer],
   template: `
-    <www-header position="fixed" />
+    <www-header />
     <div class="bleed">
       <div class="about">
         <h1>Talk to our team</h1>

@@ -13,7 +13,7 @@ import { Header } from '../components/Header';
 @Component({
   imports: [RouterOutlet, Header, Alert],
   template: `
-    <www-header position="fixed" />
+    <www-header />
     <main class="examples">
       @if (isSafari()) {
         <div class="alert">
