@@ -4,6 +4,7 @@ import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { HashbrownGoogle } from '@hashbrownai/google';
 import { HashbrownWriter } from '@hashbrownai/writer';
+import { HashbrownOllama } from '@hashbrownai/ollama';
 import cors from 'cors';
 import 'dotenv/config';
 import express from 'express';
@@ -16,6 +17,7 @@ const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
 const WRITER_API_KEY = process.env['WRITER_API_KEY'] ?? '';
+const OLLAMA_API_KEY = process.env['OLLAMA_API_KEY'] ?? '';
 
 const KNOWN_GOOGLE_MODEL_NAMES: KnownModelIds[] = [
   'gemini-2.5-pro',
@@ -69,6 +71,9 @@ if (!GOOGLE_API_KEY) {
 if (!WRITER_API_KEY) {
   console.warn('WRITER_API_KEY is not set');
 }
+if (!OLLAMA_API_KEY) {
+  console.warn('OLLAMA_API_KEY is not set');
+}
 
 const app = express();
 
@@ -102,9 +107,10 @@ app.post('/chat', async (req, res, next) => {
       request,
     });
   } else {
-    throw new Error(
-      `Unknown model: ${modelName}. Edit /samples/smart-home/server/src/main.ts to add support for this model.`,
-    );
+    stream = HashbrownOllama.stream.text({
+      turbo: { apiKey: OLLAMA_API_KEY },
+      request,
+    });
   }
 
   res.header('Content-Type', 'application/octet-stream');

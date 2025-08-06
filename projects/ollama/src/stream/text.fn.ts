@@ -1,40 +1,30 @@
 import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
-import OpenAI from 'openai';
+import OllamaClient, { ChatRequest, Message, Ollama, ToolCall } from 'ollama';
 import { FunctionParameters } from 'openai/resources/shared';
 
 export interface OpenAITextStreamOptions {
-  apiKey: string;
-  baseURL?: string;
+  turbo?: { apiKey: string };
   request: Chat.Api.CompletionCreateParams;
-  transformRequestOptions?: (
-    options: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
-  ) =>
-    | OpenAI.Chat.ChatCompletionCreateParamsStreaming
-    | Promise<OpenAI.Chat.ChatCompletionCreateParamsStreaming>;
 }
 
 export async function* text(
   options: OpenAITextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, baseURL, request, transformRequestOptions } = options;
+  const { turbo, request } = options;
   const { messages, model, tools, responseFormat, toolChoice, system } =
     request;
 
-  const openai = new OpenAI({
-    apiKey,
-    baseURL: baseURL,
-  });
-
   try {
-    const baseOptions: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
+    const baseOptions: ChatRequest & { stream: true } = {
       stream: true,
       model: model as string,
+      think: true,
       messages: [
         {
           role: 'system',
           content: system,
         },
-        ...messages.map((message): OpenAI.ChatCompletionMessageParam => {
+        ...messages.map((message): Message => {
           if (message.role === 'user') {
             return {
               role: message.role,
@@ -44,17 +34,20 @@ export async function* text(
           if (message.role === 'assistant') {
             return {
               role: message.role,
-              content: message.content,
+              content: message.content ?? '',
               tool_calls:
                 message.toolCalls && message.toolCalls.length > 0
-                  ? message.toolCalls.map((toolCall) => ({
-                      ...toolCall,
-                      type: 'function',
-                      function: {
-                        ...toolCall.function,
-                        arguments: JSON.stringify(toolCall.function.arguments),
-                      },
-                    }))
+                  ? message.toolCalls.map(
+                      (toolCall): ToolCall => ({
+                        ...toolCall,
+                        function: {
+                          ...toolCall.function,
+                          arguments: toolCall.function.arguments as unknown as {
+                            [key: string]: any;
+                          },
+                        },
+                      }),
+                    )
                   : undefined,
             };
           }
@@ -62,7 +55,6 @@ export async function* text(
             return {
               role: message.role,
               content: JSON.stringify(message.content),
-              tool_call_id: message.toolCallId,
             };
           }
 
@@ -81,40 +73,41 @@ export async function* text(
               },
             }))
           : undefined,
-      tool_choice: toolChoice,
-      response_format: responseFormat
-        ? {
-            type: 'json_schema',
-            json_schema: {
-              strict: true,
-              name: 'schema',
-              description: '',
-              schema: responseFormat as Record<string, unknown>,
-            },
-          }
-        : undefined,
+      format: responseFormat ? responseFormat : undefined,
     };
 
-    const resolvedOptions: OpenAI.Chat.ChatCompletionCreateParams =
-      transformRequestOptions
-        ? await transformRequestOptions(baseOptions)
-        : baseOptions;
+    const client = turbo
+      ? new Ollama({
+          host: 'https://ollama.com',
+          headers: {
+            Authorization: `Bearer ${turbo.apiKey}`,
+          },
+        })
+      : OllamaClient;
 
-    const stream = openai.beta.chat.completions.stream(resolvedOptions);
+    const stream = await client.chat(baseOptions);
 
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {
-        choices: chunk.choices.map(
-          (choice): Chat.Api.CompletionChunkChoice => ({
-            index: choice.index,
+        choices: [
+          {
+            index: 0,
             delta: {
-              content: choice.delta.content,
-              role: choice.delta.role,
-              toolCalls: choice.delta.tool_calls,
+              content: chunk.message.content,
+              role: chunk.message.role,
+              toolCalls: chunk.message.tool_calls?.map((toolCall, index) => ({
+                ...toolCall,
+                id: `tool-call-${messages.length}-${index}`,
+                index,
+                function: {
+                  ...toolCall.function,
+                  arguments: toolCall.function.arguments as any,
+                },
+              })),
             },
-            finishReason: choice.finish_reason,
-          }),
-        ),
+            finishReason: chunk.done ? 'stop' : null,
+          },
+        ],
       };
 
       const frame: Frame = {

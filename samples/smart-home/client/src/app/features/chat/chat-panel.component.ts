@@ -183,10 +183,18 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    model: 'gemini-2.5-flash',
+    model: 'gpt-oss:120b',
+    debugName: 'simple-chat',
     system: `
       You are a helpful assistant that can answer questions and help with tasks.
     `,
+    tools: [
+      createTool({
+        name: 'getUser',
+        description: 'Get information about the current user',
+        handler: () => this.authService.getUser(),
+      }),
+    ],
   });
 
   /**
@@ -296,10 +304,7 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   chat = uiChatResource({
-    model: 'gpt-4.1',
-    // model: 'gemini-2.5-pro',
-    // model: 'gpt-4o@2025-01-01-preview',
-    // model: 'palmyra-x5',
+    model: 'gpt-oss:20b',
     debugName: 'ui-chat',
     system: `
       You are a helpful assistant for a smart home app. You are speaking to the user
@@ -317,34 +322,80 @@ export class ChatPanelComponent {
       Always prefer writing a single script for the javascript tool over calling the javascript
       tool multiple times.
 
-      You can locate important elements via findHTMLElementBySelector:
-      * the argument for findHTMLElementByXPathSelector is a precise XPath selector
-      * Avoid using generic tags like 'h1' alone. Instead, combine them with other attributes or structural relationships to form a unique selector.
-      * Selectors should not include "main.chatPanelOpen"
-      * If you cannot locate an element after 3 tries, **give up** and the user know.
-      
-      Prefer findHTMLElementByXPathSelector, whose argument is a precise XPath selector.  Xpath selectors can be based on text matching,
-      making them more suitable for finding interactive elements by name.
-
-      When a user asks for an explanation of or help with a page:
-      * ignore the chat panel and its contents unless the user explicitly asks about the chat panel
-      * always re-retrieve the HTML for the page (via getPageHTML)
-      * only mark the 3-5 most important parts of the page
-      * don't callout individual elements in a vertical list (i.e. describe a list of lights, but not each light)
-      * place markers overlayed on the page that match up with sections in the description  
-      
-      **Important Rules**
-      * When a user requests navigation (such as 'go to the lights page'), do not show light controls, explanations, or summaries unless the user explicitly asks for them. Only perform the navigation action. Do not generate any output in the main chat window unless further instructions are given.
-        * Example 1: "Take me to the schedule scenes page" should cause navigation but no explanation or controls.
-        * Example 2: "Navigate to the lights page" should cause navigation but no explanation or controls.
-        * Example 3: "Walk me through the Lights page" (when on the Scenes page) should cause navigation and _also_ explanation.
-      * If a user does not ask for an explanation or help understanding, don't provide any explanation. For example, if a user asks to click an element or go to a different page, just do that without providing page explanation.
-      * If a user asks for navigation (like, "go the lights page" or "take me to the lights page"), don't show controls in the chat.
-        * Example: "Navigate to the lights page"
-      * Ground your mathematical calculations using the javascript tool.
-
       Please do not stringify (aka escape) function arguments.  Also, make sure not to include bits of JSON Schema in the function 
       arguments and returned structured data. 
+
+      # Examples
+      User: What lights are in the living room?
+      Assistant:
+        [tool_call] getLights()
+        [tool_call_result]
+          [
+            {
+              "id": "8ba9469b-82a0-43f7-bf02-89315a4b8554",
+              "name": "Living Room Ceiling",
+              "brightness": 50
+            },
+            {
+              "id": "c4b9348e-a654-4b60-acd3-cfca97c59706",
+              "name": "Living Room Floor",
+              "brightness": 50
+            },
+            {
+              "id": "a5b26c6a-36b0-4f09-948b-ddff5bfba385",
+              "name": "Living Room Ambient",
+              "brightness": 50
+            }
+          ]
+        ]
+      Assistant:
+        {
+          "ui": [
+            {
+              "0": {
+                "$tagName": "app-markdown",
+                "$props": {
+                  "data": "# Living Room Lights:"
+                }
+              }
+            },
+            {
+              "1": {
+                "$tagName": "app-light",
+                "$props": {
+                  "lightId": "8ba9469b-82a0-43f7-bf02-89315a4b8554",
+                  "icon": "lightbulb"
+                }
+              }
+            },
+            {
+              "1": {
+                "$tagName": "app-light",
+                "$props": {
+                  "lightId": "c4b9348e-a654-4b60-acd3-cfca97c59706",
+                  "icon": "floor_lamp"
+                }
+              }
+            },
+            {
+              "1": {
+                "$tagName": "app-light",
+                "$props": {
+                  "lightId": "a5b26c6a-36b0-4f09-948b-ddff5bfba385",
+                  "icon": "lightbulb"
+                }
+              }
+            }
+          ]
+        }
+
+      IMPORTANT: in the JSON, the keys are in the index order of the UI components. It
+      is not the order of the UI components. 
+       - 0 is the app-markdown component
+       - 1 is the app-light component
+       - 2 is the app-scene component
+
+      
     `,
     components: [
       exposeComponent(MarkdownComponent, {
@@ -361,14 +412,14 @@ export class ChatPanelComponent {
           icon: LightIconSchema,
         },
       }),
-      exposeComponent(LightListComponent, {
-        description: 'Show a list of lights to the user',
-        input: {
-          title: s.string('The name of the list'),
-          icon: LightListIconSchema,
-        },
-        children: 'any',
-      }),
+      // exposeComponent(LightListComponent, {
+      //   description: 'Show a list of lights to the user',
+      //   input: {
+      //     title: s.string('The name of the list'),
+      //     icon: LightListIconSchema,
+      //   },
+      //   children: 'any',
+      // }),
       exposeComponent(SceneComponent, {
         description: 'Show a scene to the user',
         input: {
@@ -393,141 +444,6 @@ export class ChatPanelComponent {
         handler: () => lastValueFrom(this.smartHomeService.loadScenes$()),
       }),
       createTool({
-        name: 'getPageHTML',
-        description: 'Get the currently rendered page HTML',
-        handler: () => {
-          const fullHTML = document.documentElement.outerHTML;
-
-          const sanitized = sanitizeHtml(fullHTML, {
-            allowedAttributes: {
-              '*': [
-                'href',
-                'data-*',
-                'alt',
-                'class',
-                'style',
-                'aria-*',
-                'role',
-                'routerLink',
-              ],
-            },
-          });
-
-          return Promise.resolve(sanitized);
-        },
-      }),
-      createTool({
-        name: 'findHTMLElementByXPathSelector',
-        description: 'Find the html element via a unique XPath.',
-        schema: s.object('Args', {
-          xpathSelector: s.string(
-            'A unique XPath selector that is crafted to only return one element',
-          ),
-        }),
-        handler: (input) => {
-          const result = document.evaluate(input.xpathSelector, document);
-
-          const foundElement = result.iterateNext();
-
-          if (foundElement) {
-            const elementId = uuid();
-
-            if (foundElement instanceof Element) {
-              (foundElement as Element).setAttribute(
-                'data-element-id',
-                elementId,
-              );
-
-              return Promise.resolve(elementId);
-            }
-          }
-          return Promise.resolve('');
-        },
-      }),
-      createTool({
-        name: 'clickElement',
-        description: 'Click.',
-        schema: s.object('Click an element', {
-          name: s.streaming.string(
-            'User-friendly name of the element to click',
-          ),
-          elementId: s.string(
-            'A uuid that is a unique data-element-id value for the target of the topic marker',
-          ),
-        }),
-        handler: async (input) => {
-          const dialog = inject(MatDialog);
-
-          const dialogRef = dialog.open(ConfirmComponent, {
-            data: {
-              title: 'Click Element',
-              message: `Are you sure you want to click ${input.name}?`,
-            },
-          });
-
-          const result = await lastValueFrom(dialogRef.afterClosed());
-
-          if (result) {
-            const element = document.querySelector(
-              `[data-element-id="${input.elementId}`,
-            );
-
-            if (element) {
-              (element as HTMLElement).click();
-            }
-
-            return true;
-          }
-
-          return false;
-        },
-      }),
-      createTool({
-        name: 'drawTopicMarker',
-        description:
-          'Create a circle with a letter.  Used to visually associate things in the UI with topics in chat.',
-        schema: s.object('Create marker on UI', {
-          elementId: s.string(
-            'A uuid that is a unique data-element-id value for the target of the topic marker',
-          ),
-          label: s.string(
-            'A single capital letter that should match a label in the explanatory text',
-          ),
-        }),
-        handler: (input) => {
-          const element = document.querySelector(
-            `[data-element-id="${input.elementId}`,
-          );
-
-          if (!element) {
-            return Promise.resolve(false);
-          }
-
-          const overlayRef = this.overlay.create({
-            positionStrategy: this.overlay
-              .position()
-              .flexibleConnectedTo(element)
-              .withPositions([
-                {
-                  originX: 'center',
-                  originY: 'center',
-                  overlayX: 'center',
-                  overlayY: 'top',
-                },
-              ]),
-            scrollStrategy: this.overlay.scrollStrategies.reposition(),
-            hasBackdrop: false,
-          });
-
-          this.helpMarkerOverlayRefs.push(overlayRef);
-
-          const marker = new ComponentPortal(HelpTopicMarkerComponent);
-          const markerRef = overlayRef.attach(marker);
-          markerRef.setInput('markerLabel', input.label);
-          return Promise.resolve(true);
-        },
-      }),
-      createTool({
         name: 'controlLight',
         description: 'Control a light',
         schema: s.object('Control light input', {
@@ -550,9 +466,9 @@ export class ChatPanelComponent {
           return light;
         },
       }),
-      createToolJavaScript({
-        runtime: this.runtime,
-      }),
+      // createToolJavaScript({
+      //   runtime: this.runtime,
+      // }),
     ],
   });
 
