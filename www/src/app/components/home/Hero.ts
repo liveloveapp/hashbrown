@@ -18,11 +18,15 @@ import { Squircle } from '../Squircle';
         </div>
         <div class="container">
           <div class="heading">
-            <h1>Build user interfaces that delight users with intelligence</h1>
+            <h1>
+              Build
+              <div class="ai-underline">generative</div>
+              user interfaces
+            </h1>
             <p>
-              Hashbrown is an open-source framework for building generative user
-              interfaces that speed users through workflows, simplify data
-              entry, dynamically reorganize, and even code themselves.
+              Hashbrown is an open-source framework for building user interfaces
+              that converse with users, dynamically reorganize, and even code
+              themselves.
             </p>
           </div>
           <div class="actions">
@@ -87,6 +91,7 @@ import { Squircle } from '../Squircle';
         align-self: stretch;
         width: 100%;
         max-width: 600px;
+        gap: 32px;
 
         > .logo {
           display: flex;
@@ -98,6 +103,8 @@ import { Squircle } from '../Squircle';
             width: 94px;
             height: auto;
             aspect-ratio: 47/50;
+            animation: slideThenRotate 0.8s ease forwards;
+            transform-origin: bottom left;
           }
         }
 
@@ -116,12 +123,46 @@ import { Squircle } from '../Squircle';
             align-self: stretch;
 
             > h1 {
-              color: var(--gray-dark, #3d3c3a);
+              color: var(--gray);
               text-align: center;
+              position: relative;
+              z-index: 1;
               font:
-                900 32px/40px 'KefirVariable',
+                800 32px/40px 'KefirVariable',
                 sans-serif;
-              font-variation-settings: 'wght' 900;
+              font-variation-settings: 'wght' 800;
+              text-shadow: 0 0 1px var(--vanilla-ivory);
+
+              .ai-underline {
+                display: inline-block;
+                width: fit-content;
+              }
+
+              .ai-underline:after {
+                content: '';
+                position: relative;
+                display: block;
+                width: calc(100% - 20px);
+                height: 3px;
+                top: -5px;
+                left: 20px;
+                z-index: -1;
+                background: var(--sunshine-yellow);
+                border-radius: 2px;
+                background: linear-gradient(
+                  90deg,
+                  var(--sunshine-yellow) 0%,
+                  var(--sunset-orange) 25%,
+                  var(--indian-red-light) 50%,
+                  var(--sky-blue) 75%,
+                  var(--olive-green-light) 100%
+                );
+                transition: width 0.5s ease;
+
+                @starting-style {
+                  width: 0;
+                }
+              }
             }
 
             > p {
@@ -257,6 +298,20 @@ import { Squircle } from '../Squircle';
             }
           }
         }
+      }
+    }
+
+    @keyframes slideThenRotate {
+      0% {
+        opacity: 0;
+        transform: rotate(-10deg) translateX(-90px) translateY(0px);
+      }
+      70% {
+        opacity: 1;
+        transform: rotate(-10deg) translateX(0px) translateY(4px);
+      }
+      100% {
+        transform: rotate(0deg) translateX(0px) translateY(0px);
       }
     }
   `,
