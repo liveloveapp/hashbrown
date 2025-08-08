@@ -23,6 +23,9 @@ import { ChevronDown } from '../icons/ChevronDown';
             offsetY: 8,
           },
         ]"
+        wwwSquircle="16"
+        [wwwSquircleBorderWidth]="1"
+        wwwSquircleBorderColor="var(--sky-blue, #9ecfd7)"
       >
         @switch (sdk()) {
           @case ('angular') {
@@ -210,8 +213,6 @@ import { ChevronDown } from '../icons/ChevronDown';
       height: 40px;
       width: 100%;
       padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--sky-blue, #9ecfd7);
       background: rgba(158, 207, 215, 0.24);
 
       > label {

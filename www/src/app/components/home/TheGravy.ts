@@ -26,12 +26,6 @@ import { Component } from '@angular/core';
       position: relative;
       display: flex;
       justify-content: center;
-      background-color: var(--vanilla-ivory, #faf9f0);
-      background-image: url('/image/texture/fabric.png');
-      background-size: auto;
-      background-repeat: repeat;
-      background-position: center;
-      background-attachment: fixed;
     }
 
     .bleed {

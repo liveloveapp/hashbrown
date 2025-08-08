@@ -1,15 +1,17 @@
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {
   Component,
   computed,
   CUSTOM_ELEMENTS_SCHEMA,
+  inject,
+  OnInit,
+  PLATFORM_ID,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Sell } from '../../icons/Sell';
-import { MatIcon } from '@angular/material/icon';
 
 @Component({
-  imports: [Sell, RouterLink, MatIcon],
+  imports: [Sell],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="bleed">
@@ -239,7 +241,28 @@ import { MatIcon } from '@angular/material/icon';
     }
   `,
 })
-export default class WorkshopsIndexPage {
+export default class WorkshopsIndexPage implements OnInit {
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly document = inject(DOCUMENT);
+
+  ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const existing = this.document.head.querySelector(
+      'script[data-id="tito-inline"]',
+    );
+    if (existing) {
+      return;
+    }
+
+    const script = this.document.createElement('script');
+    script.src = 'https://js.tito.io/v2/with/inline';
+    script.async = true;
+    script.setAttribute('data-id', 'tito-inline');
+    this.document.head.appendChild(script);
+  }
   readonly angular = signal<Date[]>([
     new Date(2025, 9, 6),
     new Date(2025, 9, 20),

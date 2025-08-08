@@ -5,14 +5,23 @@ import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { MarkdownPage } from '../components/MarkdownPage';
 import { TheGravy } from '../components/home/TheGravy';
+import { Squircle } from '../components/Squircle';
 
 @Component({
-  imports: [Header, DocsMenu, Footer, MarkdownPage, TheGravy, RouterOutlet],
+  imports: [
+    DocsMenu,
+    Footer,
+    Header,
+    MarkdownPage,
+    RouterOutlet,
+    Squircle,
+    TheGravy,
+  ],
   template: `
     <www-header />
     <main class="docs">
       <www-docs-menu />
-      <div>
+      <div wwwSquircle="16 0 0 0">
         <www-markdown-page>
           <router-outlet></router-outlet>
         </www-markdown-page>
@@ -32,6 +41,7 @@ import { TheGravy } from '../components/home/TheGravy';
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
+      background: var(--vanilla-ivory, #faf9f0);
 
       > www-docs-menu {
         display: none;
@@ -39,6 +49,7 @@ import { TheGravy } from '../components/home/TheGravy';
 
       > div {
         overflow: hidden;
+        background: #fff;
       }
     }
 

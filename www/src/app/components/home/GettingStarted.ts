@@ -6,202 +6,311 @@ import {
   signal,
   Type,
 } from '@angular/core';
-import { ButtonGroup } from '../ButtonGroup';
 import { Angular } from '../../icons/Angular';
 import { BrandGoogle } from '../../icons/BrandGoogle';
 import { BrandOpenAi } from '../../icons/BrandOpenAi';
 import { BrandWriter } from '../../icons/BrandWriter';
-import { Copy } from '../../icons/Copy';
 import { React } from '../../icons/React';
-import { CodeHighlight } from '../../pipes/CodeHighlight';
 import { AppConfig, ConfigService } from '../../services/ConfigService';
 import { CodeExampleGroup } from '../CodeExampleGroup';
 import { CodeExampleGroupItem } from '../CodeExampleGroupItem';
+import { Squircle } from '../Squircle';
+import { DropdownMenu } from '../DropDownMenu';
+import { ChevronDown } from '../../icons/ChevronDown';
 
-const angularExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/home/angular/**/*.md', {
-    eager: true,
-    query: 'raw',
-    import: 'default',
-  }),
-).map(([key, value]) => [
-  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-  value as string,
-]);
+// const angularExamples: [string, string][] = Object.entries(
+//   import.meta.glob('/src/content/home/angular/**/*.md', {
+//     eager: true,
+//     query: 'raw',
+//     import: 'default',
+//   }),
+// ).map(([key, value]) => [
+//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+//   value as string,
+// ]);
 
-const reactExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/home/react/**/*.md', {
-    eager: true,
-    query: 'raw',
-    import: 'default',
-  }),
-).map(([key, value]) => [
-  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-  value as string,
-]);
+// const reactExamples: [string, string][] = Object.entries(
+//   import.meta.glob('/src/content/home/react/**/*.md', {
+//     eager: true,
+//     query: 'raw',
+//     import: 'default',
+//   }),
+// ).map(([key, value]) => [
+//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+//   value as string,
+// ]);
 
+// const sdkExamplesSources: Record<string, [string, string][]> = {
+//   angular: angularExamples,
+//   react: reactExamples,
+// };
+
+// const openaiExamples: [string, string][] = Object.entries(
+//   import.meta.glob('/src/content/home/openai/**/*.md', {
+//     eager: true,
+//     query: 'raw',
+//     import: 'default',
+//   }),
+// ).map(([key, value]) => [
+//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+//   value as string,
+// ]);
+
+// const googleExamples: [string, string][] = Object.entries(
+//   import.meta.glob('/src/content/home/google/**/*.md', {
+//     eager: true,
+//     query: 'raw',
+//     import: 'default',
+//   }),
+// ).map(([key, value]) => [
+//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+//   value as string,
+// ]);
+
+// const writerExamples: [string, string][] = Object.entries(
+//   import.meta.glob('/src/content/home/writer/**/*.md', {
+//     eager: true,
+//     query: 'raw',
+//     import: 'default',
+//   }),
+// ).map(([key, value]) => [
+//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+//   value as string,
+// ]);
+
+// mock out examples
 const sdkExamplesSources: Record<string, [string, string][]> = {
-  angular: angularExamples,
-  react: reactExamples,
+  angular: [
+    ['app.component.ts', `foo`],
+    ['app.config.ts', `foo`],
+  ],
+  react: [['App.tsx', `foo`]],
 };
-
-const openaiExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/home/openai/**/*.md', {
-    eager: true,
-    query: 'raw',
-    import: 'default',
-  }),
-).map(([key, value]) => [
-  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-  value as string,
-]);
-
-const googleExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/home/google/**/*.md', {
-    eager: true,
-    query: 'raw',
-    import: 'default',
-  }),
-).map(([key, value]) => [
-  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-  value as string,
-]);
-
-const writerExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/home/writer/**/*.md', {
-    eager: true,
-    query: 'raw',
-    import: 'default',
-  }),
-).map(([key, value]) => [
-  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-  value as string,
-]);
 
 const providerExamplesSources: Record<string, [string, string][]> = {
-  openai: openaiExamples,
-  google: googleExamples,
-  writer: writerExamples,
+  openai: [['main.ts', `foo`]],
+  google: [['main.ts', `foo`]],
+  writer: [['main.ts', `foo`]],
 };
+
+interface Section {
+  title: string;
+  description: string;
+}
 
 @Component({
   selector: 'www-getting-started',
   imports: [
-    ButtonGroup,
+    Angular,
+    BrandGoogle,
+    BrandOpenAi,
+    BrandWriter,
+    ChevronDown,
     CodeExampleGroup,
-    CodeHighlight,
-    Copy,
     CodeExampleGroupItem,
+    DropdownMenu,
+    React,
+    Squircle,
   ],
   template: `
-    <div class="bleed">
-      <div class="getting-started">
-        <div class="steps">
-          <h2>getting started</h2>
-          <dl>
-            <dt>
-              <span>1</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="37"
-                height="40"
-                viewBox="0 0 37 40"
-                fill="none"
-              >
-                <path
-                  d="M20.0751 2.68072C35.0751 5.18072 40.0751 17.6807 32.5751 30.1807C30.0751 40.1807 17.5751 42.6807 7.57514 35.1807C-2.42486 25.1807 0.0751405 10.1807 7.57514 2.68072C12.5751 -2.31928 20.0751 2.68072 20.0751 2.68072Z"
-                  fill="#F97583"
-                />
-              </svg>
-            </dt>
-            <dd>
-              <h3>use AI directly in your app</h3>
-              <p>
-                Use an LLM to stream generated UI components, text completions,
-                suggestions, and structured output directly into your web app.
-              </p>
-            </dd>
-            <dt>
-              <span>2</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="39"
-                height="42"
-                viewBox="0 0 39 42"
-                fill="none"
-              >
-                <path
-                  d="M19.6563 1.64701C34.6563 3.64701 40.6563 17.647 37.1563 30.147C33.6563 41.647 24.6563 43.647 14.6563 40.147C2.15635 36.647 -1.34365 20.147 2.15635 7.64701C5.65635 -1.35299 17.1563 -0.352985 19.6563 1.64701Z"
-                  fill="#FBBB52"
-                />
-              </svg>
-            </dt>
-            <dd>
-              <h3>configure hashbrown</h3>
-              <p>
-                Connect your app to your streaming API route, with a short
-                circuit to disable hashbrown for users who have opted out of AI
-              </p>
-            </dd>
-            <dt>
-              <span>3</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="41"
-                height="40"
-                viewBox="0 0 41 40"
-                fill="none"
-              >
-                <path
-                  d="M20.5 0C33 0 40.5 7.5 40.5 20C40.5 32.5 30.5 40 20.5 40C10.5 40 0.5 32.5 0.5 20C0.5 7.5 8 0 20.5 0Z"
-                  fill="#616F36"
-                />
-              </svg>
-            </dt>
-            <dd>
-              <h3>expose chat api route</h3>
-              <p>
-                hashbrown ships with adapter packages for major LLM vendors that
-                makes it easy to create streaming responses for your app to
-                consume
-              </p>
-            </dd>
-          </dl>
-        </div>
-        <div class="examples">
-          <div class="controls">
-            <www-button-group
-              [options]="sdks()"
-              [value]="sdk()"
-              (valueChange)="onSdkChange($event)"
-            />
-            <www-button-group
-              [options]="providers()"
-              [value]="provider()"
-              (valueChange)="onProviderChange($event)"
-            />
-          </div>
-          <www-code-example-group>
-            @for (example of computedExamples(); track example[0]) {
-              <www-code-example-group-item
-                [selfIndex]="$index"
-                [header]="example[0]"
-                [content]="example[1]"
-              ></www-code-example-group-item>
-            }
-          </www-code-example-group>
-          <div class="cta">
-            <span [innerHTML]="cta() | codeHighlight: 'shell'"></span>
-            <button
-              (click)="onCopyInstall()"
-              aria-label="Copy code to clipboard"
-            >
-              <www-copy height="16px" width="16px" />
-            </button>
-          </div>
-        </div>
+    <div
+      class="bleed"
+      wwwSquircle="32"
+      [wwwSquircleBorderWidth]="1"
+      wwwSquircleBorderColor="rgba(173, 144, 124, 0.24)"
+    >
+      <h2>The Generative UI<br />Framework for Engineers</h2>
+      <p>
+        Hashbrown gives you a set of reactive primitives for streaming AI
+        responses to the browser, generating component trees, and executing
+        LLM-authored JavaScript, using your own components and AI provider.
+      </p>
+      <div
+        class="sections"
+        [style.marginBottom]="32 * sections().length + 'px'"
+        wwwSquircle="16 0 16 0"
+        [wwwSquircleBorderWidth]="1"
+        wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
+      >
+        @for (
+          section of sections();
+          track section.title;
+          let isFirst = $first;
+          let isLast = $last
+        ) {
+          <button>
+            <h3>{{ section.title }}</h3>
+            <p>{{ section.description }}</p>
+          </button>
+        }
       </div>
-      <a [href]="ctaHref()">read the full recipe</a>
+      <div
+        class="player"
+        wwwSquircle="0 16 16 16"
+        [wwwSquircleBorderWidth]="1"
+        wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
+      ></div>
+      <div></div>
+      <div class="examples">
+        <div class="actions">
+          <h3>Replace this with a real title</h3>
+          <div class="controls">
+            <div class="sdk">
+              <www-dropdown-menu
+                [positions]="[
+                  {
+                    originX: 'end',
+                    originY: 'bottom',
+                    overlayX: 'end',
+                    overlayY: 'top',
+                    offsetY: 8,
+                  },
+                ]"
+              >
+                @switch (sdk()) {
+                  @case ('angular') {
+                    <label>
+                      <span
+                        ><www-angular
+                          height="16px"
+                          width="16px"
+                          fill="#774625"
+                        />Angular</span
+                      >
+                      <www-chevron-down height="16px" width="16px" />
+                    </label>
+                  }
+                  @case ('react') {
+                    <label>
+                      <span
+                        ><www-react
+                          height="16px"
+                          width="16px"
+                          fill="#774625"
+                        />React</span
+                      >
+                      <www-chevron-down height="16px" width="16px" />
+                    </label>
+                  }
+                }
+                <div content>
+                  <button
+                    (click)="onSdkChange('angular')"
+                    class="menu-item sdk"
+                  >
+                    <www-angular height="16px" width="16px" fill="#774625" />
+                    Angular
+                  </button>
+                  <button (click)="onSdkChange('react')" class="menu-item sdk">
+                    <www-react height="16px" width="16px" fill="#774625" />
+                    React
+                  </button>
+                </div>
+              </www-dropdown-menu>
+            </div>
+            <div class="provider">
+              <www-dropdown-menu
+                [positions]="[
+                  {
+                    originX: 'end',
+                    originY: 'bottom',
+                    overlayX: 'end',
+                    overlayY: 'top',
+                    offsetY: 8,
+                  },
+                ]"
+              >
+                @switch (provider()) {
+                  @case ('openai') {
+                    <label>
+                      <span
+                        ><www-brand-openai
+                          height="16px"
+                          width="16px"
+                          fill="#774625"
+                        />OpenAI</span
+                      >
+                      <www-chevron-down height="16px" width="16px" />
+                    </label>
+                  }
+                  @case ('google') {
+                    <label>
+                      <span
+                        ><www-brand-google
+                          height="16px"
+                          width="16px"
+                          fill="#774625"
+                        />Google</span
+                      >
+                      <www-chevron-down height="16px" width="16px" />
+                    </label>
+                  }
+                  @case ('writer') {
+                    <label>
+                      <span
+                        ><www-brand-writer
+                          height="16px"
+                          width="16px"
+                          fill="#774625"
+                        />Writer</span
+                      >
+                      <www-chevron-down height="16px" width="16px" />
+                    </label>
+                  }
+                }
+                <div content>
+                  <button
+                    (click)="onProviderChange('openai')"
+                    class="menu-item provider"
+                  >
+                    <www-brand-openai
+                      height="16px"
+                      width="16px"
+                      fill="#774625"
+                    />
+                    OpenAI
+                  </button>
+                  <button
+                    (click)="onProviderChange('google')"
+                    class="menu-item provider"
+                  >
+                    <www-brand-google
+                      height="16px"
+                      width="16px"
+                      fill="#774625"
+                    />
+                    Google
+                  </button>
+                  <button
+                    (click)="onProviderChange('writer')"
+                    class="menu-item provider"
+                  >
+                    <www-brand-writer
+                      height="16px"
+                      width="16px"
+                      fill="#774625"
+                    />
+                    Writer
+                  </button>
+                </div>
+              </www-dropdown-menu>
+            </div>
+          </div>
+        </div>
+        <www-code-example-group
+          wwwSquircle="16"
+          [wwwSquircleBorderWidth]="1"
+          wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
+        >
+          @for (example of computedExamples(); track example[0]) {
+            <www-code-example-group-item
+              [selfIndex]="$index"
+              [header]="example[0]"
+              [content]="example[1]"
+            ></www-code-example-group-item>
+          }
+        </www-code-example-group>
+      </div>
     </div>
   `,
   styles: `
@@ -209,206 +318,208 @@ const providerExamplesSources: Record<string, [string, string][]> = {
       display: flex;
       justify-content: center;
       width: 100%;
-      background: #3d3c3a;
     }
 
     .bleed {
-      display: flex;
-      flex-direction: column;
-      gap: 32px;
-      padding: 64px 32px;
-      max-width: 1460px;
+      display: grid;
+      grid-template-columns: 1fr;
+      row-gap: 24px;
+      padding: 32px;
+      max-width: 1080px;
       width: 100%;
+      background: #fff;
 
-      > .getting-started {
-        display: grid;
-        grid-template-columns: 1fr;
+      > h2 {
+        color: var(--gray-dark, #3d3c3a);
+        font:
+          750 20px/24px 'KefirVariable',
+          sans-serif;
+        font-variation-settings: 'wght' 750;
+      }
+
+      > p {
+        color: var(--gray, #5e5c5a);
+        font:
+          500 15px/18px 'Fredoka',
+          sans-serif;
+      }
+
+      > .sections {
+        display: flex;
         flex-direction: column;
-        gap: 32px;
 
-        > .steps {
+        > button {
           display: flex;
           flex-direction: column;
-          gap: 32px;
+          gap: 4px;
+          text-align: left;
+          padding: 16px;
+          // opacity: 0.64;
 
-          > h2 {
-            color: #fde4ba;
+          // &.active {
+          //   opacity: 1;
+          // }
+
+          // &:nth-child(2) {
+          //   border-left: 1px solid rgba(0, 0, 0, 0.12);
+          // }
+
+          > h3 {
+            color: var(--gray-dark, #3d3c3a);
             font:
-              700 normal 56px/64px Fredoka,
+              600 16px/24px 'Fredoka',
               sans-serif;
           }
 
-          > dl {
-            display: grid;
-            grid-template-columns: 48px auto;
-            row-gap: 24px;
-            column-gap: 16px;
-
-            > dt {
-              position: relative;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              width: 40px;
-              height: 40px;
-              border-radius: 64px;
-
-              > svg {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-              }
-
-              > span {
-                color: #fff;
-                font:
-                  700 normal 24px/32px Fredoka,
-                  sans-serif;
-                z-index: 1;
-              }
-            }
-
-            > dd {
-              display: flex;
-              flex-direction: column;
-              gap: 8px;
-
-              > h3 {
-                color: #fff;
-                font:
-                  700 normal 24px/32px Fredoka,
-                  sans-serif;
-              }
-
-              > p {
-                color: #faf9f0;
-                font:
-                  400 normal 16px/24px Poppins,
-                  sans-serif;
-              }
-            }
-          }
-        }
-
-        > .examples {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-
-          > .controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-          }
-
-          > www-code-example-group {
-            flex: 1 auto;
-            width: 100%;
-            height: 100%;
-            max-height: 640px;
-            overflow: hidden;
-          }
-
-          > .cta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            border-radius: 8px;
-            background: #2b2a29;
-            overflow-x: scroll;
-            > button {
-              color: #fff;
-              display: flex;
-              align-items: center;
-              opacity: 0.4;
-
-              &:hover {
-                opacity: 1;
-              }
-            }
+          > p {
+            color: var(--gray, #5e5c5a);
+            font:
+              350 13px/16px 'JetBrains Mono',
+              sans-serif;
           }
         }
       }
 
-      > a {
-        align-self: center;
-        display: inline-flex;
-        justify-content: center;
+      > .player {
+        display: flex;
+        width: 100%;
+        height: 320px;
+        aspect-ratio: 167/94;
+        justify-content: flex-end;
         align-items: center;
-        border-radius: 32px;
-        border: 6px solid #64afb5;
-        background: #9ecfd7;
-        color: #384849;
+        background: var(--sky-blue-light, #d8ecef);
+      }
+
+      > .examples {
+        display: flex;
+        flex-direction: column;
+        gap: 48px;
+
+        > .actions {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+
+          > h3 {
+            color: #000;
+            font:
+              600 15px/24px 'Fredoka',
+              sans-serif;
+          }
+
+          > .controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+        }
+
+        > www-code-example-group {
+          flex: 1 auto;
+          width: 100%;
+          height: 100%;
+          max-height: 640px;
+          overflow: hidden;
+        }
+      }
+    }
+
+    .controls ::ng-deep button {
+      display: flex;
+      height: 40px;
+      width: 100%;
+      padding: 8px 12px;
+
+      > label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        color: var(--chocolate-brown, #774625);
         font:
-          500 18px/24px 'Fredoka',
+          600 15px/19.5px Fredoka,
           sans-serif;
-        padding: 12px 24px;
+
+        > span {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+      }
+    }
+
+    .controls ::ng-deep .sdk button {
+      background: var(--sunshine-yellow-light, #fde4ba);
+    }
+
+    .controls ::ng-deep .provider button {
+      background: var(--sunset-orange-light, #f6d1b8);
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      width: 100%;
+      border-radius: 8px;
+      color: var(--chocolate-brown, #774625);
+      font:
+        400 13px/18px Fredoka,
+        sans-serif;
+
+      &.sdk {
+        &:hover,
+        &.active {
+          background: var(--sunshine-yellow-light, #fde4ba);
+        }
+      }
+
+      &.provider {
+        &:hover,
+        &.active {
+          background: var(--sunset-orange-light, #f6d1b8);
+        }
       }
     }
 
     @media screen and (min-width: 1024px) {
       .bleed {
-        padding: 128px 64px;
-        gap: 64px;
-
-        > .getting-started {
-          gap: 96px;
-          grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-
-          > .steps {
-            > dl {
-              gap: 32px;
-            }
-          }
-        }
-      }
-    }
-
-    @media (width < 450px) {
-      .bleed {
-        > .getting-started {
-          > .steps {
-            > h2 {
-              font:
-                700 32px/48px Fredoka,
-                sans-serif;
-            }
-          }
-        }
-      }
-    }
-
-    @media (width < 660px) {
-      .bleed {
-        > .getting-started {
-          > .examples {
-            > .controls {
-              flex-direction: column;
-            }
-          }
-        }
-      }
-    }
-
-    @media (width < 768px) {
-      .bleed {
-        > .getting-started {
-          > .examples {
-            max-width: calc(100dvw - 64px);
-          }
-        }
+        grid-template-columns: 348px auto;
+        padding: 64px;
       }
     }
   `,
 })
 export class GettingStarted {
   configService = inject(ConfigService);
+
+  sections = signal<Section[]>([
+    {
+      title: 'Generative User Interfaces',
+      description:
+        'Expose your React or Angular components to an LLM, and let it generate a full UI.',
+    },
+    {
+      title: 'Bring Your Own Model',
+      description:
+        'Use any LLM provider with Hashbrown, including open-weights models via Ollama.',
+    },
+    {
+      title: 'JavaScript Runtime',
+      description:
+        'Use LLMs to generate and run JavaScript for truly next-gen user interactions.',
+    },
+    {
+      title: 'Streaming Responses',
+      description:
+        'Stream text, data, and UI from LLMs to your app, with full type safety along the way',
+    },
+  ]);
+
   sdk = linkedSignal(() => this.configService.sdk());
-  sdks = signal<{ label: string; value: string; icon?: Type<any> }[]>([
+  sdks = signal<{ label: string; value: string; icon?: Type<unknown> }[]>([
     {
       label: 'Angular',
       value: 'angular',
@@ -421,7 +532,7 @@ export class GettingStarted {
     },
   ]);
   provider = linkedSignal(() => this.configService.provider());
-  providers = signal<{ label: string; value: string; icon?: Type<any> }[]>([
+  providers = signal<{ label: string; value: string; icon?: Type<unknown> }[]>([
     {
       label: 'OpenAI',
       value: 'openai',

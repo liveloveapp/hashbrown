@@ -17,6 +17,7 @@ declare const Buffer: any;
     '[style.clip-path]': 'clipPathPropertyValue()',
     '[style.--www-squircle-border-image-url]': 'borderImageUrl()',
     '[style.--www-squircle-border-color]': 'wwwSquircleBorderColor()',
+    '[style.--www-squircle-border-width]': 'wwwSquircleBorderWidth() + "px"',
   },
 })
 export class Squircle {
