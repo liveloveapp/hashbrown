@@ -16,6 +16,7 @@ import * as s from '../schema/base';
 import {
   internal,
   isAnyOfType,
+  isNullType,
   isObjectType,
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
@@ -271,6 +272,84 @@ const _parseJSON = (
 
     let currentContainerStackIndex = containerStack.length - 1;
 
+    // Build a discriminator map for literal-based anyOfs, if possible
+    type DiscriminatorEntry = {
+      schema: s.HashbrownType;
+      literalKey: string;
+      literalValue: string;
+    };
+
+    const buildDiscriminatorMap = (
+      options: s.HashbrownType[],
+    ): Record<string, DiscriminatorEntry> | null => {
+      const map: Record<string, DiscriminatorEntry> = {};
+
+      for (const opt of options) {
+        if (!s.isObjectType(opt)) {
+          return null;
+        }
+
+        const shape = (opt as any)[internal].definition.shape as Record<
+          string,
+          s.HashbrownType
+        >;
+
+        // Find literal properties on this object option
+        const literalEntries = Object.entries(shape).filter(([, v]) =>
+          s.isLiteralType(v as any),
+        ) as [string, s.HashbrownType][];
+
+        // Must have exactly one literal for unambiguous discrimination
+        if (literalEntries.length !== 1) {
+          return null;
+        }
+
+        const [literalKey, literalSchema] = literalEntries[0];
+        const literalValue = (literalSchema as any)[internal].definition
+          .value as string | number | boolean;
+
+        if (typeof literalValue !== 'string') {
+          // Only support string discriminators
+          return null;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
+          // Duplicate discriminator value -> ambiguous
+          return null;
+        }
+        map[literalValue] = {
+          schema: opt,
+          literalKey,
+          literalValue,
+        };
+      }
+
+      return Object.keys(map).length === options.length ? map : null;
+    };
+    const optionsForMap =
+      (containerStack[currentContainerStackIndex] as any) ?? [];
+    const literalDiscriminatorMap = Array.isArray(optionsForMap)
+      ? buildDiscriminatorMap(optionsForMap)
+      : null;
+
+    const getMatchingSchemaForDiscriminator = (
+      key: string,
+    ):
+      | { schema: s.HashbrownType; literalKey?: string; literalValue?: string }
+      | undefined => {
+      if (literalDiscriminatorMap && key in literalDiscriminatorMap) {
+        return literalDiscriminatorMap[key];
+      }
+
+      // Fallback to numeric discriminator
+      const numericIndex = parseInt(key);
+      if (Array.isArray(optionsForMap)) {
+        const schema = optionsForMap[numericIndex];
+        return schema ? { schema } : undefined;
+      }
+      return undefined;
+    };
+
     try {
       while (jsonString[index] !== '}') {
         skipBlank();
@@ -285,30 +364,28 @@ const _parseJSON = (
         try {
           logger.for('parseAnyOf').debug(`Handling discriminator: ${key}`);
 
-          const matchingSchema = (
-            containerStack[currentContainerStackIndex] as any
-          )[parseInt(key)];
+          const matching = getMatchingSchemaForDiscriminator(key);
 
           logger
             .for('parseAnyOf')
             .debug(
-              `Found matching schema in current container for ${key}: ${!!matchingSchema}`,
+              `Found matching schema in current container for ${key}: ${!!(matching && matching.schema)}`,
             );
 
-          if (matchingSchema) {
+          if (matching?.schema) {
             logger.for('parseAnyOf').debug('Adding schema for discriminator');
-            logger.for('parseAnyOf').debug(matchingSchema);
+            logger.for('parseAnyOf').debug(matching.schema);
 
             // If the matching schema is itself an anyOf, we need to push its options array
             // to the schema stack instead of the schema
-            if (s.isAnyOfType(matchingSchema)) {
+            if (s.isAnyOfType(matching.schema)) {
               containerStack.push(
-                (matchingSchema as any)[internal].definition.options,
+                (matching.schema as any)[internal].definition.options,
               );
             } else {
               containerStack.push(
                 s.object(`AnyOf Wrapper for ${key}`, {
-                  [key]: matchingSchema,
+                  [key]: matching.schema,
                 }),
               );
             }
@@ -316,6 +393,20 @@ const _parseJSON = (
             currentContainerStackIndex = containerStack.length - 1;
 
             value = parseAny(key, true, false);
+
+            // If we matched via literal discriminator and the inner object doesn't
+            // include the literal field, inject it so the parsed result conforms
+            // to the declared schema.
+            if (
+              literalDiscriminatorMap &&
+              matching.literalKey &&
+              matching.literalValue &&
+              value != null &&
+              typeof value === 'object' &&
+              !(matching.literalKey in (value as any))
+            ) {
+              (value as any)[matching.literalKey] = matching.literalValue;
+            }
 
             logger.for('parseAnyOf').debug('Value:');
             logger.for('parseAnyOf').debug(value);
@@ -402,6 +493,16 @@ const _parseJSON = (
 
         if (key in obj) {
           return true;
+        }
+
+        // If the key schema is an anyOf and includes nullish, default to null
+        if (s.isAnyOfType(subSchema as any)) {
+          const options = (subSchema as any)[internal].definition
+            .options as s.HashbrownType[];
+          if (options.some((opt) => isNullType(opt))) {
+            obj[key] = null;
+            return true;
+          }
         }
 
         return false;
@@ -559,7 +660,7 @@ const _parseJSON = (
       logger
         .for('parseObj')
         .debug(
-          `Completed object container: ${completedContainer?.[internal].definition.description}`,
+          `Completed object container: ${completedContainer?.[internal]?.definition?.description}`,
         );
     } else {
       logger

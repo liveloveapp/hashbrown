@@ -472,4 +472,95 @@ describe('anyOf', () => {
       'anyOf anyOf literal',
     ]);
   });
+
+  test('streaming with multiple anyOfs in the schema', () => {
+    const schema = s.object('root', {
+      fieldA: s.anyOf([s.streaming.string(''), s.nullish()]),
+      fieldB: s.anyOf([s.streaming.string(''), s.nullish()]),
+    });
+
+    const chunk1 = '{"fieldA":"hello","fieldB":';
+    const chunk2 = 'null}';
+
+    expect(parse(schema, chunk1)).toEqual({ fieldA: 'hello', fieldB: null });
+    expect(parse(schema, chunk1 + chunk2)).toEqual({
+      fieldA: 'hello',
+      fieldB: null,
+    });
+  });
+
+  test('using a literal in anyOf objects for customised discriminators', () => {
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'list of elements',
+        s.anyOf([
+          s.object('Show markdown to the user', {
+            $tagName: s.literal('app-markdown'),
+            $props: s.object('Props', {
+              data: s.streaming.string('The markdown content'),
+            }),
+          }),
+          s.object('Show a button to the user', {
+            $tagName: s.literal('app-button'),
+            $props: s.object('Props', {
+              data: s.streaming.string('The button content'),
+            }),
+          }),
+        ]),
+      ),
+    });
+
+    const jsonString = JSON.stringify({
+      ui: [
+        {
+          'app-markdown': {
+            $props: { data: 'Hello! How can I assist you today?' },
+          },
+        },
+      ],
+    });
+
+    expect(parse(schema, jsonString)).toEqual({
+      ui: [
+        {
+          $props: { data: 'Hello! How can I assist you today?' },
+          $tagName: 'app-markdown',
+        },
+      ],
+    });
+  });
+
+  test('if missing a literal in an anyOf, default to using a numeric discriminator', () => {
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'list of elements',
+        s.anyOf([
+          s.object('Show markdown to the user', {
+            $tagName: s.literal('app-markdown'),
+          }),
+          s.object('Show a button to the user', {
+            $tagName: s.string('some string'),
+          }),
+        ]),
+      ),
+    });
+
+    const jsonString = JSON.stringify({
+      ui: [
+        {
+          '0': {
+            $tagName: 'app-markdown',
+          },
+        },
+      ],
+    });
+
+    expect(parse(schema, jsonString)).toEqual({
+      ui: [
+        {
+          $tagName: 'app-markdown',
+        },
+      ],
+    });
+  });
 });
