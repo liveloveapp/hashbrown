@@ -18,16 +18,16 @@ import { Squircle } from '../Squircle';
 import { DropdownMenu } from '../DropDownMenu';
 import { ChevronDown } from '../../icons/ChevronDown';
 
-// const angularExamples: [string, string][] = Object.entries(
-//   import.meta.glob('/src/content/home/angular/**/*.md', {
-//     eager: true,
-//     query: 'raw',
-//     import: 'default',
-//   }),
-// ).map(([key, value]) => [
-//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-//   value as string,
-// ]);
+const angularExamples: [string, string][] = Object.entries(
+  import.meta.glob('/src/content/home/angular/**/*.md', {
+    eager: true,
+    query: 'raw',
+    import: 'default',
+  }),
+).map(([key, value]) => [
+  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+  value as string,
+]);
 
 // const reactExamples: [string, string][] = Object.entries(
 //   import.meta.glob('/src/content/home/react/**/*.md', {
@@ -80,10 +80,7 @@ import { ChevronDown } from '../../icons/ChevronDown';
 
 // mock out examples
 const sdkExamplesSources: Record<string, [string, string][]> = {
-  angular: [
-    ['app.component.ts', `foo`],
-    ['app.config.ts', `foo`],
-  ],
+  angular: angularExamples,
   react: [['App.tsx', `foo`]],
 };
 
@@ -127,33 +124,31 @@ interface Section {
       </p>
       <div
         class="sections"
-        [style.marginBottom]="32 * sections().length + 'px'"
-        wwwSquircle="16 0 16 0"
+        wwwSquircle="16 0 16 16"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
       >
-        @for (
-          section of sections();
-          track section.title;
-          let isFirst = $first;
-          let isLast = $last
-        ) {
-          <button>
+        @for (section of sections(); track section.title) {
+          <button
+            (click)="index.set($index)"
+            [class.active]="index() === $index"
+          >
             <h3>{{ section.title }}</h3>
             <p>{{ section.description }}</p>
+            <div class="indicator"></div>
           </button>
         }
       </div>
       <div
         class="player"
-        wwwSquircle="0 16 16 16"
+        wwwSquircle="0 16 0 16"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
       ></div>
       <div></div>
       <div class="examples">
         <div class="actions">
-          <h3>Replace this with a real title</h3>
+          <h3>{{ sections()[index()].title }}</h3>
           <div class="controls">
             <div class="sdk">
               <www-dropdown-menu
@@ -349,20 +344,28 @@ interface Section {
         flex-direction: column;
 
         > button {
+          position: relative;
           display: flex;
           flex-direction: column;
           gap: 4px;
           text-align: left;
           padding: 16px;
-          // opacity: 0.64;
+          opacity: 0.64;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+          transition: opacity 0.2s ease-in-out;
 
-          // &.active {
-          //   opacity: 1;
-          // }
+          &.active,
+          &:hover {
+            opacity: 1;
+          }
 
-          // &:nth-child(2) {
-          //   border-left: 1px solid rgba(0, 0, 0, 0.12);
-          // }
+          &.active > .indicator {
+            opacity: 1;
+          }
+
+          &:last-child {
+            border-bottom: none;
+          }
 
           > h3 {
             color: var(--gray-dark, #3d3c3a);
@@ -376,6 +379,25 @@ interface Section {
             font:
               350 13px/16px 'JetBrains Mono',
               sans-serif;
+          }
+
+          > .indicator {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 8px;
+            background: linear-gradient(
+              to bottom,
+              #fbbb52 0%,
+              var(--sunset-orange) 25%,
+              var(--indian-red-light) 50%,
+              var(--sky-blue-dark) 75%,
+              var(--olive-green-light) 100%
+            );
+            background-clip: border-box;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
           }
         }
       }
@@ -394,6 +416,7 @@ interface Section {
         display: flex;
         flex-direction: column;
         gap: 48px;
+        overflow: hidden;
 
         > .actions {
           display: flex;
@@ -417,7 +440,6 @@ interface Section {
 
         > www-code-example-group {
           flex: 1 auto;
-          width: 100%;
           height: 100%;
           max-height: 640px;
           overflow: hidden;
@@ -495,6 +517,7 @@ interface Section {
 export class GettingStarted {
   configService = inject(ConfigService);
 
+  index = signal<number>(0);
   sections = signal<Section[]>([
     {
       title: 'Generative User Interfaces',

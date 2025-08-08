@@ -109,12 +109,13 @@ import { Squircle } from './Squircle';
         > .content {
           background: #2b2a29;
           padding: 16px;
+          margin: 0 2px 2px 2px;
           flex-grow: 0;
           overflow: auto;
-          margin-left: 2px;
           border-right: 2px solid transparent;
           border-bottom: 2px solid transparent;
           border-left: 2px solid transparent;
+          width: calc(100% - 4px);
         }
       }
     `,

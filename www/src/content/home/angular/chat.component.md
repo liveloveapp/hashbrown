@@ -1,44 +1,105 @@
 ```ts
 @Component({
+  selector: 'app-game-setup',
+  imports: [RenderMessageComponent, LoaderComponent],
   template: `
-    <app-simple-chat-message [messages]="chat.value()" />
-    <app-chat-composer (sendMessage)="sendMessage($event)" />
+    @let message = ui.lastAssistantMessage();
+
+    @if (ui.isLoading()) {
+      <app-loader />
+    }
+
+    @if (message) {
+      <hb-render-message [message]="message" />
+    }
   `,
 })
-export class ChatComponent {
-  chat = chatResource({
+export class GameSetupComponent {
+  mcp = inject(McpServerService);
+  ui = uiChatResource({
     model: 'gpt-4.1',
+    debugName: 'Game Setup',
     system: `
-      You are a helpful assistant that can answer questions and help with tasks.
+      You are a helpful assistant that helps users set up a Spotify playlist
+      music game. Your goal is to collect enough information from the user to
+      start the game loop.
+
+      To start a game, we need the following information:
+       1. Is the user authenticated with Spotify?
+       2. What Spotify device is the game going to be played on?
+       3. What are the rules of the game?
+       4. Who are the players playing the game?
+
+       # Auth
+       Call the is_authenticated tool to check if the user is authenticated with Spotify.
+       If the user is not authenticated, show the login view.
+
+       # Device
+       Call the list_devices tool to get a list of devices. If there's exactly one device,
+       skip the device view and go to the next step. Otherwise, show the connect to device view.
+
+       # Rules
+       After the user has connected to a device, ask the user for the rules of the game. Show
+       them the games-rules view.
+
+       # Players
+       After the user has connected to a device and has described the rules of the game,
+       ask the user for the players playing the game. Show them the players view.
+
+       # Game Loop
+       After the user has connected to a device, has described the rules of the game, and has added the players,
     `,
-    tools: [
-      createTool({
-        name: 'getUser',
-        description: 'Get information about the current user',
-        handler: () => {
-          const auth = inject(AuthService);
-          return auth.getUser();
+    messages: [{ role: 'user', content: 'help me setup the game' }],
+    components: [
+      exposeComponent(LoginViewComponent, {
+        description: 'Shows a login button to the user',
+      }),
+      exposeComponent(PlayersViewComponent, {
+        description: 'Lets the players add or remove players',
+      }),
+      exposeComponent(GamesRulesViewComponent, {
+        description: 'Lets the players describe the rules of the music game',
+      }),
+      exposeComponent(ConnectToDeviceViewComponent, {
+        description: 'Lets the players connect to a device if one is not available',
+        input: {
+          devices: s.array(
+            'The list of devices the user can connect to',
+            s.object('Device', {
+              deviceId: s.string('The device ID'),
+              name: s.string('The device name'),
+              materialSymbolIcon: s.string('The material symbol icon that best represents the device'),
+            }),
+          ),
         },
       }),
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: () => lastValueFrom(this.smartHomeService.loadLights()),
+      exposeComponent(GameLoopComponent, {
+        description: 'Once everything is configured, this starts the game loop',
+        input: {
+          gameDescription: s.object('The description of the game', {
+            players: s.array('The players playing the game', s.string('The player name')),
+            rules: s.string('The rules of the game'),
+            spotifyDeviceId: s.string('The Spotify device ID'),
+          }),
+        },
       }),
-      createToolWithArgs({
-        name: 'controlLight',
-        description: 'Control a light',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-        handler: (input) => this.smartHomeService.controlLight(input.lightId, input.brightness),
+    ],
+    tools: [
+      ...this.mcp.tools(),
+      createTool({
+        name: 'is_authenticated',
+        description: 'Check if the user is authenticated with Spotify',
+        handler: async () => {
+          const spotify = inject(SpotifyService);
+
+          return { authenticated: spotify.isAuthenticated() };
+        },
       }),
     ],
   });
 
-  sendMessage(message: string) {
-    this.chat.sendMessage({ role: 'user', content: message });
+  sendMessage(message: string): void {
+    this.ui.sendMessage({ role: 'user', content: message });
   }
 }
 ```
