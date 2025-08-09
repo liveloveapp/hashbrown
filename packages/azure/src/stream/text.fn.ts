@@ -14,12 +14,10 @@ export interface AzureTextStreamOptions {
     | Promise<OpenAI.Chat.ChatCompletionCreateParamsStreaming>;
 }
 
-export type AzureCompletionCreateParams = Omit<
-  Chat.Api.CompletionCreateParams,
-  'model'
-> & {
+export interface AzureCompletionCreateParams
+  extends Omit<Chat.Api.CompletionCreateParams, 'model'> {
   model: AzureKnownModelIds;
-};
+}
 
 export async function* text(
   options: AzureTextStreamOptions,
