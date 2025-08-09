@@ -6,7 +6,7 @@ import { AzureKnownModelIds } from 'packages/core/src/utils';
 export interface AzureTextStreamOptions {
   apiKey: string;
   endpoint: string;
-  request: Chat.Api.CompletionCreateParams;
+  request: AzureCompletionCreateParams;
   transformRequestOptions?: (
     options: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
   ) =>
