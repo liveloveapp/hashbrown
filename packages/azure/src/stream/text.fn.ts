@@ -1,7 +1,11 @@
-import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
+import {
+  AzureKnownModelIds,
+  Chat,
+  encodeFrame,
+  Frame,
+} from '@hashbrownai/core';
 import OpenAI, { AzureOpenAI } from 'openai';
 import type { FunctionParameters } from 'openai/resources/shared';
-import { AzureKnownModelIds } from 'packages/core/src/utils';
 
 export interface AzureTextStreamOptions {
   apiKey: string;
