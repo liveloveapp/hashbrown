@@ -44,7 +44,6 @@ import { Squircle } from './Squircle';
         display: flex;
         flex-direction: column;
         width: 100%;
-        margin: 4px 4px 16px 4px;
       }
 
       .container {
@@ -56,7 +55,7 @@ import { Squircle } from './Squircle';
         > .header {
           display: flex;
           justify-content: space-between;
-          padding: 10px 16px;
+          padding: 12px 24px;
           color: var(--vanilla-ivory, #faf9f0);
           font:
             300 13px/18px 'JetBrains Mono',

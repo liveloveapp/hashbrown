@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import { Injectable } from '@angular/core';
 import {
   ApiMemberSummary,

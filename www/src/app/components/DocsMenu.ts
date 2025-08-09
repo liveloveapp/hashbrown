@@ -23,7 +23,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             offsetY: 8,
           },
         ]"
-        wwwSquircle="16"
+        wwwSquircle="8"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sky-blue, #9ecfd7)"
       >

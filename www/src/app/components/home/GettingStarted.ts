@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import {
   Component,
   computed,
@@ -18,8 +20,46 @@ import { Squircle } from '../Squircle';
 import { DropdownMenu } from '../DropDownMenu';
 import { ChevronDown } from '../../icons/ChevronDown';
 
-const angularExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/home/angular/**/*.md', {
+interface Example {
+  file: string;
+  value: string;
+}
+
+function exampleReducer(
+  acc: Record<string, Example[]>,
+  [key, value]: [string, unknown],
+) {
+  const segments = key.split('/');
+  const folder = segments[segments.length - 2] ?? '';
+  const file = (segments[segments.length - 1] ?? '').replace(/\.md$/, '.ts');
+
+  (acc[folder] ||= []).push({ file, value: value as string });
+  return acc;
+}
+
+const angular: Record<string, Example[]> = Object.entries(
+  import.meta.glob('/src/content/getting-started/angular/**/*.md', {
+    eager: true,
+    query: 'raw',
+    import: 'default',
+  }),
+).reduce(exampleReducer, {} as Record<string, Example[]>);
+
+const react: Record<string, Example[]> = Object.entries(
+  import.meta.glob('/src/content/getting-started/react/**/*.md', {
+    eager: true,
+    query: 'raw',
+    import: 'default',
+  }),
+).reduce(exampleReducer, {} as Record<string, Example[]>);
+
+const sdkExamplesSources: Record<string, Record<string, Example[]>> = {
+  angular,
+  react,
+};
+
+const openaiExamples: [string, string][] = Object.entries(
+  import.meta.glob('/src/content/getting-started/openai/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -29,70 +69,38 @@ const angularExamples: [string, string][] = Object.entries(
   value as string,
 ]);
 
-// const reactExamples: [string, string][] = Object.entries(
-//   import.meta.glob('/src/content/home/react/**/*.md', {
-//     eager: true,
-//     query: 'raw',
-//     import: 'default',
-//   }),
-// ).map(([key, value]) => [
-//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-//   value as string,
-// ]);
+const googleExamples: [string, string][] = Object.entries(
+  import.meta.glob('/src/content/getting-started/google/**/*.md', {
+    eager: true,
+    query: 'raw',
+    import: 'default',
+  }),
+).map(([key, value]) => [
+  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+  value as string,
+]);
 
-// const sdkExamplesSources: Record<string, [string, string][]> = {
-//   angular: angularExamples,
-//   react: reactExamples,
-// };
-
-// const openaiExamples: [string, string][] = Object.entries(
-//   import.meta.glob('/src/content/home/openai/**/*.md', {
-//     eager: true,
-//     query: 'raw',
-//     import: 'default',
-//   }),
-// ).map(([key, value]) => [
-//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-//   value as string,
-// ]);
-
-// const googleExamples: [string, string][] = Object.entries(
-//   import.meta.glob('/src/content/home/google/**/*.md', {
-//     eager: true,
-//     query: 'raw',
-//     import: 'default',
-//   }),
-// ).map(([key, value]) => [
-//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-//   value as string,
-// ]);
-
-// const writerExamples: [string, string][] = Object.entries(
-//   import.meta.glob('/src/content/home/writer/**/*.md', {
-//     eager: true,
-//     query: 'raw',
-//     import: 'default',
-//   }),
-// ).map(([key, value]) => [
-//   key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-//   value as string,
-// ]);
-
-// mock out examples
-const sdkExamplesSources: Record<string, [string, string][]> = {
-  angular: angularExamples,
-  react: [['App.tsx', `foo`]],
-};
+const writerExamples: [string, string][] = Object.entries(
+  import.meta.glob('/src/content/getting-started/writer/**/*.md', {
+    eager: true,
+    query: 'raw',
+    import: 'default',
+  }),
+).map(([key, value]) => [
+  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
+  value as string,
+]);
 
 const providerExamplesSources: Record<string, [string, string][]> = {
-  openai: [['main.ts', `foo`]],
-  google: [['main.ts', `foo`]],
-  writer: [['main.ts', `foo`]],
+  openai: openaiExamples,
+  google: googleExamples,
+  writer: writerExamples,
 };
 
 interface Section {
   title: string;
   description: string;
+  key: string;
 }
 
 @Component({
@@ -122,26 +130,27 @@ interface Section {
         responses to the browser, generating component trees, and executing
         LLM-authored JavaScript, using your own components and AI provider.
       </p>
-      <div
-        class="sections"
-        wwwSquircle="16 0 16 16"
-        [wwwSquircleBorderWidth]="1"
-        wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
-      >
-        @for (section of sections(); track section.title) {
-          <button
-            (click)="index.set($index)"
-            [class.active]="index() === $index"
-          >
-            <h3>{{ section.title }}</h3>
-            <p>{{ section.description }}</p>
-            <div class="indicator"></div>
-          </button>
-        }
+      <div class="sections">
+        <div
+          wwwSquircle="16 0 16 0"
+          [wwwSquircleBorderWidth]="1"
+          wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
+        >
+          @for (section of sections(); track section.title) {
+            <button
+              (click)="index.set($index)"
+              [class.active]="index() === $index"
+            >
+              <h3>{{ section.title }}</h3>
+              <p>{{ section.description }}</p>
+              <div class="indicator"></div>
+            </button>
+          }
+        </div>
       </div>
       <div
         class="player"
-        wwwSquircle="0 16 0 16"
+        wwwSquircle="0 16 16 16"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
       ></div>
@@ -320,7 +329,7 @@ interface Section {
       grid-template-columns: 1fr;
       row-gap: 24px;
       padding: 32px;
-      max-width: 1080px;
+      max-width: 1200px;
       width: 100%;
       background: #fff;
 
@@ -343,7 +352,7 @@ interface Section {
         display: flex;
         flex-direction: column;
 
-        > button {
+        > div > button {
           position: relative;
           display: flex;
           flex-direction: column;
@@ -405,7 +414,6 @@ interface Section {
       > .player {
         display: flex;
         width: 100%;
-        height: 320px;
         aspect-ratio: 167/94;
         justify-content: flex-end;
         align-items: center;
@@ -442,7 +450,6 @@ interface Section {
           flex: 1 auto;
           height: 100%;
           max-height: 640px;
-          overflow: hidden;
         }
       }
     }
@@ -455,8 +462,8 @@ interface Section {
 
       > label {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        gap: 16px;
         width: 100%;
         color: var(--chocolate-brown, #774625);
         font:
@@ -508,7 +515,7 @@ interface Section {
 
     @media screen and (min-width: 1024px) {
       .bleed {
-        grid-template-columns: 348px auto;
+        grid-template-columns: 320px auto;
         padding: 64px;
       }
     }
@@ -523,25 +530,24 @@ export class GettingStarted {
       title: 'Generative User Interfaces',
       description:
         'Expose your React or Angular components to an LLM, and let it generate a full UI.',
-    },
-    {
-      title: 'Bring Your Own Model',
-      description:
-        'Use any LLM provider with Hashbrown, including open-weights models via Ollama.',
+      key: 'generative-ui',
     },
     {
       title: 'JavaScript Runtime',
       description:
         'Use LLMs to generate and run JavaScript for truly next-gen user interactions.',
+      key: 'js-runtime',
     },
     {
       title: 'Streaming Responses',
       description:
         'Stream text, data, and UI from LLMs to your app, with full type safety along the way',
+      key: 'streaming',
     },
   ]);
+  section = computed(() => this.sections()[this.index()]);
 
-  sdk = linkedSignal(() => this.configService.sdk());
+  sdk = this.configService.sdk;
   sdks = signal<{ label: string; value: string; icon?: Type<unknown> }[]>([
     {
       label: 'Angular',
@@ -554,7 +560,7 @@ export class GettingStarted {
       icon: React,
     },
   ]);
-  provider = linkedSignal(() => this.configService.provider());
+  provider = this.configService.provider;
   providers = signal<{ label: string; value: string; icon?: Type<unknown> }[]>([
     {
       label: 'OpenAI',
@@ -573,33 +579,16 @@ export class GettingStarted {
     },
   ]);
 
-  private readonly sdkExamples = sdkExamplesSources;
-  private readonly providerExamples = providerExamplesSources;
+  computedExamples = computed<[string, string][]>(() => {
+    const sdkTuples: [string, string][] = (
+      sdkExamplesSources[this.sdk()][this.section().key] ?? []
+    ).map((e) => [e.file, e.value]);
 
-  cta = computed(() => {
-    const sdk = this.configService.sdk();
-    const provider = this.configService.provider();
-    return `npm install @hashbrownai/{core,${provider},${sdk}} --save`;
+    const providerTuples: [string, string][] =
+      providerExamplesSources[this.provider()] ?? [];
+
+    return [...sdkTuples, ...providerTuples];
   });
-
-  ctaHref = computed(() => {
-    return `/docs/${this.configService.sdk()}/start/quick`;
-  });
-
-  computedExamples = computed(() => {
-    return [
-      ...(this.sdkExamples[this.sdk()] ?? []),
-      ...(this.providerExamples[this.provider()] ?? []),
-    ];
-  });
-
-  async onCopyInstall(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.cta());
-    } catch (err) {
-      console.error('Copy failed', err);
-    }
-  }
 
   onProviderChange(value: string): void {
     this.configService.set({ provider: value as AppConfig['provider'] });
