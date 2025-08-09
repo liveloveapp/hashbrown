@@ -1,6 +1,7 @@
 import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
 import OpenAI, { AzureOpenAI } from 'openai';
 import type { FunctionParameters } from 'openai/resources/shared';
+import { AzureKnownModelIds } from 'packages/core/src/utils';
 
 export interface AzureTextStreamOptions {
   apiKey: string;
@@ -12,6 +13,13 @@ export interface AzureTextStreamOptions {
     | OpenAI.Chat.ChatCompletionCreateParamsStreaming
     | Promise<OpenAI.Chat.ChatCompletionCreateParamsStreaming>;
 }
+
+export type AzureCompletionCreateParams = Omit<
+  Chat.Api.CompletionCreateParams,
+  'model'
+> & {
+  model: AzureKnownModelIds;
+};
 
 export async function* text(
   options: AzureTextStreamOptions,
