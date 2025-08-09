@@ -5,8 +5,7 @@ import { GettingStarted } from '../components/home/GettingStarted';
 import { Hero } from '../components/home/Hero';
 import { OpenSource } from '../components/home/OpenSource';
 import { TheGravy } from '../components/home/TheGravy';
-import { LdpTour } from '../components/ldp/LdpTour';
-import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
+import { Samples } from '../components/home/Samples';
 
 @Component({
   imports: [
@@ -14,19 +13,15 @@ import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
     GettingStarted,
     Header,
     Hero,
-    LdpTour,
-    LdpTourMobile,
     OpenSource,
+    Samples,
     TheGravy,
   ],
   template: `
-    <div class="texture">
-      <www-header position="relative" />
-      <www-hero />
-    </div>
+    <www-header />
     <main class="home">
-      <www-ldp-tour />
-      <www-ldp-tour-mobile />
+      <www-hero />
+      <www-samples />
       <www-open-source />
       <www-getting-started />
       <www-the-gravy />
@@ -37,10 +32,7 @@ import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
     :host {
       display: flex;
       flex-direction: column;
-      height: 100%;
-    }
-
-    .texture {
+      min-height: 100%;
       background-color: var(--vanilla-ivory, #faf9f0);
       background-image: url('/image/texture/fabric.png');
       background-size: auto;
@@ -54,20 +46,6 @@ import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
       flex-direction: column;
       justify-content: flex-start;
       align-items: stretch;
-    }
-
-    www-ldp-tour-mobile {
-      display: none;
-    }
-
-    @media (width < 768px) {
-      www-ldp-tour {
-        display: none;
-      }
-
-      www-ldp-tour-mobile {
-        display: block;
-      }
     }
   `,
 })

@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import { Injectable } from '@angular/core';
 import sdk from '@stackblitz/sdk';
 import type { StackblitzConfig } from '../../tools/stackblitz-plugin';

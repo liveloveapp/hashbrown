@@ -33,12 +33,6 @@ import { RouterLink } from '@angular/router';
     :host {
       display: flex;
       justify-content: center;
-      background-color: var(--vanilla-ivory, #faf9f0);
-      background-image: url('/image/texture/fabric.png');
-      background-size: auto;
-      background-repeat: repeat;
-      background-position: center;
-      background-attachment: fixed;
     }
 
     .bleed {
@@ -132,7 +126,7 @@ import { RouterLink } from '@angular/router';
     @media screen and (min-width: 1024px) {
       .bleed {
         max-width: 800px;
-        padding: 256px 32px;
+        padding: 128px 32px 160px;
       }
     }
 

@@ -1,18 +1,14 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ConfigService } from '../services/ConfigService';
 import { Menu } from '../icons/Menu';
 import { DropdownMenu } from './DropDownMenu';
-import { Angular } from '../icons/Angular';
-import { React } from '../icons/React';
-
-type HeaderPosition = 'fixed' | 'relative';
 
 @Component({
   selector: 'www-header',
-  imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu, Angular, React],
+  imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu],
   template: `
-    <header [class]="position()">
+    <header>
       <menu>
         <div class="left">
           <a routerLink="/">
@@ -34,6 +30,9 @@ type HeaderPosition = 'fixed' | 'relative';
                 <a [routerLink]="docsUrl()" routerLinkActive="active">docs</a>
               </li>
               <li>
+                <a routerLink="/api" routerLinkActive="active">api</a>
+              </li>
+              <li>
                 <a routerLink="/products/workshops" routerLinkActive="active">
                   workshops
                 </a>
@@ -49,46 +48,6 @@ type HeaderPosition = 'fixed' | 'relative';
                 >
                   github
                 </a>
-              </li>
-              <li>
-                <www-dropdown-menu
-                  [positions]="[
-                    {
-                      originX: 'end',
-                      originY: 'bottom',
-                      overlayX: 'end',
-                      overlayY: 'top',
-                      offsetY: 16,
-                    },
-                  ]"
-                >
-                  @switch (sdk()) {
-                    @case ('angular') {
-                      <label>
-                        <www-angular
-                          height="16px"
-                          width="16px"
-                          fill="#774625"
-                        />
-                      </label>
-                    }
-                    @case ('react') {
-                      <label>
-                        <www-react height="16px" width="16px" fill="#774625" />
-                      </label>
-                    }
-                  }
-                  <div content>
-                    <a routerLink="/docs/angular/start/quick" class="menu-item">
-                      <www-angular fill="#774625" />
-                      Angular
-                    </a>
-                    <a routerLink="/docs/react/start/quick" class="menu-item">
-                      <www-react fill="#774625" />
-                      React
-                    </a>
-                  </div>
-                </www-dropdown-menu>
               </li>
             </ul>
           </nav>
@@ -123,52 +82,26 @@ type HeaderPosition = 'fixed' | 'relative';
         </div>
       </menu>
     </header>
-    @if (isFixed() && spacer()) {
-      <div class="spacer"></div>
-    }
   `,
   styles: [
     `
       :host {
         display: flex;
         justify-content: stretch;
-        height: 80px;
       }
 
       header {
         display: flex;
         justify-content: center;
         width: 100%;
-        padding: 12px 32px;
-
-        &.fixed {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 1000;
-          align-items: center;
-          height: 80px;
-
-          > menu {
-            border-radius: 32px;
-            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
-            background: rgba(250, 249, 240, 0.56);
-            transition: background-color 0.2s ease;
-
-            &:hover {
-              background: rgba(250, 249, 240, 0.86);
-            }
-          }
-        }
+        padding: 24px;
+        background: var(--vanilla-ivory, #faf9f0);
 
         > menu {
           display: flex;
           justify-content: space-between;
           align-items: center;
           width: 100%;
-          max-width: 1080px;
-          padding: 12px 32px;
 
           > .left {
             display: flex;
@@ -236,10 +169,6 @@ type HeaderPosition = 'fixed' | 'relative';
         }
       }
 
-      .spacer {
-        height: 80px;
-      }
-
       .menu-item {
         display: flex;
         align-items: center;
@@ -263,10 +192,6 @@ type HeaderPosition = 'fixed' | 'relative';
         header {
           display: none;
         }
-
-        .spacer {
-          display: none;
-        }
       }
 
       @media screen and (min-width: 768px) {
@@ -286,11 +211,6 @@ type HeaderPosition = 'fixed' | 'relative';
   ],
 })
 export class Header {
-  position = input<HeaderPosition>('relative');
-  spacer = input<boolean>(true);
-
-  isFixed = computed(() => this.position() === 'fixed');
-
   configService = inject(ConfigService);
   sdk = this.configService.sdk;
 

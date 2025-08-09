@@ -28,7 +28,7 @@ import { SymbolLink } from './SymbolLink';
       code {
         display: block;
         font:
-          500 14px/1.5rem 'Operator Mono',
+          700 14px/1.5rem 'JetBrains Mono',
           monospace;
         font-variant-ligatures: none;
       }

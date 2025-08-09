@@ -5,6 +5,7 @@ import {
   ElementRef,
   inject,
   input,
+  OnDestroy,
   signal,
 } from '@angular/core';
 import { getSvgPath } from 'figma-squircle';
@@ -17,9 +18,12 @@ declare const Buffer: any;
     '[style.clip-path]': 'clipPathPropertyValue()',
     '[style.--www-squircle-border-image-url]': 'borderImageUrl()',
     '[style.--www-squircle-border-color]': 'wwwSquircleBorderColor()',
+    '[style.--www-squircle-border-width]': 'wwwSquircleBorderWidth() + "px"',
+    '[style.--www-squircle-width]': 'wwwSquircleWidth()',
+    '[style.--www-squircle-height]': 'wwwSquircleHeight()',
   },
 })
-export class Squircle {
+export class Squircle implements OnDestroy {
   readonly host = inject(ElementRef);
   readonly wwwSquircle = input.required<string>();
   readonly wwwSquircleSmoothing = input<number>(1);
@@ -30,6 +34,8 @@ export class Squircle {
     width: 0,
     height: 0,
   });
+  readonly wwwSquircleWidth = computed(() => `${this.box().width}px`);
+  readonly wwwSquircleHeight = computed(() => `${this.box().height}px`);
   readonly borderBox = computed(() => {
     const { width, height } = this.box();
     const border = this.wwwSquircleBorderWidth();
@@ -108,23 +114,28 @@ export class Squircle {
 
     return `url("data:image/svg+xml;base64,${base64}")`;
   });
+
+  private readBox() {
+    const rect = this.host.nativeElement.getBoundingClientRect();
+    this.box.set({ width: rect.width, height: rect.height });
+  }
+
+  private resizeObserver = new ResizeObserver(() => {
+    this.readBox();
+  });
+
   constructor() {
     afterRenderEffect({
       read: () => {
-        const width = this.host.nativeElement.clientWidth;
-        const height = this.host.nativeElement.clientHeight;
-
-        this.box.set({ width, height });
+        this.readBox();
+      },
+      write: () => {
+        this.resizeObserver.observe(this.host.nativeElement);
       },
     });
+  }
 
-    afterRenderEffect({
-      read: () => {
-        const width = this.host.nativeElement.clientWidth;
-        const height = this.host.nativeElement.clientHeight;
-
-        this.box.set({ width, height });
-      },
-    });
+  ngOnDestroy(): void {
+    this.resizeObserver.disconnect();
   }
 }

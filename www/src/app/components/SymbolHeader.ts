@@ -49,14 +49,14 @@ import { SymbolCodeLink } from './SymbolCodeLink';
 
           > .import {
             font:
-              700 12px/16px 'Operator Mono',
+              700 12px/16px 'JetBrains Mono',
               monospace;
             color: rgba(125, 84, 47, 0.56);
           }
 
           > .name {
             font:
-              500 36px/42px 'Operator Mono',
+              700 36px/42px 'JetBrains Mono',
               monospace;
           }
         }

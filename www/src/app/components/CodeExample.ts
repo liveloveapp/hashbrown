@@ -7,7 +7,7 @@ import { PlayerPlay } from '../icons/PlayerPlay';
   imports: [Copy, PlayerPlay],
   template: `
     <div class="header">
-      <span>{{ header() }}</span>
+      <span class="active">{{ header() }}</span>
       <div>
         @if (run()) {
           <a [href]="run()">
@@ -16,8 +16,7 @@ import { PlayerPlay } from '../icons/PlayerPlay';
           </a>
         }
         <button (click)="onCopy()" aria-label="Copy code to clipboard">
-          <www-copy height="16px" width="16px" />
-          copy
+          <www-copy height="18px" width="18px" />
         </button>
       </div>
     </div>
@@ -30,20 +29,47 @@ import { PlayerPlay } from '../icons/PlayerPlay';
       :host {
         display: flex;
         flex-direction: column;
-        border: 1px solid #000;
-        border-radius: 12px;
-        margin: 14px 0 24px;
+        border-radius: 16px;
+        border: 4px solid var(--gray-light, #a4a3a1);
+        background: var(--gray, #5e5c5a);
+        margin: 4px 4px 16px 4px;
         overflow: hidden;
       }
 
       .header {
         display: flex;
         justify-content: space-between;
-        padding: 8px 16px;
-        border-bottom: 1px solid #000;
-        font-size: 12px;
-        font-weight: 500;
-        color: rgba(61, 60, 58, 0.88);
+        padding: 10px 16px;
+        color: var(--vanilla-ivory, #faf9f0);
+        font:
+          400 13px/18px 'JetBrains Mono',
+          sans-serif;
+
+        > span {
+          position: relative;
+
+          &.active {
+            &::before {
+              content: '';
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              height: 3px;
+              margin-bottom: -10px;
+              border-radius: 1px;
+              background: linear-gradient(
+                to right,
+                #fbbb52 0%,
+                var(--sunset-orange) 25%,
+                var(--indian-red-light) 50%,
+                var(--sky-blue-dark) 75%,
+                var(--olive-green-light) 100%
+              );
+              background-clip: border-box;
+            }
+          }
+        }
 
         > div {
           display: flex;
@@ -55,6 +81,7 @@ import { PlayerPlay } from '../icons/PlayerPlay';
             display: flex;
             align-items: center;
             gap: 4px;
+            color: #e3e3e3;
             font:
               500 12px/14px 'Poppins',
               sans-serif;
@@ -68,8 +95,9 @@ import { PlayerPlay } from '../icons/PlayerPlay';
       }
 
       .content {
-        background: #3d3c3a;
-        padding: 16px;
+        border-radius: 16px 16px 0 0;
+        background: var(--gray-dark, #3d3c3a);
+        padding: 24px;
         overflow-x: scroll;
       }
     `,

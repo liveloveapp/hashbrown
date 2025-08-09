@@ -47,14 +47,14 @@ import { SymbolExcerpt } from './SymbolExcerpt';
 
           > .symbol {
             font:
-              700 14px/18px 'Operator Mono',
+              700 14px/18px 'JetBrains Mono',
               monospace;
             color: #fbbb52;
           }
 
           > .name {
             font:
-              700 14px/18px 'Operator Mono',
+              700 14px/18px 'JetBrains Mono',
               monospace;
             color: #ffa657;
           }

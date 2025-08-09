@@ -56,6 +56,10 @@ export class ConfigService {
         this.set({ sdk });
       }
     });
+
+    effect(() => {
+      this.saveToLocalStorage('config', this.config());
+    });
   }
 
   private saveToLocalStorage(key: string, data: unknown) {

@@ -221,7 +221,7 @@ import { ConfigService } from '../services/ConfigService';
       flex-direction: column;
       gap: 32px;
       margin: 0 auto;
-      padding: 32px;
+      padding: 24px;
       width: 100%;
 
       > .links {

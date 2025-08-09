@@ -7,7 +7,7 @@ import { TheGravy } from '../components/home/TheGravy';
 @Component({
   imports: [RouterOutlet, Footer, Header, TheGravy],
   template: `
-    <www-header position="fixed" />
+    <www-header />
     <main class="blog">
       <router-outlet></router-outlet>
     </main>

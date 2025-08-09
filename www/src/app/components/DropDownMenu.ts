@@ -1,24 +1,26 @@
 import {
+  CdkConnectedOverlay,
+  CdkOverlayOrigin,
+  ConnectedPosition,
+} from '@angular/cdk/overlay';
+import {
   Component,
   ElementRef,
   HostListener,
   input,
   signal,
 } from '@angular/core';
-import {
-  CdkConnectedOverlay,
-  CdkOverlayOrigin,
-  ConnectedPosition,
-} from '@angular/cdk/overlay';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-dropdown-menu',
-  imports: [CdkConnectedOverlay, CdkOverlayOrigin],
+  imports: [CdkConnectedOverlay, CdkOverlayOrigin, Squircle],
   template: `
     <button
       (click)="open.set(!open())"
       type="button"
       cdkOverlayOrigin
+      [wwwSquircle]="squircle()"
       #trigger="cdkOverlayOrigin"
     >
       <ng-content select="label"></ng-content>
@@ -66,6 +68,7 @@ import {
   ],
 })
 export class DropdownMenu {
+  squircle = input<string>('8');
   positions = input<ConnectedPosition[]>([
     {
       originX: 'start',
