@@ -62,11 +62,12 @@ import { MatIcon } from '@angular/material/icon';
             $350 per person. Group discounts available.
           </span>
           <div class="action">
-            @defer {
-              <tito-button event="liveloveapp/hashbrown-react-sep-2025">
-                Reserve to Attend Online
-              </tito-button>
-            }
+            <a
+              href="https://ti.to/liveloveapp/hashbrown-react-sep-2025"
+              target="_blank"
+            >
+              Reserve to Attend Online</a
+            >
           </div>
         </div>
         <div class="course">
@@ -82,11 +83,12 @@ import { MatIcon } from '@angular/material/icon';
             $350 per person. Group discounts available.
           </span>
           <div class="action">
-            @defer {
-              <tito-button event="liveloveapp/hashbrown-angular-sep-2025">
-                Reserve to Attend Online
-              </tito-button>
-            }
+            <a
+              href="https://ti.to/liveloveapp/hashbrown-angular-sep-2025"
+              target="_blank"
+            >
+              Reserve to Attend Online</a
+            >
           </div>
         </div>
       </div>
@@ -208,8 +210,7 @@ import { MatIcon } from '@angular/material/icon';
             padding-bottom: 32px;
             padding-top: 8px;
 
-            > a,
-            > tito-button button {
+            > a {
               width: 100%;
               display: flex;
               padding: 12px 24px;
@@ -217,18 +218,10 @@ import { MatIcon } from '@angular/material/icon';
               align-items: center;
               border-radius: 8px;
               color: rgba(0, 0, 0, 0.64);
-              background: #e1e1e1;
+              background: var(--sunshine-yellow-light, #fde4ba);
               font:
                 400 16px/18px 'Fredoka',
                 sans-serif;
-            }
-
-            > tito-button {
-              width: 100%;
-
-              > button {
-                background: var(--sunshine-yellow-light, #fde4ba);
-              }
             }
           }
         }
