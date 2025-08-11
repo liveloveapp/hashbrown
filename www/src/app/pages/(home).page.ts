@@ -4,8 +4,9 @@ import { Header } from '../components/Header';
 import { GettingStarted } from '../components/home/GettingStarted';
 import { Hero } from '../components/home/Hero';
 import { OpenSource } from '../components/home/OpenSource';
-import { TheGravy } from '../components/home/TheGravy';
 import { Samples } from '../components/home/Samples';
+import { TheGravy } from '../components/home/TheGravy';
+import { TheVisual } from '../components/home/TheVisual';
 
 @Component({
   imports: [
@@ -16,6 +17,7 @@ import { Samples } from '../components/home/Samples';
     OpenSource,
     Samples,
     TheGravy,
+    TheVisual,
   ],
   template: `
     <www-header />
@@ -24,6 +26,7 @@ import { Samples } from '../components/home/Samples';
       <www-samples />
       <www-open-source />
       <www-getting-started />
+      <www-the-visual />
       <www-the-gravy />
     </main>
     <www-footer />

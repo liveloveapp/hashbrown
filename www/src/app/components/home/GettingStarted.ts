@@ -1,13 +1,6 @@
 /// <reference types="vite/client" />
 
-import {
-  Component,
-  computed,
-  inject,
-  linkedSignal,
-  signal,
-  Type,
-} from '@angular/core';
+import { Component, computed, inject, signal, Type } from '@angular/core';
 import { Angular } from '../../icons/Angular';
 import { BrandGoogle } from '../../icons/BrandGoogle';
 import { BrandOpenAi } from '../../icons/BrandOpenAi';
