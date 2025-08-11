@@ -38,23 +38,20 @@ import { Squircle } from '../Squircle';
         </div>
       </div>
       <div class="news">
-        <div
-          class="alert"
-          wwwSquircle="8"
-          [wwwSquircleBorderWidth]="1"
-          [wwwSquircleBorderColor]="'var(--sunshine-yellow-dark)'"
-        >
-          <p>
-            <strong>New!</strong> Workshop tickets for
-            <a routerLink="/products/workshops"
-              >Build Generative UIs in React</a
-            >
-            are on sale now.
-          </p>
+        <div class="bg">
+          <div class="alert">
+            <p>
+              <strong>New!</strong> Workshop tickets for
+              <a routerLink="/products/workshops"
+                >Build Generative UIs in React</a
+              >
+              are on sale now.
+            </p>
+          </div>
+          <div class="gradient" wwwSquircle="0 0 8 8"></div>
         </div>
       </div>
     </div>
-    <div class="gradient"></div>
     <www-video-overlay
       [open]="demoVideoOpen()"
       (closed)="demoVideoOpen.set(false)"
@@ -233,51 +230,59 @@ import { Squircle } from '../Squircle';
         width: 100%;
         max-width: 800px;
 
-        > .alert {
+        > .bg {
           display: flex;
-          padding: 11px 24px 12px 24px;
-          justify-content: center;
-          align-items: center;
-          background: rgba(251, 187, 82, 0.24);
+          flex-direction: column;
+          align-items: stretch;
 
-          > p {
-            color: rgba(0, 0, 0, 0.64);
-            text-align: center;
-            font:
-              400 13px/140% 'Fredoka',
-              sans-serif;
+          > .alert {
+            display: flex;
+            padding: 11px 24px 12px 24px;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px 8px 1px 1px;
+            background: rgba(255, 255, 255, 0.24);
+            box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.12);
 
-            > strong {
-              font-weight: 700;
-            }
+            > p {
+              color: rgba(0, 0, 0, 0.64);
+              text-align: center;
+              font:
+                400 13px/140% 'Fredoka',
+                sans-serif;
 
-            > a {
-              text-decoration: underline;
-              text-decoration-style: solid;
-              text-decoration-thickness: 1px;
-              transition: text-decoration-thickness 0.2s ease-in-out;
+              > strong {
+                font-weight: 700;
+              }
 
-              &:hover {
-                text-decoration-thickness: 2px;
+              > a {
+                text-decoration: underline;
+                text-decoration-style: solid;
+                text-decoration-thickness: 1px;
+                transition: text-decoration-thickness 0.2s ease-in-out;
+
+                &:hover {
+                  text-decoration-thickness: 2px;
+                }
               }
             }
           }
+
+          > .gradient {
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(
+              to right,
+              #fbbb52 0%,
+              var(--sunset-orange) 25%,
+              var(--indian-red-light) 50%,
+              var(--sky-blue-dark) 75%,
+              var(--olive-green-light) 100%
+            );
+            background-clip: border-box;
+          }
         }
       }
-    }
-
-    .gradient {
-      height: 32px;
-      width: 100%;
-      background: linear-gradient(
-        to right,
-        #fbbb52 0%,
-        var(--sunset-orange) 25%,
-        var(--indian-red-light) 50%,
-        var(--sky-blue-dark) 75%,
-        var(--olive-green-light) 100%
-      );
-      background-clip: border-box;
     }
 
     @media screen and (min-width: 1024px) {

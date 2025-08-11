@@ -17,7 +17,7 @@ export interface AppConfig {
 }
 
 const DEFAULT_CONFIG: AppConfig = {
-  sdk: 'angular',
+  sdk: 'react',
   provider: 'openai',
 };
 
