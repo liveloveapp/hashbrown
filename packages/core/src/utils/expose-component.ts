@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '../schema';
+import { HashbrownType } from '../schema/base';
 import { Prettify } from './types';
 
 type Component<T = any> =
@@ -22,15 +23,15 @@ type ComponentPropSchema<T> = Prettify<
       : never
 >;
 
-interface ExposedComponent<T extends Component<unknown>> {
+export interface ExposedComponent<T extends Component<unknown>> {
   component: T;
   name: string;
   description: string;
   children?: 'any' | ExposedComponent<any>[] | false;
-  props?: ComponentPropSchema<T>;
+  props: T extends any ? Record<string, HashbrownType> : ComponentPropSchema<T>;
 }
 
-type ComponentTree = {
+export type ComponentTree = {
   $tagName: string;
   $children: ComponentTree[];
   $props: Record<string, any>;
