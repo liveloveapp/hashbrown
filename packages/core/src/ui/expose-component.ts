@@ -22,7 +22,7 @@ type ComponentPropSchema<T> = Prettify<
       : never
 >;
 
-interface ExposedComponent<T extends Component<unknown>> {
+export interface ExposedComponent<T extends Component<unknown>> {
   component: T;
   name: string;
   description: string;
@@ -30,7 +30,7 @@ interface ExposedComponent<T extends Component<unknown>> {
   props?: ComponentPropSchema<T>;
 }
 
-type ComponentTree = {
+export type ComponentTree = {
   $tag: string;
   $children: ComponentTree[];
 };
