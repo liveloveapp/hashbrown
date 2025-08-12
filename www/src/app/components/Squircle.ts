@@ -6,11 +6,15 @@ import {
   inject,
   input,
   OnDestroy,
+  PLATFORM_ID,
   signal,
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { getSvgPath } from 'figma-squircle';
 
-declare const Buffer: any;
+declare const Buffer: {
+  from(input: string): { toString(encoding: 'base64'): string };
+};
 
 @Directive({
   selector: '[wwwSquircle]',
@@ -25,6 +29,8 @@ declare const Buffer: any;
 })
 export class Squircle implements OnDestroy {
   readonly host = inject(ElementRef);
+  readonly platformId = inject(PLATFORM_ID);
+  readonly isBrowser = isPlatformBrowser(this.platformId);
   readonly wwwSquircle = input.required<string>();
   readonly wwwSquircleSmoothing = input<number>(1);
   readonly wwwSquirclePreserveSmoothing = input<boolean>(true);
@@ -97,9 +103,11 @@ export class Squircle implements OnDestroy {
   readonly borderImageUrl = computed(() => {
     const path = this.path();
     const border = this.wwwSquircleBorderWidth();
-    const computedBorderColor = getComputedStyle(
-      this.host.nativeElement,
-    ).getPropertyValue('--www-squircle-border-color');
+    const computedBorderColor = this.isBrowser
+      ? getComputedStyle(this.host.nativeElement).getPropertyValue(
+          '--www-squircle-border-color',
+        )
+      : this.wwwSquircleBorderColor();
 
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
@@ -116,13 +124,12 @@ export class Squircle implements OnDestroy {
   });
 
   private readBox() {
+    if (!this.isBrowser) return;
     const rect = this.host.nativeElement.getBoundingClientRect();
     this.box.set({ width: rect.width, height: rect.height });
   }
 
-  private resizeObserver = new ResizeObserver(() => {
-    this.readBox();
-  });
+  private resizeObserver?: ResizeObserver;
 
   constructor() {
     afterRenderEffect({
@@ -130,12 +137,18 @@ export class Squircle implements OnDestroy {
         this.readBox();
       },
       write: () => {
+        if (!this.isBrowser) return;
+        if (!this.resizeObserver) {
+          this.resizeObserver = new ResizeObserver(() => {
+            this.readBox();
+          });
+        }
         this.resizeObserver.observe(this.host.nativeElement);
       },
     });
   }
 
   ngOnDestroy(): void {
-    this.resizeObserver.disconnect();
+    this.resizeObserver?.disconnect();
   }
 }
