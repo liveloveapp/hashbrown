@@ -14,18 +14,20 @@ import { RouterLink } from '@angular/router';
       </h2>
       <p>
         Hashbrown, our demos, and our prompts are free, MIT-licensed, and
-        open-source.<br />You bring your own LLM providers and server-side
-        stack. If you'd like to support the project, please consider
-        <a routerLink="/products/workshops" class="product"
-          >attending our workshops</a
-        >, or
-        <a
-          href="https://github.com/liveloveapp/hashbrown"
-          rel="noopener"
-          target="_blank"
-          class="github"
-          >sponsoring us on GitHub</a
-        >.
+        open-source.<br /><span
+          >You bring your own LLM providers and server-side stack. If you'd like
+          to support the project, please consider
+          <a routerLink="/products/workshops" class="product"
+            >attending our workshops</a
+          >, or
+          <a
+            href="https://github.com/liveloveapp/hashbrown"
+            rel="noopener"
+            target="_blank"
+            class="github"
+            >sponsoring us on GitHub</a
+          >.</span
+        >
       </p>
     </div>
   `,
@@ -39,13 +41,13 @@ import { RouterLink } from '@angular/router';
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
-      padding: 64px 32px;
+      gap: 8px;
+      padding: 128px 16px;
       width: 100%;
 
       > h2 {
         font:
-          700 64px/72px Fredoka,
+          700 32px/48px Fredoka,
           sans-serif;
 
         > span:nth-child(1) {
@@ -96,8 +98,12 @@ import { RouterLink } from '@angular/router';
         color: var(--gray-dark, #3d3c3a);
         text-align: center;
         font:
-          500 18px/24px Fredoka,
+          500 14px/18px Fredoka,
           sans-serif;
+
+        > span {
+          display: none;
+        }
 
         > a {
           text-decoration: underline;
@@ -127,15 +133,22 @@ import { RouterLink } from '@angular/router';
       .bleed {
         max-width: 800px;
         padding: 128px 32px 160px;
-      }
-    }
+        gap: 16px;
 
-    @media (width < 450px) {
-      .bleed {
         > h2 {
           font:
-            700 32px/48px Fredoka,
+            700 64px/72px Fredoka,
             sans-serif;
+        }
+
+        > p {
+          font:
+            500 18px/24px Fredoka,
+            sans-serif;
+
+          > span {
+            display: inline;
+          }
         }
       }
     }

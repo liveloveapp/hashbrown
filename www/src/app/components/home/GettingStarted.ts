@@ -124,7 +124,7 @@ interface Section {
         LLM-authored JavaScript, using your own components and AI provider.
       </p>
       <div class="sections">
-        <div
+        <nav
           wwwSquircle="16 0 16 0"
           [wwwSquircleBorderWidth]="1"
           wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
@@ -133,13 +133,16 @@ interface Section {
             <button
               (click)="index.set($index)"
               [class.active]="index() === $index"
+              wwwSquircle="16"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
             >
               <h3>{{ section.title }}</h3>
               <p>{{ section.description }}</p>
               <div class="indicator"></div>
             </button>
           }
-        </div>
+        </nav>
       </div>
       <div
         class="player"
@@ -315,16 +318,20 @@ interface Section {
       display: flex;
       justify-content: center;
       width: 100%;
+      padding: 16px;
     }
 
     .bleed {
       display: grid;
       grid-template-columns: 1fr;
       row-gap: 24px;
-      padding: 32px;
       max-width: 1200px;
       width: 100%;
-      background: #fff;
+      clip-path: none !important;
+
+      &::after {
+        display: none;
+      }
 
       > h2 {
         color: var(--gray-dark, #3d3c3a);
@@ -335,6 +342,7 @@ interface Section {
       }
 
       > p {
+        display: none;
         color: var(--gray, #5e5c5a);
         font:
           500 15px/18px 'Fredoka',
@@ -344,62 +352,75 @@ interface Section {
       > .sections {
         display: flex;
         flex-direction: column;
+        overflow-x: auto;
+        margin-inline: -16px;
+        padding: 16px;
 
-        > div > button {
-          position: relative;
+        > nav {
           display: flex;
-          flex-direction: column;
-          gap: 4px;
-          text-align: left;
-          padding: 16px;
-          opacity: 0.64;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-          transition: opacity 0.2s ease-in-out;
+          min-width: 768px;
+          gap: 16px;
 
-          &.active,
-          &:hover {
-            opacity: 1;
+          &::after {
+            display: none;
           }
 
-          &.active > .indicator {
-            opacity: 1;
-          }
-
-          &:last-child {
-            border-bottom: none;
-          }
-
-          > h3 {
-            color: var(--gray-dark, #3d3c3a);
-            font:
-              600 16px/24px 'Fredoka',
-              sans-serif;
-          }
-
-          > p {
-            color: var(--gray, #5e5c5a);
-            font:
-              350 13px/16px 'JetBrains Mono',
-              sans-serif;
-          }
-
-          > .indicator {
-            position: absolute;
-            top: 0;
-            right: 0;
-            height: 100%;
-            width: 8px;
-            background: linear-gradient(
-              to bottom,
-              #fbbb52 0%,
-              var(--sunset-orange) 25%,
-              var(--indian-red-light) 50%,
-              var(--sky-blue-dark) 75%,
-              var(--olive-green-light) 100%
-            );
-            background-clip: border-box;
-            opacity: 0;
+          > button {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            text-align: left;
+            padding: 16px;
+            opacity: 0.64;
+            background: #fff;
             transition: opacity 0.2s ease-in-out;
+
+            &.active,
+            &:hover {
+              opacity: 1;
+            }
+
+            &.active > .indicator {
+              opacity: 1;
+            }
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            > h3 {
+              color: var(--gray-dark, #3d3c3a);
+              font:
+                600 16px/24px 'Fredoka',
+                sans-serif;
+            }
+
+            > p {
+              color: var(--gray, #5e5c5a);
+              font:
+                350 13px/16px 'JetBrains Mono',
+                sans-serif;
+            }
+
+            > .indicator {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              height: 8px;
+              background: linear-gradient(
+                to right,
+                #fbbb52 0%,
+                var(--sunset-orange) 25%,
+                var(--indian-red-light) 50%,
+                var(--sky-blue-dark) 75%,
+                var(--olive-green-light) 100%
+              );
+              background-clip: border-box;
+              opacity: 0;
+              transition: opacity 0.2s ease-in-out;
+            }
           }
         }
       }
@@ -421,11 +442,12 @@ interface Section {
 
         > .actions {
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           align-items: center;
           gap: 16px;
 
           > h3 {
+            display: none;
             color: #000;
             font:
               600 15px/24px 'Fredoka',
@@ -510,6 +532,69 @@ interface Section {
       .bleed {
         grid-template-columns: 320px auto;
         padding: 64px;
+        background: #fff;
+        clip-path: inherit;
+
+        &::after {
+          display: block;
+        }
+
+        > p {
+          display: block;
+        }
+
+        > .sections {
+          overflow: inherit;
+          margin-inline: 0;
+          padding: 0;
+
+          > nav {
+            flex-direction: column;
+            gap: 0;
+            min-width: inherit;
+
+            &::after {
+              display: block;
+            }
+
+            > button {
+              background: inherit;
+              border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+              clip-path: none !important;
+
+              &::after {
+                display: none;
+              }
+
+              > .indicator {
+                top: 0;
+                right: 0;
+                bottom: inherit;
+                left: inherit;
+                height: 100%;
+                width: 8px;
+                background: linear-gradient(
+                  to bottom,
+                  #fbbb52 0%,
+                  var(--sunset-orange) 25%,
+                  var(--indian-red-light) 50%,
+                  var(--sky-blue-dark) 75%,
+                  var(--olive-green-light) 100%
+                );
+              }
+            }
+          }
+        }
+
+        > .examples {
+          > .actions {
+            justify-content: space-between;
+
+            > h3 {
+              display: block;
+            }
+          }
+        }
       }
     }
   `,

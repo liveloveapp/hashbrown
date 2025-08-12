@@ -1,13 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { ChevronRight } from '../../icons/ChevronRight';
+import { Components } from '../../icons/Components';
 import { Squircle } from '../Squircle';
+import { ConfigService } from '../../services/ConfigService';
 
 @Component({
   selector: 'www-samples',
-  imports: [Squircle],
+  imports: [ChevronRight, Components, RouterLink, Squircle],
   template: `
     <div class="bleed">
       <a
-        href="https://github.com/liveloveapp/hashbrown"
+        [routerLink]="[docsUrl(), 'concept', 'components']"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunshine-yellow, #fbbb52)"
@@ -20,6 +24,14 @@ import { Squircle } from '../Squircle';
             rigid menus. The result is faster workflows, happier users, and
             products that feel fresh.
           </p>
+          <div class="button" wwwSquircle="8">
+            <www-components />
+            <div class="text">
+              <span>Expose Components</span>
+              <small>Use an LLM to generate user interfaces</small>
+            </div>
+            <www-chevron-right height="32px" width="32px" />
+          </div>
         </div>
         <div
           class="window"
@@ -104,8 +116,8 @@ import { Squircle } from '../Squircle';
     .bleed {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 16px;
-      padding: 32px;
+      gap: 32px;
+      padding: 16px;
       max-width: 1200px;
       width: 100%;
 
@@ -114,7 +126,26 @@ import { Squircle } from '../Squircle';
         flex-direction: column;
         align-items: stretch;
         gap: 32px;
-        padding: 24px;
+        padding: 16px;
+
+        &:hover {
+          > .header {
+            > .button {
+              > .text {
+                > span {
+                }
+                > small {
+                  color: var(--gray-dark, #3d3c3a);
+                }
+              }
+
+              > www-chevron-right {
+                opacity: 1;
+                transform: translateX(8px);
+              }
+            }
+          }
+        }
 
         &:first-child {
           background: var(--sunshine-yellow-light, #fde4ba);
@@ -136,6 +167,7 @@ import { Squircle } from '../Squircle';
 
           > h2 {
             color: rgba(0, 0, 0, 0.56);
+            text-align: center;
             font:
               750 20px/24px KefirVariable,
               sans-serif;
@@ -147,6 +179,40 @@ import { Squircle } from '../Squircle';
             font:
               400 15px/24px Fredoka,
               sans-serif;
+          }
+
+          > .button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 32px;
+
+            > .text {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+
+              > span {
+                color: var(--gray, #5e5c5a);
+                font:
+                  700 14px/16px Fredoka,
+                  sans-serif;
+              }
+
+              > small {
+                color: var(--gray, #);
+                font:
+                  400 12px/16px Fredoka,
+                  sans-serif;
+              }
+            }
+
+            > www-chevron-right {
+              opacity: 0;
+              transition:
+                transform 0.2s ease-in-out,
+                opacity 0.2s ease-in-out;
+            }
           }
         }
 
@@ -217,17 +283,28 @@ import { Squircle } from '../Squircle';
     @media screen and (min-width: 1024px) {
       .bleed {
         grid-template-columns: 1fr 1fr;
-        gap: 32px;
+        gap: 16px;
         padding: 64px;
 
         > a {
           padding: 40px;
+          transition: transform 0.2s ease-in-out;
+
+          &:hover {
+            transform: scale(1.02);
+          }
 
           &:first-child {
             grid-column: 1 / 3;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 48px;
+          }
+
+          > .header {
+            > h2 {
+              text-align: left;
+            }
           }
 
           > .window {
@@ -239,4 +316,9 @@ import { Squircle } from '../Squircle';
     }
   `,
 })
-export class Samples {}
+export class Samples {
+  configService = inject(ConfigService);
+  docsUrl = computed(() => {
+    return `/docs/${this.configService.sdk()}`;
+  });
+}

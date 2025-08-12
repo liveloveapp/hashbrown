@@ -77,9 +77,9 @@ import { Squircle } from '../Squircle';
     .bleed {
       display: flex;
       flex-direction: column;
-      gap: 192px;
+      gap: 128px;
       align-self: center;
-      padding: 32px;
+      padding: 16px;
 
       > .hero {
         display: flex;
@@ -229,11 +229,13 @@ import { Squircle } from '../Squircle';
         align-items: center;
         width: 100%;
         max-width: 800px;
+        margin-bottom: 128px;
 
         > .bg {
           display: flex;
           flex-direction: column;
           align-items: stretch;
+          width: 100%;
 
           > .alert {
             display: flex;
@@ -288,6 +290,7 @@ import { Squircle } from '../Squircle';
     @media screen and (min-width: 1024px) {
       .bleed {
         padding: 96px 64px;
+        gap: 192px;
 
         > .hero {
           > .logo {
@@ -301,6 +304,14 @@ import { Squircle } from '../Squircle';
               height: auto;
               aspect-ratio: 47/50;
             }
+          }
+        }
+
+        > .news {
+          margin: 0;
+
+          > .bg {
+            width: inherit;
           }
         }
       }

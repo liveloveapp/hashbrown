@@ -58,8 +58,10 @@ import { DropdownMenu } from './DropDownMenu';
               {
                 originX: 'start',
                 originY: 'bottom',
-                overlayX: 'start',
+                overlayX: 'end',
                 overlayY: 'top',
+                offsetX: 24,
+                offsetY: 0,
               },
             ]"
           >
