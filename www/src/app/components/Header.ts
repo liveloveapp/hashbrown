@@ -217,6 +217,6 @@ export class Header {
   sdk = this.configService.sdk;
 
   docsUrl = computed(() => {
-    return `/docs/${this.configService.sdk()}/start/quick`;
+    return `/docs/${this.configService.sdk()}/start/intro`;
   });
 }

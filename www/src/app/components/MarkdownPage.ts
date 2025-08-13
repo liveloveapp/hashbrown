@@ -84,6 +84,7 @@ type Heading = { level: number; text: string; id: string; url: string };
       article ::ng-deep analog-markdown-route > div {
         display: flex;
         flex-direction: column;
+        gap: 8px;
         color: var(--gray-dark, #3d3c3a);
         font:
           400 15px/21px Fredoka,
@@ -158,7 +159,7 @@ type Heading = { level: number; text: string; id: string; url: string };
           margin-left: 24px;
         }
 
-        :not(www-symbol-link) > a {
+        :not(hb-symbol-link) > a {
           text-decoration: underline;
           text-decoration-color: #774625;
           color: #774625;
@@ -185,10 +186,15 @@ type Heading = { level: number; text: string; id: string; url: string };
           }
         }
 
+        hb-next-step a {
+          text-decoration: none;
+        }
+
         > pre.shiki.hashbrown {
-          padding: 16px;
-          border-radius: 8px;
-          background: #2b2a29 !important;
+          padding: 24px;
+          border-radius: 16px;
+          border: 4px solid var(--gray-light, #a4a3a1);
+          background: var(--gray-dark, #3d3c3a) !important;
           overflow-x: auto;
           margin-bottom: 16px;
         }

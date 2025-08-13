@@ -176,7 +176,7 @@ export class ExamplesHeader {
   configService = inject(ConfigService);
   sdk = this.configService.sdk;
   docsUrl = computed(() => {
-    return `/docs/${this.sdk()}/start/quick`;
+    return `/docs/${this.sdk()}/start/intro`;
   });
   examplesUrl = computed(() => {
     return `/examples/${this.sdk()}/ui-chat`;

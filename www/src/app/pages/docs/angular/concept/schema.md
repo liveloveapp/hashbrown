@@ -53,7 +53,15 @@ Let's look at a simple example of using this for a recurrence rule.
 
 ```ts
 s.object('rrule', {
-  freq: s.enumeration('Recurrence frequency (FREQ)', ['SECONDLY', 'MINUTELY', 'HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
+  freq: s.enumeration('Recurrence frequency (FREQ)', [
+    'SECONDLY',
+    'MINUTELY',
+    'HOURLY',
+    'DAILY',
+    'WEEKLY',
+    'MONTHLY',
+    'YEARLY',
+  ]),
 });
 ```
 
@@ -110,8 +118,10 @@ const PREDICTIONS_SCHEMA = s.anyOf([
 
 We can use `s.anyOf()` to model optional properties by relying on `s.nullish()`:
 
-````ts
-someOptionalProperty: s.anyOf([s.number('a number'), s.nullish()])
+```ts
+someOptionalProperty: s.anyOf([s.number('a number'), s.nullish()]);
+```
+
 ---
 
 ## Numeric Types
@@ -138,6 +148,6 @@ s.streaming.array(
     brightness: s.number('the brightness of the light from 0 to 100'),
   }),
 );
-````
+```
 
 Skillet eagerly parses fragments of the streamed response from the LLM.

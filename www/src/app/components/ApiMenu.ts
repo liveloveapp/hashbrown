@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { MenuService } from '../services/MenuService';
+import { ReferenceService } from '../services/ReferenceService';
 import { PageSection } from './PageSection';
 
 @Component({
@@ -7,7 +7,7 @@ import { PageSection } from './PageSection';
   imports: [PageSection],
   template: `
     <www-page-section
-      [section]="refs()"
+      [section]="referenceService.getSection()"
       [collapsible]="false"
     ></www-page-section>
   `,
@@ -23,5 +23,5 @@ import { PageSection } from './PageSection';
   `,
 })
 export class ApiMenu {
-  refs = inject(MenuService).refs;
+  referenceService = inject(ReferenceService);
 }

@@ -44,6 +44,10 @@ import { TheVisual } from '../components/home/TheVisual';
       background-attachment: fixed;
     }
 
+    www-header ::ng-deep header {
+      background: transparent;
+    }
+
     .home {
       display: flex;
       flex-direction: column;

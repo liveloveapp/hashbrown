@@ -86,6 +86,6 @@ import { ConfigService } from '../../services/ConfigService';
 export class Videos {
   configService = inject(ConfigService);
   docsUrl = computed(() => {
-    return `/docs/${this.configService.sdk()}/start/quick`;
+    return `/docs/${this.configService.sdk()}/start/intro`;
   });
 }

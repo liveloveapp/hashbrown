@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { ConfigService } from '../services/ConfigService';
 import { computed } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Squircle } from './Squircle';
 import { DropdownMenu } from './DropDownMenu';
 import { Angular } from '../icons/Angular';
@@ -10,7 +10,15 @@ import { ChevronDown } from '../icons/ChevronDown';
 
 @Component({
   selector: 'www-docs-menu',
-  imports: [Angular, ChevronDown, DropdownMenu, React, RouterLink, Squircle],
+  imports: [
+    Angular,
+    ChevronDown,
+    DropdownMenu,
+    React,
+    RouterLink,
+    RouterLinkActive,
+    Squircle,
+  ],
   template: `
     <div class="sdk">
       <www-dropdown-menu
@@ -54,11 +62,11 @@ import { ChevronDown } from '../icons/ChevronDown';
           }
         }
         <div content>
-          <a routerLink="/docs/angular/start/quick" class="menu-item">
+          <a routerLink="/docs/angular/start/intro" class="menu-item">
             <www-angular height="16px" width="16px" fill="#774625" />
             Angular
           </a>
-          <a routerLink="/docs/react/start/quick" class="menu-item">
+          <a routerLink="/docs/react/start/intro" class="menu-item">
             <www-react height="16px" width="16px" fill="#774625" />
             React
           </a>
@@ -69,18 +77,27 @@ import { ChevronDown } from '../icons/ChevronDown';
       <h2>Getting Started</h2>
       <ul>
         <li>
-          <a [routerLink]="[docsUrl(), 'start', 'quick']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'start', 'intro']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >Introduction</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'start', 'sample']" wwwSquircle="8"
-            >Samples</a
+          <a
+            [routerLink]="[docsUrl(), 'start', 'quick']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Quickstart</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'start', 'platforms']" wwwSquircle="8"
-            >Platform</a
+          <a
+            [routerLink]="[docsUrl(), 'start', 'sample']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Samples</a
           >
         </li>
       </ul>
@@ -96,34 +113,48 @@ import { ChevronDown } from '../icons/ChevronDown';
         <li>
           <a
             [routerLink]="[docsUrl(), 'concept', 'system-instructions']"
+            routerLinkActive="active"
             wwwSquircle="8"
             >1. System Instructions</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'concept', 'schema']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'concept', 'schema']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >2. Skillet Schema</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'concept', 'functions']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'concept', 'functions']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >3. Function Calling</a
           >
         </li>
         <li>
           <a
             [routerLink]="[docsUrl(), 'concept', 'structured-output']"
+            routerLinkActive="active"
             wwwSquircle="8"
             >4. Structured Output</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'concept', 'components']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'concept', 'components']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >5. Generative UI</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'concept', 'runtime']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'concept', 'runtime']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >6. JavaScript Runtime</a
           >
         </li>
@@ -133,22 +164,34 @@ import { ChevronDown } from '../icons/ChevronDown';
       <h2>Platforms</h2>
       <ul>
         <li>
-          <a [routerLink]="[docsUrl(), 'platform', 'openai']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'openai']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >OpenAI</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'platform', 'google']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'google']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >Google</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'platform', 'azure']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'azure']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >Azure</a
           >
         </li>
         <li>
-          <a [routerLink]="[docsUrl(), 'platform', 'writer']" wwwSquircle="8"
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'writer']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >Writer</a
           >
         </li>

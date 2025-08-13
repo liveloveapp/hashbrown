@@ -22,7 +22,7 @@ Here are a few that we've implemented in our React applications:
 
 Hashbrown provides the `useTool` hook from `@hashbrownai/react` for defining functions that the LLM can invoke.
 
-<www-code-example header="useTools.ts">
+<hb-code-example header="useTools.ts">
 
 ```ts
 import { useTool } from '@hashbrownai/react';
@@ -40,7 +40,7 @@ export default function Chat() {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's break down the example above:
 
@@ -64,7 +64,7 @@ Hashbrown's `useTool` hook enables React developers to define functions that req
 We'll be using Skillet - hashbrown's LLM-optimized schema language - for defining the function arguments.
 Let's look at an example function that enables the LLM to control the lights in our smart home client application.
 
-<www-code-example header="useTools.ts">
+<hb-code-example header="useTools.ts">
 
 ```ts
 import { useTool } from '@hashbrownai/react';
@@ -84,7 +84,7 @@ export const controlLight = useTool({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 
@@ -109,7 +109,7 @@ The method signature for a `handler` is:
 
 The next step is to provide the `tools` when using hashbrown's React hooks-based APIs.
 
-<www-code-example header="ChatComponent.tsx" run="/examples/react/function-calling">
+<hb-code-example header="ChatComponent.tsx" run="/examples/react/function-calling">
 
 ```tsx
 import React from 'react';
@@ -132,7 +132,7 @@ export function ChatComponent() {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 

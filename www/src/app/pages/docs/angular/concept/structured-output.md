@@ -49,7 +49,7 @@ We think it's time to replace forms on the web with natural language inputs.
 
 In this first example we'll implement scheduling a calendar event using natural language using the @hashbrownai/angular!structuredChatResource:function function.
 
-<www-code-example header="calendar.ts">
+<hb-code-example header="calendar.ts">
 
 ```ts
 chat = structuredChatResource({
@@ -155,7 +155,7 @@ sendMessage(message: string) {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 The example above leverages the natural language capabilities of an LLM to generate a recurrence rule for input into a calendar scheduling service.
 
@@ -193,7 +193,7 @@ This enables Angular developers to build reactive input/output LLM resources for
 
 Let's look at the [scene form dialog from our sample application](https://github.com/liveloveapp/hashbrown/blob/main/samples/smart-home/client/src/app/features/scenes/scene-form-dialog/scene-form-dialog.component.ts).
 
-<www-code-example header="scene-form-dialog.component.ts">
+<hb-code-example header="scene-form-dialog.component.ts">
 
 ```ts
 predictedLights = structuredCompletionResource({
@@ -232,7 +232,7 @@ predictedLights = structuredCompletionResource({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 
@@ -250,7 +250,7 @@ When the user types a scene name, the LLM will predict which lights should be ad
 In this example, we'll assume you are using a global state container.
 We'll send each action to the LLM and ask it to predict the next possible action a user should consider.
 
-<www-code-example header="predictions.ts">
+<hb-code-example header="predictions.ts">
 
 ```ts
 lastAction = this.store.selectSignal(selectLastUserAction);
@@ -331,7 +331,7 @@ predictions = structuredCompletionResource({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above:
 

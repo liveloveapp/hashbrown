@@ -337,7 +337,7 @@ export class Hero {
 
   configService = inject(ConfigService);
   docsUrl = computed(() => {
-    return `/docs/${this.configService.sdk()}/start/quick`;
+    return `/docs/${this.configService.sdk()}/start/intro`;
   });
 
   openDemoVideo() {

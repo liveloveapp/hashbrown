@@ -1,12 +1,10 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ApiMenu } from '../components/ApiMenu';
-import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
-import { TheGravy } from '../components/home/TheGravy';
 
 @Component({
-  imports: [RouterOutlet, Footer, Header, ApiMenu, TheGravy],
+  imports: [RouterOutlet, Header, ApiMenu],
   template: `
     <www-header />
     <main class="api">
@@ -15,8 +13,6 @@ import { TheGravy } from '../components/home/TheGravy';
         <router-outlet></router-outlet>
       </div>
     </main>
-    <www-the-gravy />
-    <www-footer />
   `,
   styles: `
     :host {

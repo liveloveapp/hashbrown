@@ -30,7 +30,7 @@ Overall, we believe that the JS runtime provides:
 
 The first step is to define a `runtime`.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 import { createRuntime } from '@hashbrownai/angular';
@@ -40,7 +40,7 @@ runtime = createRuntime({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above:
 
@@ -88,7 +88,7 @@ Next, let's define several functions that are callable within the JS runtime.
 It's important to note that the `handler` functions are `async` when defined, but are executed synchronously within the runtime itself.
 This enables the LLM to write procedural code that improves the sucess rate of the LLM-generated JS code.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 import { createRuntime, createRuntimeFunction } from '@hashbrownai/angular';
@@ -127,7 +127,7 @@ runtime = createRuntime({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 ---
 
@@ -135,7 +135,7 @@ runtime = createRuntime({
 
 Similar to [function calling](/docs/angular/concept/functions), the JS runtime is provided to a hashbrown resource function as a member of the `tools` array.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 import { createToolJavaScript } from '@hashbrownai/angular';
@@ -150,7 +150,7 @@ chat = uiChatResource({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's quickly review the code above:
 

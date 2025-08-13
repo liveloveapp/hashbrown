@@ -48,7 +48,7 @@ Today, hashbrown is focused on achieving these core principles:
 
 - **Headless**: build your UI how you want
 - **Reactive**: hashbrown is tightly integrated with the reactive architecture provided by Angular and React
-- **[Platform Agnostic](/docs/angular/start/platforms)**: use any supported LLM provider
+- **Platform Agnostic**: use any supported LLM provider
 - **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
 - **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular and React components
 - **[Runtime](/docs/angular/concept/runtime)**: safely execute LLM-generated JavaScript code in the client

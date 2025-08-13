@@ -4,7 +4,14 @@ import { RouterOutlet } from '@angular/router';
 import { Alert } from './components/Alert';
 import { CodeExample } from './components/CodeExample';
 import { MarkdownSymbolLink } from './components/MarkdownSymbolLink';
-import { MatIconRegistry } from '@angular/material/icon';
+import { NextStep } from './components/NextStep';
+import { NextSteps } from './components/NextSteps';
+import { Code } from './icons/Code';
+import { Components } from './icons/Components';
+import { DatabaseCog } from './icons/DatabaseCog';
+import { Functions } from './icons/Functions';
+import { Message } from './icons/Message';
+import { Send } from './icons/Send';
 
 @Component({
   selector: 'www-root',
@@ -21,12 +28,10 @@ export class AppComponent {
   injector = inject(Injector);
   platformId = inject(PLATFORM_ID);
 
-  constructor(iconRegistry: MatIconRegistry) {
+  constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.installCustomElements();
     }
-
-    iconRegistry.setDefaultFontSetClass('material-symbols-outlined');
   }
 
   async installCustomElements() {
@@ -35,16 +40,56 @@ export class AppComponent {
     const alertElement = createCustomElement(Alert, {
       injector: this.injector,
     });
-    customElements.define('www-alert', alertElement);
+    customElements.define('hb-alert', alertElement);
+
+    const codeElement = createCustomElement(Code, {
+      injector: this.injector,
+    });
+    customElements.define('hb-code', codeElement);
 
     const codeExampleElement = createCustomElement(CodeExample, {
       injector: this.injector,
     });
-    customElements.define('www-code-example', codeExampleElement);
+    customElements.define('hb-code-example', codeExampleElement);
 
-    const symbolLinkElement = createCustomElement(MarkdownSymbolLink, {
+    const components = createCustomElement(Components, {
       injector: this.injector,
     });
-    customElements.define('www-markdown-symbol-link', symbolLinkElement);
+    customElements.define('hb-components', components);
+
+    const databaseCogElement = createCustomElement(DatabaseCog, {
+      injector: this.injector,
+    });
+    customElements.define('hb-database-cog', databaseCogElement);
+
+    const functionsElement = createCustomElement(Functions, {
+      injector: this.injector,
+    });
+    customElements.define('hb-functions', functionsElement);
+
+    const markdownSymbolLinkElement = createCustomElement(MarkdownSymbolLink, {
+      injector: this.injector,
+    });
+    customElements.define('hb-markdown-symbol-link', markdownSymbolLinkElement);
+
+    const messageElement = createCustomElement(Message, {
+      injector: this.injector,
+    });
+    customElements.define('hb-message', messageElement);
+
+    const nextStepsElement = createCustomElement(NextSteps, {
+      injector: this.injector,
+    });
+    customElements.define('hb-next-steps', nextStepsElement);
+
+    const nextStepElement = createCustomElement(NextStep, {
+      injector: this.injector,
+    });
+    customElements.define('hb-next-step', nextStepElement);
+
+    const sendElement = createCustomElement(Send, {
+      injector: this.injector,
+    });
+    customElements.define('hb-send', sendElement);
   }
 }

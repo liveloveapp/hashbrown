@@ -1,22 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DocsMenu } from '../components/DocsMenu';
-import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { MarkdownPage } from '../components/MarkdownPage';
-import { TheGravy } from '../components/home/TheGravy';
 import { Squircle } from '../components/Squircle';
 
 @Component({
-  imports: [
-    DocsMenu,
-    Footer,
-    Header,
-    MarkdownPage,
-    RouterOutlet,
-    Squircle,
-    TheGravy,
-  ],
+  imports: [DocsMenu, Header, MarkdownPage, RouterOutlet, Squircle],
   template: `
     <www-header />
     <main class="docs">
@@ -27,8 +17,6 @@ import { Squircle } from '../components/Squircle';
         </www-markdown-page>
       </div>
     </main>
-    <www-the-gravy />
-    <www-footer />
   `,
   styles: `
     :host {

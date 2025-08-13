@@ -9,7 +9,7 @@ Angular developers can expose **trusted**, **tested**, **compliant**, and **auth
 The @hashbrownai/angular!exposeComponent:function function exposes Angular components to the LLM that can be generated.
 Let's first look at how this function works.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 import { exposeComponent } from '@hashbrownai/angular';
@@ -22,7 +22,7 @@ exposeComponent(MarkdownComponent, {
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's break down the example above:
 
@@ -52,7 +52,7 @@ Skillet supports streaming for:
 
 Let's update the previous example to support streaming of the markdown string into the `Markdown` component.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 exposeComponent(MarkdownComponent, {
@@ -63,7 +63,7 @@ exposeComponent(MarkdownComponent, {
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 The `s.streaming.string()` function is used to define the type of the input, indicating that it can be a string that will be streamed in chunks.
 
@@ -76,7 +76,7 @@ You can [learn more about streaming with Skillet](/docs/angular/concept/streamin
 
 When exposing components, you can also define the `children` that the component can accept.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 exposeComponent(LightListComponent, {
@@ -88,13 +88,13 @@ exposeComponent(LightListComponent, {
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 In the example above, we're allowing `any` children to be rendered within the `LightListComponent` using the `&lt;ng-content&gt;` element.
 
 However, if we wanted to explicitly limit the children that the LLM can generate, we can provide an array of exposed components.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 exposeComponent(LightListComponent, {
@@ -115,7 +115,7 @@ exposeComponent(LightListComponent, {
 }),
 ```
 
-</www-code-example>
+</hb-code-example>
 
 In the example above, the `LightListComponent` children is limited to the `LightComponent`.
 
@@ -125,7 +125,7 @@ In the example above, the `LightListComponent` children is limited to the `Light
 
 Now, let's look at creating a `uiChatResource()` to generates Angular components in our application.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 chat = uiChatResource({
@@ -166,7 +166,7 @@ chat = uiChatResource({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's break this down:
 
@@ -186,7 +186,7 @@ Let's break this down:
 
 Now, let's look at how we can render the messages using the @hashbrownai/angular!RenderMessageComponent:class component.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 @Component({
@@ -212,7 +212,7 @@ Now, let's look at how we can render the messages using the @hashbrownai/angular
 export class Messages {}
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's learn how the `Messages` component above works.
 

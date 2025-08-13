@@ -29,7 +29,7 @@ Overall, we believe that the JS runtime provides:
 
 The first step is to define a `runtime`.
 
-<www-code-example header="runtime.tsx">
+<hb-code-example header="runtime.tsx">
 
 ```tsx
 import { useRuntime } from '@hashbrownai/react';
@@ -39,7 +39,7 @@ const runtime = useRuntime({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above:
 
@@ -86,7 +86,7 @@ Next, let's define several functions that are callable within the JS runtime.
 
 It's important to note that the `handler` functions are `async` when defined, but are executed synchronously within the runtime itself. This enables the LLM to write procedural code that improves the success rate of the LLM-generated JS code.
 
-<www-code-example header="runtime.tsx">
+<hb-code-example header="runtime.tsx">
 
 ```tsx
 import { useRuntime, useRuntimeFunction } from '@hashbrownai/react';
@@ -101,7 +101,7 @@ const getLights = useRuntimeFunction({
     s.object('A light', {
       id: s.string('The id of the light'),
       brightness: s.number('The brightness of the light'),
-    })
+    }),
   ),
   handler: () => smartHomeService.loadLights(),
   deps: [smartHomeService],
@@ -130,7 +130,7 @@ const runtime = useRuntime({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 ---
 
@@ -138,7 +138,7 @@ const runtime = useRuntime({
 
 Similar to [function calling](/docs/react/concept/functions), the JS runtime is provided to a Hashbrown chat hook as a member of the `tools` array.
 
-<www-code-example header="chat.tsx">
+<hb-code-example header="chat.tsx">
 
 ```tsx
 import { useToolJavaScript } from '@hashbrownai/react';
@@ -155,7 +155,7 @@ const chat = useUiChat({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's quickly review the code above:
 

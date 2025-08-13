@@ -150,7 +150,7 @@ interface Section {
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
       ></div>
-      <div></div>
+      <div class="spacer"></div>
       <div class="examples">
         <div class="actions">
           <h3>{{ sections()[index()].title }}</h3>
@@ -327,11 +327,6 @@ interface Section {
       row-gap: 24px;
       max-width: 1200px;
       width: 100%;
-      clip-path: none !important;
-
-      &::after {
-        display: none;
-      }
 
       > h2 {
         color: var(--gray-dark, #3d3c3a);
@@ -434,10 +429,14 @@ interface Section {
         background: var(--sky-blue-light, #d8ecef);
       }
 
+      > .spacer {
+        display: none;
+      }
+
       > .examples {
         display: flex;
         flex-direction: column;
-        gap: 48px;
+        gap: 24px;
         overflow: hidden;
 
         > .actions {
@@ -528,12 +527,21 @@ interface Section {
       }
     }
 
+    @media screen and (max-width: 1023px) {
+      .bleed {
+        clip-path: none !important;
+
+        &::after {
+          display: none;
+        }
+      }
+    }
+
     @media screen and (min-width: 1024px) {
       .bleed {
         grid-template-columns: 320px auto;
         padding: 64px;
         background: #fff;
-        clip-path: inherit;
 
         &::after {
           display: block;
@@ -586,7 +594,13 @@ interface Section {
           }
         }
 
+        > .spacer {
+          display: block;
+        }
+
         > .examples {
+          gap: 48px;
+
           > .actions {
             justify-content: space-between;
 

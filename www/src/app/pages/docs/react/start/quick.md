@@ -2,35 +2,6 @@
 
 hashbrown is an open source framework for building generative user interfaces in React.
 
-## Key Concepts
-
-- **Headless**: build your UI how you want
-- **Hook Based**: hashbrown uses React hooks for reactivity
-- **[Platform Agnostic](/docs/react/start/platforms)**: use any supported LLM provider
-- **[Streaming](/docs/react/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
-- **[Components](/docs/react/concept/components)**: generative UI using your trusted and tested React components
-- **[Runtime](/docs/react/concept/runtime)**: safely execute LLM-generated JavaScript code in the client
-
----
-
-## Prerequisites
-
-- Node.js v18+
-- React v18+
-
----
-
-## OpenAI API Key
-
-In this intro to hashbrown, we'll be using OpenAI's Large Language Models.
-
-To follow along, you'll need to
-
-1. [Sign up for OpenAI's API](https://openai.com/api/)
-2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
-3. Copy the API Key so you have it handy
-4. Follow the instructions in [the OpenAI Adapter docs](/docs/react/platform/openai) to setup a backend endpoint for hashbrown to consume
-
 ---
 
 ## Install
@@ -46,7 +17,7 @@ npm install @hashbrownai/{core,react,openai} --save
 The `useChat` hook from `@hashbrownai/react` is the basic way to interact with a Large Language Model (LLM) via text.
 It provides a set of methods for sending and receiving messages, as well as managing the chat state.
 
-<www-code-example header="ChatPanel.tsx">
+<hb-code-example header="ChatPanel.tsx">
 
 ```tsx
 import React, { useState, useCallback } from 'react';
@@ -83,7 +54,11 @@ export function ChatPanel() {
           handleSend();
         }}
       >
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type your message…" />
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message…"
+        />
         <button type="submit">Send</button>
       </form>
     </div>
@@ -91,7 +66,7 @@ export function ChatPanel() {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's break this down:
 
@@ -120,7 +95,7 @@ We find that this provides direct access to the state internals of hashbrown - e
 
 To enable debugging, specify the optional `debugName` configuration.
 
-<www-code-example header="ChatPanel.tsx">
+<hb-code-example header="ChatPanel.tsx">
 
 ```tsx
 import { useChat } from '@hashbrownai/react';
@@ -132,7 +107,7 @@ const chat = useChat({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 ---
 
@@ -154,7 +129,7 @@ Some common use cases for function calling include:
 
 Let's look at an example of function calling using hashbrown.
 
-<www-code-example header="ChatPanel.tsx" run="/examples/react/function-calling">
+<hb-code-example header="ChatPanel.tsx" run="/examples/react/function-calling">
 
 ```tsx
 import React, { useState } from 'react';
@@ -224,7 +199,12 @@ export function ChatPanel() {
         ))}
       </div>
       <div className="composer">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Type your message..." />
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Type your message..."
+        />
         <button onClick={handleSend}>Send</button>
       </div>
     </div>
@@ -232,7 +212,7 @@ export function ChatPanel() {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the key parts of this code:
 
@@ -266,7 +246,7 @@ In this example, we'll use the `useUiChat` hook from `@hashbrownai/react`.
 
 <div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089273215?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown structured output"></iframe></div>
 
-<www-code-example header="ChatPanel.tsx" run="/examples/react/ui-chat">
+<hb-code-example header="ChatPanel.tsx" run="/examples/react/ui-chat">
 
 ```tsx
 import React, { useState } from 'react';
@@ -371,7 +351,7 @@ export function ChatPanel() {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's focus on the new `components` property.
 
@@ -398,7 +378,7 @@ Using this power, React developers can leverage the LLM to generate structured d
 
 In this example, we'll use the `useStructuredChat` hook from `@hashbrownai/react` to generate structured data.
 
-<www-code-example header="ChatPanel.tsx" run="/examples/react/structured-output">
+<hb-code-example header="ChatPanel.tsx" run="/examples/react/structured-output">
 
 ```tsx
 import React, { useState } from 'react';
@@ -450,7 +430,12 @@ export function ChatPanel() {
         ))}
       </div>
       <div className="composer">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Type your message..." />
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Type your message..."
+        />
         <button onClick={handleSend}>Send</button>
       </div>
     </div>
@@ -458,7 +443,7 @@ export function ChatPanel() {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's take a look at using the `useStructuredChat` hook.
 

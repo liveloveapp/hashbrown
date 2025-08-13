@@ -35,7 +35,7 @@ A few notes:
 
 Hashbrown provides the @hashbrownai/angular!createTool:function function for defining functions that the LLM can invoke.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 createTool({
@@ -48,7 +48,7 @@ createTool({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's break down the example above:
 
@@ -71,7 +71,7 @@ hashbrown's @hashbrownai/angular!createTool:function enables Angular developers 
 We'll be using Skillet - hasbrown's LLM-optimized schema language - for defining the function arguments.
 Let's look at an example function that enables the LLM to control the lights in our smart home client application.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="chat.component.ts">
 
 ```ts
 createTool({
@@ -88,7 +88,7 @@ createTool({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 
@@ -107,7 +107,7 @@ Note that the `input` arguments are strongly-typed based on the provided schema.
 
 The next step is to provide the `tools` when using hashbrown's resource-based APIs.
 
-<www-code-example header="chat.component.ts" run="/examples/angular/function-calling">
+<hb-code-example header="chat.component.ts" run="/examples/angular/function-calling">
 
 ```ts
 @Component({
@@ -156,7 +156,7 @@ export class ChatComponent {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 

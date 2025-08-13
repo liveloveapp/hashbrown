@@ -38,26 +38,70 @@ We think it's time to replace forms on the web with natural language inputs.
 
 In this first example we'll implement scheduling a calendar event using natural language using the `useStructuredChat` hook from `@hashbrownai/react`!
 
-<www-code-example header="calendar.tsx">
+<hb-code-example header="calendar.tsx">
 
 ```tsx
 import { useStructuredChat } from '@hashbrownai/react';
 import { s } from '@hashbrownai/core';
 
 const recurrenceRuleSchema = s.object('rrule', {
-  freq: s.enumeration('Recurrence frequency (FREQ)', ['SECONDLY', 'MINUTELY', 'HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
-  until: s.anyOf([s.nullish(), s.string('End date-time (UNTIL) in UTC format YYYYMMDDTHHMMSSZ')]),
+  freq: s.enumeration('Recurrence frequency (FREQ)', [
+    'SECONDLY',
+    'MINUTELY',
+    'HOURLY',
+    'DAILY',
+    'WEEKLY',
+    'MONTHLY',
+    'YEARLY',
+  ]),
+  until: s.anyOf([
+    s.nullish(),
+    s.string('End date-time (UNTIL) in UTC format YYYYMMDDTHHMMSSZ'),
+  ]),
   count: s.anyOf([s.nullish(), s.number('Number of occurrences (COUNT)')]),
-  interval: s.anyOf([s.nullish(), s.number('Interval between recurrences (INTERVAL); default is 1')]),
-  bysecond: s.anyOf([s.nullish(), s.array('Seconds list (BYSECOND)', s.number('Second value between 0 and 59'))]),
-  byminute: s.anyOf([s.nullish(), s.array('Minutes list (BYMINUTE)', s.number('Minute value between 0 and 59'))]),
-  byhour: s.anyOf([s.nullish(), s.array('Hours list (BYHOUR)', s.number('Hour value between 0 and 23'))]),
-  bymonthday: s.anyOf([s.nullish(), s.array('Month days list (BYMONTHDAY)', s.number('Day of month between 1 and 31'))]),
-  byyearday: s.anyOf([s.nullish(), s.array('Year days list (BYYEARDAY)', s.number('Day of year between -366 and 366'))]),
-  byweekno: s.anyOf([s.nullish(), s.array('Week numbers list (BYWEEKNO)', s.number('ISO week number between -53 and 53'))]),
-  bymonth: s.anyOf([s.nullish(), s.array('By month', s.number('Month value between 1 and 12'))]),
-  bysetpos: s.anyOf([s.nullish(), s.array('Set positions list (BYSETPOS)', s.number('Set position between -366 and 366'))]),
-  byday: s.anyOf([s.nullish(), s.array('Days of week list (BYDAY)', s.string('Two-letter day code: MO, TU, WE, TH, FR, SA, SU'))]),
+  interval: s.anyOf([
+    s.nullish(),
+    s.number('Interval between recurrences (INTERVAL); default is 1'),
+  ]),
+  bysecond: s.anyOf([
+    s.nullish(),
+    s.array('Seconds list (BYSECOND)', s.number('Second value between 0 and 59')),
+  ]),
+  byminute: s.anyOf([
+    s.nullish(),
+    s.array('Minutes list (BYMINUTE)', s.number('Minute value between 0 and 59')),
+  ]),
+  byhour: s.anyOf([
+    s.nullish(),
+    s.array('Hours list (BYHOUR)', s.number('Hour value between 0 and 23')),
+  ]),
+  bymonthday: s.anyOf([
+    s.nullish(),
+    s.array('Month days list (BYMONTHDAY)', s.number('Day of month between 1 and 31')),
+  ]),
+  byyearday: s.anyOf([
+    s.nullish(),
+    s.array('Year days list (BYYEARDAY)', s.number('Day of year between -366 and 366')),
+  ]),
+  byweekno: s.anyOf([
+    s.nullish(),
+    s.array('Week numbers list (BYWEEKNO)', s.number('ISO week number between -53 and 53')),
+  ]),
+  bymonth: s.anyOf([
+    s.nullish(),
+    s.array('By month', s.number('Month value between 1 and 12')),
+  ]),
+  bysetpos: s.anyOf([
+    s.nullish(),
+    s.array('Set positions list (BYSETPOS)', s.number('Set position between -366 and 366')),
+  ]),
+  byday: s.anyOf([
+    s.nullish(),
+    s.array(
+      'Days of week list (BYDAY)',
+      s.string('Two-letter day code: MO, TU, WE, TH, FR, SA, SU'),
+    ),
+  ]),
   wkst: s.anyOf([s.nullish(), s.string('Week start day code: MO, TU, WE, TH, FR, SA, SU')]),
 });
 
@@ -82,7 +126,7 @@ function CalendarChat() {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 The example above leverages the natural language capabilities of an LLM to generate a recurrence rule for input into a calendar scheduling service.
 
@@ -120,7 +164,7 @@ This enables React developers to build reactive input/output LLM resources for b
 
 Let's look at another example:
 
-<www-code-example header="SceneFormDialog.tsx">
+<hb-code-example header="SceneFormDialog.tsx">
 
 ```tsx
 import { useStructuredCompletion } from '@hashbrownai/react';
@@ -166,7 +210,7 @@ function SceneFormDialog({ sceneName, lights }) {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 
@@ -184,7 +228,7 @@ When the user types a scene name, the LLM will predict which lights should be ad
 In this example, we'll assume you are using a global state container.
 We'll send each action to the LLM and ask it to predict the next possible action a user should consider.
 
-<www-code-example header="predictions.tsx">
+<hb-code-example header="predictions.tsx">
 
 ```tsx
 import { useStructuredCompletion, useTool } from '@hashbrownai/react';
@@ -274,7 +318,7 @@ function Predictions({ smartHomeService }) {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above:
 
