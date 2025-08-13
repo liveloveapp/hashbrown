@@ -76,8 +76,10 @@ export function toViewMessagesFromInternal(
 
       let content = message.content;
 
-      if (message.content && tater) {
+      if (typeof message.content === 'string' && tater) {
         content = tater.parse(message.content, !streaming);
+      } else if (message.content && typeof message.content === 'object') {
+        content = message.content;
       }
 
       return [
