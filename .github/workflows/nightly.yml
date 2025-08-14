@@ -6,10 +6,6 @@ on:
     # Runs every night at 00:00 UTC (midnight)
     - cron: '0 0 * * *'
 
-  # TEMP TRIGGER
-  pull_request:
-    branches: [main]
-
 jobs:
   build:
     name: Build and Test
