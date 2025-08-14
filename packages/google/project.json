@@ -39,6 +39,14 @@
         "passWithNoTests": true
       }
     },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/packages/google"],
+      "options": {
+        "jestConfig": "packages/google/jest.e2e.config.ts",
+        "passWithNoTests": true
+      }
+    },
     "nx-release-publish": {
       "options": {
         "packageRoot": "dist/{projectRoot}"
