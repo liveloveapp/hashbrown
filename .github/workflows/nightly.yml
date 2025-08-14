@@ -2,10 +2,9 @@ name: Nightly Integration Tests
 
 on:
   workflow_dispatch:
-  on:
-    schedule:
-      # Runs every night at 00:00 UTC (midnight)
-      - cron: '0 0 * * *'
+  schedule:
+    # Runs every night at 00:00 UTC (midnight)
+    - cron: '0 0 * * *'
 
 jobs:
   build:
