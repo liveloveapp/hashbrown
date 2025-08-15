@@ -15,65 +15,25 @@ import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
   });
 
   // anyOf as a property (instead of in a container)
-  const responseSchema = s.object('gridArea', {
-    element: s.anyOf([
-      s.boolean('a boolean'),
-      s.object('Markdown', {
-        data: s.streaming.string('The markdown data'),
-      }),
-    ]),
+  const responseSchema = s.object('root', {
+    ui: s.streaming.array(
+      'list of elements',
+      s.anyOf([
+        s.object('Show markdown to the user', {
+          $tagName: s.literal('app-markdown'),
+          $props: s.object('Props', {
+            data: s.streaming.string('The markdown content'),
+          }),
+        }),
+        s.object('Show a button to the user', {
+          $tagName: s.literal('app-button'),
+          $props: s.object('Props', {
+            data: s.streaming.string('The button content'),
+          }),
+        }),
+      ]),
+    ),
   });
-
-  // const responseSchema = s.object('UI', {
-  //   ui: s.streaming.array(
-  //     'list of elements',
-  //     s.anyOf([
-  //       s.object('Show markdown to the user', {
-  //         $tagName: s.constString('app-markdown'),
-  //         $props: s.object('Props', {
-  //           data: s.streaming.string('The markdown content'),
-  //         }),
-  //       }),
-  //     ]),
-  //   ),
-  // });
-
-  // const responseSchema = s.number('top-level number');
-
-  const data = {
-    gridArea: 'a string',
-    element: {
-      [1]: {
-        data: 'the markdown data',
-      },
-    },
-    // element: false,
-    // afterAnyOf: 'a string after the anyOf',
-  };
-
-  // const data = {
-  //   [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
-  // };
-
-  console.log(toJsonSchema(responseSchema).properties.element.anyOf);
-
-  // console.log('parsed value:');
-  const result = responseSchema.parseJsonSchema(data);
-  console.log('after parsed value');
-  console.log(result);
-  // responseSchema.validateJsonSchema(data);
-
-  // console.log(responseSchema.toTypeScript());
-
-  // const responseSchema = s.object('root', {
-  //   booleanValue: s.boolean('a boolean'),
-  //   value: s.streaming.string('glossary name'),
-  //   array: s.streaming.array('array', s.string('array string')),
-  //   object: s.streaming.object('object', {
-  //     a: s.streaming.string('plan a'),
-  //     b: s.streaming.string('plan b'),
-  //   }),
-  // });
 
   // const responseSchema = s.streaming.array(
   //   'root array',

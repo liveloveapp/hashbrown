@@ -489,7 +489,7 @@ describe('anyOf', () => {
     });
   });
 
-  test('using a literal in anyOf objects for customised discriminators', () => {
+  test('using a literal in anyOf objects for customized discriminators', () => {
     const schema = s.object('root', {
       ui: s.streaming.array(
         'list of elements',
@@ -529,6 +529,8 @@ describe('anyOf', () => {
       ],
     });
   });
+
+  // TODO: add tests for streaming anyOf responses with partial prop values
 
   test('if missing a literal in an anyOf, default to using a numeric discriminator', () => {
     const schema = s.object('root', {
