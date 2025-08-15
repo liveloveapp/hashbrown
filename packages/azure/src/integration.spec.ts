@@ -200,6 +200,107 @@ test('Azure OpenAI with tool calling and structured output', async () => {
   expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
 });
 
+test('Azure OpenAI with onChatCompletion callback', async () => {
+  const logMock = jest.spyOn(console, 'log').mockImplementation();
+  const server = await createServer((request) =>
+    HashbrownAzure.stream.text({
+      apiKey: AZURE_API_KEY,
+      endpoint: AZURE_ENDPOINT,
+      request,
+      onChatCompletion: async (messages, latestMessage, usage) => {
+        console.log('Azure chat completion:', messages, latestMessage, usage);
+      },
+    }),
+  );
+
+  const hashbrown = fryHashbrown({
+    debounce: 0,
+    apiUrl: server.url,
+    model: 'gpt-4o@2025-01-01-preview',
+    system: `
+     I am writing an integration test against Azure OpenAI. Respond
+     exactly with the text "Hello, world!".
+    `,
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+  });
+
+  await waitUntilHashbrownIsSettled(hashbrown);
+
+  const assistantMessage = hashbrown
+    .messages()
+    .reverse()
+    .find((message) => message.role === 'assistant');
+
+  expect(assistantMessage?.content).toBe('Hello, world!');
+  expect(console.log).toHaveBeenCalledWith(
+    'Azure chat completion:',
+    expect.any(Array),
+    assistantMessage,
+    expect.any(Object),
+  );
+  expect(console.log).toHaveBeenCalledTimes(1);
+
+  logMock.mockRestore();
+});
+
+test('Azure OpenAI with onChatCompletion callback and no usage', async () => {
+  const logMock = jest.spyOn(console, 'log').mockImplementation();
+  const server = await createServer((request) =>
+    HashbrownAzure.stream.text({
+      apiKey: AZURE_API_KEY,
+      endpoint: AZURE_ENDPOINT,
+      request,
+      onChatCompletion: async (messages, latestMessage) => {
+        console.log(
+          'Azure chat completion:',
+          messages,
+          latestMessage,
+          undefined,
+        );
+      },
+      includeUsage: false,
+    }),
+  );
+
+  const hashbrown = fryHashbrown({
+    debounce: 0,
+    apiUrl: server.url,
+    model: 'gpt-4o@2025-01-01-preview',
+    system: `
+     I am writing an integration test against Azure OpenAI. Respond
+     exactly with the text "Hello, world!".
+    `,
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+  });
+
+  await waitUntilHashbrownIsSettled(hashbrown);
+
+  const assistantMessage = hashbrown
+    .messages()
+    .reverse()
+    .find((message) => message.role === 'assistant');
+
+  expect(assistantMessage?.content).toBe('Hello, world!');
+  expect(console.log).toHaveBeenCalledWith(
+    'Azure chat completion:',
+    expect.any(Array),
+    assistantMessage,
+    undefined,
+  );
+  expect(console.log).toHaveBeenCalledTimes(1);
+  logMock.mockRestore();
+});
+
 async function createServer(
   iteratorFactory: (
     request: Chat.Api.CompletionCreateParams,
