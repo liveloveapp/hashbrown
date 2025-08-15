@@ -530,7 +530,46 @@ describe('anyOf', () => {
     });
   });
 
-  // TODO: add tests for streaming anyOf responses with partial prop values
+  test('using a literal in anyOf objects for customized discriminators with partial response', () => {
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'list of elements',
+        s.anyOf([
+          s.object('Show markdown to the user', {
+            $tagName: s.literal('app-markdown'),
+            $props: s.object('Props', {
+              data: s.streaming.string('The markdown content'),
+            }),
+          }),
+          s.object('Show a button to the user', {
+            $tagName: s.literal('app-button'),
+            $props: s.object('Props', {
+              data: s.streaming.string('The button content'),
+            }),
+          }),
+        ]),
+      ),
+    });
+
+    const jsonString = JSON.stringify({
+      ui: [
+        {
+          'app-markdown': {
+            $props: { data: 'Hello! How can I assist you today?' },
+          },
+        },
+      ],
+    });
+
+    expect(parse(schema, jsonString.slice(0, jsonString.length - 25))).toEqual({
+      ui: [
+        {
+          $props: { data: 'Hello! How can' },
+          $tagName: 'app-markdown',
+        },
+      ],
+    });
+  });
 
   test('if missing a literal in an anyOf, default to using a numeric discriminator', () => {
     const schema = s.object('root', {
