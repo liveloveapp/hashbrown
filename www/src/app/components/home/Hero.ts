@@ -3,10 +3,26 @@ import { RouterLink } from '@angular/router';
 import { ConfigService } from '../../services/ConfigService';
 import { VideoOverlay } from '../VideoOverlay';
 import { Squircle } from '../Squircle';
+import { Angular } from './providers/Angular';
+import { Gemini } from './providers/Gemini';
+import { Ollama } from './providers/Ollama';
+import { OpenAi } from './providers/OpenAi';
+import { React } from './providers/React';
+import { Writer } from './providers/Writer';
 
 @Component({
   selector: 'www-hero',
-  imports: [RouterLink, VideoOverlay, Squircle],
+  imports: [
+    RouterLink,
+    VideoOverlay,
+    Squircle,
+    Angular,
+    Gemini,
+    Ollama,
+    OpenAi,
+    React,
+    Writer,
+  ],
   template: `
     <div class="bleed">
       <div class="hero">
@@ -34,6 +50,14 @@ import { Squircle } from '../Squircle';
               Watch a Demo
             </button>
             <a [routerLink]="docsUrl()" wwwSquircle="8">Read the Docs</a>
+          </div>
+          <div class="providers">
+            <app-home-react></app-home-react>
+            <app-home-angular></app-home-angular>
+            <app-home-openai></app-home-openai>
+            <app-home-gemini></app-home-gemini>
+            <app-home-ollama></app-home-ollama>
+            <app-home-writer></app-home-writer>
           </div>
         </div>
       </div>
@@ -219,6 +243,15 @@ import { Squircle } from '../Squircle';
             > a {
               background: #e1e1e1;
             }
+          }
+
+          > .providers {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            align-self: stretch;
+            margin-top: 16px;
           }
         }
       }
