@@ -60,7 +60,10 @@ export async function* text(
           if (message.role === 'assistant') {
             return {
               role: message.role,
-              content: message.content,
+              content:
+                message.content && typeof message.content !== 'string'
+                  ? JSON.stringify(message.content)
+                  : message.content,
               tool_calls:
                 message.toolCalls && message.toolCalls.length > 0
                   ? message.toolCalls.map((toolCall) => ({
