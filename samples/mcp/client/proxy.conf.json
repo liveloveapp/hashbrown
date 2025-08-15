@@ -12,5 +12,9 @@
     "changeOrigin": true,
     "ws": true,
     "logLevel": "debug"
+  },
+  "/spotify-mcp-server-api": {
+    "target": "http://localhost:3400",
+    "secure": false
   }
 }

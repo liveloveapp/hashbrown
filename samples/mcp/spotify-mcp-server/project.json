@@ -1,0 +1,59 @@
+{
+  "name": "spotify-mcp-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/mcp/spotify-mcp-server/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/samples/mcp/spotify-mcp-server",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "samples/mcp/spotify-mcp-server/src/main.ts",
+        "tsConfig": "samples/mcp/spotify-mcp-server/tsconfig.app.json",
+        "assets": ["samples/mcp/spotify-mcp-server/src/assets"],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "spotify-mcp-server:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "spotify-mcp-server:build:development"
+        },
+        "production": {
+          "buildTarget": "spotify-mcp-server:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}
