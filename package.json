@@ -11,6 +11,8 @@
   ],
   "scripts": {
     "build": "npx nx run-many -t build",
+    "www": "npx nx serve www",
+    "www-full": "npx nx run www:collect-docs && npx nx serve www",
     "clean": "git clean -xdf",
     "lint": "npx nx run-many -t lint",
     "prepare": "husky install",

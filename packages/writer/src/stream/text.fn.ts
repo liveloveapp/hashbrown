@@ -82,7 +82,10 @@ export async function* text(
               case 'assistant':
                 return {
                   role: 'assistant',
-                  content: message.content,
+                  content:
+                    message.content && typeof message.content !== 'string'
+                      ? JSON.stringify(message.content)
+                      : message.content,
                   tool_calls:
                     message.toolCalls && message.toolCalls.length > 0
                       ? message.toolCalls.map((toolCall) => ({

@@ -2,6 +2,7 @@
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   Injector,
   Resource,
@@ -111,9 +112,22 @@ export function structuredChatResource<
     retries: options.retries,
   });
 
+  const optionsEffect = effect(() => {
+    const model = readSignalLike(options.model);
+    const system = readSignalLike(options.system);
+
+    hashbrown.updateOptions({
+      model,
+      system,
+    });
+  });
+
   const teardown = hashbrown.sizzle();
 
-  destroyRef.onDestroy(() => teardown());
+  destroyRef.onDestroy(() => {
+    teardown();
+    optionsEffect.destroy();
+  });
 
   const value = toNgSignal(
     hashbrown.messages,
