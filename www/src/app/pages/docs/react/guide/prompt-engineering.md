@@ -69,7 +69,7 @@ const { messages, sendMessage } = useStructuredChat({
 
 ## Tool Use
 
-Hashbrown supports function calling ("tools"). Define tools with `useTool` and pass them to chat hooks.
+Hashbrown supports tool calling ("tools"). Define tools with `useTool` and pass them to chat hooks.
 
 ```tsx
 import { useTool, useChat } from '@hashbrownai/react';

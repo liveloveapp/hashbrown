@@ -8,7 +8,7 @@ npm install @hashbrownai/writer
 
 ## Streaming Text Responses
 
-Hashbrown’s Writer adapter lets you **stream chat completions** from Writer models, including support for function calling, response schemas, and request transforms.
+Hashbrown’s Writer adapter lets you **stream chat completions** from Writer models, including support for tool calling, response schemas, and request transforms.
 
 ### API Reference
 
@@ -27,10 +27,10 @@ Streams a Writer chat completion as a series of encoded frames. Handles content,
 **Supported Features:**
 
 - **Roles:** `user`, `assistant`, `tool`
-- **Tools:** Supports Writer function calling, including `toolCalls` and strict function schemas.
+- **Tools:** Supports Writer tool calling, including `toolCalls` and strict function schemas.
 - **Response Format:** Optionally specify a JSON schema for structured output (Writer’s `response_format` parameter).
 - **System Prompt:** Included as the first message if provided.
-- **Function Calling:** Handles Writer function calling modes and emits tool call frames.
+- **Tool Calling:** Handles Writer tool calling modes and emits tool call frames.
 - **Streaming:** Each chunk/frame is encoded into a resilient streaming format.
 
 ### How It Works
@@ -63,8 +63,8 @@ app.post('/chat', async (req, res) => {
 
 ---
 
-### Advanced: Tools, Function Calling, and Response Schema
+### Advanced: Tools and Response Schema
 
 - **Tools:** Add tools using function specs (name, description, parameters) compatible with Writer.
-- **Function Calling:** Supported via `toolChoice` (`auto`, `required`, `none`, etc.).
+- **Tool Calling:** Supported via `toolChoice` (`auto`, `required`, `none`, etc.).
 - **Response Format:** Pass a JSON schema in `responseFormat` for Writer to return validated structured output.

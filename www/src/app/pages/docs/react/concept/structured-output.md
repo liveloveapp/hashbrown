@@ -4,11 +4,11 @@ We think that streaming structured output from an LLM opens lots of interesting 
 
 There are many use cases for structured output. Here are a few.
 
-- Replace forms with natural language input via text or audio
+- Replace forms with natural language input via text
 - Generate customized dashboards from ambient application state
 - Enable users to navigate, query, build, and customize the entire application user interface using natural language
 
-We think these are just a few of the use cases, and we're excited to see what you dream and build with hashbrown.
+We think these are just a few of the use cases, and we're excited to see what you dream and build with Hashbrown.
 
 ---
 
@@ -90,7 +90,7 @@ Let's quickly review:
 
 - The `useStructuredChat` hook is used to create a chat resource where the schema of the structured output is specified.
 - The `system` prompt provides context to the LLM, instructing it to act as a scheduling assistant.
-- The `schema` defines the expected structure of the response, using a schema that describes the recurrence rule format using hashbrown's LLM-optimized schema language.
+- The `schema` defines the expected structure of the response, using a schema that describes the recurrence rule format using Hashbrown's LLM-optimized schema language.
 
 When the user sends a message like `"Schedule a meeting every Monday at 10 AM"`, the LLM will parse this input and return a structured JSON object that can be used directly in your application.
 

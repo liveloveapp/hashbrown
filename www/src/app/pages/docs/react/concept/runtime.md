@@ -14,17 +14,6 @@ There are many use cases for the JS runtime. Here are a few:
 
 ---
 
-## JS Runtime Benefits
-
-Overall, we believe that the JS runtime provides:
-
-- Improved client performance
-- Decreased LLM costs
-- Precision of calculations
-- Vibe coding
-
----
-
 ## Defining Runtime
 
 The first step is to define a `runtime`.
@@ -34,9 +23,11 @@ The first step is to define a `runtime`.
 ```tsx
 import { useRuntime } from '@hashbrownai/react';
 
-const runtime = useRuntime({
-  functions: [],
-});
+export default function Chat() {
+  const runtime = useRuntime({
+    functions: [],
+  });
+}
 ```
 
 </www-code-example>
@@ -93,41 +84,43 @@ import { useRuntime, useRuntimeFunction } from '@hashbrownai/react';
 import * as s from '@hashbrownai/core';
 import { useMemo } from 'react';
 
-const getLights = useRuntimeFunction({
-  name: 'getLights',
-  description: 'Get the current lights',
-  args: s.array(
-    'The lights',
-    s.object('A light', {
+export default function Chat() {
+  const getLights = useRuntimeFunction({
+    name: 'getLights',
+    description: 'Get the current lights',
+    args: s.array(
+      'The lights',
+      s.object('A light', {
+        id: s.string('The id of the light'),
+        brightness: s.number('The brightness of the light'),
+      }),
+    ),
+    handler: () => smartHomeService.loadLights(),
+    deps: [smartHomeService],
+  });
+
+  const addLight = useRuntimeFunction({
+    name: 'addLight',
+    description: 'Add a light',
+    args: s.object('Add light input', {
+      name: s.string('The name of the light'),
+      brightness: s.number('The brightness of the light'),
+    }),
+    result: s.object('The light', {
       id: s.string('The id of the light'),
       brightness: s.number('The brightness of the light'),
-    })
-  ),
-  handler: () => smartHomeService.loadLights(),
-  deps: [smartHomeService],
-});
+    }),
+    handler: async (input) => {
+      const light = await smartHomeService.addLight(input);
+      return light;
+    },
+    deps: [smartHomeService],
+  });
 
-const addLight = useRuntimeFunction({
-  name: 'addLight',
-  description: 'Add a light',
-  args: s.object('Add light input', {
-    name: s.string('The name of the light'),
-    brightness: s.number('The brightness of the light'),
-  }),
-  result: s.object('The light', {
-    id: s.string('The id of the light'),
-    brightness: s.number('The brightness of the light'),
-  }),
-  handler: async (input) => {
-    const light = await smartHomeService.addLight(input);
-    return light;
-  },
-  deps: [smartHomeService],
-});
-
-const runtime = useRuntime({
-  functions: useMemo(() => [getLights, addLight], [getLights, addLight]),
-});
+  const runtime = useRuntime({
+    functions: useMemo(() => [getLights, addLight], [getLights, addLight]),
+  });
+}
 ```
 
 </www-code-example>
@@ -136,23 +129,24 @@ const runtime = useRuntime({
 
 ## Providing the Tool
 
-Similar to [function calling](/docs/react/concept/functions), the JS runtime is provided to a Hashbrown chat hook as a member of the `tools` array.
+Similar to [tool calling](/docs/react/concept/functions), the JS runtime is provided to a Hashbrown chat hook as a member of the `tools` array.
 
 <www-code-example header="chat.tsx">
 
 ```tsx
 import { useToolJavaScript } from '@hashbrownai/react';
 
-const jsTool = useToolJavaScript({
-  runtime,
-});
+export default function Chat() {
+  const jsTool = useToolJavaScript({
+    runtime,
+  });
 
-const chat = useUiChat({
-  model: 'gpt-4.1',
-  tools: [jsTool],
-  components: [], // your exposed components here
-  system: 'You are a helpful assistant.',
-});
+  const chat = useChat({
+    model: 'gpt-4.1',
+    tools: [jsTool],
+    system: 'You are a helpful assistant.',
+  });
+}
 ```
 
 </www-code-example>

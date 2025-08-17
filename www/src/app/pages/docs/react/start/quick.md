@@ -1,11 +1,11 @@
 # React Quick Start
 
-hashbrown is an open source framework for building generative user interfaces in React.
+Hashbrown is an open source framework for building generative user interfaces in React.
 
 ## Key Concepts
 
 - **Headless**: build your UI how you want
-- **Hook Based**: hashbrown uses React hooks for reactivity
+- **Hook Based**: Hashbrown uses React hooks for reactivity
 - **[Platform Agnostic](/docs/react/start/platforms)**: use any supported LLM provider
 - **[Streaming](/docs/react/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
 - **[Components](/docs/react/concept/components)**: generative UI using your trusted and tested React components
@@ -22,14 +22,14 @@ hashbrown is an open source framework for building generative user interfaces in
 
 ## OpenAI API Key
 
-In this intro to hashbrown, we'll be using OpenAI's Large Language Models.
+In this intro to Hashbrown, we'll be using OpenAI's Large Language Models.
 
 To follow along, you'll need to
 
 1. [Sign up for OpenAI's API](https://openai.com/api/)
 2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
 3. Copy the API Key so you have it handy
-4. Follow the instructions in [the OpenAI Adapter docs](/docs/react/platform/openai) to setup a backend endpoint for hashbrown to consume
+4. Follow the instructions in [the OpenAI Adapter docs](/docs/react/platform/openai) to setup a backend endpoint for Hashbrown to consume
 
 ---
 
@@ -41,10 +41,54 @@ npm install @hashbrownai/{core,react,openai} --save
 
 ---
 
+## Creating the Chat Endpoint
+
+Hashbrown's provider packages (in this case the OpenAI package) comes with _adapter functions_ that help you implement the API route Hashbrown's frontend code will consume. The adapter functions work in any JavaScript runtime that supports async iterators, including NodeJS and most edge runtimes.
+
+Each implementation will be dependent on the API framework you are using. For example, if you are ussing Express, your API endpoing might look like the following:
+
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: req.body,
+  });
+
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+
+  res.end();
+});
+```
+
+Hashbrown's adapter functions handle the following for you:
+
+- **Streaming**: Hashbrown utilizes your LLM provider's streaming capabilities. Each chunk is encoded and yielded to you to write out as part of the response.
+- **Error Handling**: Errors are encountered when communicating with your LLM provider are also handled and encoded, letting you consume error messages in your frontend code.
+- **Normalization**: Hashbrown normalizes messages, tool calling, and schema across our supported LLM providers letting you use a single, consistent API.
+
+## Configuring Your React App
+
+You must provide the API endpoint to Hashbrown's React SDK:
+
+````ts
+export default function App({ children }) {
+  return (
+    <HashbrownProvider url="/api/chat">
+      {children}
+    </HashbrownProvider>
+  )
+}
+```
+
 ## Create Chat Hook
 
-The `useChat` hook from `@hashbrownai/react` is the basic way to interact with a Large Language Model (LLM) via text.
-It provides a set of methods for sending and receiving messages, as well as managing the chat state.
+The `useChat` hook from `@hashbrownai/react` is the basic way to interact with a Large Language Model (LLM) via text. It provides a set of methods for sending and receiving messages, as well as managing the chat state.
 
 <www-code-example header="ChatPanel.tsx">
 
@@ -55,16 +99,21 @@ import { useChat } from '@hashbrownai/react';
 export function ChatPanel() {
   const [input, setInput] = useState('');
   const { messages, sendMessage } = useChat({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     system: 'You are a helpful assistant that can answer questions and help with tasks.',
   });
 
-  const handleSend = useCallback(() => {
-    const text = input.trim();
-    if (!text) return;
-    sendMessage({ role: 'user', content: text });
-    setInput('');
-  }, [input, sendMessage]);
+  const handleSend = useCallback(
+    (event: FormEvent) => {
+      event.preventDefault();
+
+      if (!text) return;
+
+      sendMessage({ role: 'user', content: text });
+      setInput('');
+    },
+    [input, sendMessage],
+  );
 
   return (
     <div>
@@ -76,26 +125,20 @@ export function ChatPanel() {
         ))}
       </div>
 
-      <form
-        className="composer"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-      >
+      <form className="composer" onSubmit={handleSend}>
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type your message…" />
         <button type="submit">Send</button>
       </form>
     </div>
   );
 }
-```
+````
 
 </www-code-example>
 
 Let's break this down:
 
-- The `useChat` hook creates a new AI chat instance.
+- The `useChat` hook creates a new chat instance.
 - The `model` parameter specifies the model to use for the chat.
 - The `messages` property contains the current chat history.
 - The `sendMessage` function sends a user message to the LLM.
@@ -113,8 +156,8 @@ The component uses React's state and hooks to stay in sync with the chat state.
 
 ## Debugging with Redux Devtools
 
-hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
-We find that this provides direct access to the state internals of hashbrown - enabling you to debug your AI-powered user experiences.
+Hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
+We find that this provides direct access to the state internals of Hashbrown - enabling you to debug your AI-powered user experiences.
 
 <div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089272009?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown debugging"></iframe></div>
 
@@ -136,23 +179,20 @@ const chat = useChat({
 
 ---
 
-## Function Calling
+## Tool Calling
 
-In this guide, we'll show you the basics of function calling.
-Please note, function calling works _best_ today using OpenAI's models.
+Tool calling enables the LLM to invoke functions you have exposed to the LLM.
+We also suggest reading the [OpenAI documentation for tool calling using the chat API](https://platform.openai.com/docs/guides/function-calling?api-mode=chat)
 
-Function calling enables the LLM to invoke functions you have exposed to the LLM.
-We also suggest reading the [OpenAI documentation for function calling using the chat API](https://platform.openai.com/docs/guides/function-calling?api-mode=chat)
-
-Some common use cases for function calling include:
+Some common use cases for tool calling include:
 
 - Fetching additional data from your service layer
 - Providing the LLM with the latest application state
 - Enabling the LLM to mutate state or take action
 
-<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown function calling"></iframe></div>
+<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown tool calling"></iframe></div>
 
-Let's look at an example of function calling using hashbrown.
+Let's look at an example of tool calling using Hashbrown.
 
 <www-code-example header="ChatPanel.tsx" run="/examples/react/function-calling">
 
@@ -207,12 +247,17 @@ export function ChatPanel() {
     tools: [getUserTool, getLightsTool, controlLightTool],
   });
 
-  const handleSend = () => {
-    if (input.trim()) {
-      chat.sendMessage({ role: 'user', content: input });
+  const handleSend = useCallback(
+    (event: FormEvent) => {
+      event.preventDefault();
+
+      if (!text) return;
+
+      sendMessage({ role: 'user', content: text });
       setInput('');
-    }
-  };
+    },
+    [input, sendMessage],
+  );
 
   return (
     <div>
@@ -223,10 +268,10 @@ export function ChatPanel() {
           </div>
         ))}
       </div>
-      <div className="composer">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Type your message..." />
-        <button onClick={handleSend}>Send</button>
-      </div>
+      <form className="composer" onSubmit={handleSend}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type your message…" />
+        <button type="submit">Send</button>
+      </form>
     </div>
   );
 }
@@ -245,12 +290,12 @@ Let's review the key parts of this code:
 
 ## What is this schema language?
 
-Skillet is hashbrown's LLM-optimized schema language.
+Skillet is Hashbrown's LLM-optimized schema language.
 
 Why not use something like Zod?
 We're glad you asked.
 
-- Skillet limits schema based on an LLM's capability. In other words, it works as you expect.
+- Skillet is feature-restricted to the set of features that LLM providers support
 - Skillet enables one-line streaming
 - Skillet enables partial parsing
 - Skillet is strongly typed
@@ -346,12 +391,17 @@ export function ChatPanel() {
     ],
   });
 
-  const handleSend = () => {
-    if (input.trim()) {
-      chat.sendMessage({ role: 'user', content: input });
+  const handleSend = useCallback(
+    (event: FormEvent) => {
+      event.preventDefault();
+
+      if (!text) return;
+
+      sendMessage({ role: 'user', content: text });
       setInput('');
-    }
-  };
+    },
+    [input, sendMessage],
+  );
 
   return (
     <div>
@@ -362,10 +412,10 @@ export function ChatPanel() {
           </div>
         ))}
       </div>
-      <div className="composer">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Type your message..." />
-        <button onClick={handleSend}>Send</button>
-      </div>
+      <form className="composer" onSubmit={handleSend}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type your message…" />
+        <button type="submit">Send</button>
+      </form>
     </div>
   );
 }
@@ -375,9 +425,9 @@ export function ChatPanel() {
 
 Let's focus on the new `components` property.
 
-- The `components` property is an array of components that the LLM can use to generate UI.
+- The `components` property is an array of components that the LLM will use to generate UI.
 - The `exposeComponent` function defines a component that the LLM can use, with a name, description, and props.
-- The `props` property defines the input properties that the component can accept, using the Skillet schema language.
+- The `props` property defines the properties that the component can accept, using the Skillet schema language.
 - The `children` property allows the component to accept child components, enabling nested UI structures.
 - The `useUiChat` hook creates a chat resource that can generate UI components based on the LLM's responses.
 
@@ -388,111 +438,11 @@ Did you catch the `streaming` keyword in the example above?
 
 ---
 
-## Structured Output
-
-Structured output allows the LLM to return data in a structured format; most commonly JSON.
-
-Just think.
-Large Language Models are _incredibly_ powerful at natural language and text generation.
-Using this power, React developers can leverage the LLM to generate structured data that can be used _anywhere_ in their applications.
-
-In this example, we'll use the `useStructuredChat` hook from `@hashbrownai/react` to generate structured data.
-
-<www-code-example header="ChatPanel.tsx" run="/examples/react/structured-output">
-
-```tsx
-import React, { useState } from 'react';
-import { useStructuredChat, useTool } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
-
-export function ChatPanel() {
-  const [input, setInput] = useState('');
-  const getLightsTool = useTool({
-    name: 'getLights',
-    description: 'Get the current lights',
-    handler: async () => [
-      { id: 'light-1', brightness: 75 },
-      { id: 'light-2', brightness: 50 },
-    ],
-  });
-
-  const chat = useStructuredChat({
-    model: 'gpt-4.1',
-    debugName: 'lights-chat',
-    system: `
-      Please return a JSON object that contains the lights that the user mentions.
-    `,
-    schema: s.object('Output', {
-      lights: s.array(
-        s.object('Light', {
-          id: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-      ),
-    }),
-    tools: [getLightsTool],
-  });
-
-  const handleSend = () => {
-    if (input.trim()) {
-      chat.sendMessage({ role: 'user', content: input });
-      setInput('');
-    }
-  };
-
-  return (
-    <div>
-      <div className="messages">
-        {chat.messages.map((message, idx) => (
-          <div key={idx} className={message.role}>
-            <pre>{JSON.stringify(message.content, null, 2)}</pre>
-          </div>
-        ))}
-      </div>
-      <div className="composer">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Type your message..." />
-        <button onClick={handleSend}>Send</button>
-      </div>
-    </div>
-  );
-}
-```
-
-</www-code-example>
-
-Let's take a look at using the `useStructuredChat` hook.
-
-- The `useStructuredChat` hook creates a chat resource that can generate structured data.
-- The `schema` property defines the structure of the data that the LLM will return, using the Skillet schema language.
-- The `debugName` property is used to identify the chat resource in the redux devtools.
-- The `tools` property defines the tools that the LLM can use to fetch data or perform actions.
-
-When the LLM generates a response, it will return data in the structured format defined by the `schema` property.
-
-Here is what the LLM will return based on the response format specified:
-
-```json
-{
-  "lights": [
-    {
-      "id": "light-1",
-      "brightness": 75
-    },
-    {
-      "id": "light-2",
-      "brightness": 50
-    }
-  ]
-}
-```
-
----
-
 ## Next Steps
 
-Now that you've seen the basics of hashbrown, you can explore more advanced features and concepts:
+Now that you've seen the basics of Hashbrown, you can explore more advanced features and concepts:
 
 - [Get started with writing system instructions](/docs/react/concept/system-instructions)
 - [Use your React components for generative UI](/docs/react/concept/components)
-- [Learn how to implement function calling](/docs/react/concept/functions)
+- [Learn how to implement tool calling](/docs/react/concept/functions)
 - [Learn more about streaming responses](/docs/react/concept/streaming)

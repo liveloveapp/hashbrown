@@ -73,4 +73,4 @@ predictedLights = structuredCompletionResource({
 
 Here's where it gets good.
 Skillet will eagerly parse the chunks streamed to the resource `value()` signal.
-Combining this with Angular's reactivity, streaming UI to your frontend is a one-line code change with hashbrown.
+Combining this with Angular's reactivity, streaming UI to your frontend is a one-line code change with Hashbrown.

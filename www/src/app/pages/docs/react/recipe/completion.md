@@ -14,13 +14,7 @@ import { useCompletion } from '@hashbrownai/react';
 function CompletionExample() {
   const [input, setInput] = React.useState('What is the capital of France?');
 
-  const {
-    output,
-    isReceiving,
-    isSending,
-    error,
-    reload,
-  } = useCompletion({
+  const { output, isReceiving, isSending, error, reload } = useCompletion({
     input,
     model: 'gpt-3.5-turbo', // or any supported model
     system: 'You are a helpful assistant.',
@@ -28,11 +22,7 @@ function CompletionExample() {
 
   return (
     <div>
-      <input
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        placeholder="Enter your prompt"
-      />
+      <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Enter your prompt" />
       <button onClick={reload} disabled={isSending || isReceiving}>
         Reload
       </button>
@@ -53,15 +43,15 @@ function CompletionExample() {
 
 The `useCompletion` hook accepts the following options:
 
-| Option         | Type                | Description                                 |
-| -------------- | ------------------- | ------------------------------------------- |
-| `input`        | `string \| null`    | The prompt to send to the model.            |
-| `model`        | `string`            | The model ID to use.                        |
-| `system`       | `string`            | The system prompt for the model.            |
-| `debounceTime` | `number` (optional) | Debounce time in ms for input changes.      |
-| `debugName`    | `string` (optional) | Debug label for this completion instance.   |
-| `retries`      | `number` (optional) | Number of retry attempts on failure.        |
-| `tools`        | `AnyTool[]` (optional) | Tools to enable for the completion.      |
+| Option         | Type                   | Description                               |
+| -------------- | ---------------------- | ----------------------------------------- |
+| `input`        | `string \| null`       | The prompt to send to the model.          |
+| `model`        | `string`               | The model ID to use.                      |
+| `system`       | `string`               | The system prompt for the model.          |
+| `debounceTime` | `number` (optional)    | Debounce time in ms for input changes.    |
+| `debugName`    | `string` (optional)    | Debug label for this completion instance. |
+| `retries`      | `number` (optional)    | Number of retry attempts on failure.      |
+| `tools`        | `AnyTool[]` (optional) | Tools to enable for the completion.       |
 
 ---
 
@@ -69,15 +59,15 @@ The `useCompletion` hook accepts the following options:
 
 The hook returns an object with the following properties:
 
-| Property            | Type                | Description                                 |
-| ------------------- | ------------------- | ------------------------------------------- |
-| `output`            | `string \| null`    | The completion result.                      |
-| `isReceiving`       | `boolean`           | True if receiving a response.               |
-| `isSending`         | `boolean`           | True if sending a request.                  |
-| `isRunningToolCalls`| `boolean`           | True if tool calls are running.             |
-| `error`             | `Error \| undefined`| Error object if an error occurred.          |
-| `exhaustedRetries`  | `boolean`           | True if all retries have been exhausted.    |
-| `reload`            | `() => void`        | Manually refetch the completion.            |
+| Property             | Type                 | Description                              |
+| -------------------- | -------------------- | ---------------------------------------- |
+| `output`             | `string \| null`     | The completion result.                   |
+| `isReceiving`        | `boolean`            | True if receiving a response.            |
+| `isSending`          | `boolean`            | True if sending a request.               |
+| `isRunningToolCalls` | `boolean`            | True if tool calls are running.          |
+| `error`              | `Error \| undefined` | Error object if an error occurred.       |
+| `exhaustedRetries`   | `boolean`            | True if all retries have been exhausted. |
+| `reload`             | `() => void`         | Manually refetch the completion.         |
 
 ---
 
@@ -110,7 +100,7 @@ Call the `reload` function to manually refetch the completion, for example after
 
 ## With Tools
 
-You can pass tools to the completion hook if your model supports function calling:
+You can pass tools to the completion hook if your model supports tool calling:
 
 ```tsx
 import { useCompletion, useTool } from '@hashbrownai/react';

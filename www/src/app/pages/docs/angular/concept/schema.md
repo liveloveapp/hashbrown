@@ -11,7 +11,7 @@ Skillet is a Zod-like schema language that is LLM-optimized.
 
 ## API Reference
 
-We think the best way to get started with hashbrown's skillet schema language is to check out the API reference section.
+We think the best way to get started with Hashbrown's skillet schema language is to check out the API reference section.
 
 [Read the API reference for Skillet](/api/core/s).
 

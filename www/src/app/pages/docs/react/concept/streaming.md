@@ -1,12 +1,6 @@
 # Streaming
 
-We believe that streaming is both paramount to implementing AI generative technologies into web applications, and there should be minimal barriers to implementing streaming.
-
-How do we make this a reality?
-
-- First, we built an LLM-optimized schema language called Skillet
-- Skillet has both streaming and partial parsing built into the core
-- We make it easy – simply use the `streaming` keyword in your schema
+Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application. Hashbrown is architected to make streaming as easy and simple to consume for you, the developer, as possible.
 
 ---
 
@@ -15,7 +9,7 @@ How do we make this a reality?
 Skillet is a Zod-like schema language that is LLM-optimized.
 
 - Skillet is strongly typed
-- Skillet purposefully limits the schema to that which is supported by LLMs
+- Skillet has feature parity with schemas supported by LLM providers
 - Skillet optimizes the schema for processing by an LLM
 - Skillet tightly integrates streaming
 
@@ -43,23 +37,22 @@ const schema = s.object('Your response', {
     s.object('A join between a light and a scene', {
       lightId: s.string('the ID of the light to add'),
       brightness: s.number('the brightness of the light from 0 to 100'),
-    })
+    }),
   ),
 });
 
 function usePredictedLights(sceneName: string, lights: { id: string; name: string }[]) {
+  const input = useMemo(() => {
+    return { sceneName, lights };
+  }, [sceneName, lights]);
   return useStructuredCompletion({
     model: 'gpt-4.1',
-    input: sceneName,
+    input,
     system: `
       Predict the lights that will be added to the scene based on the name. For example,
       if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
       be in the bedroom at a lower brightness.
-
-      Here's the list of lights:
-      ${lights.map((light) => `${light.id}: ${light.name}`).join('\n')}
     `,
-    debugName: 'Predict Lights',
     schema,
   });
 }
@@ -72,4 +65,4 @@ function usePredictedLights(sceneName: string, lights: { id: string; name: strin
 
 Here's where it gets good.
 Skillet will eagerly parse the chunks streamed to the `output` value returned by the `useStructuredCompletion` hook.
-Combining this with React's reactivity, streaming UI to your frontend is a one-line code change with hashbrown.
+Combining this with React's reactivity, streaming UI to your frontend is a one-line code change with Hashbrown.

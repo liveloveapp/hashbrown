@@ -6,7 +6,7 @@ The sample application is a smart home client built with React.
 Some of the basic features of the sample app include:
 
 - Simple Chat
-- Function Calling
+- Tool Calling
 - UI Chat
 - Text completion
 - Structured output
@@ -27,7 +27,7 @@ git clone https://github.com/liveloveapp/hashbrown.git
 Then install the dependencies:
 
 ```bash
-cd hashbrown
+cd Hashbrown
 npm install
 ```
 

@@ -27,10 +27,10 @@ Streams a Gemini chat completion as a series of encoded frames. Handles content,
 **Supported Features:**
 
 - **Roles:** `user`, `assistant`, `tool`, `error`
-- **Tools:** Supports function calling with OpenAPI schemas automatically converted to Gemini format.
+- **Tools:** Supports tool calling with OpenAPI schemas automatically converted to Gemini format.
 - **Response Format:** Optionally specify a JSON schema for model output validation.
 - **System Prompt:** Included as Gemini’s `systemInstruction`.
-- **Function Calling:** Handles Gemini’s tool/function-calling modes and emits tool call frames.
+- **Tool Calling:** Handles Gemini’s tool calling modes and emits tool call frames.
 - **Streaming:** Each chunk/frame is encoded using `@hashbrownai/core`’s `encodeFrame`.
 
 ### How It Works
@@ -63,8 +63,8 @@ app.post('/chat', async (req, res) => {
 
 ---
 
-### Advanced: Tools, Function Calling, and Response Schema
+### Advanced: Tools and Response Schema
 
 - **Tools:** Add tools using OpenAI-style function specs. They will be auto-converted for Gemini.
-- **Function Calling:** Supported via Gemini’s tool configuration, with control over `auto`, `required`, or `none` modes.
+- **Tool Calling:** Supported via Gemini’s tool configuration, with control over `auto`, `required`, or `none` modes.
 - **Response Format:** Pass a JSON schema in `responseFormat` for structured output.
