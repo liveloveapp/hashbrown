@@ -61,20 +61,6 @@ import { Writer } from './providers/Writer';
           </div>
         </div>
       </div>
-      <div class="news">
-        <div class="bg">
-          <div class="alert">
-            <p>
-              <strong>New!</strong> Workshop tickets for
-              <a routerLink="/products/workshops"
-                >Build Generative UIs in React</a
-              >
-              are on sale now.
-            </p>
-          </div>
-          <div class="gradient" wwwSquircle="0 0 8 8"></div>
-        </div>
-      </div>
     </div>
     <www-video-overlay
       [open]="demoVideoOpen()"
@@ -255,69 +241,6 @@ import { Writer } from './providers/Writer';
           }
         }
       }
-
-      .news {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        max-width: 800px;
-        margin-bottom: 128px;
-
-        > .bg {
-          display: flex;
-          flex-direction: column;
-          align-items: stretch;
-          width: 100%;
-
-          > .alert {
-            display: flex;
-            padding: 11px 24px 12px 24px;
-            justify-content: center;
-            align-items: center;
-            border-radius: 8px 8px 1px 1px;
-            background: rgba(255, 255, 255, 0.24);
-            box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.12);
-
-            > p {
-              color: rgba(0, 0, 0, 0.64);
-              text-align: center;
-              font:
-                400 13px/140% 'Fredoka',
-                sans-serif;
-
-              > strong {
-                font-weight: 700;
-              }
-
-              > a {
-                text-decoration: underline;
-                text-decoration-style: solid;
-                text-decoration-thickness: 1px;
-                transition: text-decoration-thickness 0.2s ease-in-out;
-
-                &:hover {
-                  text-decoration-thickness: 2px;
-                }
-              }
-            }
-          }
-
-          > .gradient {
-            width: 100%;
-            height: 8px;
-            background: linear-gradient(
-              to right,
-              #fbbb52 0%,
-              var(--sunset-orange) 25%,
-              var(--indian-red-light) 50%,
-              var(--sky-blue-dark) 75%,
-              var(--olive-green-light) 100%
-            );
-            background-clip: border-box;
-          }
-        }
-      }
     }
 
     @media screen and (min-width: 1024px) {
@@ -337,14 +260,6 @@ import { Writer } from './providers/Writer';
               height: auto;
               aspect-ratio: 47/50;
             }
-          }
-        }
-
-        > .news {
-          margin: 0;
-
-          > .bg {
-            width: inherit;
           }
         }
       }

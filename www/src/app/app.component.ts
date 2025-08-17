@@ -6,6 +6,7 @@ import { CodeExample } from './components/CodeExample';
 import { MarkdownSymbolLink } from './components/MarkdownSymbolLink';
 import { NextStep } from './components/NextStep';
 import { NextSteps } from './components/NextSteps';
+import { Announcement } from './components/Announcement';
 import { Code } from './icons/Code';
 import { Components } from './icons/Components';
 import { DatabaseCog } from './icons/DatabaseCog';
@@ -15,8 +16,11 @@ import { Send } from './icons/Send';
 
 @Component({
   selector: 'www-root',
-  imports: [RouterOutlet],
-  template: ` <router-outlet></router-outlet> `,
+  imports: [RouterOutlet, Announcement],
+  template: `
+    <router-outlet />
+    <www-announcement />
+  `,
   styles: `
     :host {
       display: block;
