@@ -3,6 +3,7 @@ import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { GettingStarted } from '../components/home/GettingStarted';
 import { Hero } from '../components/home/Hero';
+import { Media } from '../components/home/Media';
 import { OpenSource } from '../components/home/OpenSource';
 import { Samples } from '../components/home/Samples';
 import { TheGravy } from '../components/home/TheGravy';
@@ -14,6 +15,7 @@ import { TheVisual } from '../components/home/TheVisual';
     GettingStarted,
     Header,
     Hero,
+    Media,
     OpenSource,
     Samples,
     TheGravy,
@@ -27,6 +29,7 @@ import { TheVisual } from '../components/home/TheVisual';
       <www-open-source />
       <www-getting-started />
       <www-the-visual />
+      <www-media />
       <www-the-gravy />
     </main>
     <www-footer />

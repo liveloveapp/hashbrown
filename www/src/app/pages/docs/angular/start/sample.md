@@ -1,7 +1,6 @@
 # Sample App
 
-We believe that one of the best ways to learn AI engineering using hashbrown is to check out and build on top of our sample app.
-The sample application is a smart home client built with Angular.
+<p class="subtitle">Smart home client built with Angular.</p>
 
 Some of the basic features of the sample app include:
 

@@ -1,15 +1,15 @@
 # Introduction
 
-Hashbrown is an open source framework for building generative user interfaces in Angular.
+<p class="subtitle">Hashbrown is an open source framework for building generative user interfaces in Angular.</p>
 
 ## Key Concepts
 
-- **Headless**: build your UI how you want
-- **Signal Based**: hashbrown uses signals and resources for reactivity
-- **Platform Agnostic**: use any supported LLM provider
-- **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
-- **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular components
-- **[Runtime](/docs/angular/concept/runtime)**: safely execute LLM-generated JavaScript code in the client
+1. **Headless**: build your UI how you want
+2. **Signal Based**: hashbrown uses signals and resources for reactivity
+3. **Platform Agnostic**: use any supported LLM provider
+4. **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
+5. **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular components
+6. **[Runtime](/docs/angular/concept/runtime)**: safely execute LLM-generated JavaScript code in the client
 
 ---
 

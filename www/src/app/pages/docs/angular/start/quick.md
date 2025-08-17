@@ -1,20 +1,26 @@
 # Angular Quick Start
 
-Take you first steps with hashbrown.
+<p class="subtitle">Take you first steps with hashbrown.</p>
 
 ---
 
 ## Install
 
+<hb-code-example header="terminal">
+
 ```sh
 npm install @hashbrownai/{core,angular,openai} --save
 ```
+
+</hb-code-example>
 
 ---
 
 ## Chat
 
 Hashbrown builds on Angular's [Resource API](https://angular.dev/guide/signals/resource).
+
+<hb-code-example header="app.ts">
 
 ```ts
 chatResource({
@@ -24,6 +30,8 @@ chatResource({
   messages: [{ role: 'user', content: 'Write a short story about breakfast.' }],
 });
 ```
+
+</hb-code-example>
 
 ### Options
 
@@ -50,13 +58,17 @@ It provides a set of methods for sending and receiving messages, as well as mana
   imports: [Composer, Messages],
   template: `
     <div class="messages">
+      // loop over each message
       @for (message of chat.value(); track $index) {
         @switch (message.role) {
+          // user content
           @case ('user') {
             <div class="user">
               <p>{{ message.content }}</p>
             </div>
           }
+
+          // model content
           @case ('assistant') {
             <div class="assistant">
               <p>{{ message.content }}</p>
@@ -71,7 +83,8 @@ It provides a set of methods for sending and receiving messages, as well as mana
 export class ChatPanel {
   chat = chatResource({
     model: 'gpt-4o',
-    system: 'You are a helpful assistant that can answer questions and help with tasks.',
+    system:
+      'You are a helpful assistant that can answer questions and help with tasks.',
   });
 
   sendMessage(message: string) {
@@ -84,10 +97,10 @@ export class ChatPanel {
 
 Let's break this down:
 
-- The @hashbrownai/angular!chatResource:function function creates a new AI chat resource.
-- The `model` parameter specifies the model to use for the chat.
-- The `messages` parameter is an array of messages that will be used to initialize the chat.
-- The `sendMessage` function sends a user message to the LLM.
+1. The @hashbrownai/angular!chatResource:function function creates a new AI chat resource.
+2. The `model` parameter specifies the model to use for the chat.
+3. The `messages` parameter is an array of messages that will be used to initialize the chat.
+4. The `sendMessage` function sends a user message to the LLM.
 
 This creates a complete chat interface where:
 

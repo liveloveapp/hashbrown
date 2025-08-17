@@ -90,13 +90,6 @@ type Heading = { level: number; text: string; id: string; url: string };
           400 15px/21px Fredoka,
           sans-serif;
 
-        h1,
-        h2,
-        h3,
-        h4 {
-          margin: 8px 0;
-        }
-
         h1 {
           color: var(--gray, #5e5c5a);
           font:
@@ -113,6 +106,7 @@ type Heading = { level: number; text: string; id: string; url: string };
         h3,
         h4 {
           color: var(--gray, #5e5c5a);
+          margin: 8px 0;
           font:
             500 18px/24px Fredoka,
             sans-serif;
@@ -126,6 +120,14 @@ type Heading = { level: number; text: string; id: string; url: string };
 
         p {
           margin: 8px 0;
+
+          &.subtitle {
+            color: var(--gray-light, #a4a3a1);
+            margin: 0;
+            font:
+              300 18px/24px Fredoka,
+              sans-serif;
+          }
         }
 
         ul,
@@ -135,7 +137,7 @@ type Heading = { level: number; text: string; id: string; url: string };
 
         hr {
           border: 0;
-          border-top: 1px solid rgba(47, 47, 43, 0.24);
+          border-top: 1px solid #dcdad5;
           margin: 32px 0;
         }
 
@@ -143,20 +145,59 @@ type Heading = { level: number; text: string; id: string; url: string };
           font-weight: 600;
         }
 
-        ul {
-          list-style: disc;
+        ul,
+        ol {
           display: flex;
           flex-direction: column;
+          list-style: none;
+          margin-left: 8px;
+
+          > li {
+            position: relative;
+            padding-left: 40px;
+            font:
+              400 15px/24px Fredoka,
+              sans-serif;
+          }
+        }
+
+        ul {
           gap: 8px;
-          margin-left: 24px;
+
+          > li {
+            &::before {
+              position: absolute;
+              top: 9px;
+              left: 8px;
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              background: var(--gray, #5e5c5a);
+              content: '';
+            }
+          }
         }
 
         ol {
-          list-style: decimal;
-          display: flex;
-          flex-direction: column;
           gap: 16px;
-          margin-left: 24px;
+          counter-reset: ordered-listitem;
+
+          > li {
+            &::after {
+              position: absolute;
+              top: -1px;
+              left: 0;
+              background: var(--sunshine-yellow-light, #fbe7b6);
+              border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
+              border-radius: 8px;
+              width: 24px;
+              height: 24px;
+              display: inline-block;
+              text-align: center;
+              content: counter(ordered-listitem);
+              counter-increment: ordered-listitem;
+            }
+          }
         }
 
         :not(hb-symbol-link) > a {
