@@ -19,14 +19,6 @@ import { DropdownMenu } from './DropDownMenu';
           <nav>
             <ul>
               <li>
-                <a
-                  routerLink="/"
-                  routerLinkActive="active"
-                  [routerLinkActiveOptions]="{ exact: true }"
-                  >home</a
-                >
-              </li>
-              <li>
                 <a [routerLink]="docsUrl()" routerLinkActive="active">docs</a>
               </li>
               <li>
