@@ -1,6 +1,6 @@
 # Platforms
 
-hashbrown uses the adapter pattern for supporting multiple platforms.
+Hashbrown uses the adapter pattern for supporting multiple platforms.
 
 | Platform                                        | Adapter Package       |
 | ----------------------------------------------- | --------------------- |

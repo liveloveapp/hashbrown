@@ -1,6 +1,6 @@
 # Sample App
 
-We believe that one of the best ways to learn AI engineering using hashbrown is to check out and build on top of our sample app.
+We believe that one of the best ways to learn AI engineering using Hashbrown is to check out and build on top of our sample app.
 The sample application is a smart home client built with Angular.
 
 Some of the basic features of the sample app include:
@@ -27,7 +27,7 @@ git clone https://github.com/liveloveapp/hashbrown.git
 Then install the dependencies:
 
 ```bash
-cd hashbrown
+cd Hashbrown
 npm install
 ```
 

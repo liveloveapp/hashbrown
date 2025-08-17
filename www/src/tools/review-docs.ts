@@ -72,6 +72,17 @@ async function review({
             - Easy to understand
             - Friendly and approachable
 
+          # Concepts
+          Some concepts may have _multiple names_ or ways of describing them. We
+          want the documentation to be _consistent_ with its terminology. Please 
+          ensure that the following concepts use these terms:
+           - Tool Calling
+           - Generative UI
+           - Exposing Components
+           - Skillet Schema
+
+          If a different term is used than those above, flag it as a warning. 
+
           # API Reports
           ${apiReports.join('\n\n\n')}
         `,

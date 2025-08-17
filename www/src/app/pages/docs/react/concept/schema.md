@@ -3,17 +3,9 @@
 Skillet is a Zod-like schema language that is LLM-optimized.
 
 - Skillet is strongly typed
-- Skillet purposefully limits the schema to that which is supported by LLMs
+- Skillet has feature parity with schemas supported by LLM providers
 - Skillet optimizes the schema for processing by an LLM
 - Skillet tightly integrates streaming
-
----
-
-## API Reference
-
-We think the best way to get started with hashbrown's skillet schema language is to check out the API reference section.
-
-[Read the API reference for Skillet](/api/core/s).
 
 ---
 
@@ -44,7 +36,7 @@ Let's break this down.
 - The second argument is an object that defines the properties of the object.
 - The `s.string` and `s.number` functions define string and number schemas, respectively.
 
-If you're familiar with Zod, this should look and feel _very_ similar.
+If you're familiar with Zod, this should look and feel familiar.
 
 ---
 
@@ -117,7 +109,7 @@ const PREDICTIONS_SCHEMA = s.anyOf([
 We can use `s.anyOf()` to model optional properties by relying on `s.nullish()`:
 
 ```ts
-someOptionalProperty: s.anyOf([s.number('a number'), s.nullish()])
+someOptionalProperty: s.anyOf([s.number('a number'), s.nullish()]);
 ```
 
 ---
@@ -151,3 +143,11 @@ s.streaming.array(
 ```
 
 Skillet eagerly parses fragments of the streamed response from the LLM.
+
+---
+
+## API Reference
+
+View all of the supported schema features by checking our API reference:
+
+[Read the API reference for Skillet](/api/core/s).

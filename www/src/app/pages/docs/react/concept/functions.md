@@ -1,9 +1,9 @@
-# Function Calling
+# Tool Calling
 
-Function calling with a Large Language Model (LLM) is a powerful feature that allows you to define functions that the LLM can call.
+Tool calling with a Large Language Model (LLM) is a powerful feature that allows you to define functions that the LLM can call.
 The LLM will determine if and when a function is called.
 
-There are many use cases for function calling.
+There are many use cases for tool calling.
 Here are a few that we've implemented in our React applications:
 
 - Providing data to the LLM from React state or a service.
@@ -14,7 +14,7 @@ Here are a few that we've implemented in our React applications:
 
 ## Demo
 
-<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown function calling"></iframe></div>
+<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown tool calling"></iframe></div>
 
 ---
 
@@ -36,6 +36,11 @@ export default function Chat() {
       // Replace with your user fetching logic
       return await fetchUser({ signal: abortSignal });
     },
+  });
+
+  const chat = useChat({
+    tools: [getUserTool],
+    // ...additional config
   });
 }
 ```
@@ -61,7 +66,7 @@ The method signature for a `handler` is:
 
 Hashbrown's `useTool` hook enables React developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
 
-We'll be using Skillet - hashbrown's LLM-optimized schema language - for defining the function arguments.
+We'll be using Skillet - Hashbrown's LLM-optimized schema language - for defining the function arguments.
 Let's look at an example function that enables the LLM to control the lights in our smart home client application.
 
 <www-code-example header="useTools.ts">
@@ -70,18 +75,25 @@ Let's look at an example function that enables the LLM to control the lights in 
 import { useTool } from '@hashbrownai/react';
 import { s } from '@hashbrownai/core';
 
-export const controlLight = useTool({
-  name: 'controlLight',
-  description: 'Control a light',
-  schema: s.object('Control light input', {
-    lightId: s.string('The id of the light'),
-    brightness: s.number('The brightness of the light'),
-  }),
-  handler: async (input, abortSignal) => {
-    // Replace with your update logic
-    return await updateLight(input.lightId, { brightness: input.brightness }, abortSignal);
-  },
-});
+export default function Chat() {
+  const controlLight = useTool({
+    name: 'controlLight',
+    description: 'Control a light',
+    schema: s.object('Control light input', {
+      lightId: s.string('The id of the light'),
+      brightness: s.number('The brightness of the light'),
+    }),
+    handler: async (input, abortSignal) => {
+      // Replace with your update logic
+      return await updateLight(input.lightId, { brightness: input.brightness }, abortSignal);
+    },
+  });
+
+  const chat = useChat({
+    tools: [controlLight],
+    // ...additional config
+  });
+}
 ```
 
 </www-code-example>
@@ -107,7 +119,7 @@ The method signature for a `handler` is:
 
 ## Providing the Tools
 
-The next step is to provide the `tools` when using hashbrown's React hooks-based APIs.
+The next step is to provide the `tools` when using Hashbrown's React hooks-based APIs.
 
 <www-code-example header="ChatComponent.tsx" run="/examples/react/function-calling">
 
@@ -115,9 +127,17 @@ The next step is to provide the `tools` when using hashbrown's React hooks-based
 import React from 'react';
 import { useChat } from '@hashbrownai/react';
 import { s } from '@hashbrownai/core';
-import { getUser, getLights, controlLight } from './useTools';
 
 export function ChatComponent() {
+  const getUser = useTool({
+    /* tool config */
+  });
+  const getLights = useTool({
+    /* tool config */
+  });
+  const controlLight = useTool({
+    /* tool config */
+  });
   const chat = useChat({
     model: 'gpt-4.1',
     system: 'You are a helpful assistant that can answer questions and help with tasks',
@@ -143,5 +163,5 @@ Let's review the code above.
 
 ## Conclusion
 
-Function calling is a powerful feature that allows you to define functions that the LLM can invoke.
-By using hashbrown's `useTool` hook, you can easily define functions with or without arguments that the LLM can call.
+Tool calling is a powerful feature that allows you to define functions that the LLM can invoke.
+By using Hashbrown's `useTool` hook, you can easily define functions with or without arguments that the LLM can call.
