@@ -75,7 +75,7 @@ const FORCE = Boolean(argv.force);
 /* OPENAI CONFIG                                                       */
 /* ------------------------------------------------------------------ */
 const openai = new OpenAI();
-const MODEL = 'gpt-4.1';
+const MODEL = 'o3';
 
 /* ------------------------------------------------------------------ */
 /* CONFIG & HELPERS                                                    */
@@ -138,9 +138,6 @@ async function buildDocsDigest(framework: 'react' | 'angular') {
     .filter((p) => p.endsWith('.md'))
     .filter((p) => p.includes(`${framework}/`));
 
-  const MAX_PER_FILE = 2000; // bytes cap per file (tunable)
-  const MAX_CODE_BLOCKS = 2; // per file (tunable)
-
   const digestParts: string[] = [];
 
   for (const rel of byFramework) {
@@ -152,39 +149,7 @@ async function buildDocsDigest(framework: 'react' | 'angular') {
       continue;
     }
 
-    // Extract H1-H3 headings
-    const headings = Array.from(raw.matchAll(/^(#{1,3})\s+(.+)\s*$/gm)).map(
-      (m) => `${m[1]} ${m[2]}`.trim(),
-    );
-
-    // First paragraph after H1
-    let firstPara = '';
-    const h1Idx = raw.search(/^#\s+.+$/m);
-    if (h1Idx >= 0) {
-      const after = raw.slice(h1Idx);
-      const paraMatch = after.match(/\n\n([^#`\n][\s\S]*?)\n\n/);
-      if (paraMatch) firstPara = paraMatch[1].trim();
-    }
-
-    // Sample some code fences (``` ... ```)
-    const codeFences = Array.from(raw.matchAll(/```[\s\S]*?```/g)).slice(
-      0,
-      MAX_CODE_BLOCKS,
-    );
-
-    // Build a per-file summary, then cap
-    let summary =
-      `\n\n---\nFILE: ${relative(DOCS_ROOT, full)}\n` +
-      (headings.length ? `HEADINGS:\n${headings.join('\n')}\n` : '') +
-      (firstPara ? `INTRO:\n${firstPara}\n` : '') +
-      (codeFences.length
-        ? `CODE:\n${codeFences.map((m) => m[0]).join('\n\n')}\n`
-        : '');
-
-    if (summary.length > MAX_PER_FILE) {
-      summary = summary.slice(0, MAX_PER_FILE) + '\n…\n';
-    }
-    digestParts.push(summary);
+    digestParts.push(JSON.stringify({ filePath: rel, contents: raw }));
   }
 
   return digestParts.join('\n');
@@ -221,8 +186,8 @@ async function generateDraft(opts: {
     {
       role: 'system',
       content: `
-You are a senior technical writer for Hashbrown, expert in ${framework}.
-Your task: write a **brand-new** documentation page as a *rough draft*.
+You are a senior technical writer for Hashbrown, expert in ${framework} and AI.
+Your task: write a **brand-new** documentation page.
 
 CONTEXT
 -------
@@ -232,15 +197,43 @@ You will receive:
 
 STYLE & CONSTRAINTS
 -------------------
-• Tone: concise, friendly, confident; no hype, no fluff.
-• Prefer practical examples over long exposition.
-• Use correct, idiomatic ${framework} patterns (hooks & functional components for React; standalone components & signals where suitable for Angular).
-• Keep headings clear and scannable (H2/H3).
-• Use fenced code blocks with language tags.
-• Assume the reader already uses Hashbrown; focus on *doing*, not selling.
-• Output valid Markdown **only** (no front-matter).
-• Include a short "Before you start" section if prerequisites matter.
-• If the user prompt is too broad, choose a crisp, teachable slice and proceed.
+ - Tone: Explainative, friendly, confident; no hype, no fluff.
+ - Prefer practical examples over long exposition.
+ - Use correct, idiomatic ${framework} patterns (hooks & functional components for React; standalone components & signals where suitable for Angular).
+ - Keep headings clear and scannable (H2/H3).
+ - Use fenced code blocks with language tags.
+ - Assume the reader already uses Hashbrown; focus on *doing*, not selling.
+ - Output valid Markdown **only** (no front-matter).
+ - Include a short "Before you start" section if prerequisites matter.
+ - If the user prompt is too broad, choose a crisp, teachable slice and proceed.
+ - Do not create your own abbreviations
+ - Avoid using emdashes
+ - Avoid using emojis
+ - Never mention building offline apps or local-first apps.
+ - Keep it branded to Hashbrown. Limited, tongue-in-cheek food metaphors are fun.
+
+MARKDOWN EXTENSION
+------------------
+The generated Markdown has a special extension in it that allows referencing a specific symbol.
+Use the reference ID for a symbol to leverage this extension.
+
+Example:
+\`\`\`md
+Call @hashbrownai/react!useTool:function to create a tool
+\`\`\`
+
+This will be rendered as a link to the \`useTool\` function in the React docs. Only use this
+in paragraph blocks.
+
+
+REACT
+-----
+When generating React documentation, follow these rules:
+ - Functional and reactive.
+ - Expert-level React code.
+ - Wrap Hashbrown's useTool and useRuntimeFunction hooks.
+ - Make sure all hooks are called in the context of a React component.
+
 
 RETURN FORMAT (JSON)
 --------------------
@@ -274,7 +267,6 @@ ${docsDigest}
 
   const res = await openai.chat.completions.create({
     model: MODEL,
-    temperature: 0.2,
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -323,7 +315,7 @@ async function main() {
   );
 
   // Build docs digest
-  console.log(chalk.gray('• Reading local docs and building digest... '));
+  console.log(chalk.gray(' - Reading local docs and building digest... '));
   const docsDigest = await buildDocsDigest(FRAMEWORK as 'react' | 'angular');
   if (docsDigest.length === 0) {
     console.log(chalk.red('Error: No docs found'));
@@ -332,7 +324,7 @@ async function main() {
   console.log(chalk.green('done'));
 
   // Pre-load relevant API reports (core + framework + common providers)
-  console.log(chalk.gray('• Loading API reports... '));
+  console.log(chalk.gray(' - Loading API reports... '));
   const apiReports = await Promise.all(
     ['core', FRAMEWORK, 'azure', 'google', 'openai', 'writer'].map(
       loadApiReport,
@@ -345,7 +337,7 @@ async function main() {
   console.log(chalk.green('done'));
 
   // Generate draft
-  console.log(chalk.gray('• Calling OpenAI to draft the page... '));
+  console.log(chalk.gray(' - Calling OpenAI to draft the page... '));
   const draft = await generateDraft({
     framework: FRAMEWORK as 'react' | 'angular',
     userPrompt: userPrompt!,

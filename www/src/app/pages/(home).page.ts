@@ -33,6 +33,8 @@ import { TheVisual } from '../components/home/TheVisual';
       <www-the-gravy />
     </main>
     <www-footer />
+
+    hello
   `,
   styles: `
     :host {

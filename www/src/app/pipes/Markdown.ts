@@ -31,7 +31,7 @@ export const CanonicalReferenceExtension = {
     }
   },
   renderer(this: any, token: any) {
-    return `${token.before}<www-markdown-symbol-link reference="${token.canonicalReference}" />${token.after}`;
+    return `${token.before}<hb-markdown-symbol-link reference="${token.canonicalReference}" />${token.after}`;
   },
   childTokens: [],
 };

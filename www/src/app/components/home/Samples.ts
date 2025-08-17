@@ -50,7 +50,11 @@ import { Squircle } from '../Squircle';
       </a>
 
       <a
-        [routerLink]="[docsUrl(), 'concept', 'runtime']"
+        [routerLink]="[
+          docsUrl(),
+          'recipes',
+          'natural-language-to-structured-data',
+        ]"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sky-blue, #9ECFD7)"

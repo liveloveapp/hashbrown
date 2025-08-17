@@ -161,6 +161,23 @@ import { ChevronDown } from '../icons/ChevronDown';
       </ol>
     </div>
     <div>
+      <h2>Recipes</h2>
+      <ol>
+        <li>
+          <a
+            [routerLink]="[
+              docsUrl(),
+              'recipes',
+              'natural-language-to-structured-data',
+            ]"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Natural Language Forms</a
+          >
+        </li>
+      </ol>
+    </div>
+    <div>
       <h2>Platforms</h2>
       <ul>
         <li>

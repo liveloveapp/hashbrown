@@ -8,7 +8,7 @@ import { SymbolLink } from './SymbolLink';
   encapsulation: ViewEncapsulation.None,
   styles: [
     `
-      www-markdown-symbol-link a {
+      hb-markdown-symbol-link a {
         color: var(--sky-blue-dark, #64afb5);
         font:
           700 14px/21px 'JetBrains Mono',

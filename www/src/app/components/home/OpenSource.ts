@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Send } from '../../icons/Send';
 import { ChevronRight } from '../../icons/ChevronRight';
 import { Squircle } from '../Squircle';
 import { Code } from '../../icons/Code';
@@ -8,7 +7,7 @@ import { Sell } from '../../icons/Sell';
 
 @Component({
   selector: 'www-open-source',
-  imports: [RouterLink, Send, ChevronRight, Code, Squircle, Sell],
+  imports: [RouterLink, ChevronRight, Code, Squircle, Sell],
   template: `
     <div class="bleed">
       <div class="open-source" role="img" aria-label="Open source">
