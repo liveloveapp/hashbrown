@@ -1,14 +1,11 @@
 # Function Calling
 
-Function calling with a Large Language Model (LLM) is a powerful feature that allows you to define functions that the LLM can call.
-The LLM will determine if and when a function is called.
+<p class="subtitle">Give the model access to your application state and enable the model to take action.</p>
 
-There are many use cases for function calling.
-Here are few that we've implemented in our Angular applications:
+Function calling (or tool calling) in Hashbrown provides an intuitive approach to describing the tools that the model has access to.
 
-- Providing data to the LLM from state or an Angular service.
-- Performing tasks on behalf of the user.
-- Dispatching NgRx actions that are AI scoped that perform tasks or provide suggestions.
+- Execute a function in Angular's injection context.
+- Return data to the model from state or an Angular service.
 
 ---
 
@@ -20,11 +17,11 @@ Here are few that we've implemented in our Angular applications:
 
 ## How it Works
 
-When you define a function using hashbrown's @hashbrownai/angular!createTool:function function, the LLM can call that function when it determines that it is necessary to fulfill the user's request.
+When you define a tool using hashbrown's @hashbrownai/angular!createTool:function function the model can choose to use the tool to follow instructions and respond to prompts.
 
-1. Provide the function to the LLM using the `tools` property.
-2. When the LLM receives a user message, it will analyze the message and determine if it needs to call any of the provided functions.
-3. If the LLM decides to call a function, it will invoke the function with the required arguments.
+1. Provide the tool to the model using the `tools` property.
+2. When the model receives a user message, it will analyze the message and determine if it needs to call any of the provided tools.
+3. If the model decides to call a function, it will invoke the function with the required arguments.
 4. The function is executed within Angular's injection context
 5. Return the result that is sent back to the LLM.
 
@@ -54,7 +51,7 @@ createTool({
 
 ---
 
-### Options
+### `CreateToolOptions`
 
 | Option        | Type                        | Required | Description                                     |
 | ------------- | --------------------------- | -------- | ----------------------------------------------- |
@@ -63,7 +60,25 @@ createTool({
 | `schema`      | `s.HashbrownType \| object` | No       | Schema defining the function arguments          |
 | `handler`     | `Function`                  | Yes      | The function to execute when called             |
 
-#### Handler Function Signatures
+---
+
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/angular/createTool">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>createTool() API</h4>
+      <p>See the function signature</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
+#### Handler Signatures
 
 **With `input` Arguments:**
 
@@ -87,11 +102,11 @@ handler: (abortSignal: AbortSignal) => Promise<Result>;
 
 ---
 
-## Providing the Functions
+## Providing the Tools
 
 Provide the `tools` when using hashbrown's resource-based APIs.
 
-<hb-code-example header="app.ts">
+<hb-code-example header="tools">
 
 ```ts
 @Component({
@@ -103,10 +118,9 @@ export class ChatComponent {
   lightsStore = inject(LightsStore);
 
   chat = chatResource({
-    model: 'gpt-5',
-    system:
-      'You are a helpful assistant that can answer questions and help with tasks',
+    // 1. Specify the tools collection using createTool() function
     tools: [
+      //2. The getUser() function returns authenticated user information to model
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
@@ -115,11 +129,13 @@ export class ChatComponent {
           return authService.getUser();
         },
       }),
+      // 3. The getLights() function returns application state to the model
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
         handler: async () => this.lightsStore.entities(),
       }),
+      // 4. The controlLight() function enables the model to mutate state
       createTool({
         name: 'controlLight',
         description: 'Control a light',
@@ -146,22 +162,10 @@ export class ChatComponent {
 Let's review the code above.
 
 1. First, we define the `tools` array in the `chatResource` configuration.
-2. We use the @hashbrownai/angular!createTool:function function to define the functions that the LLM can call.
-3. The `handler` functions are defined to perform the necessary logic, such as fetching data from services or updating the state.
-4. Finally, we can use the `sendMessage` method to send a message to the LLM, which can then invoke the defined functions as needed.
-
----
-
-## Example
-
-[Run the function calling example in Stackblitz](/examples/angular/function-calling)
-
-A few notes:
-
-- First, you will need an OpenAI API Key.
-- Try the prompt: `"Who am I?"`. That will invoke the `getUser` function.
-- Try the prompt: `"Show me all the lights"`. This will invoke the `getLights` function.
-- Try the prompt: `"Turn off all lights"`. This will invoke the `controlLights` function.
+2. We use the @hashbrownai/angular!createTool:function function to define each tool.
+3. The `getUser()` function returns the authenticated user information to the model.
+4. The `getLights()` function returns application state to the model.
+5. The `controlLight()` function enables the model to mutate application state.
 
 ---
 

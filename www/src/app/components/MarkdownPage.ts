@@ -110,6 +110,11 @@ type Heading = { level: number; text: string; id: string; url: string };
           font:
             500 18px/24px Fredoka,
             sans-serif;
+
+          > code:not(pre code) {
+            font-size: 17px;
+            line-height: 24px;
+          }
         }
 
         h3,

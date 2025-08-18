@@ -15,15 +15,15 @@
 
 ---
 
-## The `structuredChatResource` Function
+## The `structuredChatResource()` Function
 
 <hb-code-example header="get a structured response">
 
 ```ts
 @Component({})
 export class App {
+  // 1. Create the resource with the specified `schema`
   chat = structuredChatResource({
-    model: 'gpt-5',
     system: `Collect the user's first and last name.`,
     schema: s.object('The user', {
       firstName: s.string('First name'),
@@ -32,9 +32,10 @@ export class App {
   });
 
   constructor() {
-    // send a user message
+    // 1. Send a user message
     chat.sendMessage({ role: 'user', content: 'My name is Brian Love' });
 
+    // 3. Log out the structure response
     effect(() => {
       const value = chat.value();
       console.log({
@@ -48,7 +49,7 @@ export class App {
 
 </hb-code-example>
 
-1. The `structuredChatResource` function is used to create a chat resource that can parse user input and return structured data.
+1. The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource that can parse user input and return structured data.
 2. The `schema` option defines the expected structure of the response using hashbrown's Skillet schema language.
 3. The resource `value()` contains the structured output, which can be used directly in your application.
 
@@ -63,7 +64,7 @@ Here is the expected `content` value:
 
 ---
 
-### Options
+### `StructuredChatResourceOptions`
 
 | Option      | Type                                     | Required | Description                                               |
 | ----------- | ---------------------------------------- | -------- | --------------------------------------------------------- |
@@ -79,6 +80,31 @@ Here is the expected `content` value:
 
 ---
 
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/angular/structuredChatResource">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>structuredChatResource() API</h4>
+      <p>See the full resource</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="/api/angular/StructuredChatResourceOptions">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>StructuredChatResourceOptions API</h4>
+      <p>See the options</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
 ## The `structuredCompletionResource()` Function
 
 The @hashbrownai/angular!structuredCompletionResource:function function builds on top of the @hashbrownai/angular!structuredChatResource:function function by providing an additional `input` option.
@@ -87,7 +113,6 @@ The @hashbrownai/angular!structuredCompletionResource:function function builds o
 
 ```ts
 predictedLights = structuredCompletionResource({
-  model: 'gpt-5',
   debugName: 'Predict Lights',
   system: `
     You are an assistant that helps the user configure a lighting scene.
@@ -134,7 +159,7 @@ When the user types a scene name, the LLM will predict which lights should be ad
 
 ---
 
-### Options
+### `StructuredCompletionResourceOptions`
 
 | Option      | Type                                 | Required | Description                                                     |
 | ----------- | ------------------------------------ | -------- | --------------------------------------------------------------- |
@@ -148,9 +173,34 @@ When the user types a scene name, the LLM will predict which lights should be ad
 
 ---
 
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/angular/structuredCompletionResource">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>structuredCompletionResource() API</h4>
+      <p>See the full resource</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="/api/angular/StructuredCompletionResourceOptions">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>StructuredCompletionResourceOptions API</h4>
+      <p>See the options</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
 ## Global Predictions
 
-In this example, we'll assume you are using a global state container.
+In this example, we'll assume you are using a global state container (like NgRx).
 We'll send each action to the LLM and ask it to predict the next possible action a user should consider.
 
 <hb-code-example header="predictions.ts">
@@ -159,8 +209,10 @@ We'll send each action to the LLM and ask it to predict the next possible action
 lastAction = this.store.selectSignal(selectLastUserAction);
 
 predictions = structuredCompletionResource({
-  model: 'gpt-4.1',
+  // 1. The resource is re-computed with the last user action
   input: this.lastAction,
+
+  // 2. The system instructions provide the guidelines and rules
   system: `
     You are an AI smart home assistant tasked with predicting the next possible user action in a 
     smart home configuration app. Your suggestions will be displayed as floating cards in the 
@@ -180,6 +232,8 @@ predictions = structuredCompletionResource({
       response.
     - You may make multiple predictions. Just add multiple predictions to the array.
   `,
+
+  // 3. Provide tools to retrieve the current app state
   tools: [
     createTool({
       name: 'getLights',
@@ -192,6 +246,8 @@ predictions = structuredCompletionResource({
       handler: () => this.smartHomeService.loadScenes(),
     }),
   ],
+
+  // 4. Specify the structured output schema
   schema: s.object('The result', {
     predictions: s.streaming.array(
       'The predictions',
@@ -247,17 +303,6 @@ Let's review the code above:
 When the user performs an action, the LLM will predict the next possible actions and return a structured JSON object.
 From there, you can wire up a toast notification to be displayed when the LLM provides a prediction.
 When the user accepts the predictive action, dispatch the action and update the state of the app accordingly.
-
----
-
-## Example
-
-[Run the structured output example in Stackblitz](/examples/angular/structured-output)
-
-A few notes:
-
-- First, you will need an OpenAI API Key.
-- Try the prompt: `"List the lights"`. That will provide you with
 
 ---
 
