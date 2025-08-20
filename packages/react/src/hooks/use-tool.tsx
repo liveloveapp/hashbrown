@@ -1,4 +1,5 @@
 /* eslint no-redeclare: off */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat, s } from '@hashbrownai/core';
 import { type DependencyList, useCallback, useMemo, useState } from 'react';
 
@@ -39,6 +40,36 @@ export interface ToolOptionsWithInput<
   deps: DependencyList;
 }
 
+export interface ToolOptionsWithUnknownSchema<Name extends string, Result> {
+  /**
+   * The name of the tool.
+   */
+  name: Name;
+
+  /**
+   * The description of the tool. This helps the LLM understand its purpose.
+   */
+  description: string;
+
+  /**
+   * The unknownschema that describes the input for the tool.
+   */
+  schema: object;
+
+  /**
+   * The handler of the tool. This is what the LLM agent will call
+   * to execute the tool, passing in an input that adheres to the schema.
+   */
+  handler: (input: any, abortSignal: AbortSignal) => Promise<Result>;
+
+  /**
+   * Dependencies that should trigger tool recreation.
+   * The hook will automatically memoize the handler based on these dependencies,
+   * so you can safely pass anonymous functions.
+   */
+  deps: DependencyList;
+}
+
 export interface ToolOptionsWithoutInput<Name extends string, Result> {
   /**
    * The name of the tool.
@@ -70,6 +101,7 @@ export type ToolOptions<
   Result = unknown,
 > =
   | ToolOptionsWithInput<Name, Schema, Result>
+  | ToolOptionsWithUnknownSchema<Name, Result>
   | ToolOptionsWithoutInput<Name, Result>;
 
 /**
@@ -97,6 +129,19 @@ export function useTool<
 ): Chat.Tool<Name, s.Infer<Schema>, Result>;
 
 /**
+ * Creates a tool with a unknown JSON schema.
+ *
+ * @param input - The input for the tool.
+ * @param input.name - The name of the tool.
+ * @param input.description - The description of the tool.
+ * @param input.schema - The schema of the tool.
+ * @param input.handler - The handler of the tool.
+ */
+export function useTool<const Name extends string, Result>(
+  input: ToolOptionsWithUnknownSchema<Name, Result>,
+): Chat.Tool<Name, any, Result>;
+
+/**
  * Creates a tool.
  *
  * @param input - The input for the tool.
@@ -116,22 +161,16 @@ export function useTool<const Name extends string, Result>(
   input: ToolOptionsWithoutInput<Name, Result>,
 ): Chat.Tool<Name, void, Result>;
 
-export function useTool<const Name extends string>(
+export function useTool<const Name extends string, Result>(
+  input: ToolOptionsWithUnknownSchema<Name, Result>,
+): Chat.Tool<Name, any, Result>;
+
+export function useTool<const Name extends string, Result>(
   input:
-    | {
-        name: Name;
-        description: string;
-        schema: s.HashbrownType;
-        handler: (a: unknown, s: AbortSignal) => Promise<unknown>;
-        deps: DependencyList;
-      }
-    | {
-        name: Name;
-        description: string;
-        handler: (s: AbortSignal) => Promise<unknown>;
-        deps: DependencyList;
-      },
-): unknown {
+    | ToolOptionsWithInput<Name, s.HashbrownType, Result>
+    | ToolOptionsWithUnknownSchema<Name, Result>
+    | ToolOptionsWithoutInput<Name, Result>,
+): Chat.Tool<Name, any, Result> {
   const { name, description, handler, deps } = input;
 
   // assumes the schema will never change
