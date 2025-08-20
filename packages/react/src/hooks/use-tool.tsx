@@ -52,7 +52,7 @@ export interface ToolOptionsWithUnknownSchema<Name extends string, Result> {
   description: string;
 
   /**
-   * The unknownschema that describes the input for the tool.
+   * The unknown schema that describes the input for the tool.
    */
   schema: object;
 
