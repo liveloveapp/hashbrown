@@ -1,0 +1,13 @@
+html, body, #root { height: 100%; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif; background: #0b132b; color: #e0e1dd; }
+.container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+header { display: flex; justify-content: space-between; align-items: center; }
+main { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; margin-top: 1rem; }
+section, aside { background: #1c2541; padding: 1rem; border-radius: 8px; }
+footer { margin-top: 1rem; background: #1c2541; padding: 1rem; border-radius: 8px; }
+button { background: #3a506b; border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; }
+button:hover { background: #4f6d8d; }
+input, select { background: #0b132b; color: #e0e1dd; border: 1px solid #3a506b; border-radius: 6px; padding: 0.5rem; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { border-bottom: 1px solid #3a506b; padding: 0.5rem; text-align: left; }
+.table th { color: #a8dadc; }
