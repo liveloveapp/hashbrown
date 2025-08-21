@@ -98,6 +98,9 @@ npx nx serve www
 
 hashbrown is a community-driven project. Read our [contributing guidelines](./CONTRIBUTING.md) on how to get involved.
 
+### Take the issue
+If you wish to be assigned to an issue please add a comment with `.want` command.
+
 ## Team
 
 Hashbrown is a community effort built by the following developers:
