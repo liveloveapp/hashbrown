@@ -220,19 +220,21 @@ export function useChat<Tools extends Chat.AnyTool>(
     tools,
   ]);
 
-  const internalMessages = useHashbrownSignal(hashbrownRef.current.messages);
-  const isReceiving = useHashbrownSignal(hashbrownRef.current.isReceiving);
-  const isSending = useHashbrownSignal(hashbrownRef.current.isSending);
-  const isRunningToolCalls = useHashbrownSignal(
-    hashbrownRef.current.isRunningToolCalls,
+  const internalMessages = useHashbrownSignal<Chat.Message<string, Tools>[]>(
+    getHashbrown().messages,
   );
-  const exhaustedRetries = useHashbrownSignal(
-    hashbrownRef.current.exhaustedRetries,
+  const isReceiving = useHashbrownSignal<boolean>(getHashbrown().isReceiving);
+  const isSending = useHashbrownSignal<boolean>(getHashbrown().isSending);
+  const isRunningToolCalls = useHashbrownSignal<boolean>(
+    getHashbrown().isRunningToolCalls,
   );
-  const error = useHashbrownSignal(hashbrownRef.current.error);
-  const lastAssistantMessage = useHashbrownSignal(
-    hashbrownRef.current.lastAssistantMessage,
+  const exhaustedRetries = useHashbrownSignal<boolean>(
+    getHashbrown().exhaustedRetries,
   );
+  const error = useHashbrownSignal<Error | undefined>(getHashbrown().error);
+  const lastAssistantMessage = useHashbrownSignal<
+    Chat.AssistantMessage<string, Tools> | undefined
+  >(getHashbrown().lastAssistantMessage);
 
   const sendMessage = useCallback((message: Chat.Message<string, Tools>) => {
     getHashbrown().sendMessage(message);
