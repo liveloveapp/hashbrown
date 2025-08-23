@@ -7,4 +7,5 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/openai',
+  testPathIgnorePatterns: ['(?!.*integration).*\\.ts$'],
 };

@@ -1,6 +1,6 @@
 # JS Runtime
 
-hashbrown ships with a JavaScript runtime for safe execution of LLM-generated code in the client.
+Hashbrown ships with a JavaScript runtime for safe execution of LLM-generated code in the client.
 
 We use [QuickJS](https://bellard.org/quickjs/), a small and embeddable Javascript engine, that is compiled to a WebAssembly module using emscripten.
 This enables you to safely execute code in a sandbox environment.
@@ -71,7 +71,7 @@ Here's what's happening
 
 ## Define Functions
 
-The hashbrown JS runtime has the capability to define functions using the `createRuntimeFunction` function.
+The Hashbrown JS runtime has the capability to define functions using the `createRuntimeFunction` function.
 
 **Options**
 
@@ -133,7 +133,7 @@ runtime = createRuntime({
 
 ## Providing the Tool
 
-Similar to [function calling](/docs/angular/concept/functions), the JS runtime is provided to a hashbrown resource function as a member of the `tools` array.
+Similar to [function calling](/docs/angular/concept/functions), the JS runtime is provided to a Hashbrown resource function as a member of the `tools` array.
 
 <www-code-example header="chat.component.ts">
 

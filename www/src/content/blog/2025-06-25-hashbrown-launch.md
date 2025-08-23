@@ -1,7 +1,7 @@
 ---
-title: Introducing hashbrown
-slug: 2025-06-25-hashbrown-launch
-description: hashbrown is a framework for building generative user interfaces in Angular and React. It is open source and MIT licensed.
+title: Introducing Hashbrown
+slug: 2025-06-25-Hashbrown-launch
+description: Hashbrown is a framework for building generative user interfaces in Angular and React. It is open source and MIT licensed.
 tags:
   - stories
 team:
@@ -9,26 +9,26 @@ team:
   - mike
 ---
 
-**Hot and fresh, cooked with care, and sure to bring joy - hashbrown is a framework for building generative user interfaces in Angular and React.**
+**Hot and fresh, cooked with care, and sure to bring joy - Hashbrown is a framework for building generative user interfaces in Angular and React.**
 
-The entire experience of hashbrown is purposefully designed and built for sparking joy - from the frontend developer to the user.
+The entire experience of Hashbrown is purposefully designed and built for sparking joy - from the frontend developer to the user.
 
-For us, we want the developer's curiosity and exploration of hashbrown to grow with eager anticipation of the ways in which the technology of Large Language Models will drastically shift the user experience for web applications.
+For us, we want the developer's curiosity and exploration of Hashbrown to grow with eager anticipation of the ways in which the technology of Large Language Models will drastically shift the user experience for web applications.
 
 We want users to experience software through the power of natural language that is not limited by the constraints of existing user interface designs and challenges.
 
-hashbrown was born out of the pursuit to not only drive innovation and build value, but to have a positive impact on developer's mental health.
+Hashbrown was born out of the pursuit to not only drive innovation and build value, but to have a positive impact on developer's mental health.
 
-Finally, hashbrown is open source and MIT licensed.
+Finally, Hashbrown is open source and MIT licensed.
 We are open to contributions.
 
 We are eager to see what you fry up.
 
 ---
 
-## What is hashbrown?
+## What is Hashbrown?
 
-hashbrown is a TypeScript framework that seeks to solve the challenges of integrating LLMs into web applications. Some of these challenges include:
+Hashbrown is a TypeScript framework that seeks to solve the challenges of integrating LLMs into web applications. Some of these challenges include:
 
 - managing the state of the LLM
 - integration with application state and services
@@ -37,41 +37,41 @@ hashbrown is a TypeScript framework that seeks to solve the challenges of integr
 - debugging responses from the LLM
 - executing LLM-generated code in the browser
 
-hashbrown is isomorphic, meaning that it supports server-side rendering. However, hashbrown is built specifically for frontend web applications. This means that we do not currently solve the challenges for interfacing with Large Language Models for text generation using node, deno, or bun on the server.
+Hashbrown is isomorphic, meaning that it supports server-side rendering. However, Hashbrown is built specifically for frontend web applications. This means that we do not currently solve the challenges for interfacing with Large Language Models for text generation using node, deno, or bun on the server.
 
 ---
 
-## What can hashbrown do today?
+## What can Hashbrown do today?
 
-Today, hashbrown is focused on achieving these core principles:
+Today, Hashbrown is focused on achieving these core principles:
 
 - **Headless**: build your UI how you want
-- **Reactive**: hashbrown is tightly integrated with the reactive architecture provided by Angular and React
+- **Reactive**: Hashbrown is tightly integrated with the reactive architecture provided by Angular and React
 - **[Platform Agnostic](/docs/angular/start/platforms)**: use any supported LLM provider
 - **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
 - **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular and React components
 - **[Runtime](/docs/angular/concept/runtime)**: safely execute LLM-generated JavaScript code in the client
 
-Today hashbrown ships with an adapter for four AI providers:
+Today Hashbrown ships with an adapter for four AI providers:
 
 - OpenAI
 - Azure OpenAI
 - Google Gemini
 - Writer
 
-Finally, hashbrown currently supports text-based communication with Large Language Models.
+Finally, Hashbrown currently supports text-based communication with Large Language Models.
 We anticipate building support for additional media in future releases.
 
 ---
 
-## Why is streaming important for hashbrown?
+## Why is streaming important for Hashbrown?
 
 Large Language Models are excellent at generating predictive text based on training data and context.
 Due to the high computation costs associated with this technology, it becomes necessary to stream information to the client over time.
 Models vary in terms of capabilities, abilities to complete tasks, and performance.
 In many cases, users can begin to gain immediate value from the first bits of information provided.
 
-And so, we wanted this same capability baked into the core of the user experience when building intelligent applications with hashbrown.
+And so, we wanted this same capability baked into the core of the user experience when building intelligent applications with Hashbrown.
 As a result, we're taking the streaming responses from LLMs, normalizing them across different AI providers, then encoding them into a binary response ready to stream to your web application.
 We take care of the error handling along the way too, letting you deal with errors in a hopefully pleasant way.
 
@@ -81,11 +81,11 @@ We take care of the error handling along the way too, letting you deal with erro
 
 With LLMs, function calling is the ability to expose functions to an LLM that it can "call". We put "call" in quotation marks, because it isn't actually calling the tool. Rather, it generates a special message for the developer that instructs the developer which tool to call, then it is up to the developer to provide the result back to the LLM.
 
-With hashbrown, you expose functions to the LLM that it can call, and those functions run in the context of your web application. This means you can expose your service layer to the LLM, and the LLM can call those services as part of the task it is executing on.
+With Hashbrown, you expose functions to the LLM that it can call, and those functions run in the context of your web application. This means you can expose your service layer to the LLM, and the LLM can call those services as part of the task it is executing on.
 
-If you've heard of Model Context Protocol (MCP), then you can kind of think of hashbrown's tool calling as "MCP but in the browser".
+If you've heard of Model Context Protocol (MCP), then you can kind of think of Hashbrown's tool calling as "MCP but in the browser".
 
-[Learn more about function calling with hashbrown](/docs/angular/concept/functions)
+[Learn more about function calling with Hashbrown](/docs/angular/concept/functions)
 
 ---
 
@@ -118,7 +118,7 @@ We believe that structured output has many use cases through the power of natura
 
 And, we haven't even touched on the internationalization, localization, and accessibility of natural language with the power of Large Language Models to build intelligent web applications.
 
-[Learn more about structured output with hashbrown](/docs/angular/concept/structured-output)
+[Learn more about structured output with Hashbrown](/docs/angular/concept/structured-output)
 
 ---
 
@@ -148,15 +148,15 @@ LLMs are really great at generating three kinds of text:
 - Structured JSON
 - Code
 
-hashbrown asks:
+Hashbrown asks:
 
 > If you can generate natural language, structured data, and code, what kinds of user interfaces might we build in the future?
 
-And truthfully, we don't know! Building hashbrown is the first part of our journey to answering this question.
+And truthfully, we don't know! Building Hashbrown is the first part of our journey to answering this question.
 
 At the core of generative user interfaces is exposing your application's **trusted**, **tested**, **compliant**, and **authoritative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
 
-Generative UI with hashbrown is building on top of Skillet and the LLM's ability to generate structured data. We're essentially asking the LLM to write JSON that describes a UI, then using Skillet to parse that JSON as it is being generated, and then passing all of the metadata you provide to a specialized renderer that creates the user interface at runtime.
+Generative UI with Hashbrown is building on top of Skillet and the LLM's ability to generate structured data. We're essentially asking the LLM to write JSON that describes a UI, then using Skillet to parse that JSON as it is being generated, and then passing all of the metadata you provide to a specialized renderer that creates the user interface at runtime.
 
 [Learn more about generative UI](/docs/angular/concept/components)
 
@@ -164,7 +164,7 @@ Generative UI with hashbrown is building on top of Skillet and the LLM's ability
 
 ## What is the JS runtime?
 
-hashbrown ships with a JavaScript runtime for safe execution of LLM-generated code in the client.
+Hashbrown ships with a JavaScript runtime for safe execution of LLM-generated code in the client.
 
 If you have used ChatGPT, you've likely noticed that it will sometime generate Python code that is executed in their built-in code interpreter functionality (or runtime). This approach is useful for:
 
@@ -178,19 +178,19 @@ Traditional user interfaces for data exploration and visualization are built wit
 
 Now, imagine simply asking "which products had the highest sales last quarter?", "show me a bar chart of sales volume by quarter for the previous 3 years", or "add a trend line to the chart to compare revenue with transaction volume", or "put the legend on the bottom and make the bar chart visually brighter and the regression line subtle".
 
-The JS runtime by hashbrown enables your web application to execute LLM-generated code to achieve these results - let the LLM write code that transforms the data in the client to meet the needs of the request, plus write the code to customize the display and rendering of the chart. Using our runtime, you can expose asynchronous functions that are executed synchronously within a C-based WASM runtime.
+The JS runtime by Hashbrown enables your web application to execute LLM-generated code to achieve these results - let the LLM write code that transforms the data in the client to meet the needs of the request, plus write the code to customize the display and rendering of the chart. Using our runtime, you can expose asynchronous functions that are executed synchronously within a C-based WASM runtime.
 
 [Learn more about the JS runtime](/docs/angular/concept/runtime)
 
 ---
 
-## How do I debug with hashbrown?
+## How do I debug with Hashbrown?
 
 Whether you are new to AI engineering or are beginning your journey of building intelligent web applications, it is critical to have the insight and tools necessary to debug and introspect.
 
-hashbrown ships with built-in support for streaming the internal state of hashbrown to the [redux devtools](https://chromewebstore.google.com/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd?pli=1).
+Hashbrown ships with built-in support for streaming the internal state of Hashbrown to the [redux devtools](https://chromewebstore.google.com/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd?pli=1).
 
-We stream each chunk and action from the LLM and hashbrown into the devtools, enabling you to have a deep understanding of the sequencing of messages between your application and the LLM.
+We stream each chunk and action from the LLM and Hashbrown into the devtools, enabling you to have a deep understanding of the sequencing of messages between your application and the LLM.
 
 ---
 
@@ -208,7 +208,7 @@ We support Angular v20 and React v19 today.
 
 ---
 
-## Why build hashbrown?
+## Why build Hashbrown?
 
 As developers and technologists many of us have experienced the power of large language models, both in our daily lives and in the work we do.
 
@@ -219,7 +219,7 @@ Next, ChatGPT 3.5 was released in November 2022. This release exploded into our 
 
 As a result, Mike and I have been experimenting with AI, both broadly in our careers and our lives as well as attempts at integrating AI into frontend web applications, for about two and a half years. First, Mike built a prototype of a journaling app called Idly, for helping you track your mental health. Then we built our first product, [Polaris](https://getpolaris.ai), which while it didn't end up taking off, did serve as an educational exercise in building out suggestions & completions with LLMs. After getting more and more experience, we started building out generative UI features into our client projects.
 
-And so in a way, we've built something like hashbrown at least a half dozen times. That felt like a strong signal that there was something to the idea of integrating the power of LLMs into web applications, and in March, we began developing hashbrown.
+And so in a way, we've built something like Hashbrown at least a half dozen times. That felt like a strong signal that there was something to the idea of integrating the power of LLMs into web applications, and in March, we began developing Hashbrown.
 
 ---
 
@@ -231,8 +231,8 @@ We can't stop thinking about how AI changes the way people explore, visualize, a
 
 LiveLoveApp provides support to enterprises:
 
-- **AI Sprint**: Spend a few days to a full week with the core contributors of hashbrown. We start with a workshop on AI engineering. We teach you and your team how to design system prompts and how to implement function calling, structured output, and generative UI. As part of the sprint we want to build something tangible together. We work with your team to design, build and deploy intelligent features into your web application.
-- **Long Term Support**: Get dedicated support from hashbrown core contributors, guaranteed response times, prioritized bug fixes, and the opportunity to influence our product roadmap.
+- **AI Sprint**: Spend a few days to a full week with the core contributors of Hashbrown. We start with a workshop on AI engineering. We teach you and your team how to design system prompts and how to implement function calling, structured output, and generative UI. As part of the sprint we want to build something tangible together. We work with your team to design, build and deploy intelligent features into your web application.
+- **Long Term Support**: Get dedicated support from Hashbrown core contributors, guaranteed response times, prioritized bug fixes, and the opportunity to influence our product roadmap.
 - **Consulting**: Get expert AI engineering and architecture guidance from our team.
 
 ---
@@ -242,7 +242,7 @@ LiveLoveApp provides support to enterprises:
 Going forward we are focused on:
 
 - **API refinement**: focused on simplicity, clarity, and brevity.
-- **JS Runtime**: tightly coupling of the JS runtime to the core hashbrown experience.
+- **JS Runtime**: tightly coupling of the JS runtime to the core Hashbrown experience.
 - **More Samples**: we continue to build and expand our sample applications.
-- **Increased Awareness**: help us to get the word out as we increase the awareness of hashbrown and generative UI.
+- **Increased Awareness**: help us to get the word out as we increase the awareness of Hashbrown and generative UI.
 - **Exploration**: join us as we continue to explore the future of intelligent web applications.

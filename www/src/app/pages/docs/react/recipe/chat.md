@@ -20,7 +20,7 @@ Wrap your app with the `HashbrownProvider` to configure the base API URL and any
 import { HashbrownProvider } from '@hashbrownai/react';
 
 export function App() {
-  return <HashbrownProvider url="https://api.hashbrown.ai/v1">{/* your app routes/components here */}</HashbrownProvider>;
+  return <HashbrownProvider url="https://api.Hashbrown.ai/v1">{/* your app routes/components here */}</HashbrownProvider>;
 }
 ```
 
@@ -82,7 +82,7 @@ import Chat from './Chat';
 
 export default function App() {
   return (
-    <HashbrownProvider url="https://api.hashbrown.ai/v1">
+    <HashbrownProvider url="https://api.Hashbrown.ai/v1">
       <Chat />
     </HashbrownProvider>
   );
@@ -94,7 +94,7 @@ export default function App() {
 ## 5. Next Steps
 
 - Explore [useStructuredChat](../api/useStructuredChat.md) for structured output.
-- Add [tools](../recipe/tools.md) for function calling.
+- Add [tools](../recipe/tools.md) for tool calling.
 - See [UI chat](../recipe/ui-chat.md) for rich message rendering.
 
 ---

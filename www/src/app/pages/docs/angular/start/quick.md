@@ -1,11 +1,11 @@
 # Angular Quick Start
 
-hashbrown is an open source framework for building generative user interfaces in Angular.
+Hashbrown is an open source framework for building generative user interfaces in Angular.
 
 ## Key Concepts
 
 - **Headless**: build your UI how you want
-- **Signal Based**: hashbrown uses signals and resources for reactivity
+- **Signal Based**: Hashbrown uses signals and resources for reactivity
 - **[Platform Agnostic](/docs/angular/start/platforms)**: use any supported LLM provider
 - **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
 - **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular components
@@ -28,14 +28,14 @@ hashbrown is an open source framework for building generative user interfaces in
 
 ## OpenAI API Key
 
-In this intro to hashbrown, we'll be using OpenAI's Large Language Models.
+In this intro to Hashbrown, we'll be using OpenAI's Large Language Models.
 
 To follow along, you'll need to
 
 1. [Sign up for OpenAI's API](https://openai.com/api/)
 2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
 3. Copy the API Key so you have it handy
-4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for hashbrown to consume
+4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for Hashbrown to consume
 
 ---
 
@@ -49,7 +49,7 @@ npm install @hashbrownai/{core,angular,openai} --save
 
 ## Running Examples
 
-We have two ways for you to get your hands on the code and play with hashbrown.
+We have two ways for you to get your hands on the code and play with Hashbrown.
 
 - Click the **run** button to launch the examples below.
 - Or, [clone the repository](https://github.com/liveloveapp/hashbrown) and run our samples. You can learn more in the README.
@@ -121,8 +121,8 @@ The component uses Angular's built-in template syntax and signal-based reactivit
 
 ## Debugging with Redux Devtools
 
-hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
-We find that this provides direct access to the state internals of hashbrown - enabling you to debug your AI-powered user experiences.
+Hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
+We find that this provides direct access to the state internals of Hashbrown - enabling you to debug your AI-powered user experiences.
 
 <div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089272009?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown debugging"></iframe></div>
 
@@ -158,7 +158,7 @@ Some common use cases for function calling include:
 
 <div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown function calling"></iframe></div>
 
-Let's look at an example of function calling using hashbrown.
+Let's look at an example of function calling using Hashbrown.
 
 <www-code-example header="chat.component.ts" run="/examples/angular/function-calling">
 
@@ -222,7 +222,7 @@ Let's review the key parts of this code:
 
 ## What is this schema language?
 
-Skillet is hashbrown's LLM-optimized schema language.
+Skillet is Hashbrown's LLM-optimized schema language.
 
 Why not use something like Zod?
 We're glad you asked.
@@ -420,7 +420,7 @@ Here is what the LLM will return based on the response format specified:
 
 ## Next Steps
 
-Now that you've seen the basics of hashbrown, you can explore more advanced features and concepts:
+Now that you've seen the basics of Hashbrown, you can explore more advanced features and concepts:
 
 - [Get started with writing system instructions](/docs/angular/concept/system-instructions)
 - [Use your Angular components for generative UI](/docs/angular/concept/components)

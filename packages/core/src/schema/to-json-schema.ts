@@ -153,21 +153,106 @@ export function toJsonSchema(schema: HashbrownType) {
       }
     } else if (s.isAnyOfType(n)) {
       result = n.toJsonSchema();
-      result.anyOf = n[internal].definition.options.map((opt, index) => {
-        if (s.needsDiscriminatorWrapperInAnyOf(opt)) {
-          const indexAsStr = `${index}`;
+
+      // Attempt to build a literal-based discriminator map for object options.
+      // If successful, we emit wrappers keyed by the literal values (overriding numeric index wrappers).
+      type DiscriminatorEntry = {
+        schema: s.HashbrownType;
+        literalKey: string;
+        literalValue: string;
+      };
+
+      const buildDiscriminatorMap = (
+        options: s.HashbrownType[],
+      ): Record<string, DiscriminatorEntry> | null => {
+        const map: Record<string, DiscriminatorEntry> = {};
+
+        for (const opt of options) {
+          if (!s.isObjectType(opt)) {
+            return null;
+          }
+
+          const shape = (opt as any)[internal].definition.shape as Record<
+            string,
+            s.HashbrownType
+          >;
+
+          const literalEntries = Object.entries(shape).filter(([, v]) =>
+            s.isLiteralType(v as any),
+          ) as [string, s.HashbrownType][];
+
+          // Require exactly one literal for clear discrimination
+          if (literalEntries.length !== 1) {
+            return null;
+          }
+
+          const [literalKey, litSchema] = literalEntries[0];
+          const literalValue = (litSchema as any)[internal].definition.value as
+            | string
+            | number
+            | boolean;
+
+          if (typeof literalValue !== 'string') {
+            // Only support string-based discriminators for wrapper keys
+            return null;
+          }
+
+          if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
+            // Ambiguous (duplicate) discriminator value
+            return null;
+          }
+
+          map[literalValue] = { schema: opt, literalKey, literalValue };
+        }
+
+        return Object.keys(map).length === options.length ? map : null;
+      };
+
+      const options = n[internal].definition.options as s.HashbrownType[];
+      const literalDiscriminatorMap = buildDiscriminatorMap(options);
+
+      if (literalDiscriminatorMap) {
+        // Emit wrappers keyed by the literal value
+        result.anyOf = options.map((opt) => {
+          // Find this option's literal value by scanning its shape
+          const shape = (opt as any)[internal].definition.shape as Record<
+            string,
+            s.HashbrownType
+          >;
+          const [literalKey, litSchema] = Object.entries(shape).find(([, v]) =>
+            s.isLiteralType(v as any),
+          ) as [string, s.HashbrownType];
+
+          const literalValue = (litSchema as any)[internal].definition
+            .value as string;
+
           return {
             type: 'object',
             additionalProperties: false,
-            required: [indexAsStr],
+            required: [literalValue],
             properties: {
-              [indexAsStr]: printNode(opt, false, inDef, pathSeen),
+              [literalValue]: printNode(opt, false, inDef, pathSeen),
             },
           };
-        } else {
-          return printNode(opt, false, inDef, pathSeen);
-        }
-      });
+        });
+      } else {
+        // Fallback to previous behavior: index-based wrappers for complex options
+        result.anyOf = options.map((opt, index) => {
+          if (s.needsDiscriminatorWrapperInAnyOf(opt)) {
+            const indexAsStr = `${index}`;
+            return {
+              type: 'object',
+              additionalProperties: false,
+              required: [indexAsStr],
+              properties: {
+                [indexAsStr]: printNode(opt, false, inDef, pathSeen),
+              },
+            };
+          } else {
+            return printNode(opt, false, inDef, pathSeen);
+          }
+        });
+      }
     } else {
       result = n.toJsonSchema();
 

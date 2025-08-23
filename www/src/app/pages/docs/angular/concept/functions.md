@@ -66,7 +66,7 @@ The method signature for a `handler` is:
 
 ## Functions with Arguments
 
-hashbrown's @hashbrownai/angular!createTool:function enables Angular developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
+Hashbrown's @hashbrownai/angular!createTool:function enables Angular developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
 
 We'll be using Skillet - hasbrown's LLM-optimized schema language - for defining the function arguments.
 Let's look at an example function that enables the LLM to control the lights in our smart home client application.
@@ -105,7 +105,7 @@ Note that the `input` arguments are strongly-typed based on the provided schema.
 
 ## Providing the Functions
 
-The next step is to provide the `tools` when using hashbrown's resource-based APIs.
+The next step is to provide the `tools` when using Hashbrown's resource-based APIs.
 
 <www-code-example header="chat.component.ts" run="/examples/angular/function-calling">
 
@@ -168,4 +168,4 @@ Let's review the code above.
 ## Conclusion
 
 Function calling is a powerful feature that allows you to define functions that the LLM can invoke.
-By using hashbrown's @hashbrownai/angular!createTool:function function, you can easily define functions with or without arguments that the LLM can call.
+By using Hashbrown's @hashbrownai/angular!createTool:function function, you can easily define functions with or without arguments that the LLM can call.

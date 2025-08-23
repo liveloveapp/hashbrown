@@ -41,8 +41,8 @@ We should mention here that Skillet, our LLM-optimized schema language, is **typ
 
 ## Streaming
 
-Streaming generative user interfaces is baked into the core of hashbrown.
-hashbrown ships with an LLM-optimized schema language called Skillet.
+Streaming generative user interfaces is baked into the core of Hashbrown.
+Hashbrown ships with an LLM-optimized schema language called Skillet.
 
 Skillet supports streaming for:
 

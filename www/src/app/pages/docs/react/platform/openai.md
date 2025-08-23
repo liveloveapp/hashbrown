@@ -8,7 +8,7 @@ npm install @hashbrownai/openai
 
 ## Streaming Text Responses
 
-Hashbrown’s OpenAI adapter lets you **stream chat completions** from OpenAI’s GPT models, including support for function calling, response schemas, and request transforms.
+Hashbrown’s OpenAI adapter lets you **stream chat completions** from OpenAI’s GPT models, including support for tool calling, response schemas, and request transforms.
 
 ### API Reference
 
@@ -27,10 +27,10 @@ Streams an OpenAI chat completion as a series of encoded frames. Handles content
 **Supported Features:**
 
 - **Roles:** `user`, `assistant`, `tool`
-- **Tools:** Supports OpenAI function calling, including `toolCalls` and strict function schemas.
+- **Tools:** Supports OpenAI tool calling, including `toolCalls` and strict function schemas.
 - **Response Format:** Optionally specify a JSON schema for structured output (uses OpenAI’s `response_format` parameter).
 - **System Prompt:** Included as the first message if provided.
-- **Function Calling:** Handles OpenAI function calling modes and emits tool call frames.
+- **Tool Calling:** Handles OpenAI tool calling modes and emits tool call frames.
 - **Streaming:** Each chunk is encoded into a resilient streaming format
 
 ### How It Works
@@ -64,8 +64,8 @@ app.post('/chat', async (req, res) => {
 
 ---
 
-### Advanced: Tools, Function Calling, and Response Schema
+### Advanced: Tools and Response Schema
 
 - **Tools:** Add tools using OpenAI-style function specs (name, description, parameters).
-- **Function Calling:** Supported via `toolChoice` (`auto`, `required`, `none`, etc.).
+- **Tool Calling:** Supported via `toolChoice` (`auto`, `required`, `none`, etc.).
 - **Response Format:** Pass a JSON schema in `responseFormat` for OpenAI to return validated structured output.

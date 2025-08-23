@@ -1,11 +1,11 @@
 export default {
-  displayName: 'azure',
+  displayName: 'openai',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
   transform: {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/packages/azure',
-  testPathIgnorePatterns: ['(?!.*integration).*\\.ts$'],
+  coverageDirectory: '../../coverage/packages/openai',
+  testMatch: ['<rootDir>/**/*integration.spec.ts'],
 };

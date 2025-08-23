@@ -65,7 +65,16 @@ export async function* text(
                   },
                 }),
               ) ?? []),
-              ...(message.content ? [{ text: message.content }] : []),
+              ...(message.content
+                ? [
+                    {
+                      text:
+                        typeof message.content !== 'string'
+                          ? JSON.stringify(message.content)
+                          : message.content,
+                    },
+                  ]
+                : []),
             ],
           };
         }

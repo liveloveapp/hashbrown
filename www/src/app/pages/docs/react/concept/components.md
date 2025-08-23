@@ -1,12 +1,12 @@
 # Generative UI with React Components
 
-React developers can expose **trusted**, **tested**, **compliant**, and **authoritative** components to a large language model (LLM) that is capable of rendering the exposed components into the web application at runtime.
+React developers can expose components to a large language model (LLM), allowing the LLM to render the exposed components at runtime.
 
 ---
 
 ## Exposing React Components
 
-The `@hashbrownai/react` [`exposeComponent`](https://hashbrownai.dev/docs/react/api/modules.html#exposecomponent) function exposes React components to the LLM that can be generated.
+The @hashbrownai/react!exposeComponent:function function exposes React components to the LLM that can be generated.
 Let's first look at how this function works.
 
 ```ts
@@ -39,8 +39,8 @@ We should mention here that Skillet, our LLM-optimized schema language, is **typ
 
 ## Streaming
 
-Streaming generative user interfaces is baked into the core of hashbrown.
-hashbrown ships with an LLM-optimized schema language called Skillet.
+Streaming generative user interfaces is baked into the core of Hashbrown.
+Hashbrown ships with an LLM-optimized schema language called Skillet.
 
 Skillet supports streaming for:
 
@@ -48,7 +48,7 @@ Skillet supports streaming for:
 - objects
 - strings
 
-Let's update the previous example to support streaming of the markdown string into the `Markdown` component.
+Let's update the previous example to stream the markdown string into the `Markdown` component:
 
 ```ts
 exposeComponent(Markdown, {
@@ -105,6 +105,8 @@ exposeComponent(LightList, {
 
 In the example above, the `LightList` children is limited to the `Light` component.
 
+Note that LLM providers have limitations around _schema depth_ (usually no more than six or seven levels of depth). Each component consumes 2-3 levels of schema, with props potentially consuming more. This may limit your ability to provide explicit children for components.
+
 ---
 
 ## Chat Example
@@ -119,43 +121,41 @@ import { Light } from './Light';
 import { LightList } from './LightList';
 import { Scene } from './Scene';
 
-const components = [
-  exposeComponent(Markdown, {
-    description: 'Show markdown to the user',
-    props: {
-      data: s.streaming.string('The markdown content'),
-    },
-  }),
-  exposeComponent(Light, {
-    description: `
-      This option shows a light to the user, with a dimmer for them to control the light.
-      Always prefer this option over printing a light's name. 
-      Always prefer putting these in a list.
-    `,
-    props: {
-      lightId: s.string('The id of the light'),
-    },
-  }),
-  exposeComponent(LightList, {
-    description: 'Show a list of lights to the user',
-    props: {
-      title: s.string('The name of the list'),
-    },
-    children: 'any',
-  }),
-  exposeComponent(Scene, {
-    description: 'Show a scene to the user',
-    props: {
-      sceneId: s.string('The id of the scene'),
-    },
-  }),
-];
-
 const chat = useUiChat({
   model: 'gpt-4.1',
   debugName: 'ui-chat',
   system: `You are a helpful assistant for a smart home app.`,
-  components,
+  components: [
+    exposeComponent(Markdown, {
+      description: 'Show markdown to the user',
+      props: {
+        data: s.streaming.string('The markdown content'),
+      },
+    }),
+    exposeComponent(Light, {
+      description: `
+      This option shows a light to the user, with a dimmer for them to control the light.
+      Always prefer this option over printing a light's name.
+      Always prefer putting these in a list.
+    `,
+      props: {
+        lightId: s.string('The id of the light'),
+      },
+    }),
+    exposeComponent(LightList, {
+      description: 'Show a list of lights to the user',
+      props: {
+        title: s.string('The name of the list'),
+      },
+      children: 'any',
+    }),
+    exposeComponent(Scene, {
+      description: 'Show a scene to the user',
+      props: {
+        sceneId: s.string('The id of the scene'),
+      },
+    }),
+  ],
 });
 ```
 

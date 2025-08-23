@@ -35,6 +35,22 @@ it('should return the provided schema if it exists', () => {
   expect(result.current.schema).toEqual(expected);
 });
 
+it('should return the provided unknown schema if it exists', () => {
+  const expected = { a: 'test' };
+
+  const { result } = renderHook(() =>
+    useTool({
+      name: 'test-tool',
+      description: 'A test tool with unknown schema',
+      schema: expected,
+      handler: async () => 'result',
+      deps: [],
+    }),
+  );
+
+  expect(result.current.schema).toEqual(expected);
+});
+
 it('should require a deps array', () => {
   renderHook(() => {
     try {
