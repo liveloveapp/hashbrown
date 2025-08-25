@@ -6,7 +6,7 @@ import {
   resource,
 } from '@angular/core';
 import { Symbol } from '../../../components/Symbol';
-import { ReferenceService } from '../../../services/ReferenceService';
+import { ApiService } from '../../../services/ApiService';
 
 @Component({
   imports: [Symbol],
@@ -25,7 +25,7 @@ import { ReferenceService } from '../../../services/ReferenceService';
   `,
 })
 export default class PackageSymbolPage {
-  referenceService = inject(ReferenceService);
+  apiService = inject(ApiService);
   package = input.required<string>();
   symbol = input.required<string>();
 
@@ -35,6 +35,6 @@ export default class PackageSymbolPage {
       symbol: this.symbol(),
     }),
     loader: ({ params }) =>
-      this.referenceService.loadReferenceData(params.package, params.symbol),
+      this.apiService.loadReferenceData(params.package, params.symbol),
   });
 }

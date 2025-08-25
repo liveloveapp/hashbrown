@@ -1,13 +1,15 @@
 # Generative UI with React Components
 
-React developers can expose components to a large language model (LLM), allowing the LLM to render the exposed components at runtime.
+<p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>
 
 ---
 
-## Exposing React Components
+## The `exposeComponent()` Function
 
 The @hashbrownai/react!exposeComponent:function function exposes React components to the LLM that can be generated.
 Let's first look at how this function works.
+
+<hb-code-example header="expose component">
 
 ```ts
 import { exposeComponent } from '@hashbrownai/react';
@@ -22,12 +24,14 @@ exposeComponent(Markdown, {
 });
 ```
 
+</hb-code-example>
+
 Let's break down the example above:
 
-- `Markdown` is the React component that we want to expose.
-- `description` is a human-readable description of the component that will be used by the LLM to understand what the component does.
-- `props` is an object that defines the props that the component accepts. In this case, it accepts a single prop called `data`, which is a string representing the markdown content to be displayed.
-- The `s.string()` function is used to define the type of the prop.
+1. `Markdown` is the React component that we want to expose.
+2. `description` is a human-readable description of the component that will be used by the model to understand what the component does.
+3. `props` is an object that defines the props that the component accepts. In this case, it accepts a single prop called `data`, which is a string representing the markdown content to be displayed.
+4. The `s.string()` function is used to define the type of the prop.
 
 We should mention here that Skillet, our LLM-optimized schema language, is **type safe**.
 
@@ -37,7 +41,7 @@ We should mention here that Skillet, our LLM-optimized schema language, is **typ
 
 ---
 
-## Streaming
+## Streaming with Skillet
 
 Streaming generative user interfaces is baked into the core of Hashbrown.
 Hashbrown ships with an LLM-optimized schema language called Skillet.
@@ -48,7 +52,9 @@ Skillet supports streaming for:
 - objects
 - strings
 
-Let's update the previous example to stream the markdown string into the `Markdown` component:
+Let's update the previous example to support **streaming** of the markdown string into the `Markdown` component.
+
+<hb-code-example header="enable streaming">
 
 ```ts
 exposeComponent(Markdown, {
@@ -59,16 +65,29 @@ exposeComponent(Markdown, {
 });
 ```
 
+</hb-code-example>
+
 The `s.streaming.string()` function is used to define the type of the prop, indicating that it can be a string that will be streamed in chunks.
 
-A note on the `streaming` keyword: this is a Skillet-specific keyword that indicates that the prop can be streamed in chunks, which is useful for large content like markdown.
-You can [learn more about streaming with Skillet](/docs/react/concept/streaming).
+<hb-next-steps>
+  <hb-next-step link="/concept/streaming">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>Streaming Docs</h4>
+      <p>Learn more about streaming with Skillet</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
 
 ---
 
 ## Children
 
 When exposing components, you can also define the `children` that the component can accept.
+
+<hb-code-example header="children">
 
 ```ts
 exposeComponent(LightList, {
@@ -80,107 +99,158 @@ exposeComponent(LightList, {
 });
 ```
 
+</hb-code-example>
+
 In the example above, we're allowing `any` children to be rendered within the `LightList` component using the `children` prop.
 
-However, if we wanted to explicitly limit the children that the LLM can generate, we can provide an array of exposed components.
+However, if we wanted to explicitly limit the children that the model can generate, we can provide an array of exposed components.
+
+<hb-code-example header="children">
 
 ```ts
 exposeComponent(LightList, {
   description: 'Show a list of lights to the user',
   props: {
     title: s.string('The name of the list'),
-    icon: LightListIconSchema,
   },
   children: [
     exposeComponent(Light, {
       description: 'Show a light to the user',
       props: {
         lightId: s.string('The id of the light'),
-        icon: LightIconSchema,
       },
     }),
   ],
-});
+}),
 ```
+
+</hb-code-example>
 
 In the example above, the `LightList` children is limited to the `Light` component.
 
-Note that LLM providers have limitations around _schema depth_ (usually no more than six or seven levels of depth). Each component consumes 2-3 levels of schema, with props potentially consuming more. This may limit your ability to provide explicit children for components.
-
 ---
 
-## Chat Example
+## The `useUiChat()` Hook
 
-Now, let's look at creating a `useUiChat()` hook to generate React components in our application.
+<hb-code-example header="expose components to the model">
 
 ```ts
 import { useUiChat, exposeComponent } from '@hashbrownai/react';
 import { s } from '@hashbrownai/core';
 import { Markdown } from './Markdown';
-import { Light } from './Light';
-import { LightList } from './LightList';
-import { Scene } from './Scene';
 
+// 1. Create the UI chat hook
 const chat = useUiChat({
-  model: 'gpt-4.1',
-  debugName: 'ui-chat',
-  system: `You are a helpful assistant for a smart home app.`,
+  // 2. Specify the collection of exposed components
   components: [
+    // 3. Expose the Markdown component to the model
     exposeComponent(Markdown, {
       description: 'Show markdown to the user',
       props: {
         data: s.streaming.string('The markdown content'),
       },
     }),
-    exposeComponent(Light, {
-      description: `
-      This option shows a light to the user, with a dimmer for them to control the light.
-      Always prefer this option over printing a light's name.
-      Always prefer putting these in a list.
-    `,
-      props: {
-        lightId: s.string('The id of the light'),
-      },
-    }),
-    exposeComponent(LightList, {
-      description: 'Show a list of lights to the user',
-      props: {
-        title: s.string('The name of the list'),
-      },
-      children: 'any',
-    }),
-    exposeComponent(Scene, {
-      description: 'Show a scene to the user',
-      props: {
-        sceneId: s.string('The id of the scene'),
-      },
-    }),
   ],
 });
 ```
 
-Let's break this down:
+</hb-code-example>
 
-- `useUiChat()` is a hook that creates a chat resource that can be used to interact with the LLM.
-- `model` is the LLM model that will be used for the chat.
-- `debugName` is the Redux DevTools name for the chat resource, which is useful for debugging.
-- `system` is the system prompt that provides context to the LLM about what it should do.
-- `components` is an array of components that are exposed to the LLM, allowing it to use them in its responses.
-- Each component is defined using the `exposeComponent()` function, which includes a description and prop schema for the component.
-- The `children` property allows the component to accept any children, which can be rendered within the component.
-- The `Light`, `LightList`, and `Scene` components are examples of components that can be used in the chat.
-- The `Markdown` component is used to display markdown content in the chat.
+1. The @hashbrownai/react!useUiChat:function hook is used to create a UI chat instance.
+2. The `components` option defines the collection of exposed components that the model can choose to render in the application.
+3. The @hashbrownai/react!exposeComponent:function function creates an exposed component.
 
 ---
 
-## Rendering Components
+### `UiChatOptions`
 
-Now, let's look at how we can render the messages using the output of the `useUiChat()` hook.
+| Option         | Type                                  | Required | Description                                   |
+| -------------- | ------------------------------------- | -------- | --------------------------------------------- |
+| `components`   | `ExposedComponent<any>[]`             | Yes      | The components to use for the UI chat hook    |
+| `model`        | `KnownModelIds`                       | Yes      | The model to use for the UI chat hook         |
+| `system`       | `string`                              | Yes      | The system prompt to use for the UI chat hook |
+| `messages`     | `Chat.Message<UiChatSchema, Tools>[]` | No       | The initial messages for the UI chat hook     |
+| `tools`        | `Tools[]`                             | No       | The tools to use for the UI chat hook         |
+| `debugName`    | `string`                              | No       | The debug name for the UI chat hook           |
+| `debounceTime` | `number`                              | No       | The debounce time for the UI chat hook        |
+
+---
+
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/react/useUiChat">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>useUiChat() API</h4>
+      <p>See the full hook</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="/api/react/UiChatOptions">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>UiChatOptions API</h4>
+      <p>See the options</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
+## Render User Interface
+
+Assistant messages produced by `useUiChat()` include a `ui` property containing rendered React elements.
+
+<hb-code-example header="render">
 
 ```tsx
-import React from 'react';
+<div className="assistant">{message.ui}</div>
+```
 
-function Messages({ chat }) {
+</hb-code-example>
+
+---
+
+## Render Last Assistant Message
+
+If you only want to render the last assistant message, `useUiChat()` provides a `lastAssistantMessage` value.
+
+<hb-code-example header="render last message">
+
+```tsx
+function UI() {
+  const chat = useUiChat({
+    components: [
+      exposeComponent(Markdown, { props: { data: s.string('md') } }),
+    ],
+  });
+
+  const message = chat.lastAssistantMessage;
+
+  return message ? <div className="assistant">{message.ui}</div> : null;
+}
+```
+
+</hb-code-example>
+
+1. We render the last assistant message using the `lastAssistantMessage` value.
+2. The `ui` property contains the rendered React elements generated by the model.
+3. The @hashbrownai/react!useUiChat:function hook creates a new chat instance with the exposed components.
+
+---
+
+## Render All Messages with Components
+
+If you are building a chat-like experience, you likely want to iterate over all `messages` and render the generated text _and_ components.
+
+<hb-code-example header="render all messages">
+
+```tsx
+function Messages({ chat }: { chat: ReturnType<typeof useUiChat> }) {
   return (
     <>
       {chat.messages.map((message, idx) => {
@@ -206,18 +276,36 @@ function Messages({ chat }) {
 }
 ```
 
-Let's learn how the `Messages` component above works.
+</hb-code-example>
 
-- The `Messages` component is responsible for rendering the chat messages.
-- It iterates over the messages in the chat resource returned by `useUiChat()`.
-- The `switch` statement is used to determine the role of the message (either 'user' or 'assistant').
-- For user messages, it simply displays the content in a paragraph tag.
-- For assistant messages, it renders the UI elements generated by the LLM using the `ui` property of the message.
-- The `ui` property contains the rendered React elements based on the message content and the exposed components.
+1. We iterate over the messages in the chat using `Array.prototype.map`.
+2. The `switch` statement is used to determine the role of the message (either `user` or `assistant`).
+3. For user messages, we display the text content.
+4. For assistant messages, we render the UI elements using the `ui` property.
+5. The `ui` property contains the React elements that match the components defined via `exposeComponent()`.
+6. These elements are derived from the model's response using the schema built from your exposed components.
 
 ---
 
-## Conclusion
+## Next Steps
 
-In this guide, we explored how to expose React components to a large language model (LLM) using the `@hashbrownai/react` `exposeComponent` function.
-We also looked at how to create a chat resource that can interact with the LLM and render the exposed components in a web application.
+<hb-next-steps>
+  <hb-next-step link="concept/structured-output">
+    <div>
+      <hb-database-cog />
+    </div>
+    <div>
+      <h4>Get structured data from models</h4>
+      <p>Use Skillet schema to describe model responses.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/runtime">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>Execute LLM-generated JS in the browser (safely)</h4>
+      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>

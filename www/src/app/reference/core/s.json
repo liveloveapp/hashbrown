@@ -78,7 +78,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function anyOf<const Options extends readonly HashbrownType[]>(\n  options: Options,\n): AnyOfType<Options>;"
         },
         {
           "kind": "Interface",
@@ -173,7 +174,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: AnyOfTypeInternals<Options>;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 9, "endIndex": 13 }],
@@ -194,7 +196,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface AnyOfType<Options extends readonly HashbrownType[] = readonly HashbrownType[]> extends HashbrownType<Options[number][internal]['result']>"
         },
         {
           "kind": "Variable",
@@ -237,7 +240,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "AnyOfType: HashbrownTypeCtor<AnyOfType>;"
         },
         {
           "kind": "Function",
@@ -307,7 +311,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function array<Item extends HashbrownType>(\n  description: string,\n  item: Item,\n): ArrayType<Item>;"
         },
         {
           "kind": "Interface",
@@ -391,7 +396,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: ArrayTypeInternals<Item>;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 5, "endIndex": 6 }],
@@ -412,7 +418,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface ArrayType<Item extends HashbrownType = HashbrownType> extends HashbrownType"
         },
         {
           "kind": "Variable",
@@ -455,7 +462,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "ArrayType: HashbrownTypeCtor<ArrayType>;"
         },
         {
           "kind": "Function",
@@ -504,7 +512,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function boolean(description: string): BooleanType;"
         },
         {
           "kind": "Interface",
@@ -569,7 +578,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: BooleanTypeInternals;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -590,7 +600,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface BooleanType extends HashbrownType<boolean>"
         },
         {
           "kind": "Variable",
@@ -633,7 +644,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "BooleanType: HashbrownTypeCtor<BooleanType>;"
         },
         {
           "kind": "Interface",
@@ -710,7 +722,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: LiteralTypeInternals<T>;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 5, "endIndex": 7 }],
@@ -731,7 +744,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface LiteralType<T extends string | number | boolean = string | number | boolean> extends HashbrownType<T>"
         },
         {
           "kind": "Variable",
@@ -774,7 +788,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "LiteralType: HashbrownTypeCtor<LiteralType>;"
         },
         {
           "kind": "Function",
@@ -840,7 +855,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function enumeration<const Entries extends readonly string[]>(\n  description: string,\n  entries: [...Entries],\n): EnumType<Entries>;"
         },
         {
           "kind": "Interface",
@@ -892,7 +908,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface EnumType<Entries extends readonly string[] = readonly string[]> extends HashbrownType"
         },
         {
           "kind": "Variable",
@@ -935,7 +952,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "EnumType: HashbrownTypeCtor<EnumType>;"
         },
         {
           "kind": "Function",
@@ -984,7 +1002,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function getDescription(schema: HashbrownType): string;"
         },
         {
           "kind": "Interface",
@@ -1052,7 +1071,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: HashbrownTypeInternals<Result>;"
             },
             {
               "kind": "PropertySignature",
@@ -1088,7 +1108,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "parseJsonSchema: (object: unknown, path?: string[]) => any;"
             },
             {
               "kind": "PropertySignature",
@@ -1121,7 +1142,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "toJsonSchema: () => any;"
             },
             {
               "kind": "PropertySignature",
@@ -1166,7 +1188,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "toTypeScript: (pathSeen?: Set<HashbrownType>) => string;"
             },
             {
               "kind": "PropertySignature",
@@ -1199,7 +1222,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "validateJsonSchema: (object: unknown) => void;"
             }
           ],
           "extendsTokenRanges": [],
@@ -1220,7 +1244,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface HashbrownType<out Result = unknown>"
         },
         {
           "kind": "Variable",
@@ -1263,7 +1288,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "HashbrownType: HashbrownTypeCtor<HashbrownType>;"
         },
         {
           "kind": "TypeAlias",
@@ -1314,7 +1340,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type Infer<T extends HashbrownType> = T[internal][\"result\"];"
         },
         {
           "kind": "Function",
@@ -1363,7 +1390,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function integer(description: string): IntegerType;"
         },
         {
           "kind": "Interface",
@@ -1428,7 +1456,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: IntegerTypeInternals;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -1449,7 +1478,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface IntegerType extends HashbrownType<number>"
         },
         {
           "kind": "Variable",
@@ -1492,7 +1522,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "IntegerType: HashbrownTypeCtor<IntegerType>;"
         },
         {
           "kind": "Function",
@@ -1551,7 +1582,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isAnyOfType(type: HashbrownType): type is AnyOfType;"
         },
         {
           "kind": "Function",
@@ -1610,7 +1642,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isArrayType(type: HashbrownType): type is ArrayType;"
         },
         {
           "kind": "Function",
@@ -1669,7 +1702,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isBooleanType(type: HashbrownType): type is BooleanType;"
         },
         {
           "kind": "Function",
@@ -1728,7 +1762,64 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isEnumType(type: HashbrownType): type is EnumType;"
+        },
+        {
+          "kind": "Function",
+          "canonicalReference": "@hashbrownai/core!s.isHashbrownType:function(1)",
+          "docComment": "",
+          "excerptTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isHashbrownType(type: "
+            },
+            { "kind": "Content", "text": "any" },
+            { "kind": "Content", "text": "): " },
+            {
+              "kind": "Reference",
+              "text": "type",
+              "canonicalReference": "@hashbrownai/core!~type"
+            },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "fileUrlPath": "../packages/core/src/schema/base.ts",
+          "returnTypeTokenRange": { "startIndex": 3, "endIndex": 6 },
+          "releaseTag": "Public",
+          "overloadIndex": 1,
+          "parameters": [
+            {
+              "parameterName": "type",
+              "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+              "isOptional": false
+            }
+          ],
+          "name": "isHashbrownType",
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "export declare function isHashbrownType(type: any): type is HashbrownType;"
         },
         {
           "kind": "Function",
@@ -1787,7 +1878,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isIntegerType(type: HashbrownType): type is IntegerType;"
         },
         {
           "kind": "Function",
@@ -1846,7 +1938,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isLiteralType(type: HashbrownType): type is LiteralType;"
         },
         {
           "kind": "Function",
@@ -1905,7 +1998,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isNullType(type: HashbrownType): type is NullType;"
         },
         {
           "kind": "Function",
@@ -1964,7 +2058,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isNumberType(type: HashbrownType): type is NumberType;"
         },
         {
           "kind": "Function",
@@ -2023,7 +2118,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isObjectType(type: HashbrownType): type is ObjectType;"
         },
         {
           "kind": "Function",
@@ -2082,7 +2178,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function isStringType(type: HashbrownType): type is StringType;"
         },
         {
           "kind": "Function",
@@ -2141,7 +2238,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function literal<T extends string>(value: T): LiteralType<T>;"
         },
         {
           "kind": "Function",
@@ -2182,7 +2280,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function nullish(): NullType;"
         },
         {
           "kind": "Interface",
@@ -2244,7 +2343,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: NullTypeInternals;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -2265,7 +2365,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface NullType extends HashbrownType<null>"
         },
         {
           "kind": "Variable",
@@ -2308,7 +2409,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "NullType: HashbrownTypeCtor<NullType>;"
         },
         {
           "kind": "Function",
@@ -2357,7 +2459,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function number(description: string): NumberType;"
         },
         {
           "kind": "Interface",
@@ -2422,7 +2525,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: NumberTypeInternals;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -2443,7 +2547,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface NumberType extends HashbrownType<number>"
         },
         {
           "kind": "Variable",
@@ -2486,7 +2591,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "NumberType: HashbrownTypeCtor<NumberType>;"
         },
         {
           "kind": "Function",
@@ -2563,7 +2669,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function object<Shape extends Record<string, any>>(\n  description: string,\n  shape: Shape,\n): ObjectType<CleanInterfaceShape<Shape>>;"
         },
         {
           "kind": "Interface",
@@ -2661,7 +2768,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: ObjectTypeInternals<Result>;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 11, "endIndex": 12 }],
@@ -2682,7 +2790,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface ObjectType<Result extends Readonly<Record<string, any>> = Readonly<Record<string, any>>> extends HashbrownType"
         },
         {
           "kind": "Variable",
@@ -2725,7 +2834,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "ObjectType: HashbrownTypeCtor<ObjectType>;"
         },
         {
           "kind": "TypeAlias",
@@ -2807,12 +2917,6 @@
               "text": "NumberType",
               "canonicalReference": "@hashbrownai/core!s.NumberType:interface"
             },
-            { "kind": "Content", "text": " | " },
-            {
-              "kind": "Reference",
-              "text": "IntegerType",
-              "canonicalReference": "@hashbrownai/core!s.IntegerType:interface"
-            },
             { "kind": "Content", "text": " : T extends boolean ? " },
             {
               "kind": "Reference",
@@ -2850,7 +2954,7 @@
               "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
             }
           ],
-          "typeTokenRange": { "startIndex": 1, "endIndex": 33 },
+          "typeTokenRange": { "startIndex": 1, "endIndex": 31 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -2868,7 +2972,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type Schema<T> =\n  IsStringUnion<T> extends true\n    ? [T] extends [string]\n      ? UnionToTuple<T> extends infer U\n        ? U extends string[]\n          ? EnumType<U>\n          : never\n        : never\n      : never\n    : IsUnion<T> extends true\n      ? SchemaForUnion<T>\n      : T extends Array<infer U>\n        ? ArrayType<Schema<U>>\n        : T extends string\n          ? string extends T\n            ? StringType\n            : LiteralType<T>\n          : T extends number\n            ? NumberType\n            : T extends boolean\n              ? BooleanType\n              : T extends null\n                ? NullType\n                : T extends object\n                  ? ObjectType<{\n                      [K in keyof T]: Schema<T[K]>;\n                    }>\n                  : never;"
         },
         {
           "kind": "Namespace",
@@ -2948,7 +3053,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export declare function array<Item extends HashbrownType>(\n  description: string,\n  item: Item,\n): ArrayType<Item>;"
             },
             {
               "kind": "Function",
@@ -3025,7 +3131,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export declare function object<Shape extends Record<string, any>>(\n  description: string,\n  shape: Shape,\n): ObjectType<CleanInterfaceShape<Shape>>;"
             },
             {
               "kind": "Function",
@@ -3074,7 +3181,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export declare function string(description: string): StringType;"
             }
           ],
           "docs": {
@@ -3094,7 +3202,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": ""
         },
         {
           "kind": "Function",
@@ -3143,7 +3252,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function string(description: string): StringType;"
         },
         {
           "kind": "Interface",
@@ -3208,7 +3318,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "[internal]: StringTypeInternals;"
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -3229,7 +3340,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface StringType extends HashbrownType<string>"
         },
         {
           "kind": "Variable",
@@ -3272,7 +3384,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "StringType: HashbrownTypeCtor<StringType>;"
         },
         {
           "kind": "Function",
@@ -3321,7 +3434,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export declare function toJsonSchema(schema: HashbrownType): any;"
         }
       ],
       "docs": {
@@ -3341,7 +3455,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": ""
     }
   ]
 }

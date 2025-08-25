@@ -2,7 +2,7 @@
   "name": "useStructuredChat",
   "canonicalReference": "@hashbrownai/react!useStructuredChat:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -55,7 +55,7 @@
         { "kind": "Content", "text": "<Output, Tools>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-chat.d.ts",
       "returnTypeTokenRange": { "startIndex": 14, "endIndex": 16 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -103,7 +103,8 @@
         "examples": [
           "\n\nIn this example, the LLM will respond with a JSON object containing the translations of the input message into English, Spanish, and French.\n```tsx\nconst { messages, sendMessage } = useStructuredChat({\n  model: 'gpt-4o',\n  system: 'You are a helpful translator that provides accurate translations.',\n  schema: s.object('Translations', {\n    english: s.string('English translation'),\n    spanish: s.string('Spanish translation'),\n    french: s.string('French translation')\n  }),\n});\n```\n\n"
         ]
-      }
+      },
+      "formattedContent": "export declare function useStructuredChat<\n  Schema extends s.HashbrownType,\n  Tools extends Chat.AnyTool,\n  Output extends s.Infer<Schema> = s.Infer<Schema>,\n>(\n  options: UseStructuredChatOptions<Schema, Tools, Output>,\n): UseStructuredChatResult<Output, Tools>;"
     }
   ]
 }

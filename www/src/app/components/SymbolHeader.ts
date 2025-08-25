@@ -1,5 +1,5 @@
-import { Component, computed, input } from '@angular/core';
 import { NgClass } from '@angular/common';
+import { Component, computed, input } from '@angular/core';
 import {
   ApiMember,
   ParsedCanonicalReference,
@@ -9,12 +9,11 @@ import { SymbolCodeLink } from './SymbolCodeLink';
 
 @Component({
   selector: 'www-symbol-header',
-  imports: [SymbolCodeLink, NgClass, DeprecatedChip],
+  imports: [NgClass, DeprecatedChip, SymbolCodeLink],
   template: `
     <header>
       <h1 [ngClass]="{ deprecated: symbol().docs.deprecated }">
-        <span class="import">{{ symbolImport() }}</span>
-        <span class="name">{{ symbol().name }}</span>
+        {{ symbol().name }}
       </h1>
       <div class="meta">
         @if (symbol().docs.deprecated) {
@@ -38,10 +37,17 @@ import { SymbolCodeLink } from './SymbolCodeLink';
         justify-content: space-between;
 
         > h1 {
-          margin: 0;
           display: flex;
           flex-direction: column;
           gap: 8px;
+          color: var(--gray, #5e5c5a);
+          font:
+            800 20px/24px 'JetBrains Mono',
+            monospace;
+
+          &:first-child {
+            margin-top: 0;
+          }
 
           &.deprecated {
             text-decoration: line-through;
@@ -49,14 +55,14 @@ import { SymbolCodeLink } from './SymbolCodeLink';
 
           > .import {
             font:
-              700 12px/16px 'Operator Mono',
+              700 12px/16px 'JetBrains Mono',
               monospace;
             color: rgba(125, 84, 47, 0.56);
           }
 
           > .name {
             font:
-              500 36px/42px 'Operator Mono',
+              700 36px/42px 'JetBrains Mono',
               monospace;
           }
         }

@@ -69,7 +69,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "apiUrl?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -102,7 +103,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -140,7 +142,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "input: Signal<Input | null | undefined>;"
         },
         {
           "kind": "PropertySignature",
@@ -177,7 +180,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model: KnownModelIds;"
         },
         {
           "kind": "PropertySignature",
@@ -210,7 +214,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "schema: Schema;"
         },
         {
           "kind": "PropertySignature",
@@ -248,7 +253,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: SignalLike<string>;"
         },
         {
           "kind": "PropertySignature",
@@ -286,7 +292,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Chat.AnyTool[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -307,7 +314,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface StructuredCompletionResourceOptions<Input, Schema extends s.HashbrownType>"
     }
   ]
 }

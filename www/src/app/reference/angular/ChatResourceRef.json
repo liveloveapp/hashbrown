@@ -48,6 +48,51 @@
       "members": [
         {
           "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/angular!ChatResourceRef#lastAssistantMessage:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "lastAssistantMessage: " },
+            {
+              "kind": "Reference",
+              "text": "Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "Chat.AssistantMessage",
+              "canonicalReference": "!Chat.AssistantMessage:type"
+            },
+            { "kind": "Content", "text": "<string, Tools> | undefined>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "lastAssistantMessage",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 5 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "lastAssistantMessage: Signal<Chat.AssistantMessage<string, Tools> | undefined>;"
+        },
+        {
+          "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!ChatResourceRef#reload:member",
           "docComment": "",
           "excerptTokens": [
@@ -77,7 +122,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "reload: () => boolean;"
         },
         {
           "kind": "PropertySignature",
@@ -116,7 +162,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "sendMessage: (message: Chat.UserMessage) => void;"
         },
         {
           "kind": "PropertySignature",
@@ -157,7 +204,8 @@
               }
             ],
             "examples": []
-          }
+          },
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;"
         }
       ],
       "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 7 }],
@@ -178,7 +226,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<Chat.Message<string, Tools>[]>"
     }
   ]
 }

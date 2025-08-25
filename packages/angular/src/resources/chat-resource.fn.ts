@@ -39,7 +39,6 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
 /**
  * Configuration options for the chat resource.
  *
- * @interface ChatResourceOptions
  * @template Tools
  * @property {string | Signal<string>} system - The system (assistant) prompt.
  * @property {string | Signal<string>} model - The model identifier to use for the chat.
@@ -83,11 +82,27 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
 }
 
 /**
- * Creates a chat resource for managing LLM-driven conversations.
+ * This Angular resource provides a reactive chat interface for send and receiving messages from a model.
+ * The resource-based API includes signals for the current messages, status, and control methods for sending and stopping messages.
  *
- * @template Tools
+ * @remarks
+ * The `chatResource` function provides the most basic functionality for un-structured chats.  Unstructured chats include things like general chats and natural language controls.
+ *
  * @param {ChatResourceOptions<Tools>} options - Configuration for the chat resource.
  * @returns {ChatResourceRef<Tools>} An object with reactive signals and methods for interacting with the chat.
+ * @template Tools
+ * @example
+ * This example demonstrates how to use the `chatResource` function to create a simple chat component.
+ *
+ * ```ts
+ * const chat = chatResource({
+ *   system: 'hashbrowns should be covered and smothered',
+ *   model: 'gpt-5',
+ * });
+ *
+ * chat.sendMessage({ role: 'user', content: 'Write a short story about breakfast.' });
+ * ```
+ *
  */
 export function chatResource<Tools extends Chat.AnyTool>(
   options: ChatResourceOptions<Tools>,

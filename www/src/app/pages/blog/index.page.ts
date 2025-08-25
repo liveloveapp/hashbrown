@@ -6,19 +6,22 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
 @Component({
   imports: [PostPreview],
   template: `
+    <div class="hero">
+      <img
+        src="/image/blog/brian-mike-jason.jpg"
+        alt="Brian, Mike and Jason looking at a laptop and computer screen with code and a generative user interface application"
+      />
+    </div>
     <div class="bleed">
-      <div class="title">
-        <h1>Blog</h1>
-        <div class="filters">
-          @for (filter of filters; track filter.query) {
-            <button
-              [class.selected]="filter === selectedFilter()"
-              (click)="onFilterClick(filter)"
-            >
-              {{ filter.text }}
-            </button>
-          }
-        </div>
+      <div class="filters">
+        @for (filter of filters; track filter.query) {
+          <button
+            [class.selected]="filter === selectedFilter()"
+            (click)="onFilterClick(filter)"
+          >
+            {{ filter.text }}
+          </button>
+        }
       </div>
       <div class="posts">
         @for (post of filteredPosts(); track post.slug; let i = $index) {
@@ -30,31 +33,34 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
   styles: `
     :host {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       width: 100%;
+      height: 100%;
+    }
+
+    .hero {
+      width: 100%;
+      height: 100%;
+      max-height: 600px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
     }
 
     .bleed {
+      align-self: center;
       display: flex;
       flex-direction: column;
-      gap: 64px;
+      gap: 56px;
       padding: 64px 32px;
-      max-width: 767px;
       width: 100%;
-    }
-
-    .title {
-      display: flex;
-      align-items: flex-end;
-      gap: 32px;
-
-      > h1 {
-        color: #774625;
-        font:
-          400 40px/56px 'KefirVariable',
-          sans-serif;
-        font-variation-settings: 'wght' 800;
-      }
+      max-width: 1024px;
 
       > .filters {
         display: none;
@@ -87,69 +93,146 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
           color: #774625;
         }
       }
-    }
 
-    .posts {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 32px;
+      > .posts {
+        display: grid;
+        grid-template-columns: 1fr;
+        row-gap: 32px;
 
-      > *:first-child {
-        grid-column: 1 / -1;
+        > * {
+          border: 1px solid rgba(61, 60, 58, 0.24);
+        }
       }
     }
 
-    @media screen and (min-width: 768px) {
-      .title {
+    @media screen and (min-width: 768px) and (max-width: 1023px) {
+      .bleed {
         > .filters {
           display: flex;
         }
-      }
 
-      .posts {
-        grid-template-columns: repeat(2, 1fr);
+        > .posts {
+          grid-template-columns: repeat(2, 1fr);
+          row-gap: 0;
+          border-top: 1px solid rgba(61, 60, 58, 0.24);
+          border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+
+          > * {
+            border-top: none;
+            border-right: 1px solid rgba(61, 60, 58, 0.24);
+            border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+            border-left: none;
+          }
+
+          > *:first-child {
+            grid-column: 1 / -1;
+            margin-bottom: 64px;
+          }
+
+          > *:nth-child(2),
+          > *:nth-child(3) {
+            border-top: 1px solid rgba(61, 60, 58, 0.24);
+          }
+
+          > *:nth-child(2n + 1) {
+            border-right: none;
+          }
+
+          > *:nth-last-child(1),
+          > *:nth-last-child(2):not(:nth-child(2n + 1)) {
+            border-bottom: none;
+          }
+        }
       }
     }
 
     @media screen and (min-width: 1024px) {
-      .posts {
-        grid-template-columns: repeat(3, 1fr);
+      .bleed {
+        > .filters {
+          display: flex;
+        }
+
+        > .posts {
+          grid-template-columns: repeat(3, 1fr);
+          row-gap: 0;
+          border-top: 1px solid rgba(61, 60, 58, 0.24);
+          border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+
+          > * {
+            border-top: none;
+            border-right: 1px solid rgba(61, 60, 58, 0.24);
+            border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+            border-left: none;
+          }
+
+          > *:first-child {
+            grid-column: 1 / -1;
+            margin-bottom: 64px;
+          }
+
+          > *:nth-child(3n + 1) {
+            border-right: none;
+          }
+
+          > *:nth-child(2),
+          > *:nth-child(3),
+          > *:nth-child(4) {
+            border-top: 1px solid rgba(61, 60, 58, 0.24);
+          }
+
+          > *:nth-last-child(1),
+          > *:nth-last-child(2):not(:nth-child(3n + 1)),
+          > *:nth-last-child(3):not(:nth-child(3n + 1)) {
+            border-bottom: none;
+          }
+        }
       }
     }
   `,
 })
 export default class BlogIndexPage {
-  readonly posts = injectContentFiles<PostAttributes>((contentFile) =>
+  readonly filters = [
+    filter('All blogs', ''),
+    filter('Stories', 'story'),
+    filter('Talks', 'talk'),
+    filter('Releases', 'release'),
+  ];
+  selectedFilter = signal<Filter>(this.filters[0]);
+
+  readonly contentFiles = injectContentFiles<PostAttributes>((contentFile) =>
     contentFile.filename.includes('/src/content/blog/'),
   );
 
-  readonly filters = [
-    filter('All blogs', ''),
-    filter('Stories', 'stories'),
-    filter('Talks', 'talks'),
-    filter('Workshops', 'workshops'),
-    filter('Podcasts', 'podcasts'),
-  ];
+  readonly posts = computed(() =>
+    this.contentFiles.map((contentFile) => {
+      const datePart = contentFile.attributes.slug.slice(0, 10);
+      if (!datePart) {
+        return contentFile;
+      }
 
-  selectedFilter = signal<Filter>(this.filters[0]);
+      return {
+        ...contentFile,
+        attributes: {
+          ...contentFile.attributes,
+          date: new Date(datePart),
+        },
+      };
+    }),
+  );
+
   filteredPosts = computed(() => {
     const selected = this.selectedFilter();
+    const posts = this.posts();
 
     const filtered =
       selected && selected.query
-        ? this.posts.filter((post) =>
-            post.attributes.tags?.includes(selected.query),
-          )
-        : this.posts;
-
-    const parseDateFromSlug = (slug: string): number => {
-      const datePart = slug.slice(0, 10);
-      const time = Date.parse(datePart);
-      return isNaN(time) ? 0 : time;
-    };
+        ? posts.filter((post) => post.attributes.tags?.includes(selected.query))
+        : posts;
 
     return [...filtered].sort(
-      (a, b) => parseDateFromSlug(b.slug) - parseDateFromSlug(a.slug),
+      (a, b) =>
+        (b.attributes.date?.getTime() ?? 0) -
+        (a.attributes.date?.getTime() ?? 0),
     );
   });
 

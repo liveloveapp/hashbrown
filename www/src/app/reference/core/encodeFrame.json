@@ -58,7 +58,8 @@
           { "name": "frame", "description": "The frame to encode.\n\n" }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function encodeFrame(frame: Frame): Uint8Array;"
     }
   ]
 }

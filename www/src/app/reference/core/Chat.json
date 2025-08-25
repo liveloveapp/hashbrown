@@ -56,7 +56,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type AnyMessage = Message<string | object, AnyTool>;"
         },
         {
           "kind": "TypeAlias",
@@ -93,7 +94,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type AnyTool = Tool<string, any, any>;"
         },
         {
           "kind": "TypeAlias",
@@ -136,7 +138,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type AnyToolCall = ToolCall<AnyTool>;"
         },
         {
           "kind": "Namespace",
@@ -194,7 +197,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "content?: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -227,7 +231,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "role: \"assistant\";"
                 },
                 {
                   "kind": "PropertySignature",
@@ -265,7 +270,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "toolCalls?: ToolCall[];"
                 }
               ],
               "extendsTokenRanges": [],
@@ -286,7 +292,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface AssistantMessage"
             },
             {
               "kind": "Interface",
@@ -339,7 +346,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "choices: CompletionChunkChoice[];"
                 }
               ],
               "extendsTokenRanges": [],
@@ -360,7 +368,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface CompletionChunk"
             },
             {
               "kind": "Interface",
@@ -423,7 +432,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "delta: {\n        content?: string | null;\n        role?: string | undefined;\n        toolCalls?: DeepPartial<ToolCall>[];\n    };"
                 },
                 {
                   "kind": "PropertySignature",
@@ -456,7 +466,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "finishReason: string | null;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -489,7 +500,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "index: number;"
                 }
               ],
               "extendsTokenRanges": [],
@@ -510,7 +522,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface CompletionChunkChoice"
             },
             {
               "kind": "Interface",
@@ -563,7 +576,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "messages: Message[];"
                 },
                 {
                   "kind": "PropertySignature",
@@ -600,7 +614,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "model: KnownModelIds;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -633,7 +648,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "responseFormat?: object;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -666,7 +682,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "system: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -703,7 +720,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "toolChoice?: CompletionToolChoiceOption;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -741,7 +759,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "tools?: Tool[];"
                 }
               ],
               "extendsTokenRanges": [],
@@ -762,7 +781,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface CompletionCreateParams"
             },
             {
               "kind": "TypeAlias",
@@ -797,7 +817,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export type CompletionToolChoiceOption = \"auto\" | \"none\" | \"required\";"
             },
             {
               "kind": "Interface",
@@ -842,7 +863,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "content: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -875,7 +897,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "role: \"error\";"
                 }
               ],
               "extendsTokenRanges": [],
@@ -896,7 +919,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface ErrorMessage"
             },
             {
               "kind": "TypeAlias",
@@ -950,7 +974,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export type Message =\n  | UserMessage\n  | ErrorMessage\n  | AssistantMessage\n  | ToolMessage;"
             },
             {
               "kind": "Interface",
@@ -995,7 +1020,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "description: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1028,7 +1054,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "name: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1061,7 +1088,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "parameters: object;"
                 }
               ],
               "extendsTokenRanges": [],
@@ -1082,7 +1110,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface Tool"
             },
             {
               "kind": "Interface",
@@ -1130,7 +1159,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "function: {\n        name: string;\n        arguments: string;\n    };"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1163,7 +1193,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "id: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1196,7 +1227,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "index: number;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1229,7 +1261,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "type: string;"
                 }
               ],
               "extendsTokenRanges": [],
@@ -1250,7 +1283,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface ToolCall"
             },
             {
               "kind": "Interface",
@@ -1300,7 +1334,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "content: PromiseSettledResult<any>;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1333,7 +1368,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "role: \"tool\";"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1366,7 +1402,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "toolCallId: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1399,7 +1436,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "toolName: string;"
                 }
               ],
               "extendsTokenRanges": [],
@@ -1420,7 +1458,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface ToolMessage"
             },
             {
               "kind": "Interface",
@@ -1465,7 +1504,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "content: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1498,7 +1538,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "role: \"user\";"
                 }
               ],
               "extendsTokenRanges": [],
@@ -1519,7 +1560,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface UserMessage"
             }
           ],
           "docs": {
@@ -1539,7 +1581,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": ""
         },
         {
           "kind": "Interface",
@@ -1605,7 +1648,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "content?: Output;"
             },
             {
               "kind": "PropertySignature",
@@ -1638,7 +1682,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "role: \"assistant\";"
             },
             {
               "kind": "PropertySignature",
@@ -1676,7 +1721,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "toolCalls: ToolCall < ToolUnion > [];"
             }
           ],
           "extendsTokenRanges": [],
@@ -1697,7 +1743,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export interface AssistantMessage<Output, ToolUnion extends AnyTool>"
         },
         {
           "kind": "TypeAlias",
@@ -1732,7 +1779,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type ErrorMessage = {\n  role: \"error\";\n  content: string;\n};"
         },
         {
           "kind": "Namespace",
@@ -1761,7 +1809,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": ""
         },
         {
           "kind": "Namespace",
@@ -1819,7 +1868,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "content?: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1852,7 +1902,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "role: \"assistant\";"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1885,7 +1936,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "toolCallIds: string[];"
                 }
               ],
               "extendsTokenRanges": [],
@@ -1906,7 +1958,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface AssistantMessage"
             },
             {
               "kind": "Interface",
@@ -1951,7 +2004,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "content: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -1984,7 +2038,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "role: \"error\";"
                 }
               ],
               "extendsTokenRanges": [],
@@ -2005,7 +2060,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface ErrorMessage"
             },
             {
               "kind": "TypeAlias",
@@ -2053,7 +2109,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export type Message = AssistantMessage | UserMessage | ErrorMessage;"
             },
             {
               "kind": "Interface",
@@ -2098,7 +2155,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "description: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2143,7 +2201,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "handler: (input: any, abortSignal: AbortSignal) => Promise<any>;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2176,7 +2235,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "name: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2189,13 +2249,14 @@
                       "text": "s.HashbrownType",
                       "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
                     },
+                    { "kind": "Content", "text": " | object" },
                     { "kind": "Content", "text": ";" }
                   ],
                   "isReadonly": false,
                   "isOptional": false,
                   "releaseTag": "Public",
                   "name": "schema",
-                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+                  "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
                   "docs": {
                     "modifiers": {
                       "isInternal": false,
@@ -2213,7 +2274,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "schema: s.HashbrownType | object;"
                 }
               ],
               "extendsTokenRanges": [],
@@ -2234,7 +2296,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface Tool"
             },
             {
               "kind": "Interface",
@@ -2279,7 +2342,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "arguments: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2312,7 +2376,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "id: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2345,7 +2410,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "name: string;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2378,7 +2444,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "progress?: number;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2416,7 +2483,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "result?: PromiseSettledResult<any>;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2449,7 +2517,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "status: \"pending\" | \"done\";"
                 }
               ],
               "extendsTokenRanges": [],
@@ -2470,7 +2539,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface ToolCall"
             },
             {
               "kind": "Interface",
@@ -2519,7 +2589,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "content: JsonValue;"
                 },
                 {
                   "kind": "PropertySignature",
@@ -2552,7 +2623,8 @@
                     "see": [],
                     "params": [],
                     "examples": []
-                  }
+                  },
+                  "formattedContent": "role: \"user\";"
                 }
               ],
               "extendsTokenRanges": [],
@@ -2573,7 +2645,8 @@
                 "see": [],
                 "params": [],
                 "examples": []
-              }
+              },
+              "formattedContent": "export interface UserMessage"
             }
           ],
           "docs": {
@@ -2593,7 +2666,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": ""
         },
         {
           "kind": "TypeAlias",
@@ -2662,7 +2736,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type Message<Output, Tools extends AnyTool> =\n  | UserMessage\n  | AssistantMessage<Output, Tools>\n  | ErrorMessage;"
         },
         {
           "kind": "TypeAlias",
@@ -2718,7 +2793,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type Middleware = (\n  fetchInit: RequestInit,\n) => RequestInit | Promise<RequestInit>;"
         },
         {
           "kind": "TypeAlias",
@@ -2740,7 +2816,7 @@
             },
             {
               "kind": "Content",
-              "text": ";\n    handler: (input: Args, abortSignal: "
+              "text": " | object;\n    handler: (input: Args, abortSignal: "
             },
             {
               "kind": "Reference",
@@ -2794,7 +2870,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type Tool<Name, Args, Result> = {\n  name: Name;\n  description: string;\n  schema: s.HashbrownType | object;\n  handler: (input: Args, abortSignal: AbortSignal) => Promise<Result>;\n};"
         },
         {
           "kind": "TypeAlias",
@@ -2865,7 +2942,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type ToolCall<ToolUnion extends AnyTool> = Prettify<\n  ToolUnion extends Tool<infer Name, infer Args, infer Result>\n    ?\n        | {\n            role: \"tool\";\n            status: \"done\";\n            name: Name;\n            args: Args;\n            result: PromiseSettledResult<Result>;\n            toolCallId: string;\n          }\n        | {\n            role: \"tool\";\n            status: \"pending\";\n            name: Name;\n            args: Args;\n            toolCallId: string;\n            progress?: number;\n          }\n    : never\n>;"
         },
         {
           "kind": "TypeAlias",
@@ -2906,7 +2984,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "export type UserMessage = {\n  role: \"user\";\n  content: JsonValue;\n};"
         }
       ],
       "docs": {
@@ -2926,7 +3005,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": ""
     }
   ]
 }

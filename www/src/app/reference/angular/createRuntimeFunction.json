@@ -147,7 +147,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createRuntimeFunction<\n  ArgsSchema extends s.HashbrownType,\n  ResultSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  result: ResultSchema;\n  handler: (\n    input: s.Infer<ArgsSchema>,\n    abortSignal?: AbortSignal,\n  ) => s.Infer<ResultSchema> | Promise<s.Infer<ResultSchema>>;\n}): RuntimeFunctionRef<s.Infer<ArgsSchema>, s.Infer<ResultSchema>>;"
     },
     {
       "kind": "Function",
@@ -264,7 +265,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createRuntimeFunction<\n  ResultSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  result: ResultSchema;\n  handler: (\n    abortSignal?: AbortSignal,\n  ) => s.Infer<ResultSchema> | Promise<s.Infer<ResultSchema>>;\n}): RuntimeFunctionRef<null, s.Infer<ResultSchema>>;"
     },
     {
       "kind": "Function",
@@ -375,7 +377,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createRuntimeFunction<\n  ArgsSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  handler: (\n    args: s.Infer<ArgsSchema>,\n    abortSignal?: AbortSignal,\n  ) => void | Promise<void>;\n}): RuntimeFunctionRef<s.Infer<ArgsSchema>, void>;"
     },
     {
       "kind": "Function",
@@ -457,7 +460,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createRuntimeFunction(cfg: {\n  name: string;\n  description: string;\n  handler: (abortSignal?: AbortSignal) => void | Promise<void>;\n}): RuntimeFunctionRef<null, void>;"
     }
   ]
 }

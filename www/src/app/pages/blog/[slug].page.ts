@@ -56,7 +56,7 @@ import { PostAttributes } from '../../models/blog.models';
         > h1 {
           color: #774625;
           font:
-            400 40px/56px 'KefirVariable',
+            800 40px/56px 'KefirVariable',
             sans-serif;
           font-variation-settings: 'wght' 800;
         }
@@ -161,7 +161,7 @@ import { PostAttributes } from '../../models/blog.models';
 
       code:not(pre code) {
         font:
-          600 16px/24px 'Operator mono',
+          700 16px/24px 'JetBrains Mono',
           monospace;
       }
 
@@ -271,10 +271,4 @@ export default class BlogPostComponent {
     param: 'slug',
   });
   readonly post = toSignal(this.post$);
-
-  constructor() {
-    effect(() => {
-      console.log(this.post());
-    });
-  }
 }

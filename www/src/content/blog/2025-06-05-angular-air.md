@@ -3,7 +3,7 @@ title: Hashbrown on Angular Air
 slug: 2025-06-05-angular-air
 description: Watch Ben, Brian, and Mike present Hashbrown on an episode of Angular Air
 tags:
-  - talks
+  - talk
 team:
   - brian
 youtube: https://www.youtube.com/watch?v=Vd2WLQ8vqfU

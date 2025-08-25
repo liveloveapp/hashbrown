@@ -33,11 +33,10 @@ Skillet is a Zod-like schema language that is LLM-optimized.
 
 Let's look at a structured completion resource:
 
-<www-code-example header="scene-form-dialog.component.ts">
+<hb-code-example header="scene-form-dialog.component.ts">
 
 ```ts
 predictedLights = structuredCompletionResource({
-  model: 'gpt-4.1',
   input: this.sceneNameSignal,
   system: computed(
     () => `
@@ -64,7 +63,7 @@ predictedLights = structuredCompletionResource({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 - In this example, let's focus on the `schema` specified.
 - The `s.streaming.array` is a Skillet schema that indicates that the response will be a streaming array.

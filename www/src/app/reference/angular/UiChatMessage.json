@@ -70,7 +70,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "type UiChatMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =\n  | UiAssistantMessage<Tools>\n  | UiUserMessage\n  | UiErrorMessage;"
     }
   ]
 }

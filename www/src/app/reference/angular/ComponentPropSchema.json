@@ -68,7 +68,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "type ComponentPropSchema<T> = _types.Prettify<\n  T extends {\n    new (...args: any[]): infer P;\n  }\n    ? {\n        [K in keyof P]?: P[K] extends AngularSignalLike<infer U>\n          ? s.Schema<U>\n          : s.Schema<P[K]>;\n      }\n    : never\n>;"
     }
   ]
 }

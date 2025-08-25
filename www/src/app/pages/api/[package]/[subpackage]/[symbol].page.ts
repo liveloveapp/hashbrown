@@ -6,7 +6,7 @@ import {
 } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 import { Symbol } from '../../../../components/Symbol';
-import { ReferenceService } from '../../../../services/ReferenceService';
+import { ApiService } from '../../../../services/ApiService';
 
 @Component({
   template: `
@@ -17,7 +17,7 @@ import { ReferenceService } from '../../../../services/ReferenceService';
   imports: [Symbol],
 })
 export default class SubpackageSymbolPage {
-  referenceService = inject(ReferenceService);
+  apiService = inject(ApiService);
   package = input.required<string>();
   subpackage = input.required<string>();
   symbol = input.required<string>();
@@ -29,7 +29,7 @@ export default class SubpackageSymbolPage {
   resolvedSymbol = toSignal(
     toObservable(this.inputs).pipe(
       switchMap((inputs) =>
-        this.referenceService.loadReferenceData(
+        this.apiService.loadReferenceData(
           `${inputs.package}/${inputs.subpackage}`,
           inputs.symbol.split('/').join('.'),
         ),

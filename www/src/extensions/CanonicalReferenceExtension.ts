@@ -73,9 +73,9 @@ export const CanonicalReferenceExtension: TokenizerExtension &
     assertIsCanonicalReferenceToken(token);
     return `${this.parser.parseInline(
       token.beforeTokens,
-    )}<www-markdown-symbol-link reference="${
+    )}<hb-markdown-symbol-link reference="${
       token.canonicalReference
-    }"></www-markdown-symbol-link>${this.parser.parseInline(token.afterTokens)}`;
+    }"></hb-markdown-symbol-link>${this.parser.parseInline(token.afterTokens)}`;
   },
   childTokens: ['beforeTokens', 'afterTokens'],
 };

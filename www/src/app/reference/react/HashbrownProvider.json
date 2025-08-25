@@ -2,7 +2,7 @@
   "name": "HashbrownProvider",
   "canonicalReference": "@hashbrownai/react!HashbrownProvider:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hashbrown-provider.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -31,7 +31,7 @@
           "canonicalReference": "@types/react!JSX.Element:interface"
         }
       ],
-      "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hashbrown-provider.d.ts",
       "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -62,7 +62,8 @@
         "examples": [
           "\n```ts\n<HashbrownProvider url=\"https://your.api.local/chat\">\n  <App />\n</HashbrownProvider>\n```\n\n"
         ]
-      }
+      },
+      "formattedContent": "HashbrownProvider: (\n  props: HashbrownProviderOptions & {\n    children: React.ReactNode;\n  },\n) => import(\"react/jsx-runtime\").JSX.Element;"
     }
   ]
 }

@@ -58,7 +58,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "reload: () => boolean;"
         },
         {
           "kind": "PropertySignature",
@@ -99,7 +100,8 @@
               }
             ],
             "examples": []
-          }
+          },
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;"
         }
       ],
       "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -120,7 +122,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface CompletionResourceRef extends Resource<string | null>"
     }
   ]
 }

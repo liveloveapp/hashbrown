@@ -2,7 +2,7 @@
   "name": "UiAssistantMessage",
   "canonicalReference": "@hashbrownai/react!UiAssistantMessage:type",
   "kind": "TypeAlias",
-  "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-ui-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -40,7 +40,7 @@
         { "kind": "Content", "text": "[] | null;\n}" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-ui-chat.d.ts",
       "releaseTag": "Public",
       "name": "UiAssistantMessage",
       "typeParameters": [
@@ -68,7 +68,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export type UiAssistantMessage<Tools extends Chat.AnyTool> =\n  Chat.AssistantMessage<UiChatSchema, Tools> & {\n    ui: React.ReactElement[] | null;\n  };"
     }
   ]
 }

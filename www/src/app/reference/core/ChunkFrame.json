@@ -52,7 +52,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "chunk: Chat.Api.CompletionChunk;"
         },
         {
           "kind": "PropertySignature",
@@ -85,7 +86,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "type: \"chunk\";"
         }
       ],
       "extendsTokenRanges": [],
@@ -106,7 +108,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface ChunkFrame"
     }
   ]
 }

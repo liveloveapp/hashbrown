@@ -52,7 +52,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "signal: AbortSignal;"
         }
       ],
       "extendsTokenRanges": [],
@@ -73,7 +74,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface DecodeFramesOptions"
     }
   ]
 }

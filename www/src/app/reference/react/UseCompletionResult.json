@@ -2,7 +2,7 @@
   "name": "UseCompletionResult",
   "canonicalReference": "@hashbrownai/react!UseCompletionResult:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-completion.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -12,7 +12,7 @@
       "excerptTokens": [
         { "kind": "Content", "text": "export interface UseCompletionResult " }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-completion.d.ts",
       "releaseTag": "Public",
       "name": "UseCompletionResult",
       "preserveMemberOrder": false,
@@ -53,7 +53,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "error: Error | undefined;"
         },
         {
           "kind": "PropertySignature",
@@ -86,7 +87,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "exhaustedRetries: boolean;"
         },
         {
           "kind": "PropertySignature",
@@ -119,7 +121,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isReceiving: boolean;"
         },
         {
           "kind": "PropertySignature",
@@ -152,7 +155,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isRunningToolCalls: boolean;"
         },
         {
           "kind": "PropertySignature",
@@ -185,7 +189,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isSending: boolean;"
         },
         {
           "kind": "PropertySignature",
@@ -218,7 +223,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "output: string | null;"
         },
         {
           "kind": "PropertySignature",
@@ -251,7 +257,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "reload: () => void;"
         }
       ],
       "extendsTokenRanges": [],
@@ -272,7 +279,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseCompletionResult"
     }
   ]
 }

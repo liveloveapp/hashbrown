@@ -51,7 +51,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export type Frame = ErrorFrame | ChunkFrame | FinishFrame;"
     }
   ]
 }

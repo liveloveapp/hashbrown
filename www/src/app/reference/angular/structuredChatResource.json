@@ -106,7 +106,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function structuredChatResource<\n  Schema extends s.HashbrownType,\n  Tools extends Chat.AnyTool,\n  Output extends s.Infer<Schema> = s.Infer<Schema>,\n>(\n  options: StructuredChatResourceOptions<Schema, Tools, Output>,\n): StructuredChatResourceRef<Output, Tools>;"
     }
   ]
 }

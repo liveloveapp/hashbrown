@@ -3,6 +3,7 @@ import { ApiMemberSummary } from '../models/api-report.models';
 import { SymbolApi } from './SymbolApi';
 import { SymbolHeader } from './SymbolHeader';
 import { SymbolSummary } from './SymbolSummary';
+import { Squircle } from './Squircle';
 
 export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
   'SYMBOl_POPOVER_REF',
@@ -10,9 +11,14 @@ export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
 
 @Component({
   selector: 'www-symbol-popover',
-  imports: [SymbolHeader, SymbolApi, SymbolSummary],
+  imports: [SymbolHeader, SymbolApi, SymbolSummary, Squircle],
   template: `
-    <div class="popover">
+    <div
+      class="popover"
+      wwwSquircle="16"
+      [wwwSquircleBorderWidth]="1"
+      wwwSquircleBorderColor="var(--sky-blue, #9ecfd7)"
+    >
       <www-symbol-header
         [name]="summary.name"
         [fileUrlPath]="summary.fileUrlPath"
@@ -36,10 +42,6 @@ export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
         overflow-y: hidden;
         background: #fff;
         padding: 16px;
-        border-radius: 8px;
-        box-shadow:
-          0 10px 15px -3px rgba(0, 0, 0, 0.16),
-          0 4px 6px -4px rgba(0, 0, 0, 0.16);
       }
     `,
   ],

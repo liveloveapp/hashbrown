@@ -15,15 +15,12 @@ import { SymbolExcerpt } from './SymbolExcerpt';
           } @else {
             <code class="symbol">{{ '@optional' }}</code>
           }
-          <code class="name">{{ param.name }}</code>
-          @if (param.description) {
-            <p
-              class="description"
-              [innerHtml]="param.description | inlineMarkdown"
-            ></p>
-          }
+          <code>{{ param.name }}:</code>
+          <www-symbol-excerpt [excerptTokens]="param.excerptTokens" />
         </div>
-        <www-symbol-excerpt [excerptTokens]="param.excerptTokens" />
+        @if (param.description) {
+          <p [innerHtml]="param.description | inlineMarkdown"></p>
+        }
       </div>
     }
   `,
@@ -32,7 +29,8 @@ import { SymbolExcerpt } from './SymbolExcerpt';
       :host {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
+        font-family: 'JetBrains Mono', monospace;
       }
 
       .param {
@@ -40,36 +38,23 @@ import { SymbolExcerpt } from './SymbolExcerpt';
         flex-direction: column;
 
         > .header {
-          display: grid;
+          display: flex;
           align-items: center;
-          grid-template-columns: 96px 112px 1fr;
-          gap: 16px;
+          gap: 8px;
 
-          > .symbol {
-            font:
-              700 14px/18px 'Operator Mono',
-              monospace;
-            color: #fbbb52;
-          }
+          > code {
+            color: var(--sunset-orange, #fbbb52);
 
-          > .name {
-            font:
-              700 14px/18px 'Operator Mono',
-              monospace;
-            color: #ffa657;
-          }
-
-          > .description {
-            font:
-              400 12px/16px Poppins,
-              sans-serif;
-            color: rgba(250, 249, 240, 0.8);
-            margin-left: 16px;
+            &.symbol {
+              font-weight: 300;
+              color: var(--vanilla-ivory, #faf9f0);
+            }
           }
         }
 
-        > www-symbol-excerpt {
-          padding: 16px;
+        > p {
+          color: var(--vanilla-ivory, #faf9f0);
+          font-size: 12px;
         }
       }
     `,

@@ -1,28 +1,30 @@
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import {
+  ChangeDetectionStrategy,
   Component,
+  computed,
+  effect,
   ElementRef,
   inject,
   Injector,
   Input,
+  signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { EMPTY, fromEvent, Observable, switchMap } from 'rxjs';
 import {
   CanonicalReference,
   ParsedCanonicalReference,
 } from '../models/api-report.models';
-import { ReferenceService } from '../services/ReferenceService';
+import { ApiService } from '../services/ApiService';
 import { SYMBOl_POPOVER_REF, SymbolPopover } from './SymbolPopover';
 
 @Component({
   selector: 'www-symbol-link',
   imports: [RouterLink],
   // prettier-ignore
-  template: `@if (isPrivate) {{{ name }}} @else if (shouldUseExternalLink) {<a [href]="url" target="_blank">{{ name }}</a>} @else {<a [routerLink]="url" #internalSymbolLink>{{ name }}</a>}`,
+  template: `@if (isPrivate()) {{{ name() }}} @else if (shouldUseExternalLink()) {<a [href]="url()" target="_blank">{{ name() }}</a>} @else {<a [routerLink]="url()" #internalSymbolLink>{{ name() }}</a>}`,
   styles: [
     `
       a {
@@ -31,19 +33,22 @@ import { SYMBOl_POPOVER_REF, SymbolPopover } from './SymbolPopover';
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SymbolLink {
   injector = inject(Injector);
   overlay = inject(Overlay);
-  referenceService = inject(ReferenceService);
+  apiService = inject(ApiService);
   internalSymbolLink =
     viewChild<ElementRef<HTMLAnchorElement>>('internalSymbolLink');
-  url = '';
-  isPrivate = true;
-  parsedReference: ParsedCanonicalReference = new ParsedCanonicalReference(
-    '@hashbrownai/core!Component:type',
+  url = signal('');
+  isPrivate = signal(true);
+  parsedReference = signal<ParsedCanonicalReference>(
+    new ParsedCanonicalReference('@hashbrownai/core!Component:type'),
   );
-  shouldUseExternalLink = false;
+  shouldUseExternalLink = signal(false);
+
+  private cleanupPopover: (() => void) | null = null;
 
   /**
    * Signal inputs aren't supported by @angular/elements, so we need
@@ -58,132 +63,129 @@ export class SymbolLink {
       return;
     }
 
-    this.isPrivate = parsed.isPrivate;
-    this.shouldUseExternalLink =
-      parsed.package.startsWith('@angular') || parsed.package === 'rxjs';
-    this.parsedReference = parsed;
+    this.isPrivate.set(parsed.isPrivate);
+    this.shouldUseExternalLink.set(parsed.package.startsWith('@angular'));
+    this.parsedReference.set(parsed);
 
     if (parsed.isPrivate) {
-      this.url = '';
+      this.url.set('');
     } else if (parsed.package.startsWith('@hashbrownai')) {
-      const [hashbrown, ...rest] = parsed.package.split('/');
-      this.url = `/api/${rest.join('/')}/${parsed.name}`;
+      const [, ...rest] = parsed.package.split('/');
+      this.url.set(`/api/${rest.join('/')}/${parsed.name}`);
     } else if (parsed.package.startsWith('@angular')) {
       const [, packageName] = parsed.package.split('/');
-      this.url = `https://angular.dev/api/${packageName}/${parsed.name}`;
-    } else if (parsed.package === 'rxjs') {
-      this.url = `https://rxjs.dev/api/index/${parsed.kind}/${parsed.name}`;
+      this.url.set(`https://angular.dev/api/${packageName}/${parsed.name}`);
     } else {
       console.warn(`Unknown package: ${parsed.package}`);
     }
   }
 
-  get name() {
-    return this.parsedReference.name;
-  }
+  name = computed(() => this.parsedReference().name);
 
   constructor() {
-    toObservable(this.internalSymbolLink)
-      .pipe(
-        switchMap((linkRef) => {
-          if (!linkRef) return EMPTY;
+    effect((onCleanup) => {
+      const linkRef = this.internalSymbolLink();
+      if (!linkRef) {
+        return;
+      }
 
-          const link = linkRef.nativeElement;
+      const link = linkRef.nativeElement;
+      const handleMouseEnter = () => this.openPopover(link);
+      link.addEventListener('mouseenter', handleMouseEnter);
 
-          return fromEvent(link, 'mouseenter').pipe(
-            switchMap(() =>
-              this.referenceService.loadFromCanonicalReference(
-                this.parsedReference.referenceString,
-              ),
-            ),
-            switchMap((apiMemberSummary) => {
-              const overlay = this.overlay.create({
-                positionStrategy: this.overlay
-                  .position()
-                  .flexibleConnectedTo(link)
-                  .withPositions([
-                    {
-                      originX: 'center',
-                      originY: 'bottom',
-                      overlayX: 'center',
-                      overlayY: 'top',
-                    },
-                  ]),
-                hasBackdrop: false,
-                scrollStrategy: this.overlay.scrollStrategies.close(),
-              });
-              const injector = Injector.create({
-                parent: this.injector,
-                providers: [
-                  {
-                    provide: SYMBOl_POPOVER_REF,
-                    useValue: apiMemberSummary,
-                  },
-                ],
-              });
-              const componentPortal = new ComponentPortal(
-                SymbolPopover,
-                null,
-                injector,
-              );
+      onCleanup(() => {
+        link.removeEventListener('mouseenter', handleMouseEnter);
+        this.cleanupPopover?.();
+        this.cleanupPopover = null;
+      });
+    });
+  }
 
-              return new Observable(() => {
-                overlay.attach(componentPortal);
+  private openPopover(link: HTMLAnchorElement) {
+    this.cleanupPopover?.();
+    this.cleanupPopover = null;
 
-                let isOverLink = true;
-                let isOverPopover = false;
+    const reference = this.parsedReference().referenceString;
+    this.apiService
+      .loadFromCanonicalReference(reference)
+      .then((apiMemberSummary) => {
+        const overlayRef = this.overlay.create({
+          positionStrategy: this.overlay
+            .position()
+            .flexibleConnectedTo(link)
+            .withPositions([
+              {
+                originX: 'center',
+                originY: 'bottom',
+                overlayX: 'center',
+                overlayY: 'top',
+              },
+            ]),
+          hasBackdrop: false,
+          scrollStrategy: this.overlay.scrollStrategies.close(),
+        });
 
-                const onMouseLeave = () => {
-                  if (!isOverLink && !isOverPopover) {
-                    overlay.detach();
-                  }
-                };
+        const injector = Injector.create({
+          parent: this.injector,
+          providers: [
+            {
+              provide: SYMBOl_POPOVER_REF,
+              useValue: apiMemberSummary,
+            },
+          ],
+        });
 
-                const linkLeaveSub = fromEvent(link, 'mouseleave').subscribe(
-                  () => {
-                    isOverLink = false;
-                    setTimeout(onMouseLeave, 500);
-                  },
-                );
+        const componentPortal = new ComponentPortal(
+          SymbolPopover,
+          null,
+          injector,
+        );
+        overlayRef.attach(componentPortal);
 
-                const linkEnterSub = fromEvent(link, 'mouseenter').subscribe(
-                  () => {
-                    isOverLink = true;
-                  },
-                );
+        let isOverLink = true;
+        let isOverPopover = false;
 
-                const popover = overlay.overlayElement;
+        const onMouseLeave = () => {
+          if (!isOverLink && !isOverPopover) {
+            overlayRef.detach();
+          }
+        };
 
-                const popoverEnterSub = fromEvent(
-                  popover,
-                  'mouseenter',
-                ).subscribe(() => {
-                  isOverPopover = true;
-                });
+        const handleLinkLeave = () => {
+          isOverLink = false;
+          setTimeout(onMouseLeave, 200);
+        };
+        const handleLinkEnter = () => {
+          isOverLink = true;
+        };
+        link.addEventListener('mouseleave', handleLinkLeave);
+        link.addEventListener('mouseenter', handleLinkEnter);
 
-                const popoverLeaveSub = fromEvent(
-                  popover,
-                  'mouseleave',
-                ).subscribe(() => {
-                  isOverPopover = false;
-                  setTimeout(onMouseLeave, 0);
-                });
+        const popover = overlayRef.overlayElement;
+        const handlePopoverEnter = () => {
+          isOverPopover = true;
+        };
+        const handlePopoverLeave = () => {
+          isOverPopover = false;
+          setTimeout(onMouseLeave, 0);
+        };
+        popover.addEventListener('mouseenter', handlePopoverEnter);
+        popover.addEventListener('mouseleave', handlePopoverLeave);
 
-                return () => {
-                  overlay.detach();
-                  linkLeaveSub.unsubscribe();
-                  linkEnterSub.unsubscribe();
-                  popoverEnterSub.unsubscribe();
-                  popoverLeaveSub.unsubscribe();
-                };
-              });
-            }),
-          );
-        }),
-        takeUntilDestroyed(),
-      )
-      .subscribe({
-        error: console.error,
+        this.cleanupPopover = () => {
+          try {
+            overlayRef.detach();
+          } catch {
+            // ignore
+          }
+          link.removeEventListener('mouseleave', handleLinkLeave);
+          link.removeEventListener('mouseenter', handleLinkEnter);
+          popover.removeEventListener('mouseenter', handlePopoverEnter);
+          popover.removeEventListener('mouseleave', handlePopoverLeave);
+        };
+      })
+      .catch((err) => {
+        console.error(err);
       });
   }
 }

@@ -2,7 +2,7 @@
   "name": "UseStructuredChatOptions",
   "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -41,7 +41,7 @@
         { "kind": "Content", "text": "<Schema>" },
         { "kind": "Content", "text": "> " }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-chat.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
@@ -94,7 +94,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounceTime?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -127,7 +128,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -165,7 +167,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages?: Chat.Message<Output, Tools>[];"
         },
         {
           "kind": "PropertySignature",
@@ -202,7 +205,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model: KnownModelIds;"
         },
         {
           "kind": "PropertySignature",
@@ -235,7 +239,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -268,7 +273,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "schema: Schema;"
         },
         {
           "kind": "PropertySignature",
@@ -301,7 +307,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string;"
         },
         {
           "kind": "PropertySignature",
@@ -334,7 +341,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Tools[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -355,7 +363,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseStructuredChatOptions<Schema extends s.HashbrownType, Tools extends Chat.AnyTool, Output extends s.Infer<Schema> = s.Infer<Schema>>"
     }
   ]
 }

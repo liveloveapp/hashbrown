@@ -80,7 +80,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "error: StateSignal<Error | undefined>;"
         },
         {
           "kind": "PropertySignature",
@@ -118,7 +119,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "exhaustedRetries: StateSignal<boolean>;"
         },
         {
           "kind": "PropertySignature",
@@ -156,7 +158,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isLoading: StateSignal<boolean>;"
         },
         {
           "kind": "PropertySignature",
@@ -194,7 +197,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isReceiving: StateSignal<boolean>;"
         },
         {
           "kind": "PropertySignature",
@@ -232,7 +236,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isRunningToolCalls: StateSignal<boolean>;"
         },
         {
           "kind": "PropertySignature",
@@ -270,7 +275,53 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isSending: StateSignal<boolean>;"
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/core!Hashbrown#lastAssistantMessage:member",
+          "docComment": "",
+          "excerptTokens": [
+            { "kind": "Content", "text": "lastAssistantMessage: " },
+            {
+              "kind": "Reference",
+              "text": "StateSignal",
+              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "Chat.AssistantMessage",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AssistantMessage_3:interface"
+            },
+            { "kind": "Content", "text": "<Output, Tools> | undefined>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "lastAssistantMessage",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 5 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "lastAssistantMessage: StateSignal<\n  Chat.AssistantMessage<Output, Tools> | undefined\n>;"
         },
         {
           "kind": "PropertySignature",
@@ -314,7 +365,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages: StateSignal<Chat.Message<Output, Tools>[]>;"
         },
         {
           "kind": "PropertySignature",
@@ -347,7 +399,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "resendMessages: () => void;"
         },
         {
           "kind": "PropertySignature",
@@ -386,7 +439,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "sendMessage: (message: Chat.Message<Output, Tools>) => void;"
         },
         {
           "kind": "PropertySignature",
@@ -425,7 +479,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "setMessages: (messages: Chat.Message<Output, Tools>[]) => void;"
         },
         {
           "kind": "PropertySignature",
@@ -458,7 +513,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "sizzle: () => () => void;"
         },
         {
           "kind": "PropertySignature",
@@ -494,7 +550,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;"
         },
         {
           "kind": "PropertySignature",
@@ -560,7 +617,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "updateOptions: (options: Partial<{\n        debugName?: string;\n        apiUrl: string;\n        model: KnownModelIds;\n        system: string;\n        tools: Tools[];\n        responseSchema: s.HashbrownType;\n        middleware: Chat.Middleware[];\n        emulateStructuredOutput: boolean;\n        debounce: number;\n        retries: number;\n    }>) => void;"
         }
       ],
       "extendsTokenRanges": [],
@@ -581,7 +639,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface Hashbrown<Output, Tools extends Chat.AnyTool>"
     }
   ]
 }

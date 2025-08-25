@@ -2,6 +2,7 @@ export type Link = { kind: 'link'; url: string; text: string };
 export type Section = {
   kind: 'section';
   title: string;
+  active: boolean;
   children: (Link | Section | LineBreak)[];
 };
 export type LineBreak = { kind: 'break' };
@@ -19,6 +20,7 @@ export const section = (
 ): Section => ({
   kind: 'section',
   title,
+  active: false,
   children,
 });
 

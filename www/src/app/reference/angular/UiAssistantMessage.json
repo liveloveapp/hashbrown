@@ -77,7 +77,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "type UiAssistantMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =\n  Chat.AssistantMessage<UiChatSchema, Tools> & {\n    [TAG_NAME_REGISTRY]: TagNameRegistry;\n  };"
     }
   ]
 }

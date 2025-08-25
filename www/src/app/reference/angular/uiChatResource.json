@@ -76,7 +76,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function uiChatResource<Tools extends Chat.AnyTool>(\n  args: UiChatResourceOptions<Tools>,\n): UiChatResourceRef<Tools>;"
     }
   ]
 }

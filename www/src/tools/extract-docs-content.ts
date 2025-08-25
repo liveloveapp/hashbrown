@@ -13,6 +13,7 @@ import {
 } from '@microsoft/tsdoc';
 import fs from 'fs';
 import path from 'path';
+import prettier from 'prettier';
 import {
   ApiDocs,
   ApiMember,
@@ -132,7 +133,7 @@ function filterMembersForAngularThetaChar(members: ApiMember[]): ApiMember[] {
   }, [] as ApiMember[]);
 }
 
-function rollupApiReport(pkg: ApiPackage): ApiReport {
+async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
   const apiReportPath = path.join(
     MONOREPO_ROOT,
     `dist/reports/${pkg.alias}.api.json`,
@@ -141,15 +142,92 @@ function rollupApiReport(pkg: ApiPackage): ApiReport {
     fs.readFileSync(apiReportPath, 'utf-8'),
   );
 
-  function recursivelyParseDocs(apiMember: ApiMember) {
-    apiMember.docs = parseTSDoc(apiMember.docComment ?? '');
-
-    if (apiMember.members) {
-      apiMember.members.forEach((member) => recursivelyParseDocs(member));
+  function joinExcerptTokens(
+    excerptTokens: ApiMember['excerptTokens'],
+  ): string {
+    try {
+      return (excerptTokens ?? []).map((t) => t.text).join('');
+    } catch {
+      return '';
     }
   }
 
-  recursivelyParseDocs(apiReport);
+  async function formatWithPrettier(code: string): Promise<string> {
+    try {
+      return await prettier.format(code, {
+        parser: 'typescript',
+        printWidth: 80,
+      });
+    } catch {
+      return code;
+    }
+  }
+
+  function dedent(body: string): string {
+    const lines = body.split(/\r?\n/);
+    const nonEmpty = lines.filter((l) => l.trim().length > 0);
+    const minIndent = nonEmpty.reduce(
+      (min, line) => {
+        const match = line.match(/^\s*/);
+        const indent = match ? match[0].length : 0;
+        return min === null ? indent : Math.min(min, indent);
+      },
+      null as number | null,
+    );
+    if (minIndent && minIndent > 0) {
+      return lines
+        .map((l) =>
+          l.startsWith(' '.repeat(minIndent)) ? l.slice(minIndent) : l,
+        )
+        .join('\n')
+        .trim();
+    }
+    return body.trim();
+  }
+
+  function extractClassBody(formattedClass: string): string {
+    const openIndex = formattedClass.indexOf('{');
+    const closeIndex = formattedClass.lastIndexOf('}');
+    if (openIndex === -1 || closeIndex === -1 || closeIndex <= openIndex) {
+      return formattedClass.trim();
+    }
+    const inner = formattedClass.slice(openIndex + 1, closeIndex);
+    return dedent(inner);
+  }
+
+  async function computeFormattedContent(
+    apiMember: ApiMember,
+  ): Promise<string> {
+    if (!apiMember || !apiMember.excerptTokens) return '';
+
+    const raw = joinExcerptTokens(apiMember.excerptTokens);
+    const kind = apiMember.kind;
+
+    if (!raw || raw.trim().length === 0) return '';
+
+    // Methods and Properties are not valid at the top-level; wrap in a class for formatting
+    if (kind === 'Method' || kind === 'Property') {
+      const wrapped = `declare class __HBW {\n${raw}\n}`;
+      const formattedWrapped = await formatWithPrettier(wrapped);
+      return extractClassBody(formattedWrapped);
+    }
+
+    // Everything else should be parseable as-is
+    return (await formatWithPrettier(raw)).trim();
+  }
+
+  async function recursivelyParseDocs(apiMember: ApiMember): Promise<void> {
+    apiMember.docs = parseTSDoc(apiMember.docComment ?? '');
+    apiMember.formattedContent = await computeFormattedContent(apiMember);
+
+    if (apiMember.members) {
+      for (const member of apiMember.members) {
+        await recursivelyParseDocs(member);
+      }
+    }
+  }
+
+  await recursivelyParseDocs(apiReport);
 
   const entryPoint = apiReport.members?.find(
     (member) => member.kind === 'EntryPoint',
@@ -245,16 +323,17 @@ function parseTSDoc(foundComment: string): ApiDocs {
   };
 }
 
-function parsePackages(): ApiPackageReport {
+async function parsePackages(): Promise<ApiPackageReport> {
   PACKAGES_TO_PARSE.forEach((pkg) => createApiReport(pkg));
 
-  const packages = PACKAGES_TO_PARSE.reduce(
-    (acc, pkg) => ({
-      ...acc,
-      [pkg.rewriteName ?? pkg.name]: rollupApiReport(pkg),
-    }),
-    {} as Record<string, ApiReport>,
+  const entries = await Promise.all(
+    PACKAGES_TO_PARSE.map(
+      async (pkg) =>
+        [pkg.rewriteName ?? pkg.name, await rollupApiReport(pkg)] as const,
+    ),
   );
+
+  const packages = Object.fromEntries(entries) as Record<string, ApiReport>;
   const packageNames = Object.keys(packages);
 
   return { packageNames, packages };
@@ -302,8 +381,8 @@ function minimizeApiReport(
   return { packageNames: apiReport.packageNames, packages };
 }
 
-function writeFinalizedApiReport() {
-  const report = parsePackages();
+async function writeFinalizedApiReport() {
+  const report = await parsePackages();
   const minimizedReport = minimizeApiReport(report);
 
   const minimizedReportPath = path.join(
@@ -313,7 +392,7 @@ function writeFinalizedApiReport() {
 
   for (const packageName of report.packageNames) {
     const packageReport = report.packages[packageName];
-    const [hashbrownai, ...packagePath] = packageName.split('/');
+    const [, ...packagePath] = packageName.split('/');
 
     for (const symbolName of packageReport.symbolNames) {
       const symbol = packageReport.symbols[symbolName];
@@ -343,4 +422,4 @@ function writeFinalizedApiReport() {
   fs.writeFileSync(minimizedReportPath, JSON.stringify(minimizedReport));
 }
 
-writeFinalizedApiReport();
+await writeFinalizedApiReport();

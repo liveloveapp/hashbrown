@@ -1,25 +1,11 @@
 # Structured Output
 
-We think that streaming structured output from an LLM opens lots of interesting opportunities for Angular developers to build intelligent web applications that leverage the power of natural language.
+<p class="subtitle">Specify the JSON schema of the model response.</p>
 
-There are many use cases for structured output. Here are a few.
-
-- Replace forms with natural language input via text or audio
-- Generate customized dashboards from ambient application state
-- Enable users to navigate, query, build, and customize the entire application user interface using natural language
-
-We think these are just a few of the use cases, and we're excited to see what you dream and build with Hashbrown.
-
----
-
-## Example
-
-[Run the structured output example in Stackblitz](/examples/angular/structured-output)
-
-A few notes:
-
-- First, you will need an OpenAI API Key.
-- Try the prompt: `"List the lights"`. That will provide you with
+- Structured output can replace forms with natural language input via text or audio.
+- Users can navigate via chat.
+- Provide structured predictive actions given application state and user events.
+- Allow the user to customer the entire application user interface.
 
 ---
 
@@ -29,175 +15,104 @@ A few notes:
 
 ---
 
-## Replacing Forms with Natural Language
+## The `structuredChatResource()` Function
 
-The primary purpose of a form is to collect structured data from a user.
-
-There are several problems that arise from using a form:
-
-- First, the designer and developer of an application has to identify the navigational flow, layout, and user interface for the form.
-- Second, the user must learn the navigation flow and how to complete the form.
-- Third, users often get it wrong, so the developer has to validate the user inputs and provide feedback to the user.
-
-Finally, these problems do not even consider accessibility, internationalization, and localization.
-
-We think it's time to replace forms on the web with natural language inputs.
-
----
-
-## Structured Chat
-
-In this first example we'll implement scheduling a calendar event using natural language using the @hashbrownai/angular!structuredChatResource:function function.
-
-<www-code-example header="calendar.ts">
+<hb-code-example header="get a structured response">
 
 ```ts
-chat = structuredChatResource({
-  model: 'gpt-4.1',
-  system: `
-    You are a scheduling assistant. The user will provide a brief description
-    of the date, time, and recurrence frequency for an event.
+@Component({})
+export class App {
+  // 1. Create the resource with the specified `schema`
+  chat = structuredChatResource({
+    system: `Collect the user's first and last name.`,
+    schema: s.object('The user', {
+      firstName: s.string('First name'),
+      lastName: s.string('Last name'),
+    }),
+  });
 
-    Your job is to parse the provided input and return a JSON object using the
-    recurrence rule specification.
-  `,
-  schema: s.object('rrule', {
-    freq: s.enumeration('Recurrence frequency (FREQ)', [
-      'SECONDLY',
-      'MINUTELY',
-      'HOURLY',
-      'DAILY',
-      'WEEKLY',
-      'MONTHLY',
-      'YEARLY',
-    ]),
-    until: s.anyOf([
-      s.nullish(),
-      s.string('End date-time (UNTIL) in UTC format YYYYMMDDTHHMMSSZ'),
-    ]),
-    count: s.anyOf([
-      s.nullish(),
-      s.number('Number of occurrences (COUNT)'),
-    ]),
-    interval: s.anyOf([
-      s.nullish(),
-      s.number('Interval between recurrences (INTERVAL); default is 1'),
-    ]),
-    bysecond: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Seconds list (BYSECOND)',
-        s.number('Second value between 0 and 59'),
-      ),
-    ]),
-    byminute: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Minutes list (BYMINUTE)',
-        s.number('Minute value between 0 and 59'),
-      ),
-    ]),
-    byhour: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Hours list (BYHOUR)',
-        s.number('Hour value between 0 and 23'),
-      ),
-    ]),
-    bymonthday: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Month days list (BYMONTHDAY)',
-        s.number('Day of month between 1 and 31'),
-      ),
-    ]),
-    byyearday: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Year days list (BYYEARDAY)',
-        s.number('Day of year between -366 and 366'),
-      ),
-    ]),
-    byweekno: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Week numbers list (BYWEEKNO)',
-        s.number('ISO week number between -53 and 53'),
-      ),
-    ]),
-    bymonth: s.anyOf([
-      s.nullish(),
-      s.array('By month', s.number('Month value between 1 and 12')),
-    ]),
-    bysetpos: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Set positions list (BYSETPOS)',
-        s.number('Set position between -366 and 366'),
-      ),
-    ]),
-    byday: s.anyOf([
-      s.nullish(),
-      s.array(
-        'Days of week list (BYDAY)',
-        s.string('Two-letter day code: MO, TU, WE, TH, FR, SA, SU'),
-      ),
-    ]),
-    wkst: s.anyOf([
-      s.nullish(),
-      s.string('Week start day code: MO, TU, WE, TH, FR, SA, SU'),
-    ]),
-  })
-});
+  constructor() {
+    // 1. Send a user message
+    chat.sendMessage({ role: 'user', content: 'My name is Brian Love' });
 
-sendMessage(message: string) {
-  this.chat.sendMessage({ role: 'user', content: message });
-}
-```
-
-</www-code-example>
-
-The example above leverages the natural language capabilities of an LLM to generate a recurrence rule for input into a calendar scheduling service.
-
-Let's quickly review:
-
-- The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource where the schema of the structured output is specified.
-- The `prompt` provides context to the LLM, instructing it to act as a scheduling assistant.
-- The `output` defines the expected structure of the response, using a schema that describes the recurrence rule format using Hashbrown's LLM-optimized schema language.
-
-When the user sends a message like `"Schedule a meeting every Monday at 10 AM"`, the LLM will parse this input and return a structured JSON object that can be used directly in your application.
-
-Here is what the output will look like:
-
-```json
-{
-  "rrule": {
-    "freq": "WEEKLY",
-    "interval": 1,
-    "byday": ["MO"],
-    "byhour": [10],
-    "byminute": [0],
-    "bysecond": [0],
-    "wkst": "MO"
+    // 3. Log out the structure response
+    effect(() => {
+      const value = chat.value();
+      console.log({
+        firstName: value.content.firstName,
+        lastName: value.content.lastName,
+      });
+    });
   }
 }
 ```
 
+</hb-code-example>
+
+1. The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource that can parse user input and return structured data.
+2. The `schema` option defines the expected structure of the response using Hashbrown's Skillet schema language.
+3. The resource `value()` contains the structured output, which can be used directly in your application.
+
+Here is the expected `content` value:
+
+```json
+{
+  "firstName": "Brian",
+  "lastName": "Love"
+}
+```
+
 ---
 
-## Structured Completions
+### `StructuredChatResourceOptions`
+
+| Option      | Type                                     | Required | Description                                               |
+| ----------- | ---------------------------------------- | -------- | --------------------------------------------------------- |
+| `model`     | `KnownModelIds \| Signal<KnownModelIds>` | Yes      | The model to use for the structured chat resource         |
+| `system`    | `string \| Signal<string>`               | Yes      | The system prompt to use for the structured chat resource |
+| `schema`    | `Schema`                                 | Yes      | The schema to use for the structured chat resource        |
+| `tools`     | `Tools[]`                                | No       | The tools to use for the structured chat resource         |
+| `messages`  | `Chat.Message<Output, Tools>[]`          | No       | The initial messages for the structured chat resource     |
+| `debugName` | `string`                                 | No       | The debug name for the structured chat resource           |
+| `debounce`  | `number`                                 | No       | The debounce time for the structured chat resource        |
+| `retries`   | `number`                                 | No       | The number of retries for the structured chat resource    |
+| `apiUrl`    | `string`                                 | No       | The API URL to use for the structured chat resource       |
+
+---
+
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/angular/structuredChatResource">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>structuredChatResource() API</h4>
+      <p>See the resource documentation</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="/api/angular/StructuredChatResourceOptions">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>StructuredChatResourceOptions API</h4>
+      <p>See all of the options</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
+## The `structuredCompletionResource()` Function
 
 The @hashbrownai/angular!structuredCompletionResource:function function builds on top of the @hashbrownai/angular!structuredChatResource:function function by providing an additional `input` option.
 
-This enables Angular developers to build reactive input/output LLM resources for building meaningful user experiences in their web applications.
-
-Let's look at the [scene form dialog from our sample application](https://github.com/liveloveapp/hashbrown/blob/main/samples/smart-home/client/src/app/features/scenes/scene-form-dialog/scene-form-dialog.component.ts).
-
-<www-code-example header="scene-form-dialog.component.ts">
+<hb-code-example header="get a structured response from a bound input">
 
 ```ts
 predictedLights = structuredCompletionResource({
-  model: 'gpt-4.1',
   debugName: 'Predict Lights',
   system: `
     You are an assistant that helps the user configure a lighting scene.
@@ -232,32 +147,72 @@ predictedLights = structuredCompletionResource({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 
-- The @hashbrownai/angular!structuredCompletionResource:function function is used to create a resource that predicts lights based on the scene name.
-- The `input` option is set to a signal that contains the scene name and additional untracked context. This signal updates each time the scene name signal changes, and reads the list of light names and sends them along.
-- The `system` option provides context to the LLM, instructing it to predict lights based on the scene name.
-- The `schema` defines the expected structure of the response, which includes an array of lights with their IDs and brightness levels.
+1. The @hashbrownai/angular!structuredCompletionResource:function function is used to create a resource that predicts lights based on the scene name.
+2. The `input` option is set to a signal that contains the scene name and additional untracked context. This signal updates each time the scene name signal changes, and reads the list of light names and sends them along.
+3. The `schema` defines the expected structure of the response, which includes an array of lights with their IDs and brightness levels.
 
 When the user types a scene name, the LLM will predict which lights should be added to the scene and return a structured JSON object that can be used directly in your application.
 
 ---
 
+### `StructuredCompletionResourceOptions`
+
+| Option      | Type                                 | Required | Description                                                     |
+| ----------- | ------------------------------------ | -------- | --------------------------------------------------------------- |
+| `model`     | `KnownModelIds`                      | Yes      | The model to use for the structured completion resource         |
+| `input`     | `Signal<null \| undefined \| Input>` | Yes      | The input to the structured completion resource                 |
+| `schema`    | `Schema`                             | Yes      | The schema to use for the structured completion resource        |
+| `system`    | `SignalLike<string>`                 | Yes      | The system prompt to use for the structured completion resource |
+| `tools`     | `Chat.AnyTool[]`                     | No       | The tools to use for the structured completion resource         |
+| `debugName` | `string`                             | No       | The debug name for the structured completion resource           |
+| `apiUrl`    | `string`                             | No       | The API URL to use for the structured completion resource       |
+
+---
+
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/angular/structuredCompletionResource">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>structuredCompletionResource() API</h4>
+      <p>See the full resource</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="/api/angular/StructuredCompletionResourceOptions">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>StructuredCompletionResourceOptions API</h4>
+      <p>See the options</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
 ## Global Predictions
 
-In this example, we'll assume you are using a global state container.
+In this example, we'll assume you are using a global state container (like NgRx).
 We'll send each action to the LLM and ask it to predict the next possible action a user should consider.
 
-<www-code-example header="predictions.ts">
+<hb-code-example header="predictions.ts">
 
 ```ts
 lastAction = this.store.selectSignal(selectLastUserAction);
 
 predictions = structuredCompletionResource({
-  model: 'gpt-4.1',
+  // 1. The resource is re-computed with the last user action
   input: this.lastAction,
+
+  // 2. The system instructions provide the guidelines and rules
   system: `
     You are an AI smart home assistant tasked with predicting the next possible user action in a 
     smart home configuration app. Your suggestions will be displayed as floating cards in the 
@@ -277,6 +232,8 @@ predictions = structuredCompletionResource({
       response.
     - You may make multiple predictions. Just add multiple predictions to the array.
   `,
+
+  // 3. Provide tools to retrieve the current app state
   tools: [
     createTool({
       name: 'getLights',
@@ -289,6 +246,8 @@ predictions = structuredCompletionResource({
       handler: () => this.smartHomeService.loadScenes(),
     }),
   ],
+
+  // 4. Specify the structured output schema
   schema: s.object('The result', {
     predictions: s.streaming.array(
       'The predictions',
@@ -331,15 +290,15 @@ predictions = structuredCompletionResource({
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above:
 
-- The @hashbrownai/angular!structuredCompletionResource:function function is used to create a resource that predicts the next possible user action based on the last action.
-- The `input` option is set to a signal that contains the last user action, allowing the resource to reactively update when the last action changes.
-- The `system` option provides context to the LLM, instructing it to predict the next possible user action in the app.
-- The `tools` option defines two tools that the LLM can use to get the current state of lights and scenes in the smart home.
-- The `schema` defines the expected structure of the response, which includes an array of predictions with their types and details.
+1. The @hashbrownai/angular!structuredCompletionResource:function function is used to create a resource that predicts the next possible user action based on the last action.
+2. The `input` option is set to a signal that contains the last user action, allowing the resource to reactively update when the last action changes.
+3. The `system` option provides context to the LLM, instructing it to predict the next possible user action in the app.
+4. The `tools` option defines two tools that the LLM can use to get the current state of lights and scenes in the smart home.
+5. The `schema` defines the expected structure of the response, which includes an array of predictions with their types and details.
 
 When the user performs an action, the LLM will predict the next possible actions and return a structured JSON object.
 From there, you can wire up a toast notification to be displayed when the LLM provides a prediction.
@@ -347,7 +306,25 @@ When the user accepts the predictive action, dispatch the action and update the 
 
 ---
 
-## Conclusion
+## Next Steps
 
-We have explored how to use structured chat and structured completions to build applications that can parse user input and generate structured data.
-Structured output from LLMs opens up a world of possibilities for Angular developers to create intelligent applications that can understand and respond to natural language.
+<hb-next-steps>
+  <hb-next-step link="concept/components">
+    <div>
+      <hb-components />
+    </div>
+    <div>
+      <h4>Generate user interfaces</h4>
+      <p>Expose Angular components to the LLM for generative UI.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/runtime">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>Execute LLM-generated JS in the browser (safely)</h4>
+      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>

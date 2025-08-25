@@ -69,7 +69,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function completionResource<Input>(\n  options: CompletionResourceOptions<Input>,\n): CompletionResourceRef;"
     }
   ]
 }

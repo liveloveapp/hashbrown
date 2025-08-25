@@ -8,15 +8,15 @@ import { SymbolLink } from './SymbolLink';
   encapsulation: ViewEncapsulation.None,
   styles: [
     `
-      www-markdown-symbol-link a {
-        background: rgba(158, 207, 215, 0.56);
-        color: #fff;
-        padding: 3px 6px;
-        border-radius: 4px;
-        font-family: 'Operator Mono', monospace;
-        font-variant-ligatures: none;
-        font-weight: 600;
-        text-decoration: none;
+      hb-markdown-symbol-link a {
+        color: var(--sky-blue-dark, #64afb5);
+        font:
+          700 14px/21px 'JetBrains Mono',
+          monospace;
+        text-decoration: underline !important;
+        text-decoration-style: solid;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 2px;
       }
     `,
   ],

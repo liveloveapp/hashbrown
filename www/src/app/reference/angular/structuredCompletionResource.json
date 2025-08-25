@@ -100,7 +100,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function structuredCompletionResource<\n  Input,\n  Schema extends s.HashbrownType,\n  Output extends s.Infer<Schema> = s.Infer<Schema>,\n>(\n  options: StructuredCompletionResourceOptions<Input, Schema>,\n): StructuredCompletionResourceRef<Output>;"
     }
   ]
 }
