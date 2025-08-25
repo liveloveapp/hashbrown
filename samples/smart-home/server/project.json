@@ -1,0 +1,59 @@
+{
+  "name": "smart-home-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/smart-home/server/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/samples/smart-home/server",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "samples/smart-home/server/src/main.ts",
+        "tsConfig": "samples/smart-home/server/tsconfig.app.json",
+        "assets": ["samples/smart-home/server/src/assets"],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "smart-home-server:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "smart-home-server:build:development"
+        },
+        "production": {
+          "buildTarget": "smart-home-server:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}

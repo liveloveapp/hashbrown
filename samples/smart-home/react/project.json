@@ -1,0 +1,15 @@
+{
+  "name": "smart-home-react",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/smart-home/react/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "echo 'Skipping build for client-react'"
+      }
+    }
+  }
+}
