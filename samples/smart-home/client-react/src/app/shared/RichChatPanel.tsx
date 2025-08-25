@@ -103,9 +103,7 @@ export const RichChatPanel = () => {
       exposeComponent(MarkdownComponent, {
         name: 'MarkdownComponent',
         description: 'Show markdown content to the user',
-        props: {
-          content: s.streaming.string('The content of the markdown'),
-        },
+        children: 'text',
       }),
       exposeComponent(CardComponent, {
         name: 'CardComponent',

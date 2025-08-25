@@ -18,7 +18,7 @@ export interface ExposedComponent<T extends { new (...args: any[]): any }> {
   component: T;
   name: string;
   description: string;
-  children?: 'any' | ExposedComponent<any>[] | false;
+  children?: 'any' | 'text' | ExposedComponent<any>[] | false;
   props?: ComponentPropSchema<T>;
 }
 

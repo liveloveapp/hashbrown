@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '../schema';
-import { Prettify } from './types';
+import { Prettify } from '../utils';
 
 type Component<T = any> =
   | { new (...args: any[]): T } // Angular
@@ -26,14 +26,13 @@ interface ExposedComponent<T extends Component<unknown>> {
   component: T;
   name: string;
   description: string;
-  children?: 'any' | ExposedComponent<any>[] | false;
+  children?: 'any' | 'text' | ExposedComponent<any>[] | false;
   props?: ComponentPropSchema<T>;
 }
 
 type ComponentTree = {
-  $tagName: string;
+  $tag: string;
   $children: ComponentTree[];
-  $props: Record<string, any>;
 };
 
 export type ComponentTreeSchema = {
@@ -88,37 +87,48 @@ export function createComponentSchema(
 
     if (children === 'any') {
       const schema = s.object(component.description, {
-        $tagName: s.literal(component.name),
-        $props: s.object('Props', component.props ?? {}),
+        $tag: s.literal(component.name),
         get $children(): any {
           return s.streaming.array('Child Elements', elements);
         },
+        ...(component.props ?? {}),
+      });
+
+      weakMap.set(component.component, schema);
+      return schema;
+    } else if (children === 'text') {
+      const schema = s.object(component.description, {
+        $tag: s.literal(component.name),
+        $children: s.streaming.string('Content'),
+        ...(component.props ?? {}),
       });
 
       weakMap.set(component.component, schema);
       return schema;
     } else if (children && Array.isArray(children)) {
       const schema = s.object(component.description, {
-        $tagName: s.literal(component.name),
-        $props: s.object('Props', component.props ?? {}),
+        $tag: s.literal(component.name),
         get $children(): any {
           return s.streaming.array(
             'Child Elements',
             s.anyOf(children.map((child) => createSchema(child))),
           );
         },
+        ...(component.props ?? {}),
       });
 
       weakMap.set(component.component, schema);
       return schema;
+    } else {
+      const schema = s.object(component.description, {
+        $tag: s.literal(component.name),
+        ...(component.props ?? {}),
+      });
+      weakMap.set(component.component, schema);
+      return schema;
     }
 
-    const schema = s.object(component.description, {
-      $tagName: s.literal(component.name),
-      $props: s.object('Props', component.props ?? {}),
-    });
-    weakMap.set(component.component, schema);
-    return schema;
+    throw new Error(`Invalid children type: ${children}`);
   }
 
   return elements as any;
