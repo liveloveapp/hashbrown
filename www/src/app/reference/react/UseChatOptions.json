@@ -2,7 +2,7 @@
   "name": "UseChatOptions",
   "canonicalReference": "@hashbrownai/react!UseChatOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -21,7 +21,7 @@
         },
         { "kind": "Content", "text": "> " }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-chat.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
@@ -64,7 +64,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounceTime?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -97,7 +98,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -135,7 +137,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages?: Chat.Message<string, Tools>[];"
         },
         {
           "kind": "PropertySignature",
@@ -172,7 +175,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model: KnownModelIds;"
         },
         {
           "kind": "PropertySignature",
@@ -205,7 +209,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -238,7 +243,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string;"
         },
         {
           "kind": "PropertySignature",
@@ -271,7 +277,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Tools[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -292,7 +299,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseChatOptions<Tools extends Chat.AnyTool>"
     }
   ]
 }

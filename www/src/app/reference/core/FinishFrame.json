@@ -48,7 +48,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "type: \"finish\";"
         }
       ],
       "extendsTokenRanges": [],
@@ -69,7 +70,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface FinishFrame"
     }
   ]
 }

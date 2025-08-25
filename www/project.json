@@ -27,7 +27,8 @@
         "main": "www/src/main.ts",
         "configFile": "www/vite.config.ts",
         "outputPath": "dist/www/client",
-        "tsConfig": "www/tsconfig.app.json"
+        "tsConfig": "www/tsconfig.app.json",
+        "styles": ["@angular/cdk/overlay-prebuilt.css"]
       },
       "dependsOn": ["^collect-docs"]
     },

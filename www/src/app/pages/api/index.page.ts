@@ -3,7 +3,7 @@ import { KindChip } from '../../components/KindChip';
 import { SymbolChip } from '../../components/SymbolChip';
 import { Search } from '../../icons/Search';
 import { MinimizedApiMemberSummary } from '../../models/api-report.models';
-import { ReferenceService } from '../../services/ReferenceService';
+import { ApiService } from '../../services/ApiService';
 
 @Component({
   imports: [SymbolChip, Search, KindChip],
@@ -59,12 +59,20 @@ import { ReferenceService } from '../../services/ReferenceService';
       .controls {
         display: flex;
         align-items: flex-end;
-        padding: 32px;
+        padding: 24px;
         width: 100%;
         justify-content: space-between;
 
         > h1 {
-          font: 500 32px/40px sans-serif;
+          color: var(--gray, #5e5c5a);
+          font:
+            750 22px/32px KefirVariable,
+            sans-serif;
+          font-variation-settings: 'wght' 750;
+
+          &:first-child {
+            margin-top: 0;
+          }
         }
 
         > .search {
@@ -91,7 +99,7 @@ import { ReferenceService } from '../../services/ReferenceService';
         display: flex;
         flex-direction: column;
         gap: 16px;
-        padding: 32px;
+        padding: 24px;
 
         .kinds {
           display: grid;
@@ -112,11 +120,11 @@ import { ReferenceService } from '../../services/ReferenceService';
         gap: 32px;
         width: 100%;
         max-width: 767px;
-        padding: 32px;
+        padding: 24px;
 
         > h2 {
           font:
-            700 14px/18px 'Operator Mono',
+            700 14px/18px 'JetBrains Mono',
             monospace;
           color: #774625;
           margin-top: 32px;
@@ -130,26 +138,39 @@ import { ReferenceService } from '../../services/ReferenceService';
           width: 100%;
           padding: 0 24px;
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: 1fr;
           gap: 16px;
           border-left: 1px solid rgba(255, 255, 255, 0.12);
         }
       }
 
-      @media screen and (min-width: 1024px) {
+      @media screen and (min-width: 768px) {
+        .packages {
+          > .symbols {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+      }
+
+      @media screen and (min-width: 1281px) {
         .packages {
           max-width: 1024px;
+
+          > .symbols {
+            border-left: 1px solid rgba(255, 255, 255, 0.12);
+            grid-template-columns: repeat(3, 1fr);
+          }
         }
       }
     `,
   ],
 })
 export default class ApiIndexPage {
-  referenceService = inject(ReferenceService);
+  apiService = inject(ApiService);
   selectedKind = signal<string>('');
   searchTerm = signal<string>('');
   filteredPackages = computed(() => {
-    const packageReport = this.referenceService.getMinifiedApiReport();
+    const packageReport = this.apiService.getMinifiedApiReport();
     const term = this.searchTerm();
     const selectedKind = this.selectedKind();
 
@@ -183,7 +204,7 @@ export default class ApiIndexPage {
   });
 
   kinds = computed(() => {
-    const packageReport = this.referenceService.getMinifiedApiReport();
+    const packageReport = this.apiService.getMinifiedApiReport();
     if (!packageReport) return [];
 
     const uniqueKinds = Object.values(packageReport.packages).reduce(

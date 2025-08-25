@@ -104,7 +104,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function exposeComponent<\n  T extends {\n    new (...args: any[]): any;\n  },\n>(\n  component: T,\n  config: _types.Prettify<\n    Omit<ExposedComponent<T>, \"component\" | \"name\" | \"props\"> & {\n      input?: ComponentPropSchema<T>;\n    }\n  >,\n): ExposedComponent<T>;"
     }
   ]
 }

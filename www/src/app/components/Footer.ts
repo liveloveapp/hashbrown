@@ -36,12 +36,24 @@ import { ConfigService } from '../services/ConfigService';
             </li>
           </ul>
         </div>
-        <div class="enterprise">
-          <div class="title">Enterprise</div>
+        <div class="learn">
+          <div class="title">Learn</div>
           <ul>
             <li>
-              <a routerLink="/enterprise" class="underline">
-                Enterprise Support
+              <a routerLink="/workshops" class="underline"> Workshops </a>
+            </li>
+          </ul>
+        </div>
+        <div class="contact">
+          <div class="title">Contact</div>
+          <ul>
+            <li>
+              <a routerLink="/contact-us" class="underline">Contact Us</a>
+            </li>
+            <li>
+              <a href="mailto:hello@liveloveapp.com" class="underline">
+                <span>hello&#64;liveloveapp.com</span>
+                <span>Email us</span>
               </a>
             </li>
           </ul>
@@ -195,7 +207,7 @@ import { ConfigService } from '../services/ConfigService';
       flex-direction: column;
       gap: 32px;
       margin: 0 auto;
-      padding: 32px;
+      padding: 24px;
       width: 100%;
 
       > .links {
@@ -239,12 +251,13 @@ import { ConfigService } from '../services/ConfigService';
           grid-column: span 6;
         }
 
-        > .enterprise {
+        > .learn {
           grid-column: span 6;
         }
 
         > .docs,
-        > .enterprise {
+        > .learn,
+        > .contact {
           display: flex;
           flex-direction: column;
           gap: 8px;
@@ -262,7 +275,23 @@ import { ConfigService } from '../services/ConfigService';
             display: flex;
             flex-direction: column;
             gap: 4px;
+
+            > li {
+              > a {
+                > span:first-child {
+                  display: block;
+                }
+
+                > span:last-child {
+                  display: none;
+                }
+              }
+            }
           }
+        }
+
+        > .contact {
+          grid-column: span 12;
         }
       }
 
@@ -286,19 +315,39 @@ import { ConfigService } from '../services/ConfigService';
       }
     }
 
-    @media screen and (min-width: 768px) {
+    @media screen and (min-width: 768px) and (max-width: 1023px) {
       footer {
         > .links {
+          > .contact {
+            > ul {
+              > li {
+                > a {
+                  > span:first-child {
+                    display: none;
+                  }
+
+                  > span:last-child {
+                    display: block;
+                  }
+                }
+              }
+            }
+          }
+
           > .brand {
             grid-column: span 3;
           }
 
           > .docs {
-            grid-column: 7 / span 3;
+            grid-column: 5 / span 2;
           }
 
-          > .enterprise {
-            grid-column: 10 / span 3;
+          > .learn {
+            grid-column: 8 / span 2;
+          }
+
+          > .contact {
+            grid-column: 11 / span 2;
           }
         }
       }
@@ -312,10 +361,14 @@ import { ConfigService } from '../services/ConfigService';
           }
 
           > .docs {
+            grid-column: 7 / span 2;
+          }
+
+          > .learn {
             grid-column: 9 / span 2;
           }
 
-          > .enterprise {
+          > .contact {
             grid-column: 11 / span 2;
           }
         }
@@ -333,7 +386,7 @@ export class Footer {
   currentYear = new Date().getFullYear();
 
   docsUrl = computed(() => {
-    return `/docs/${this.configService.sdk()}/start/quick`;
+    return `/docs/${this.configService.sdk()}/start/intro`;
   });
   examplesUrl = computed(() => {
     return `/examples/${this.configService.sdk()}/ui-chat`;

@@ -83,7 +83,8 @@
           { "name": "Result", "description": "The result of the function.\n\n" }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export type RuntimeFunctionRef<Args, Result> = {\n  name: string;\n  description: string;\n  args?: s.HashbrownType;\n  result?: s.HashbrownType;\n  handler: (args: Args, abortSignal: AbortSignal) => Result | Promise<Result>;\n};"
     }
   ]
 }

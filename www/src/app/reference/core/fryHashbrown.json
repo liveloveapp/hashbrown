@@ -138,7 +138,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function fryHashbrown<Tools extends Chat.AnyTool>(init: {\n  debugName?: string;\n  apiUrl: string;\n  model: KnownModelIds;\n  system: string;\n  messages?: Chat.Message<string, Tools>[];\n  tools?: Tools[];\n  middleware?: Chat.Middleware[];\n  emulateStructuredOutput?: boolean;\n  debounce?: number;\n  retries?: number;\n}): Hashbrown<string, Tools>;"
     },
     {
       "kind": "Function",
@@ -261,7 +262,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function fryHashbrown<\n  Schema extends s.HashbrownType,\n  Tools extends Chat.AnyTool,\n  Output extends s.Infer<Schema> = s.Infer<Schema>,\n>(init: {\n  debugName?: string;\n  apiUrl: string;\n  model: KnownModelIds;\n  system: string;\n  messages?: Chat.Message<Output, Tools>[];\n  tools?: Tools[];\n  responseSchema: Schema;\n  middleware?: Chat.Middleware[];\n  emulateStructuredOutput?: boolean;\n  debounce?: number;\n  retries?: number;\n}): Hashbrown<Output, Tools>;"
     }
   ]
 }

@@ -8,49 +8,35 @@ import { SymbolExcerpt } from './SymbolExcerpt';
   template: `
     @for (param of params(); track $index) {
       <div class="param">
-        <code class="symbol">{{ '@type' }}</code>
+        <code class="symbol">@type</code>
         <code class="name">{{ param.name }}</code>
         <www-symbol-excerpt [excerptTokens]="param.excerptTokens" />
       </div>
     }
   `,
-  styles: [
-    `
-      :host {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
 
-      .param {
-        display: grid;
-        align-items: center;
-        grid-template-columns: 96px 112px 1fr;
-        gap: 16px;
+    .param {
+      display: flex;
+      align-items: center;
+      gap: 8px;
 
-        > code {
-          font:
-            500 12px/16px 'Operator Mono',
-            monospace;
-          font-variant-ligatures: none;
-        }
+      > code {
+        color: var(--sunset-orange, #fbbb52);
 
-        > .symbol {
-          font:
-            700 14px/18px 'Operator Mono',
-            monospace;
-          color: #fbbb52;
-        }
-
-        > .name {
-          font:
-            700 14px/18px 'Operator Mono',
-            monospace;
-          color: #ffa657;
+        &.symbol {
+          font-weight: 300;
+          color: var(--vanilla-ivory, #faf9f0);
         }
       }
-    `,
-  ],
+    }
+  `,
 })
 export class SymbolTypeParams {
   symbol = input.required<ApiMember>();

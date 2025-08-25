@@ -2,7 +2,7 @@
   "name": "ToolOptions",
   "canonicalReference": "@hashbrownai/react!ToolOptions:type",
   "kind": "TypeAlias",
-  "fileUrlPath": "../dist/packages/react/hooks/use-tool.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-tool.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -35,13 +35,19 @@
         { "kind": "Content", "text": "<Name, Schema, Result> | " },
         {
           "kind": "Reference",
+          "text": "ToolOptionsWithUnknownSchema",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
+        },
+        { "kind": "Content", "text": "<Name, Result> | " },
+        {
+          "kind": "Reference",
           "text": "ToolOptionsWithoutInput",
           "canonicalReference": "@hashbrownai/react!~ToolOptionsWithoutInput:interface"
         },
         { "kind": "Content", "text": "<Name, Result>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-tool.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-tool.d.ts",
       "releaseTag": "Public",
       "name": "ToolOptions",
       "typeParameters": [
@@ -61,7 +67,7 @@
           "defaultTypeTokenRange": { "startIndex": 7, "endIndex": 8 }
         }
       ],
-      "typeTokenRange": { "startIndex": 9, "endIndex": 13 },
+      "typeTokenRange": { "startIndex": 9, "endIndex": 15 },
       "docs": {
         "modifiers": {
           "isInternal": false,
@@ -79,7 +85,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export type ToolOptions<\n  Name extends string,\n  Schema extends s.HashbrownType = s.HashbrownType,\n  Result = unknown,\n> =\n  | ToolOptionsWithInput<Name, Schema, Result>\n  | ToolOptionsWithUnknownSchema<Name, Result>\n  | ToolOptionsWithoutInput<Name, Result>;"
     }
   ]
 }

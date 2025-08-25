@@ -1,7 +1,7 @@
 /**
  * translate-docs.ts
  *
- * Transliterate documentation from one framework to another with GPT‑4o,
+ * Transliterate documentation from one framework to another with GPT-4o,
  * optionally merging the result with an existing target doc.
  *
  * Example:
@@ -104,24 +104,24 @@ Transform Markdown written for the **${fromFramework}** SDK into Markdown for th
 CONSTRAINTS
 -----------
 • Preserve tone, structure, and pedagogical flow.  
-• Replace ${fromFramework}‑specific APIs with idiomatic ${toFramework} counterparts using the accompanying API reports.  
+• Replace ${fromFramework}-specific APIs with idiomatic ${toFramework} counterparts using the accompanying API reports.  
 • Use best practices for ${toFramework} (e.g. functional components & hooks for React, Composition API for Vue, etc.).  
 • Keep all headings and ordering unless a change is required by framework differences.  
-• Output valid Markdown only, no front‑matter or extra commentary.
+• Output valid Markdown only, no front-matter or extra commentary.
 
 WHEN AN EXISTING TARGET DOC IS SUPPLIED
 ---------------------------------------
 If \`existingTargetDoc\` appears below, treat it as the **authoritative starting point** (it may contain manual edits).  
 – Keep its improvements.  
 – Update only sections that need API or example changes.  
-– Preserve any human‑added caveats or clarifications unless obsolete.
+– Preserve any human-added caveats or clarifications unless obsolete.
 
 RETURN FORMAT
 -------------
 \`\`\`json
 {
   "markdown": "<final target markdown>",
-  "observations": "<optional free‑form notes>"
+  "observations": "<optional free-form notes>"
 }
 \`\`\`
 
@@ -180,7 +180,7 @@ async function main() {
 
   const mdFiles = await readdir('src/app/pages/docs', { recursive: true });
 
-  // Pre‑load relevant API reports (core + both frameworks)
+  // Pre-load relevant API reports (core + both frameworks)
   const apiReports = await Promise.all(
     ['core', FROM, TO, 'azure', 'google', 'openai', 'writer'].map(
       loadApiReport,

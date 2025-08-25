@@ -129,6 +129,7 @@ export interface ApiMember {
   variableTypeTokenRange?: ApiTokenRange;
   releaseTag: ApiReleaseTag;
   excerptTokens: ApiExcerptToken[];
+  formattedContent: string;
   members?: ApiMember[];
   parameters?: ApiMemberParam[];
   typeParameters?: ApiMemberTypeParam[];

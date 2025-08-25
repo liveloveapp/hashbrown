@@ -1,428 +1,362 @@
 # Angular Quick Start
 
-Hashbrown is an open source framework for building generative user interfaces in Angular.
-
-## Key Concepts
-
-- **Headless**: build your UI how you want
-- **Signal Based**: Hashbrown uses signals and resources for reactivity
-- **[Platform Agnostic](/docs/angular/start/platforms)**: use any supported LLM provider
-- **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
-- **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular components
-- **[Runtime](/docs/angular/concept/runtime)**: safely execute LLM-generated JavaScript code in the client
-
----
-
-## Demo
-
-<div style="padding:64.9% 0 0 0;position:relative;width:100%"><iframe src="https://player.vimeo.com/video/1088958585?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Introducing Hashbrown"></iframe></div>
-
----
-
-## Prerequisites
-
-- Node.js v18+
-- Angular v20+
-
----
-
-## OpenAI API Key
-
-In this intro to Hashbrown, we'll be using OpenAI's Large Language Models.
-
-To follow along, you'll need to
-
-1. [Sign up for OpenAI's API](https://openai.com/api/)
-2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
-3. Copy the API Key so you have it handy
-4. Follow the instructions in [the OpenAI Adapter docs](/docs/angular/platform/openai) to setup a backend endpoint for Hashbrown to consume
+<p class="subtitle">Take your first steps with Hashbrown.</p>
 
 ---
 
 ## Install
 
+<hb-code-example header="terminal">
+
 ```sh
 npm install @hashbrownai/{core,angular,openai} --save
 ```
 
----
-
-## Running Examples
-
-We have two ways for you to get your hands on the code and play with Hashbrown.
-
-- Click the **run** button to launch the examples below.
-- Or, [clone the repository](https://github.com/liveloveapp/hashbrown) and run our samples. You can learn more in the README.
+</hb-code-example>
 
 ---
 
-## Create Chat Resource
+## Provider
 
-The @hashbrownai/angular!chatResource:function is the basic resource for interacting with a Large Language Model (LLM) via text.
-It provides a set of methods for sending and receiving messages, as well as managing the chat state.
-
-<www-code-example header="chat-panel.ts" run="/examples/angular/chat">
+<hb-code-example header="provide hashbrown">
 
 ```ts
-@Component({
-  selector: 'app-chat',
-  imports: [Composer, Messages],
-  template: `
-    <div class="messages">
-      @for (message of chat.value(); track $index) {
-        @switch (message.role) {
-          @case ('user') {
-            <div class="user">
-              <p>{{ message.content }}</p>
-            </div>
-          }
-          @case ('assistant') {
-            <div class="assistant">
-              <p>{{ message.content }}</p>
-            </div>
-          }
-        }
-      }
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHashbrown({
+      baseUrl: '/api/chat',
+    }),
+  ],
+};
+```
+
+</hb-code-example>
+
+1. Import the @hashbrownai/angular!provideHashbrown:function function from `@hashbrownai/angular`.
+2. Optionally specify options such as the `baseUrl` for chat requests.
+3. Add the provider to your Angular application configuration.
+
+<hb-expander title="Intercept requests using middleware">
+
+You can also intercept requests to the Hashbrown adapter using a middleware pattern.
+
+<hb-code-example header="middleware">
+
+```ts
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHashbrown({
+      middleware: [
+        function (request: RequestInit) {
+          console.log({ request });
+          return request;
+        },
+      ],
+    }),
+  ],
+};
+```
+
+</hb-code-example>
+
+1. The `middleware` option to the provider allows the developer to intercept Hashbrown requests.
+2. Middleware functions can be async.
+3. This is useful for appending headers, etc.
+
+</hb-expander>
+
+---
+
+## Node Adapters
+
+To get started, we recommend running a local express server following the Hashbrown adapter documentation.
+
+- [OpenAI](/docs/angular/platform/openai)
+- [Azure OpenAI](/docs/angular/platform/azure)
+- [Google Gemini](/docs/angular/platform/google)
+- [Writer](/docs/angular/platform/writer)
+
+---
+
+## The `chatResource()` Function
+
+The @hashbrownai/angular!chatResource:function function from `@hashbrownai/angular` is the basic way to interact with the model.
+
+<hb-code-example header="chatResource()">
+
+```ts
+chatResource({
+  model: 'gpt-5',
+  system: 'hashbrowns should be covered and smothered',
+  messages: [{ role: 'user', content: 'Write a short story about breakfast.' }],
+});
+```
+
+</hb-code-example>
+
+1. First, we specify the `model`.
+2. Second, we provide [system instructions](/docs/angular/concept/system-instructions).
+3. Third, we send some initial `messages` to the model.
+
+---
+
+### `ChatResourceOptions`
+
+| Option    | Type                                                                   | Required | Description                                                       |
+| --------- | ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
+| system    | string \| Signal<string>                                               | Yes      | System (assistant) prompt.                                        |
+| model     | KnownModelIds \| Signal<KnownModelIds>                                 | Yes      | Model identifier to use.                                          |
+| tools     | Tools[]                                                                | No       | Array of bound tools available to the chat.                       |
+| messages  | Chat.Message<string, Tools>[] \| Signal<Chat.Message<string, Tools>[]> | No       | Initial list of chat messages.                                    |
+| debounce  | number                                                                 | No       | Debounce interval in milliseconds between user inputs.            |
+| debugName | string                                                                 | No       | Name used for debugging in logs and reactive signal labels.       |
+| apiUrl    | string                                                                 | No       | Override for the API base URL (defaults to configured `baseUrl`). |
+
+---
+
+### `ChatResourceRef`
+
+The @hashbrownai/angular!chatResource:function function returns a @hashbrownai/angular!ChatResourceRef:interface object that extends Angular's `Resource<Chat.Message<string, Tools>[]>` interface.
+
+| Property                 | Type                                         | Description                                                                                                       |
+| ------------------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `value()`                | `Signal<Chat.Message[]>`                     | The current chat messages (inherited from Resource).                                                              |
+| `status()`               | `Signal<ResourceStatus>`                     | The current status of the resource: 'idle', 'loading', 'resolved', or 'error' (inherited from Resource).          |
+| `isLoading()`            | `Signal<boolean>`                            | Whether the resource is currently loading (inherited from Resource).                                              |
+| `hasValue()`             | `Signal<boolean>`                            | Whether the resource has any assistant messages (inherited from Resource).                                        |
+| `error()`                | `Signal<Error \| undefined>`                 | Any error that occurred during the chat operation.                                                                |
+| `lastAssistantMessage()` | `Signal<Chat.AssistantMessage \| undefined>` | The last assistant message in the chat.                                                                           |
+| `sendMessage(message)`   | `(message: Chat.UserMessage) => void`        | Send a new user message to the chat.                                                                              |
+| `stop(clear?)`           | `(clear?: boolean) => void`                  | Stop any currently-streaming message. Optionally removes the streaming message from state.                        |
+| `reload()`               | `() => boolean`                              | Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed. |
+
+---
+
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/angular/chatResource">
+    <div>
+      <hb-code />
     </div>
-    <app-composer (sendMessage)="sendMessage($event)" />
+    <div>
+      <h4>chatResource()</h4>
+      <p>See the resource documentation</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="/api/angular/ChatResourceOptions">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>ChatResourceOptions API</h4>
+      <p>See all of the options</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="/api/angular/ChatResourceRef">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>ChatResourceRef API</h4>
+      <p>See all of the properties and methods</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
+## Render the Model Response
+
+<hb-code-example header="a short story about breakfast">
+
+```ts
+import { chatResource } from '@hashbrownai/angular';
+
+@Component({
+  template: `
+    // 1. Render the content of each message
+    @for (message of chat.value(); track $index) {
+      <p>{{ message.content }}</p>
+    }
   `,
 })
-export class ChatPanel {
+export class App {
+  // 2. Generate the messages from a prompt
   chat = chatResource({
-    model: 'gpt-4o',
-    system: 'You are a helpful assistant that can answer questions and help with tasks.',
+    model: 'gpt-5',
+    system: 'hashbrowns should be covered and smothered',
+    messages: [
+      { role: 'user', content: 'Write a short story about breakfast.' },
+    ],
+  });
+}
+```
+
+</hb-code-example>
+
+1. In the template, we render the content of each message.
+2. The @hashbrownai/angular!chatResource:function function creates a new chat resource.
+3. We use the `value()` signal to access the current messages in the chat.
+
+---
+
+## Send Messages
+
+To send messages to the model, we can use the `sendMessage()` method.
+
+<hb-code-example header="sendMessage()">
+
+```ts
+import { chatResource } from '@hashbrownai/angular';
+
+@Component({
+  template: `
+    <div>
+      <input
+        type="text"
+        [value]="userMessage()"
+        (input)="userMessage.set($any($event.target).value)"
+        (keydown.enter)="send()"
+        placeholder="Prompt..."
+      />
+      <button (click)="send()">Send</button>
+    </div>
+    <div>
+      @for (message of chat.value(); track $index) {
+        <p>{{ message.content }}</p>
+      }
+    </div>
+  `,
+})
+export class App {
+  userMessage = input<string>('');
+  chat = chatResource({
+    model: 'gpt-5',
+    debugName: 'chat',
+    system: 'hashbrowns should be covered and smothered',
+    messages: [
+      { role: 'user', content: 'Write a short story about breakfast.' },
+    ],
   });
 
-  sendMessage(message: string) {
-    this.chat.sendMessage({ role: 'user', content: message });
+  send() {
+    if (this.userMessage().trim()) {
+      this.chat.sendMessage({ role: 'user', content: this.userMessage() });
+      this.userMessage.set('');
+    }
   }
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
-Let's break this down:
-
-- The @hashbrownai/angular!chatResource:function function creates a new AI chat resource.
-- The `model` parameter specifies the model to use for the chat.
-- The `messages` parameter is an array of messages that will be used to initialize the chat.
-- The `sendMessage` function sends a user message to the LLM.
-
-This creates a complete chat interface where:
-
-1. Users can type and send messages
-2. Messages are displayed in a scrollable list
-3. The AI responds through the chat resource
-4. The UI updates automatically as new messages arrive
-
-The component uses Angular's built-in template syntax and signal-based reactivity to stay in sync with the chat state.
+1. We create an input field controlled by the `userMessage` signal for user input.
+2. The `send()` method sends the user message to the chat resource using the `sendMessage()` method.
+3. Angular renders the user message and the assistant response message.
 
 ---
 
 ## Debugging with Redux Devtools
 
 Hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
-We find that this provides direct access to the state internals of Hashbrown - enabling you to debug your AI-powered user experiences.
 
 <div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089272009?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown debugging"></iframe></div>
 
-To enable debugging, specify the optional `debugName` configuration.
+To enable debugging, specify the `debugName` option.
 
-<www-code-example header="chat.component.ts">
+<hb-code-example header="debug">
 
 ```ts
 chat = chatResource({
-  model: 'gpt-4o',
   debugName: 'chat',
-  system: 'You are a helpful assistant that can answer questions and help with tasks.',
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
 ---
 
-## Function Calling
+## Beyond Chat
 
-In this guide, we'll show you the basics of function calling.
-Please note, function calling works _best_ today using OpenAI's models.
+Large language models are highly intelligent and capable of more than just text and chatbots.
+With Hashbrown, you can expose your trusted, tested, and compliant components - in other words, you can generate user interfaces using your components as the building blocks!
 
-Function calling enables the LLM to invoke functions you have exposed to the LLM.
-We also suggest reading the [OpenAI documentation for function calling using the chat API](https://platform.openai.com/docs/guides/function-calling?api-mode=chat)
-
-Some common use cases for function calling include:
-
-- Fetching additional data from your service layer
-- Providing the LLM with the latest application state
-- Enabling the LLM to mutate state or take action
-
-<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown function calling"></iframe></div>
-
-Let's look at an example of function calling using Hashbrown.
-
-<www-code-example header="chat.component.ts" run="/examples/angular/function-calling">
-
-```ts
-@Component({
-  selector: 'app-chat',
-  providers: [LightsStore],
-  template: ` <!-- omitted for brevity - full code in stackblitz example --> `,
-})
-export class ChatComponent {
-  lightsStore = inject(LightsStore);
-
-  chat = chatResource({
-    model: 'gpt-4.1',
-    system: 'You are a helpful assistant that can answer questions and help with tasks',
-    tools: [
-      createTool({
-        name: 'getUser',
-        description: 'Get information about the current user',
-        handler: () => {
-          const authService = inject(AuthService);
-          return authService.getUser();
-        },
-      }),
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: async () => this.lightsStore.entities(),
-      }),
-      createTool({
-        name: 'controlLight',
-        description: 'Control a light',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-        handler: async (input) =>
-          this.lightsStore.updateLight(input.lightId, {
-            brightness: input.brightness,
-          }),
-      }),
-    ],
-  });
-
-  sendMessage(message: string) {
-    this.chat.sendMessage({ role: 'user', content: message });
-  }
-}
-```
-
-</www-code-example>
-
-Let's review the key parts of this code:
-
-- The @hashbrownai/angular!chatResource:function function creates a new chat resource with the specified model and tools.
-- The `tools` array contains functions that the LLM can call.
-- The `createTool` function defines a tool that the LLM can call, with a name, description, optional arguments, and handler function.
-- The `handler` function is called when the LLM invokes the tool, allowing you to perform actions like fetching data or updating state.
+<hb-next-steps>
+  <hb-next-step link="concept/components">
+    <div>
+      <hb-components />
+    </div>
+    <div>
+      <h4>Generate user interfaces</h4>
+      <p>Expose Angular components to the LLM for generative UI.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
 
 ---
 
-## What is this schema language?
+## Tool Calling
 
-Skillet is Hashbrown's LLM-optimized schema language.
+Tool calling enables the model to invoke callback function in your frontend web application code.
+The functions you expose can either have no arguments or you can specify the required and optional arguments.
+The model will choose if, and when, to invoke the function.
 
-Why not use something like Zod?
-We're glad you asked.
+What can functions do?
 
-- Skillet limits schema based on an LLM's capability. In other words, it works as you expect.
-- Skillet enables one-line streaming
-- Skillet enables partial parsing
-- Skillet is strongly typed
+- Expose application state to the model
+- Allow the model to take an action
+- Offer intelligent next actions for the user to take
+- Automate user tasks
 
-[Read more about how Skillet supports streaming responses](/docs/angular/concept/streaming)
+With Angular, all handler functions are executed in the injection context - this means that you can use the `inject()` function within the handler functions to inject services and dependencies.
 
----
-
-## Generate UI Components
-
-To build on top of the chat resource, we can expose Angular components that the LLM can use to generate UI.
-In this example, we'll use the @hashbrownai/angular!uiChatResource:function function.
-
-<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089273215?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown structured output"></iframe></div>
-
-<www-code-example header="chat.component.ts" run="/examples/angular/ui-chat">
-
-```ts
-@Component({
-  selector: 'app-chat',
-  imports: [ComposerComponent, MessagesComponent],
-  providers: [LightsStore],
-  template: `
-    <app-messages [messages]="chat.value()" />
-    <app-composer (sendMessage)="sendMessage($event)" />
-  `,
-})
-export class ChatComponent {
-  lightsStore = inject(LightsStore);
-
-  chat = uiChatResource({
-    model: 'gpt-4.1',
-    system: 'You are a helpful assistant that can answer questions and help with tasks',
-    components: [
-      exposeComponent(MarkdownComponent, {
-        description: 'Show markdown to the user',
-        input: {
-          data: s.streaming.string('The markdown content'),
-        },
-      }),
-      exposeComponent(LightComponent, {
-        description: 'Show a light to the user',
-        input: {
-          lightId: s.string('The id of the light'),
-        },
-      }),
-      exposeComponent(CardComponent, {
-        description: 'Show a card to the user',
-        children: 'any',
-        input: {
-          title: s.streaming.string('The title of the card'),
-        },
-      }),
-    ],
-    tools: [
-      createTool({
-        name: 'getUser',
-        description: 'Get information about the current user',
-        handler: () => {
-          const authService = inject(AuthService);
-          return authService.getUser();
-        },
-      }),
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: async () => this.lightsStore.entities(),
-      }),
-      createToolWithArgs({
-        name: 'controlLight',
-        description: 'Control a light',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-        handler: async (input) =>
-          this.lightsStore.updateLight(input.lightId, {
-            brightness: input.brightness,
-          }),
-      }),
-    ],
-  });
-
-  sendMessage(message: string) {
-    this.chat.sendMessage({ role: 'user', content: message });
-  }
-}
-```
-
-</www-code-example>
-
-Let's focus on the new `components` property.
-
-- The `components` property is an array of components that the LLM can use to generate UI.
-- The `exposeComponent` function defines a component that the LLM can use, with a name, description, and props.
-- The `input` property defines the input properties that the component can accept, using the Skillet schema language.
-- The `children` property allows the component to accept child components, enabling nested UI structures.
-- The `uiChatResource` function creates a chat resource that can generate UI components based on the LLM's responses.
-
-Did you catch the `streaming` keyword in the example above?
-
-- We are streaming generated markdown from the LLM into our `MarkdownComponent`.
-- We are streaming the card `title` property value.
+<hb-next-steps>
+  <hb-next-step link="concept/functions">
+    <div>
+      <hb-functions />
+    </div>
+    <div>
+      <h4>Tool Calling</h4>
+      <p>Provide callback functions to the LLM.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
 
 ---
 
-## Structured Output
+## Streaming Responses
 
-Structured output allows the LLM to return data in a structured format; mostly commonly JSON.
+Streaming is baked into the core of Hashbrown.
+With Skillet, our LLM-optimized schema language, you can use the `.streaming()` keyword to enable streaming with eager JSON parsing.
 
-Just think.
-Large Language Models are _incredibly_ powerful at natural language and text generation.
-Using this power, Angular developers can leverage the LLM to generate structured data that can be used _anywhere_ in their applications.
-
-In this example, we'll use the @hashbrownai/angular!structuredChatResource:function function to generate structured data.
-
-<www-code-example header="chat.component.ts" run="/examples/angular/structured-output">
-
-```ts
-@Component({
-  selector: 'app-chat',
-  imports: [ComposerComponent, MessagesComponent],
-  providers: [LightsStore],
-  template: `
-    <app-messages [messages]="chat.value()" />
-    <app-composer (sendMessage)="sendMessage($event)" />
-  `,
-})
-export class ChatComponent {
-  lightsStore = inject(LightsStore);
-
-  chat = structuredChatResource({
-    model: 'gpt-4.1',
-    debugName: 'lights-chat',
-    system: `
-      Please return a JSON object that contains the lights that the user mentions.
-    `,
-    schema: s.object('Output', {
-      lights: s.array(
-        s.object('Light', {
-          id: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-      ),
-    }),
-    tools: [
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: async () => this.lightsStore.entities(),
-      }),
-    ],
-  });
-
-  sendMessage(message: string) {
-    this.chat.sendMessage({ role: 'user', content: message });
-  }
-}
-```
-
-</www-code-example>
-
-Let's take a look at using the @hashbrownai/angular!structuredChatResource:function resource.
-
-- The `structuredChatResource` function creates a chat resource that can generate structured data.
-- The `schema` property defines the structure of the data that the LLM will return, using the Skillet schema language.
-- The `debugName` property is used to identify the chat resource in the redux devtools.
-- The `tools` property defines the tools that the LLM can use to fetch data or perform actions.
-
-When the LLM generates a response, it will return data in the structured format defined by the `schema` property.
-
-Here is what the LLM will return based on the response format specified:
-
-```json
-{
-  "lights": [
-    {
-      "id": "light-1",
-      "brightness": 75
-    },
-    {
-      "id": "light-2",
-      "brightness": 50
-    }
-  ]
-}
-```
+<hb-next-steps>
+  <hb-next-step link="concept/streaming">
+    <div>
+      <hb-send />
+    </div>
+    <div>
+      <h4>Streaming Responses</h4>
+      <p>Use Skillet for built-in streaming and eager JSON parsing.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
 
 ---
 
-## Next Steps
+## Run LLM-generated JS Code (Safely)
 
-Now that you've seen the basics of Hashbrown, you can explore more advanced features and concepts:
+Hashbrown ships with a JavaScript runtime for safe execution of
+LLM-generated code in the client.
 
-- [Get started with writing system instructions](/docs/angular/concept/system-instructions)
-- [Use your Angular components for generative UI](/docs/angular/concept/components)
-- [Learn how to implement function calling](/docs/angular/concept/functions)
-- [Learn more about streaming responses](/docs/angular/concept/streaming)
+<hb-next-steps>
+  <hb-next-step link="concept/runtime">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>JavaScript Runtime</h4>
+      <p>Safely execute JS code generated by the model in the browser.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>

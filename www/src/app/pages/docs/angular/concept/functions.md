@@ -1,113 +1,114 @@
-# Function Calling
+# Tool Calling
 
-Function calling with a Large Language Model (LLM) is a powerful feature that allows you to define functions that the LLM can call.
-The LLM will determine if and when a function is called.
+<p class="subtitle">Give the model access to your application state and enable the model to take action.</p>
 
-There are many use cases for function calling.
-Here are few that we've implemented in our Angular applications:
+Tool calling (or function calling) in Hashbrown provides an intuitive approach to describing the tools that the model has access to.
 
-- Providing data to the LLM from state or an Angular service.
-- Performing tasks on behalf of the user.
-- Dispatching NgRx actions that are AI scoped that perform tasks or provide suggestions.
+- Execute a function in Angular's injection context.
+- Return data to the model from state or an Angular service.
 
 ---
 
 ## Demo
 
-<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown function calling"></iframe></div>
+<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown tool calling"></iframe></div>
 
 ---
 
-## Example
+## How it Works
 
-[Run the function calling example in Stackblitz](/examples/angular/function-calling)
+When you define a tool using Hashbrown's @hashbrownai/angular!createTool:function function the model can choose to use the tool to follow instructions and respond to prompts.
 
-A few notes:
-
-- First, you will need an OpenAI API Key.
-- Try the prompt: `"Who am I?"`. That will invoke the `getUser` function.
-- Try the prompt: `"Show me all the lights"`. This will invoke the `getLights` function.
-- Try the prompt: `"Turn off all lights"`. This will invoke the `controlLights` function.
+1. Provide the tool to the model using the `tools` property.
+2. When the model receives a user message, it will analyze the message and determine if it needs to call any of the provided tools.
+3. If the model decides to call a function, it will invoke the function with the required arguments.
+4. The function is executed within Angular's injection context
+5. Return the result that is sent back to the LLM.
 
 ---
 
-## Defining a Function
+## The `createTool()` Function
 
-Hashbrown provides the @hashbrownai/angular!createTool:function function for defining functions that the LLM can invoke.
-
-<www-code-example header="chat.component.ts">
+<hb-code-example header="createTool">
 
 ```ts
+import { createTool } from '@hashbrownai/angular';
+
 createTool({
   name: 'getUser',
   description: 'Get information about the current user',
-  handler: () => {
+  handler: (): Promise<User> => {
     const authService = inject(AuthService);
     return authService.getUser();
   },
 });
 ```
 
-</www-code-example>
+</hb-code-example>
 
-Let's break down the example above:
-
-- `name`: The name of the function that the LLM will call.
-- `description`: A description of what the function does. This is used by the LLM to determine if it should call the function.
-- `handler`: The function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promise` of the `Result`.
-
-The method signature for a `handler` is:
-
-```ts
-(abortSignal: AbortSignal) => Promise<Result>;
-```
+1. Use the @hashbrownai/angular!createTool:function function to define a function that the LLM can call.
+2. The `name` property is the name of the function that the LLM will call.
+3. The `description` property is a description of what the function does. This is used by the LLM to determine if it should call the function.
+4. The `handler` property is the function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promise`.
 
 ---
 
-## Functions with Arguments
+### `CreateToolOptions`
 
-Hashbrown's @hashbrownai/angular!createTool:function enables Angular developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
-
-We'll be using Skillet - hasbrown's LLM-optimized schema language - for defining the function arguments.
-Let's look at an example function that enables the LLM to control the lights in our smart home client application.
-
-<www-code-example header="chat.component.ts">
-
-```ts
-createTool({
-  name: 'controlLight',
-  description: 'Control a light',
-  schema: s.object('Control light input', {
-    lightId: s.string('The id of the light'),
-    brightness: s.number('The brightness of the light'),
-  }),
-  handler: async (input) =>
-    this.lightsStore.updateLight(input.lightId, {
-      brightness: input.brightness,
-    }),
-});
-```
-
-</www-code-example>
-
-Let's review the code above.
-
-- `name`: The name of the function that the LLM will call.
-- `description`: A description of what the function does. This is used by the LLM to determine if it should call the function.
-- `schema`: The schema that defines the arguments that the function requires. This is where you can define the input parameters for the function using Skillet.
-- `handler`: The function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promise` of the `Result`.
-
-In this example, we expect that the `input` will be an object with the properties `lightId` and `brightness`, which are defined in the `schema`.
-
-Note that the `input` arguments are strongly-typed based on the provided schema.
+| Option        | Type                        | Required | Description                                     |
+| ------------- | --------------------------- | -------- | ----------------------------------------------- |
+| `name`        | `string`                    | Yes      | The name of the function that the LLM will call |
+| `description` | `string`                    | Yes      | Description of what the function does           |
+| `schema`      | `s.HashbrownType \| object` | No       | Schema defining the function arguments          |
+| `handler`     | `Function`                  | Yes      | The function to execute when called             |
 
 ---
 
-## Providing the Functions
+### API Reference
 
-The next step is to provide the `tools` when using Hashbrown's resource-based APIs.
+<hb-next-steps>
+  <hb-next-step link="/api/angular/createTool">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>createTool() API</h4>
+      <p>See the function signature</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
 
-<www-code-example header="chat.component.ts" run="/examples/angular/function-calling">
+---
+
+#### Handler Signatures
+
+**With `input` Arguments:**
+
+<hb-code-example header="handler">
+
+```ts
+handler: (input: s.Infer<Schema>, abortSignal: AbortSignal) => Promise<Result>;
+```
+
+</hb-code-example>
+
+**Without `input` Arguments:**
+
+<hb-code-example header="handler">
+
+```ts
+handler: (abortSignal: AbortSignal) => Promise<Result>;
+```
+
+</hb-code-example>
+
+---
+
+## Providing the Tools
+
+Provide the `tools` when using Hashbrown's resource-based APIs.
+
+<hb-code-example header="tools">
 
 ```ts
 @Component({
@@ -119,9 +120,9 @@ export class ChatComponent {
   lightsStore = inject(LightsStore);
 
   chat = chatResource({
-    model: 'gpt-4.1',
-    system: 'You are a helpful assistant that can answer questions and help with tasks',
+    // 1. Specify the tools collection using createTool() function
     tools: [
+      //2. The getUser() function returns authenticated user information to model
       createTool({
         name: 'getUser',
         description: 'Get information about the current user',
@@ -130,11 +131,13 @@ export class ChatComponent {
           return authService.getUser();
         },
       }),
+      // 3. The getLights() function returns application state to the model
       createTool({
         name: 'getLights',
         description: 'Get the current lights',
         handler: async () => this.lightsStore.entities(),
       }),
+      // 4. The controlLight() function enables the model to mutate state
       createTool({
         name: 'controlLight',
         description: 'Control a light',
@@ -156,16 +159,46 @@ export class ChatComponent {
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 
-- First, we define the `tools` array in the `chatResource` configuration.
-- We use the @hashbrownai/angular!createTool:function function to define the functions that the LLM can call.
-- The `handler` functions are defined to perform the necessary logic, such as fetching data from services or updating the state.
-- Finally, we can use the `sendMessage` method to send a message to the LLM, which can then invoke the defined functions as needed.
+1. First, we define the `tools` array in the `chatResource` configuration.
+2. We use the @hashbrownai/angular!createTool:function function to define each tool.
+3. The `getUser()` function returns the authenticated user information to the model.
+4. The `getLights()` function returns application state to the model.
+5. The `controlLight()` function enables the model to mutate application state.
 
-## Conclusion
+---
 
-Function calling is a powerful feature that allows you to define functions that the LLM can invoke.
-By using Hashbrown's @hashbrownai/angular!createTool:function function, you can easily define functions with or without arguments that the LLM can call.
+## Next Steps
+
+<hb-next-steps>
+  <hb-next-step link="concept/structured-output">
+    <div>
+      <hb-database-cog />
+    </div>
+    <div>
+      <h4>Get structured data from models</h4>
+      <p>Use Skillet schema to describe model responses.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/components">
+    <div>
+      <hb-components />
+    </div>
+    <div>
+      <h4>Generate user interfaces</h4>
+      <p>Expose Angular components to the LLM for generative UI.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/runtime">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>Execute LLM-generated JS in the browser (safely)</h4>
+      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>

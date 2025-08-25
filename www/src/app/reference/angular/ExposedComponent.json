@@ -64,7 +64,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "new (...args: any[]): any;"
         },
         {
           "kind": "PropertySignature",
@@ -103,7 +104,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "children?: 'any' | ExposedComponent<any>[] | false;"
         },
         {
           "kind": "PropertySignature",
@@ -136,7 +138,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "component: T;"
         },
         {
           "kind": "PropertySignature",
@@ -169,7 +172,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "description: string;"
         },
         {
           "kind": "PropertySignature",
@@ -202,7 +206,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "name: string;"
         },
         {
           "kind": "PropertySignature",
@@ -240,7 +245,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "props?: ComponentPropSchema<T>;"
         }
       ],
       "extendsTokenRanges": [],
@@ -261,7 +267,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface ExposedComponent<T extends {\n    new (...args: any[]): any;\n}>"
     }
   ]
 }

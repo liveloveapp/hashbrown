@@ -2,7 +2,7 @@
   "name": "HashbrownProviderOptions",
   "canonicalReference": "@hashbrownai/react!HashbrownProviderOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hashbrown-provider.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -15,7 +15,7 @@
           "text": "export interface HashbrownProviderOptions "
         }
       ],
-      "fileUrlPath": "../dist/packages/react/hashbrown-provider.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hashbrown-provider.d.ts",
       "releaseTag": "Public",
       "name": "HashbrownProviderOptions",
       "preserveMemberOrder": false,
@@ -80,7 +80,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "middleware?: Array<(request: RequestInit) => RequestInit | Promise<RequestInit>>;"
         },
         {
           "kind": "PropertySignature",
@@ -113,7 +114,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "url: string;"
         }
       ],
       "extendsTokenRanges": [],
@@ -134,7 +136,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface HashbrownProviderOptions"
     }
   ]
 }

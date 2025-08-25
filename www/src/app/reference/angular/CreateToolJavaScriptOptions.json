@@ -52,7 +52,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "runtime: RuntimeRef;"
         }
       ],
       "extendsTokenRanges": [],
@@ -73,7 +74,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface CreateToolJavaScriptOptions"
     }
   ]
 }

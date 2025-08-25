@@ -1,16 +1,15 @@
 # Sample App
 
-We believe that one of the best ways to learn AI engineering using Hashbrown is to check out and build on top of our sample app.
-The sample application is a smart home client built with React.
+<p class="subtitle">Smart home client built with React.</p>
 
 Some of the basic features of the sample app include:
 
-- Simple Chat
-- Tool Calling
-- UI Chat
-- Text completion
-- Structured output
-- Structured completion
+1. Simple Chat
+2. Tool Calling
+3. UI Chat
+4. Text completion
+5. Structured output
+6. Structured completion
 
 [Check out our smart home sample app on GitHub](https://github.com/liveloveapp/hashbrown/tree/main/samples/smart-home/client-react)
 
@@ -18,18 +17,24 @@ Some of the basic features of the sample app include:
 
 ## Clone Repository
 
-First, clone the repository:
+<hb-code-example header="terminal">
 
 ```bash
 git clone https://github.com/liveloveapp/hashbrown.git
 ```
 
+</hb-code-example>
+
 Then install the dependencies:
+
+<hb-code-example header="terminal">
 
 ```bash
 cd Hashbrown
 npm install
 ```
+
+</hb-code-example>
 
 Open up the `samples/smart-home/client-react` directory.
 
@@ -37,10 +42,14 @@ Open up the `samples/smart-home/client-react` directory.
 
 You will need to start both the server and the client to run the sample application.
 
+<hb-code-example header="terminal">
+
 ```bash
 npx nx serve server
 npx nx serve client-react
 ```
+
+</hb-code-example>
 
 ## OpenAI API Key
 

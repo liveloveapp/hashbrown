@@ -1,14 +1,11 @@
 # Tool Calling
 
-Tool calling with a Large Language Model (LLM) is a powerful feature that allows you to define functions that the LLM can call.
-The LLM will determine if and when a function is called.
+<p class="subtitle">Give the model access to your application state and enable the model to take action.</p>
 
-There are many use cases for tool calling.
-Here are a few that we've implemented in our React applications:
+Tool calling (or function calling) in Hashbrown provides an intuitive approach to describing the tools that the model has access to.
 
-- Providing data to the LLM from React state or a service.
-- Performing tasks on behalf of the user.
-- Dispatching actions that are AI scoped to perform tasks or provide suggestions.
+- Execute a function in your React component scope.
+- Return data to the model from state or a service.
 
 ---
 
@@ -18,64 +15,125 @@ Here are a few that we've implemented in our React applications:
 
 ---
 
-## Defining a Tool
+## How it Works
 
-Hashbrown provides the `useTool` hook from `@hashbrownai/react` for defining functions that the LLM can invoke.
+When you define a tool using Hashbrown's @hashbrownai/react!useTool:function hook the model can choose to use the tool to follow instructions and respond to prompts.
 
-<www-code-example header="useTools.ts">
-
-```ts
-import { useTool } from '@hashbrownai/react';
-
-export default function Chat() {
-  export const getUserTool = useTool({
-    name: 'getUser',
-    description: 'Get information about the current user',
-    deps: [fetchUser],
-    handler: async (abortSignal) => {
-      // Replace with your user fetching logic
-      return await fetchUser({ signal: abortSignal });
-    },
-  });
-
-  const chat = useChat({
-    tools: [getUserTool],
-    // ...additional config
-  });
-}
-```
-
-</www-code-example>
-
-Let's break down the example above:
-
-- `name`: The name of the function that the LLM will call.
-- `description`: A description of what the function does. This is used by the LLM to determine if it should call the function.
-- `handler`: The function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with an `AbortSignal` and is expected to return a `Promise` of the `Result`.
-- `deps`: The dependencies referenced in the `handler` function, like you would pass to `useCallback`
-
-The method signature for a `handler` is:
-
-```ts
-(abortSignal: AbortSignal) => Promise<Result>;
-```
+1. Provide the tool to the model using the `tools` property.
+2. When the model receives a user message, it will analyze the message and determine if it needs to call any of the provided tools.
+3. If the model decides to call a function, it will invoke the function with the required arguments.
+4. The function executes within your React component and hook scope.
+5. Return the result that is sent back to the LLM.
 
 ---
 
-## Tools with Arguments
+## The `useTool()` Hook
 
-Hashbrown's `useTool` hook enables React developers to define functions that require arguments by specifying the `schema`. The LLM will invoke the function with the specified arguments.
-
-We'll be using Skillet - Hashbrown's LLM-optimized schema language - for defining the function arguments.
-Let's look at an example function that enables the LLM to control the lights in our smart home client application.
-
-<www-code-example header="useTools.ts">
+<hb-code-example header="useTool">
 
 ```ts
 import { useTool } from '@hashbrownai/react';
+
+useTool({
+  name: 'getUser',
+  description: 'Get information about the current user',
+  handler: async (abortSignal) => {
+    return await fetchUser({ signal: abortSignal });
+  },
+  deps: [fetchUser],
+});
+```
+
+</hb-code-example>
+
+1. Use the @hashbrownai/react!useTool:function hook to define a function that the LLM can call.
+2. The `name` property is the name of the function that the LLM will call.
+3. The `description` property is a description of what the function does. This is used by the LLM to determine if it should call the function.
+4. The `handler` property is the function that will be called when the LLM invokes the function. The function is invoked with an `AbortSignal` and is expected to return a `Promise`.
+5. The `deps` property is an array of dependencies that are used to memoize the handler function. This is similar to how you would use `useCallback` in React.
+
+---
+
+### `UseToolOptions`
+
+| Option        | Type                   | Required | Description                                                                    |
+| ------------- | ---------------------- | -------- | ------------------------------------------------------------------------------ |
+| `name`        | `string`               | Yes      | The name of the function that the LLM will call                                |
+| `description` | `string`               | Yes      | Description of what the function does                                          |
+| `schema`      | `s.HashbrownType`      | No       | Schema defining the function arguments                                         |
+| `handler`     | `Function`             | Yes      | The function to execute when called                                            |
+| `deps`        | `React.DependencyList` | Yes      | Dependencies used to memoize the handler; pass like you would to `useCallback` |
+
+---
+
+### API Reference
+
+<hb-next-steps>
+  <hb-next-step link="/api/react/useTool">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>useTool() API</h4>
+      <p>See the hook signature</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
+
+---
+
+#### Handler Signatures
+
+**With `input` Arguments:**
+
+<hb-code-example header="handler">
+
+```ts
+handler: (input: s.Infer<Schema>, abortSignal: AbortSignal) => Promise<Result>;
+```
+
+</hb-code-example>
+
+**Without `input` Arguments:**
+
+<hb-code-example header="handler">
+
+```ts
+handler: (abortSignal: AbortSignal) => Promise<Result>;
+```
+
+</hb-code-example>
+
+---
+
+## Providing the Tools
+
+Provide the `tools` when using Hashbrown's hooks-based APIs.
+
+<hb-code-example header="tools">
+
+```tsx
+import { useChat, useTool } from '@hashbrownai/react';
 import { s } from '@hashbrownai/core';
 
-export default function Chat() {
+export function ChatComponent() {
+  // 1. The getUser() function returns authenticated user information to model
+  const getUser = useTool({
+    name: 'getUser',
+    description: 'Get information about the current user',
+    handler: async (abortSignal) => fetchUser({ signal: abortSignal }),
+    deps: [fetchUser],
+  });
+
+  // 2. The getLights() function returns application state to the model
+  const getLights = useTool({
+    name: 'getLights',
+    description: 'Get the current lights',
+    handler: async () => getLightsFromStore(),
+    deps: [getLightsFromStore],
+  });
+
+  // 3. The controlLight() function enables the model to mutate state
   const controlLight = useTool({
     name: 'controlLight',
     description: 'Control a light',
@@ -83,85 +141,57 @@ export default function Chat() {
       lightId: s.string('The id of the light'),
       brightness: s.number('The brightness of the light'),
     }),
-    handler: async (input, abortSignal) => {
-      // Replace with your update logic
-      return await updateLight(input.lightId, { brightness: input.brightness }, abortSignal);
-    },
+    handler: async (input, abortSignal) =>
+      updateLight(input.lightId, { brightness: input.brightness }, abortSignal),
+    deps: [updateLight],
   });
 
+  // 4. Specify the `tools` collection
   const chat = useChat({
-    tools: [controlLight],
-    // ...additional config
-  });
-}
-```
-
-</www-code-example>
-
-Let's review the code above.
-
-- `name`: The name of the function that the LLM will call.
-- `description`: A description of what the function does. This is used by the LLM to determine if it should call the function.
-- `schema`: The schema that defines the arguments that the function requires. This is where you can define the input parameters for the function using Skillet.
-- `handler`: The function that will be called when the LLM invokes the function. This is where you can perform any logic you need, such as fetching data from a service or performing a task. The function is invoked with the input arguments and an `AbortSignal`, and is expected to return a `Promise` of the `Result`.
-
-In this example, we expect that the `input` will be an object with the properties `lightId` and `brightness`, which are defined in the `schema`.
-
-Note that the `input` arguments are strongly-typed based on the provided schema.
-
-The method signature for a `handler` is:
-
-```ts
-(input: Input, abortSignal: AbortSignal) => Promise<Result>;
-```
-
----
-
-## Providing the Tools
-
-The next step is to provide the `tools` when using Hashbrown's React hooks-based APIs.
-
-<www-code-example header="ChatComponent.tsx" run="/examples/react/function-calling">
-
-```tsx
-import React from 'react';
-import { useChat } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
-
-export function ChatComponent() {
-  const getUser = useTool({
-    /* tool config */
-  });
-  const getLights = useTool({
-    /* tool config */
-  });
-  const controlLight = useTool({
-    /* tool config */
-  });
-  const chat = useChat({
-    model: 'gpt-4.1',
-    system: 'You are a helpful assistant that can answer questions and help with tasks',
     tools: [getUser, getLights, controlLight],
   });
 
-  const sendMessage = (message: string) => {
-    chat.sendMessage({ role: 'user', content: message });
-  };
-
-  // ... render chat UI, messages, etc.
+  return null;
 }
 ```
 
-</www-code-example>
+</hb-code-example>
 
 Let's review the code above.
 
-- First, we define the `tools` array and pass it to the `useChat` hook.
-- We use the `useTool` hook to define the functions that the LLM can call.
-- The `handler` functions are defined to perform the necessary logic, such as fetching data from services or updating the state.
-- Finally, we can use the `sendMessage` method to send a message to the LLM, which can then invoke the defined functions as needed.
+1. We use the @hashbrownai/react!useTool:function hook to define each tool.
+2. We provide the collection of `tools` to the model.
 
-## Conclusion
+---
 
-Tool calling is a powerful feature that allows you to define functions that the LLM can invoke.
-By using Hashbrown's `useTool` hook, you can easily define functions with or without arguments that the LLM can call.
+## Next Steps
+
+<hb-next-steps>
+  <hb-next-step link="concept/structured-output">
+    <div>
+      <hb-database-cog />
+    </div>
+    <div>
+      <h4>Get structured data from models</h4>
+      <p>Use Skillet schema to describe model responses.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/components">
+    <div>
+      <hb-components />
+    </div>
+    <div>
+      <h4>Generate user interfaces</h4>
+      <p>Expose React components to the LLM for generative UI.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/runtime">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>Execute LLM-generated JS in the browser (safely)</h4>
+      <p>Use Hashbrown's JavaScript runtime for complex and mathematical operations.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>

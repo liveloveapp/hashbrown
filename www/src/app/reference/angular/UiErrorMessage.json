@@ -39,7 +39,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "type UiErrorMessage = Chat.ErrorMessage;"
     }
   ]
 }

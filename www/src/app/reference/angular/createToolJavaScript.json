@@ -65,7 +65,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createToolJavaScript({\n  runtime,\n}: CreateToolJavaScriptOptions): dist_packages_core_src_models_view_models.Tool<\n  \"javascript\",\n  {\n    code: string;\n  },\n  any\n>;"
     }
   ]
 }

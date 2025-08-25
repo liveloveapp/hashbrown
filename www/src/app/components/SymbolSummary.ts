@@ -13,10 +13,21 @@ import { Markdown } from '../pipes/Markdown';
   encapsulation: ViewEncapsulation.None,
   styles: [
     `
+      :host {
+        display: block;
+      }
+
       .summary {
         display: flex;
         flex-direction: column;
         gap: 16px;
+      }
+
+      .summary p {
+        color: var(--gray-dark, #3d3c3a);
+        font:
+          400 15px/21px Fredoka,
+          sans-serif;
       }
     `,
   ],

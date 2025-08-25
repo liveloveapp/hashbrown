@@ -90,7 +90,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function decodeFrames(\n  stream: ReadableStream<Uint8Array>,\n  options: DecodeFramesOptions,\n): AsyncGenerator<Frame, void, unknown>;"
     }
   ]
 }

@@ -64,7 +64,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "apiUrl?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -102,7 +103,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "components: ExposedComponent < any > [];"
         },
         {
           "kind": "PropertySignature",
@@ -135,7 +137,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounce?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -168,7 +171,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -218,7 +222,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages?: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[];"
         },
         {
           "kind": "PropertySignature",
@@ -255,7 +260,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model: KnownModelIds;"
         },
         {
           "kind": "PropertySignature",
@@ -294,7 +300,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string | Signal<string>;"
         },
         {
           "kind": "PropertySignature",
@@ -327,7 +334,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Tools[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -348,7 +356,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface UiChatResourceOptions<Tools extends Chat.AnyTool>"
     }
   ]
 }

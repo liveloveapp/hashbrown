@@ -94,7 +94,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "apiUrl?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -127,7 +128,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounce?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -160,7 +162,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -198,7 +201,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages?: Chat.Message<Output, Tools>[];"
         },
         {
           "kind": "PropertySignature",
@@ -248,7 +252,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model: KnownModelIds | Signal<KnownModelIds>;"
         },
         {
           "kind": "PropertySignature",
@@ -281,7 +286,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -314,7 +320,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "schema: Schema;"
         },
         {
           "kind": "PropertySignature",
@@ -353,7 +360,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string | Signal<string>;"
         },
         {
           "kind": "PropertySignature",
@@ -386,7 +394,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Tools[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -407,7 +416,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface StructuredChatResourceOptions<Schema extends s.HashbrownType, Tools extends Chat.AnyTool, Output extends s.Infer<Schema> = s.Infer<Schema>>"
     }
   ]
 }

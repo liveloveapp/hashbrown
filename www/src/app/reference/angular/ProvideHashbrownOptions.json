@@ -48,7 +48,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "baseUrl: string;"
         },
         {
           "kind": "PropertySignature",
@@ -81,7 +82,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "emulateStructuredOutput?: boolean;"
         },
         {
           "kind": "PropertySignature",
@@ -119,7 +121,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "middleware?: Chat.Middleware[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -140,7 +143,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface ProvideHashbrownOptions"
     }
   ]
 }

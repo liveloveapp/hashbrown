@@ -2,7 +2,7 @@
   "name": "exposeComponent",
   "canonicalReference": "@hashbrownai/react!exposeComponent:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/expose-component.fn.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/expose-component.fn.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -50,7 +50,7 @@
         { "kind": "Content", "text": "<T>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/expose-component.fn.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/expose-component.fn.d.ts",
       "returnTypeTokenRange": { "startIndex": 13, "endIndex": 15 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -93,7 +93,8 @@
         "examples": [
           "\n```ts\nexposeComponent(\n  CardComponent, // The React component to be exposed.\n  { // The exposed component configuration.\n    name: 'CardComponent',\n    description: 'Show a card with children components to the user',\n    children: 'any',\n    props: {\n      title: s.string('The title of the card'),\n      description: s.streaming.string('The description of the card'),\n    },\n  },\n});\n```\n\n"
         ]
-      }
+      },
+      "formattedContent": "export declare function exposeComponent<T extends ComponentType<any>>(\n  component: T,\n  config: ɵtypes.Prettify<Omit<ExposedComponent<T>, \"component\">>,\n): ExposedComponent<T>;"
     }
   ]
 }

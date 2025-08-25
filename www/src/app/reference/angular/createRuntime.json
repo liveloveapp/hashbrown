@@ -61,7 +61,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createRuntime(options: CreateRuntimeOptions): RuntimeRef;"
     }
   ]
 }

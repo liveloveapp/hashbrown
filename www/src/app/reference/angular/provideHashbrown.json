@@ -56,7 +56,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function provideHashbrown(options: ProvideHashbrownOptions): Provider;"
     }
   ]
 }

@@ -2,7 +2,7 @@
   "name": "useCompletion",
   "canonicalReference": "@hashbrownai/react!useCompletion:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-completion.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -28,7 +28,7 @@
         },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-completion.d.ts",
       "returnTypeTokenRange": { "startIndex": 4, "endIndex": 5 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -66,7 +66,8 @@
         "examples": [
           "\n```ts\nconst { output } = useCompletion({\n  model: 'gpt-4o-mini',\n  input: firstName,\n  system: `Help the user generate a last name for the given first name.`,\n});\n```\n\n"
         ]
-      }
+      },
+      "formattedContent": "export declare function useCompletion<Input>(\n  options: UseCompletionOptions<Input>,\n): UseCompletionResult;"
     }
   ]
 }

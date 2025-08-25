@@ -53,7 +53,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "$children: UiChatSchemaComponent[];"
         },
         {
           "kind": "PropertySignature",
@@ -91,7 +92,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "$props: Record<string, any>;"
         },
         {
           "kind": "PropertySignature",
@@ -124,7 +126,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "$tagName: string;"
         }
       ],
       "extendsTokenRanges": [],
@@ -145,7 +148,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface UiChatSchemaComponent"
     }
   ]
 }

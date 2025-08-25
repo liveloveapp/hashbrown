@@ -3,7 +3,8 @@ title: Introducing Hashbrown
 slug: 2025-06-25-Hashbrown-launch
 description: Hashbrown is a framework for building generative user interfaces in Angular and React. It is open source and MIT licensed.
 tags:
-  - stories
+  - story
+  - release
 team:
   - brian
   - mike
@@ -47,7 +48,7 @@ Today, Hashbrown is focused on achieving these core principles:
 
 - **Headless**: build your UI how you want
 - **Reactive**: Hashbrown is tightly integrated with the reactive architecture provided by Angular and React
-- **[Platform Agnostic](/docs/angular/start/platforms)**: use any supported LLM provider
+- **Platform Agnostic**: use any supported LLM provider
 - **[Streaming](/docs/angular/concept/streaming)**: LLMs can be slow, so streaming is baked into the core
 - **[Components](/docs/angular/concept/components)**: generative UI using your trusted and tested Angular and React components
 - **[Runtime](/docs/angular/concept/runtime)**: safely execute LLM-generated JavaScript code in the client
@@ -77,15 +78,15 @@ We take care of the error handling along the way too, letting you deal with erro
 
 ---
 
-## What is function calling?
+## What is tool calling?
 
-With LLMs, function calling is the ability to expose functions to an LLM that it can "call". We put "call" in quotation marks, because it isn't actually calling the tool. Rather, it generates a special message for the developer that instructs the developer which tool to call, then it is up to the developer to provide the result back to the LLM.
+With LLMs, tool calling is the ability to expose functions to an LLM that it can "call". We put "call" in quotation marks, because it isn't actually calling the tool. Rather, it generates a special message for the developer that instructs the developer which tool to call, then it is up to the developer to provide the result back to the LLM.
 
 With Hashbrown, you expose functions to the LLM that it can call, and those functions run in the context of your web application. This means you can expose your service layer to the LLM, and the LLM can call those services as part of the task it is executing on.
 
 If you've heard of Model Context Protocol (MCP), then you can kind of think of Hashbrown's tool calling as "MCP but in the browser".
 
-[Learn more about function calling with Hashbrown](/docs/angular/concept/functions)
+[Learn more about tool calling with Hashbrown](/docs/angular/concept/functions)
 
 ---
 
@@ -229,11 +230,7 @@ The team at [LiveLiveApp](https://liveloveapp.com) are industry leaders in app d
 
 We can't stop thinking about how AI changes the way people explore, visualize, and act on complex information—all through the power of natural language.
 
-LiveLoveApp provides support to enterprises:
-
-- **AI Sprint**: Spend a few days to a full week with the core contributors of Hashbrown. We start with a workshop on AI engineering. We teach you and your team how to design system prompts and how to implement function calling, structured output, and generative UI. As part of the sprint we want to build something tangible together. We work with your team to design, build and deploy intelligent features into your web application.
-- **Long Term Support**: Get dedicated support from Hashbrown core contributors, guaranteed response times, prioritized bug fixes, and the opportunity to influence our product roadmap.
-- **Consulting**: Get expert AI engineering and architecture guidance from our team.
+LiveLoveApp provides AI Engineering consulting services from the team who build Hashbrown.
 
 ---
 

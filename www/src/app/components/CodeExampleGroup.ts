@@ -9,19 +9,19 @@ import {
 } from '@angular/core';
 import { Copy } from '../icons/Copy';
 import { CodeExampleGroupItem } from './CodeExampleGroupItem';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-code-example-group',
-  standalone: true,
-  imports: [Copy],
+  imports: [Copy, Squircle],
   template: `
-    <div class="header">
-      <div class="menu">
-        <div class="generic">
-          <div class="span"></div>
-          <div class="span"></div>
-          <div class="span"></div>
-        </div>
+    <div
+      class="container"
+      wwwSquircle="16"
+      [wwwSquircleBorderWidth]="4"
+      wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
+    >
+      <div class="header">
         <div class="tabs">
           @for (item of items(); track $index; let i = $index) {
             <button [class.active]="i === index()" (click)="index.set(i)">
@@ -29,67 +29,65 @@ import { CodeExampleGroupItem } from './CodeExampleGroupItem';
             </button>
           }
         </div>
+        <button (click)="onCopy()" aria-label="Copy code to clipboard">
+          <www-copy height="16px" width="16px" />
+        </button>
       </div>
-      <button (click)="onCopy()" aria-label="Copy code to clipboard">
-        <www-copy height="16px" width="16px" />
-        copy
-      </button>
-    </div>
-    <div class="content" #content>
-      <ng-content />
+      <div class="content" #content wwwSquircle="16">
+        <ng-content />
+      </div>
     </div>
   `,
-  styles: [
-    `
-      :host {
-        display: flex;
-        flex-direction: column;
-        border: 1px solid #3d3c3a;
-        border-radius: 12px;
-        overflow: hidden;
-      }
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
 
-      .header {
+    .container {
+      display: flex;
+      flex-direction: column;
+      background: var(--gray, #5e5c5a);
+      overflow: hidden;
+
+      > .header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        background: #faf9f0;
-        color: #3d3c3a;
+        padding: 12px 24px;
+        color: var(--vanilla-ivory, #faf9f0);
         font:
-          400 normal 12px/16px Poppins,
+          300 13px/18px 'JetBrains Mono',
           sans-serif;
 
-        > .menu {
+        > .tabs {
           display: flex;
+          gap: 24px;
 
-          > .generic {
-            align-self: center;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 0 16px;
-            border-radius: 8px;
+          > button {
+            position: relative;
 
-            > .span {
-              width: 8px;
-              height: 8px;
-              border-radius: 4px;
-              border: 1px solid #3d3c3a;
-            }
-          }
+            &.active {
+              font-weight: 700;
 
-          > .tabs {
-            display: flex;
-            height: 100%;
-
-            > button {
-              cursor: pointer;
-              padding: 12px 16px;
-              border-right: 1px solid #3d3c3a;
-
-              &.active {
-                font-weight: 600;
-                text-decoration: underline;
+              &::before {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 3px;
+                margin-bottom: -10px;
+                border-radius: 1px;
+                background: linear-gradient(
+                  to right,
+                  #fbbb52 0%,
+                  var(--sunset-orange) 25%,
+                  var(--indian-red-light) 50%,
+                  var(--sky-blue-dark) 75%,
+                  var(--olive-green-light) 100%
+                );
+                background-clip: border-box;
               }
             }
           }
@@ -98,19 +96,27 @@ import { CodeExampleGroupItem } from './CodeExampleGroupItem';
         > button {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
+          gap: 4px;
+          color: #e3e3e3;
+          font:
+            500 12px/14px 'Poppins',
+            sans-serif;
         }
       }
 
-      .content {
+      > .content {
         background: #2b2a29;
         padding: 16px;
+        margin: 0 2px 2px 2px;
         flex-grow: 0;
         overflow: auto;
+        border-right: 2px solid transparent;
+        border-bottom: 2px solid transparent;
+        border-left: 2px solid transparent;
+        width: calc(100% - 4px);
       }
-    `,
-  ],
+    }
+  `,
 })
 export class CodeExampleGroup {
   index = signal<number>(0);

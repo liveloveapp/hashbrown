@@ -2,7 +2,7 @@
   "name": "useToolJavaScript",
   "canonicalReference": "@hashbrownai/react!useToolJavaScript:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-tool-javascript.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-tool-javascript.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -31,7 +31,7 @@
         },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-tool-javascript.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-tool-javascript.d.ts",
       "returnTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -65,7 +65,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useToolJavaScript({\n  runtime,\n}: UseToolJavaScriptOptions): Chat.Tool<\n  \"javascript\",\n  {\n    code: string;\n  },\n  unknown\n>;"
     }
   ]
 }

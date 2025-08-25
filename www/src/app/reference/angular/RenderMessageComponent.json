@@ -63,7 +63,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "message: _angular_core.InputSignal<UiAssistantMessage<any>>;"
         }
       ],
       "implementsTokenRanges": [],
@@ -84,7 +85,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "declare class RenderMessageComponent"
     }
   ]
 }

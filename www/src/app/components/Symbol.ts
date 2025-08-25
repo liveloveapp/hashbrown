@@ -4,12 +4,14 @@ import {
   ApiMemberKind,
   ApiMemberSummary,
 } from '../models/api-report.models';
+import { CodeExample } from './CodeExample';
 import { SymbolApi } from './SymbolApi';
 import { SymbolChip } from './SymbolChip';
 import { SymbolExamples } from './SymbolExamples';
 import { SymbolHeader } from './SymbolHeader';
 import { SymbolMethods } from './SymbolMethods';
 import { SymbolParams } from './SymbolParams';
+import { SymbolReturn } from './SymbolReturn';
 import { SymbolReturns } from './SymbolReturns';
 import { SymbolSummary } from './SymbolSummary';
 import { SymbolTypeParams } from './SymbolTypeParams';
@@ -18,16 +20,18 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
 @Component({
   selector: 'www-symbol',
   imports: [
+    CodeExample,
     SymbolApi,
+    SymbolChip,
     SymbolExamples,
     SymbolHeader,
     SymbolMethods,
     SymbolParams,
+    SymbolReturn,
     SymbolReturns,
     SymbolSummary,
     SymbolTypeParams,
     SymbolUsageNotes,
-    SymbolChip,
   ],
   template: `
     @if (summary().kind === 'Namespace') {
@@ -61,20 +65,25 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
             symbol.returnTypeTokenRange ||
             symbol.docs.usageNotes
           ) {
-            <div class="content">
-              @if (symbol.parameters?.length) {
-                <www-symbol-params [symbol]="symbol" />
-              }
-              @if (symbol.typeParameters?.length) {
-                <www-symbol-type-params [symbol]="symbol" />
-              }
-              @if (symbol.returnTypeTokenRange) {
-                <www-symbol-returns [symbol]="symbol" />
-              }
-              @if (symbol.docs.usageNotes) {
-                <www-symbol-usage-notes [symbol]="symbol" />
-              }
-            </div>
+            <www-code-example [header]="symbol.name" [copyable]="false">
+              <ng-container actions>
+                <www-symbol-return [symbol]="symbol" />
+              </ng-container>
+              <div class="symbol">
+                @if (symbol.parameters?.length) {
+                  <www-symbol-params [symbol]="symbol" />
+                }
+                @if (symbol.typeParameters?.length) {
+                  <www-symbol-type-params [symbol]="symbol" />
+                }
+                @if (symbol.returnTypeTokenRange) {
+                  <www-symbol-returns [symbol]="symbol" />
+                }
+                @if (symbol.docs.usageNotes) {
+                  <www-symbol-usage-notes [symbol]="symbol" />
+                }
+              </div>
+            </www-code-example>
           }
           @if (getMethodsForSymbol(symbol).length) {
             <www-symbol-methods [symbol]="symbol" />
@@ -92,7 +101,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
         display: flex;
         flex-direction: column;
         gap: 32px;
-        padding: 32px;
+        padding: 24px;
       }
 
       .symbols {
@@ -111,14 +120,23 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
         gap: 16px;
         width: 100%;
 
-        > .content {
+        h2 {
+          font:
+            500 18px/24px Fredoka,
+            sans-serif;
+          color: var(--gray, #5e5c5a);
+          margin: 32px 0 0;
+        }
+
+        .symbol {
           display: flex;
           flex-direction: column;
-          align-items: stretch;
           gap: 16px;
-          padding: 32px;
-          background: #3d3c3a;
-          border-radius: 12px;
+
+          > * + * {
+            border-top: 1px solid var(--gray, #5e5c5a);
+            padding-top: 16px;
+          }
         }
       }
 

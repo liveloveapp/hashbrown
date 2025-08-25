@@ -2,7 +2,7 @@
   "name": "useRuntime",
   "canonicalReference": "@hashbrownai/react!useRuntime:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-runtime.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -27,7 +27,7 @@
         },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime.d.ts",
       "returnTypeTokenRange": { "startIndex": 3, "endIndex": 4 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -61,7 +61,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntime(options: UseRuntimeOptions): RuntimeRef;"
     }
   ]
 }

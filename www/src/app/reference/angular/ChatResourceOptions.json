@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!ChatResourceOptions:interface",
-      "docComment": "/**\n * Configuration options for the chat resource.\n *\n * @interface ChatResourceOptions  @template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n */\n",
+      "docComment": "/**\n * Configuration options for the chat resource.\n *\n * @template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -64,7 +64,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "apiUrl?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -97,7 +98,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounce?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -130,7 +132,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -180,7 +183,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages?: Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>;"
         },
         {
           "kind": "PropertySignature",
@@ -230,7 +234,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model: KnownModelIds | Signal<KnownModelIds>;"
         },
         {
           "kind": "PropertySignature",
@@ -269,7 +274,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string | Signal<string>;"
         },
         {
           "kind": "PropertySignature",
@@ -302,7 +308,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Tools[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -315,7 +322,7 @@
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Configuration options for the chat resource.\n\n@interface ChatResourceOptions  @template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n",
+        "summary": "Configuration options for the chat resource.\n\n@template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -323,7 +330,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface ChatResourceOptions<Tools extends Chat.AnyTool>"
     }
   ]
 }

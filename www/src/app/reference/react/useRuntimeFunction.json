@@ -2,7 +2,7 @@
   "name": "useRuntimeFunction",
   "canonicalReference": "@hashbrownai/react!useRuntimeFunction:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -90,7 +90,7 @@
         { "kind": "Content", "text": "<ResultSchema>>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 19, "endIndex": 25 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -160,7 +160,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction<\n  ArgsSchema extends s.HashbrownType,\n  ResultSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  deps: DependencyList;\n  args: ArgsSchema;\n  result: ResultSchema;\n  handler: (\n    input: s.Infer<ArgsSchema>,\n    abortSignal?: AbortSignal,\n  ) => s.Infer<ResultSchema> | Promise<s.Infer<ResultSchema>>;\n}): RuntimeFunctionRef<s.Infer<ArgsSchema>, s.Infer<ResultSchema>>;"
     },
     {
       "kind": "Function",
@@ -229,7 +230,7 @@
         { "kind": "Content", "text": "<ResultSchema>>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 15, "endIndex": 19 },
       "releaseTag": "Public",
       "overloadIndex": 2,
@@ -290,7 +291,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction<\n  ResultSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  deps: DependencyList;\n  result: ResultSchema;\n  handler: (\n    abortSignal?: AbortSignal,\n  ) => s.Infer<ResultSchema> | Promise<s.Infer<ResultSchema>>;\n}): RuntimeFunctionRef<null, s.Infer<ResultSchema>>;"
     },
     {
       "kind": "Function",
@@ -353,7 +355,7 @@
         { "kind": "Content", "text": "<ArgsSchema>, void>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 13, "endIndex": 17 },
       "releaseTag": "Public",
       "overloadIndex": 3,
@@ -414,7 +416,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction<\n  ArgsSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  deps: DependencyList;\n  args: ArgsSchema;\n  handler: (\n    args: s.Infer<ArgsSchema>,\n    abortSignal?: AbortSignal,\n  ) => void | Promise<void>;\n}): RuntimeFunctionRef<s.Infer<ArgsSchema>, void>;"
     },
     {
       "kind": "Function",
@@ -456,7 +459,7 @@
         { "kind": "Content", "text": "<null, void>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
       "releaseTag": "Public",
       "overloadIndex": 4,
@@ -506,7 +509,8 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction(cfg: {\n  name: string;\n  description: string;\n  deps: DependencyList;\n  handler: (abortSignal?: AbortSignal) => void | Promise<void>;\n}): RuntimeFunctionRef<null, void>;"
     }
   ]
 }

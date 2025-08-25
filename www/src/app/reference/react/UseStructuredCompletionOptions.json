@@ -2,7 +2,7 @@
   "name": "UseStructuredCompletionOptions",
   "canonicalReference": "@hashbrownai/react!UseStructuredCompletionOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-completion.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -21,7 +21,7 @@
         },
         { "kind": "Content", "text": "> " }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-completion.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
@@ -69,7 +69,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounceTime?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -102,7 +103,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -135,7 +137,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "input: Input | null | undefined;"
         },
         {
           "kind": "PropertySignature",
@@ -172,7 +175,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model: KnownModelIds;"
         },
         {
           "kind": "PropertySignature",
@@ -205,7 +209,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;"
         },
         {
           "kind": "PropertySignature",
@@ -238,7 +243,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "schema: Schema;"
         },
         {
           "kind": "PropertySignature",
@@ -271,7 +277,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string;"
         },
         {
           "kind": "PropertySignature",
@@ -309,7 +316,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Chat.AnyTool[];"
         }
       ],
       "extendsTokenRanges": [],
@@ -330,7 +338,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseStructuredCompletionOptions<Input, Schema extends s.HashbrownType>"
     }
   ]
 }

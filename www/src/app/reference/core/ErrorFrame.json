@@ -48,7 +48,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "error: string;"
         },
         {
           "kind": "PropertySignature",
@@ -81,7 +82,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "stacktrace?: string;"
         },
         {
           "kind": "PropertySignature",
@@ -114,7 +116,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "type: \"error\";"
         }
       ],
       "extendsTokenRanges": [],
@@ -135,7 +138,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface ErrorFrame"
     }
   ]
 }

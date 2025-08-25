@@ -54,7 +54,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "functions: [...(RuntimeFunctionRef < any), any > []];"
         },
         {
           "kind": "PropertySignature",
@@ -87,7 +88,8 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "timeout?: number;"
         }
       ],
       "extendsTokenRanges": [],
@@ -108,7 +110,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface CreateRuntimeOptions"
     }
   ]
 }

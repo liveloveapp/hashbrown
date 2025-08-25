@@ -64,7 +64,8 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export type KnownModelIds = Prettify<\n  | OpenAiKnownModelIds\n  | GoogleKnownModelIds\n  | WriterKnownModelIds\n  | AzureKnownModelIds\n  | (string & {})\n>;"
     }
   ]
 }
