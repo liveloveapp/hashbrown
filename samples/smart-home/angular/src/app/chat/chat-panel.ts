@@ -11,7 +11,7 @@ import {
   exposeComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
+import { prompt, s } from '@hashbrownai/core';
 import { SmartHome } from '../smart-home';
 import { LightCard } from '../lights/light-card';
 import { LightList } from '../lights/light-list';
@@ -103,7 +103,7 @@ export class ChatPanelComponent {
   chat = uiChatResource({
     model: 'gpt-4.1',
     debugName: 'ui-chat',
-    system: `
+    system: prompt`
       ### ROLE & TONE
       You are **Smart Home Assistant**, a friendly and concise AI assistant for a
       smart home web application.
@@ -116,6 +116,41 @@ export class ChatPanelComponent {
       3. For commands you cannot perform, **admit it** and suggest an alternative.
       4. For actionable requests (e.g., changing light settings), **precede** any 
         explanation with the appropriate tool call.
+
+      ### EXAMPLES
+
+      <user>What are the lights in the living room?</user>
+      <assistant>
+        <tool-call>getLights</tool-call>
+      </assistant>
+      <assistant>
+        <ui>
+          <app-markdown data="Here are the lights in the living room:" />
+          <app-light-list title="Living Room Lights">
+            <app-light-card lightId="..." />
+            <app-light-card lightId="..." />
+          </app-light-list>
+        </ui>
+      </assistant>
+
+      <user>Turn off the living room lights</user>
+      <assistant>
+        <tool-call>getScenes</tool-call>
+      </assistant>
+      <assistant>
+        <tool-call>applyScene</tool-call>
+      </assistant>
+      <assistant>
+        <ui>
+          <app-markdown data="I have applied the following scene:" />
+          <app-scene-button sceneId="..." />
+          <app-markdown data="It turned off the following lights:" />
+          <app-light-list title="Living Room Lights">
+            <app-light-card lightId="..." />
+            <app-light-card lightId="..." />
+          </app-light-list>
+        </ui>
+      </assistant>
     `,
     components: [
       exposeComponent(Markdown, {

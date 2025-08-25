@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, KnownModelIds, s, ɵui } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
@@ -65,7 +65,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * The system message to use for the chat.
    */
-  system: string;
+  system: string | SystemPrompt;
 
   /**
    * The components that can be rendered by the chat.
@@ -144,9 +144,22 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
       ),
     });
   }, [components]);
+  const systemAsString = useMemo(() => {
+    if (typeof chatOptions.system === 'string') {
+      return chatOptions.system;
+    }
+    const output = chatOptions.system.compile(components, ui);
+    if (chatOptions.system.diagnostics.length > 0) {
+      throw new Error(
+        `System prompt has ${chatOptions.system.diagnostics.length} errors: \n\n${chatOptions.system.diagnostics.map((d) => d.message).join('\n\n')}`,
+      );
+    }
+    return output;
+  }, [chatOptions.system, components, ui]);
   const chat = useStructuredChat({
     ...chatOptions,
     schema: ui as any,
+    system: systemAsString,
   });
 
   const buildContent = useCallback(
