@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s, ɵcomponents } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s, ɵui } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import {
@@ -11,7 +11,7 @@ import {
 } from '../utils/ui-chat.helpers';
 
 type UiChatMessageOutput = s.ObjectType<{
-  ui: s.ArrayType<s.ObjectType<ɵcomponents.ComponentTreeSchema>>;
+  ui: s.ArrayType<s.ObjectType<ɵui.ComponentTreeSchema>>;
 }>;
 
 /**
@@ -80,12 +80,12 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
   args: UiChatResourceOptions<Tools>,
 ): UiChatResourceRef<Tools> {
   const flattenedComponents = computed(() =>
-    ɵcomponents.flattenComponents(args.components),
+    ɵui.flattenComponents(args.components),
   );
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
-      ɵcomponents.createComponentSchema(args.components),
+      ɵui.createComponentSchema(args.components),
     ),
   });
 
