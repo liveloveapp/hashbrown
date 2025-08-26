@@ -13,7 +13,6 @@ import {
   createRuntime,
   createRuntimeFunction,
   createTool,
-  createToolJavaScript,
   exposeComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
@@ -28,18 +27,8 @@ import { LightComponent, LightIconSchema } from '../lights/light.component';
 import { MarkdownComponent } from './components/markdown.component';
 import { MessagesComponent } from './components/messages.component';
 import { SimpleMessagesComponent } from './components/simple-messages.component';
-import {
-  LightListComponent,
-  LightListIconSchema,
-} from '../lights/light-list.component';
 import { SceneComponent } from '../scenes/scene.component';
 import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
-import sanitizeHtml from 'sanitize-html';
-import { HelpTopicMarkerComponent } from '../../components/help-topic-marker.component';
-import { v4 as uuid } from 'uuid';
-import { MatDialog } from '@angular/material/dialog';
-import { ConfirmComponent } from './components/confirm.component';
 
 @Component({
   selector: 'app-chat-panel',
@@ -177,7 +166,7 @@ export class ChatPanelComponent {
   @ViewChild('contentDiv') private contentDiv: ElementRef = {} as ElementRef;
   simpleDemo = false;
 
-  /**
+  /*
    * --------------------------------------------------------------------------
    * Simple chat
    * --------------------------------------------------------------------------
@@ -197,28 +186,7 @@ export class ChatPanelComponent {
     ],
   });
 
-  /**
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
+  /*
    * --------------------------------------------------------------------------
    * Runtime
    * --------------------------------------------------------------------------
@@ -298,17 +266,36 @@ export class ChatPanelComponent {
     ],
   });
 
-  /**
+  /*
    * --------------------------------------------------------------------------
    * UI chat
    * --------------------------------------------------------------------------
    */
   chat = uiChatResource({
-    model: 'gpt-oss:20b',
+    model: 'gpt-oss:120b',
     debugName: 'ui-chat',
     system: `
       You are a helpful assistant for a smart home app. You are speaking to the user
       in a web app, and their smart home interface is to the left. 
+
+      For text responses to a user, you should use the markdown component with its 'data' property.
+
+      For example:
+      User: Hello
+      Assistant:
+        {
+          "ui": [
+            {
+              "0": {
+                "$tagName": "app-markdown",
+                "$props": {
+                  "data": "How may I help you today?"
+                }
+              }
+            },
+          ]
+        }
+
 
       You can help with various things like:
       * setting up a smart home (with lights, scenes and scheduling)
@@ -324,7 +311,7 @@ export class ChatPanelComponent {
 
       Please do not stringify (aka escape) function arguments.  Also, make sure not to include bits of JSON Schema in the function 
       arguments and returned structured data. 
-
+      
       # Examples
       User: What lights are in the living room?
       Assistant:

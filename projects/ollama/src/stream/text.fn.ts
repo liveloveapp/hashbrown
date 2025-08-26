@@ -18,7 +18,10 @@ export async function* text(
     const baseOptions: ChatRequest & { stream: true } = {
       stream: true,
       model: model as string,
-      think: true,
+      think: 'high' as any,
+      options: {
+        num_ctx: 32768,
+      },
       messages: [
         {
           role: 'system',
@@ -87,7 +90,11 @@ export async function* text(
 
     const stream = await client.chat(baseOptions);
 
+    // TODO: can we filter out calls to tools that are not in
+    // our tool name list
+
     for await (const chunk of stream) {
+      console.log(chunk.message.tool_calls);
       const chunkMessage: Chat.Api.CompletionChunk = {
         choices: [
           {
