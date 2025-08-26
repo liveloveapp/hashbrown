@@ -52,13 +52,6 @@ export function toViewMessagesFromInternal(
   outputSchema?: s.HashbrownType,
   streaming = true,
 ): Chat.AnyMessage[] {
-  console.log({
-    message,
-    toolCalls,
-    tools,
-    outputSchema,
-    streaming,
-  });
   switch (message.role) {
     case 'user': {
       return [
@@ -102,6 +95,13 @@ export function toViewMessagesFromInternal(
                 return [];
               }
 
+              let toolArgs = toolCall.arguments;
+
+              // Ollama will return POJOs
+              if (typeof toolCall.arguments === 'object') {
+                toolArgs = JSON.stringify(toolCall.arguments);
+              }
+
               switch (toolCall.status) {
                 case 'done': {
                   return [
@@ -110,21 +110,13 @@ export function toViewMessagesFromInternal(
                       status: 'done',
                       name: toolCall.name,
                       toolCallId,
-                      args:
-                        // TODO: add tests around how this has to be this way for Ollama,
-                        // since tool args are just an object.
-                        // TODO: maybe compare tool args with how OpenAI does it to see
-                        // "keys materializing" in different frames
-                        typeof toolCall.arguments === 'string'
-                          ? s.isHashbrownType(tool.schema)
-                            ? new StreamSchemaParser(tool.schema).parse(
-                                toolCall.arguments,
-                                !streaming,
-                              )
-                            : // TODO: Ok, so, this isn't a string and doesn't get passed to tater,
-                              // but that means streaming doesn't work.  Need to find a better solution.
-                              JSON.parse(toolCall.arguments)
-                          : toolCall.arguments,
+                      args: s.isHashbrownType(tool.schema)
+                        ? new StreamSchemaParser(tool.schema).parse(
+                            toolArgs,
+                            !streaming,
+                          )
+                        : JSON.parse(toolArgs),
+
                       // The internal models don't use a union, since that tends to
                       // complicate reducer logic. This is necessary to uplift our
                       // internal model into the view union.
@@ -134,7 +126,6 @@ export function toViewMessagesFromInternal(
                   ];
                 }
                 case 'pending': {
-                  console.log('pending', { toolCall, tool });
                   return [
                     {
                       role: 'tool',
@@ -142,15 +133,12 @@ export function toViewMessagesFromInternal(
                       name: toolCall.name,
                       toolCallId,
                       progress: toolCall.progress,
-                      args:
-                        typeof toolCall.arguments === 'string'
-                          ? s.isHashbrownType(tool.schema)
-                            ? new StreamSchemaParser(tool.schema).parse(
-                                toolCall.arguments,
-                                !streaming,
-                              )
-                            : null
-                          : toolCall.arguments,
+                      args: s.isHashbrownType(tool.schema)
+                        ? new StreamSchemaParser(tool.schema).parse(
+                            toolArgs,
+                            !streaming,
+                          )
+                        : null,
                     },
                   ];
                 }

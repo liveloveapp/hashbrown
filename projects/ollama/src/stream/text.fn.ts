@@ -18,8 +18,8 @@ export async function* text(
     const baseOptions: ChatRequest & { stream: true } = {
       stream: true,
       model: model as string,
-      // think: 'high' as any,
-      think: true,
+      think: 'high' as any,
+      // think: true,
       options: {
         // num_ctx: 32768,
       },

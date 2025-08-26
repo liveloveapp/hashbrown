@@ -103,8 +103,6 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     return result;
   });
 
-  console.log(s.toJsonSchema(internalSchema));
-
   const chat = structuredChatResource({
     model: args.model,
     schema: internalSchema,
