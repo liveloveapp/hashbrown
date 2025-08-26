@@ -1,14 +1,76 @@
 import express from 'express';
 import cors from 'cors';
-import { Chat } from '@hashbrownai/core';
+import { Chat, KnownModelIds } from '@hashbrownai/core';
+import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { HashbrownGoogle } from '@hashbrownai/google';
+import { HashbrownWriter } from '@hashbrownai/writer';
+import { HashbrownOllama } from '@hashbrownai/ollama';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
+const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
+const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
+const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
+const WRITER_API_KEY = process.env['WRITER_API_KEY'] ?? '';
+const OLLAMA_API_KEY = process.env['OLLAMA_API_KEY'] ?? '';
+
+const KNOWN_GOOGLE_MODEL_NAMES: KnownModelIds[] = [
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-8b',
+  'gemini-1.5-pro',
+];
+
+const KNOWN_OPENAI_MODEL_NAMES: KnownModelIds[] = [
+  'gpt-3.5',
+  'gpt-4',
+  'gpt-4o',
+  'gpt-4o-mini',
+  'o1-mini',
+  'o1',
+  'o1-pro',
+  'o3-mini',
+  'o3-mini-high',
+  'o3',
+  'o3-pro',
+  'o4-mini',
+  'o4-mini-high',
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'gpt-4.5',
+];
+
+const KNOWN_WRITER_MODEL_NAMES: KnownModelIds[] = [
+  'palmyra-x5',
+  'palmyra-x4',
+  'palmyra-x-003-instruct',
+  'palmyra-vision',
+  'palmyra-med',
+  'palmyra-fin',
+  'palmyra-creative',
+];
+
 if (!OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY is not set');
+  console.warn('OPENAI_API_KEY is not set');
+}
+if (!AZURE_API_KEY) {
+  console.warn('AZURE_API_KEY is not set');
+}
+if (!GOOGLE_API_KEY) {
+  console.warn('GOOGLE_API_KEY is not set');
+}
+if (!WRITER_API_KEY) {
+  console.warn('WRITER_API_KEY is not set');
+}
+if (!OLLAMA_API_KEY) {
+  console.warn('OLLAMA_API_KEY is not set');
 }
 
 const app = express();
@@ -17,14 +79,36 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/api/chat', async (req, res) => {
-  const completionParams = req.body as Chat.Api.CompletionCreateParams;
-  const response = HashbrownOpenAI.stream.text({
-    apiKey: OPENAI_API_KEY,
-    request: completionParams,
-  });
+  const request = req.body as Chat.Api.CompletionCreateParams;
+
+  const modelName = request.model;
+  let stream: AsyncIterable<Uint8Array>;
+
+  if (KNOWN_GOOGLE_MODEL_NAMES.includes(modelName as KnownModelIds)) {
+    stream = HashbrownGoogle.stream.text({
+      apiKey: GOOGLE_API_KEY,
+      request,
+    });
+  } else if (KNOWN_OPENAI_MODEL_NAMES.includes(modelName as KnownModelIds)) {
+    stream = HashbrownOpenAI.stream.text({
+      apiKey: OPENAI_API_KEY,
+      request,
+    });
+  } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName as KnownModelIds)) {
+    stream = HashbrownWriter.stream.text({
+      apiKey: WRITER_API_KEY,
+      request,
+    });
+  } else {
+    stream = HashbrownOllama.stream.text({
+      turbo: { apiKey: OLLAMA_API_KEY },
+      request,
+    });
+  }
+
   res.header('Content-Type', 'application/octet-stream');
 
-  for await (const chunk of response) {
+  for await (const chunk of stream) {
     res.write(chunk);
   }
 
