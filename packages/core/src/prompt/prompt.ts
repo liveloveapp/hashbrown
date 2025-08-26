@@ -266,10 +266,11 @@ function ensureSerializable(value: unknown): true | string {
 }
 
 // Minimal local representation to keep legacy lowering typings intact
-type ComponentTree = { $tag: string; $children: ComponentTree[] } & Record<
-  string,
-  unknown
->;
+type ComponentTree = {
+  $tag: string;
+  $children: ComponentTree[];
+  $props: Record<string, unknown>;
+};
 
 /** Lower a UiAst element into an HBNode, collecting diagnostics functionally. */
 function lowerToHB(
@@ -340,16 +341,17 @@ function lowerToHB(
     .map((r) => r.hb)
     .filter((h): h is ComponentTree => h != null);
   const hb: ComponentTree = children.length
-    ? { $tag: node.tag, $children: children, ...props }
-    : { $tag: node.tag, $children: [], ...props };
+    ? { $tag: node.tag, $children: children, $props: props }
+    : { $tag: node.tag, $children: [], $props: props };
   return { hb, diagnostics: attrDiags.concat(childDiags) };
 }
 
 // Internal flexible HB node to support string children for 'text' components
-type FlexHBNode = { $tag: string; $children: FlexHBNode[] | string } & Record<
-  string,
-  unknown
->;
+type FlexHBNode = {
+  $tag: string;
+  $children: FlexHBNode[] | string;
+  $props: Record<string, unknown>;
+};
 
 /**
  * Lower a UiAst element into a flexible HB node that can represent text children
@@ -408,7 +410,7 @@ function lowerWithPolicy(
       $tag: node.tag,
       $children: content,
       $elementChildren: elementChildren,
-      ...props,
+      $props: props,
     } as unknown as FlexHBNode;
   }
 
@@ -422,7 +424,7 @@ function lowerWithPolicy(
   return {
     $tag: node.tag,
     $children: loweredChildren,
-    ...props,
+    $props: props,
   } as FlexHBNode;
 }
 
@@ -497,8 +499,11 @@ function validateExamples(
     const diags: PromptDiagnostic[] = [];
     if (comp.props && typeof comp.props === 'object') {
       const definedProps = new Set(Object.keys(comp.props));
+
+      const nodeProps: Record<string, unknown> = (node as any).$props || {};
+
       definedProps.forEach((key) => {
-        if (!(key in node)) {
+        if (!(key in nodeProps)) {
           diags.push({
             code: 'E1102',
             severity: 'error',
@@ -511,10 +516,7 @@ function validateExamples(
         }
       });
 
-      Object.entries(node).forEach(([k, v]) => {
-        if (k === '$tag' || k === '$children' || k === '$elementChildren')
-          return;
-
+      Object.entries(nodeProps).forEach(([k, v]) => {
         if (!definedProps.has(k)) {
           diags.push({
             code: 'W2001',

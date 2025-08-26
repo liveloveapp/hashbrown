@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Type } from '@angular/core';
 import { Chat, s } from '@hashbrownai/core';
 
@@ -27,6 +28,7 @@ export const getTagNameRegistry = (
 export interface UiChatSchemaComponent {
   $tag: string;
   $children: string | UiChatSchemaComponent[];
+  $props: Record<string, any>;
 }
 
 export interface UiChatSchema {

@@ -21,7 +21,9 @@ describe('prompt helper', () => {
       expect(Array.isArray(tree)).toBe(true);
       const first = tree && tree[0];
       expect(first && first.$tag).toBe('Markdown');
-      expect(first && (first as any).data).toEqual(rich);
+      expect(
+        first && (first as any).$props && (first as any).$props.data,
+      ).toEqual(rich);
     });
 
     it('extracts multiple <ui> blocks', () => {
@@ -52,10 +54,10 @@ describe('prompt helper', () => {
 
       const n: any = sys.examples[0] && sys.examples[0][0];
 
-      expect(n && n.a).toBe(true);
-      expect(n && n.b).toBe(false);
-      expect(n && n.c).toBeCloseTo(3.14);
-      expect(n && n.d).toBeNull();
+      expect(n && n.$props && n.$props.a).toBe(true);
+      expect(n && n.$props && n.$props.b).toBe(false);
+      expect(n && n.$props && n.$props.c).toBeCloseTo(3.14);
+      expect(n && n.$props && n.$props.d).toBeNull();
     });
 
     it('duplicate attributes are flagged', () => {

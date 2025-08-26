@@ -33,6 +33,7 @@ export interface ExposedComponent<T extends Component<unknown>> {
 export type ComponentTree = {
   $tag: string;
   $children: ComponentTree[];
+  $props: Record<string, any>;
 };
 
 export type ComponentTreeSchema = {
@@ -88,10 +89,10 @@ export function createComponentSchema(
     if (children === 'any') {
       const schema = s.object(component.description, {
         $tag: s.literal(component.name),
+        $props: s.object('Component Props', component.props ?? {}),
         get $children(): any {
           return s.streaming.array('Child Elements', elements);
         },
-        ...(component.props ?? {}),
       });
 
       weakMap.set(component.component, schema);
@@ -99,8 +100,8 @@ export function createComponentSchema(
     } else if (children === 'text') {
       const schema = s.object(component.description, {
         $tag: s.literal(component.name),
+        $props: s.object('Component Props', component.props ?? {}),
         $children: s.streaming.string('Content'),
-        ...(component.props ?? {}),
       });
 
       weakMap.set(component.component, schema);
@@ -108,13 +109,13 @@ export function createComponentSchema(
     } else if (children && Array.isArray(children)) {
       const schema = s.object(component.description, {
         $tag: s.literal(component.name),
+        $props: s.object('Component Props', component.props ?? {}),
         get $children(): any {
           return s.streaming.array(
             'Child Elements',
             s.anyOf(children.map((child) => createSchema(child))),
           );
         },
-        ...(component.props ?? {}),
       });
 
       weakMap.set(component.component, schema);
@@ -122,7 +123,7 @@ export function createComponentSchema(
     } else {
       const schema = s.object(component.description, {
         $tag: s.literal(component.name),
-        ...(component.props ?? {}),
+        $props: s.object('Component Props', component.props ?? {}),
       });
       weakMap.set(component.component, schema);
       return schema;

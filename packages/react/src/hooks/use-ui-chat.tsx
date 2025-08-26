@@ -12,6 +12,8 @@ export interface UiChatSchemaComponent {
   $tag: string;
   /** Child components to render inside this component */
   $children: string | UiChatSchemaComponent[];
+  /** Properties of the component */
+  $props: Record<string, any>;
 }
 
 /**
@@ -174,16 +176,16 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
       const elements = nodes.map((element, index) => {
         const key = `${parentKey}_${index}`;
 
-        const { $tag, $children, ...props } = element;
+        const { $tag, $children, $props } = element;
         const componentType = flattenedComponents.get($tag)?.component;
 
         if ($tag && componentType) {
           const children: React.ReactNode[] | string | null = element.$children
-            ? buildContent(element.$children, key)
+            ? buildContent($children, key)
             : null;
 
           return React.createElement(componentType, {
-            ...props,
+            ...$props,
             children,
             key,
           });
