@@ -82,6 +82,9 @@ export function toJsonSchema(schema: HashbrownType) {
     isRoot = false,
     inDef: HashbrownType | null = null,
     pathSeen: Set<HashbrownType> = new Set(),
+    // If provided, omit this property when printing an object. Used for
+    // anyOf literal-based envelopes where the literal is redundant.
+    omitObjectProp?: string,
   ): any {
     // a) cycle back to the root
     if (!isRoot && n === rootNode) {
@@ -114,16 +117,19 @@ export function toJsonSchema(schema: HashbrownType) {
       // Sort props so that streaming ones are at the end
       const shapeWithStreamingAtEnd = Object.entries(
         n[internal].definition.shape,
-      ).sort((a, b) => {
-        if (!s.isStreaming(a[1]) && s.isStreaming(b[1])) {
-          return -1;
-        }
-        if (s.isStreaming(a[1]) && !s.isStreaming(b[1])) {
-          return 1;
-        }
+      )
+        // If we're omitting a prop due to envelope discrimination, remove it
+        .filter(([key]) => (omitObjectProp ? key !== omitObjectProp : true))
+        .sort((a, b) => {
+          if (!s.isStreaming(a[1]) && s.isStreaming(b[1])) {
+            return -1;
+          }
+          if (s.isStreaming(a[1]) && !s.isStreaming(b[1])) {
+            return 1;
+          }
 
-        return 0;
-      });
+          return 0;
+        });
 
       const props: Record<string, any> = {};
       for (const [k, child] of shapeWithStreamingAtEnd) {
@@ -132,6 +138,8 @@ export function toJsonSchema(schema: HashbrownType) {
 
       result = n.toJsonSchema();
       result.properties = props;
+      // Ensure required keys do not include any omitted discriminator prop
+      result.required = Object.keys(props);
     } else if (s.isArrayType(n)) {
       result = n.toJsonSchema();
       result.items = printNode(
@@ -231,7 +239,16 @@ export function toJsonSchema(schema: HashbrownType) {
             additionalProperties: false,
             required: [literalValue],
             properties: {
-              [literalValue]: printNode(opt, false, inDef, pathSeen),
+              // When printing the option object, omit the discriminator literal
+              // key from the inner schema because it is already conveyed by
+              // the envelope key (literalValue)
+              [literalValue]: printNode(
+                opt,
+                false,
+                inDef,
+                pathSeen,
+                literalKey,
+              ),
             },
           };
         });

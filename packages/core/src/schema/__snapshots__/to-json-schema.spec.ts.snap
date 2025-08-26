@@ -1,0 +1,439 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`anyOf: duplicate literal values fall back to index wrappers 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "0": {
+          "additionalProperties": false,
+          "description": "A",
+          "properties": {
+            "a": {
+              "description": "a",
+              "type": "number",
+            },
+            "type": {
+              "const": "dup",
+              "description": "dup",
+              "type": "string",
+            },
+          },
+          "required": [
+            "type",
+            "a",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "0",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "1": {
+          "additionalProperties": false,
+          "description": "B",
+          "properties": {
+            "b": {
+              "description": "b",
+              "type": "string",
+            },
+            "type": {
+              "const": "dup",
+              "description": "dup",
+              "type": "string",
+            },
+          },
+          "required": [
+            "type",
+            "b",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "1",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: mixed options use wrappers only for complex ones 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "description": "S",
+      "type": "string",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "1": {
+          "additionalProperties": false,
+          "description": "A",
+          "properties": {
+            "a": {
+              "description": "a",
+              "type": "number",
+            },
+          },
+          "required": [
+            "a",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "1",
+      ],
+      "type": "object",
+    },
+    {
+      "description": "N",
+      "type": "number",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: multiple literals per object fall back to index wrappers 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "0": {
+          "additionalProperties": false,
+          "description": "A",
+          "properties": {
+            "a": {
+              "description": "a",
+              "type": "number",
+            },
+            "t1": {
+              "const": "x",
+              "description": "x",
+              "type": "string",
+            },
+            "t2": {
+              "const": "y",
+              "description": "y",
+              "type": "string",
+            },
+          },
+          "required": [
+            "t1",
+            "t2",
+            "a",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "0",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "1": {
+          "additionalProperties": false,
+          "description": "B",
+          "properties": {
+            "b": {
+              "description": "b",
+              "type": "string",
+            },
+            "t1": {
+              "const": "p",
+              "description": "p",
+              "type": "string",
+            },
+            "t2": {
+              "const": "q",
+              "description": "q",
+              "type": "string",
+            },
+          },
+          "required": [
+            "t1",
+            "t2",
+            "b",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "1",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: object options default to index wrappers 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "0": {
+          "additionalProperties": false,
+          "description": "A",
+          "properties": {
+            "a": {
+              "description": "a",
+              "type": "number",
+            },
+          },
+          "required": [
+            "a",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "0",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "1": {
+          "additionalProperties": false,
+          "description": "B",
+          "properties": {
+            "b": {
+              "description": "b",
+              "type": "string",
+            },
+          },
+          "required": [
+            "b",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "1",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: primitives are direct without wrappers 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "description": "N",
+      "type": "number",
+    },
+    {
+      "description": "S",
+      "type": "string",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: single unique string-literal per object uses literal envelopes, omitting discriminator inside 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "app-markdown": {
+          "additionalProperties": false,
+          "description": "Show markdown",
+          "properties": {
+            "$props": {
+              "additionalProperties": false,
+              "description": "Props",
+              "properties": {
+                "data": {
+                  "description": "data",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "data",
+              ],
+              "type": "object",
+            },
+          },
+          "required": [
+            "$props",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "app-markdown",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "app-button": {
+          "additionalProperties": false,
+          "description": "Show button",
+          "properties": {
+            "$props": {
+              "additionalProperties": false,
+              "description": "Props",
+              "properties": {
+                "data": {
+                  "description": "data",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "data",
+              ],
+              "type": "object",
+            },
+          },
+          "required": [
+            "$props",
+          ],
+          "type": "object",
+        },
+      },
+      "required": [
+        "app-button",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`defs: repeated sub-schema is extracted into $defs and referenced 1`] = `
+{
+  "$defs": {
+    "sharedItem": {
+      "additionalProperties": false,
+      "description": "Shared Item",
+      "properties": {
+        "x": {
+          "description": "x",
+          "type": "number",
+        },
+      },
+      "required": [
+        "x",
+      ],
+      "type": "object",
+    },
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Root",
+  "properties": {
+    "a": {
+      "$ref": "#/$defs/sharedItem",
+    },
+    "b": {
+      "$ref": "#/$defs/sharedItem",
+    },
+  },
+  "required": [
+    "a",
+    "b",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`descriptionToCamelCase variants snapshot 1`] = `
+{
+  "  Title: With Punctuations!!  ": "titleWithPunctuations",
+  "123 starts with number": "_123StartsWithNumber",
+  "Hello world": "helloWorld",
+  "MiXeD CaSe Words": "mixedCaseWords",
+  "alreadyCamel": "alreadycamel",
+  "kebab-case and snake_case": "kebabCaseAndSnakeCase",
+  "multi    space	 and
+lines": "multiSpaceAndLines",
+}
+`;
+
+exports[`object: properties, required, additionalProperties=false 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Root obj",
+  "properties": {
+    "a": {
+      "description": "A",
+      "type": "number",
+    },
+    "b": {
+      "description": "B",
+      "type": "string",
+    },
+  },
+  "required": [
+    "a",
+    "b",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`root: wraps array under __wrappedPrimitive 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "__wrappedPrimitive": {
+      "description": "Arr",
+      "items": {
+        "description": "num",
+        "type": "number",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "__wrappedPrimitive",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`root: wraps primitive string under __wrappedPrimitive 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "__wrappedPrimitive": {
+      "description": "A string",
+      "type": "string",
+    },
+  },
+  "required": [
+    "__wrappedPrimitive",
+  ],
+  "type": "object",
+}
+`;
