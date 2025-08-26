@@ -1,4 +1,4 @@
-import { Chat, s } from '@hashbrownai/core';
+import { Chat, prompt, s } from '@hashbrownai/core';
 import {
   exposeComponent,
   useRuntime,
@@ -84,29 +84,44 @@ export const RichChatPanel = () => {
   } = useUiChat({
     model: 'gpt-4.1',
     debugName: 'RichChatPanel',
-    system: `
+    system: prompt`
       You are a smart home assistant. You can control the lights in the house. 
       You should not stringify (aka escape) function arguments
 
       Always prefer writing a single script for the javascript tool over calling 
       the javascript tool multiple times.
+
+      ### EXAMPLES
+
+      <user>What are the lights in the living room?</user>
+      <assistant>
+        <tool-call>getLights</tool-call>
+      </assistant>
+      <assistant>
+        <ui>
+          <Card title="Living Room Lights" description="Here are the lights in the living room:">
+            <LightChat lightId="..." />
+            <LightChat lightId="..." />
+          </Card>
+        </ui>
+      </assistant>
     `,
     tools: [getLights, controlLight, toolJavaScript],
     components: [
       exposeComponent(LightChatComponent, {
-        name: 'LightChatComponent',
+        name: 'LightChat',
         description: 'A component that lets the user control a light',
         props: {
           lightId: s.string('The id of the light'),
         },
       }),
       exposeComponent(MarkdownComponent, {
-        name: 'MarkdownComponent',
+        name: 'Markdown',
         description: 'Show markdown content to the user',
         children: 'text',
       }),
       exposeComponent(CardComponent, {
-        name: 'CardComponent',
+        name: 'Card',
         description: 'Show a card with children components to the user',
         children: 'any',
         props: {

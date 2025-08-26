@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s, ɵui } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import {
@@ -9,6 +9,7 @@ import {
   UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
+import { readSignalLike } from '../utils';
 
 type UiChatMessageOutput = s.ObjectType<{
   ui: s.ArrayType<s.ObjectType<ɵui.ComponentTreeSchema>>;
@@ -29,7 +30,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The system prompt to use for the UI chat resource.
    */
-  system: string | Signal<string>;
+  system: string | Signal<string> | SystemPrompt | Signal<SystemPrompt>;
   /**
    * The initial messages for the UI chat resource.
    */
@@ -88,12 +89,25 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
       ɵui.createComponentSchema(args.components),
     ),
   });
+  const systemAsString = computed(() => {
+    const system = readSignalLike(args.system);
+    if (typeof system === 'string') {
+      return system;
+    }
+    const result = system.compile(args.components, internalSchema);
+    if (system.diagnostics.length > 0) {
+      throw new Error(
+        `System prompt has ${system.diagnostics.length} errors: \n\n${system.diagnostics.map((d) => d.message).join('\n\n')}`,
+      );
+    }
+    return result;
+  });
 
   const chat = structuredChatResource({
     model: args.model,
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
-    system: args.system,
+    system: systemAsString,
     messages: [...(args.messages ?? [])],
     debugName: args.debugName,
     debounce: args.debounce,
