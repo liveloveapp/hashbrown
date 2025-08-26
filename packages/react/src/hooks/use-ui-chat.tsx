@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, KnownModelIds, s, ɵcomponents } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
@@ -9,11 +9,9 @@ import { useStructuredChat } from './use-structured-chat';
  */
 export interface UiChatSchemaComponent {
   /** The name of the component to render */
-  $tagName: string;
-  /** The props to pass to the component */
-  $props: Record<string, any>;
+  $tag: string;
   /** Child components to render inside this component */
-  $children: UiChatSchemaComponent[];
+  $children: string | UiChatSchemaComponent[];
 }
 
 /**
@@ -67,7 +65,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * The system message to use for the chat.
    */
-  system: string;
+  system: string | SystemPrompt;
 
   /**
    * The components that can be rendered by the chat.
@@ -136,46 +134,62 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
   const [flattenedComponents] = useState(
-    ɵcomponents.flattenComponents(initialComponents),
+    ɵui.flattenComponents(initialComponents),
   );
   const ui = useMemo(() => {
     return s.object('UI', {
       ui: s.streaming.array(
         'List of elements',
-        ɵcomponents.createComponentSchema(components),
+        ɵui.createComponentSchema(components),
       ),
     });
   }, [components]);
+  const systemAsString = useMemo(() => {
+    if (typeof chatOptions.system === 'string') {
+      return chatOptions.system;
+    }
+    const output = chatOptions.system.compile(components, ui);
+    if (chatOptions.system.diagnostics.length > 0) {
+      throw new Error(
+        `System prompt has ${chatOptions.system.diagnostics.length} errors: \n\n${chatOptions.system.diagnostics.map((d) => d.message).join('\n\n')}`,
+      );
+    }
+    return output;
+  }, [chatOptions.system, components, ui]);
   const chat = useStructuredChat({
     ...chatOptions,
-    schema: ui,
+    schema: ui as any,
+    system: systemAsString,
   });
 
   const buildContent = useCallback(
     (
-      nodes: Array<UiChatSchemaComponent>,
+      nodes: string | Array<UiChatSchemaComponent>,
       parentKey = '',
-    ): React.ReactElement[] => {
+    ): React.ReactElement[] | string => {
+      if (typeof nodes === 'string') {
+        return nodes;
+      }
+
       const elements = nodes.map((element, index) => {
         const key = `${parentKey}_${index}`;
 
-        const componentName = element.$tagName;
-        const componentInputs = element.$props;
-        const componentType = flattenedComponents.get(componentName)?.component;
+        const { $tag, $children, ...props } = element;
+        const componentType = flattenedComponents.get($tag)?.component;
 
-        if (componentName && componentInputs && componentType) {
-          const children: React.ReactNode[] | null = element.$children
+        if ($tag && componentType) {
+          const children: React.ReactNode[] | string | null = element.$children
             ? buildContent(element.$children, key)
             : null;
 
           return React.createElement(componentType, {
-            ...componentInputs,
+            ...props,
             children,
             key,
           });
         }
 
-        throw new Error(`Unknown element type. ${componentName}`);
+        throw new Error(`Unknown element type. ${$tag}`);
       });
 
       return elements;

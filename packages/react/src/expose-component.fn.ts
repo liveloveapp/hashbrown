@@ -58,7 +58,7 @@ export interface ExposedComponent<T extends ComponentType<any>> {
   /**
    * The children of the component.
    */
-  children?: 'any' | ExposedComponent<any>[] | false;
+  children?: 'any' | 'text' | ExposedComponent<any>[] | false;
   /**
    * The schema describing the props for this component.
    */

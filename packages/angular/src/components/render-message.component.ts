@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @angular-eslint/component-selector */
@@ -12,7 +13,11 @@ import {
   ViewContainerRef,
 } from '@angular/core';
 import { NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
-import { getTagNameRegistry, UiAssistantMessage } from '../utils';
+import {
+  getTagNameRegistry,
+  UiAssistantMessage,
+  UiChatSchemaComponent,
+} from '../utils';
 
 @Component({
   selector: 'hb-render-message',
@@ -20,18 +25,22 @@ import { getTagNameRegistry, UiAssistantMessage } from '../utils';
   template: `
     <ng-template #nodeTemplateRef let-node="node">
       <ng-template #childrenTemplateRef>
-        @for (child of node.$children; track $index) {
-          <ng-container
-            *ngTemplateOutlet="nodeTemplateRef; context: { node: child }"
-          />
+        @if (isTextNode(node)) {
+          {{ node.$children }}
+        } @else {
+          @for (child of node.$children; track $index) {
+            <ng-container
+              *ngTemplateOutlet="nodeTemplateRef; context: { node: child }"
+            />
+          }
         }
       </ng-template>
 
       @if (node) {
         <ng-container
           *ngComponentOutlet="
-            getTagComponent(node.$tagName);
-            inputs: node.$props;
+            getTagComponent(node.$tag);
+            inputs: getNodeProps(node);
             content: getRootNodes(childrenTemplateRef)
           "
         ></ng-container>
@@ -96,6 +105,11 @@ export class RenderMessageComponent {
   /**
    * @internal
    */
+  nodePropsWeakMap = new WeakMap<UiChatSchemaComponent, Record<string, any>>();
+
+  /**
+   * @internal
+   */
   getTagComponent(tagName: string) {
     return this.tagNameRegistry()?.[tagName]?.component ?? null;
   }
@@ -125,5 +139,25 @@ export class RenderMessageComponent {
     const nodes = [view.rootNodes];
     this.rootNodesWeakMap.set(tpl, nodes);
     return nodes;
+  }
+
+  /**
+   * @internal
+   */
+  getNodeProps(node: UiChatSchemaComponent) {
+    if (this.nodePropsWeakMap.has(node)) {
+      return this.nodePropsWeakMap.get(node)!;
+    }
+
+    const { $tag, $children, ...rest } = node;
+    this.nodePropsWeakMap.set(node, rest);
+    return rest;
+  }
+
+  /**
+   * @internal
+   */
+  isTextNode(node: UiChatSchemaComponent) {
+    return typeof node.$children === 'string';
   }
 }

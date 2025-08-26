@@ -8,7 +8,9 @@ export {
   type RuntimeRef,
   type RuntimeFunctionRef,
 } from './runtime';
-export * as ɵcomponents from './utils/expose-component';
+export * as ɵui from './ui';
 export * as ɵtypes from './utils/types';
 export type { KnownModelIds } from './utils';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
+export { prompt } from './prompt/prompt';
+export type { SystemPrompt, HBTree, PromptDiagnostic } from './prompt/types';

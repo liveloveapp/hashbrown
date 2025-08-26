@@ -1,0 +1,86 @@
+{
+  "name": "kitchen-sink-angular",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "samples/kitchen-sink/angular/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/samples/kitchen-sink/angular",
+        "index": "samples/kitchen-sink/angular/src/index.html",
+        "browser": "samples/kitchen-sink/angular/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "samples/kitchen-sink/angular/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "samples/kitchen-sink/angular/public"
+          }
+        ],
+        "styles": ["samples/kitchen-sink/angular/src/styles.scss"],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1600kb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "kitchen-sink-angular:build:production"
+        },
+        "development": {
+          "buildTarget": "kitchen-sink-angular:build:development"
+        }
+      },
+      "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "samples/kitchen-sink/angular/proxy.conf.json",
+        "host": "0.0.0.0"
+      }
+    },
+    "extract-i18n": {
+      "executor": "@angular-devkit/build-angular:extract-i18n",
+      "options": {
+        "buildTarget": "kitchen-sink-angular:build"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "kitchen-sink-angular:build",
+        "staticFilePath": "dist/samples/kitchen-sink/angular/browser",
+        "spa": true
+      }
+    }
+  }
+}
