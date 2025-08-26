@@ -8,24 +8,31 @@ exports[`full integration with streaming 1`] = `
   "ui": [
     {
       "Markdown": {
-        "data": {
-          "text": "hi"
+        "$props": {
+          "data": {
+            "text": "hi"
+          }
         }
       }
     },
     {
       "CardList": {
+        "$props": {},
         "$children": [
           {
             "LightCard": {
-              "title": "Light 1",
-              "id": "uuid123"
+              "$props": {
+                "title": "Light 1",
+                "id": "uuid123"
+              }
             }
           },
           {
             "LightCard": {
-              "title": "Light 2",
-              "id": "uuid456"
+              "$props": {
+                "title": "Light 2",
+                "id": "uuid456"
+              }
             }
           }
         ]
@@ -46,10 +53,14 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
 {
   "ui": [
     {
-      "X": {}
+      "X": {
+        "$props": {}
+      }
     },
     {
-      "Y": {}
+      "Y": {
+        "$props": {}
+      }
     }
   ]
 }
@@ -61,7 +72,9 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
 {
   "ui": [
     {
-      "Z": {}
+      "Z": {
+        "$props": {}
+      }
     }
   ]
 }
