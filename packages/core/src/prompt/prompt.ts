@@ -620,7 +620,7 @@ function injectExamples(
       const pre = text.slice(acc.cursor, blk.start);
       const mid =
         mode === 'inline'
-          ? `\n\n\`\`\`json\n${JSON.stringify(examples[i], null, 2)}\n\`\`\`\n\n`
+          ? `\n\n${JSON.stringify(examples[i], null, 2)}\n\n`
           : `[See compiled UI example ${String.fromCharCode('A'.charCodeAt(0) + i)}]`;
       return { cursor: blk.end, out: acc.out + pre + mid };
     },

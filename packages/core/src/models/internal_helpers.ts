@@ -95,6 +95,13 @@ export function toViewMessagesFromInternal(
                 return [];
               }
 
+              let toolArgs = toolCall.arguments;
+
+              // Ollama will return POJOs
+              if (typeof toolCall.arguments === 'object') {
+                toolArgs = JSON.stringify(toolCall.arguments);
+              }
+
               switch (toolCall.status) {
                 case 'done': {
                   return [
@@ -105,10 +112,11 @@ export function toViewMessagesFromInternal(
                       toolCallId,
                       args: s.isHashbrownType(tool.schema)
                         ? new StreamSchemaParser(tool.schema).parse(
-                            toolCall.arguments,
+                            toolArgs,
                             !streaming,
                           )
-                        : JSON.parse(toolCall.arguments),
+                        : JSON.parse(toolArgs),
+
                       // The internal models don't use a union, since that tends to
                       // complicate reducer logic. This is necessary to uplift our
                       // internal model into the view union.
@@ -127,7 +135,7 @@ export function toViewMessagesFromInternal(
                       progress: toolCall.progress,
                       args: s.isHashbrownType(tool.schema)
                         ? new StreamSchemaParser(tool.schema).parse(
-                            toolCall.arguments,
+                            toolArgs,
                             !streaming,
                           )
                         : null,

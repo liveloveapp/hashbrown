@@ -18,6 +18,7 @@ app.use(express.json());
 
 app.post('/api/chat', async (req, res) => {
   const completionParams = req.body as Chat.Api.CompletionCreateParams;
+
   const response = HashbrownOpenAI.stream.text({
     apiKey: OPENAI_API_KEY,
     request: completionParams,
