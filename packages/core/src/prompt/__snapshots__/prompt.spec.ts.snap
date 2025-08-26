@@ -4,7 +4,6 @@ exports[`full integration with streaming 1`] = `
 "
     
 
-\`\`\`json
 {
   "ui": [
     {
@@ -34,7 +33,6 @@ exports[`full integration with streaming 1`] = `
     }
   ]
 }
-\`\`\`
 
 
   "
@@ -45,7 +43,6 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
         Head
         
 
-\`\`\`json
 {
   "ui": [
     {
@@ -56,13 +53,11 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
     }
   ]
 }
-\`\`\`
 
 
         Middle
         
 
-\`\`\`json
 {
   "ui": [
     {
@@ -70,7 +65,6 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
     }
   ]
 }
-\`\`\`
 
 
         Tail

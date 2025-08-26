@@ -164,8 +164,8 @@ describe('prompt helper', () => {
       expect(example.diagnostics.length).toBe(0);
 
       // Extract the injected JSON and verify $children is a string
-      const fence = (out.match(/```json[\s\S]*?```/) || [])[0] || '';
-      const json = fence.replace(/^```json\n/, '').replace(/\n```$/, '');
+      const json = (out.match(/\{[\s\S]*\}/) || [])[0] || '';
+
       const obj = JSON.parse(json);
       // Streaming shape injects an object with a top-level `ui` array where
       // entries are objects keyed by component name. For text-children
