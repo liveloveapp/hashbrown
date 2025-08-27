@@ -58,7 +58,25 @@
           { "name": "frame", "description": "The frame to encode.\n\n" }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function encodeFrame(\n  frame:  Frame ,\n):  Uint8Array; ",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function encodeFrame(\n  frame: "
+        },
+        {
+          "kind": "Reference",
+          "text": " Frame ",
+          "canonicalReference": "@hashbrownai/core!Frame:type"
+        },
+        { "kind": "Content", "text": ",\n): " },
+        {
+          "kind": "Reference",
+          "text": " Uint8Array; ",
+          "canonicalReference": "!Uint8Array:interface"
+        }
+      ]
     }
   ]
 }

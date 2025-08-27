@@ -48,7 +48,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "type: \"finish\";",
+          "overlayTokens": [{ "kind": "Content", "text": "type: \"finish\";" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -69,7 +71,11 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface FinishFrame",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export interface FinishFrame" }
+      ]
     }
   ]
 }

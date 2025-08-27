@@ -138,7 +138,53 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function fryHashbrown<\n  Tools extends  Chat.AnyTool ,\n>(init: {\n  debugName?: string;\n  apiUrl: string;\n  model:  KnownModelIds ;\n  system: string;\n  messages?:  Chat.Message <string, Tools>[];\n  tools?: Tools[];\n  middleware?:  Chat.Middleware [];\n  emulateStructuredOutput?: boolean;\n  debounce?: number;\n  retries?: number;\n}):  Hashbrown <string, Tools>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function fryHashbrown<\n  Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+        },
+        {
+          "kind": "Content",
+          "text": ",\n>(init: {\n  debugName?: string;\n  apiUrl: string;\n  model: "
+        },
+        {
+          "kind": "Reference",
+          "text": " KnownModelIds ",
+          "canonicalReference": "@hashbrownai/core!KnownModelIds:type"
+        },
+        { "kind": "Content", "text": ";\n  system: string;\n  messages?: " },
+        {
+          "kind": "Reference",
+          "text": " Chat.Message",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.Message_3:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <string, Tools>[];\n  tools?: Tools[];\n  middleware?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.Middleware ",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.Middleware:type"
+        },
+        {
+          "kind": "Content",
+          "text": "[];\n  emulateStructuredOutput?: boolean;\n  debounce?: number;\n  retries?: number;\n}): "
+        },
+        {
+          "kind": "Reference",
+          "text": " Hashbrown",
+          "canonicalReference": "@hashbrownai/core!Hashbrown:interface"
+        },
+        { "kind": "Content", "text": " <string, Tools>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -261,7 +307,71 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function fryHashbrown<\n  Schema extends  s.HashbrownType ,\n  Tools extends  Chat.AnyTool ,\n  Output extends\n     s.Infer <Schema> =  s.Infer <Schema>,\n>(init: {\n  debugName?: string;\n  apiUrl: string;\n  model:  KnownModelIds ;\n  system: string;\n  messages?:  Chat.Message <Output, Tools>[];\n  tools?: Tools[];\n  responseSchema: Schema;\n  middleware?:  Chat.Middleware [];\n  emulateStructuredOutput?: boolean;\n  debounce?: number;\n  retries?: number;\n}):  Hashbrown <Output, Tools>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function fryHashbrown<\n  Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+        },
+        { "kind": "Content", "text": ",\n  Tools extends " },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n  Output extends\n    " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "@hashbrownai/core!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <Schema> = " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "@hashbrownai/core!s.Infer:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <Schema>,\n>(init: {\n  debugName?: string;\n  apiUrl: string;\n  model: "
+        },
+        {
+          "kind": "Reference",
+          "text": " KnownModelIds ",
+          "canonicalReference": "@hashbrownai/core!KnownModelIds:type"
+        },
+        { "kind": "Content", "text": ";\n  system: string;\n  messages?: " },
+        {
+          "kind": "Reference",
+          "text": " Chat.Message",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.Message_3:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <Output, Tools>[];\n  tools?: Tools[];\n  responseSchema: Schema;\n  middleware?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.Middleware ",
+          "canonicalReference": "@hashbrownai/core!~Chat_2.Middleware:type"
+        },
+        {
+          "kind": "Content",
+          "text": "[];\n  emulateStructuredOutput?: boolean;\n  debounce?: number;\n  retries?: number;\n}): "
+        },
+        {
+          "kind": "Reference",
+          "text": " Hashbrown",
+          "canonicalReference": "@hashbrownai/core!Hashbrown:interface"
+        },
+        { "kind": "Content", "text": " <Output, Tools>;" }
+      ]
     }
   ]
 }

@@ -94,7 +94,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "apiUrl?: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "apiUrl?: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -127,7 +129,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounce?: number;",
+          "overlayTokens": [{ "kind": "Content", "text": "debounce?: number;" }]
         },
         {
           "kind": "PropertySignature",
@@ -160,7 +164,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debugName?: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -198,7 +206,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages?: Chat.Message<Output, Tools>[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "messages?: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<Output, Tools>[];" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -248,7 +266,21 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model:  KnownModelIds  |\n   Signal < KnownModelIds >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": " KnownModelIds " },
+            { "kind": "Content", "text": " |\n  " },
+            {
+              "kind": "Reference",
+              "text": " Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            { "kind": "Content", "text": " <" },
+            { "kind": "Content", "text": " KnownModelIds " },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -281,7 +313,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;",
+          "overlayTokens": [{ "kind": "Content", "text": "retries?: number;" }]
         },
         {
           "kind": "PropertySignature",
@@ -314,7 +348,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "schema: Schema;",
+          "overlayTokens": [{ "kind": "Content", "text": "schema: Schema;" }]
         },
         {
           "kind": "PropertySignature",
@@ -353,7 +389,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string |  Signal <string>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "system: string | " },
+            {
+              "kind": "Reference",
+              "text": " Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            { "kind": "Content", "text": " <string>;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -386,7 +432,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Tools[];",
+          "overlayTokens": [{ "kind": "Content", "text": "tools?: Tools[];" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -407,7 +455,38 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface StructuredChatResourceOptions<Schema extends s.HashbrownType, Tools extends Chat.AnyTool, Output extends s.Infer<Schema> = s.Infer<Schema>>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "interface StructuredChatResourceOptions<Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ", Tools extends " },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ", Output extends " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema> = " },
+        {
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": "<Schema>>" }
+      ]
     }
   ]
 }

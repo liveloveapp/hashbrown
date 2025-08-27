@@ -13,8 +13,11 @@ import {
 } from '@microsoft/tsdoc';
 import fs from 'fs';
 import path from 'path';
+import prettier from 'prettier';
 import {
   ApiDocs,
+  ApiExcerptToken,
+  ApiExcerptTokenKind,
   ApiMember,
   ApiMemberSummary,
   ApiPackageReport,
@@ -132,7 +135,7 @@ function filterMembersForAngularThetaChar(members: ApiMember[]): ApiMember[] {
   }, [] as ApiMember[]);
 }
 
-function rollupApiReport(pkg: ApiPackage): ApiReport {
+async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
   const apiReportPath = path.join(
     MONOREPO_ROOT,
     `dist/reports/${pkg.alias}.api.json`,
@@ -141,15 +144,193 @@ function rollupApiReport(pkg: ApiPackage): ApiReport {
     fs.readFileSync(apiReportPath, 'utf-8'),
   );
 
-  function recursivelyParseDocs(apiMember: ApiMember) {
-    apiMember.docs = parseTSDoc(apiMember.docComment ?? '');
+  function buildInstrumentedFromExcerptTokens(
+    excerptTokens: ApiMember['excerptTokens'],
+  ): {
+    instrumented: string;
+    idToRef: Map<number, CanonicalReference>;
+  } {
+    const idToRef = new Map<number, CanonicalReference>();
+    let idCounter = 0;
+    let result = '';
 
-    if (apiMember.members) {
-      apiMember.members.forEach((member) => recursivelyParseDocs(member));
+    for (const t of excerptTokens ?? []) {
+      if (t.kind === ApiExcerptTokenKind.Reference) {
+        // Always mark references so we can track spans post-formatting,
+        // but only map IDs to references that have a valid kind suffix (":...")
+        result += `/*@hb:s:${idCounter}*/${t.text}/*@hb:e:${idCounter}*/`;
+        const ref = (t as { canonicalReference?: CanonicalReference })
+          .canonicalReference as string | undefined;
+        if (ref && ref.includes(':')) {
+          idToRef.set(idCounter, ref as CanonicalReference);
+        }
+        idCounter++;
+      } else {
+        result += t.text;
+      }
+    }
+
+    return { instrumented: result, idToRef };
+  }
+
+  async function formatWithPrettier(code: string): Promise<string> {
+    try {
+      return await prettier.format(code, {
+        parser: 'typescript',
+        printWidth: 80,
+      });
+    } catch {
+      return code;
     }
   }
 
-  recursivelyParseDocs(apiReport);
+  function dedent(body: string): string {
+    const lines = body.split(/\r?\n/);
+    const nonEmpty = lines.filter((l) => l.trim().length > 0);
+    const minIndent = nonEmpty.reduce(
+      (min, line) => {
+        const match = line.match(/^\s*/);
+        const indent = match ? match[0].length : 0;
+        return min === null ? indent : Math.min(min, indent);
+      },
+      null as number | null,
+    );
+    if (minIndent && minIndent > 0) {
+      return lines
+        .map((l) =>
+          l.startsWith(' '.repeat(minIndent)) ? l.slice(minIndent) : l,
+        )
+        .join('\n')
+        .trim();
+    }
+    return body.trim();
+  }
+
+  function extractClassBody(formattedClass: string): string {
+    const openIndex = formattedClass.indexOf('{');
+    const closeIndex = formattedClass.lastIndexOf('}');
+    if (openIndex === -1 || closeIndex === -1 || closeIndex <= openIndex) {
+      return formattedClass.trim();
+    }
+    const inner = formattedClass.slice(openIndex + 1, closeIndex);
+    return dedent(inner);
+  }
+
+  function stripMarkers(s: string): string {
+    return s.replace(/\/\*@hb:(?:s|e):\d+\*\//g, '');
+  }
+
+  function buildOverlayTokensFromMarkers(
+    formattedWithMarkers: string,
+    idToRef: Map<number, CanonicalReference>,
+  ): { overlayTokens: ApiExcerptToken[]; formattedContent: string } {
+    const startRe = /\/\*@hb:s:(\d+)\*\//g;
+    const endRe = /\/\*@hb:e:(\d+)\*\//g;
+
+    const tokens: ApiExcerptToken[] = [];
+    let cursor = 0;
+    while (cursor < formattedWithMarkers.length) {
+      startRe.lastIndex = cursor;
+      const s = startRe.exec(formattedWithMarkers);
+      if (!s) {
+        if (cursor < formattedWithMarkers.length) {
+          tokens.push({
+            kind: ApiExcerptTokenKind.Content,
+            text: formattedWithMarkers.slice(cursor),
+          });
+        }
+        break;
+      }
+
+      const startIdx = s.index;
+      const id = Number(s[1]);
+
+      if (startIdx > cursor) {
+        tokens.push({
+          kind: ApiExcerptTokenKind.Content,
+          text: formattedWithMarkers.slice(cursor, startIdx),
+        });
+      }
+
+      endRe.lastIndex = startRe.lastIndex;
+      const e = endRe.exec(formattedWithMarkers);
+      if (!e) {
+        // Unbalanced markers; treat remainder as content
+        tokens.push({
+          kind: ApiExcerptTokenKind.Content,
+          text: formattedWithMarkers.slice(startIdx),
+        });
+        break;
+      }
+
+      const innerStart = startRe.lastIndex;
+      const innerEnd = e.index;
+      const innerText = formattedWithMarkers.slice(innerStart, innerEnd);
+
+      const ref = idToRef.get(id);
+      if (ref) {
+        tokens.push({
+          kind: ApiExcerptTokenKind.Reference,
+          text: innerText,
+          canonicalReference: ref,
+        });
+      } else {
+        // Fallback as content if mapping missing
+        tokens.push({
+          kind: ApiExcerptTokenKind.Content,
+          text: innerText,
+        });
+      }
+
+      cursor = endRe.lastIndex;
+    }
+
+    const formattedContent = stripMarkers(formattedWithMarkers);
+    return { overlayTokens: tokens, formattedContent };
+  }
+
+  async function computeFormattedContentAndOverlayTokens(
+    apiMember: ApiMember,
+  ): Promise<{ formattedContent: string; overlayTokens: ApiExcerptToken[] }> {
+    if (!apiMember || !apiMember.excerptTokens) {
+      return { formattedContent: '', overlayTokens: [] };
+    }
+
+    const { instrumented, idToRef } = buildInstrumentedFromExcerptTokens(
+      apiMember.excerptTokens,
+    );
+    const kind = apiMember.kind;
+
+    if (!instrumented || instrumented.trim().length === 0) {
+      return { formattedContent: '', overlayTokens: [] };
+    }
+
+    if (kind === 'Method' || kind === 'Property') {
+      const wrapped = `declare class __HBW {\n${instrumented}\n}`;
+      const formattedWrapped = await formatWithPrettier(wrapped);
+      const innerWithMarkers = extractClassBody(formattedWrapped);
+      return buildOverlayTokensFromMarkers(innerWithMarkers, idToRef);
+    }
+
+    const formatted = (await formatWithPrettier(instrumented)).trim();
+    return buildOverlayTokensFromMarkers(formatted, idToRef);
+  }
+
+  async function recursivelyParseDocs(apiMember: ApiMember): Promise<void> {
+    apiMember.docs = parseTSDoc(apiMember.docComment ?? '');
+    const { formattedContent, overlayTokens } =
+      await computeFormattedContentAndOverlayTokens(apiMember);
+    apiMember.formattedContent = formattedContent;
+    apiMember.overlayTokens = overlayTokens;
+
+    if (apiMember.members) {
+      for (const member of apiMember.members) {
+        await recursivelyParseDocs(member);
+      }
+    }
+  }
+
+  await recursivelyParseDocs(apiReport);
 
   const entryPoint = apiReport.members?.find(
     (member) => member.kind === 'EntryPoint',
@@ -245,16 +426,17 @@ function parseTSDoc(foundComment: string): ApiDocs {
   };
 }
 
-function parsePackages(): ApiPackageReport {
+async function parsePackages(): Promise<ApiPackageReport> {
   PACKAGES_TO_PARSE.forEach((pkg) => createApiReport(pkg));
 
-  const packages = PACKAGES_TO_PARSE.reduce(
-    (acc, pkg) => ({
-      ...acc,
-      [pkg.rewriteName ?? pkg.name]: rollupApiReport(pkg),
-    }),
-    {} as Record<string, ApiReport>,
+  const entries = await Promise.all(
+    PACKAGES_TO_PARSE.map(
+      async (pkg) =>
+        [pkg.rewriteName ?? pkg.name, await rollupApiReport(pkg)] as const,
+    ),
   );
+
+  const packages = Object.fromEntries(entries) as Record<string, ApiReport>;
   const packageNames = Object.keys(packages);
 
   return { packageNames, packages };
@@ -302,8 +484,8 @@ function minimizeApiReport(
   return { packageNames: apiReport.packageNames, packages };
 }
 
-function writeFinalizedApiReport() {
-  const report = parsePackages();
+async function writeFinalizedApiReport() {
+  const report = await parsePackages();
   const minimizedReport = minimizeApiReport(report);
 
   const minimizedReportPath = path.join(
@@ -313,7 +495,7 @@ function writeFinalizedApiReport() {
 
   for (const packageName of report.packageNames) {
     const packageReport = report.packages[packageName];
-    const [hashbrownai, ...packagePath] = packageName.split('/');
+    const [, ...packagePath] = packageName.split('/');
 
     for (const symbolName of packageReport.symbolNames) {
       const symbol = packageReport.symbols[symbolName];
@@ -343,4 +525,4 @@ function writeFinalizedApiReport() {
   fs.writeFileSync(minimizedReportPath, JSON.stringify(minimizedReport));
 }
 
-writeFinalizedApiReport();
+await writeFinalizedApiReport();

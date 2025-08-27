@@ -8,7 +8,6 @@ import {
   PLATFORM_ID,
   viewChild,
 } from '@angular/core';
-import { ExamplesService } from '../services/ExamplesService';
 
 @Component({
   selector: 'www-stackblitz',
@@ -30,13 +29,13 @@ import { ExamplesService } from '../services/ExamplesService';
   `,
 })
 export class Stackblitz implements AfterViewInit {
-  examplesService = inject(ExamplesService);
+  // examplesService = inject(ExamplesService);
   platformId = inject(PLATFORM_ID);
   name = input<string>('__base');
   exampleRef = viewChild.required<ElementRef<HTMLDivElement>>('example');
 
   ngAfterViewInit(): void {
     if (isPlatformServer(this.platformId)) return;
-    this.examplesService.load(this.exampleRef().nativeElement, this.name());
+    //this.examplesService.load(this.exampleRef().nativeElement, this.name());
   }
 }

@@ -51,7 +51,29 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export type Frame = \n  | ErrorFrame \n  |  ChunkFrame \n  |  FinishFrame ;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export type Frame = " },
+        {
+          "kind": "Reference",
+          "text": "\n  | ErrorFrame ",
+          "canonicalReference": "@hashbrownai/core!ErrorFrame:interface"
+        },
+        { "kind": "Content", "text": "\n  | " },
+        {
+          "kind": "Reference",
+          "text": " ChunkFrame ",
+          "canonicalReference": "@hashbrownai/core!ChunkFrame:interface"
+        },
+        { "kind": "Content", "text": "\n  | " },
+        {
+          "kind": "Reference",
+          "text": " FinishFrame ",
+          "canonicalReference": "@hashbrownai/core!FinishFrame:interface"
+        },
+        { "kind": "Content", "text": ";" }
+      ]
     }
   ]
 }

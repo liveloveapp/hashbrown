@@ -53,7 +53,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "ui: UiChatSchemaComponent[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "ui: " },
+            {
+              "kind": "Reference",
+              "text": "UiChatSchemaComponent",
+              "canonicalReference": "@hashbrownai/angular!UiChatSchemaComponent:interface"
+            },
+            { "kind": "Content", "text": "[];" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -74,7 +84,9 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface UiChatSchema",
+      "overlayTokens": [{ "kind": "Content", "text": "interface UiChatSchema" }]
     }
   ]
 }

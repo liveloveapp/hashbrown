@@ -1,49 +1,87 @@
 import { Component, ElementRef, input, viewChild } from '@angular/core';
 import { Copy } from '../icons/Copy';
 import { PlayerPlay } from '../icons/PlayerPlay';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-code-example',
-  imports: [Copy, PlayerPlay],
+  imports: [Copy, PlayerPlay, Squircle],
   template: `
-    <div class="header">
-      <span>{{ header() }}</span>
-      <div>
-        @if (run()) {
-          <a [href]="run()">
-            <www-player-play height="16px" width="16px" />
-            run
-          </a>
-        }
-        <button (click)="onCopy()" aria-label="Copy code to clipboard">
-          <www-copy height="16px" width="16px" />
-          copy
-        </button>
+    <div
+      class="code-example"
+      wwwSquircle="16"
+      [wwwSquircleBorderWidth]="8"
+      wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
+    >
+      <div class="header">
+        <span class="active">{{ header() }}</span>
+        <div>
+          @if (run()) {
+            <a [href]="run()">
+              <www-player-play height="16px" width="16px" />
+              run
+            </a>
+          }
+          @if (copyable()) {
+            <button (click)="onCopy()" aria-label="Copy code to clipboard">
+              <www-copy height="18px" width="18px" />
+            </button>
+          }
+          <ng-content select="[actions]" />
+        </div>
+      </div>
+      <div class="content" #content wwwSquircle="16">
+        <ng-content />
       </div>
     </div>
-    <div class="content" #content>
-      <ng-content />
-    </div>
   `,
-  styles: [
-    `
-      :host {
-        display: flex;
-        flex-direction: column;
-        border: 1px solid #000;
-        border-radius: 12px;
-        margin: 14px 0 24px;
-        overflow: hidden;
-      }
+  styles: `
+    :host {
+      display: block;
+    }
 
-      .header {
+    .code-example {
+      display: flex;
+      flex-direction: column;
+      background: var(--gray, #5e5c5a);
+      overflow: hidden;
+
+      > .header {
         display: flex;
         justify-content: space-between;
-        padding: 8px 16px;
-        border-bottom: 1px solid #000;
-        font-size: 12px;
-        font-weight: 500;
-        color: rgba(61, 60, 58, 0.88);
+        padding: 14px 24px 12px 24px;
+        color: var(--vanilla-ivory, #faf9f0);
+        font:
+          400 13px/18px 'JetBrains Mono',
+          sans-serif;
+
+        > span {
+          display: inline-flex;
+          align-items: center;
+          position: relative;
+
+          &.active {
+            &::before {
+              content: '';
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              height: 3px;
+              margin-bottom: -12px;
+              border-radius: 1px;
+              background: linear-gradient(
+                to right,
+                #fbbb52 0%,
+                var(--sunset-orange) 25%,
+                var(--indian-red-light) 50%,
+                var(--sky-blue-dark) 75%,
+                var(--olive-green-light) 100%
+              );
+              background-clip: border-box;
+            }
+          }
+        }
 
         > div {
           display: flex;
@@ -55,6 +93,7 @@ import { PlayerPlay } from '../icons/PlayerPlay';
             display: flex;
             align-items: center;
             gap: 4px;
+            color: #e3e3e3;
             font:
               500 12px/14px 'Poppins',
               sans-serif;
@@ -67,15 +106,17 @@ import { PlayerPlay } from '../icons/PlayerPlay';
         }
       }
 
-      .content {
-        background: #3d3c3a;
+      > .content {
+        background: var(--gray-dark, #3d3c3a);
         padding: 16px;
         overflow-x: scroll;
+        margin: 0 4px 4px 4px;
       }
-    `,
-  ],
+    }
+  `,
 })
 export class CodeExample {
+  copyable = input<boolean>(true);
   header = input<string>('');
   run = input<string | undefined>(undefined);
   contentRef = viewChild<ElementRef<HTMLDivElement>>('content');

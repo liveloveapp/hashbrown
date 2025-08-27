@@ -1,54 +1,32 @@
 import { Component, computed, input } from '@angular/core';
-import { InlineMarkdown } from '../pipes/InlineMarkdown';
-import { SymbolExcerpt } from './SymbolExcerpt';
 import { ApiMember } from '../models/api-report.models';
+import { SymbolExcerpt } from './SymbolExcerpt';
 
 @Component({
   selector: 'www-symbol-returns',
-  imports: [SymbolExcerpt, InlineMarkdown],
+  imports: [SymbolExcerpt],
   template: `
     @if (returns(); as returns) {
-      <div class="returns">
-        <code>{{ '@returns' }}</code>
-        <div [innerHtml]="returns.description | inlineMarkdown"></div>
-        <www-symbol-excerpt [excerptTokens]="returns.excerptTokens" />
-      </div>
+      <code class="symbol">@returns</code>
+      <www-symbol-excerpt [excerptTokens]="returns.excerptTokens" />
     }
   `,
-  styles: [
-    `
-      .returns {
-        display: grid;
-        column-gap: 16px;
-        grid-template-areas:
-          'returns description'
-          'excerpt excerpt';
-        grid-template-columns: 104px 1fr;
-        align-items: center;
+  styles: `
+    :host {
+      display: flex;
+      align-items: center;
+      gap: 8px;
 
-        > code {
-          grid-area: returns;
-          font:
-            700 14px/18px 'Operator Mono',
-            monospace;
-          color: #fbbb52;
-        }
+      > code {
+        color: var(--sunset-orange, #fbbb52);
 
-        > div {
-          grid-area: description;
-          font:
-            400 12px/16px Poppins,
-            sans-serif;
-          color: rgba(250, 249, 240, 0.8);
-        }
-
-        > www-symbol-excerpt {
-          grid-area: excerpt;
-          padding: 16px;
+        &.symbol {
+          font-weight: 300;
+          color: var(--vanilla-ivory, #faf9f0);
         }
       }
-    `,
-  ],
+    }
+  `,
 })
 export class SymbolReturns {
   symbol = input.required<ApiMember>();

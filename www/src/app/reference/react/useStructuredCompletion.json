@@ -2,7 +2,7 @@
   "name": "useStructuredCompletion",
   "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-completion.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -41,7 +41,7 @@
         { "kind": "Content", "text": "<Schema>>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-completion.d.ts",
       "returnTypeTokenRange": { "startIndex": 6, "endIndex": 10 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -84,7 +84,38 @@
         "examples": [
           "\n\nIn this example, the LLM will predict a color palette based on a given theme or mood.\n```tsx\nconst { output } = useStructuredCompletion({\n  model: 'gpt-4o',\n  system: `Predict a color palette based on the given mood or theme. For example,\n  if the theme is \"Calm Ocean\", suggest appropriate colors.`,\n  input: theme,\n  schema: s.object('Color Palette', {\n    colors: s.array(\n      'The colors in the palette',\n      s.string('Hex color code')\n    )\n  })\n});\n```\n\n"
         ]
-      }
+      },
+      "formattedContent": "export declare function useStructuredCompletion<\n  Input,\n  Schema extends  s.HashbrownType ,\n>(\n  options:  UseStructuredCompletionOptions <\n    Input,\n    Schema\n  >,\n):  UseStructuredCompletionResult <\n   s.Infer <Schema>\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useStructuredCompletion<\n  Input,\n  Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ",\n>(\n  options: " },
+        {
+          "kind": "Reference",
+          "text": " UseStructuredCompletionOptions",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionOptions:interface"
+        },
+        { "kind": "Content", "text": " <\n    Input,\n    Schema\n  >,\n): " },
+        {
+          "kind": "Reference",
+          "text": " UseStructuredCompletionResult",
+          "canonicalReference": "@hashbrownai/react!UseStructuredCompletionResult:interface"
+        },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <Schema>\n>;" }
+      ]
     }
   ]
 }

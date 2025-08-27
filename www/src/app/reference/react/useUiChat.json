@@ -2,7 +2,7 @@
   "name": "useUiChat",
   "canonicalReference": "@hashbrownai/react!useUiChat:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-ui-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -48,9 +48,15 @@
           "text": "ExposedComponent",
           "canonicalReference": "@hashbrownai/react!ExposedComponent:interface"
         },
+        { "kind": "Content", "text": "<any>[]>>;\n    lastAssistantMessage: " },
+        {
+          "kind": "Reference",
+          "text": "UiAssistantMessage",
+          "canonicalReference": "@hashbrownai/react!UiAssistantMessage:type"
+        },
         {
           "kind": "Content",
-          "text": "<any>[]>>;\n    setMessages: (messages: "
+          "text": "<Tools> | undefined;\n    setMessages: (messages: "
         },
         {
           "kind": "Reference",
@@ -92,8 +98,8 @@
           "text": " | undefined;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n    exhaustedRetries: boolean;\n}"
         }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
-      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 25 },
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-ui-chat.d.ts",
+      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 27 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
@@ -130,7 +136,95 @@
         "examples": [
           "\n\nIn this example, the LLM will respond with a UI component that can be rendered directly in your React application.\n```tsx\nconst { messages, sendMessage } = useUiChat({\n  model: 'gpt-4o',\n  system: 'You are a helpful assistant that can generate UI components.',\n  components: [\n    exposeComponent(Button, {\n      name: 'Button',\n      description: 'A clickable button component',\n      props: {\n        label: s.string('The text to display on the button'),\n        onClick: s.function('Function to call when clicked')\n      }\n    })\n  ]\n});\n```\n\n"
         ]
-      }
+      },
+      "formattedContent": "useUiChat: <Tools extends Chat.AnyTool>(options: UiChatOptions<Tools>) => {\n    messages: UiChatMessage<Tools>[];\n    setComponents: React.Dispatch<React.SetStateAction<ExposedComponent<any>[]>>;\n    lastAssistantMessage: UiAssistantMessage<Tools> | undefined;\n    setMessages: (messages: Chat.Message<UiChatSchema, Tools>[]) => void;\n    sendMessage: (message: Chat.Message<UiChatSchema, Tools>) => void;\n    resendMessages: () => void;\n    stop: (clearStreamingMessage?: boolean) => void;\n    reload: () => void;\n    error: Error | undefined;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n    exhaustedRetries: boolean;\n}",
+      "overlayTokens": [
+        { "kind": "Content", "text": "useUiChat: <Tools extends " },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">(options: " },
+        {
+          "kind": "Reference",
+          "text": "UiChatOptions",
+          "canonicalReference": "@hashbrownai/react!UiChatOptions:interface"
+        },
+        { "kind": "Content", "text": "<Tools>) => {\n    messages: " },
+        {
+          "kind": "Reference",
+          "text": "UiChatMessage",
+          "canonicalReference": "@hashbrownai/react!UiChatMessage:type"
+        },
+        { "kind": "Content", "text": "<Tools>[];\n    setComponents: " },
+        {
+          "kind": "Reference",
+          "text": "React.Dispatch",
+          "canonicalReference": "!React.Dispatch:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "React.SetStateAction",
+          "canonicalReference": "!React.SetStateAction:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "ExposedComponent",
+          "canonicalReference": "@hashbrownai/react!ExposedComponent:interface"
+        },
+        { "kind": "Content", "text": "<any>[]>>;\n    lastAssistantMessage: " },
+        {
+          "kind": "Reference",
+          "text": "UiAssistantMessage",
+          "canonicalReference": "@hashbrownai/react!UiAssistantMessage:type"
+        },
+        {
+          "kind": "Content",
+          "text": "<Tools> | undefined;\n    setMessages: (messages: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "UiChatSchema",
+          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+        },
+        {
+          "kind": "Content",
+          "text": ", Tools>[]) => void;\n    sendMessage: (message: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "UiChatSchema",
+          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+        },
+        {
+          "kind": "Content",
+          "text": ", Tools>) => void;\n    resendMessages: () => void;\n    stop: (clearStreamingMessage?: boolean) => void;\n    reload: () => void;\n    error: "
+        },
+        {
+          "kind": "Reference",
+          "text": "Error",
+          "canonicalReference": "!Error:interface"
+        },
+        {
+          "kind": "Content",
+          "text": " | undefined;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n    exhaustedRetries: boolean;\n}"
+        }
+      ]
     }
   ]
 }

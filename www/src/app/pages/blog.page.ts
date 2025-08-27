@@ -7,7 +7,7 @@ import { Header } from '../components/Header';
   imports: [RouterOutlet, Footer, Header],
   template: `
     <www-header />
-    <main class="blog">
+    <main>
       <router-outlet></router-outlet>
     </main>
     <www-footer />
@@ -18,10 +18,6 @@ import { Header } from '../components/Header';
       flex-direction: column;
       height: 100%;
     }
-
-    .blog {
-      border-bottom: 1px solid rgba(61, 60, 58, 0.24);
-    }
   `,
 })
-export default class EnterprisePage {}
+export default class BlogPage {}

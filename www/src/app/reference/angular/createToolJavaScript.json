@@ -65,7 +65,29 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createToolJavaScript(\n  { runtime }:  CreateToolJavaScriptOptions ,\n):  dist_packages_core_src_models_view_models.Tool <\n  \"javascript\",\n  {\n    code: string;\n  },\n  any\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function createToolJavaScript(\n  { runtime }: "
+        },
+        {
+          "kind": "Reference",
+          "text": " CreateToolJavaScriptOptions ",
+          "canonicalReference": "@hashbrownai/angular!CreateToolJavaScriptOptions:interface"
+        },
+        { "kind": "Content", "text": ",\n): " },
+        {
+          "kind": "Reference",
+          "text": " dist_packages_core_src_models_view_models.Tool",
+          "canonicalReference": "@hashbrownai/angular!~Tool:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <\n  \"javascript\",\n  {\n    code: string;\n  },\n  any\n>;"
+        }
+      ]
     }
   ]
 }

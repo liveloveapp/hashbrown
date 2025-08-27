@@ -19,12 +19,15 @@ export const SymbolApiDensity = {
   selector: 'www-symbol-api',
   imports: [SymbolExcerpt, SymbolExcerptGroup, NgClass],
   template: `
+    <h2>API</h2>
     <www-symbol-excerpt-group [ngClass]="'d' + density()">
       <www-symbol-excerpt
         [excerptTokens]="headerExcerptTokens()"
+        [formattedContent]="headerFormattedContent()"
+        [overlayTokens]="headerOverlayTokens()"
         class="header"
       />
-      @for (member of bodyMembers(); track $index) {
+      @for (member of bodyMembers(); track member.canonicalReference) {
         @switch (density()) {
           @case ('0') {
             <a
@@ -33,6 +36,8 @@ export const SymbolApiDensity = {
             >
               <www-symbol-excerpt
                 [excerptTokens]="member.excerptTokens"
+                [formattedContent]="member.formattedContent"
+                [overlayTokens]="member.overlayTokens ?? null"
                 [deprecated]="!!member.docs.deprecated"
                 class="member"
               />
@@ -41,6 +46,8 @@ export const SymbolApiDensity = {
           @case ('-1') {
             <www-symbol-excerpt
               [excerptTokens]="member.excerptTokens"
+              [formattedContent]="member.formattedContent"
+              [overlayTokens]="member.overlayTokens ?? null"
               [deprecated]="!!member.docs.deprecated"
               class="member"
             />
@@ -55,50 +62,45 @@ export const SymbolApiDensity = {
       }
     </www-symbol-excerpt-group>
   `,
-  styles: [
-    `
-      :host {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-      www-symbol-excerpt-group {
-        padding: 8px 0;
+    www-symbol-excerpt-group {
+      padding: 8px 0;
 
-        > a {
-          &:hover {
-            background: #3d3c3a;
-          }
-        }
-
-        &.d0 {
-          .header,
-          .member,
-          .footer {
-            padding: 8px 16px;
-          }
-        }
-
-        &.d-1 {
-          .header,
-          .member,
-          .footer {
-            padding: 2px 8px;
-          }
+      > a {
+        &:hover {
+          background: #3d3c3a;
         }
       }
 
-      .member {
-        margin-left: 16px;
+      &.d-1 {
+        .header,
+        .member,
+        .footer {
+          padding: 2px 8px;
+        }
       }
-    `,
-  ],
+    }
+
+    .member {
+      margin-left: 16px;
+    }
+  `,
 })
 export class SymbolApi {
   router = inject(Router);
   symbol = input.required<ApiMember>();
   density = input<string>(SymbolApiDensity[0]);
+
+  headerOverlayTokens = computed((): ApiExcerptToken[] | null => {
+    const symbol = this.symbol();
+    return symbol.overlayTokens ?? null;
+  });
 
   headerExcerptTokens = computed((): ApiExcerptToken[] => {
     const symbol = this.symbol();
@@ -117,6 +119,17 @@ export class SymbolApi {
     }
 
     return symbol.excerptTokens;
+  });
+  headerFormattedContent = computed((): string => {
+    const symbol = this.symbol();
+    if (
+      symbol.kind === ApiMemberKind.Class ||
+      symbol.kind === ApiMemberKind.Interface ||
+      symbol.kind === ApiMemberKind.Enum
+    ) {
+      return '';
+    }
+    return symbol.formattedContent;
   });
   bodyMembers = computed((): ApiMember[] => {
     const symbol = this.symbol();

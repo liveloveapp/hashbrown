@@ -83,7 +83,41 @@
           { "name": "Result", "description": "The result of the function.\n\n" }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export type RuntimeFunctionRef<Args, Result> = {\n  name: string;\n  description: string;\n  args?:  s.HashbrownType ;\n  result?:  s.HashbrownType ;\n  handler: (\n    args: Args,\n    abortSignal:  AbortSignal ,\n  ) => Result |  Promise <Result>;\n};",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export type RuntimeFunctionRef<Args, Result> = {\n  name: string;\n  description: string;\n  args?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+        },
+        { "kind": "Content", "text": ";\n  result?: " },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+        },
+        {
+          "kind": "Content",
+          "text": ";\n  handler: (\n    args: Args,\n    abortSignal: "
+        },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => Result | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <Result>;\n};" }
+      ]
     }
   ]
 }

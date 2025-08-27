@@ -1,12 +1,12 @@
 import { Component, computed, input } from '@angular/core';
-import { BrandGitHub } from '../icons/BrandGitHub';
+import { Code } from '../icons/Code';
 
 @Component({
   selector: 'www-symbol-code-link',
-  imports: [BrandGitHub],
+  imports: [Code],
   template: `
     <a [href]="url()" target="_blank">
-      <www-brand-github />
+      <www-code />
     </a>
   `,
 })

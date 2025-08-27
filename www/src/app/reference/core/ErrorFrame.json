@@ -48,7 +48,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "error: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "error: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -81,7 +83,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "stacktrace?: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "stacktrace?: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -114,7 +120,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "type: \"error\";",
+          "overlayTokens": [{ "kind": "Content", "text": "type: \"error\";" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -135,7 +143,11 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface ErrorFrame",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export interface ErrorFrame" }
+      ]
     }
   ]
 }

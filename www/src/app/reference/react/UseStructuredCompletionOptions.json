@@ -2,7 +2,7 @@
   "name": "UseStructuredCompletionOptions",
   "canonicalReference": "@hashbrownai/react!UseStructuredCompletionOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-completion.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -21,7 +21,7 @@
         },
         { "kind": "Content", "text": "> " }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-structured-completion.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-completion.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
@@ -69,7 +69,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounceTime?: number;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debounceTime?: number;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -102,7 +106,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debugName?: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -135,7 +143,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "input: Input | null | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "input: Input | null | undefined;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -172,7 +184,13 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model:  KnownModelIds ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": " KnownModelIds " },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -205,7 +223,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;",
+          "overlayTokens": [{ "kind": "Content", "text": "retries?: number;" }]
         },
         {
           "kind": "PropertySignature",
@@ -238,7 +258,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "schema: Schema;",
+          "overlayTokens": [{ "kind": "Content", "text": "schema: Schema;" }]
         },
         {
           "kind": "PropertySignature",
@@ -271,7 +293,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "system: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -309,7 +333,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Chat.AnyTool[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "tools?: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.AnyTool",
+              "canonicalReference": "!Chat.AnyTool:type"
+            },
+            { "kind": "Content", "text": "[];" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -330,7 +364,20 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseStructuredCompletionOptions<Input, Schema extends s.HashbrownType>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseStructuredCompletionOptions<Input, Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ">" }
+      ]
     }
   ]
 }

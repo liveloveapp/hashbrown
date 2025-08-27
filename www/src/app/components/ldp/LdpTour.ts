@@ -123,7 +123,7 @@ import { LpdNaturalLanguage } from './LpdNaturalLanguage';
         display: grid;
         grid-template-columns: 450px 1fr;
         padding: 0 24px;
-        max-width: 1106px;
+        max-width: 1080px;
         gap: 96px;
         margin: 0 auto;
       }

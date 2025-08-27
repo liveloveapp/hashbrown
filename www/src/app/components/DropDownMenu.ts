@@ -1,34 +1,40 @@
 import {
+  CdkConnectedOverlay,
+  CdkOverlayOrigin,
+  ConnectedPosition,
+} from '@angular/cdk/overlay';
+import {
   Component,
-  Input,
-  signal,
-  HostListener,
   ElementRef,
+  HostListener,
   input,
+  signal,
 } from '@angular/core';
-import { ChevronDown } from '../icons/ChevronDown';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-dropdown-menu',
-  imports: [ChevronDown],
+  imports: [CdkConnectedOverlay, CdkOverlayOrigin, Squircle],
   template: `
-    <button (click)="toggle()">
+    <button
+      (click)="open.set(!open())"
+      type="button"
+      cdkOverlayOrigin
+      [wwwSquircle]="squircle()"
+      #trigger="cdkOverlayOrigin"
+    >
       <ng-content select="label"></ng-content>
-      <www-chevron-down />
     </button>
-    <div
-      role="menu"
-      class="dropdown-panel"
-      [style.visibility]="open() ? 'visible' : 'hidden'"
-      [style.position]="'absolute'"
-      [style.z-index]="'1000'"
-      [style.top]="placement()[1] === 'bottom' ? 'calc(100% + 8px)' : null"
-      [style.bottom]="placement()[1] === 'top' ? 'calc(100% + 8px)' : null"
-      [style.left]="placement()[0] === 'left' ? '0' : null"
-      [style.right]="placement()[0] === 'right' ? '0' : null"
+    <ng-template
+      cdkConnectedOverlay
+      [cdkConnectedOverlayOrigin]="trigger"
+      [cdkConnectedOverlayOpen]="open()"
+      [cdkConnectedOverlayPositions]="positions()"
+      [cdkConnectedOverlayPanelClass]="'dropdown-panel'"
+      (detach)="open.set(false)"
     >
       <ng-content select="[content]"></ng-content>
-    </div>
+    </ng-template>
   `,
   styles: [
     `
@@ -50,29 +56,28 @@ import { ChevronDown } from '../icons/ChevronDown';
         }
       }
 
-      .dropdown-panel {
-        max-width: 280px;
-        background: #fff;
+      ::ng-deep.dropdown-panel {
         display: flex;
-        gap: 4px;
         padding: 16px;
-        border-radius: 8px;
-        box-shadow:
-          0 10px 15px -3px rgba(0, 0, 0, 0.16),
-          0 4px 6px -4px rgba(0, 0, 0, 0.16);
+        border-radius: 16px;
+        box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
+        background: #fff;
+        backdrop-filter: blur(24px);
       }
     `,
   ],
 })
 export class DropdownMenu {
-  placement = input<['left' | 'right', 'top' | 'bottom']>(['left', 'bottom']);
+  squircle = input<string>('8');
+  positions = input<ConnectedPosition[]>([
+    {
+      originX: 'start',
+      originY: 'bottom',
+      overlayX: 'start',
+      overlayY: 'top',
+    },
+  ]);
   open = signal(false);
-
-  constructor(private el: ElementRef<HTMLElement>) {}
-
-  toggle() {
-    this.open.update((v) => !v);
-  }
 
   @HostListener('document:click', ['$event.target'])
   onClickOutside(target: HTMLElement) {
@@ -80,4 +85,13 @@ export class DropdownMenu {
       this.open.set(false);
     }
   }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && this.open()) {
+      this.open.set(false);
+    }
+  }
+
+  constructor(private el: ElementRef<HTMLElement>) {}
 }

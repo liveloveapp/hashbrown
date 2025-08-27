@@ -2,7 +2,7 @@
   "name": "useRuntimeFunction",
   "canonicalReference": "@hashbrownai/react!useRuntimeFunction:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -90,7 +90,7 @@
         { "kind": "Content", "text": "<ResultSchema>>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 19, "endIndex": 25 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -160,7 +160,82 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction<\n  ArgsSchema extends  s.HashbrownType ,\n  ResultSchema extends  s.HashbrownType ,\n>(cfg: {\n  name: string;\n  description: string;\n  deps:  DependencyList ;\n  args: ArgsSchema;\n  result: ResultSchema;\n  handler: (\n    input:  s.Infer <ArgsSchema>,\n    abortSignal?:  AbortSignal ,\n  ) => \n    | s.Infer <ResultSchema>\n    |  Promise <\n         s.Infer <ResultSchema>\n      >;\n}):  RuntimeFunctionRef <\n   s.Infer <ArgsSchema>,\n   s.Infer <ResultSchema>\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useRuntimeFunction<\n  ArgsSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ",\n  ResultSchema extends " },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": ",\n>(cfg: {\n  name: string;\n  description: string;\n  deps: "
+        },
+        {
+          "kind": "Reference",
+          "text": " DependencyList ",
+          "canonicalReference": "@types/react!React.DependencyList:type"
+        },
+        {
+          "kind": "Content",
+          "text": ";\n  args: ArgsSchema;\n  result: ResultSchema;\n  handler: (\n    input: "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n    abortSignal?: " },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => " },
+        {
+          "kind": "Reference",
+          "text": "\n    | s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n    | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <\n        " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n      >;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -229,7 +304,7 @@
         { "kind": "Content", "text": "<ResultSchema>>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 15, "endIndex": 19 },
       "releaseTag": "Public",
       "overloadIndex": 2,
@@ -290,7 +365,64 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction<\n  ResultSchema extends  s.HashbrownType ,\n>(cfg: {\n  name: string;\n  description: string;\n  deps:  DependencyList ;\n  result: ResultSchema;\n  handler: (\n    abortSignal?:  AbortSignal ,\n  ) => \n    | s.Infer <ResultSchema>\n    |  Promise <\n         s.Infer <ResultSchema>\n      >;\n}):  RuntimeFunctionRef <\n  null,\n   s.Infer <ResultSchema>\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useRuntimeFunction<\n  ResultSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": ",\n>(cfg: {\n  name: string;\n  description: string;\n  deps: "
+        },
+        {
+          "kind": "Reference",
+          "text": " DependencyList ",
+          "canonicalReference": "@types/react!React.DependencyList:type"
+        },
+        {
+          "kind": "Content",
+          "text": ";\n  result: ResultSchema;\n  handler: (\n    abortSignal?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => " },
+        {
+          "kind": "Reference",
+          "text": "\n    | s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n    | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <\n        " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n      >;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <\n  null,\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -353,7 +485,7 @@
         { "kind": "Content", "text": "<ArgsSchema>, void>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 13, "endIndex": 17 },
       "releaseTag": "Public",
       "overloadIndex": 3,
@@ -414,7 +546,58 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction<\n  ArgsSchema extends  s.HashbrownType ,\n>(cfg: {\n  name: string;\n  description: string;\n  deps:  DependencyList ;\n  args: ArgsSchema;\n  handler: (\n    args:  s.Infer <ArgsSchema>,\n    abortSignal?:  AbortSignal ,\n  ) => void |  Promise <void>;\n}):  RuntimeFunctionRef <\n   s.Infer <ArgsSchema>,\n  void\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useRuntimeFunction<\n  ArgsSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": ",\n>(cfg: {\n  name: string;\n  description: string;\n  deps: "
+        },
+        {
+          "kind": "Reference",
+          "text": " DependencyList ",
+          "canonicalReference": "@types/react!React.DependencyList:type"
+        },
+        {
+          "kind": "Content",
+          "text": ";\n  args: ArgsSchema;\n  handler: (\n    args: "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n    abortSignal?: " },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => void | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <void>;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n  void\n>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -456,7 +639,7 @@
         { "kind": "Content", "text": "<null, void>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-runtime-function.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-runtime-function.d.ts",
       "returnTypeTokenRange": { "startIndex": 9, "endIndex": 11 },
       "releaseTag": "Public",
       "overloadIndex": 4,
@@ -506,7 +689,34 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function useRuntimeFunction(cfg: {\n  name: string;\n  description: string;\n  deps:  DependencyList ;\n  handler: (\n    abortSignal?:  AbortSignal ,\n  ) => void |  Promise <void>;\n}):  RuntimeFunctionRef <null, void>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useRuntimeFunction(cfg: {\n  name: string;\n  description: string;\n  deps: "
+        },
+        {
+          "kind": "Reference",
+          "text": " DependencyList ",
+          "canonicalReference": "@types/react!React.DependencyList:type"
+        },
+        { "kind": "Content", "text": ";\n  handler: (\n    abortSignal?: " },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => void | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <void>;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <null, void>;" }
+      ]
     }
   ]
 }

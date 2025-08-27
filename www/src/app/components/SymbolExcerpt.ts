@@ -1,80 +1,92 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  forwardRef,
+  input,
+} from '@angular/core';
 import { NgClass } from '@angular/common';
-import { Component, computed, forwardRef, input } from '@angular/core';
-import { ApiExcerptToken } from '../models/api-report.models';
+import {
+  ApiExcerptToken,
+  ApiExcerptTokenKind,
+} from '../models/api-report.models';
 import { CodeHighlight } from '../pipes/CodeHighlight';
 import { SymbolLink } from './SymbolLink';
 
 @Component({
   selector: 'www-symbol-excerpt',
-  imports: [CodeHighlight, NgClass, forwardRef(() => SymbolLink)],
+  imports: [CodeHighlight, forwardRef(() => SymbolLink), NgClass],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="links">
-      <!-- prettier-ignore -->
-      @for (excerpt of simplifiedExcerptTokens(); track $index) {@if (excerpt.kind === 'Content') {{{ excerpt.text }}} @else if (excerpt.kind === 'Reference') {<www-symbol-link [reference]="excerpt.canonicalReference" class="reference" />}}
-    </div>
-    <div
-      [ngClass]="{ deprecated: deprecated() }"
-      [innerHTML]="joinedContent() | codeHighlight"
-    ></div>
+    <!-- <div class="links"> -->
+    <!-- prettier-ignore -->
+    <!-- @for (token of overlayTokens(); track $index) {@if (token.kind === apiExcerptTokenKind.Content) {{{ token.text }}} @else if (token.kind === apiExcerptTokenKind.Reference) {<www-symbol-link [reference]="token.canonicalReference" [text]="token.text" class="reference" />}} -->
+    <!-- </div> -->
+    @if (formattedContent()) {
+      <div
+        [class.deprecated]="deprecated()"
+        [innerHTML]="formattedContent() | codeHighlight"
+      ></div>
+    } @else if (excerptTokens().length > 0) {
+      <div
+        [ngClass]="{ deprecated: deprecated() }"
+        [innerHTML]="joinedContent() | codeHighlight"
+      ></div>
+    }
   `,
-  styles: [
-    `
-      :host {
-        position: relative;
-        display: block;
-      }
+  styles: `
+    :host {
+      position: relative;
+      display: block;
+    }
 
-      .links,
-      code {
-        display: block;
-        font:
-          500 14px/1.5rem 'Operator Mono',
-          monospace;
-        font-variant-ligatures: none;
-      }
+    .links,
+    code {
+      display: block;
+      font:
+        700 14px/1.5rem 'JetBrains Mono',
+        monospace;
+      font-variant-ligatures: none;
+    }
 
-      .links {
-        position: absolute;
-        color: transparent;
-        white-space: pre;
-      }
+    .links {
+      position: absolute;
+      color: white;
+      white-space: pre;
+    }
 
-      .reference {
-        text-decoration: underline;
-        text-decoration-color: transparent;
+    .reference {
+      text-decoration: underline;
+      text-decoration-color: transparent;
 
-        &:hover {
-          text-decoration-color: #ffa657;
-        }
+      &:hover {
+        text-decoration-color: #ffa657;
       }
+    }
 
-      .deprecated {
-        text-decoration: line-through;
-        font-style: italic;
-        opacity: 0.72;
-      }
-    `,
-  ],
+    .deprecated {
+      text-decoration: line-through;
+      font-style: italic;
+      opacity: 0.72;
+    }
+  `,
 })
 export class SymbolExcerpt {
   excerptTokens = input.required<ApiExcerptToken[]>();
   deprecated = input<boolean>(false);
-  simplifiedExcerptTokens = computed(() => {
-    return this.excerptTokens().map((token, index) => {
-      if (index !== 0) return token;
+  formattedContent = input<string>('');
+  overlayTokens = input<ApiExcerptToken[] | null>(null);
 
-      return {
-        ...token,
-        text: token.text
+  apiExcerptTokenKind = ApiExcerptTokenKind;
+
+  joinedContent = computed(() => {
+    return this.excerptTokens()
+      .map((token) =>
+        token.text
           .replace('export declare ', '')
           .replace('export type', 'type')
           .replace('export interface', 'interface'),
-      };
-    });
-  });
-  joinedContent = computed(() => {
-    return this.simplifiedExcerptTokens()
-      .map((token) => token.text)
+      )
       .join('');
   });
 }

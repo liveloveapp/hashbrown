@@ -2,7 +2,7 @@
   "name": "UseCompletionOptions",
   "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-completion.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -15,7 +15,7 @@
           "text": "export interface UseCompletionOptions<Input> "
         }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-completion.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-completion.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
@@ -58,7 +58,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounceTime?: number;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debounceTime?: number;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -91,7 +95,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debugName?: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -124,7 +132,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "input: Input | null | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "input: Input | null | undefined;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -161,7 +173,13 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model:  KnownModelIds ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": " KnownModelIds " },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -194,7 +212,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;",
+          "overlayTokens": [{ "kind": "Content", "text": "retries?: number;" }]
         },
         {
           "kind": "PropertySignature",
@@ -227,7 +247,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "system: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -265,7 +287,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Chat.AnyTool[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "tools?: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.AnyTool",
+              "canonicalReference": "!Chat.AnyTool:type"
+            },
+            { "kind": "Content", "text": "[];" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -286,7 +318,14 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseCompletionOptions<Input>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseCompletionOptions<Input>"
+        }
+      ]
     }
   ]
 }

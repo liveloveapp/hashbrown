@@ -1,45 +1,36 @@
 import { Component } from '@angular/core';
-import { Adapters } from '../components/Adapters';
-import { EnterpriseProducts } from '../components/EnterpriseProducts';
 import { Footer } from '../components/Footer';
-import { GettingStarted } from '../components/GettingStarted';
 import { Header } from '../components/Header';
-import { Hero } from '../components/Hero';
-import { OpenSource } from '../components/OpenSource';
-import { Providers } from '../components/Providers';
-import { LdpTour } from '../components/ldp/LdpTour';
-import { LdpTourMobile } from '../components/ldp/LdpTourMobile';
-import { QuickIntroVideo } from '../components/QuickIntroVideo';
-import { LongIntroVideo } from '../components/LongIntroVideo';
+import { GettingStarted } from '../components/home/GettingStarted';
+import { Hero } from '../components/home/Hero';
+import { Media } from '../components/home/Media';
+import { OpenSource } from '../components/home/OpenSource';
+import { Samples } from '../components/home/Samples';
+import { TheGravy } from '../components/home/TheGravy';
+import { TheVisual } from '../components/home/TheVisual';
 
 @Component({
   imports: [
-    Adapters,
-    EnterpriseProducts,
     Footer,
     GettingStarted,
     Header,
     Hero,
-    LdpTour,
-    LdpTourMobile,
-    LongIntroVideo,
+    Media,
     OpenSource,
-    Providers,
-    QuickIntroVideo,
+    Samples,
+    TheGravy,
+    TheVisual,
   ],
   template: `
     <www-header />
     <main class="home">
       <www-hero />
-      <www-providers />
-      <www-quick-intro-video />
-      <www-ldp-tour />
-      <www-ldp-tour-mobile />
+      <www-samples />
       <www-open-source />
-      <www-adapters />
       <www-getting-started />
-      <www-long-intro-video />
-      <www-enterprise-products />
+      <www-the-visual />
+      <www-media />
+      <www-the-gravy />
     </main>
     <www-footer />
   `,
@@ -47,7 +38,17 @@ import { LongIntroVideo } from '../components/LongIntroVideo';
     :host {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      min-height: 100%;
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    www-header ::ng-deep header {
+      background: transparent;
     }
 
     .home {
@@ -55,20 +56,6 @@ import { LongIntroVideo } from '../components/LongIntroVideo';
       flex-direction: column;
       justify-content: flex-start;
       align-items: stretch;
-    }
-
-    www-ldp-tour-mobile {
-      display: none;
-    }
-
-    @media (width < 768px) {
-      www-ldp-tour {
-        display: none;
-      }
-
-      www-ldp-tour-mobile {
-        display: block;
-      }
     }
   `,
 })

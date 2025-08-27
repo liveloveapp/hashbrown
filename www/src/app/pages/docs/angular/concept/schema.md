@@ -1,6 +1,6 @@
 # Skillet Schema Language
 
-Skillet is a Zod-like schema language that is LLM-optimized.
+<p class="subtitle">Skillet is a Zod-like schema language that is LLM-optimized.</p>
 
 - Skillet is strongly typed
 - Skillet purposefully limits the schema to that which is supported by LLMs
@@ -9,109 +9,121 @@ Skillet is a Zod-like schema language that is LLM-optimized.
 
 ---
 
-## API Reference
+## Methods
 
-We think the best way to get started with Hashbrown's skillet schema language is to check out the API reference section.
-
-[Read the API reference for Skillet](/api/core/s).
+| Method        | Signature                    | Example                               |
+| ------------- | ---------------------------- | ------------------------------------- |
+| `string`      | `string(desc: string)`       | `s.string('name')`                    |
+| `number`      | `number(desc: string)`       | `s.number('age')`                     |
+| `integer`     | `integer(desc: string)`      | `s.integer('count')`                  |
+| `boolean`     | `boolean(desc: string)`      | `s.boolean('active')`                 |
+| `literal`     | `literal<T>(value: T)`       | `s.literal('success')`                |
+| `object`      | `object(desc, shape)`        | `s.object('user', {})`                |
+| `array`       | `array(desc, item)`          | `s.array('items', s.string())`        |
+| `anyOf`       | `anyOf(options)`             | `s.anyOf([s.string(), s.number()])`   |
+| `enumeration` | `enumeration(desc, entries)` | `s.enumeration('status', ['a', 'b'])` |
+| `nullish`     | `nullish()`                  | `s.nullish()`                         |
 
 ---
 
-## Defining a Schema
+## Primitive Values
 
-Let's define our first schema.
-In this example, we want the LLM to respond with an array of light objects.
+<hb-code-example header="examples">
+
+```ts
+// string
+s.string("The user's full name");
+
+// number
+s.number("The user's age in years");
+
+// integer
+s.integer('The number of items in the cart');
+
+// boolean
+s.boolean('Whether the user account is active');
+
+// literal
+s.literal('success');
+```
+
+</hb-code-example>
+
+---
+
+## Compound Values
+
+<hb-code-example header="objects">
+
+```ts
+s.object('A user profile', {
+  name: s.string("The user's name"),
+  age: s.number("The user's age"),
+  active: s.boolean('Whether the user is active'),
+});
+```
+
+</hb-code-example>
+
+<hb-code-example header="array">
 
 ```ts
 s.array(
-  'The lights to add to the scene',
-  s.object('A join between a light and a scene', {
-    lightId: s.string('the ID of the light to add'),
-    brightness: s.number('the brightness of the light from 0 to 100'),
+  'A list of users',
+  s.object('A user', {
+    name: s.string("The user's name"),
+    email: s.string("The user's email"),
   }),
 );
 ```
 
-Let's break this down.
-
-- The `s.array` function defines an array schema.
-- The first argument is a description of the array.
-- The second argument is the schema for the items in the array.
-- The `s.object` function defines an object schema.
-- The first argument is a description of the object.
-- The second argument is an object that defines the properties of the object.
-- The `s.string` and `s.number` functions define string and number schemas, respectively.
-
-If you're familiar with Zod, this should look and feel _very_ similar.
-
----
-
-## Enums
-
-Skillet supports enums.
-Let's look at a simple example of using this for a recurrence rule.
-
-```ts
-s.object('rrule', {
-  freq: s.enumeration('Recurrence frequency (FREQ)', ['SECONDLY', 'MINUTELY', 'HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
-});
-```
+</hb-code-example>
 
 ---
 
 ## AnyOf
 
-Skillet supports a logical OR using the `anyOf()` function.
-This is similar to [Zod's union types](https://zod.dev/api?id=unions)
-
-In this example, we'll define a set of possible predictions we want the LLM to generate based on the previous action the user has taken.
+<hb-code-example header="anyOf">
 
 ```ts
-const PREDICTIONS_SCHEMA = s.anyOf([
-  s.object('Suggests adding a light to the system', {
-    type: s.literal('Add Light'),
-    name: s.string('The suggested name of the light'),
-    brightness: s.integer('A number between 0-100'),
+s.anyOf([
+  s.object('Success response', {
+    status: s.literal('success'),
+    data: s.string('The response data'),
   }),
-  s.object('Suggest adding a scene to the system', {
-    type: s.literal('Add Scene'),
-    name: s.string('The suggested name of the scene'),
-    lights: s.array(
-      'The lights in the scene',
-      s.object('A light in the scene', {
-        lightId: s.string('The ID of the light'),
-        brightness: s.integer('A number between 0-100'),
-      }),
-    ),
-  }),
-  s.object('Suggest scheduling a scene to the system', {
-    type: s.literal('Schedule Scene'),
-    sceneId: s.string('The ID of the scene'),
-    datetime: s.string('The datetime of the scene'),
-  }),
-  s.object('Suggest adding a light to a scene', {
-    type: s.literal('Add Light to Scene'),
-    lightId: s.string('The ID of the light'),
-    sceneId: s.string('The ID of the scene'),
-    brightness: s.integer('A number between 0-100'),
-  }),
-  s.object('Suggest removing a light from a scene', {
-    type: s.literal('Remove Light from Scene'),
-    lightId: s.string('The ID of the light'),
-    sceneId: s.string('The ID of the scene'),
+  s.object('Error response', {
+    status: s.literal('error'),
+    message: s.string('The error message'),
   }),
 ]);
 ```
 
-- The `anyOf` function defines a set of possible schemas that the LLM can return.
-- The `type` discriminates the type of prediction.
-- We use `s.literal` to define a literal value for each type.
-- The `s.literal() function accepts a `boolean`, `number`, or `string` value that the LLM must return.
+</hb-code-example>
 
-We can use `s.anyOf()` to model optional properties by relying on `s.nullish()`:
+---
 
-````ts
-someOptionalProperty: s.anyOf([s.number('a number'), s.nullish()])
+## Enumeration
+
+<hb-code-example header="enumeration">
+
+```ts
+s.enumeration('Task priority level', ['low', 'medium', 'high', 'urgent']);
+```
+
+</hb-code-example>
+
+---
+
+## Nullish
+
+<hb-code-example header="nullish">
+
+```ts
+s.anyOf([s.string('A string value'), s.nullish()]);
+```
+
+</hb-code-example>
+
 ---
 
 ## Numeric Types
@@ -130,14 +142,53 @@ Skillet supports streaming responses out of the box.
 
 To enable streaming, simply add the `streaming` keyword to your schema.
 
+<hb-code-example header="streaming">
+
 ```ts
-s.streaming.array(
-  'The lights to add to the scene',
-  s.object('A join between a light and a scene', {
-    lightId: s.string('the ID of the light to add'),
-    brightness: s.number('the brightness of the light from 0 to 100'),
-  }),
-);
-````
+// stream strings
+s.streaming.string();
+
+// stream objects
+s.streaming.object();
+
+// stream arrays
+s.streaming.array();
+```
+
+</hb-code-example>
 
 Skillet eagerly parses fragments of the streamed response from the LLM.
+
+---
+
+## Next Steps
+
+<hb-next-steps>
+  <hb-next-step link="/api/core/s">
+    <div>
+      <hb-code />
+    </div>
+    <div>
+      <h4>Full API Reference</h4>
+      <p>Check out the full Skillet schema</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/components">
+    <div>
+      <hb-components />
+    </div>
+    <div>
+      <h4>Generate user interfaces</h4>
+      <p>Expose Angular components to the LLM for generative UI.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/structured-output">
+    <div>
+      <hb-database-cog />
+    </div>
+    <div>
+      <h4>Get structured data from models</h4>
+      <p>Use Skillet schema to describe model responses.</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>

@@ -9,6 +9,7 @@ export enum ApiMemberKind {
   Property = 'Property',
   Method = 'Method',
   Namespace = 'Namespace',
+  PropertySignature = 'PropertySignature',
 }
 
 export enum ApiExcerptTokenKind {
@@ -129,6 +130,8 @@ export interface ApiMember {
   variableTypeTokenRange?: ApiTokenRange;
   releaseTag: ApiReleaseTag;
   excerptTokens: ApiExcerptToken[];
+  formattedContent: string;
+  overlayTokens?: ApiExcerptToken[];
   members?: ApiMember[];
   parameters?: ApiMemberParam[];
   typeParameters?: ApiMemberTypeParam[];

@@ -2,7 +2,7 @@
   "name": "UseStructuredChatResult",
   "canonicalReference": "@hashbrownai/react!UseStructuredChatResult:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -21,7 +21,7 @@
         },
         { "kind": "Content", "text": "> " }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-structured-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-structured-chat.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
@@ -74,7 +74,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "error:  Error  | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "error: " },
+            {
+              "kind": "Reference",
+              "text": " Error ",
+              "canonicalReference": "!Error:interface"
+            },
+            { "kind": "Content", "text": " | undefined;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -107,7 +117,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "exhaustedRetries: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "exhaustedRetries: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -140,7 +154,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isReceiving: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isReceiving: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -173,7 +191,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isRunningToolCalls: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isRunningToolCalls: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -206,7 +228,62 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "isSending: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isSending: boolean;" }
+          ]
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatResult#lastAssistantMessage:member",
+          "docComment": "/**\n * The last assistant message.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "lastAssistantMessage: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.AssistantMessage",
+              "canonicalReference": "!Chat.AssistantMessage:type"
+            },
+            { "kind": "Content", "text": "<Output, Tools> | undefined" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "lastAssistantMessage",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The last assistant message.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "lastAssistantMessage:  Chat.AssistantMessage <\n  Output,\n  Tools\n> | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "lastAssistantMessage: " },
+            {
+              "kind": "Reference",
+              "text": " Chat.AssistantMessage",
+              "canonicalReference": "!Chat.AssistantMessage:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <\n  Output,\n  Tools\n> | undefined;"
+            }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -244,7 +321,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages:  (Chat.Message  < Output, Tools > []);",
+          "overlayTokens": [
+            { "kind": "Content", "text": "messages: " },
+            {
+              "kind": "Reference",
+              "text": " (Chat.Message ",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": " < Output, Tools > []);" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -277,7 +364,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "reload: () => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "reload: () => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -310,7 +401,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "resendMessages: () => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "resendMessages: () => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -354,7 +449,17 @@
               }
             ],
             "examples": []
-          }
+          },
+          "formattedContent": "sendMessage: (message: Chat.Message<Output, Tools>) => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "sendMessage: (message: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<Output, Tools>) => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -398,7 +503,17 @@
               }
             ],
             "examples": []
-          }
+          },
+          "formattedContent": "setMessages: (messages: Chat.Message<Output, Tools>[]) => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "setMessages: (messages: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<Output, Tools>[]) => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -434,7 +549,14 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "stop: (clearStreamingMessage?: boolean) => void;"
+            }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -455,7 +577,20 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseStructuredChatResult<Output, Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">" }
+      ]
     }
   ]
 }

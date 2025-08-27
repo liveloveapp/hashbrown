@@ -48,7 +48,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "baseUrl: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "baseUrl: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -81,7 +83,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "emulateStructuredOutput?: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "emulateStructuredOutput?: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -119,7 +125,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "middleware?: Chat.Middleware[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "middleware?: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Middleware",
+              "canonicalReference": "!Chat.Middleware:type"
+            },
+            { "kind": "Content", "text": "[];" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -140,7 +156,11 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface ProvideHashbrownOptions",
+      "overlayTokens": [
+        { "kind": "Content", "text": "interface ProvideHashbrownOptions" }
+      ]
     }
   ]
 }

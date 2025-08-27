@@ -54,7 +54,13 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "functions: [... (RuntimeFunctionRef  < any), any > []];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "functions: [..." },
+            { "kind": "Content", "text": " (RuntimeFunctionRef " },
+            { "kind": "Content", "text": " < any), any > []];" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -87,7 +93,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "timeout?: number;",
+          "overlayTokens": [{ "kind": "Content", "text": "timeout?: number;" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -108,7 +116,11 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface CreateRuntimeOptions",
+      "overlayTokens": [
+        { "kind": "Content", "text": "interface CreateRuntimeOptions" }
+      ]
     }
   ]
 }

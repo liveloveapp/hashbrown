@@ -2,7 +2,7 @@
   "name": "UseChatOptions",
   "canonicalReference": "@hashbrownai/react!UseChatOptions:interface",
   "kind": "Interface",
-  "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -21,7 +21,7 @@
         },
         { "kind": "Content", "text": "> " }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-chat.d.ts",
       "releaseTag": "Public",
       "typeParameters": [
         {
@@ -64,7 +64,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debounceTime?: number;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debounceTime?: number;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -97,7 +101,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "debugName?: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debugName?: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -135,7 +143,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "messages?: Chat.Message<string, Tools>[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "messages?: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<string, Tools>[];" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -172,7 +190,13 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "model:  KnownModelIds ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": " KnownModelIds " },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -205,7 +229,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "retries?: number;",
+          "overlayTokens": [{ "kind": "Content", "text": "retries?: number;" }]
         },
         {
           "kind": "PropertySignature",
@@ -238,7 +264,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "system: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "system: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -271,7 +299,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "tools?: Tools[];",
+          "overlayTokens": [{ "kind": "Content", "text": "tools?: Tools[];" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -292,7 +322,20 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface UseChatOptions<Tools extends Chat.AnyTool>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseChatOptions<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">" }
+      ]
     }
   ]
 }

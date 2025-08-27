@@ -2,7 +2,7 @@
   "name": "useChat",
   "canonicalReference": "@hashbrownai/react!useChat:function",
   "kind": "Function",
-  "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -35,7 +35,7 @@
         { "kind": "Content", "text": "<Tools>" },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-chat.d.ts",
       "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
       "releaseTag": "Public",
       "overloadIndex": 1,
@@ -73,7 +73,32 @@
         "examples": [
           "\n\nThis example demonstrates how to use the `useChat` hook to create a simple chat component.\n```tsx\nconst MyChatComponent = () => {\n  const { messages, sendMessage, status } = useChat({\n    model: 'gpt-4o',\n    system: 'You are a helpful assistant.',\n    tools: [],\n  });\n\n  const handleSendMessage = () => {\n    sendMessage({ role: 'user', content: 'Hello, how are you?' });\n  };\n\n  return (\n    <div>\n      <button onClick={handleSendMessage}>Send Message</button>\n      <div>Status: {status}</div>\n      <ul>\n        {messages.map((msg, index) => (\n          <li key={index}>{msg.content}</li>\n        ))}\n      </ul>\n    </div>\n  );\n};\n```\n\n"
         ]
-      }
+      },
+      "formattedContent": "export declare function useChat<\n  Tools extends  Chat.AnyTool ,\n>(\n  options:  UseChatOptions <Tools>,\n):  UseChatResult <Tools>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useChat<\n  Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n>(\n  options: " },
+        {
+          "kind": "Reference",
+          "text": " UseChatOptions",
+          "canonicalReference": "@hashbrownai/react!UseChatOptions:interface"
+        },
+        { "kind": "Content", "text": " <Tools>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " UseChatResult",
+          "canonicalReference": "@hashbrownai/react!UseChatResult:interface"
+        },
+        { "kind": "Content", "text": " <Tools>;" }
+      ]
     }
   ]
 }

@@ -52,7 +52,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "signal:  AbortSignal ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "signal: " },
+            {
+              "kind": "Reference",
+              "text": " AbortSignal ",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ";" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -73,7 +83,11 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export interface DecodeFramesOptions",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export interface DecodeFramesOptions" }
+      ]
     }
   ]
 }

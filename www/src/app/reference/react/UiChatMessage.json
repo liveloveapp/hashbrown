@@ -2,7 +2,7 @@
   "name": "UiChatMessage",
   "canonicalReference": "@hashbrownai/react!UiChatMessage:type",
   "kind": "TypeAlias",
-  "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-ui-chat.d.ts",
   "isDeprecated": false,
   "members": [
     {
@@ -39,7 +39,7 @@
         },
         { "kind": "Content", "text": ";" }
       ],
-      "fileUrlPath": "../dist/packages/react/hooks/use-ui-chat.d.ts",
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-ui-chat.d.ts",
       "releaseTag": "Public",
       "name": "UiChatMessage",
       "typeParameters": [
@@ -67,7 +67,38 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "export type UiChatMessage<Tools extends  Chat.AnyTool > =\n  \n    | UiAssistantMessage <Tools>\n    |  UiErrorMessage \n    |  UiUserMessage ;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export type UiChatMessage<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": "> =\n  " },
+        {
+          "kind": "Reference",
+          "text": "\n    | UiAssistantMessage",
+          "canonicalReference": "@hashbrownai/react!UiAssistantMessage:type"
+        },
+        { "kind": "Content", "text": " <Tools>\n    | " },
+        {
+          "kind": "Reference",
+          "text": " UiErrorMessage ",
+          "canonicalReference": "@hashbrownai/react!~UiErrorMessage:type"
+        },
+        { "kind": "Content", "text": "\n    | " },
+        {
+          "kind": "Reference",
+          "text": " UiUserMessage ",
+          "canonicalReference": "@hashbrownai/react!UiUserMessage:type"
+        },
+        { "kind": "Content", "text": ";" }
+      ]
     }
   ]
 }

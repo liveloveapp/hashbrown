@@ -1,45 +1,47 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { EnterpriseProducts } from '../components/EnterpriseProducts';
-import { Footer } from '../components/Footer';
-import { Header } from '../components/Header';
 import { ApiMenu } from '../components/ApiMenu';
+import { Header } from '../components/Header';
+import { Squircle } from '../components/Squircle';
 
 @Component({
-  imports: [RouterOutlet, Footer, Header, ApiMenu, EnterpriseProducts],
+  imports: [RouterOutlet, Header, ApiMenu, Squircle],
   template: `
     <www-header />
     <main class="api">
-      <www-ref-menu />
-      <div>
+      <www-api-menu />
+      <div wwwSquircle="16 0 0 0">
         <router-outlet></router-outlet>
       </div>
     </main>
-    <www-enterprise-products />
-    <www-footer />
   `,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
       height: 100%;
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     .api {
       flex: 1 auto;
       display: grid;
       grid-template-columns: auto;
-      border-top: 1px solid rgba(61, 60, 58, 0.24);
-      border-bottom: 1px solid rgba(61, 60, 58, 0.24);
+      overflow: hidden;
 
       > www-ref-menu {
         display: none;
       }
 
       > div {
-        flex: 1 auto;
         overflow-y: auto;
         overflow-x: hidden;
+        background: #fff;
       }
     }
 

@@ -64,7 +64,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "new (...args: any[]): any;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "new (...args: any[]): any;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -103,7 +107,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "children?: 'any' | ExposedComponent<any>[] | false;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "children?: 'any' | " },
+            {
+              "kind": "Reference",
+              "text": "ExposedComponent",
+              "canonicalReference": "@hashbrownai/angular!ExposedComponent:interface"
+            },
+            { "kind": "Content", "text": "<any>[] | false;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -136,7 +150,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "component: T;",
+          "overlayTokens": [{ "kind": "Content", "text": "component: T;" }]
         },
         {
           "kind": "PropertySignature",
@@ -169,7 +185,11 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "description: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "description: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -202,7 +222,9 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "name: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "name: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -240,7 +262,17 @@
             "see": [],
             "params": [],
             "examples": []
-          }
+          },
+          "formattedContent": "props?: ComponentPropSchema<T>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "props?: " },
+            {
+              "kind": "Reference",
+              "text": "ComponentPropSchema",
+              "canonicalReference": "@hashbrownai/angular!ComponentPropSchema:type"
+            },
+            { "kind": "Content", "text": "<T>;" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -261,7 +293,14 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "interface ExposedComponent<T extends {\n    new (...args: any[]): any;\n}>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "interface ExposedComponent<T extends {\n    new (...args: any[]): any;\n}>"
+        }
+      ]
     }
   ]
 }

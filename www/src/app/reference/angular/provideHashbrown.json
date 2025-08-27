@@ -56,7 +56,25 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function provideHashbrown(\n  options:  ProvideHashbrownOptions ,\n):  Provider; ",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function provideHashbrown(\n  options: "
+        },
+        {
+          "kind": "Reference",
+          "text": " ProvideHashbrownOptions ",
+          "canonicalReference": "@hashbrownai/angular!ProvideHashbrownOptions:interface"
+        },
+        { "kind": "Content", "text": ",\n): " },
+        {
+          "kind": "Reference",
+          "text": " Provider; ",
+          "canonicalReference": "@angular/core!Provider:type"
+        }
+      ]
     }
   ]
 }

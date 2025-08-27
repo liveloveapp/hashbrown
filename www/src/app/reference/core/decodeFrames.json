@@ -90,7 +90,44 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "export declare function decodeFrames(\n  stream:  ReadableStream < Uint8Array >,\n  options:  DecodeFramesOptions ,\n):  AsyncGenerator <\n   Frame ,\n  void,\n  unknown\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function decodeFrames(\n  stream: "
+        },
+        {
+          "kind": "Reference",
+          "text": " ReadableStream",
+          "canonicalReference": "!ReadableStream:interface"
+        },
+        { "kind": "Content", "text": " <" },
+        {
+          "kind": "Reference",
+          "text": " Uint8Array ",
+          "canonicalReference": "!Uint8Array:interface"
+        },
+        { "kind": "Content", "text": ">,\n  options: " },
+        {
+          "kind": "Reference",
+          "text": " DecodeFramesOptions ",
+          "canonicalReference": "@hashbrownai/core!DecodeFramesOptions:interface"
+        },
+        { "kind": "Content", "text": ",\n): " },
+        {
+          "kind": "Reference",
+          "text": " AsyncGenerator",
+          "canonicalReference": "!AsyncGenerator:interface"
+        },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " Frame ",
+          "canonicalReference": "@hashbrownai/core!Frame:type"
+        },
+        { "kind": "Content", "text": ",\n  void,\n  unknown\n>;" }
+      ]
     }
   ]
 }

@@ -6,57 +6,56 @@ import { Markdown } from '../pipes/Markdown';
   selector: 'www-symbol-examples',
   imports: [Markdown],
   template: `
-    <section class="examples-section">
-      <h2 class="section-heading">Examples</h2>
-      <div class="content">
-        @for (example of examples(); track $index) {
-          <div class="example" [innerHTML]="example | markdown"></div>
-        }
-      </div>
-    </section>
+    <h2>Examples</h2>
+    <div class="content">
+      @for (example of examples(); track $index) {
+        <div class="example" [innerHTML]="example | markdown"></div>
+      }
+    </div>
   `,
-  styles: [
-    `
-      .examples-section {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-      .section-heading {
-        font: 600 20px/24px system-ui;
-        margin: 0;
-      }
+    .content {
+      overflow: hidden;
 
-      .content {
+      > .example {
         display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 16px;
-        padding: 32px;
-        background: #3d3c3a;
-        border-radius: 12px;
-      }
 
-      .example {
-        font: 400 14px/20px system-ui;
-        color: rgba(255, 255, 255, 0.88);
+        > p {
+          color: var(--gray-dark, #3d3c3a);
+          font:
+            400 15px/21px Fredoka,
+            sans-serif;
+        }
 
-        :global(pre) {
-          background: #1d1c1a;
-          padding: 16px;
-          border-radius: 6px;
+        > pre {
+          overflow: hidden;
+        }
+
+        pre.shiki.hashbrown {
+          padding: 24px;
+          border-radius: 16px;
+          border: 4px solid var(--gray-light, #a4a3a1);
+          background: var(--gray-dark, #3d3c3a) !important;
           overflow-x: auto;
-          margin: 16px 0;
         }
 
-        :global(code) {
-          font-family: monospace;
-          background: transparent;
+        code:not(pre code) {
+          font:
+            700 14px/21px 'JetBrains Mono',
+            monospace;
         }
       }
-    `,
-  ],
+    }
+  `,
 })
 export class SymbolExamples {
   symbol = input.required<ApiMember>();

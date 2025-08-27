@@ -61,7 +61,21 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function createRuntime(\n  options:  CreateRuntimeOptions ,\n):  RuntimeRef; ",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function createRuntime(\n  options: "
+        },
+        {
+          "kind": "Reference",
+          "text": " CreateRuntimeOptions ",
+          "canonicalReference": "@hashbrownai/angular!CreateRuntimeOptions:interface"
+        },
+        { "kind": "Content", "text": ",\n): " },
+        { "kind": "Content", "text": " RuntimeRef; " }
+      ]
     }
   ]
 }

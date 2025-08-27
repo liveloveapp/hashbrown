@@ -20,10 +20,6 @@ type Heading = { level: number; text: string; id: string; url: string };
     <article #article>
       <ng-content></ng-content>
     </article>
-    <div
-      #bottomSentinel
-      style="position:absolute;bottom:0;width:1px;height:1px;"
-    ></div>
     <menu #menu>
       @for (heading of headings(); track $index) {
         <a
@@ -36,13 +32,17 @@ type Heading = { level: number; text: string; id: string; url: string };
         </a>
       }
     </menu>
+    <div
+      #bottomSentinel
+      style="position:absolute;bottom:0;width:1px;height:1px;"
+    ></div>
   `,
   styles: [
     `
       :host {
         display: block;
         position: relative;
-        padding: 0 32px 32px;
+        padding: 24px;
         overflow: hidden;
       }
 
@@ -50,13 +50,11 @@ type Heading = { level: number; text: string; id: string; url: string };
         display: none;
         width: 186px;
         flex-direction: column;
-        gap: 6px;
         position: fixed;
-        top: 160px;
+        top: 128px;
         right: 32px;
         margin: 0;
         padding: 0;
-        border-left: 1px solid #fbbb52;
         opacity: 1;
         transition: opacity 0.3s ease-in-out;
       }
@@ -66,9 +64,12 @@ type Heading = { level: number; text: string; id: string; url: string };
       }
 
       menu a {
-        color: rgba(47, 47, 43, 0.88);
-        font-size: 13px;
-        border-left: 2px solid transparent;
+        padding: 4px 0;
+        color: var(--gray, #5e5c5a);
+        font:
+          400 13px/18px Fredoka,
+          sans-serif;
+        border-left: 1px solid #dcdad5;
       }
 
       menu a:hover {
@@ -77,55 +78,71 @@ type Heading = { level: number; text: string; id: string; url: string };
 
       menu a.active {
         color: rgb(47, 47, 43);
-        border-left: 6px solid #fbbb52;
+        border-left: 1px solid var(--gray-dark, #3d3c3a);
       }
 
       article ::ng-deep analog-markdown-route > div {
         display: flex;
         flex-direction: column;
+        gap: 8px;
+        color: var(--gray-dark, #3d3c3a);
+        font:
+          400 15px/21px Fredoka,
+          sans-serif;
 
         h1 {
+          color: var(--gray, #5e5c5a);
           font:
-            500 32px/40px Fredoka,
+            750 22px/32px KefirVariable,
             sans-serif;
-          margin-top: 8px;
-          margin-bottom: 16px;
+          font-variation-settings: 'wght' 750;
+
+          &:first-child {
+            margin-top: 0;
+          }
         }
 
-        h2 {
-          font:
-            500 24px/32px Fredoka,
-            sans-serif;
-          margin-top: 8px;
-          margin-bottom: 12px;
-        }
-
-        h3 {
-          font:
-            500 20px/28px Fredoka,
-            sans-serif;
-          margin-top: 8px;
-          margin-bottom: 12px;
-        }
-
+        h2,
+        h3,
         h4 {
-          margin-top: 8px;
-          margin-bottom: 12px;
+          color: var(--gray, #5e5c5a);
+          margin: 8px 0;
+          font:
+            500 18px/24px Fredoka,
+            sans-serif;
+
+          > code:not(pre code) {
+            font-size: 17px;
+            line-height: 24px;
+          }
+        }
+
+        h3,
+        h4 {
+          font-size: 16px;
+          line-height: 22px;
         }
 
         p {
-          margin: 0 0 12px;
-          line-height: 1.8;
+          margin: 8px 0;
+
+          &.subtitle {
+            color: var(--gray-light, #a4a3a1);
+            margin: 0;
+            font:
+              300 18px/24px Fredoka,
+              sans-serif;
+          }
         }
 
         ul,
         ol {
-          margin-bottom: 16px;
+          margin: 8px 0;
         }
 
         hr {
           border: 0;
-          border-top: 1px solid rgba(47, 47, 43, 0.24);
+          border-top: 1px solid #dcdad5;
           margin: 32px 0;
         }
 
@@ -133,23 +150,62 @@ type Heading = { level: number; text: string; id: string; url: string };
           font-weight: 600;
         }
 
-        ul {
-          list-style: disc;
+        ul,
+        ol {
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          margin-left: 24px;
+          list-style: none;
+          margin-left: 8px;
+
+          > li {
+            position: relative;
+            padding-left: 40px;
+            font:
+              400 15px/24px Fredoka,
+              sans-serif;
+          }
+        }
+
+        ul {
+          gap: 8px;
+
+          > li {
+            &::before {
+              position: absolute;
+              top: 9px;
+              left: 8px;
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              background: var(--gray, #5e5c5a);
+              content: '';
+            }
+          }
         }
 
         ol {
-          list-style: decimal;
-          display: flex;
-          flex-direction: column;
           gap: 16px;
-          margin-left: 24px;
+          counter-reset: ordered-listitem;
+
+          > li {
+            &::after {
+              position: absolute;
+              top: -1px;
+              left: 0;
+              background: var(--sunshine-yellow-light, #fbe7b6);
+              border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
+              border-radius: 8px;
+              width: 24px;
+              height: 24px;
+              display: inline-block;
+              text-align: center;
+              content: counter(ordered-listitem);
+              counter-increment: ordered-listitem;
+            }
+          }
         }
 
-        :not(www-symbol-link) > a {
+        :not(hb-symbol-link) > a {
           text-decoration: underline;
           text-decoration-color: #774625;
           color: #774625;
@@ -176,17 +232,22 @@ type Heading = { level: number; text: string; id: string; url: string };
           }
         }
 
+        hb-next-step a {
+          text-decoration: none;
+        }
+
         > pre.shiki.hashbrown {
-          padding: 16px;
-          border-radius: 8px;
-          background: #2b2a29 !important;
+          padding: 24px;
+          border-radius: 16px;
+          border: 4px solid var(--gray-light, #a4a3a1);
+          background: var(--gray-dark, #3d3c3a) !important;
           overflow-x: auto;
           margin-bottom: 16px;
         }
 
         code:not(pre code) {
           font:
-            600 16px/24px 'Operator mono',
+            700 14px/21px 'JetBrains Mono',
             monospace;
         }
 
@@ -229,6 +290,12 @@ type Heading = { level: number; text: string; id: string; url: string };
       }
 
       @media screen and (min-width: 1024px) {
+        :host {
+          max-width: 800px;
+        }
+      }
+
+      @media screen and (min-width: 1281px) {
         :host {
           padding-right: 250px;
           max-width: 1024px;

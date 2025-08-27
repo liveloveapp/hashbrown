@@ -3,46 +3,54 @@ import { ApiMemberSummary } from '../models/api-report.models';
 import { SymbolApi } from './SymbolApi';
 import { SymbolHeader } from './SymbolHeader';
 import { SymbolSummary } from './SymbolSummary';
+import { Squircle } from './Squircle';
 
 export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
   'SYMBOl_POPOVER_REF',
 );
 
 @Component({
-  selector: 'www-symbol-popover',
-  imports: [SymbolHeader, SymbolApi, SymbolSummary],
+  imports: [SymbolHeader, SymbolApi, SymbolSummary, Squircle],
   template: `
-    <div class="popover">
-      <www-symbol-header
-        [name]="summary.name"
-        [fileUrlPath]="summary.fileUrlPath"
-        [symbol]="symbol"
-      />
-      <www-symbol-summary [symbol]="symbol" />
-      <www-symbol-api [density]="'-1'" [symbol]="symbol" />
+    <div
+      class="popover"
+      wwwSquircle="16"
+      [wwwSquircleBorderWidth]="4"
+      wwwSquircleBorderColor="var(--sky-blue, #9ecfd7)"
+    >
+      <div class="content">
+        <www-symbol-header
+          [name]="summary.name"
+          [fileUrlPath]="summary.fileUrlPath"
+          [symbol]="symbol"
+        />
+        <www-symbol-summary [symbol]="symbol" />
+        <www-symbol-api [density]="'-1'" [symbol]="symbol" />
+      </div>
     </div>
   `,
-  styles: [
-    `
-      :host {
-        display: flex;
-        padding: 16px;
-      }
+  styles: `
+    :host {
+      display: flex;
+      padding: 16px;
+    }
 
-      .popover {
+    .popover {
+      display: block;
+      overflow: hidden;
+      background: #fff;
+
+      > .content {
         display: flex;
         flex-direction: column;
-        width: 500px;
-        overflow-y: hidden;
-        background: #fff;
+        overflow: auto;
+        width: 100%;
+        max-width: 752px;
+        max-height: 400px;
         padding: 16px;
-        border-radius: 8px;
-        box-shadow:
-          0 10px 15px -3px rgba(0, 0, 0, 0.16),
-          0 4px 6px -4px rgba(0, 0, 0, 0.16);
       }
-    `,
-  ],
+    }
+  `,
 })
 export class SymbolPopover {
   summary = inject(SYMBOl_POPOVER_REF);

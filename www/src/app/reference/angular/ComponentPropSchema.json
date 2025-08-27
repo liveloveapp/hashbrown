@@ -68,7 +68,41 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "type ComponentPropSchema<T> =  _types.Prettify <\n  T extends {\n    new (...args: any[]): infer P;\n  }\n    ? {\n        [K in keyof P]?: P[K] extends  AngularSignalLike <\n          infer U\n        >\n          ?  s.Schema <U>\n          :  s.Schema <P[K]>;\n      }\n    : never\n>;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "type ComponentPropSchema<T> = " },
+        {
+          "kind": "Reference",
+          "text": " _types.Prettify",
+          "canonicalReference": "!_types.Prettify:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <\n  T extends {\n    new (...args: any[]): infer P;\n  }\n    ? {\n        [K in keyof P]?: P[K] extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " AngularSignalLike",
+          "canonicalReference": "@hashbrownai/angular!~AngularSignalLike:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <\n          infer U\n        >\n          ? "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.Schema",
+          "canonicalReference": "!s.Schema:type"
+        },
+        { "kind": "Content", "text": " <U>\n          : " },
+        {
+          "kind": "Reference",
+          "text": " s.Schema",
+          "canonicalReference": "!s.Schema:type"
+        },
+        { "kind": "Content", "text": " <P[K]>;\n      }\n    : never\n>;" }
+      ]
     }
   ]
 }

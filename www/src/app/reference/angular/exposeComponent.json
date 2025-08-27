@@ -104,7 +104,47 @@
           }
         ],
         "examples": []
-      }
+      },
+      "formattedContent": "declare function exposeComponent<\n  T extends {\n    new (...args: any[]): any;\n  },\n>(\n  component: T,\n  config:  _types.Prettify <\n     Omit <\n       ExposedComponent <T>,\n      \"component\" | \"name\" | \"props\"\n    > & {\n      input?:  ComponentPropSchema <T>;\n    }\n  >,\n):  ExposedComponent <T>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function exposeComponent<\n  T extends {\n    new (...args: any[]): any;\n  },\n>(\n  component: T,\n  config: "
+        },
+        {
+          "kind": "Reference",
+          "text": " _types.Prettify",
+          "canonicalReference": "!_types.Prettify:type"
+        },
+        { "kind": "Content", "text": " <\n    " },
+        {
+          "kind": "Reference",
+          "text": " Omit",
+          "canonicalReference": "!Omit:type"
+        },
+        { "kind": "Content", "text": " <\n      " },
+        {
+          "kind": "Reference",
+          "text": " ExposedComponent",
+          "canonicalReference": "@hashbrownai/angular!ExposedComponent:interface"
+        },
+        {
+          "kind": "Content",
+          "text": " <T>,\n      \"component\" | \"name\" | \"props\"\n    > & {\n      input?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " ComponentPropSchema",
+          "canonicalReference": "@hashbrownai/angular!ComponentPropSchema:type"
+        },
+        { "kind": "Content", "text": " <T>;\n    }\n  >,\n): " },
+        {
+          "kind": "Reference",
+          "text": " ExposedComponent",
+          "canonicalReference": "@hashbrownai/angular!ExposedComponent:interface"
+        },
+        { "kind": "Content", "text": " <T>;" }
+      ]
     }
   ]
 }

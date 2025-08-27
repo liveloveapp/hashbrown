@@ -39,7 +39,17 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "type UiUserMessage =  Chat.UserMessage ;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "type UiUserMessage = " },
+        {
+          "kind": "Reference",
+          "text": " Chat.UserMessage ",
+          "canonicalReference": "!Chat.UserMessage:type"
+        },
+        { "kind": "Content", "text": ";" }
+      ]
     }
   ]
 }
