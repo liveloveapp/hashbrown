@@ -2,16 +2,14 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
-import { TheGravy } from '../components/home/TheGravy';
 
 @Component({
-  imports: [RouterOutlet, Footer, Header, TheGravy],
+  imports: [RouterOutlet, Footer, Header],
   template: `
     <www-header />
     <main>
       <router-outlet></router-outlet>
     </main>
-    <www-the-gravy />
     <www-footer />
   `,
   styles: `

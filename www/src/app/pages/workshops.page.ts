@@ -78,17 +78,15 @@ import { Sell } from '../icons/Sell';
               />
               $350 per person. Group discounts available.
             </span>
-            <!--
-            <div class="action">
+            <div class="contact-us">
               <a
-                href="https://ti.to/liveloveapp/hashbrown-angular-sep-2025"
-                target="_blank"
+                routerLink="/contact-us"
                 wwwSquircle="8"
-              >
-                Reserve to Attend Online</a
+                [wwwSquircleBorderWidth]="1"
+                wwwSquircleBorderColor="var(--sky-blue, #9ecfd7)"
+                >Contact Us</a
               >
             </div>
-            -->
           </div>
         </div>
       </div>
@@ -176,6 +174,25 @@ import { Sell } from '../icons/Sell';
                 sans-serif;
             }
           }
+
+          > .contact-us {
+            display: flex;
+            justify-content: stretch;
+            margin-top: 8px;
+
+            > a {
+              width: 100%;
+              display: flex;
+              padding: 12px 24px;
+              justify-content: center;
+              align-items: center;
+              background: var(--sky-blue-light, #9ecfd7);
+              color: rgba(0, 0, 0, 0.64);
+              font:
+                400 16px/18px 'Fredoka',
+                sans-serif;
+            }
+          }
         }
       }
     }
@@ -184,7 +201,7 @@ import { Sell } from '../icons/Sell';
       .bleed {
         grid-template-columns: 1fr 316px;
         gap: 64px;
-        max-width: 800px;
+        max-width: 1024px;
       }
     }
 
@@ -192,7 +209,7 @@ import { Sell } from '../icons/Sell';
       .bleed {
         grid-template-columns: 1fr 316px;
         gap: 80px;
-        max-width: 1024px;
+        max-width: 1281px;
       }
     }
   `,
