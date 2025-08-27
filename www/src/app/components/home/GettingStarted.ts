@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import { Component, computed, inject, signal, Type } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Angular } from '../../icons/Angular';
 import { BrandGoogle } from '../../icons/BrandGoogle';
 import { BrandOpenAi } from '../../icons/BrandOpenAi';
@@ -94,6 +95,7 @@ interface Section {
   title: string;
   description: string;
   key: string;
+  loomEmbedUrl: SafeResourceUrl;
 }
 
 @Component({
@@ -149,7 +151,17 @@ interface Section {
         wwwSquircle="0 16 16 16"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
-      ></div>
+      >
+        <iframe
+          [attr.src]="sections()[index()].loomEmbedUrl"
+          frameborder="0"
+          webkitallowfullscreen
+          mozallowfullscreen
+          allowfullscreen
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+        ></iframe>
+      </div>
+      <!--
       <div class="spacer"></div>
       <div class="examples">
         <div class="actions">
@@ -258,41 +270,6 @@ interface Section {
                     </label>
                   }
                 }
-                <div content>
-                  <button
-                    (click)="onProviderChange('openai')"
-                    class="menu-item provider"
-                  >
-                    <www-brand-openai
-                      height="16px"
-                      width="16px"
-                      fill="#774625"
-                    />
-                    OpenAI
-                  </button>
-                  <button
-                    (click)="onProviderChange('google')"
-                    class="menu-item provider"
-                  >
-                    <www-brand-google
-                      height="16px"
-                      width="16px"
-                      fill="#774625"
-                    />
-                    Google
-                  </button>
-                  <button
-                    (click)="onProviderChange('writer')"
-                    class="menu-item provider"
-                  >
-                    <www-brand-writer
-                      height="16px"
-                      width="16px"
-                      fill="#774625"
-                    />
-                    Writer
-                  </button>
-                </div>
               </www-dropdown-menu>
             </div>
           </div>
@@ -311,6 +288,7 @@ interface Section {
           }
         </www-code-example-group>
       </div>
+      -->
     </div>
   `,
   styles: `
@@ -615,6 +593,7 @@ interface Section {
 })
 export class GettingStarted {
   configService = inject(ConfigService);
+  sanitizer = inject(DomSanitizer);
 
   index = signal<number>(0);
   sections = signal<Section[]>([
@@ -623,18 +602,27 @@ export class GettingStarted {
       description:
         'Expose your React or Angular components to an LLM, and let it generate a full UI.',
       key: 'generative-ui',
+      loomEmbedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
+        'https://www.loom.com/embed/00f9bc82287b400f9ac37714262e4955?sid=78eb2d30-e541-412a-981a-428860ce4665',
+      ),
     },
     {
       title: 'JavaScript Runtime',
       description:
         'Use LLMs to generate and run JavaScript for truly next-gen user interactions.',
       key: 'js-runtime',
+      loomEmbedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
+        'https://www.loom.com/embed/e820ecdc43634f258dad37f7c8a46194?sid=d739a3d8-d1a2-450f-816b-f4f60bbce365',
+      ),
     },
     {
       title: 'Streaming Responses',
       description:
         'Stream text, data, and UI from LLMs to your app, with full type safety along the way',
       key: 'streaming',
+      loomEmbedUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
+        'https://www.loom.com/embed/5c15403faa8246aa82ca9d17930336ed?sid=d6b31dcb-cb9a-4ded-832f-112912129973',
+      ),
     },
   ]);
   section = computed(() => this.sections()[this.index()]);
