@@ -40,7 +40,16 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export type UiUserMessage = Chat.UserMessage;"
+      "formattedContent": "export type UiUserMessage =  Chat.UserMessage ;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export type UiUserMessage = " },
+        {
+          "kind": "Reference",
+          "text": " Chat.UserMessage ",
+          "canonicalReference": "!Chat.UserMessage:type"
+        },
+        { "kind": "Content", "text": ";" }
+      ]
     }
   ]
 }

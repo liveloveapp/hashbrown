@@ -70,7 +70,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "components: ExposedComponent < any > [];"
+          "formattedContent": "components:  ExposedComponent  < any > [];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "components: " },
+            {
+              "kind": "Reference",
+              "text": " ExposedComponent ",
+              "canonicalReference": "@hashbrownai/react!ExposedComponent:interface"
+            },
+            { "kind": "Content", "text": " < any > [];" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -104,7 +113,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "debounceTime?: number;"
+          "formattedContent": "debounceTime?: number;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debounceTime?: number;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -138,7 +150,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "debugName?: string;"
+          "formattedContent": "debugName?: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debugName?: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -183,7 +198,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "messages?: Chat.Message<UiChatSchema, Tools>[];"
+          "formattedContent": "messages?: Chat.Message<UiChatSchema, Tools>[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "messages?: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "UiChatSchema",
+              "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+            },
+            { "kind": "Content", "text": ", Tools>[];" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -221,7 +251,12 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "model: KnownModelIds;"
+          "formattedContent": "model:  KnownModelIds ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": " KnownModelIds " },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -255,7 +290,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "system: string;"
+          "formattedContent": "system: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "system: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -289,7 +325,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "tools?: Tools[];"
+          "formattedContent": "tools?: Tools[];",
+          "overlayTokens": [{ "kind": "Content", "text": "tools?: Tools[];" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -311,7 +348,19 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface UiChatOptions<Tools extends Chat.AnyTool>"
+      "formattedContent": "export interface UiChatOptions<Tools extends Chat.AnyTool>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UiChatOptions<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">" }
+      ]
     }
   ]
 }

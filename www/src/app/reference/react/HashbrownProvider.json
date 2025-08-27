@@ -63,7 +63,30 @@
           "\n```ts\n<HashbrownProvider url=\"https://your.api.local/chat\">\n  <App />\n</HashbrownProvider>\n```\n\n"
         ]
       },
-      "formattedContent": "HashbrownProvider: (\n  props: HashbrownProviderOptions & {\n    children: React.ReactNode;\n  },\n) => import(\"react/jsx-runtime\").JSX.Element;"
+      "formattedContent": "HashbrownProvider: (\n  props:  HashbrownProviderOptions  & {\n    children:  React.ReactNode ;\n  },\n) => import(\"react/jsx-runtime\"). JSX.Element; ",
+      "overlayTokens": [
+        { "kind": "Content", "text": "HashbrownProvider: (\n  props: " },
+        {
+          "kind": "Reference",
+          "text": " HashbrownProviderOptions ",
+          "canonicalReference": "@hashbrownai/react!HashbrownProviderOptions:interface"
+        },
+        { "kind": "Content", "text": " & {\n    children: " },
+        {
+          "kind": "Reference",
+          "text": " React.ReactNode ",
+          "canonicalReference": "@types/react!React.ReactNode:type"
+        },
+        {
+          "kind": "Content",
+          "text": ";\n  },\n) => import(\"react/jsx-runtime\")."
+        },
+        {
+          "kind": "Reference",
+          "text": " JSX.Element; ",
+          "canonicalReference": "@types/react!JSX.Element:interface"
+        }
+      ]
     }
   ]
 }

@@ -62,7 +62,20 @@
         ],
         "examples": []
       },
-      "formattedContent": "export declare function useRuntime(options: UseRuntimeOptions): RuntimeRef;"
+      "formattedContent": "export declare function useRuntime(\n  options:  UseRuntimeOptions ,\n):  RuntimeRef; ",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useRuntime(\n  options: "
+        },
+        {
+          "kind": "Reference",
+          "text": " UseRuntimeOptions ",
+          "canonicalReference": "@hashbrownai/react!UseRuntimeOptions:interface"
+        },
+        { "kind": "Content", "text": ",\n): " },
+        { "kind": "Content", "text": " RuntimeRef; " }
+      ]
     }
   ]
 }

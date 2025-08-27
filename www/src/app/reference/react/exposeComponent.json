@@ -94,7 +94,49 @@
           "\n```ts\nexposeComponent(\n  CardComponent, // The React component to be exposed.\n  { // The exposed component configuration.\n    name: 'CardComponent',\n    description: 'Show a card with children components to the user',\n    children: 'any',\n    props: {\n      title: s.string('The title of the card'),\n      description: s.streaming.string('The description of the card'),\n    },\n  },\n});\n```\n\n"
         ]
       },
-      "formattedContent": "export declare function exposeComponent<T extends ComponentType<any>>(\n  component: T,\n  config: ɵtypes.Prettify<Omit<ExposedComponent<T>, \"component\">>,\n): ExposedComponent<T>;"
+      "formattedContent": "export declare function exposeComponent<\n  T extends  ComponentType <any>,\n>(\n  component: T,\n  config:  ɵtypes.Prettify <\n     Omit <\n       ExposedComponent <T>,\n      \"component\"\n    >\n  >,\n):  ExposedComponent <T>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function exposeComponent<\n  T extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " ComponentType",
+          "canonicalReference": "@types/react!React.ComponentType:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <any>,\n>(\n  component: T,\n  config: "
+        },
+        {
+          "kind": "Reference",
+          "text": " ɵtypes.Prettify",
+          "canonicalReference": "!ɵtypes.Prettify:type"
+        },
+        { "kind": "Content", "text": " <\n    " },
+        {
+          "kind": "Reference",
+          "text": " Omit",
+          "canonicalReference": "!Omit:type"
+        },
+        { "kind": "Content", "text": " <\n      " },
+        {
+          "kind": "Reference",
+          "text": " ExposedComponent",
+          "canonicalReference": "@hashbrownai/react!ExposedComponent:interface"
+        },
+        {
+          "kind": "Content",
+          "text": " <T>,\n      \"component\"\n    >\n  >,\n): "
+        },
+        {
+          "kind": "Reference",
+          "text": " ExposedComponent",
+          "canonicalReference": "@hashbrownai/react!ExposedComponent:interface"
+        },
+        { "kind": "Content", "text": " <T>;" }
+      ]
     }
   ]
 }

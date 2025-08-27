@@ -70,7 +70,24 @@
         ],
         "examples": []
       },
-      "formattedContent": "declare function completionResource<Input>(\n  options: CompletionResourceOptions<Input>,\n): CompletionResourceRef;"
+      "formattedContent": "declare function completionResource<Input>(\n  options:  CompletionResourceOptions <Input>,\n):  CompletionResourceRef; ",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function completionResource<Input>(\n  options: "
+        },
+        {
+          "kind": "Reference",
+          "text": " CompletionResourceOptions",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions:interface"
+        },
+        { "kind": "Content", "text": " <Input>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " CompletionResourceRef; ",
+          "canonicalReference": "@hashbrownai/angular!CompletionResourceRef:interface"
+        }
+      ]
     }
   ]
 }

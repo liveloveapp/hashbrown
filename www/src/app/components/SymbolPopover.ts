@@ -10,41 +10,47 @@ export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
 );
 
 @Component({
-  selector: 'www-symbol-popover',
   imports: [SymbolHeader, SymbolApi, SymbolSummary, Squircle],
   template: `
     <div
       class="popover"
       wwwSquircle="16"
-      [wwwSquircleBorderWidth]="1"
+      [wwwSquircleBorderWidth]="4"
       wwwSquircleBorderColor="var(--sky-blue, #9ecfd7)"
     >
-      <www-symbol-header
-        [name]="summary.name"
-        [fileUrlPath]="summary.fileUrlPath"
-        [symbol]="symbol"
-      />
-      <www-symbol-summary [symbol]="symbol" />
-      <www-symbol-api [density]="'-1'" [symbol]="symbol" />
+      <div class="content">
+        <www-symbol-header
+          [name]="summary.name"
+          [fileUrlPath]="summary.fileUrlPath"
+          [symbol]="symbol"
+        />
+        <www-symbol-summary [symbol]="symbol" />
+        <www-symbol-api [density]="'-1'" [symbol]="symbol" />
+      </div>
     </div>
   `,
-  styles: [
-    `
-      :host {
-        display: flex;
-        padding: 16px;
-      }
+  styles: `
+    :host {
+      display: flex;
+      padding: 16px;
+    }
 
-      .popover {
+    .popover {
+      display: block;
+      overflow: hidden;
+      background: #fff;
+
+      > .content {
         display: flex;
         flex-direction: column;
-        width: 500px;
-        overflow-y: hidden;
-        background: #fff;
+        overflow: auto;
+        width: 100%;
+        max-width: 752px;
+        max-height: 400px;
         padding: 16px;
       }
-    `,
-  ],
+    }
+  `,
 })
 export class SymbolPopover {
   summary = inject(SYMBOl_POPOVER_REF);

@@ -49,7 +49,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "type: \"finish\";"
+          "formattedContent": "type: \"finish\";",
+          "overlayTokens": [{ "kind": "Content", "text": "type: \"finish\";" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -71,7 +72,10 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface FinishFrame"
+      "formattedContent": "export interface FinishFrame",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export interface FinishFrame" }
+      ]
     }
   ]
 }

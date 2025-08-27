@@ -7,7 +7,7 @@ import { Squircle } from './Squircle';
   template: `<div
     class="group"
     wwwSquircle="16"
-    [wwwSquircleBorderWidth]="4"
+    [wwwSquircleBorderWidth]="8"
     wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
   >
     <ng-content />
@@ -25,7 +25,7 @@ import { Squircle } from './Squircle';
         min-width: 100%;
         width: auto;
         overflow-x: auto;
-        padding: 16px;
+        padding: 24px;
       }
     `,
   ],

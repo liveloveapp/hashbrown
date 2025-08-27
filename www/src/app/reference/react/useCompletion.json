@@ -67,7 +67,24 @@
           "\n```ts\nconst { output } = useCompletion({\n  model: 'gpt-4o-mini',\n  input: firstName,\n  system: `Help the user generate a last name for the given first name.`,\n});\n```\n\n"
         ]
       },
-      "formattedContent": "export declare function useCompletion<Input>(\n  options: UseCompletionOptions<Input>,\n): UseCompletionResult;"
+      "formattedContent": "export declare function useCompletion<Input>(\n  options:  UseCompletionOptions <Input>,\n):  UseCompletionResult; ",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useCompletion<Input>(\n  options: "
+        },
+        {
+          "kind": "Reference",
+          "text": " UseCompletionOptions",
+          "canonicalReference": "@hashbrownai/react!UseCompletionOptions:interface"
+        },
+        { "kind": "Content", "text": " <Input>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " UseCompletionResult; ",
+          "canonicalReference": "@hashbrownai/react!UseCompletionResult:interface"
+        }
+      ]
     }
   ]
 }

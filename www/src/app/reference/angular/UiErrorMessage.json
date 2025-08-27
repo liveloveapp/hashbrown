@@ -40,7 +40,16 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "type UiErrorMessage = Chat.ErrorMessage;"
+      "formattedContent": "type UiErrorMessage =  Chat.ErrorMessage ;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "type UiErrorMessage = " },
+        {
+          "kind": "Reference",
+          "text": " Chat.ErrorMessage ",
+          "canonicalReference": "!Chat.ErrorMessage:type"
+        },
+        { "kind": "Content", "text": ";" }
+      ]
     }
   ]
 }

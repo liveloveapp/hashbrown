@@ -64,7 +64,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "message: _angular_core.InputSignal<UiAssistantMessage<any>>;"
+          "formattedContent": "message:  _angular_core.InputSignal <\n   UiAssistantMessage <any>\n>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "message: " },
+            {
+              "kind": "Reference",
+              "text": " _angular_core.InputSignal",
+              "canonicalReference": "@angular/core!InputSignal:interface"
+            },
+            { "kind": "Content", "text": " <\n  " },
+            {
+              "kind": "Reference",
+              "text": " UiAssistantMessage",
+              "canonicalReference": "@hashbrownai/angular!UiAssistantMessage:type"
+            },
+            { "kind": "Content", "text": " <any>\n>;" }
+          ]
         }
       ],
       "implementsTokenRanges": [],
@@ -86,7 +101,10 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "declare class RenderMessageComponent"
+      "formattedContent": "declare class RenderMessageComponent",
+      "overlayTokens": [
+        { "kind": "Content", "text": "declare class RenderMessageComponent" }
+      ]
     }
   ]
 }

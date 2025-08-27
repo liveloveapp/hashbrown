@@ -49,7 +49,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "readonly describe: () => string;"
+          "formattedContent": "readonly describe: () => string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "readonly describe: () => string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -89,7 +92,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "readonly functions: [...RuntimeFunctionRef<any, any>[]];"
+          "formattedContent": "readonly functions: [...RuntimeFunctionRef<any, any>[]];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "readonly functions: [..." },
+            {
+              "kind": "Reference",
+              "text": "RuntimeFunctionRef",
+              "canonicalReference": "@hashbrownai/core!RuntimeFunctionRef:type"
+            },
+            { "kind": "Content", "text": "<any, any>[]];" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -144,7 +156,25 @@
             ],
             "examples": []
           },
-          "formattedContent": "readonly run: (code: string, abortSignal: AbortSignal) => Promise<any>;"
+          "formattedContent": "readonly run: (code: string, abortSignal: AbortSignal) => Promise<any>;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "readonly run: (code: string, abortSignal: "
+            },
+            {
+              "kind": "Reference",
+              "text": "AbortSignal",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ") => " },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": "<any>;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -178,7 +208,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "readonly timeout: number;"
+          "formattedContent": "readonly timeout: number;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "readonly timeout: number;" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -200,7 +233,10 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface RuntimeRef"
+      "formattedContent": "export interface RuntimeRef",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export interface RuntimeRef" }
+      ]
     }
   ]
 }

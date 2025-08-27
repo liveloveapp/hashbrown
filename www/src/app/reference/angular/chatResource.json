@@ -79,7 +79,31 @@
           "\n\nThis example demonstrates how to use the `chatResource` function to create a simple chat component.\n```ts\nconst chat = chatResource({\n  system: 'hashbrowns should be covered and smothered',\n  model: 'gpt-5',\n});\n\nchat.sendMessage({ role: 'user', content: 'Write a short story about breakfast.' });\n```\n\n"
         ]
       },
-      "formattedContent": "declare function chatResource<Tools extends Chat.AnyTool>(\n  options: ChatResourceOptions<Tools>,\n): ChatResourceRef<Tools>;"
+      "formattedContent": "declare function chatResource<\n  Tools extends  Chat.AnyTool ,\n>(\n  options:  ChatResourceOptions <Tools>,\n):  ChatResourceRef <Tools>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function chatResource<\n  Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n>(\n  options: " },
+        {
+          "kind": "Reference",
+          "text": " ChatResourceOptions",
+          "canonicalReference": "@hashbrownai/angular!ChatResourceOptions:interface"
+        },
+        { "kind": "Content", "text": " <Tools>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " ChatResourceRef",
+          "canonicalReference": "@hashbrownai/angular!ChatResourceRef:interface"
+        },
+        { "kind": "Content", "text": " <Tools>;" }
+      ]
     }
   ]
 }

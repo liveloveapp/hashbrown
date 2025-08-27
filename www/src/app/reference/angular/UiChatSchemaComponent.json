@@ -54,7 +54,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "$children: UiChatSchemaComponent[];"
+          "formattedContent": "$children: UiChatSchemaComponent[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "$children: " },
+            {
+              "kind": "Reference",
+              "text": "UiChatSchemaComponent",
+              "canonicalReference": "@hashbrownai/angular!UiChatSchemaComponent:interface"
+            },
+            { "kind": "Content", "text": "[];" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -93,7 +102,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "$props: Record<string, any>;"
+          "formattedContent": "$props:  Record <string, any>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "$props: " },
+            {
+              "kind": "Reference",
+              "text": " Record",
+              "canonicalReference": "!Record:type"
+            },
+            { "kind": "Content", "text": " <string, any>;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -127,7 +145,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "$tagName: string;"
+          "formattedContent": "$tagName: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "$tagName: string;" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -149,7 +168,10 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "interface UiChatSchemaComponent"
+      "formattedContent": "interface UiChatSchemaComponent",
+      "overlayTokens": [
+        { "kind": "Content", "text": "interface UiChatSchemaComponent" }
+      ]
     }
   ]
 }

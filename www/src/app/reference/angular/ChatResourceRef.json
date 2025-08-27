@@ -89,7 +89,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "lastAssistantMessage: Signal<Chat.AssistantMessage<string, Tools> | undefined>;"
+          "formattedContent": "lastAssistantMessage:  Signal <\n   Chat.AssistantMessage <string, Tools> | undefined\n>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "lastAssistantMessage: " },
+            {
+              "kind": "Reference",
+              "text": " Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            { "kind": "Content", "text": " <\n  " },
+            {
+              "kind": "Reference",
+              "text": " Chat.AssistantMessage",
+              "canonicalReference": "!Chat.AssistantMessage:type"
+            },
+            { "kind": "Content", "text": " <string, Tools> | undefined\n>;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -123,7 +138,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "reload: () => boolean;"
+          "formattedContent": "reload: () => boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "reload: () => boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -163,7 +181,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "sendMessage: (message: Chat.UserMessage) => void;"
+          "formattedContent": "sendMessage: (message: Chat.UserMessage) => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "sendMessage: (message: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.UserMessage",
+              "canonicalReference": "!Chat.UserMessage:type"
+            },
+            { "kind": "Content", "text": ") => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -205,7 +232,13 @@
             ],
             "examples": []
           },
-          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;"
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "stop: (clearStreamingMessage?: boolean) => void;"
+            }
+          ]
         }
       ],
       "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 7 }],
@@ -227,7 +260,31 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<Chat.Message<string, Tools>[]>"
+      "formattedContent": "interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<Chat.Message<string, Tools>[]>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "interface ChatResourceRef<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": "> extends " },
+        {
+          "kind": "Reference",
+          "text": "Resource",
+          "canonicalReference": "@angular/core!Resource:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "Chat.Message",
+          "canonicalReference": "!Chat.Message:type"
+        },
+        { "kind": "Content", "text": "<string, Tools>[]>" }
+      ]
     }
   ]
 }

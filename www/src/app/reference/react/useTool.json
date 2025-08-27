@@ -115,7 +115,37 @@
         ],
         "examples": []
       },
-      "formattedContent": "export declare function useTool<\n  const Name extends string,\n  Schema extends s.HashbrownType,\n  Result,\n>(\n  input: ToolOptionsWithInput<Name, Schema, Result>,\n): Chat.Tool<Name, s.Infer<Schema>, Result>;"
+      "formattedContent": "export declare function useTool<\n  const Name extends string,\n  Schema extends  s.HashbrownType ,\n  Result,\n>(\n  input:  ToolOptionsWithInput <Name, Schema, Result>,\n):  Chat.Tool <\n  Name,\n   s.Infer <Schema>,\n  Result\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useTool<\n  const Name extends string,\n  Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ",\n  Result,\n>(\n  input: " },
+        {
+          "kind": "Reference",
+          "text": " ToolOptionsWithInput",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithInput:interface"
+        },
+        { "kind": "Content", "text": " <Name, Schema, Result>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
+        },
+        { "kind": "Content", "text": " <\n  Name,\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <Schema>,\n  Result\n>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -203,7 +233,25 @@
         ],
         "examples": []
       },
-      "formattedContent": "export declare function useTool<const Name extends string, Result>(\n  input: ToolOptionsWithUnknownSchema<Name, Result>,\n): Chat.Tool<Name, any, Result>;"
+      "formattedContent": "export declare function useTool<const Name extends string, Result>(\n  input:  ToolOptionsWithUnknownSchema <Name, Result>,\n):  Chat.Tool <Name, any, Result>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useTool<const Name extends string, Result>(\n  input: "
+        },
+        {
+          "kind": "Reference",
+          "text": " ToolOptionsWithUnknownSchema",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
+        },
+        { "kind": "Content", "text": " <Name, Result>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
+        },
+        { "kind": "Content", "text": " <Name, any, Result>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -298,7 +346,25 @@
         ],
         "examples": []
       },
-      "formattedContent": "export declare function useTool<const Name extends string, Result>(\n  input: ToolOptionsWithoutInput<Name, Result>,\n): Chat.Tool<Name, void, Result>;"
+      "formattedContent": "export declare function useTool<const Name extends string, Result>(\n  input:  ToolOptionsWithoutInput <Name, Result>,\n):  Chat.Tool <Name, void, Result>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useTool<const Name extends string, Result>(\n  input: "
+        },
+        {
+          "kind": "Reference",
+          "text": " ToolOptionsWithoutInput",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithoutInput:interface"
+        },
+        { "kind": "Content", "text": " <Name, Result>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
+        },
+        { "kind": "Content", "text": " <Name, void, Result>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -368,7 +434,25 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export declare function useTool<const Name extends string, Result>(\n  input: ToolOptionsWithUnknownSchema<Name, Result>,\n): Chat.Tool<Name, any, Result>;"
+      "formattedContent": "export declare function useTool<const Name extends string, Result>(\n  input:  ToolOptionsWithUnknownSchema <Name, Result>,\n):  Chat.Tool <Name, any, Result>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useTool<const Name extends string, Result>(\n  input: "
+        },
+        {
+          "kind": "Reference",
+          "text": " ToolOptionsWithUnknownSchema",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
+        },
+        { "kind": "Content", "text": " <Name, Result>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
+        },
+        { "kind": "Content", "text": " <Name, any, Result>;" }
+      ]
     }
   ]
 }

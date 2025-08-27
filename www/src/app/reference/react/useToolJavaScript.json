@@ -66,7 +66,28 @@
         ],
         "examples": []
       },
-      "formattedContent": "export declare function useToolJavaScript({\n  runtime,\n}: UseToolJavaScriptOptions): Chat.Tool<\n  \"javascript\",\n  {\n    code: string;\n  },\n  unknown\n>;"
+      "formattedContent": "export declare function useToolJavaScript(\n  { runtime }:  UseToolJavaScriptOptions ,\n):  Chat.Tool <\n  \"javascript\",\n  {\n    code: string;\n  },\n  unknown\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useToolJavaScript(\n  { runtime }: "
+        },
+        {
+          "kind": "Reference",
+          "text": " UseToolJavaScriptOptions ",
+          "canonicalReference": "@hashbrownai/react!UseToolJavaScriptOptions:interface"
+        },
+        { "kind": "Content", "text": ",\n): " },
+        {
+          "kind": "Reference",
+          "text": " Chat.Tool",
+          "canonicalReference": "!Chat.Tool:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <\n  \"javascript\",\n  {\n    code: string;\n  },\n  unknown\n>;"
+        }
+      ]
     }
   ]
 }

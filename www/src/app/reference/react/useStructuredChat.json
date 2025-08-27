@@ -104,7 +104,52 @@
           "\n\nIn this example, the LLM will respond with a JSON object containing the translations of the input message into English, Spanish, and French.\n```tsx\nconst { messages, sendMessage } = useStructuredChat({\n  model: 'gpt-4o',\n  system: 'You are a helpful translator that provides accurate translations.',\n  schema: s.object('Translations', {\n    english: s.string('English translation'),\n    spanish: s.string('Spanish translation'),\n    french: s.string('French translation')\n  }),\n});\n```\n\n"
         ]
       },
-      "formattedContent": "export declare function useStructuredChat<\n  Schema extends s.HashbrownType,\n  Tools extends Chat.AnyTool,\n  Output extends s.Infer<Schema> = s.Infer<Schema>,\n>(\n  options: UseStructuredChatOptions<Schema, Tools, Output>,\n): UseStructuredChatResult<Output, Tools>;"
+      "formattedContent": "export declare function useStructuredChat<\n  Schema extends  s.HashbrownType ,\n  Tools extends  Chat.AnyTool ,\n  Output extends\n     s.Infer <Schema> =  s.Infer <Schema>,\n>(\n  options:  UseStructuredChatOptions <\n    Schema,\n    Tools,\n    Output\n  >,\n):  UseStructuredChatResult <Output, Tools>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export declare function useStructuredChat<\n  Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ",\n  Tools extends " },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n  Output extends\n    " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <Schema> = " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <Schema>,\n>(\n  options: " },
+        {
+          "kind": "Reference",
+          "text": " UseStructuredChatOptions",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatOptions:interface"
+        },
+        {
+          "kind": "Content",
+          "text": " <\n    Schema,\n    Tools,\n    Output\n  >,\n): "
+        },
+        {
+          "kind": "Reference",
+          "text": " UseStructuredChatResult",
+          "canonicalReference": "@hashbrownai/react!UseStructuredChatResult:interface"
+        },
+        { "kind": "Content", "text": " <Output, Tools>;" }
+      ]
     }
   ]
 }

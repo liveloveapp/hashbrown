@@ -69,7 +69,37 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export type UiAssistantMessage<Tools extends Chat.AnyTool> =\n  Chat.AssistantMessage<UiChatSchema, Tools> & {\n    ui: React.ReactElement[] | null;\n  };"
+      "formattedContent": "export type UiAssistantMessage<\n  Tools extends  Chat.AnyTool ,\n> =  Chat.AssistantMessage <\n   UiChatSchema ,\n  Tools\n> & {\n  ui:  React.ReactElement [] | null;\n};",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export type UiAssistantMessage<\n  Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n> = " },
+        {
+          "kind": "Reference",
+          "text": " Chat.AssistantMessage",
+          "canonicalReference": "!Chat.AssistantMessage:type"
+        },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " UiChatSchema ",
+          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+        },
+        { "kind": "Content", "text": ",\n  Tools\n> & {\n  ui: " },
+        {
+          "kind": "Reference",
+          "text": " React.ReactElement ",
+          "canonicalReference": "!React.ReactElement:type"
+        },
+        { "kind": "Content", "text": "[] | null;\n};" }
+      ]
     }
   ]
 }

@@ -65,7 +65,40 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export type KnownModelIds = Prettify<\n  | OpenAiKnownModelIds\n  | GoogleKnownModelIds\n  | WriterKnownModelIds\n  | AzureKnownModelIds\n  | (string & {})\n>;"
+      "formattedContent": "export type KnownModelIds =  Prettify <\n   | OpenAiKnownModelIds \n  |  GoogleKnownModelIds \n  |  WriterKnownModelIds \n  |  AzureKnownModelIds \n  | (string & {})\n>;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export type KnownModelIds = " },
+        {
+          "kind": "Reference",
+          "text": " Prettify",
+          "canonicalReference": "@hashbrownai/core!ɵtypes.Prettify:type"
+        },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " | OpenAiKnownModelIds ",
+          "canonicalReference": "@hashbrownai/core!~OpenAiKnownModelIds:type"
+        },
+        { "kind": "Content", "text": "\n  | " },
+        {
+          "kind": "Reference",
+          "text": " GoogleKnownModelIds ",
+          "canonicalReference": "@hashbrownai/core!~GoogleKnownModelIds:type"
+        },
+        { "kind": "Content", "text": "\n  | " },
+        {
+          "kind": "Reference",
+          "text": " WriterKnownModelIds ",
+          "canonicalReference": "@hashbrownai/core!~WriterKnownModelIds:type"
+        },
+        { "kind": "Content", "text": "\n  | " },
+        {
+          "kind": "Reference",
+          "text": " AzureKnownModelIds ",
+          "canonicalReference": "@hashbrownai/core!~AzureKnownModelIds:type"
+        },
+        { "kind": "Content", "text": "\n  | (string & {})\n>;" }
+      ]
     }
   ]
 }

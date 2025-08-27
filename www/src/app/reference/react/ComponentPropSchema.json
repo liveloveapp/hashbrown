@@ -62,7 +62,31 @@
           "\n```ts\n// Example usage in a tool definition.\nexposeComponent(CardComponent, {\n  // ...\n  props: { // The ComponentPropSchema\n    title: s.string('The title of the card'),\n    description: s.streaming.string('The description of the card'),\n  },\n});\n```\n\n"
         ]
       },
-      "formattedContent": "export type ComponentPropSchema<T> = ɵtypes.Prettify<\n  T extends ComponentType<infer P>\n    ? {\n        [K in keyof P]?: s.Schema<P[K]>;\n      }\n    : never\n>;"
+      "formattedContent": "export type ComponentPropSchema<T> =  ɵtypes.Prettify <\n  T extends  ComponentType <infer P>\n    ? {\n        [K in keyof P]?:  s.Schema <P[K]>;\n      }\n    : never\n>;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export type ComponentPropSchema<T> = " },
+        {
+          "kind": "Reference",
+          "text": " ɵtypes.Prettify",
+          "canonicalReference": "!ɵtypes.Prettify:type"
+        },
+        { "kind": "Content", "text": " <\n  T extends " },
+        {
+          "kind": "Reference",
+          "text": " ComponentType",
+          "canonicalReference": "@types/react!React.ComponentType:type"
+        },
+        {
+          "kind": "Content",
+          "text": " <infer P>\n    ? {\n        [K in keyof P]?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.Schema",
+          "canonicalReference": "!s.Schema:type"
+        },
+        { "kind": "Content", "text": " <P[K]>;\n      }\n    : never\n>;" }
+      ]
     }
   ]
 }

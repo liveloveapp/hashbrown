@@ -79,7 +79,25 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function anyOf<const Options extends readonly HashbrownType[]>(\n  options: Options,\n): AnyOfType<Options>;"
+          "formattedContent": "export declare function anyOf<\n  const Options extends readonly  HashbrownType [],\n>(options: Options):  AnyOfType <Options>;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function anyOf<\n  const Options extends readonly "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "[],\n>(options: Options): " },
+            {
+              "kind": "Reference",
+              "text": " AnyOfType",
+              "canonicalReference": "@hashbrownai/core!s.AnyOfType:interface"
+            },
+            { "kind": "Content", "text": " <Options>;" }
+          ]
         },
         {
           "kind": "Interface",
@@ -175,7 +193,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: AnyOfTypeInternals<Options>;"
+              "formattedContent": "[internal]: AnyOfTypeInternals<Options>;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "AnyOfTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~AnyOfTypeInternals:interface"
+                },
+                { "kind": "Content", "text": "<Options>;" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 9, "endIndex": 13 }],
@@ -197,7 +230,37 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface AnyOfType<Options extends readonly HashbrownType[] = readonly HashbrownType[]> extends HashbrownType<Options[number][internal]['result']>"
+          "formattedContent": "export interface AnyOfType<Options extends readonly HashbrownType[] = readonly HashbrownType[]> extends HashbrownType<Options[number][internal]['result']>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface AnyOfType<Options extends readonly "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "[] = readonly " },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "[]> extends " },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "<Options[number][" },
+            {
+              "kind": "Reference",
+              "text": "internal",
+              "canonicalReference": "@hashbrownai/core!~internal:type"
+            },
+            { "kind": "Content", "text": "]['result']>" }
+          ]
         },
         {
           "kind": "Variable",
@@ -241,7 +304,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "AnyOfType: HashbrownTypeCtor<AnyOfType>;"
+          "formattedContent": "AnyOfType:  HashbrownTypeCtor < AnyOfType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "AnyOfType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " AnyOfType ",
+              "canonicalReference": "@hashbrownai/core!s.AnyOfType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -312,7 +390,28 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function array<Item extends HashbrownType>(\n  description: string,\n  item: Item,\n): ArrayType<Item>;"
+          "formattedContent": "export declare function array<\n  Item extends  HashbrownType ,\n>(description: string, item: Item):  ArrayType <Item>;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function array<\n  Item extends "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": ",\n>(description: string, item: Item): "
+            },
+            {
+              "kind": "Reference",
+              "text": " ArrayType",
+              "canonicalReference": "@hashbrownai/core!s.ArrayType:interface"
+            },
+            { "kind": "Content", "text": " <Item>;" }
+          ]
         },
         {
           "kind": "Interface",
@@ -397,7 +496,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: ArrayTypeInternals<Item>;"
+              "formattedContent": "[internal]: ArrayTypeInternals<Item>;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "ArrayTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~ArrayTypeInternals:interface"
+                },
+                { "kind": "Content", "text": "<Item>;" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 5, "endIndex": 6 }],
@@ -419,7 +533,30 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface ArrayType<Item extends HashbrownType = HashbrownType> extends HashbrownType"
+          "formattedContent": "export interface ArrayType<Item extends HashbrownType = HashbrownType> extends HashbrownType",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface ArrayType<Item extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": " = " },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "> extends " },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            }
+          ]
         },
         {
           "kind": "Variable",
@@ -463,7 +600,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "ArrayType: HashbrownTypeCtor<ArrayType>;"
+          "formattedContent": "ArrayType:  HashbrownTypeCtor < ArrayType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "ArrayType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " ArrayType ",
+              "canonicalReference": "@hashbrownai/core!s.ArrayType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -513,7 +665,18 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function boolean(description: string): BooleanType;"
+          "formattedContent": "export declare function boolean(\n  description: string,\n):  BooleanType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function boolean(\n  description: string,\n): "
+            },
+            {
+              "kind": "Reference",
+              "text": " BooleanType; ",
+              "canonicalReference": "@hashbrownai/core!s.BooleanType:interface"
+            }
+          ]
         },
         {
           "kind": "Interface",
@@ -579,7 +742,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: BooleanTypeInternals;"
+              "formattedContent": "[internal]: BooleanTypeInternals;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "BooleanTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~BooleanTypeInternals:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -601,7 +779,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface BooleanType extends HashbrownType<boolean>"
+          "formattedContent": "export interface BooleanType extends HashbrownType<boolean>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface BooleanType extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "<boolean>" }
+          ]
         },
         {
           "kind": "Variable",
@@ -645,7 +835,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "BooleanType: HashbrownTypeCtor<BooleanType>;"
+          "formattedContent": "BooleanType:  HashbrownTypeCtor < BooleanType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "BooleanType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " BooleanType ",
+              "canonicalReference": "@hashbrownai/core!s.BooleanType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Interface",
@@ -723,7 +928,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: LiteralTypeInternals<T>;"
+              "formattedContent": "[internal]: LiteralTypeInternals<T>;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "LiteralTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~LiteralTypeInternals:interface"
+                },
+                { "kind": "Content", "text": "<T>;" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 5, "endIndex": 7 }],
@@ -745,7 +965,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface LiteralType<T extends string | number | boolean = string | number | boolean> extends HashbrownType<T>"
+          "formattedContent": "export interface LiteralType<T extends string | number | boolean = string | number | boolean> extends HashbrownType<T>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface LiteralType<T extends string | number | boolean = string | number | boolean> extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "<T>" }
+          ]
         },
         {
           "kind": "Variable",
@@ -789,7 +1021,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "LiteralType: HashbrownTypeCtor<LiteralType>;"
+          "formattedContent": "LiteralType:  HashbrownTypeCtor < LiteralType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "LiteralType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " LiteralType ",
+              "canonicalReference": "@hashbrownai/core!s.LiteralType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -856,7 +1103,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function enumeration<const Entries extends readonly string[]>(\n  description: string,\n  entries: [...Entries],\n): EnumType<Entries>;"
+          "formattedContent": "export declare function enumeration<const Entries extends readonly string[]>(\n  description: string,\n  entries: [...Entries],\n):  EnumType <Entries>;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function enumeration<const Entries extends readonly string[]>(\n  description: string,\n  entries: [...Entries],\n): "
+            },
+            {
+              "kind": "Reference",
+              "text": " EnumType",
+              "canonicalReference": "@hashbrownai/core!s.EnumType:interface"
+            },
+            { "kind": "Content", "text": " <Entries>;" }
+          ]
         },
         {
           "kind": "Interface",
@@ -909,7 +1168,18 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface EnumType<Entries extends readonly string[] = readonly string[]> extends HashbrownType"
+          "formattedContent": "export interface EnumType<Entries extends readonly string[] = readonly string[]> extends HashbrownType",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface EnumType<Entries extends readonly string[] = readonly string[]> extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            }
+          ]
         },
         {
           "kind": "Variable",
@@ -953,7 +1223,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "EnumType: HashbrownTypeCtor<EnumType>;"
+          "formattedContent": "EnumType:  HashbrownTypeCtor < EnumType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "EnumType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " EnumType ",
+              "canonicalReference": "@hashbrownai/core!s.EnumType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -1003,7 +1288,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function getDescription(schema: HashbrownType): string;"
+          "formattedContent": "export declare function getDescription(\n  schema:  HashbrownType ,\n): string;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function getDescription(\n  schema: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): string;" }
+          ]
         },
         {
           "kind": "Interface",
@@ -1072,7 +1369,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: HashbrownTypeInternals<Result>;"
+              "formattedContent": "[internal]: HashbrownTypeInternals<Result>;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "HashbrownTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~HashbrownTypeInternals:interface"
+                },
+                { "kind": "Content", "text": "<Result>;" }
+              ]
             },
             {
               "kind": "PropertySignature",
@@ -1109,7 +1421,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "parseJsonSchema: (object: unknown, path?: string[]) => any;"
+              "formattedContent": "parseJsonSchema: (object: unknown, path?: string[]) => any;",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "parseJsonSchema: (object: unknown, path?: string[]) => any;"
+                }
+              ]
             },
             {
               "kind": "PropertySignature",
@@ -1143,7 +1461,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "toJsonSchema: () => any;"
+              "formattedContent": "toJsonSchema: () => any;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "toJsonSchema: () => any;" }
+              ]
             },
             {
               "kind": "PropertySignature",
@@ -1189,7 +1510,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "toTypeScript: (pathSeen?: Set<HashbrownType>) => string;"
+              "formattedContent": "toTypeScript: (\n  pathSeen?:  Set < HashbrownType >,\n) => string;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "toTypeScript: (\n  pathSeen?: " },
+                {
+                  "kind": "Reference",
+                  "text": " Set",
+                  "canonicalReference": "!Set:interface"
+                },
+                { "kind": "Content", "text": " <" },
+                {
+                  "kind": "Reference",
+                  "text": " HashbrownType ",
+                  "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+                },
+                { "kind": "Content", "text": ">,\n) => string;" }
+              ]
             },
             {
               "kind": "PropertySignature",
@@ -1223,7 +1559,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "validateJsonSchema: (object: unknown) => void;"
+              "formattedContent": "validateJsonSchema: (object: unknown) => void;",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "validateJsonSchema: (object: unknown) => void;"
+                }
+              ]
             }
           ],
           "extendsTokenRanges": [],
@@ -1245,7 +1587,13 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface HashbrownType<out Result = unknown>"
+          "formattedContent": "export interface HashbrownType<out Result = unknown>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface HashbrownType<out Result = unknown>"
+            }
+          ]
         },
         {
           "kind": "Variable",
@@ -1289,7 +1637,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "HashbrownType: HashbrownTypeCtor<HashbrownType>;"
+          "formattedContent": "HashbrownType:  HashbrownTypeCtor < HashbrownType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "HashbrownType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -1341,7 +1704,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type Infer<T extends HashbrownType> = T[internal][\"result\"];"
+          "formattedContent": "export type Infer<T extends  HashbrownType > =\n  T[ internal ][\"result\"];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "export type Infer<T extends " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "> =\n  T[" },
+            {
+              "kind": "Reference",
+              "text": " internal ",
+              "canonicalReference": "@hashbrownai/core!~internal:type"
+            },
+            { "kind": "Content", "text": "][\"result\"];" }
+          ]
         },
         {
           "kind": "Function",
@@ -1391,7 +1769,18 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function integer(description: string): IntegerType;"
+          "formattedContent": "export declare function integer(\n  description: string,\n):  IntegerType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function integer(\n  description: string,\n): "
+            },
+            {
+              "kind": "Reference",
+              "text": " IntegerType; ",
+              "canonicalReference": "@hashbrownai/core!s.IntegerType:interface"
+            }
+          ]
         },
         {
           "kind": "Interface",
@@ -1457,7 +1846,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: IntegerTypeInternals;"
+              "formattedContent": "[internal]: IntegerTypeInternals;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "IntegerTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~IntegerTypeInternals:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -1479,7 +1883,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface IntegerType extends HashbrownType<number>"
+          "formattedContent": "export interface IntegerType extends HashbrownType<number>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface IntegerType extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "<number>" }
+          ]
         },
         {
           "kind": "Variable",
@@ -1523,7 +1939,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "IntegerType: HashbrownTypeCtor<IntegerType>;"
+          "formattedContent": "IntegerType:  HashbrownTypeCtor < IntegerType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "IntegerType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " IntegerType ",
+              "canonicalReference": "@hashbrownai/core!s.IntegerType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -1583,7 +2014,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isAnyOfType(type: HashbrownType): type is AnyOfType;"
+          "formattedContent": "export declare function isAnyOfType(\n  type:  HashbrownType ,\n):  type  is  AnyOfType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isAnyOfType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " AnyOfType; ",
+              "canonicalReference": "@hashbrownai/core!s.AnyOfType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -1643,7 +2093,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isArrayType(type: HashbrownType): type is ArrayType;"
+          "formattedContent": "export declare function isArrayType(\n  type:  HashbrownType ,\n):  type  is  ArrayType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isArrayType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " ArrayType; ",
+              "canonicalReference": "@hashbrownai/core!s.ArrayType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -1703,7 +2172,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isBooleanType(type: HashbrownType): type is BooleanType;"
+          "formattedContent": "export declare function isBooleanType(\n  type:  HashbrownType ,\n):  type  is  BooleanType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isBooleanType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " BooleanType; ",
+              "canonicalReference": "@hashbrownai/core!s.BooleanType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -1763,7 +2251,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isEnumType(type: HashbrownType): type is EnumType;"
+          "formattedContent": "export declare function isEnumType(\n  type:  HashbrownType ,\n):  type  is  EnumType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isEnumType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " EnumType; ",
+              "canonicalReference": "@hashbrownai/core!s.EnumType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -1819,7 +2326,20 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isHashbrownType(type: any): type is HashbrownType;"
+          "formattedContent": "export declare function isHashbrownType(\n  type: any,\n):  type  is  HashbrownType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isHashbrownType(\n  type: any,\n): "
+            },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType; ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -1879,7 +2399,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isIntegerType(type: HashbrownType): type is IntegerType;"
+          "formattedContent": "export declare function isIntegerType(\n  type:  HashbrownType ,\n):  type  is  IntegerType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isIntegerType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " IntegerType; ",
+              "canonicalReference": "@hashbrownai/core!s.IntegerType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -1939,7 +2478,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isLiteralType(type: HashbrownType): type is LiteralType;"
+          "formattedContent": "export declare function isLiteralType(\n  type:  HashbrownType ,\n):  type  is  LiteralType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isLiteralType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " LiteralType; ",
+              "canonicalReference": "@hashbrownai/core!s.LiteralType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -1999,7 +2557,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isNullType(type: HashbrownType): type is NullType;"
+          "formattedContent": "export declare function isNullType(\n  type:  HashbrownType ,\n):  type  is  NullType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isNullType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " NullType; ",
+              "canonicalReference": "@hashbrownai/core!s.NullType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -2059,7 +2636,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isNumberType(type: HashbrownType): type is NumberType;"
+          "formattedContent": "export declare function isNumberType(\n  type:  HashbrownType ,\n):  type  is  NumberType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isNumberType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " NumberType; ",
+              "canonicalReference": "@hashbrownai/core!s.NumberType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -2119,7 +2715,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isObjectType(type: HashbrownType): type is ObjectType;"
+          "formattedContent": "export declare function isObjectType(\n  type:  HashbrownType ,\n):  type  is  ObjectType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isObjectType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " ObjectType; ",
+              "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -2179,7 +2794,26 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function isStringType(type: HashbrownType): type is StringType;"
+          "formattedContent": "export declare function isStringType(\n  type:  HashbrownType ,\n):  type  is  StringType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function isStringType(\n  type: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): " },
+            { "kind": "Content", "text": " type " },
+            { "kind": "Content", "text": " is " },
+            {
+              "kind": "Reference",
+              "text": " StringType; ",
+              "canonicalReference": "@hashbrownai/core!s.StringType:interface"
+            }
+          ]
         },
         {
           "kind": "Function",
@@ -2239,7 +2873,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function literal<T extends string>(value: T): LiteralType<T>;"
+          "formattedContent": "export declare function literal<T extends string>(\n  value: T,\n):  LiteralType <T>;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function literal<T extends string>(\n  value: T,\n): "
+            },
+            {
+              "kind": "Reference",
+              "text": " LiteralType",
+              "canonicalReference": "@hashbrownai/core!s.LiteralType:interface"
+            },
+            { "kind": "Content", "text": " <T>;" }
+          ]
         },
         {
           "kind": "Function",
@@ -2281,7 +2927,18 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function nullish(): NullType;"
+          "formattedContent": "export declare function nullish():  NullType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function nullish(): "
+            },
+            {
+              "kind": "Reference",
+              "text": " NullType; ",
+              "canonicalReference": "@hashbrownai/core!s.NullType:interface"
+            }
+          ]
         },
         {
           "kind": "Interface",
@@ -2344,7 +3001,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: NullTypeInternals;"
+              "formattedContent": "[internal]: NullTypeInternals;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "NullTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~NullTypeInternals:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -2366,7 +3038,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface NullType extends HashbrownType<null>"
+          "formattedContent": "export interface NullType extends HashbrownType<null>",
+          "overlayTokens": [
+            { "kind": "Content", "text": "export interface NullType extends " },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "<null>" }
+          ]
         },
         {
           "kind": "Variable",
@@ -2410,7 +3091,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "NullType: HashbrownTypeCtor<NullType>;"
+          "formattedContent": "NullType:  HashbrownTypeCtor < NullType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "NullType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " NullType ",
+              "canonicalReference": "@hashbrownai/core!s.NullType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -2460,7 +3156,18 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function number(description: string): NumberType;"
+          "formattedContent": "export declare function number(\n  description: string,\n):  NumberType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function number(\n  description: string,\n): "
+            },
+            {
+              "kind": "Reference",
+              "text": " NumberType; ",
+              "canonicalReference": "@hashbrownai/core!s.NumberType:interface"
+            }
+          ]
         },
         {
           "kind": "Interface",
@@ -2526,7 +3233,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: NumberTypeInternals;"
+              "formattedContent": "[internal]: NumberTypeInternals;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "NumberTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~NumberTypeInternals:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -2548,7 +3270,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface NumberType extends HashbrownType<number>"
+          "formattedContent": "export interface NumberType extends HashbrownType<number>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface NumberType extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "<number>" }
+          ]
         },
         {
           "kind": "Variable",
@@ -2592,7 +3326,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "NumberType: HashbrownTypeCtor<NumberType>;"
+          "formattedContent": "NumberType:  HashbrownTypeCtor < NumberType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "NumberType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " NumberType ",
+              "canonicalReference": "@hashbrownai/core!s.NumberType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -2670,7 +3419,34 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function object<Shape extends Record<string, any>>(\n  description: string,\n  shape: Shape,\n): ObjectType<CleanInterfaceShape<Shape>>;"
+          "formattedContent": "export declare function object<\n  Shape extends  Record <string, any>,\n>(\n  description: string,\n  shape: Shape,\n):  ObjectType <\n   CleanInterfaceShape <Shape>\n>;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function object<\n  Shape extends "
+            },
+            {
+              "kind": "Reference",
+              "text": " Record",
+              "canonicalReference": "!Record:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <string, any>,\n>(\n  description: string,\n  shape: Shape,\n): "
+            },
+            {
+              "kind": "Reference",
+              "text": " ObjectType",
+              "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
+            },
+            { "kind": "Content", "text": " <\n  " },
+            {
+              "kind": "Reference",
+              "text": " CleanInterfaceShape",
+              "canonicalReference": "@hashbrownai/core!ɵtypes.CleanInterfaceShape:type"
+            },
+            { "kind": "Content", "text": " <Shape>\n>;" }
+          ]
         },
         {
           "kind": "Interface",
@@ -2769,7 +3545,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: ObjectTypeInternals<Result>;"
+              "formattedContent": "[internal]: ObjectTypeInternals<Result>;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "ObjectTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~ObjectTypeInternals:interface"
+                },
+                { "kind": "Content", "text": "<Result>;" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 11, "endIndex": 12 }],
@@ -2791,7 +3582,42 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface ObjectType<Result extends Readonly<Record<string, any>> = Readonly<Record<string, any>>> extends HashbrownType"
+          "formattedContent": "export interface ObjectType<Result extends Readonly<Record<string, any>> = Readonly<Record<string, any>>> extends HashbrownType",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface ObjectType<Result extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "Readonly",
+              "canonicalReference": "!Readonly:type"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "Record",
+              "canonicalReference": "!Record:type"
+            },
+            { "kind": "Content", "text": "<string, any>> = " },
+            {
+              "kind": "Reference",
+              "text": "Readonly",
+              "canonicalReference": "!Readonly:type"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "Record",
+              "canonicalReference": "!Record:type"
+            },
+            { "kind": "Content", "text": "<string, any>>> extends " },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            }
+          ]
         },
         {
           "kind": "Variable",
@@ -2835,7 +3661,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "ObjectType: HashbrownTypeCtor<ObjectType>;"
+          "formattedContent": "ObjectType:  HashbrownTypeCtor < ObjectType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "ObjectType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " ObjectType ",
+              "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -2973,7 +3814,130 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type Schema<T> =\n  IsStringUnion<T> extends true\n    ? [T] extends [string]\n      ? UnionToTuple<T> extends infer U\n        ? U extends string[]\n          ? EnumType<U>\n          : never\n        : never\n      : never\n    : IsUnion<T> extends true\n      ? SchemaForUnion<T>\n      : T extends Array<infer U>\n        ? ArrayType<Schema<U>>\n        : T extends string\n          ? string extends T\n            ? StringType\n            : LiteralType<T>\n          : T extends number\n            ? NumberType\n            : T extends boolean\n              ? BooleanType\n              : T extends null\n                ? NullType\n                : T extends object\n                  ? ObjectType<{\n                      [K in keyof T]: Schema<T[K]>;\n                    }>\n                  : never;"
+          "formattedContent": "export type Schema<T> =\n   IsStringUnion <T> extends true\n    ? [T] extends [string]\n      ?  UnionToTuple <T> extends infer U\n        ? U extends string[]\n          ?  EnumType <U>\n          : never\n        : never\n      : never\n    :  IsUnion <T> extends true\n      ?  SchemaForUnion <T>\n      : T extends  Array <infer U>\n        ?  ArrayType < Schema <U>>\n        : T extends string\n          ? string extends T\n            ?  StringType \n            :  LiteralType <T>\n          : T extends number\n            ?  NumberType \n            : T extends boolean\n              ?  BooleanType \n              : T extends null\n                ?  NullType \n                : T extends object\n                  ?  ObjectType <{\n                      [K in keyof T]:  Schema <T[K]>;\n                    }>\n                  : never;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "export type Schema<T> =\n  " },
+            {
+              "kind": "Reference",
+              "text": " IsStringUnion",
+              "canonicalReference": "@hashbrownai/core!ɵtypes.IsStringUnion:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <T> extends true\n    ? [T] extends [string]\n      ? "
+            },
+            {
+              "kind": "Reference",
+              "text": " UnionToTuple",
+              "canonicalReference": "@hashbrownai/core!ɵtypes.UnionToTuple:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <T> extends infer U\n        ? U extends string[]\n          ? "
+            },
+            {
+              "kind": "Reference",
+              "text": " EnumType",
+              "canonicalReference": "@hashbrownai/core!s.EnumType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " <U>\n          : never\n        : never\n      : never\n    : "
+            },
+            {
+              "kind": "Reference",
+              "text": " IsUnion",
+              "canonicalReference": "@hashbrownai/core!ɵtypes.IsUnion:type"
+            },
+            { "kind": "Content", "text": " <T> extends true\n      ? " },
+            {
+              "kind": "Reference",
+              "text": " SchemaForUnion",
+              "canonicalReference": "@hashbrownai/core!~SchemaForUnion:type"
+            },
+            { "kind": "Content", "text": " <T>\n      : T extends " },
+            {
+              "kind": "Reference",
+              "text": " Array",
+              "canonicalReference": "!Array:interface"
+            },
+            { "kind": "Content", "text": " <infer U>\n        ? " },
+            {
+              "kind": "Reference",
+              "text": " ArrayType",
+              "canonicalReference": "@hashbrownai/core!s.ArrayType:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " Schema",
+              "canonicalReference": "@hashbrownai/core!s.Schema:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <U>>\n        : T extends string\n          ? string extends T\n            ? "
+            },
+            {
+              "kind": "Reference",
+              "text": " StringType ",
+              "canonicalReference": "@hashbrownai/core!s.StringType:interface"
+            },
+            { "kind": "Content", "text": "\n            : " },
+            {
+              "kind": "Reference",
+              "text": " LiteralType",
+              "canonicalReference": "@hashbrownai/core!s.LiteralType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " <T>\n          : T extends number\n            ? "
+            },
+            {
+              "kind": "Reference",
+              "text": " NumberType ",
+              "canonicalReference": "@hashbrownai/core!s.NumberType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": "\n            : T extends boolean\n              ? "
+            },
+            {
+              "kind": "Reference",
+              "text": " BooleanType ",
+              "canonicalReference": "@hashbrownai/core!s.BooleanType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": "\n              : T extends null\n                ? "
+            },
+            {
+              "kind": "Reference",
+              "text": " NullType ",
+              "canonicalReference": "@hashbrownai/core!s.NullType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": "\n                : T extends object\n                  ? "
+            },
+            {
+              "kind": "Reference",
+              "text": " ObjectType",
+              "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " <{\n                      [K in keyof T]: "
+            },
+            {
+              "kind": "Reference",
+              "text": " Schema",
+              "canonicalReference": "@hashbrownai/core!s.Schema:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <T[K]>;\n                    }>\n                  : never;"
+            }
+          ]
         },
         {
           "kind": "Namespace",
@@ -3054,7 +4018,28 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export declare function array<Item extends HashbrownType>(\n  description: string,\n  item: Item,\n): ArrayType<Item>;"
+              "formattedContent": "export declare function array<\n  Item extends  HashbrownType ,\n>(description: string, item: Item):  ArrayType <Item>;",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export declare function array<\n  Item extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": " HashbrownType ",
+                  "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+                },
+                {
+                  "kind": "Content",
+                  "text": ",\n>(description: string, item: Item): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": " ArrayType",
+                  "canonicalReference": "@hashbrownai/core!s.ArrayType:interface"
+                },
+                { "kind": "Content", "text": " <Item>;" }
+              ]
             },
             {
               "kind": "Function",
@@ -3132,7 +4117,34 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export declare function object<Shape extends Record<string, any>>(\n  description: string,\n  shape: Shape,\n): ObjectType<CleanInterfaceShape<Shape>>;"
+              "formattedContent": "export declare function object<\n  Shape extends  Record <string, any>,\n>(\n  description: string,\n  shape: Shape,\n):  ObjectType <\n   CleanInterfaceShape <Shape>\n>;",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export declare function object<\n  Shape extends "
+                },
+                {
+                  "kind": "Reference",
+                  "text": " Record",
+                  "canonicalReference": "!Record:type"
+                },
+                {
+                  "kind": "Content",
+                  "text": " <string, any>,\n>(\n  description: string,\n  shape: Shape,\n): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": " ObjectType",
+                  "canonicalReference": "@hashbrownai/core!s.ObjectType:interface"
+                },
+                { "kind": "Content", "text": " <\n  " },
+                {
+                  "kind": "Reference",
+                  "text": " CleanInterfaceShape",
+                  "canonicalReference": "@hashbrownai/core!ɵtypes.CleanInterfaceShape:type"
+                },
+                { "kind": "Content", "text": " <Shape>\n>;" }
+              ]
             },
             {
               "kind": "Function",
@@ -3182,7 +4194,18 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export declare function string(description: string): StringType;"
+              "formattedContent": "export declare function string(\n  description: string,\n):  StringType; ",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export declare function string(\n  description: string,\n): "
+                },
+                {
+                  "kind": "Reference",
+                  "text": " StringType; ",
+                  "canonicalReference": "@hashbrownai/core!s.StringType:interface"
+                }
+              ]
             }
           ],
           "docs": {
@@ -3203,7 +4226,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": ""
+          "formattedContent": "",
+          "overlayTokens": []
         },
         {
           "kind": "Function",
@@ -3253,7 +4277,18 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function string(description: string): StringType;"
+          "formattedContent": "export declare function string(\n  description: string,\n):  StringType; ",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function string(\n  description: string,\n): "
+            },
+            {
+              "kind": "Reference",
+              "text": " StringType; ",
+              "canonicalReference": "@hashbrownai/core!s.StringType:interface"
+            }
+          ]
         },
         {
           "kind": "Interface",
@@ -3319,7 +4354,22 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "[internal]: StringTypeInternals;"
+              "formattedContent": "[internal]: StringTypeInternals;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "[" },
+                {
+                  "kind": "Reference",
+                  "text": "internal",
+                  "canonicalReference": "@hashbrownai/core!~internal:var"
+                },
+                { "kind": "Content", "text": "]: " },
+                {
+                  "kind": "Reference",
+                  "text": "StringTypeInternals",
+                  "canonicalReference": "@hashbrownai/core!~StringTypeInternals:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ]
             }
           ],
           "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -3341,7 +4391,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface StringType extends HashbrownType<string>"
+          "formattedContent": "export interface StringType extends HashbrownType<string>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface StringType extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "HashbrownType",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": "<string>" }
+          ]
         },
         {
           "kind": "Variable",
@@ -3385,7 +4447,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "StringType: HashbrownTypeCtor<StringType>;"
+          "formattedContent": "StringType:  HashbrownTypeCtor < StringType >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "StringType: " },
+            {
+              "kind": "Reference",
+              "text": " HashbrownTypeCtor",
+              "canonicalReference": "@hashbrownai/core!~HashbrownTypeCtor:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " StringType ",
+              "canonicalReference": "@hashbrownai/core!s.StringType:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Function",
@@ -3435,7 +4512,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export declare function toJsonSchema(schema: HashbrownType): any;"
+          "formattedContent": "export declare function toJsonSchema(\n  schema:  HashbrownType ,\n): any;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export declare function toJsonSchema(\n  schema: "
+            },
+            {
+              "kind": "Reference",
+              "text": " HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            { "kind": "Content", "text": ",\n): any;" }
+          ]
         }
       ],
       "docs": {
@@ -3456,7 +4545,8 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": ""
+      "formattedContent": "",
+      "overlayTokens": []
     }
   ]
 }

@@ -54,7 +54,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "error: Error | undefined;"
+          "formattedContent": "error:  Error  | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "error: " },
+            {
+              "kind": "Reference",
+              "text": " Error ",
+              "canonicalReference": "!Error:interface"
+            },
+            { "kind": "Content", "text": " | undefined;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -88,7 +97,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "exhaustedRetries: boolean;"
+          "formattedContent": "exhaustedRetries: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "exhaustedRetries: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -122,7 +134,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "isReceiving: boolean;"
+          "formattedContent": "isReceiving: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isReceiving: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -156,7 +171,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "isRunningToolCalls: boolean;"
+          "formattedContent": "isRunningToolCalls: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isRunningToolCalls: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -190,7 +208,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "isSending: boolean;"
+          "formattedContent": "isSending: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isSending: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -224,7 +245,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "output: string | null;"
+          "formattedContent": "output: string | null;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "output: string | null;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -258,7 +282,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "reload: () => void;"
+          "formattedContent": "reload: () => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "reload: () => void;" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -280,7 +307,10 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface UseCompletionResult"
+      "formattedContent": "export interface UseCompletionResult",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export interface UseCompletionResult" }
+      ]
     }
   ]
 }

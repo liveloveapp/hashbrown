@@ -75,7 +75,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "error: Error | undefined;"
+          "formattedContent": "error:  Error  | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "error: " },
+            {
+              "kind": "Reference",
+              "text": " Error ",
+              "canonicalReference": "!Error:interface"
+            },
+            { "kind": "Content", "text": " | undefined;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -109,7 +118,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "exhaustedRetries: boolean;"
+          "formattedContent": "exhaustedRetries: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "exhaustedRetries: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -143,7 +155,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "isReceiving: boolean;"
+          "formattedContent": "isReceiving: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isReceiving: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -177,7 +192,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "isRunningToolCalls: boolean;"
+          "formattedContent": "isRunningToolCalls: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isRunningToolCalls: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -211,7 +229,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "isSending: boolean;"
+          "formattedContent": "isSending: boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "isSending: boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -250,7 +271,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "lastAssistantMessage: Chat.AssistantMessage<Output, Tools> | undefined;"
+          "formattedContent": "lastAssistantMessage:  Chat.AssistantMessage <\n  Output,\n  Tools\n> | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "lastAssistantMessage: " },
+            {
+              "kind": "Reference",
+              "text": " Chat.AssistantMessage",
+              "canonicalReference": "!Chat.AssistantMessage:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <\n  Output,\n  Tools\n> | undefined;"
+            }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -289,7 +322,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "messages: (Chat.Message < Output, Tools > []);"
+          "formattedContent": "messages:  (Chat.Message  < Output, Tools > []);",
+          "overlayTokens": [
+            { "kind": "Content", "text": "messages: " },
+            {
+              "kind": "Reference",
+              "text": " (Chat.Message ",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": " < Output, Tools > []);" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -323,7 +365,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "reload: () => void;"
+          "formattedContent": "reload: () => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "reload: () => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -357,7 +402,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "resendMessages: () => void;"
+          "formattedContent": "resendMessages: () => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "resendMessages: () => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -402,7 +450,16 @@
             ],
             "examples": []
           },
-          "formattedContent": "sendMessage: (message: Chat.Message<Output, Tools>) => void;"
+          "formattedContent": "sendMessage: (message: Chat.Message<Output, Tools>) => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "sendMessage: (message: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<Output, Tools>) => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -447,7 +504,16 @@
             ],
             "examples": []
           },
-          "formattedContent": "setMessages: (messages: Chat.Message<Output, Tools>[]) => void;"
+          "formattedContent": "setMessages: (messages: Chat.Message<Output, Tools>[]) => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "setMessages: (messages: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.Message",
+              "canonicalReference": "!Chat.Message:type"
+            },
+            { "kind": "Content", "text": "<Output, Tools>[]) => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -484,7 +550,13 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;"
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "stop: (clearStreamingMessage?: boolean) => void;"
+            }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -506,7 +578,19 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool>"
+      "formattedContent": "export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseStructuredChatResult<Output, Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ">" }
+      ]
     }
   ]
 }

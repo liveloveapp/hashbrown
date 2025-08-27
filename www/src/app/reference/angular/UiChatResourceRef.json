@@ -89,7 +89,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "lastAssistantMessage: Signal<UiAssistantMessage<Tools> | undefined>;"
+          "formattedContent": "lastAssistantMessage:  Signal <\n   UiAssistantMessage <Tools> | undefined\n>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "lastAssistantMessage: " },
+            {
+              "kind": "Reference",
+              "text": " Signal",
+              "canonicalReference": "@angular/core!Signal:type"
+            },
+            { "kind": "Content", "text": " <\n  " },
+            {
+              "kind": "Reference",
+              "text": " UiAssistantMessage",
+              "canonicalReference": "@hashbrownai/angular!UiAssistantMessage:type"
+            },
+            { "kind": "Content", "text": " <Tools> | undefined\n>;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -123,7 +138,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "resendMessages: () => void;"
+          "formattedContent": "resendMessages: () => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "resendMessages: () => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -163,7 +181,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "sendMessage: (message: Chat.UserMessage) => void;"
+          "formattedContent": "sendMessage: (message: Chat.UserMessage) => void;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "sendMessage: (message: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.UserMessage",
+              "canonicalReference": "!Chat.UserMessage:type"
+            },
+            { "kind": "Content", "text": ") => void;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -205,7 +232,13 @@
             ],
             "examples": []
           },
-          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;"
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "stop: (clearStreamingMessage?: boolean) => void;"
+            }
+          ]
         }
       ],
       "extendsTokenRanges": [{ "startIndex": 3, "endIndex": 7 }],
@@ -227,7 +260,31 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "interface UiChatResourceRef<Tools extends Chat.AnyTool> extends Resource<UiChatMessage<Tools>[]>"
+      "formattedContent": "interface UiChatResourceRef<Tools extends Chat.AnyTool> extends Resource<UiChatMessage<Tools>[]>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "interface UiChatResourceRef<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Chat.AnyTool",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": "> extends " },
+        {
+          "kind": "Reference",
+          "text": "Resource",
+          "canonicalReference": "@angular/core!Resource:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "UiChatMessage",
+          "canonicalReference": "@hashbrownai/angular!UiChatMessage:type"
+        },
+        { "kind": "Content", "text": "<Tools>[]>" }
+      ]
     }
   ]
 }

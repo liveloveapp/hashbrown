@@ -53,7 +53,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "chunk: Chat.Api.CompletionChunk;"
+          "formattedContent": "chunk:  Chat.Api.CompletionChunk ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "chunk: " },
+            {
+              "kind": "Reference",
+              "text": " Chat.Api.CompletionChunk ",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Api.CompletionChunk:interface"
+            },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -87,7 +96,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "type: \"chunk\";"
+          "formattedContent": "type: \"chunk\";",
+          "overlayTokens": [{ "kind": "Content", "text": "type: \"chunk\";" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -109,7 +119,10 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface ChunkFrame"
+      "formattedContent": "export interface ChunkFrame",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export interface ChunkFrame" }
+      ]
     }
   ]
 }

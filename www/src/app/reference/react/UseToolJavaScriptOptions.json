@@ -56,7 +56,12 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "runtime: RuntimeRef;"
+          "formattedContent": "runtime:  RuntimeRef ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "runtime: " },
+            { "kind": "Content", "text": " RuntimeRef " },
+            { "kind": "Content", "text": ";" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -78,7 +83,13 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface UseToolJavaScriptOptions"
+      "formattedContent": "export interface UseToolJavaScriptOptions",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseToolJavaScriptOptions"
+        }
+      ]
     }
   ]
 }

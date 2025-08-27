@@ -81,7 +81,40 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "middleware?: Array<(request: RequestInit) => RequestInit | Promise<RequestInit>>;"
+          "formattedContent": "middleware?: Array<(request: RequestInit) => RequestInit | Promise<RequestInit>>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "middleware?: " },
+            {
+              "kind": "Reference",
+              "text": "Array",
+              "canonicalReference": "!Array:interface"
+            },
+            { "kind": "Content", "text": "<(request: " },
+            {
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": ") => " },
+            {
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": " | " },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": "<" },
+            {
+              "kind": "Reference",
+              "text": "RequestInit",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": ">>;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -115,7 +148,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "url: string;"
+          "formattedContent": "url: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "url: string;" }]
         }
       ],
       "extendsTokenRanges": [],
@@ -137,7 +171,13 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface HashbrownProviderOptions"
+      "formattedContent": "export interface HashbrownProviderOptions",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface HashbrownProviderOptions"
+        }
+      ]
     }
   ]
 }

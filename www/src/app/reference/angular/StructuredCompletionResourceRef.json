@@ -66,7 +66,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "reload: () => boolean;"
+          "formattedContent": "reload: () => boolean;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "reload: () => boolean;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -108,7 +111,13 @@
             ],
             "examples": []
           },
-          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;"
+          "formattedContent": "stop: (clearStreamingMessage?: boolean) => void;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "stop: (clearStreamingMessage?: boolean) => void;"
+            }
+          ]
         }
       ],
       "extendsTokenRanges": [{ "startIndex": 1, "endIndex": 3 }],
@@ -130,7 +139,19 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "interface StructuredCompletionResourceRef<Output> extends Resource<Output | null>"
+      "formattedContent": "interface StructuredCompletionResourceRef<Output> extends Resource<Output | null>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "interface StructuredCompletionResourceRef<Output> extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "Resource",
+          "canonicalReference": "@angular/core!Resource:interface"
+        },
+        { "kind": "Content", "text": "<Output | null>" }
+      ]
     }
   ]
 }

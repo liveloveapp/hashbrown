@@ -102,6 +102,8 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
         flex-direction: column;
         gap: 32px;
         padding: 24px;
+        width: 100%;
+        max-width: 752px;
       }
 
       .symbols {
@@ -166,6 +168,12 @@ export class Symbol {
   summary = input.required<ApiMemberSummary>();
 
   getMethodsForSymbol(symbol: ApiMember): ApiMember[] {
-    return symbol.members?.filter((m) => m.kind === ApiMemberKind.Method) ?? [];
+    return (
+      symbol.members?.filter((m) =>
+        [ApiMemberKind.Method, ApiMemberKind.PropertySignature].includes(
+          m.kind,
+        ),
+      ) ?? []
+    );
   }
 }

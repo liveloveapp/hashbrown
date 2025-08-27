@@ -16,6 +16,8 @@ import path from 'path';
 import prettier from 'prettier';
 import {
   ApiDocs,
+  ApiExcerptToken,
+  ApiExcerptTokenKind,
   ApiMember,
   ApiMemberSummary,
   ApiPackageReport,
@@ -142,14 +144,33 @@ async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
     fs.readFileSync(apiReportPath, 'utf-8'),
   );
 
-  function joinExcerptTokens(
+  function buildInstrumentedFromExcerptTokens(
     excerptTokens: ApiMember['excerptTokens'],
-  ): string {
-    try {
-      return (excerptTokens ?? []).map((t) => t.text).join('');
-    } catch {
-      return '';
+  ): {
+    instrumented: string;
+    idToRef: Map<number, CanonicalReference>;
+  } {
+    const idToRef = new Map<number, CanonicalReference>();
+    let idCounter = 0;
+    let result = '';
+
+    for (const t of excerptTokens ?? []) {
+      if (t.kind === ApiExcerptTokenKind.Reference) {
+        // Always mark references so we can track spans post-formatting,
+        // but only map IDs to references that have a valid kind suffix (":...")
+        result += `/*@hb:s:${idCounter}*/${t.text}/*@hb:e:${idCounter}*/`;
+        const ref = (t as { canonicalReference?: CanonicalReference })
+          .canonicalReference as string | undefined;
+        if (ref && ref.includes(':')) {
+          idToRef.set(idCounter, ref as CanonicalReference);
+        }
+        idCounter++;
+      } else {
+        result += t.text;
+      }
     }
+
+    return { instrumented: result, idToRef };
   }
 
   async function formatWithPrettier(code: string): Promise<string> {
@@ -195,30 +216,112 @@ async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
     return dedent(inner);
   }
 
-  async function computeFormattedContent(
-    apiMember: ApiMember,
-  ): Promise<string> {
-    if (!apiMember || !apiMember.excerptTokens) return '';
+  function stripMarkers(s: string): string {
+    return s.replace(/\/\*@hb:(?:s|e):\d+\*\//g, '');
+  }
 
-    const raw = joinExcerptTokens(apiMember.excerptTokens);
-    const kind = apiMember.kind;
+  function buildOverlayTokensFromMarkers(
+    formattedWithMarkers: string,
+    idToRef: Map<number, CanonicalReference>,
+  ): { overlayTokens: ApiExcerptToken[]; formattedContent: string } {
+    const startRe = /\/\*@hb:s:(\d+)\*\//g;
+    const endRe = /\/\*@hb:e:(\d+)\*\//g;
 
-    if (!raw || raw.trim().length === 0) return '';
+    const tokens: ApiExcerptToken[] = [];
+    let cursor = 0;
+    while (cursor < formattedWithMarkers.length) {
+      startRe.lastIndex = cursor;
+      const s = startRe.exec(formattedWithMarkers);
+      if (!s) {
+        if (cursor < formattedWithMarkers.length) {
+          tokens.push({
+            kind: ApiExcerptTokenKind.Content,
+            text: formattedWithMarkers.slice(cursor),
+          });
+        }
+        break;
+      }
 
-    // Methods and Properties are not valid at the top-level; wrap in a class for formatting
-    if (kind === 'Method' || kind === 'Property') {
-      const wrapped = `declare class __HBW {\n${raw}\n}`;
-      const formattedWrapped = await formatWithPrettier(wrapped);
-      return extractClassBody(formattedWrapped);
+      const startIdx = s.index;
+      const id = Number(s[1]);
+
+      if (startIdx > cursor) {
+        tokens.push({
+          kind: ApiExcerptTokenKind.Content,
+          text: formattedWithMarkers.slice(cursor, startIdx),
+        });
+      }
+
+      endRe.lastIndex = startRe.lastIndex;
+      const e = endRe.exec(formattedWithMarkers);
+      if (!e) {
+        // Unbalanced markers; treat remainder as content
+        tokens.push({
+          kind: ApiExcerptTokenKind.Content,
+          text: formattedWithMarkers.slice(startIdx),
+        });
+        break;
+      }
+
+      const innerStart = startRe.lastIndex;
+      const innerEnd = e.index;
+      const innerText = formattedWithMarkers.slice(innerStart, innerEnd);
+
+      const ref = idToRef.get(id);
+      if (ref) {
+        tokens.push({
+          kind: ApiExcerptTokenKind.Reference,
+          text: innerText,
+          canonicalReference: ref,
+        });
+      } else {
+        // Fallback as content if mapping missing
+        tokens.push({
+          kind: ApiExcerptTokenKind.Content,
+          text: innerText,
+        });
+      }
+
+      cursor = endRe.lastIndex;
     }
 
-    // Everything else should be parseable as-is
-    return (await formatWithPrettier(raw)).trim();
+    const formattedContent = stripMarkers(formattedWithMarkers);
+    return { overlayTokens: tokens, formattedContent };
+  }
+
+  async function computeFormattedContentAndOverlayTokens(
+    apiMember: ApiMember,
+  ): Promise<{ formattedContent: string; overlayTokens: ApiExcerptToken[] }> {
+    if (!apiMember || !apiMember.excerptTokens) {
+      return { formattedContent: '', overlayTokens: [] };
+    }
+
+    const { instrumented, idToRef } = buildInstrumentedFromExcerptTokens(
+      apiMember.excerptTokens,
+    );
+    const kind = apiMember.kind;
+
+    if (!instrumented || instrumented.trim().length === 0) {
+      return { formattedContent: '', overlayTokens: [] };
+    }
+
+    if (kind === 'Method' || kind === 'Property') {
+      const wrapped = `declare class __HBW {\n${instrumented}\n}`;
+      const formattedWrapped = await formatWithPrettier(wrapped);
+      const innerWithMarkers = extractClassBody(formattedWrapped);
+      return buildOverlayTokensFromMarkers(innerWithMarkers, idToRef);
+    }
+
+    const formatted = (await formatWithPrettier(instrumented)).trim();
+    return buildOverlayTokensFromMarkers(formatted, idToRef);
   }
 
   async function recursivelyParseDocs(apiMember: ApiMember): Promise<void> {
     apiMember.docs = parseTSDoc(apiMember.docComment ?? '');
-    apiMember.formattedContent = await computeFormattedContent(apiMember);
+    const { formattedContent, overlayTokens } =
+      await computeFormattedContentAndOverlayTokens(apiMember);
+    apiMember.formattedContent = formattedContent;
+    apiMember.overlayTokens = overlayTokens;
 
     if (apiMember.members) {
       for (const member of apiMember.members) {

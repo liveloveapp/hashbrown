@@ -68,7 +68,37 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export type UiChatMessage<Tools extends Chat.AnyTool> =\n  | UiAssistantMessage<Tools>\n  | UiErrorMessage\n  | UiUserMessage;"
+      "formattedContent": "export type UiChatMessage<Tools extends  Chat.AnyTool > =\n  \n    | UiAssistantMessage <Tools>\n    |  UiErrorMessage \n    |  UiUserMessage ;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export type UiChatMessage<Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": "> =\n  " },
+        {
+          "kind": "Reference",
+          "text": "\n    | UiAssistantMessage",
+          "canonicalReference": "@hashbrownai/react!UiAssistantMessage:type"
+        },
+        { "kind": "Content", "text": " <Tools>\n    | " },
+        {
+          "kind": "Reference",
+          "text": " UiErrorMessage ",
+          "canonicalReference": "@hashbrownai/react!~UiErrorMessage:type"
+        },
+        { "kind": "Content", "text": "\n    | " },
+        {
+          "kind": "Reference",
+          "text": " UiUserMessage ",
+          "canonicalReference": "@hashbrownai/react!UiUserMessage:type"
+        },
+        { "kind": "Content", "text": ";" }
+      ]
     }
   ]
 }

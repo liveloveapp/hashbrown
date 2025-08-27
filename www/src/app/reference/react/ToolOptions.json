@@ -86,7 +86,43 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export type ToolOptions<\n  Name extends string,\n  Schema extends s.HashbrownType = s.HashbrownType,\n  Result = unknown,\n> =\n  | ToolOptionsWithInput<Name, Schema, Result>\n  | ToolOptionsWithUnknownSchema<Name, Result>\n  | ToolOptionsWithoutInput<Name, Result>;"
+      "formattedContent": "export type ToolOptions<\n  Name extends string,\n  Schema extends\n     s.HashbrownType  =  s.HashbrownType ,\n  Result = unknown,\n> = \n  | ToolOptionsWithInput <Name, Schema, Result>\n  |  ToolOptionsWithUnknownSchema <Name, Result>\n  |  ToolOptionsWithoutInput <Name, Result>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export type ToolOptions<\n  Name extends string,\n  Schema extends\n    "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": " = " },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ",\n  Result = unknown,\n> = " },
+        {
+          "kind": "Reference",
+          "text": "\n  | ToolOptionsWithInput",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithInput:interface"
+        },
+        { "kind": "Content", "text": " <Name, Schema, Result>\n  | " },
+        {
+          "kind": "Reference",
+          "text": " ToolOptionsWithUnknownSchema",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
+        },
+        { "kind": "Content", "text": " <Name, Result>\n  | " },
+        {
+          "kind": "Reference",
+          "text": " ToolOptionsWithoutInput",
+          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithoutInput:interface"
+        },
+        { "kind": "Content", "text": " <Name, Result>;" }
+      ]
     }
   ]
 }

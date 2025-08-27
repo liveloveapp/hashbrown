@@ -71,7 +71,43 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "type UiChatMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =\n  | UiAssistantMessage<Tools>\n  | UiUserMessage\n  | UiErrorMessage;"
+      "formattedContent": "type UiChatMessage<\n  Tools extends\n     Chat.AnyTool  =  Chat.AnyTool ,\n> = \n  | UiAssistantMessage <Tools>\n  |  UiUserMessage \n  |  UiErrorMessage ;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "type UiChatMessage<\n  Tools extends\n    "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": " = " },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n> = " },
+        {
+          "kind": "Reference",
+          "text": "\n  | UiAssistantMessage",
+          "canonicalReference": "@hashbrownai/angular!UiAssistantMessage:type"
+        },
+        { "kind": "Content", "text": " <Tools>\n  | " },
+        {
+          "kind": "Reference",
+          "text": " UiUserMessage ",
+          "canonicalReference": "@hashbrownai/angular!UiUserMessage:type"
+        },
+        { "kind": "Content", "text": "\n  | " },
+        {
+          "kind": "Reference",
+          "text": " UiErrorMessage ",
+          "canonicalReference": "@hashbrownai/angular!UiErrorMessage:type"
+        },
+        { "kind": "Content", "text": ";" }
+      ]
     }
   ]
 }

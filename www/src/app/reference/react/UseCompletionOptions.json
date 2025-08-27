@@ -59,7 +59,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "debounceTime?: number;"
+          "formattedContent": "debounceTime?: number;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debounceTime?: number;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -93,7 +96,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "debugName?: string;"
+          "formattedContent": "debugName?: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "debugName?: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -127,7 +133,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "input: Input | null | undefined;"
+          "formattedContent": "input: Input | null | undefined;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "input: Input | null | undefined;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -165,7 +174,12 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "model: KnownModelIds;"
+          "formattedContent": "model:  KnownModelIds ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "model: " },
+            { "kind": "Content", "text": " KnownModelIds " },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -199,7 +213,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "retries?: number;"
+          "formattedContent": "retries?: number;",
+          "overlayTokens": [{ "kind": "Content", "text": "retries?: number;" }]
         },
         {
           "kind": "PropertySignature",
@@ -233,7 +248,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "system: string;"
+          "formattedContent": "system: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "system: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -272,7 +288,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "tools?: Chat.AnyTool[];"
+          "formattedContent": "tools?: Chat.AnyTool[];",
+          "overlayTokens": [
+            { "kind": "Content", "text": "tools?: " },
+            {
+              "kind": "Reference",
+              "text": "Chat.AnyTool",
+              "canonicalReference": "!Chat.AnyTool:type"
+            },
+            { "kind": "Content", "text": "[];" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -294,7 +319,13 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export interface UseCompletionOptions<Input>"
+      "formattedContent": "export interface UseCompletionOptions<Input>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface UseCompletionOptions<Input>"
+        }
+      ]
     }
   ]
 }

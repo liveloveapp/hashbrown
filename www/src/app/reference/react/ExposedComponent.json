@@ -72,7 +72,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "children?: 'any' | ExposedComponent<any>[] | false;"
+          "formattedContent": "children?: 'any' | ExposedComponent<any>[] | false;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "children?: 'any' | " },
+            {
+              "kind": "Reference",
+              "text": "ExposedComponent",
+              "canonicalReference": "@hashbrownai/react!ExposedComponent:interface"
+            },
+            { "kind": "Content", "text": "<any>[] | false;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -106,7 +115,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "component: T;"
+          "formattedContent": "component: T;",
+          "overlayTokens": [{ "kind": "Content", "text": "component: T;" }]
         },
         {
           "kind": "PropertySignature",
@@ -140,7 +150,10 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "description: string;"
+          "formattedContent": "description: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "description: string;" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -174,7 +187,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "name: string;"
+          "formattedContent": "name: string;",
+          "overlayTokens": [{ "kind": "Content", "text": "name: string;" }]
         },
         {
           "kind": "PropertySignature",
@@ -213,7 +227,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "props?: ComponentPropSchema<T>;"
+          "formattedContent": "props?: ComponentPropSchema<T>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "props?: " },
+            {
+              "kind": "Reference",
+              "text": "ComponentPropSchema",
+              "canonicalReference": "@hashbrownai/react!ComponentPropSchema:type"
+            },
+            { "kind": "Content", "text": "<T>;" }
+          ]
         }
       ],
       "extendsTokenRanges": [],
@@ -237,7 +260,19 @@
           "\n```ts\nexposeComponent(CardComponent, {\n  name: 'CardComponent',\n  description: 'Show a card with children components to the user',\n  children: 'any',\n  props: {\n    title: s.string('The title of the card'),\n    description: s.streaming.string('The description of the card'),\n  },\n});\n```\n\n"
         ]
       },
-      "formattedContent": "export interface ExposedComponent<T extends ComponentType<any>>"
+      "formattedContent": "export interface ExposedComponent<T extends ComponentType<any>>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface ExposedComponent<T extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "ComponentType",
+          "canonicalReference": "@types/react!React.ComponentType:type"
+        },
+        { "kind": "Content", "text": "<any>>" }
+      ]
     }
   ]
 }

@@ -148,7 +148,72 @@
         ],
         "examples": []
       },
-      "formattedContent": "declare function createRuntimeFunction<\n  ArgsSchema extends s.HashbrownType,\n  ResultSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  result: ResultSchema;\n  handler: (\n    input: s.Infer<ArgsSchema>,\n    abortSignal?: AbortSignal,\n  ) => s.Infer<ResultSchema> | Promise<s.Infer<ResultSchema>>;\n}): RuntimeFunctionRef<s.Infer<ArgsSchema>, s.Infer<ResultSchema>>;"
+      "formattedContent": "declare function createRuntimeFunction<\n  ArgsSchema extends  s.HashbrownType ,\n  ResultSchema extends  s.HashbrownType ,\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  result: ResultSchema;\n  handler: (\n    input:  s.Infer <ArgsSchema>,\n    abortSignal?:  AbortSignal ,\n  ) => \n    | s.Infer <ResultSchema>\n    |  Promise <\n         s.Infer <ResultSchema>\n      >;\n}):  RuntimeFunctionRef <\n   s.Infer <ArgsSchema>,\n   s.Infer <ResultSchema>\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function createRuntimeFunction<\n  ArgsSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        { "kind": "Content", "text": ",\n  ResultSchema extends " },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": ",\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  result: ResultSchema;\n  handler: (\n    input: "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n    abortSignal?: " },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => " },
+        {
+          "kind": "Reference",
+          "text": "\n    | s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n    | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <\n        " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n      >;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -266,7 +331,54 @@
         ],
         "examples": []
       },
-      "formattedContent": "declare function createRuntimeFunction<\n  ResultSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  result: ResultSchema;\n  handler: (\n    abortSignal?: AbortSignal,\n  ) => s.Infer<ResultSchema> | Promise<s.Infer<ResultSchema>>;\n}): RuntimeFunctionRef<null, s.Infer<ResultSchema>>;"
+      "formattedContent": "declare function createRuntimeFunction<\n  ResultSchema extends  s.HashbrownType ,\n>(cfg: {\n  name: string;\n  description: string;\n  result: ResultSchema;\n  handler: (\n    abortSignal?:  AbortSignal ,\n  ) => \n    | s.Infer <ResultSchema>\n    |  Promise <\n         s.Infer <ResultSchema>\n      >;\n}):  RuntimeFunctionRef <\n  null,\n   s.Infer <ResultSchema>\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function createRuntimeFunction<\n  ResultSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": ",\n>(cfg: {\n  name: string;\n  description: string;\n  result: ResultSchema;\n  handler: (\n    abortSignal?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => " },
+        {
+          "kind": "Reference",
+          "text": "\n    | s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n    | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <\n        " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n      >;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <\n  null,\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ResultSchema>\n>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -378,7 +490,48 @@
         ],
         "examples": []
       },
-      "formattedContent": "declare function createRuntimeFunction<\n  ArgsSchema extends s.HashbrownType,\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  handler: (\n    args: s.Infer<ArgsSchema>,\n    abortSignal?: AbortSignal,\n  ) => void | Promise<void>;\n}): RuntimeFunctionRef<s.Infer<ArgsSchema>, void>;"
+      "formattedContent": "declare function createRuntimeFunction<\n  ArgsSchema extends  s.HashbrownType ,\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  handler: (\n    args:  s.Infer <ArgsSchema>,\n    abortSignal?:  AbortSignal ,\n  ) => void |  Promise <void>;\n}):  RuntimeFunctionRef <\n   s.Infer <ArgsSchema>,\n  void\n>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function createRuntimeFunction<\n  ArgsSchema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "!s.HashbrownType:type"
+        },
+        {
+          "kind": "Content",
+          "text": ",\n>(cfg: {\n  name: string;\n  description: string;\n  args: ArgsSchema;\n  handler: (\n    args: "
+        },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n    abortSignal?: " },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => void | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <void>;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "!s.Infer:type"
+        },
+        { "kind": "Content", "text": " <ArgsSchema>,\n  void\n>;" }
+      ]
     },
     {
       "kind": "Function",
@@ -461,7 +614,27 @@
         ],
         "examples": []
       },
-      "formattedContent": "declare function createRuntimeFunction(cfg: {\n  name: string;\n  description: string;\n  handler: (abortSignal?: AbortSignal) => void | Promise<void>;\n}): RuntimeFunctionRef<null, void>;"
+      "formattedContent": "declare function createRuntimeFunction(cfg: {\n  name: string;\n  description: string;\n  handler: (\n    abortSignal?:  AbortSignal ,\n  ) => void |  Promise <void>;\n}):  RuntimeFunctionRef <null, void>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function createRuntimeFunction(cfg: {\n  name: string;\n  description: string;\n  handler: (\n    abortSignal?: "
+        },
+        {
+          "kind": "Reference",
+          "text": " AbortSignal ",
+          "canonicalReference": "!AbortSignal:interface"
+        },
+        { "kind": "Content", "text": ",\n  ) => void | " },
+        {
+          "kind": "Reference",
+          "text": " Promise",
+          "canonicalReference": "!Promise:interface"
+        },
+        { "kind": "Content", "text": " <void>;\n}): " },
+        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        { "kind": "Content", "text": " <null, void>;" }
+      ]
     }
   ]
 }

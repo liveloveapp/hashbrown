@@ -77,7 +77,31 @@
         ],
         "examples": []
       },
-      "formattedContent": "declare function uiChatResource<Tools extends Chat.AnyTool>(\n  args: UiChatResourceOptions<Tools>,\n): UiChatResourceRef<Tools>;"
+      "formattedContent": "declare function uiChatResource<\n  Tools extends  Chat.AnyTool ,\n>(\n  args:  UiChatResourceOptions <Tools>,\n):  UiChatResourceRef <Tools>;",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "declare function uiChatResource<\n  Tools extends "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n>(\n  args: " },
+        {
+          "kind": "Reference",
+          "text": " UiChatResourceOptions",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceOptions:interface"
+        },
+        { "kind": "Content", "text": " <Tools>,\n): " },
+        {
+          "kind": "Reference",
+          "text": " UiChatResourceRef",
+          "canonicalReference": "@hashbrownai/angular!UiChatResourceRef:interface"
+        },
+        { "kind": "Content", "text": " <Tools>;" }
+      ]
     }
   ]
 }

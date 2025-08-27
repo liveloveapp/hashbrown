@@ -78,7 +78,49 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "type UiAssistantMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =\n  Chat.AssistantMessage<UiChatSchema, Tools> & {\n    [TAG_NAME_REGISTRY]: TagNameRegistry;\n  };"
+      "formattedContent": "type UiAssistantMessage<\n  Tools extends\n     Chat.AnyTool  =  Chat.AnyTool ,\n> =  Chat.AssistantMessage <\n   UiChatSchema ,\n  Tools\n> & {\n  [ TAG_NAME_REGISTRY ]:  TagNameRegistry ;\n};",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "type UiAssistantMessage<\n  Tools extends\n    "
+        },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": " = " },
+        {
+          "kind": "Reference",
+          "text": " Chat.AnyTool ",
+          "canonicalReference": "!Chat.AnyTool:type"
+        },
+        { "kind": "Content", "text": ",\n> = " },
+        {
+          "kind": "Reference",
+          "text": " Chat.AssistantMessage",
+          "canonicalReference": "!Chat.AssistantMessage:type"
+        },
+        { "kind": "Content", "text": " <\n  " },
+        {
+          "kind": "Reference",
+          "text": " UiChatSchema ",
+          "canonicalReference": "@hashbrownai/angular!UiChatSchema:interface"
+        },
+        { "kind": "Content", "text": ",\n  Tools\n> & {\n  [" },
+        {
+          "kind": "Reference",
+          "text": " TAG_NAME_REGISTRY ",
+          "canonicalReference": "@hashbrownai/angular!~TAG_NAME_REGISTRY:var"
+        },
+        { "kind": "Content", "text": "]: " },
+        {
+          "kind": "Reference",
+          "text": " TagNameRegistry ",
+          "canonicalReference": "@hashbrownai/angular!~TagNameRegistry:type"
+        },
+        { "kind": "Content", "text": ";\n};" }
+      ]
     }
   ]
 }

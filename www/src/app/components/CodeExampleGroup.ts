@@ -18,7 +18,7 @@ import { Squircle } from './Squircle';
     <div
       class="container"
       wwwSquircle="16"
-      [wwwSquircleBorderWidth]="4"
+      [wwwSquircleBorderWidth]="8"
       wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
     >
       <div class="header">
@@ -54,7 +54,7 @@ import { Squircle } from './Squircle';
       > .header {
         display: flex;
         justify-content: space-between;
-        padding: 12px 24px;
+        padding: 14px 24px 12px 24px;
         color: var(--vanilla-ivory, #faf9f0);
         font:
           300 13px/18px 'JetBrains Mono',
@@ -77,7 +77,7 @@ import { Squircle } from './Squircle';
                 left: 0;
                 width: 100%;
                 height: 3px;
-                margin-bottom: -10px;
+                margin-bottom: -12px;
                 border-radius: 1px;
                 background: linear-gradient(
                   to right,
@@ -107,13 +107,13 @@ import { Squircle } from './Squircle';
       > .content {
         background: #2b2a29;
         padding: 16px;
-        margin: 0 2px 2px 2px;
+        margin: 0 4px 4px 4px;
         flex-grow: 0;
         overflow: auto;
         border-right: 2px solid transparent;
         border-bottom: 2px solid transparent;
         border-left: 2px solid transparent;
-        width: calc(100% - 4px);
+        width: calc(100% - 8px);
       }
     }
   `,

@@ -1,4 +1,4 @@
-import { JsonPipe, NgClass } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 import {
@@ -17,16 +17,17 @@ export const SymbolApiDensity = {
 
 @Component({
   selector: 'www-symbol-api',
-  imports: [SymbolExcerpt, SymbolExcerptGroup, NgClass, JsonPipe],
+  imports: [SymbolExcerpt, SymbolExcerptGroup, NgClass],
   template: `
     <h2>API</h2>
     <www-symbol-excerpt-group [ngClass]="'d' + density()">
       <www-symbol-excerpt
         [excerptTokens]="headerExcerptTokens()"
         [formattedContent]="headerFormattedContent()"
+        [overlayTokens]="headerOverlayTokens()"
         class="header"
       />
-      @for (member of bodyMembers(); track $index) {
+      @for (member of bodyMembers(); track member.canonicalReference) {
         @switch (density()) {
           @case ('0') {
             <a
@@ -36,16 +37,17 @@ export const SymbolApiDensity = {
               <www-symbol-excerpt
                 [excerptTokens]="member.excerptTokens"
                 [formattedContent]="member.formattedContent"
+                [overlayTokens]="member.overlayTokens ?? null"
                 [deprecated]="!!member.docs.deprecated"
                 class="member"
               />
-              <pre>{{ member | json }}</pre>
             </a>
           }
           @case ('-1') {
             <www-symbol-excerpt
               [excerptTokens]="member.excerptTokens"
               [formattedContent]="member.formattedContent"
+              [overlayTokens]="member.overlayTokens ?? null"
               [deprecated]="!!member.docs.deprecated"
               class="member"
             />
@@ -94,6 +96,11 @@ export class SymbolApi {
   router = inject(Router);
   symbol = input.required<ApiMember>();
   density = input<string>(SymbolApiDensity[0]);
+
+  headerOverlayTokens = computed((): ApiExcerptToken[] | null => {
+    const symbol = this.symbol();
+    return symbol.overlayTokens ?? null;
+  });
 
   headerExcerptTokens = computed((): ApiExcerptToken[] => {
     const symbol = this.symbol();

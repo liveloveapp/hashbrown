@@ -57,7 +57,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type AnyMessage = Message<string | object, AnyTool>;"
+          "formattedContent": "export type AnyMessage =  Message <\n  string | object,\n   AnyTool \n>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "export type AnyMessage = " },
+            {
+              "kind": "Reference",
+              "text": " Message",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Message_3:type"
+            },
+            { "kind": "Content", "text": " <\n  string | object,\n  " },
+            {
+              "kind": "Reference",
+              "text": " AnyTool ",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": "\n>;" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -95,7 +110,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type AnyTool = Tool<string, any, any>;"
+          "formattedContent": "export type AnyTool =  Tool <string, any, any>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "export type AnyTool = " },
+            {
+              "kind": "Reference",
+              "text": " Tool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Tool_3:type"
+            },
+            { "kind": "Content", "text": " <string, any, any>;" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -139,7 +163,22 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type AnyToolCall = ToolCall<AnyTool>;"
+          "formattedContent": "export type AnyToolCall =\n   ToolCall < AnyTool >;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "export type AnyToolCall =\n  " },
+            {
+              "kind": "Reference",
+              "text": " ToolCall",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " AnyTool ",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "Namespace",
@@ -198,7 +237,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "content?: string;"
+                  "formattedContent": "content?: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "content?: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -232,7 +274,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "role: \"assistant\";"
+                  "formattedContent": "role: \"assistant\";",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "role: \"assistant\";" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -271,7 +316,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "toolCalls?: ToolCall[];"
+                  "formattedContent": "toolCalls?: ToolCall[];",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "toolCalls?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "ToolCall",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.ToolCall:interface"
+                    },
+                    { "kind": "Content", "text": "[];" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -293,7 +347,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface AssistantMessage"
+              "formattedContent": "export interface AssistantMessage",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface AssistantMessage"
+                }
+              ]
             },
             {
               "kind": "Interface",
@@ -347,7 +407,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "choices: CompletionChunkChoice[];"
+                  "formattedContent": "choices: CompletionChunkChoice[];",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "choices: " },
+                    {
+                      "kind": "Reference",
+                      "text": "CompletionChunkChoice",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.CompletionChunkChoice:interface"
+                    },
+                    { "kind": "Content", "text": "[];" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -369,7 +438,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface CompletionChunk"
+              "formattedContent": "export interface CompletionChunk",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface CompletionChunk"
+                }
+              ]
             },
             {
               "kind": "Interface",
@@ -433,7 +508,25 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "delta: {\n        content?: string | null;\n        role?: string | undefined;\n        toolCalls?: DeepPartial<ToolCall>[];\n    };"
+                  "formattedContent": "delta: {\n        content?: string | null;\n        role?: string | undefined;\n        toolCalls?: DeepPartial<ToolCall>[];\n    };",
+                  "overlayTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "delta: {\n        content?: string | null;\n        role?: string | undefined;\n        toolCalls?: "
+                    },
+                    {
+                      "kind": "Reference",
+                      "text": "DeepPartial",
+                      "canonicalReference": "@hashbrownai/core!ɵtypes.DeepPartial:type"
+                    },
+                    { "kind": "Content", "text": "<" },
+                    {
+                      "kind": "Reference",
+                      "text": "ToolCall",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.ToolCall:interface"
+                    },
+                    { "kind": "Content", "text": ">[];\n    };" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -467,7 +560,13 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "finishReason: string | null;"
+                  "formattedContent": "finishReason: string | null;",
+                  "overlayTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "finishReason: string | null;"
+                    }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -501,7 +600,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "index: number;"
+                  "formattedContent": "index: number;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "index: number;" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -523,7 +625,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface CompletionChunkChoice"
+              "formattedContent": "export interface CompletionChunkChoice",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface CompletionChunkChoice"
+                }
+              ]
             },
             {
               "kind": "Interface",
@@ -577,7 +685,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "messages: Message[];"
+                  "formattedContent": "messages: Message[];",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "messages: " },
+                    {
+                      "kind": "Reference",
+                      "text": "Message",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.Message:type"
+                    },
+                    { "kind": "Content", "text": "[];" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -615,7 +732,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "model: KnownModelIds;"
+                  "formattedContent": "model:  KnownModelIds ;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "model: " },
+                    {
+                      "kind": "Reference",
+                      "text": " KnownModelIds ",
+                      "canonicalReference": "@hashbrownai/core!KnownModelIds:type"
+                    },
+                    { "kind": "Content", "text": ";" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -649,7 +775,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "responseFormat?: object;"
+                  "formattedContent": "responseFormat?: object;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "responseFormat?: object;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -683,7 +812,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "system: string;"
+                  "formattedContent": "system: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "system: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -721,7 +853,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "toolChoice?: CompletionToolChoiceOption;"
+                  "formattedContent": "toolChoice?: CompletionToolChoiceOption;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "toolChoice?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "CompletionToolChoiceOption",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.CompletionToolChoiceOption:type"
+                    },
+                    { "kind": "Content", "text": ";" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -760,7 +901,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "tools?: Tool[];"
+                  "formattedContent": "tools?: Tool[];",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "tools?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "Tool",
+                      "canonicalReference": "@hashbrownai/core!~Chat_2.Api.Tool:interface"
+                    },
+                    { "kind": "Content", "text": "[];" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -782,7 +932,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface CompletionCreateParams"
+              "formattedContent": "export interface CompletionCreateParams",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface CompletionCreateParams"
+                }
+              ]
             },
             {
               "kind": "TypeAlias",
@@ -818,7 +974,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export type CompletionToolChoiceOption = \"auto\" | \"none\" | \"required\";"
+              "formattedContent": "export type CompletionToolChoiceOption = \"auto\" | \"none\" | \"required\";",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export type CompletionToolChoiceOption = \"auto\" | \"none\" | \"required\";"
+                }
+              ]
             },
             {
               "kind": "Interface",
@@ -864,7 +1026,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "content: string;"
+                  "formattedContent": "content: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "content: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -898,7 +1063,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "role: \"error\";"
+                  "formattedContent": "role: \"error\";",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "role: \"error\";" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -920,7 +1088,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface ErrorMessage"
+              "formattedContent": "export interface ErrorMessage",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface ErrorMessage" }
+              ]
             },
             {
               "kind": "TypeAlias",
@@ -975,7 +1146,34 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export type Message =\n  | UserMessage\n  | ErrorMessage\n  | AssistantMessage\n  | ToolMessage;"
+              "formattedContent": "export type Message = \n  | UserMessage \n  |  ErrorMessage \n  |  AssistantMessage \n  |  ToolMessage ;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export type Message = " },
+                {
+                  "kind": "Reference",
+                  "text": "\n  | UserMessage ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.UserMessage:interface"
+                },
+                { "kind": "Content", "text": "\n  | " },
+                {
+                  "kind": "Reference",
+                  "text": " ErrorMessage ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.ErrorMessage:interface"
+                },
+                { "kind": "Content", "text": "\n  | " },
+                {
+                  "kind": "Reference",
+                  "text": " AssistantMessage ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.AssistantMessage:interface"
+                },
+                { "kind": "Content", "text": "\n  | " },
+                {
+                  "kind": "Reference",
+                  "text": " ToolMessage ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Api.ToolMessage:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ]
             },
             {
               "kind": "Interface",
@@ -1021,7 +1219,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "description: string;"
+                  "formattedContent": "description: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "description: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1055,7 +1256,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "name: string;"
+                  "formattedContent": "name: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "name: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1089,7 +1293,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "parameters: object;"
+                  "formattedContent": "parameters: object;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "parameters: object;" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -1111,7 +1318,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface Tool"
+              "formattedContent": "export interface Tool",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface Tool" }
+              ]
             },
             {
               "kind": "Interface",
@@ -1160,7 +1370,13 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "function: {\n        name: string;\n        arguments: string;\n    };"
+                  "formattedContent": "function: {\n        name: string;\n        arguments: string;\n    };",
+                  "overlayTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "function: {\n        name: string;\n        arguments: string;\n    };"
+                    }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1194,7 +1410,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "id: string;"
+                  "formattedContent": "id: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "id: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1228,7 +1447,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "index: number;"
+                  "formattedContent": "index: number;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "index: number;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1262,7 +1484,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "type: string;"
+                  "formattedContent": "type: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "type: string;" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -1284,7 +1509,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface ToolCall"
+              "formattedContent": "export interface ToolCall",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface ToolCall" }
+              ]
             },
             {
               "kind": "Interface",
@@ -1335,7 +1563,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "content: PromiseSettledResult<any>;"
+                  "formattedContent": "content:  PromiseSettledResult <any>;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "content: " },
+                    {
+                      "kind": "Reference",
+                      "text": " PromiseSettledResult",
+                      "canonicalReference": "!PromiseSettledResult:type"
+                    },
+                    { "kind": "Content", "text": " <any>;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1369,7 +1606,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "role: \"tool\";"
+                  "formattedContent": "role: \"tool\";",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "role: \"tool\";" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1403,7 +1643,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "toolCallId: string;"
+                  "formattedContent": "toolCallId: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "toolCallId: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1437,7 +1680,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "toolName: string;"
+                  "formattedContent": "toolName: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "toolName: string;" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -1459,7 +1705,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface ToolMessage"
+              "formattedContent": "export interface ToolMessage",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface ToolMessage" }
+              ]
             },
             {
               "kind": "Interface",
@@ -1505,7 +1754,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "content: string;"
+                  "formattedContent": "content: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "content: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1539,7 +1791,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "role: \"user\";"
+                  "formattedContent": "role: \"user\";",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "role: \"user\";" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -1561,7 +1816,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface UserMessage"
+              "formattedContent": "export interface UserMessage",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface UserMessage" }
+              ]
             }
           ],
           "docs": {
@@ -1582,7 +1840,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": ""
+          "formattedContent": "",
+          "overlayTokens": []
         },
         {
           "kind": "Interface",
@@ -1649,7 +1908,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "content?: Output;"
+              "formattedContent": "content?: Output;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "content?: Output;" }
+              ]
             },
             {
               "kind": "PropertySignature",
@@ -1683,7 +1945,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "role: \"assistant\";"
+              "formattedContent": "role: \"assistant\";",
+              "overlayTokens": [
+                { "kind": "Content", "text": "role: \"assistant\";" }
+              ]
             },
             {
               "kind": "PropertySignature",
@@ -1722,7 +1987,16 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "toolCalls: ToolCall < ToolUnion > [];"
+              "formattedContent": "toolCalls:  ToolCall  < ToolUnion > [];",
+              "overlayTokens": [
+                { "kind": "Content", "text": "toolCalls: " },
+                {
+                  "kind": "Reference",
+                  "text": " ToolCall ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.ToolCall_3:type"
+                },
+                { "kind": "Content", "text": " < ToolUnion > [];" }
+              ]
             }
           ],
           "extendsTokenRanges": [],
@@ -1744,7 +2018,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export interface AssistantMessage<Output, ToolUnion extends AnyTool>"
+          "formattedContent": "export interface AssistantMessage<Output, ToolUnion extends AnyTool>",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export interface AssistantMessage<Output, ToolUnion extends "
+            },
+            {
+              "kind": "Reference",
+              "text": "AnyTool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": ">" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -1780,7 +2066,13 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type ErrorMessage = {\n  role: \"error\";\n  content: string;\n};"
+          "formattedContent": "export type ErrorMessage = {\n  role: \"error\";\n  content: string;\n};",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export type ErrorMessage = {\n  role: \"error\";\n  content: string;\n};"
+            }
+          ]
         },
         {
           "kind": "Namespace",
@@ -1810,7 +2102,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": ""
+          "formattedContent": "",
+          "overlayTokens": []
         },
         {
           "kind": "Namespace",
@@ -1869,7 +2162,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "content?: string;"
+                  "formattedContent": "content?: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "content?: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1903,7 +2199,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "role: \"assistant\";"
+                  "formattedContent": "role: \"assistant\";",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "role: \"assistant\";" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -1937,7 +2236,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "toolCallIds: string[];"
+                  "formattedContent": "toolCallIds: string[];",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "toolCallIds: string[];" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -1959,7 +2261,13 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface AssistantMessage"
+              "formattedContent": "export interface AssistantMessage",
+              "overlayTokens": [
+                {
+                  "kind": "Content",
+                  "text": "export interface AssistantMessage"
+                }
+              ]
             },
             {
               "kind": "Interface",
@@ -2005,7 +2313,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "content: string;"
+                  "formattedContent": "content: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "content: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2039,7 +2350,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "role: \"error\";"
+                  "formattedContent": "role: \"error\";",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "role: \"error\";" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -2061,7 +2375,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface ErrorMessage"
+              "formattedContent": "export interface ErrorMessage",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface ErrorMessage" }
+              ]
             },
             {
               "kind": "TypeAlias",
@@ -2110,7 +2427,28 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export type Message = AssistantMessage | UserMessage | ErrorMessage;"
+              "formattedContent": "export type Message = \n  | AssistantMessage \n  |  UserMessage \n  |  ErrorMessage ;",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export type Message = " },
+                {
+                  "kind": "Reference",
+                  "text": "\n  | AssistantMessage ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Internal.AssistantMessage_2:interface"
+                },
+                { "kind": "Content", "text": "\n  | " },
+                {
+                  "kind": "Reference",
+                  "text": " UserMessage ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Internal.UserMessage_2:interface"
+                },
+                { "kind": "Content", "text": "\n  | " },
+                {
+                  "kind": "Reference",
+                  "text": " ErrorMessage ",
+                  "canonicalReference": "@hashbrownai/core!~Chat_2.Internal.ErrorMessage_2:interface"
+                },
+                { "kind": "Content", "text": ";" }
+              ]
             },
             {
               "kind": "Interface",
@@ -2156,7 +2494,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "description: string;"
+                  "formattedContent": "description: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "description: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2202,7 +2543,25 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "handler: (input: any, abortSignal: AbortSignal) => Promise<any>;"
+                  "formattedContent": "handler: (input: any, abortSignal:  AbortSignal ) =>\n   Promise <any>;",
+                  "overlayTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "handler: (input: any, abortSignal: "
+                    },
+                    {
+                      "kind": "Reference",
+                      "text": " AbortSignal ",
+                      "canonicalReference": "!AbortSignal:interface"
+                    },
+                    { "kind": "Content", "text": ") =>\n  " },
+                    {
+                      "kind": "Reference",
+                      "text": " Promise",
+                      "canonicalReference": "!Promise:interface"
+                    },
+                    { "kind": "Content", "text": " <any>;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2236,7 +2595,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "name: string;"
+                  "formattedContent": "name: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "name: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2275,7 +2637,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "schema: s.HashbrownType | object;"
+                  "formattedContent": "schema:  s.HashbrownType  | object;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "schema: " },
+                    {
+                      "kind": "Reference",
+                      "text": " s.HashbrownType ",
+                      "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+                    },
+                    { "kind": "Content", "text": " | object;" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -2297,7 +2668,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface Tool"
+              "formattedContent": "export interface Tool",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface Tool" }
+              ]
             },
             {
               "kind": "Interface",
@@ -2343,7 +2717,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "arguments: string;"
+                  "formattedContent": "arguments: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "arguments: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2377,7 +2754,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "id: string;"
+                  "formattedContent": "id: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "id: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2411,7 +2791,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "name: string;"
+                  "formattedContent": "name: string;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "name: string;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2445,7 +2828,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "progress?: number;"
+                  "formattedContent": "progress?: number;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "progress?: number;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2484,7 +2870,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "result?: PromiseSettledResult<any>;"
+                  "formattedContent": "result?: PromiseSettledResult<any>;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "result?: " },
+                    {
+                      "kind": "Reference",
+                      "text": "PromiseSettledResult",
+                      "canonicalReference": "!PromiseSettledResult:type"
+                    },
+                    { "kind": "Content", "text": "<any>;" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2518,7 +2913,13 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "status: \"pending\" | \"done\";"
+                  "formattedContent": "status: \"pending\" | \"done\";",
+                  "overlayTokens": [
+                    {
+                      "kind": "Content",
+                      "text": "status: \"pending\" | \"done\";"
+                    }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -2540,7 +2941,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface ToolCall"
+              "formattedContent": "export interface ToolCall",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface ToolCall" }
+              ]
             },
             {
               "kind": "Interface",
@@ -2590,7 +2994,16 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "content: JsonValue;"
+                  "formattedContent": "content:  JsonValue ;",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "content: " },
+                    {
+                      "kind": "Reference",
+                      "text": " JsonValue ",
+                      "canonicalReference": "@hashbrownai/core!ɵtypes.JsonValue:type"
+                    },
+                    { "kind": "Content", "text": ";" }
+                  ]
                 },
                 {
                   "kind": "PropertySignature",
@@ -2624,7 +3037,10 @@
                     "params": [],
                     "examples": []
                   },
-                  "formattedContent": "role: \"user\";"
+                  "formattedContent": "role: \"user\";",
+                  "overlayTokens": [
+                    { "kind": "Content", "text": "role: \"user\";" }
+                  ]
                 }
               ],
               "extendsTokenRanges": [],
@@ -2646,7 +3062,10 @@
                 "params": [],
                 "examples": []
               },
-              "formattedContent": "export interface UserMessage"
+              "formattedContent": "export interface UserMessage",
+              "overlayTokens": [
+                { "kind": "Content", "text": "export interface UserMessage" }
+              ]
             }
           ],
           "docs": {
@@ -2667,7 +3086,8 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": ""
+          "formattedContent": "",
+          "overlayTokens": []
         },
         {
           "kind": "TypeAlias",
@@ -2737,7 +3157,37 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type Message<Output, Tools extends AnyTool> =\n  | UserMessage\n  | AssistantMessage<Output, Tools>\n  | ErrorMessage;"
+          "formattedContent": "export type Message<\n  Output,\n  Tools extends  AnyTool ,\n> = \n  | UserMessage \n  |  AssistantMessage <Output, Tools>\n  |  ErrorMessage ;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export type Message<\n  Output,\n  Tools extends "
+            },
+            {
+              "kind": "Reference",
+              "text": " AnyTool ",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": ",\n> = " },
+            {
+              "kind": "Reference",
+              "text": "\n  | UserMessage ",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.UserMessage_3:type"
+            },
+            { "kind": "Content", "text": "\n  | " },
+            {
+              "kind": "Reference",
+              "text": " AssistantMessage",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AssistantMessage_3:interface"
+            },
+            { "kind": "Content", "text": " <Output, Tools>\n  | " },
+            {
+              "kind": "Reference",
+              "text": " ErrorMessage ",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.ErrorMessage_3:type"
+            },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -2794,7 +3244,37 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type Middleware = (\n  fetchInit: RequestInit,\n) => RequestInit | Promise<RequestInit>;"
+          "formattedContent": "export type Middleware = (\n  fetchInit:  RequestInit ,\n) => \n  | RequestInit \n  |  Promise < RequestInit >;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export type Middleware = (\n  fetchInit: "
+            },
+            {
+              "kind": "Reference",
+              "text": " RequestInit ",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": ",\n) => " },
+            {
+              "kind": "Reference",
+              "text": "\n  | RequestInit ",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": "\n  | " },
+            {
+              "kind": "Reference",
+              "text": " Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": " <" },
+            {
+              "kind": "Reference",
+              "text": " RequestInit ",
+              "canonicalReference": "!RequestInit:interface"
+            },
+            { "kind": "Content", "text": ">;" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -2871,7 +3351,34 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type Tool<Name, Args, Result> = {\n  name: Name;\n  description: string;\n  schema: s.HashbrownType | object;\n  handler: (input: Args, abortSignal: AbortSignal) => Promise<Result>;\n};"
+          "formattedContent": "export type Tool<Name, Args, Result> = {\n  name: Name;\n  description: string;\n  schema:  s.HashbrownType  | object;\n  handler: (\n    input: Args,\n    abortSignal:  AbortSignal ,\n  ) =>  Promise <Result>;\n};",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export type Tool<Name, Args, Result> = {\n  name: Name;\n  description: string;\n  schema: "
+            },
+            {
+              "kind": "Reference",
+              "text": " s.HashbrownType ",
+              "canonicalReference": "@hashbrownai/core!s.HashbrownType:interface"
+            },
+            {
+              "kind": "Content",
+              "text": " | object;\n  handler: (\n    input: Args,\n    abortSignal: "
+            },
+            {
+              "kind": "Reference",
+              "text": " AbortSignal ",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ",\n  ) => " },
+            {
+              "kind": "Reference",
+              "text": " Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": " <Result>;\n};" }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -2943,7 +3450,43 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type ToolCall<ToolUnion extends AnyTool> = Prettify<\n  ToolUnion extends Tool<infer Name, infer Args, infer Result>\n    ?\n        | {\n            role: \"tool\";\n            status: \"done\";\n            name: Name;\n            args: Args;\n            result: PromiseSettledResult<Result>;\n            toolCallId: string;\n          }\n        | {\n            role: \"tool\";\n            status: \"pending\";\n            name: Name;\n            args: Args;\n            toolCallId: string;\n            progress?: number;\n          }\n    : never\n>;"
+          "formattedContent": "export type ToolCall<ToolUnion extends  AnyTool > =\n   Prettify <\n    ToolUnion extends  Tool <\n      infer Name,\n      infer Args,\n      infer Result\n    >\n      ?\n          | {\n              role: \"tool\";\n              status: \"done\";\n              name: Name;\n              args: Args;\n              result:  PromiseSettledResult <Result>;\n              toolCallId: string;\n            }\n          | {\n              role: \"tool\";\n              status: \"pending\";\n              name: Name;\n              args: Args;\n              toolCallId: string;\n              progress?: number;\n            }\n      : never\n  >;",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export type ToolCall<ToolUnion extends "
+            },
+            {
+              "kind": "Reference",
+              "text": " AnyTool ",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.AnyTool:type"
+            },
+            { "kind": "Content", "text": "> =\n  " },
+            {
+              "kind": "Reference",
+              "text": " Prettify",
+              "canonicalReference": "@hashbrownai/core!ɵtypes.Prettify:type"
+            },
+            { "kind": "Content", "text": " <\n    ToolUnion extends " },
+            {
+              "kind": "Reference",
+              "text": " Tool",
+              "canonicalReference": "@hashbrownai/core!~Chat_2.Tool_3:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <\n      infer Name,\n      infer Args,\n      infer Result\n    >\n      ?\n          | {\n              role: \"tool\";\n              status: \"done\";\n              name: Name;\n              args: Args;\n              result: "
+            },
+            {
+              "kind": "Reference",
+              "text": " PromiseSettledResult",
+              "canonicalReference": "!PromiseSettledResult:type"
+            },
+            {
+              "kind": "Content",
+              "text": " <Result>;\n              toolCallId: string;\n            }\n          | {\n              role: \"tool\";\n              status: \"pending\";\n              name: Name;\n              args: Args;\n              toolCallId: string;\n              progress?: number;\n            }\n      : never\n  >;"
+            }
+          ]
         },
         {
           "kind": "TypeAlias",
@@ -2985,7 +3528,19 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "export type UserMessage = {\n  role: \"user\";\n  content: JsonValue;\n};"
+          "formattedContent": "export type UserMessage = {\n  role: \"user\";\n  content:  JsonValue ;\n};",
+          "overlayTokens": [
+            {
+              "kind": "Content",
+              "text": "export type UserMessage = {\n  role: \"user\";\n  content: "
+            },
+            {
+              "kind": "Reference",
+              "text": " JsonValue ",
+              "canonicalReference": "@hashbrownai/core!ɵtypes.JsonValue:type"
+            },
+            { "kind": "Content", "text": ";\n};" }
+          ]
         }
       ],
       "docs": {
@@ -3006,7 +3561,8 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": ""
+      "formattedContent": "",
+      "overlayTokens": []
     }
   ]
 }
