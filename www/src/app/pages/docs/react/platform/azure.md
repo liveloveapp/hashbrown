@@ -48,7 +48,7 @@ Azure requires model versions to be supplied when making a request. To do this, 
 import { useCompletion } from '@hashbrownai/react';
 
 const { output, isReceiving } = useCompletion({
-  model: 'gpt-4o@2025-01-01-preview',
+  model: 'gpt-4.1@2025-01-01-preview',
   input: 'Hello, world!',
   system: 'You are a helpful assistant.',
 });

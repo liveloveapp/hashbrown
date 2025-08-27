@@ -264,7 +264,7 @@ export class ExpenseNlComponent {
   private requestInput = signal<string | null>(null);
 
   completion = structuredCompletionResource({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     debugName: 'expense-nl',
     input: this.requestInput,
     tools: [listExpenseCategories],

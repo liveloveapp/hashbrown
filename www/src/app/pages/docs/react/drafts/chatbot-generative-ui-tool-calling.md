@@ -54,7 +54,7 @@ import { useChat } from '@hashbrownai/react';
 export function ChatPanel() {
   const [input, setInput] = useState('');
   const { messages, sendMessage, isReceiving } = useChat({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     system:
       'You are a helpful assistant that can answer questions and help with tasks.',
   });
@@ -144,7 +144,7 @@ const controlLightTool = useTool({
 import { useChat } from '@hashbrownai/react';
 
 const chat = useChat({
-  model: 'gpt-4o',
+  model: 'gpt-4.1',
   system:
     'You are a helpful assistant that can answer questions and help with tasks.',
   tools: [getUserTool, getLightsTool, controlLightTool],
@@ -215,7 +215,7 @@ const ExposedCardComponent = exposeComponent(CardComponent, {
 import { useUiChat } from '@hashbrownai/react';
 
 const chat = useUiChat({
-  model: 'gpt-4o',
+  model: 'gpt-4.1',
   system:
     'You are a helpful assistant that can answer questions and help with tasks.',
   tools: [getUserTool, getLightsTool, controlLightTool],
@@ -324,7 +324,7 @@ export default function App() {
   // Set up chat
   const [input, setInput] = useState('');
   const chat = useUiChat({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     system:
       'You are a helpful assistant that can answer questions and help with tasks.',
     tools: [getUserTool, getLightsTool, controlLightTool],

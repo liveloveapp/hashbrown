@@ -18,7 +18,7 @@ import { useChat } from '@hashbrownai/react';
 
 const ChatComponent = () => {
   const { messages, sendMessage, isSending, error } = useChat({
-    model: 'gpt-4o', // OpenAI model
+    model: 'gpt-4.1', // OpenAI model
     system: 'You are a helpful assistant.',
   });
 

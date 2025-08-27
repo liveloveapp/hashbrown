@@ -239,7 +239,7 @@ export function ExpenseNL({ onSubmit }: { onSubmit(expense: unknown): void }) {
   const categoryTool = useCategoryTool();
 
   const completion = useStructuredCompletion({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     debugName: 'expense-nl',
     input, // drives the hook reactively
     tools: [categoryTool],
