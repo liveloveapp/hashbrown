@@ -46,10 +46,10 @@ import { Writer } from './providers/Writer';
             </p>
           </div>
           <div class="actions">
+            <a [routerLink]="docsUrl()" wwwSquircle="8">Read the Docs</a>
             <button (click)="openDemoVideo()" wwwSquircle="8">
               Watch a Demo
             </button>
-            <a [routerLink]="docsUrl()" wwwSquircle="8">Read the Docs</a>
           </div>
           <div class="providers">
             <app-home-react></app-home-react>
@@ -66,13 +66,17 @@ import { Writer } from './providers/Writer';
       [open]="demoVideoOpen()"
       (closed)="demoVideoOpen.set(false)"
     >
-      <div style="padding:64.9% 0 0 0;position:relative;" class="video">
+      <div
+        style="position: relative; padding-bottom: 64.90384615384616%; height: 0;"
+        class="video"
+      >
         <iframe
-          src="https://player.vimeo.com/video/1088958585?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+          src="https://www.loom.com/embed/4ac3fa6ae2a1491ab26e8bde5be13cc4?sid=896a0cbb-602e-4491-80c2-dae2c3b1aa88"
           frameborder="0"
-          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-          style="position:absolute;top:0;left:0;width:100%;height:100%;"
-          title="Introducing Hashbrown"
+          webkitallowfullscreen
+          mozallowfullscreen
+          allowfullscreen
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
         ></iframe>
       </div>
     </www-video-overlay>
@@ -223,11 +227,11 @@ import { Writer } from './providers/Writer';
             }
 
             > button {
-              background: var(--sunshine-yellow, #fbbb52);
+              background: #e1e1e1;
             }
 
             > a {
-              background: #e1e1e1;
+              background: var(--sunshine-yellow, #fbbb52);
             }
           }
 
