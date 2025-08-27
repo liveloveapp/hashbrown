@@ -17,8 +17,7 @@ import { Sell } from '../icons/Sell';
               React: Generative UI Engineering
             </a>
             <ul>
-              <li><span>September 8</span> <span>11 am to 6 pm ET</span></li>
-              <li><span>September 15</span> <span>11 am to 6 pm ET</span></li>
+              <li><span>September 22</span> <span>11 am to 6 pm ET</span></li>
             </ul>
             <span class="price">
               <www-sell
@@ -44,8 +43,7 @@ import { Sell } from '../icons/Sell';
               >Angular: Generative UI Engineering</a
             >
             <ul>
-              <li><span>September 9</span> <span>11 am to 6 pm ET</span></li>
-              <li><span>September 16</span> <span>11 am to 6 pm ET</span></li>
+              <li><span>September 23</span> <span>11 am to 6 pm ET</span></li>
             </ul>
             <span class="price">
               <www-sell
@@ -69,8 +67,7 @@ import { Sell } from '../icons/Sell';
           <div class="course">
             <a routerLink="mcp-fundamentals">MCP Fundamentals</a>
             <ul>
-              <li><span>September 10</span> <span>11 am to 6 pm ET</span></li>
-              <li><span>September 17</span> <span>11 am to 6 pm ET</span></li>
+              <li><span>Coming Soon!</span></li>
             </ul>
             <span class="price">
               <www-sell
@@ -81,6 +78,7 @@ import { Sell } from '../icons/Sell';
               />
               $350 per person. Group discounts available.
             </span>
+            <!--
             <div class="action">
               <a
                 href="https://ti.to/liveloveapp/hashbrown-angular-sep-2025"
@@ -90,6 +88,7 @@ import { Sell } from '../icons/Sell';
                 Reserve to Attend Online</a
               >
             </div>
+            -->
           </div>
         </div>
       </div>
