@@ -45,7 +45,12 @@ import { Squircle } from '../Squircle';
               <h3>Finance Sample</h3>
             </div>
           </div>
-          <div class="content" wwwSquircle="16 16 0 0">todo</div>
+          <div class="content" wwwSquircle="16 16 0 0">
+            <img
+              src="/image/landing-page/yellow-box-demo.svg"
+              alt="Render a chart in response to natural language"
+            />
+          </div>
         </div>
       </a>
 
@@ -86,7 +91,12 @@ import { Squircle } from '../Squircle';
               <h3>Finance Sample</h3>
             </div>
           </div>
-          <div class="content" wwwSquircle="16 16 0 0">todo</div>
+          <div class="content" wwwSquircle="16 16 0 0">
+            <img
+              src="/image/landing-page/blue-box-demo.svg"
+              alt="Turn natural language into strongly typed data"
+            />
+          </div>
         </div>
       </a>
 
@@ -123,7 +133,12 @@ import { Squircle } from '../Squircle';
               <h3>Smart Home Sample</h3>
             </div>
           </div>
-          <div class="content" wwwSquircle="16 16 0 0">todo</div>
+          <div class="content" wwwSquircle="16 16 0 0">
+            <img
+              src="/image/landing-page/red-box-demo.svg"
+              alt="Instantly predict the next action"
+            />
+          </div>
         </div>
       </a>
     </div>
@@ -207,7 +222,7 @@ import { Squircle } from '../Squircle';
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 32px;
+            margin-top: 16px;
 
             > .text {
               display: flex;
@@ -290,12 +305,14 @@ import { Squircle } from '../Squircle';
             align-items: stretch;
             gap: 16px;
             background: #fff;
-            padding: 24px;
+            padding: 0;
             margin: 0 4px;
             height: 100%;
 
-            > p {
-              color: var(--gray-dark, #3d3c3a);
+            > img {
+              width: 100%;
+              height: 100%;
+              object-fit: contain;
             }
           }
         }
