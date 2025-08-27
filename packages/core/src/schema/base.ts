@@ -895,9 +895,81 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
 
     let parsedObject = undefined;
 
+    type DiscriminatorEntry = {
+      schema: HashbrownType;
+      literalKey: string;
+      literalValue: string;
+    };
+
+    const buildDiscriminatorMap = (
+      options: readonly HashbrownType[],
+    ): Record<string, DiscriminatorEntry> | null => {
+      const map: Record<string, DiscriminatorEntry> = {};
+
+      for (const opt of options) {
+        if (!isObjectType(opt)) {
+          return null;
+        }
+
+        const shape = (opt as any)[internal].definition.shape as Record<
+          string,
+          HashbrownType
+        >;
+
+        const literalEntries = Object.entries(shape).filter(([, v]) =>
+          isLiteralType(v as any),
+        ) as [string, HashbrownType][];
+
+        // Require exactly one literal for clear discrimination
+        if (literalEntries.length !== 1) {
+          return null;
+        }
+
+        const [literalKey, litSchema] = literalEntries[0];
+        const literalValue = (litSchema as any)[internal].definition.value as
+          | string
+          | number
+          | boolean;
+
+        if (typeof literalValue !== 'string') {
+          // Only support string-based discriminators for wrapper keys
+          return null;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
+          // Ambiguous (duplicate) discriminator value
+          return null;
+        }
+
+        map[literalValue] = { schema: opt, literalKey, literalValue };
+      }
+
+      return Object.keys(map).length === options.length ? map : null;
+    };
+
+    const discriminatorMap = buildDiscriminatorMap(options);
+
     for (let i = 0; i < options.length; i++) {
       try {
-        if (needsDiscriminatorWrapperInAnyOf(options[i])) {
+        if (needsDiscriminatorWrapperInAnyOf(options[i]) && discriminatorMap) {
+          const discriminatorEntry = Object.entries(discriminatorMap).find(
+            ([, v]) => v.schema === options[i],
+          );
+
+          if (!discriminatorEntry) {
+            throw new Error(
+              `No discriminator key found for option ${options[i]}`,
+            );
+          }
+
+          const { literalKey, literalValue, schema } = discriminatorEntry[1];
+
+          const extractedObject = (object as any)[literalValue];
+
+          extractedObject[literalKey] = literalValue;
+
+          parsedObject = schema.parseJsonSchema(extractedObject);
+        } else if (needsDiscriminatorWrapperInAnyOf(options[i])) {
           if (typeof object !== 'object' || object === null) {
             throw new Error(`Expected an object at: ${path.join('.')}`);
           }
@@ -910,7 +982,6 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
 
           const anyOfIndex = anyOfKeys[0];
 
-          // TODO: how do we handle discriminator literal keys?
           if (anyOfIndex !== i.toString()) {
             throw new Error(
               `Unexpected discriminator value ${anyOfIndex} for option ${i}`,
