@@ -1,8 +1,6 @@
 # Streaming
 
-We believe that streaming is both paramount to implementing AI generative technologies into web application and there should be minimal barriers to implementing streaming.
-
-How do we make this a reality?
+<p class="subtitle">Drop-in streaming support for eagerly parsing JSON</p>
 
 - First, we built an LLM-optimized schema language called Skillet
 - Skillet has both streaming and partial parsing built into the core
@@ -70,6 +68,36 @@ predictedLights = structuredCompletionResource({
 - The `s.object` inside the array indicates that each item in the array will be an object with the specified properties.
 - Note that the `streaming` keyword is _not_ specified for each light object in the array. This is because our Angular application requires both the `lightId` and the `brightness` properties.
 
-Here's where it gets good.
 Skillet will eagerly parse the chunks streamed to the resource `value()` signal.
 Combining this with Angular's reactivity, streaming UI to your frontend is a one-line code change with Hashbrown.
+
+---
+
+## Implementing Streaming Responses
+
+<hb-code-example header="streaming">
+
+```ts
+@Component({
+  template: `
+    @for (
+      prediction of predictedLights.value()?.lights ?? [];
+      track prediction.lightId
+    ) {
+      <app-scene-light-recommendation
+        [lightId]="prediction.lightId"
+        [brightness]="prediction.brightness"
+      />
+    }
+  `,
+})
+export class App {}
+```
+
+</hb-code-example>
+
+1. In this example, we previously created the `predictedLights` resource.
+2. We then iterate over `predictedLights.value()?.lights` to render a `app-scene-light-recommendation` for each predicted light.
+3. As the LLM streams in new lights, the `value()` signal updates, and the UI re-renders to show the new lights.
+
+There's no magic here - as the LLM streams the response, the `value()` signal is updated, and Angular takes care of the rest.

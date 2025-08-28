@@ -44,7 +44,7 @@ import { LpdWindow } from './LpdWindow';
       .label {
         color: #774625;
         font:
-          500 11px/130% normal 'Poppins',
+          500 11px/130% normal 'Fredoka',
           sans-serif;
       }
 

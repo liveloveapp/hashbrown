@@ -173,22 +173,13 @@ Skillet eagerly parses fragments of the streamed response from the LLM.
       <p>Check out the full Skillet schema</p>
     </div>
   </hb-next-step>
-  <hb-next-step link="concept/components">
+  <hb-next-step link="/concept/streaming">
     <div>
-      <hb-components />
+      <hb-code />
     </div>
     <div>
-      <h4>Generate user interfaces</h4>
-      <p>Expose Angular components to the LLM for generative UI.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/structured-output">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Get structured data from models</h4>
-      <p>Use Skillet schema to describe model responses.</p>
+      <h4>Streaming Docs</h4>
+      <p>Learn more about streaming with Skillet</p>
     </div>
   </hb-next-step>
 </hb-next-steps>

@@ -18,6 +18,7 @@ import { Markdown } from './Markdown';
 
 exposeComponent(Markdown, {
   description: 'Show markdown to the user',
+  name: 'Markdown',
   props: {
     data: s.string('The markdown content'),
   },
@@ -30,8 +31,9 @@ Let's break down the example above:
 
 1. `Markdown` is the React component that we want to expose.
 2. `description` is a human-readable description of the component that will be used by the model to understand what the component does.
-3. `props` is an object that defines the props that the component accepts. In this case, it accepts a single prop called `data`, which is a string representing the markdown content to be displayed.
-4. The `s.string()` function is used to define the type of the prop.
+3. `name` is the stable component reference for the model.
+4. `props` is an object that defines the props that the component accepts. In this case, it accepts a single prop called `data`, which is a string representing the markdown content to be displayed.
+5. The `s.string()` function is used to define the type of the prop.
 
 We should mention here that Skillet, our LLM-optimized schema language, is **type safe**.
 

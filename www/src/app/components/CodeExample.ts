@@ -95,7 +95,7 @@ import { Squircle } from './Squircle';
             gap: 4px;
             color: #e3e3e3;
             font:
-              500 12px/14px 'Poppins',
+              500 12px/14px 'Fredoka',
               sans-serif;
           }
 

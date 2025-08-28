@@ -21,7 +21,7 @@ import { RouterLink } from '@angular/router';
       text-decoration: none;
 
       font:
-        500 16px/18px Poppins,
+        500 16px/18px Fredoka,
         sans-serif;
       padding: 16px 32px;
       border-radius: 32px;

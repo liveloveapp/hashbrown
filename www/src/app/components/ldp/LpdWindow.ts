@@ -54,7 +54,7 @@ import { Component, input } from '@angular/core';
 
     .lpd-window-title {
       color: #3d3c3a;
-      font: 400 13px / normal Poppins;
+      font: 400 13px / normal Fredoka;
       padding: 0 12px;
     }
   `,

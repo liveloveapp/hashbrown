@@ -27,6 +27,8 @@ Skillet is a Zod-like schema language that is LLM-optimized.
 
 Let's look at a structured completion hook in React:
 
+<hb-code-example header="streaming">
+
 ```tsx
 import { useStructuredCompletion } from '@hashbrownai/react';
 import { s } from '@hashbrownai/core';
@@ -41,7 +43,10 @@ const schema = s.object('Your response', {
   ),
 });
 
-function usePredictedLights(sceneName: string, lights: { id: string; name: string }[]) {
+function usePredictedLights(
+  sceneName: string,
+  lights: { id: string; name: string }[],
+) {
   const input = useMemo(() => {
     return { sceneName, lights };
   }, [sceneName, lights]);
@@ -58,11 +63,44 @@ function usePredictedLights(sceneName: string, lights: { id: string; name: strin
 }
 ```
 
+</hb-code-example>
+
 - In this example, focus on the `schema` specified.
 - The `s.streaming.array` is a Skillet schema that indicates the response will be a streaming array.
 - The `s.object` inside the array indicates that each item in the array will be an object with the specified properties.
 - Note that the `streaming` keyword is _not_ specified for each light object in the array. This is because our React application requires both the `lightId` and the `brightness` properties.
 
-Here's where it gets good.
 Skillet will eagerly parse the chunks streamed to the `output` value returned by the `useStructuredCompletion` hook.
 Combining this with React's reactivity, streaming UI to your frontend is a one-line code change with Hashbrown.
+
+---
+
+## Implementating Streaming Responses
+
+<hb-code-example header="streaming">
+
+```ts
+export const App = () => {
+  const [sceneName] = useState<string>('');
+  const [lights] = useState<Light[]>([]);
+  const { output, isSending } = usePredictedLights(sceneName, lights);
+
+  return (
+    {output?.lights?.map((prediction) => (
+      <SceneLightRecommendation
+        key={prediction.lightId}
+        lightId={prediction.lightId}
+        brightness={prediction.brightness}
+      />
+    ))}
+  );
+}
+```
+
+</hb-code-example>
+
+1. In this example, we call the `usePredictedLights` hook.
+2. We then map over the `output.lights` array to render a `SceneLightRecommendation` component for each predicted light.
+3. As the LLM streams in new lights, the `output.lights` array will be updated, and the UI will re-render to show the new lights.
+
+There's no magic here - as the LLM streams the response, the `output` value is updated, and React takes care of the rest.
