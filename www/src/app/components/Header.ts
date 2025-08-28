@@ -125,7 +125,7 @@ import { DropdownMenu } from './DropDownMenu';
                     gap: 4px;
                     color: var(--gray, #5e5c5a);
                     font:
-                      700 18px/140% Fredoka,
+                      500 18px/140% Fredoka,
                       sans-serif;
 
                     &:hover,
@@ -168,7 +168,7 @@ import { DropdownMenu } from './DropDownMenu';
         color: #774625;
         text-decoration: none;
         font:
-          600 16px/24px Poppins,
+          600 16px/24px Fredoka,
           sans-serif;
         transition: background-color 0.2s ease;
 

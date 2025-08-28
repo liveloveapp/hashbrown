@@ -22,7 +22,7 @@ import { LpdWindow } from './LpdWindow';
 
     .name {
       color: #000;
-      font-family: Poppins;
+      font-family: Fredoka;
       font-size: 13px;
       font-style: normal;
       font-weight: 400;
@@ -107,7 +107,7 @@ export class LdpCompletionsLight {
 
     .title {
       color: #000;
-      font-family: Poppins;
+      font-family: Fredoka;
       font-size: 11px;
       font-style: normal;
       font-weight: 500;
@@ -134,7 +134,7 @@ export class LdpCompletionsLight {
     .label {
       grid-area: label;
       color: #3d3c3a;
-      font-family: Poppins;
+      font-family: Fredoka;
       font-size: 11px;
       font-style: normal;
       font-weight: 500;
@@ -151,7 +151,7 @@ export class LdpCompletionsLight {
       border: 1px solid #3d3c3a;
       background: #fff;
       color: #3d3c3a;
-      font-family: Poppins;
+      font-family: Fredoka;
       font-size: 13px;
       font-style: normal;
       font-weight: 400;
@@ -167,7 +167,7 @@ export class LdpCompletionsLight {
       gap: 10px;
       border: 1px solid #774625;
       color: #774625;
-      font-family: Poppins;
+      font-family: Fredoka;
       font-size: 13px;
       font-style: normal;
       font-weight: 400;
@@ -186,7 +186,7 @@ export class LdpCompletionsLight {
 
     .completion {
       color: rgba(0, 0, 0, 0.38);
-      font-family: Poppins;
+      font-family: Fredoka;
       font-size: 13px;
       font-style: italic;
       font-weight: 400;

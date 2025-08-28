@@ -74,7 +74,7 @@ import { Filter, filter, PostAttributes } from '../../models/blog.models';
           border-radius: 8px;
           border-radius: 24px;
           font:
-            400 normal 14px/18px Poppins,
+            400 normal 14px/18px Fredoka,
             sans-serif;
           text-decoration-line: underline;
           text-decoration-color: transparent;

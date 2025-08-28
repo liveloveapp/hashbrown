@@ -136,10 +136,18 @@ import { ChevronDown } from '../icons/ChevronDown';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'concept', 'streaming']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >3. Streaming</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'concept', 'functions']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >3. Tool Calling</a
+            >4. Tool Calling</a
           >
         </li>
         <li>
@@ -147,7 +155,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'structured-output']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >4. Structured Output</a
+            >5. Structured Output</a
           >
         </li>
         <li>
@@ -155,7 +163,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'components']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >5. Generative UI</a
+            >6. Generative UI</a
           >
         </li>
         <li>
@@ -163,7 +171,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'runtime']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >6. JavaScript Runtime</a
+            >7. JavaScript Runtime</a
           >
         </li>
       </ol>

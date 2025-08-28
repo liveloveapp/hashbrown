@@ -80,7 +80,7 @@ type Size = 'sm' | 'lg';
         > time {
           color: var(--gray-light, #a4a3a1);
           font:
-            400 normal 14px/18px Poppins,
+            400 normal 14px/18px Fredoka,
             sans-serif;
         }
 
@@ -132,7 +132,7 @@ type Size = 'sm' | 'lg';
 
       > p {
         font:
-          400 normal 14px/18px Poppins,
+          400 normal 14px/18px Fredoka,
           sans-serif;
       }
     }

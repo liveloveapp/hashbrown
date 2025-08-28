@@ -264,13 +264,13 @@ import { ConfigService } from '../services/ConfigService';
 
           > .title {
             font:
-              600 14px/18px Poppins,
+              600 14px/18px Fredoka,
               sans-serif;
           }
 
           > ul {
             font:
-              400 14px/18px Poppins,
+              400 14px/18px Fredoka,
               sans-serif;
             display: flex;
             flex-direction: column;

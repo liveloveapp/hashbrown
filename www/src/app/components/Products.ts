@@ -125,7 +125,7 @@ import { Check } from '../icons/Check';
             > p {
               color: #3d3c3a;
               font:
-                400 normal 14px/18px Poppins,
+                400 normal 14px/18px Fredoka,
                 sans-serif;
             }
 

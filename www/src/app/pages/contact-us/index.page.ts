@@ -116,7 +116,7 @@ const STATUS = {
         > p {
           color: #774625;
           font:
-            500 16px/24px Poppins,
+            500 16px/24px Fredoka,
             sans-serif;
         }
 
@@ -134,7 +134,7 @@ const STATUS = {
 
           > p {
             font:
-              400 14px/18px Poppins,
+              400 14px/18px Fredoka,
               sans-serif;
           }
         }
@@ -155,7 +155,7 @@ const STATUS = {
             > label {
               color: #5e5c5a;
               font:
-                400 16px/24px Poppins,
+                400 16px/24px Fredoka,
                 sans-serif;
             }
 
@@ -165,7 +165,7 @@ const STATUS = {
               border-radius: 8px;
               border: 1px solid rgba(47, 47, 43, 0.24);
               font:
-                400 16px/24px Poppins,
+                400 16px/24px Fredoka,
                 sans-serif;
             }
 
