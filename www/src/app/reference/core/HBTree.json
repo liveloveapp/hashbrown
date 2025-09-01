@@ -1,0 +1,56 @@
+{
+  "name": "HBTree",
+  "canonicalReference": "@hashbrownai/core!HBTree:type",
+  "kind": "TypeAlias",
+  "fileUrlPath": "../packages/core/src/prompt/types.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "TypeAlias",
+      "canonicalReference": "@hashbrownai/core!HBTree:type",
+      "docComment": "",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export type HBTree = " },
+        {
+          "kind": "Reference",
+          "text": "ComponentTree",
+          "canonicalReference": "@hashbrownai/core!ɵui.ComponentTree:type"
+        },
+        { "kind": "Content", "text": "[]" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../packages/core/src/prompt/types.ts",
+      "releaseTag": "Public",
+      "name": "HBTree",
+      "typeTokenRange": { "startIndex": 1, "endIndex": 3 },
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": false,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      },
+      "formattedContent": "export type HBTree =  ComponentTree [];",
+      "overlayTokens": [
+        { "kind": "Content", "text": "export type HBTree = " },
+        {
+          "kind": "Reference",
+          "text": " ComponentTree ",
+          "canonicalReference": "@hashbrownai/core!ɵui.ComponentTree:type"
+        },
+        { "kind": "Content", "text": "[];" }
+      ]
+    }
+  ]
+}

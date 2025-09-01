@@ -30,7 +30,7 @@ Then install the dependencies:
 <hb-code-example header="terminal">
 
 ```bash
-cd Hashbrown
+cd hashbrown
 npm install
 ```
 

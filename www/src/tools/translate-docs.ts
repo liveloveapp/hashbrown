@@ -7,7 +7,7 @@
  * Example:
  *   npx nx run www:translate-docs -- --from angular --to react
  */
-
+import 'dotenv/config';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import OpenAI from 'openai';
@@ -38,7 +38,7 @@ if (FROM === TO) {
 /* OPENAI CONFIG                                                       */
 /* ------------------------------------------------------------------ */
 const openai = new OpenAI();
-const MODEL = 'gpt-4o-mini';
+const MODEL = 'gpt-4.1';
 
 /* ------------------------------------------------------------------ */
 /* HELPERS                                                             */
@@ -62,7 +62,7 @@ function parseArgs(args: string[]) {
 /** Load a Hashbrown `*.api.md` report if it exists */
 async function loadApiReport(pkg: string): Promise<string> {
   try {
-    return await readFile(join(`../packages/${pkg}/${pkg}.api.md`), 'utf8');
+    return await readFile(join(`packages/${pkg}/${pkg}.api.md`), 'utf8');
   } catch {
     return '';
   }
@@ -74,7 +74,7 @@ async function loadApiReport(pkg: string): Promise<string> {
  * If `existing` is provided it becomes extra context so that human
  * modifications are preserved.
  */
-async function transflateDoc(opts: {
+async function translateDocs(opts: {
   apiReports: string[];
   fromFramework: string;
   toFramework: string;
@@ -112,9 +112,9 @@ CONSTRAINTS
 WHEN AN EXISTING TARGET DOC IS SUPPLIED
 ---------------------------------------
 If \`existingTargetDoc\` appears below, treat it as the **authoritative starting point** (it may contain manual edits).  
-– Keep its improvements.  
-– Update only sections that need API or example changes.  
-– Preserve any human-added caveats or clarifications unless obsolete.
+- Keep its improvements.  
+- Update only sections that need API or example changes.  
+- Preserve any human-added caveats or clarifications unless obsolete.
 
 RETURN FORMAT
 -------------
@@ -133,7 +133,7 @@ ${apiReports.join('\n\n\n')}
     {
       role: 'user',
       content: `
-### Source documentation (${fromFramework}) – relative path: ${relPath}
+### Source documentation (${fromFramework}) - relative path: ${relPath}
 ${sourceDoc}
       `.trim(),
     },
@@ -143,7 +143,7 @@ ${sourceDoc}
     messages.push({
       role: 'user',
       content: `
-### existingTargetDoc (${toFramework}) – same relative path
+### existingTargetDoc (${toFramework}) - same relative path
 ${existingTargetDoc}
       `.trim(),
     });
@@ -176,9 +176,9 @@ ${existingTargetDoc}
 /* MAIN                                                                */
 /* ------------------------------------------------------------------ */
 async function main() {
-  console.log(chalk.cyan(`Transflating docs: ${FROM} → ${TO}\n`));
+  console.log(chalk.cyan(`Translating docs: ${FROM} → ${TO}\n`));
 
-  const mdFiles = await readdir('src/app/pages/docs', { recursive: true });
+  const mdFiles = await readdir('www/src/app/pages/docs', { recursive: true });
 
   // Pre-load relevant API reports (core + both frameworks)
   const apiReports = await Promise.all(
@@ -188,29 +188,36 @@ async function main() {
   );
 
   for (const file of mdFiles.filter((p) => p.endsWith('.md'))) {
-    if (!new RegExp(`[\\/\\\\]${FROM}[\\/\\\\]`, 'i').test(file)) continue;
+    if (!file.startsWith(FROM)) continue;
+    console.log(chalk.cyan(`Translating ${file}`));
 
-    const srcPath = join('src/app/pages/docs', file);
+    const srcPath = join('www/src/app/pages/docs', file);
     const srcMarkdown = await readFile(srcPath, 'utf8');
 
-    const targetRelPath = file.replace(new RegExp(`\\b${FROM}\\b`, 'i'), TO);
-    const targetPath = join('src/app/pages/docs', targetRelPath);
+    const targetRelPath = file.replace(FROM, TO);
+    const targetPath = join('www/src/app/pages/docs', targetRelPath);
 
     let existingTargetMarkdown: string | undefined;
     try {
       existingTargetMarkdown = await readFile(targetPath, 'utf8');
     } catch {
-      /* file may not exist – that's fine */
+      /* file may not exist - that's fine */
+      console.log('file does not exist');
+    }
+
+    if (existingTargetMarkdown) {
+      console.log('existing target markdown exists');
+      continue;
     }
 
     try {
-      const { markdown, observations } = await transflateDoc({
+      const { markdown, observations } = await translateDocs({
         apiReports,
         fromFramework: FROM,
         toFramework: TO,
         sourceDoc: srcMarkdown,
         existingTargetDoc: existingTargetMarkdown,
-        relPath: relative('src/app/pages/docs', srcPath),
+        relPath: relative('www/src/app/pages/docs', srcPath),
       });
 
       await mkdir(dirname(targetPath), { recursive: true });
