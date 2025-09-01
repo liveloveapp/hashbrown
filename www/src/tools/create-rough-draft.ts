@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
- * create-rough-draft.ts
+ * From the root of the monorepo, run:
+ *
+ * ```sh
+ * npm run docs:draft -- --framework react --prompt "How to stream structured data from LLM to UI"
+ * ```
  *
  * Generate a *new* Hashbrown documentation page (Markdown) using OpenAI.
  * You provide:
@@ -14,14 +18,14 @@
  *   4) Save it to disk as Markdown
  *
  * Examples:
- *   npx tsx tools/create-rough-draft.ts --framework react --prompt "How to stream structured data from LLM to UI"
- *   npx tsx tools/create-rough-draft.ts --framework angular --prompt-file ./notes/new-page-idea.txt
+ *   npm run docs:draft -- --framework react --prompt "How to stream structured data from LLM to UI"
+ *   npm run docs:draft -- --framework angular --prompt-file ./notes/new-page-idea.txt
  *
  * Optional:
  *   --out "src/app/pages/docs/react/guides/streaming-data.md"
  *   --force   (overwrite if target exists)
  */
-
+import 'dotenv/config';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import OpenAI from 'openai';

@@ -113,17 +113,17 @@ import { ChevronDown } from '../icons/ChevronDown';
     <div>
       <h2>Guide</h2>
       <ol>
-        <!-- <li>
-          <a [routerLink]="[docsUrl(), 'guide', 'quick']"
-            >Interacting with AI</a
+        <li>
+          <a [routerLink]="[docsUrl(), 'concept', 'ai-basics']"
+            >1. Basics of AI</a
           >
-        </li> -->
+        </li>
         <li>
           <a
             [routerLink]="[docsUrl(), 'concept', 'system-instructions']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >1. System Instructions</a
+            >2. System Instructions</a
           >
         </li>
         <li>
@@ -131,7 +131,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'schema']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >2. Skillet Schema</a
+            >3. Skillet Schema</a
           >
         </li>
         <li>
@@ -139,7 +139,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'streaming']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >3. Streaming</a
+            >4. Streaming</a
           >
         </li>
         <li>
@@ -147,7 +147,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'functions']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >4. Tool Calling</a
+            >5. Tool Calling</a
           >
         </li>
         <li>
@@ -155,7 +155,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'structured-output']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >5. Structured Output</a
+            >6. Structured Output</a
           >
         </li>
         <li>
@@ -163,7 +163,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'components']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >6. Generative UI</a
+            >7. Generative UI</a
           >
         </li>
         <li>
@@ -171,7 +171,7 @@ import { ChevronDown } from '../icons/ChevronDown';
             [routerLink]="[docsUrl(), 'concept', 'runtime']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >7. JavaScript Runtime</a
+            >8. JavaScript Runtime</a
           >
         </li>
       </ol>

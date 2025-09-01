@@ -16,7 +16,10 @@
     "clean": "git clean -xdf",
     "lint": "npx nx run-many -t lint",
     "prepare": "husky install",
-    "test": "npx nx run-many -t test"
+    "test": "npx nx run-many -t test",
+    "docs:translate": "npx tsx www/src/tools/translate-docs.ts",
+    "docs:review": "npx tsx www/src/tools/review-docs.ts",
+    "docs:draft": "npx tsx www/src/tools/create-rough-draft.ts"
   },
   "lint-staged": {
     "*.ts": [

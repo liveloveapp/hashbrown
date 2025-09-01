@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import OpenAI from 'openai';
@@ -100,7 +101,7 @@ ${doc}`,
 }
 
 async function main() {
-  const mdFiles = await readdir(`src/app/pages/docs`, {
+  const mdFiles = await readdir(`www/src/app/pages/docs`, {
     recursive: true,
   });
   for (const f of mdFiles.filter((p) => p.endsWith('.md'))) {
@@ -109,7 +110,7 @@ async function main() {
     //   continue;
     // }
 
-    const mdText = await readFile(join('src/app/pages/docs', f), 'utf8');
+    const mdText = await readFile(join('www/src/app/pages/docs', f), 'utf8');
 
     const apiReports = await Promise.all([
       loadApiReport('core'),
@@ -123,7 +124,7 @@ async function main() {
 
     function loadApiReport(packageName: string) {
       return readFile(
-        join(`../packages/${packageName}/${packageName}.api.md`),
+        join(`packages/${packageName}/${packageName}.api.md`),
         'utf8',
       );
     }
@@ -131,7 +132,7 @@ async function main() {
     const out = await review({
       apiReports,
       doc: mdText,
-      path: relative('src/app/pages/docs', f),
+      path: relative('www/src/app/pages/docs', f),
     });
 
     console.log(out.summary);

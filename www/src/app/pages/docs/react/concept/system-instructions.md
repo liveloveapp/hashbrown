@@ -152,7 +152,7 @@ const { output } = useCompletion({
   `,
   input: textInputValue,
   model: 'gpt-3.5-turbo',
-  system: 'Help the user autocomplete this input.'
+  system: 'Help the user autocomplete this input.',
 });
 ```
 
@@ -247,3 +247,19 @@ const result = OpenAI.stream.text({
 ```
 
 You can use this as an opportunity to handle more advanced use cases, like providing parts of the system instruction client-side and server-side, or using a prompt management library.
+
+---
+
+## Next steps
+
+<hb-next-steps>
+  <hb-next-step link="concept/schema">
+    <div>
+      <hb-database-cog />
+    </div>
+    <div>
+      <h4>Defining schemas using Skillet</h4>
+      <p>Learn about Skillet, Hashbrown's schema language for generating structured completions</p>
+    </div>
+  </hb-next-step>
+</hb-next-steps>
