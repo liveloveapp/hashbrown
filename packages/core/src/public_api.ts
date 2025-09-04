@@ -11,6 +11,7 @@ export {
 export * as ɵui from './ui';
 export * as ɵtypes from './utils/types';
 export type { KnownModelIds } from './utils';
+export type { AzureKnownModelIds } from './utils';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { prompt } from './prompt/prompt';
 export type { SystemPrompt, HBTree, PromptDiagnostic } from './prompt/types';
