@@ -1,4 +1,9 @@
 export {
+  exposeComponent,
+  type ComponentPropSchema,
+  type ExposedComponent,
+} from './expose-component.fn';
+export {
   HashbrownProvider,
   type HashbrownProviderOptions,
 } from './hashbrown-provider';
@@ -12,6 +17,8 @@ export {
   type UseCompletionOptions,
   type UseCompletionResult,
 } from './hooks/use-completion';
+export { useRuntime, type UseRuntimeOptions } from './hooks/use-runtime';
+export { useRuntimeFunction } from './hooks/use-runtime-function';
 export {
   useStructuredChat,
   type UseStructuredChatOptions,
@@ -23,21 +30,23 @@ export {
   type UseStructuredCompletionResult,
 } from './hooks/use-structured-completion';
 export {
-  useUiChat,
-  type UiAssistantMessage,
-  type UiChatMessage,
-  type UiChatOptions,
-  type UiUserMessage,
-} from './hooks/use-ui-chat';
-export { useTool, type ToolOptions } from './hooks/use-tool';
-export { useRuntimeFunction } from './hooks/use-runtime-function';
-export { useRuntime, type UseRuntimeOptions } from './hooks/use-runtime';
+  useTool,
+  type ToolOptions,
+  type ToolOptionsWithInput,
+  type ToolOptionsWithoutInput,
+  type ToolOptionsWithUnknownSchema,
+} from './hooks/use-tool';
 export {
   useToolJavaScript,
   type UseToolJavaScriptOptions,
 } from './hooks/use-tool-javascript';
 export {
-  exposeComponent,
-  type ComponentPropSchema,
-  type ExposedComponent,
-} from './expose-component.fn';
+  useUiChat,
+  type UiAssistantMessage,
+  type UiChatMessage,
+  type UiChatOptions,
+  type UiChatSchema,
+  type UiChatSchemaComponent,
+  type UiErrorMessage,
+  type UiUserMessage,
+} from './hooks/use-ui-chat';

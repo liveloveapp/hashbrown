@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseChatOptions:interface",
-      "docComment": "/**\n * Options for the `useChat` hook.\n */\n",
+      "docComment": "/**\n * Options for the `useChat` hook.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": "> " }
       ],
@@ -116,7 +116,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<string, Tools>[]" },
             { "kind": "Content", "text": ";" }
@@ -150,7 +150,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<string, Tools>[];" }
           ]
@@ -164,7 +164,7 @@
             {
               "kind": "Reference",
               "text": "KnownModelIds",
-              "canonicalReference": "!unknown"
+              "canonicalReference": "@hashbrownai/react!~KnownModelIds:type"
             },
             { "kind": "Content", "text": ";" }
           ],
@@ -194,7 +194,11 @@
           "formattedContent": "model:  KnownModelIds ;",
           "overlayTokens": [
             { "kind": "Content", "text": "model: " },
-            { "kind": "Content", "text": " KnownModelIds " },
+            {
+              "kind": "Reference",
+              "text": " KnownModelIds ",
+              "canonicalReference": "@hashbrownai/react!~KnownModelIds:type"
+            },
             { "kind": "Content", "text": ";" }
           ]
         },
@@ -308,13 +312,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Options for the `useChat` hook.\n",
+        "summary": "Options for the `useChat` hook.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -332,7 +336,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": ">" }
       ]

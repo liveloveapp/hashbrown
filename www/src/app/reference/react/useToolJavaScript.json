@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useToolJavaScript:function(1)",
-      "docComment": "/**\n * Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n *\n * @param options - The options for creating the tool.\n *\n * @returns The tool.\n */\n",
+      "docComment": "/**\n * Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n *\n * @param options - The options for creating the tool.\n *\n * @returns The tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -23,7 +23,7 @@
         {
           "kind": "Reference",
           "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         {
           "kind": "Content",
@@ -46,7 +46,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -56,7 +56,7 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The tool.\n",
+        "returns": " The tool.\n\n\n",
         "see": [],
         "params": [
           {
@@ -81,7 +81,7 @@
         {
           "kind": "Reference",
           "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         {
           "kind": "Content",

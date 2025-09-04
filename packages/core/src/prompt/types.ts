@@ -2,8 +2,14 @@ import { ComponentTree } from '../ui';
 import { HashbrownType } from '../schema/base';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * @public
+ */
 export type PromptDiagnosticSeverity = 'error' | 'warning';
 
+/**
+ * @public
+ */
 export type PromptDiagnosticCode =
   | 'E1001' // UnknownTag
   | 'E1102' // MissingProp
@@ -13,6 +19,9 @@ export type PromptDiagnosticCode =
   | 'W2001' // ExtraProp
   | 'W2101'; // ChildrenPolicy
 
+/**
+ * @public
+ */
 export interface PromptDiagnostic {
   code: PromptDiagnosticCode;
   severity: PromptDiagnosticSeverity;
@@ -24,6 +33,9 @@ export interface PromptDiagnostic {
   snippet: string;
 }
 
+/**
+ * @public
+ */
 export type HBTree = ComponentTree[];
 
 export type UiAstNode =
@@ -52,6 +64,9 @@ export type UiBlock = {
   ast: UiAstNode[];
 };
 
+/**
+ * @public
+ */
 export type SystemPrompt = {
   compile: (components: readonly any[], schema: HashbrownType) => string;
   examples: HBTree[];

@@ -18,6 +18,11 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
 
 /**
  * Options for the `useStructuredChat` hook.
+ *
+ * @public
+ * @typeParam Schema - The schema to use for the chat.
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam Output - The type of the output from the chat.
  */
 export interface UseStructuredChatOptions<
   Schema extends s.HashbrownType,
@@ -71,6 +76,10 @@ export interface UseStructuredChatOptions<
 
 /**
  * The result object-type returned by the `useStructuredChat` hook that provides functions and state for interacting with the chat.
+ *
+ * @public
+ * @typeParam Output - The type of the output from the chat.
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   /**
@@ -140,14 +149,15 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
  * This React hook creates a chat instance used to interact with the LLM.
  * The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.
  *
- * @description
+ * @public
+ * @remarks
  * The `useStructuredChat` hook provides functionality for structured chats. Structured chats are used when you want to use the LLM to generate structured data according to a defined schema. This is particularly useful for:
  * - Generating typed data structures
  * - Creating form responses
  * - Building UI components
  * - Extracting information into a specific format
  *
- * @returns {UseStructuredChatResult} An object containing chat state and functions to interact with the chat.
+ * @returns An object containing chat state and functions to interact with the chat.
  *
  * @example
  * In this example, the LLM will respond with a JSON object containing the translations of the input message into English, Spanish, and French.

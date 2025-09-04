@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!CompletionResourceOptions:interface",
-      "docComment": "/**\n * Options for the completion resource.\n */\n",
+      "docComment": "/**\n * Options for the completion resource.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -156,7 +156,7 @@
             {
               "kind": "Reference",
               "text": "SignalLike",
-              "canonicalReference": "@hashbrownai/angular!~SignalLike:type"
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
             },
             { "kind": "Content", "text": "<string>" },
             { "kind": "Content", "text": ";" }
@@ -190,7 +190,7 @@
             {
               "kind": "Reference",
               "text": " SignalLike",
-              "canonicalReference": "@hashbrownai/angular!~SignalLike:type"
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
             },
             { "kind": "Content", "text": " <string>;" }
           ]
@@ -204,7 +204,7 @@
             {
               "kind": "Reference",
               "text": "SignalLike",
-              "canonicalReference": "@hashbrownai/angular!~SignalLike:type"
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
             },
             { "kind": "Content", "text": "<string>" },
             { "kind": "Content", "text": ";" }
@@ -238,7 +238,7 @@
             {
               "kind": "Reference",
               "text": " SignalLike",
-              "canonicalReference": "@hashbrownai/angular!~SignalLike:type"
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
             },
             { "kind": "Content", "text": " <string>;" }
           ]
@@ -248,13 +248,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Options for the completion resource.\n",
+        "summary": "Options for the completion resource.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

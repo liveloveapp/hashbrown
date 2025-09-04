@@ -12,7 +12,8 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "@openapi-contrib/json-schema-to-openapi-schema": "^3.0.3"
   },
   "peerDependencies": {
     "@google/genai": "^0.8.0",

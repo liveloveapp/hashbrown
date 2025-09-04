@@ -9,12 +9,13 @@ import {
 /**
  * Creates a function with an input schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.args - The input schema of the function.
- * @param cfg.result - The result schema of the function.
- * @param cfg.handler - The handler of the function.
+ * @public
+ * @param cfg - The configuration for the function containing:
+ *   - `name`: The name of the function
+ *   - `description`: The description of the function
+ *   - `args`: The input schema of the function
+ *   - `result`: The result schema of the function
+ *   - `handler`: The handler of the function
  * @returns The function reference.
  */
 export function createRuntimeFunction<
@@ -34,11 +35,12 @@ export function createRuntimeFunction<
 /**
  * Creates a function without an input schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.result - The result schema of the function.
- * @param cfg.handler - The handler of the function.
+ * @public
+ * @param cfg - The configuration for the function containing:
+ *   - `name`: The name of the function
+ *   - `description`: The description of the function
+ *   - `result`: The result schema of the function
+ *   - `handler`: The handler of the function
  * @returns The function reference.
  */
 export function createRuntimeFunction<
@@ -55,11 +57,12 @@ export function createRuntimeFunction<
 /**
  * Creates a function with an input schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.args - The args schema of the function.
- * @param cfg.handler - The handler of the function.
+ * @public
+ * @param cfg - The configuration for the function containing:
+ *   - `name`: The name of the function
+ *   - `description`: The description of the function
+ *   - `args`: The args schema of the function
+ *   - `handler`: The handler of the function
  * @returns The function reference.
  */
 export function createRuntimeFunction<ArgsSchema extends s.HashbrownType>(cfg: {
@@ -75,10 +78,11 @@ export function createRuntimeFunction<ArgsSchema extends s.HashbrownType>(cfg: {
 /**
  * Creates a function without input or output schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.handler - The handler of the function, which returns void or a promise thereof.
+ * @public
+ * @param cfg - The configuration for the function containing:
+ *   - `name`: The name of the function
+ *   - `description`: The description of the function
+ *   - `handler`: The handler of the function, which returns void or a promise thereof
  * @returns The function reference.
  */
 export function createRuntimeFunction(cfg: {
@@ -87,6 +91,18 @@ export function createRuntimeFunction(cfg: {
   handler: (abortSignal?: AbortSignal) => void | Promise<void>;
 }): RuntimeFunctionRef<null, void>;
 
+/**
+ * Creates a function with an input schema.
+ *
+ * @public
+ * @param cfg - The configuration for the function containing:
+ *   - `name`: The name of the function
+ *   - `description`: The description of the function
+ *   - `args`: The args schema of the function
+ *   - `result`: The result schema of the function
+ *   - `handler`: The handler of the function
+ * @returns The function reference.
+ */
 export function createRuntimeFunction(
   cfg:
     | {

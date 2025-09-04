@@ -7,8 +7,9 @@ import { Prettify } from './types';
 
 /**
  * This is a list of models that are known to be supported by OpenAI.
+ * Refer to: https://platform.openai.com/docs/models/models
  *
- * https://platform.openai.com/docs/models/models
+ * @public
  */
 export type OpenAiKnownModelIds =
   | 'o4-mini'
@@ -31,8 +32,9 @@ export type OpenAiKnownModelIds =
 
 /**
  * This is a list of known Models for Google.
+ * Refer to: https://ai.google.dev/gemini-api/docs/models
  *
- * https://ai.google.dev/gemini-api/docs/models
+ * @public
  */
 export type GoogleKnownModelIds =
   | 'gemini-2.5-pro'
@@ -45,8 +47,9 @@ export type GoogleKnownModelIds =
 
 /**
  * This is a list of known Models for Writer.
+ * Refer to: https://dev.writer.com/home/models
  *
- * https://dev.writer.com/home/models
+ * @public
  */
 export type WriterKnownModelIds =
   | 'palmyra-x5'
@@ -59,13 +62,16 @@ export type WriterKnownModelIds =
 
 /**
  * This is a list of known Models for Azure.
+ * Refer to: https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference#models
  *
- * https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference#models
+ * @public
  */
 export type AzureKnownModelIds = `${OpenAiKnownModelIds}@${string}`;
 
 /**
  * This is a union of all known model ids.
+ *
+ * @public
  */
 export type KnownModelIds = Prettify<
   | OpenAiKnownModelIds

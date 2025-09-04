@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!HashbrownProvider:function(1)",
-      "docComment": "/**\n * The context for the Hashbrown provider. This is used to store the URL and middleware for contacting the Hashbrown endpoint.\n *\n * @example\n * ```ts\n * <HashbrownProvider url=\"https://your.api.local/chat\">\n *   <App />\n * </HashbrownProvider>\n * ```\n *\n */\n",
+      "docComment": "/**\n * The context for the Hashbrown provider. This is used to store the URL and middleware for contacting the Hashbrown endpoint.\n *\n * @example\n * ```ts\n * <HashbrownProvider url=\"https://your.api.local/chat\">\n *   <App />\n * </HashbrownProvider>\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "HashbrownProvider: (\nprops: " },
         {
@@ -46,7 +46,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -60,7 +60,7 @@
         "see": [],
         "params": [],
         "examples": [
-          "\n```ts\n<HashbrownProvider url=\"https://your.api.local/chat\">\n  <App />\n</HashbrownProvider>\n```\n\n"
+          "\n```ts\n<HashbrownProvider url=\"https://your.api.local/chat\">\n  <App />\n</HashbrownProvider>\n```\n\n\n"
         ]
       },
       "formattedContent": "HashbrownProvider: (\n  props:  HashbrownProviderOptions  & {\n    children:  React.ReactNode ;\n  },\n) => import(\"react/jsx-runtime\"). JSX.Element; ",

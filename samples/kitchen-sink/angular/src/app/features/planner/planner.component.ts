@@ -225,8 +225,6 @@ export class PlannerComponent {
           sceneId: s.string('the id of the scene'),
         }),
         handler: (params) => {
-          console.log('createScheduledScene', params);
-
           return {
             id: crypto.randomUUID(),
             ...params,

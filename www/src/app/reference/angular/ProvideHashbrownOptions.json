@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!ProvideHashbrownOptions:interface",
-      "docComment": "/**\n * Hashbrown must be configured with a base URL, and may optionally include middleware and a flag to emulate structured output.\n */\n",
+      "docComment": "/**\n * Hashbrown must be configured with a base URL, and may optionally include middleware and a flag to emulate structured output.\n *\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "interface ProvideHashbrownOptions " }
       ],
@@ -98,7 +98,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Middleware",
-              "canonicalReference": "!Chat.Middleware:type"
+              "canonicalReference": "@hashbrownai/angular!~Middleware:type"
             },
             { "kind": "Content", "text": "[]" },
             { "kind": "Content", "text": ";" }
@@ -132,7 +132,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Middleware",
-              "canonicalReference": "!Chat.Middleware:type"
+              "canonicalReference": "@hashbrownai/angular!~Middleware:type"
             },
             { "kind": "Content", "text": "[];" }
           ]
@@ -142,13 +142,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Hashbrown must be configured with a base URL, and may optionally include middleware and a flag to emulate structured output.\n",
+        "summary": "Hashbrown must be configured with a base URL, and may optionally include middleware and a flag to emulate structured output.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

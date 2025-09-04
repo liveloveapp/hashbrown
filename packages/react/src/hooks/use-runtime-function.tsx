@@ -10,13 +10,14 @@ import { DependencyList, useCallback, useMemo, useRef } from 'react';
 /**
  * Creates a function with an input schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.args - The input schema of the function.
- * @param cfg.result - The result schema of the function.
- * @param cfg.handler - The handler of the function.
- * @param cfg.deps - The dependencies of the function.
+ * @public
+ * @param cfg - The configuration for the function containing:
+ *   - name: The name of the function
+ *   - description: The description of the function
+ *   - args: The input schema of the function
+ *   - result: The result schema of the function
+ *   - handler: The handler of the function
+ *   - deps: The dependencies of the function
  * @returns The function reference.
  */
 export function useRuntimeFunction<
@@ -37,12 +38,12 @@ export function useRuntimeFunction<
 /**
  * Creates a function without an input schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.result - The result schema of the function.
- * @param cfg.handler - The handler of the function.
- * @param cfg.deps - The dependencies of the function.
+ * @param cfg - The configuration for the function containing:
+ *   - name: The name of the function
+ *   - description: The description of the function
+ *   - result: The result schema of the function
+ *   - handler: The handler of the function
+ *   - deps: The dependencies of the function
  * @returns The function reference.
  */
 export function useRuntimeFunction<ResultSchema extends s.HashbrownType>(cfg: {
@@ -58,12 +59,12 @@ export function useRuntimeFunction<ResultSchema extends s.HashbrownType>(cfg: {
 /**
  * Creates a function with an input schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.args - The args schema of the function.
- * @param cfg.handler - The handler of the function.
- * @param cfg.deps - The dependencies of the function.
+ * @param cfg - The configuration for the function containing:
+ *   - name: The name of the function
+ *   - description: The description of the function
+ *   - args: The args schema of the function
+ *   - handler: The handler of the function
+ *   - deps: The dependencies of the function
  * @returns The function reference.
  */
 export function useRuntimeFunction<ArgsSchema extends s.HashbrownType>(cfg: {
@@ -80,12 +81,13 @@ export function useRuntimeFunction<ArgsSchema extends s.HashbrownType>(cfg: {
 /**
  * Creates a function without input or output schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.handler - The handler of the function, which returns void or a promise thereof.
- * @param cfg.deps - The dependencies of the function.
+ * @param cfg - The configuration for the function containing:
+ *   - name: The name of the function
+ *   - description: The description of the function
+ *   - handler: The handler of the function, which returns void or a promise thereof
+ *   - deps: The dependencies of the function
  * @returns The function reference.
+ * @public
  */
 export function useRuntimeFunction(cfg: {
   name: string;
@@ -94,6 +96,9 @@ export function useRuntimeFunction(cfg: {
   handler: (abortSignal?: AbortSignal) => void | Promise<void>;
 }): RuntimeFunctionRef<null, void>;
 
+/**
+ * @public
+ */
 export function useRuntimeFunction(
   cfg:
     | {

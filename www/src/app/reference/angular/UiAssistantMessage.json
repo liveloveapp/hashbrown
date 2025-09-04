@@ -8,25 +8,25 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/angular!UiAssistantMessage:type",
-      "docComment": "",
+      "docComment": "/**\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "type UiAssistantMessage<Tools extends " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": " = " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": "> = " },
         {
           "kind": "Reference",
           "text": "Chat.AssistantMessage",
-          "canonicalReference": "!Chat.AssistantMessage:type"
+          "canonicalReference": "@hashbrownai/angular!~AssistantMessage_3:interface"
         },
         { "kind": "Content", "text": "<" },
         {
@@ -44,7 +44,7 @@
         {
           "kind": "Reference",
           "text": "TagNameRegistry",
-          "canonicalReference": "@hashbrownai/angular!~TagNameRegistry:type"
+          "canonicalReference": "@hashbrownai/angular!TagNameRegistry:type"
         },
         { "kind": "Content", "text": ";\n}" },
         { "kind": "Content", "text": ";" }
@@ -63,13 +63,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -87,19 +87,19 @@
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": " = " },
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ",\n> = " },
         {
           "kind": "Reference",
           "text": " Chat.AssistantMessage",
-          "canonicalReference": "!Chat.AssistantMessage:type"
+          "canonicalReference": "@hashbrownai/angular!~AssistantMessage_3:interface"
         },
         { "kind": "Content", "text": " <\n  " },
         {
@@ -117,7 +117,7 @@
         {
           "kind": "Reference",
           "text": " TagNameRegistry ",
-          "canonicalReference": "@hashbrownai/angular!~TagNameRegistry:type"
+          "canonicalReference": "@hashbrownai/angular!TagNameRegistry:type"
         },
         { "kind": "Content", "text": ";\n};" }
       ]

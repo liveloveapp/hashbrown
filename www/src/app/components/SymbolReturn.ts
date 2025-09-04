@@ -17,18 +17,18 @@ import { SymbolExcerpt } from './SymbolExcerpt';
   `,
 })
 export class SymbolReturn {
-  symbol = input.required<ApiMember>();
+  member = input.required<ApiMember>();
   returns = computed(() => {
-    const symbol = this.symbol();
-    const returnTypeTokenRange = symbol.returnTypeTokenRange;
+    const member = this.member();
+    const returnTypeTokenRange = member.returnTypeTokenRange;
 
     if (!returnTypeTokenRange) {
       return;
     }
 
     return {
-      description: symbol.docs.returns,
-      excerptTokens: symbol.excerptTokens.slice(
+      description: member.docs.returns,
+      excerptTokens: member.excerptTokens.slice(
         returnTypeTokenRange.startIndex,
         returnTypeTokenRange.endIndex,
       ),

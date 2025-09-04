@@ -1,0 +1,310 @@
+{
+  "name": "ToolOptionsWithInput",
+  "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput:interface",
+  "kind": "Interface",
+  "fileUrlPath": "../dist/packages/react/src/hooks/use-tool.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "Interface",
+      "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput:interface",
+      "docComment": "/**\n * @public\n */\n",
+      "excerptTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface ToolOptionsWithInput<Name extends "
+        },
+        { "kind": "Content", "text": "string" },
+        { "kind": "Content", "text": ", Schema extends " },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
+        },
+        { "kind": "Content", "text": ", Result> " }
+      ],
+      "fileUrlPath": "../dist/packages/react/src/hooks/use-tool.d.ts",
+      "releaseTag": "Public",
+      "typeParameters": [
+        {
+          "typeParameterName": "Name",
+          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Schema",
+          "constraintTokenRange": { "startIndex": 3, "endIndex": 4 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        },
+        {
+          "typeParameterName": "Result",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
+        }
+      ],
+      "name": "ToolOptionsWithInput",
+      "preserveMemberOrder": false,
+      "members": [
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput#deps:member",
+          "docComment": "/**\n * Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "deps: " },
+            {
+              "kind": "Reference",
+              "text": "DependencyList",
+              "canonicalReference": "@types/react!React.DependencyList:type"
+            },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "deps",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "deps:  DependencyList ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "deps: " },
+            {
+              "kind": "Reference",
+              "text": " DependencyList ",
+              "canonicalReference": "@types/react!React.DependencyList:type"
+            },
+            { "kind": "Content", "text": ";" }
+          ]
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput#description:member",
+          "docComment": "/**\n * The description of the tool. This helps the LLM understand its purpose.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "description: " },
+            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "description",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The description of the tool. This helps the LLM understand its purpose.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "description: string;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "description: string;" }
+          ]
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput#handler:member",
+          "docComment": "/**\n * The handler of the tool. This is what the LLM agent will call to execute the tool, passing in an input that adheres to the schema.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "handler: " },
+            { "kind": "Content", "text": "(input: " },
+            {
+              "kind": "Reference",
+              "text": "s.Infer",
+              "canonicalReference": "@hashbrownai/react!~Infer:type"
+            },
+            { "kind": "Content", "text": "<Schema>, abortSignal: " },
+            {
+              "kind": "Reference",
+              "text": "AbortSignal",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ") => " },
+            {
+              "kind": "Reference",
+              "text": "Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": "<Result>" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "handler",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 8 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The handler of the tool. This is what the LLM agent will call to execute the tool, passing in an input that adheres to the schema.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "handler: (\n  input:  s.Infer <Schema>,\n  abortSignal:  AbortSignal ,\n) =>  Promise <Result>;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "handler: (\n  input: " },
+            {
+              "kind": "Reference",
+              "text": " s.Infer",
+              "canonicalReference": "@hashbrownai/react!~Infer:type"
+            },
+            { "kind": "Content", "text": " <Schema>,\n  abortSignal: " },
+            {
+              "kind": "Reference",
+              "text": " AbortSignal ",
+              "canonicalReference": "!AbortSignal:interface"
+            },
+            { "kind": "Content", "text": ",\n) => " },
+            {
+              "kind": "Reference",
+              "text": " Promise",
+              "canonicalReference": "!Promise:interface"
+            },
+            { "kind": "Content", "text": " <Result>;" }
+          ]
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput#name:member",
+          "docComment": "/**\n * The name of the tool.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "name: " },
+            { "kind": "Content", "text": "Name" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "name",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The name of the tool.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "name: Name;",
+          "overlayTokens": [{ "kind": "Content", "text": "name: Name;" }]
+        },
+        {
+          "kind": "PropertySignature",
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput#schema:member",
+          "docComment": "/**\n * The schema that describes the input for the tool.\n */\n",
+          "excerptTokens": [
+            { "kind": "Content", "text": "schema: " },
+            { "kind": "Content", "text": "Schema" },
+            { "kind": "Content", "text": ";" }
+          ],
+          "isReadonly": false,
+          "isOptional": false,
+          "releaseTag": "Public",
+          "name": "schema",
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "docs": {
+            "modifiers": {
+              "isInternal": false,
+              "isPublic": false,
+              "isAlpha": false,
+              "isBeta": false,
+              "isOverride": false,
+              "isExperimental": false
+            },
+            "summary": "The schema that describes the input for the tool.\n",
+            "usageNotes": "",
+            "remarks": "",
+            "deprecated": "",
+            "returns": "",
+            "see": [],
+            "params": [],
+            "examples": []
+          },
+          "formattedContent": "schema: Schema;",
+          "overlayTokens": [{ "kind": "Content", "text": "schema: Schema;" }]
+        }
+      ],
+      "extendsTokenRanges": [],
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": true,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      },
+      "formattedContent": "export interface ToolOptionsWithInput<Name extends string, Schema extends s.HashbrownType, Result>",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export interface ToolOptionsWithInput<Name extends string, Schema extends "
+        },
+        {
+          "kind": "Reference",
+          "text": "s.HashbrownType",
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
+        },
+        { "kind": "Content", "text": ", Result>" }
+      ]
+    }
+  ]
+}

@@ -3,19 +3,23 @@ import { Frame } from './frame-types';
 
 /**
  * Decode options.
+ *
+ * @public
  */
 export interface DecodeFramesOptions {
   signal: AbortSignal;
 }
 
 /**
- * Decode a ReadableStream<Uint8Array> of length-prefixed JSON frames into a stream of T.
+ * Decode a ReadableStream\<Uint8Array\> of length-prefixed JSON frames into a stream of T.
  *
  * Frame format: [4-byte BE length][UTF-8 JSON payload]
  *
- * @param stream ReadableStream producing Uint8Array chunks
- * @param options decoding options
- * @yields parsed JSON objects of type T
+ * @public
+ * @param stream - ReadableStream producing Uint8Array chunks
+ * @param options - decoding options
+ * @typeParam T - The type of the parsed JSON objects
+ * @returns - A stream of parsed JSON objects of type T
  */
 export async function* decodeFrames(
   stream: ReadableStream<Uint8Array>,

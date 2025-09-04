@@ -20,7 +20,7 @@
       "@hashbrownai/azure": ["packages/azure/src/index.ts"],
       "@hashbrownai/core": ["packages/core/src/index.ts"],
       "@hashbrownai/google": ["packages/google/src/index.ts"],
-      "@hashbrownai/ollama": ["projects/ollama/src/index.ts"],
+      "@hashbrownai/ollama": ["packages/ollama/src/index.ts"],
       "@hashbrownai/openai": ["packages/openai/src/index.ts"],
       "@hashbrownai/react": ["packages/react/src/index.ts"],
       "@hashbrownai/writer": ["packages/writer/src/index.ts"],

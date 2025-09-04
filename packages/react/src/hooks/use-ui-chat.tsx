@@ -1,11 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
-import React, { useCallback, useMemo, useState } from 'react';
+import {
+  createElement,
+  ReactElement,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
 
 /**
  * Represents a UI component in the chat schema with its properties and children.
+ *
+ * @public
  */
 export interface UiChatSchemaComponent {
   /** The name of the component to render */
@@ -18,6 +27,8 @@ export interface UiChatSchemaComponent {
 
 /**
  * The schema for UI components in the chat.
+ *
+ * @public
  */
 export interface UiChatSchema {
   /** Array of UI components to render */
@@ -27,28 +38,38 @@ export interface UiChatSchema {
 /**
  * A message from the assistant that includes rendered UI components.
  * Extends the base assistant message with UI-specific content.
+ *
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export type UiAssistantMessage<Tools extends Chat.AnyTool> =
   Chat.AssistantMessage<UiChatSchema, Tools> & {
     /** The rendered React elements from the assistant's response */
-    ui: React.ReactElement[] | null;
+    ui: ReactElement[] | null;
   };
 
 /**
  * A message from the user in the UI chat.
  * Uses the standard user message type from the chat system.
+ *
+ * @public
  */
 export type UiUserMessage = Chat.UserMessage;
 
 /**
  * An error message in the UI chat.
  * Uses the standard error message type from the chat system.
+ *
+ * @public
  */
 export type UiErrorMessage = Chat.ErrorMessage;
 
 /**
  * Union type of all possible message types in the UI chat.
  * Can be an assistant message with UI components, a user message, or an error message.
+ *
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export type UiChatMessage<Tools extends Chat.AnyTool> =
   | UiAssistantMessage<Tools>
@@ -57,6 +78,9 @@ export type UiChatMessage<Tools extends Chat.AnyTool> =
 
 /**
  * Options for the `useUiChat` hook.
+ *
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
@@ -102,14 +126,16 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
  * This React hook creates a chat instance that can generate and render UI components.
  * The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.
  *
- * @description
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @remarks
  * The `useUiChat` hook provides functionality for generating UI components through chat. This is particularly useful for:
  * - Dynamic UI generation
  * - Interactive chat interfaces
  * - Component-based responses
  * - Building chat-based UIs
  *
- * @returns {UseUiChatResult} An object containing chat state, functions to interact with the chat, and rendered UI components.
+ * @returns An object containing chat state, functions to interact with the chat, and rendered UI components.
  *
  * @example
  * In this example, the LLM will respond with a UI component that can be rendered directly in your React application.
@@ -168,7 +194,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
     (
       nodes: string | Array<UiChatSchemaComponent>,
       parentKey = '',
-    ): React.ReactElement[] | string => {
+    ): ReactElement[] | string => {
       if (typeof nodes === 'string') {
         return nodes;
       }
@@ -180,11 +206,11 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
         const componentType = flattenedComponents.get($tag)?.component;
 
         if ($tag && componentType) {
-          const children: React.ReactNode[] | string | null = element.$children
+          const children: ReactNode[] | string | null = element.$children
             ? buildContent($children, key)
             : null;
 
-          return React.createElement(componentType, {
+          return createElement(componentType, {
             ...$props,
             children,
             key,

@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!uiChatResource:function(1)",
-      "docComment": "/**\n * Creates a UI chat resource.\n *\n * @param args - The arguments for the UI chat resource.\n *\n * @returns The UI chat resource.\n */\n",
+      "docComment": "/**\n * Creates a UI chat resource.\n *\n * @param args - The arguments for the UI chat resource.\n *\n * @returns The UI chat resource.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ">(args: " },
         {
@@ -57,7 +57,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -67,7 +67,7 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The UI chat resource.\n",
+        "returns": " The UI chat resource.\n\n\n",
         "see": [],
         "params": [
           {
@@ -86,7 +86,7 @@
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ",\n>(\n  args: " },
         {

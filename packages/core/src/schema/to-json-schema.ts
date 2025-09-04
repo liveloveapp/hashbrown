@@ -25,6 +25,8 @@ export function descriptionToCamelCase(description: string): string {
  * Walks the HashbrownType graph, finds any sub-schemas seen more than once
  * (excluding the root), assigns each a unique name, and emits a draft-07 JSON Schema
  * with a $defs section.  Cycles always become $refs.
+ *
+ * @public
  */
 export function toJsonSchema(schema: HashbrownType) {
   const rootNode = schema;
@@ -72,10 +74,10 @@ export function toJsonSchema(schema: HashbrownType) {
   /**
    * Recursive printer.
    *
-   * @param n         current node
-   * @param isRoot    true only for the very top-level schema
-   * @param inDef     if non-null, we're printing $defs[inDef] — any other def becomes $ref
-   * @param pathSeen  tracks the chain of inlined nodes to catch cycles
+   * @param n - current node
+   * @param isRoot - true only for the very top-level schema
+   * @param inDef - if non-null, we're printing $defs[inDef] — any other def becomes $ref
+   * @param pathSeen - tracks the chain of inlined nodes to catch cycles
    */
   function printNode(
     n: HashbrownType,

@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!ChatResourceOptions:interface",
-      "docComment": "/**\n * Configuration options for the chat resource.\n *\n * @template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n */\n",
+      "docComment": "/**\n * Configuration options for the chat resource.\n *\n * @param system - The system (assistant) prompt.\n *\n * @param model - The model identifier to use for the chat.\n *\n * @param tools - Optional array of bound tools available to the chat.\n *\n * @param messages - Optional initial list of chat messages.\n *\n * @param debounce - Optional debounce interval in milliseconds between user inputs.\n *\n * @param debugName - Optional name used for debugging in logs.\n *\n * @param apiUrl - Optional override for the API base URL.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": "> " }
       ],
@@ -143,13 +143,13 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#messages:member",
-          "docComment": "/**\n * The initial messages for the chat.\n */\n",
+          "docComment": "/**\n * The initial messages for the chat.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "messages?: " },
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/angular!~Message_3:type"
             },
             { "kind": "Content", "text": "<string, Tools>[] | " },
             {
@@ -161,7 +161,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/angular!~Message_3:type"
             },
             { "kind": "Content", "text": "<string, Tools>[]>" },
             { "kind": "Content", "text": ";" }
@@ -180,7 +180,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The initial messages for the chat.\n",
+            "summary": "The initial messages for the chat.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -195,7 +195,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/angular!~Message_3:type"
             },
             { "kind": "Content", "text": "<string, Tools>[] | " },
             {
@@ -207,7 +207,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/angular!~Message_3:type"
             },
             { "kind": "Content", "text": "<string, Tools>[]>;" }
           ]
@@ -221,7 +221,7 @@
             {
               "kind": "Reference",
               "text": "KnownModelIds",
-              "canonicalReference": "!unknown"
+              "canonicalReference": "@hashbrownai/angular!~KnownModelIds:type"
             },
             { "kind": "Content", "text": " | " },
             {
@@ -233,7 +233,7 @@
             {
               "kind": "Reference",
               "text": "KnownModelIds",
-              "canonicalReference": "!unknown"
+              "canonicalReference": "@hashbrownai/angular!~KnownModelIds:type"
             },
             { "kind": "Content", "text": ">" },
             { "kind": "Content", "text": ";" }
@@ -264,7 +264,11 @@
           "formattedContent": "model:  KnownModelIds  |\n   Signal < KnownModelIds >;",
           "overlayTokens": [
             { "kind": "Content", "text": "model: " },
-            { "kind": "Content", "text": " KnownModelIds " },
+            {
+              "kind": "Reference",
+              "text": " KnownModelIds ",
+              "canonicalReference": "@hashbrownai/angular!~KnownModelIds:type"
+            },
             { "kind": "Content", "text": " |\n  " },
             {
               "kind": "Reference",
@@ -272,7 +276,11 @@
               "canonicalReference": "@angular/core!Signal:type"
             },
             { "kind": "Content", "text": " <" },
-            { "kind": "Content", "text": " KnownModelIds " },
+            {
+              "kind": "Reference",
+              "text": " KnownModelIds ",
+              "canonicalReference": "@hashbrownai/angular!~KnownModelIds:type"
+            },
             { "kind": "Content", "text": ">;" }
           ]
         },
@@ -328,7 +336,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!ChatResourceOptions#tools:member",
-          "docComment": "/**\n * The tools to use for the chat.\n */\n",
+          "docComment": "/**\n * The tools to use for the chat.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "tools?: " },
             { "kind": "Content", "text": "Tools[]" },
@@ -348,7 +356,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The tools to use for the chat.\n",
+            "summary": "The tools to use for the chat.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -365,19 +373,48 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Configuration options for the chat resource.\n\n@template Tools  @property {string | Signal<string>} system - The system (assistant) prompt.  @property {string | Signal<string>} model - The model identifier to use for the chat.  @property {Tools[]} [tools] - Optional array of bound tools available to the chat.  @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.  @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.  @property {string} [debugName] - Optional name used for debugging in logs.  @property {string} [apiUrl] - Optional override for the API base URL.\n",
+        "summary": "Configuration options for the chat resource.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
         "returns": "",
         "see": [],
-        "params": [],
+        "params": [
+          {
+            "name": "system",
+            "description": "The system (assistant) prompt.\n\n"
+          },
+          {
+            "name": "model",
+            "description": "The model identifier to use for the chat.\n\n"
+          },
+          {
+            "name": "tools",
+            "description": "Optional array of bound tools available to the chat.\n\n"
+          },
+          {
+            "name": "messages",
+            "description": "Optional initial list of chat messages.\n\n"
+          },
+          {
+            "name": "debounce",
+            "description": "Optional debounce interval in milliseconds between user inputs.\n\n"
+          },
+          {
+            "name": "debugName",
+            "description": "Optional name used for debugging in logs.\n\n"
+          },
+          {
+            "name": "apiUrl",
+            "description": "Optional override for the API base URL.\n\n"
+          }
+        ],
         "examples": []
       },
       "formattedContent": "interface ChatResourceOptions<Tools extends Chat.AnyTool>",
@@ -389,7 +426,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ">" }
       ]

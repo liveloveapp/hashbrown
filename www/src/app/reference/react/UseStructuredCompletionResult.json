@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseStructuredCompletionResult:interface",
-      "docComment": "/**\n * The result object-type returned by the `useStructuredCompletion` hook that provides the structured output and state for the completion.\n */\n",
+      "docComment": "/**\n * The result object-type returned by the `useStructuredCompletion` hook that provides the structured output and state for the completion.\n *\n * @typeParam Output - The type of the output from the chat.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -302,13 +302,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "The result object-type returned by the `useStructuredCompletion` hook that provides the structured output and state for the completion.\n",
+        "summary": "The result object-type returned by the `useStructuredCompletion` hook that provides the structured output and state for the completion.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!UiChatResourceRef:interface",
-      "docComment": "/**\n * A reference to the UI chat resource.\n */\n",
+      "docComment": "/**\n * A reference to the UI chat resource.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": "> extends " },
         {
@@ -109,7 +109,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!UiChatResourceRef#resendMessages:member",
-          "docComment": "",
+          "docComment": "/**\n * Cause current messages to be resent. Can be used after an error in chat.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "resendMessages: " },
             { "kind": "Content", "text": "() => void" },
@@ -129,7 +129,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Cause current messages to be resent. Can be used after an error in chat.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -146,14 +146,14 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!UiChatResourceRef#sendMessage:member",
-          "docComment": "",
+          "docComment": "/**\n * Send a new user message to the chat.\n *\n * @param message - The user message to send.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "sendMessage: " },
             { "kind": "Content", "text": "(message: " },
             {
               "kind": "Reference",
               "text": "Chat.UserMessage",
-              "canonicalReference": "!Chat.UserMessage:type"
+              "canonicalReference": "@hashbrownai/angular!~UserMessage_3:type"
             },
             { "kind": "Content", "text": ") => void" },
             { "kind": "Content", "text": ";" }
@@ -172,13 +172,18 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Send a new user message to the chat.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
             "returns": "",
             "see": [],
-            "params": [],
+            "params": [
+              {
+                "name": "message",
+                "description": "The user message to send.\n"
+              }
+            ],
             "examples": []
           },
           "formattedContent": "sendMessage: (message: Chat.UserMessage) => void;",
@@ -187,7 +192,7 @@
             {
               "kind": "Reference",
               "text": "Chat.UserMessage",
-              "canonicalReference": "!Chat.UserMessage:type"
+              "canonicalReference": "@hashbrownai/angular!~UserMessage_3:type"
             },
             { "kind": "Content", "text": ") => void;" }
           ]
@@ -245,13 +250,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "A reference to the UI chat resource.\n",
+        "summary": "A reference to the UI chat resource.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -269,7 +274,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": "> extends " },
         {

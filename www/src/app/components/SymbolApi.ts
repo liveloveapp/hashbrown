@@ -27,13 +27,24 @@ export const SymbolApiDensity = {
         [overlayTokens]="headerOverlayTokens()"
         class="header"
       />
-      @for (member of bodyMembers(); track member.canonicalReference) {
-        @switch (density()) {
-          @case ('0') {
-            <a
-              [href]="currentUrlWithoutHash() + '#' + member.name"
-              (click)="navigateToMethod($event, member.name)"
-            >
+      <div class="members">
+        @for (member of bodyMembers(); track member.canonicalReference) {
+          @switch (density()) {
+            @case ('0') {
+              <a
+                [href]="currentUrlWithoutHash() + '#' + member.name"
+                (click)="navigateToMethod($event, member.name)"
+              >
+                <www-symbol-excerpt
+                  [excerptTokens]="member.excerptTokens"
+                  [formattedContent]="member.formattedContent"
+                  [overlayTokens]="member.overlayTokens ?? null"
+                  [deprecated]="!!member.docs.deprecated"
+                  class="member"
+                />
+              </a>
+            }
+            @case ('-1') {
               <www-symbol-excerpt
                 [excerptTokens]="member.excerptTokens"
                 [formattedContent]="member.formattedContent"
@@ -41,19 +52,10 @@ export const SymbolApiDensity = {
                 [deprecated]="!!member.docs.deprecated"
                 class="member"
               />
-            </a>
-          }
-          @case ('-1') {
-            <www-symbol-excerpt
-              [excerptTokens]="member.excerptTokens"
-              [formattedContent]="member.formattedContent"
-              [overlayTokens]="member.overlayTokens ?? null"
-              [deprecated]="!!member.docs.deprecated"
-              class="member"
-            />
+            }
           }
         }
-      }
+      </div>
       @if (footerExcerptTokens().length) {
         <www-symbol-excerpt
           [excerptTokens]="footerExcerptTokens()"
@@ -72,23 +74,26 @@ export const SymbolApiDensity = {
     www-symbol-excerpt-group {
       padding: 8px 0;
 
-      > a {
-        &:hover {
-          background: #3d3c3a;
+      .members {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-left: 16px;
+
+        > a {
+          &:hover {
+            background: #3d3c3a;
+          }
+        }
+
+        &.d-1 {
+          .header,
+          .member,
+          .footer {
+            padding: 2px 8px;
+          }
         }
       }
-
-      &.d-1 {
-        .header,
-        .member,
-        .footer {
-          padding: 2px 8px;
-        }
-      }
-    }
-
-    .member {
-      margin-left: 16px;
     }
   `,
 })

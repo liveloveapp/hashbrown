@@ -631,6 +631,9 @@ function injectExamples(
   return parts.out + text.slice(parts.cursor);
 }
 
+/**
+ * @public
+ */
 export function prompt(
   strings: TemplateStringsArray,
   ...exprs: unknown[]

@@ -8,13 +8,13 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/react!ComponentPropSchema:type",
-      "docComment": "/**\n * When exposing a component to the chat, you must provide a schema for the props of that component. The `ComponentPropSchema` type defines the schema for those component props.\n *\n * @example\n * ```ts\n * // Example usage in a tool definition.\n * exposeComponent(CardComponent, {\n *   // ...\n *   props: { // The ComponentPropSchema\n *     title: s.string('The title of the card'),\n *     description: s.streaming.string('The description of the card'),\n *   },\n * });\n * ```\n *\n */\n",
+      "docComment": "/**\n * When exposing a component to the chat, you must provide a schema for the props of that component. The `ComponentPropSchema` type defines the schema for those component props.\n *\n * @example\n * ```ts\n * // Example usage in a tool definition.\n * exposeComponent(CardComponent, {\n *   // ...\n *   props: { // The ComponentPropSchema\n *     title: s.string('The title of the card'),\n *     description: s.streaming.string('The description of the card'),\n *   },\n * });\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "export type ComponentPropSchema<T> = " },
         {
           "kind": "Reference",
           "text": "ɵtypes.Prettify",
-          "canonicalReference": "!ɵtypes.Prettify:type"
+          "canonicalReference": "@hashbrownai/react!~Prettify:type"
         },
         { "kind": "Content", "text": "<T extends " },
         {
@@ -26,7 +26,7 @@
         {
           "kind": "Reference",
           "text": "s.Schema",
-          "canonicalReference": "!s.Schema:type"
+          "canonicalReference": "@hashbrownai/react!~Schema:type"
         },
         { "kind": "Content", "text": "<P[K]>;\n} : never>" },
         { "kind": "Content", "text": ";" }
@@ -45,7 +45,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -59,7 +59,7 @@
         "see": [],
         "params": [],
         "examples": [
-          "\n```ts\n// Example usage in a tool definition.\nexposeComponent(CardComponent, {\n  // ...\n  props: { // The ComponentPropSchema\n    title: s.string('The title of the card'),\n    description: s.streaming.string('The description of the card'),\n  },\n});\n```\n\n"
+          "\n```ts\n// Example usage in a tool definition.\nexposeComponent(CardComponent, {\n  // ...\n  props: { // The ComponentPropSchema\n    title: s.string('The title of the card'),\n    description: s.streaming.string('The description of the card'),\n  },\n});\n```\n\n\n"
         ]
       },
       "formattedContent": "export type ComponentPropSchema<T> =  ɵtypes.Prettify <\n  T extends  ComponentType <infer P>\n    ? {\n        [K in keyof P]?:  s.Schema <P[K]>;\n      }\n    : never\n>;",
@@ -68,7 +68,7 @@
         {
           "kind": "Reference",
           "text": " ɵtypes.Prettify",
-          "canonicalReference": "!ɵtypes.Prettify:type"
+          "canonicalReference": "@hashbrownai/react!~Prettify:type"
         },
         { "kind": "Content", "text": " <\n  T extends " },
         {
@@ -83,7 +83,7 @@
         {
           "kind": "Reference",
           "text": " s.Schema",
-          "canonicalReference": "!s.Schema:type"
+          "canonicalReference": "@hashbrownai/react!~Schema:type"
         },
         { "kind": "Content", "text": " <P[K]>;\n      }\n    : never\n>;" }
       ]

@@ -8,13 +8,13 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/angular!ComponentPropSchema:type",
-      "docComment": "",
+      "docComment": "/**\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "type ComponentPropSchema<T> = " },
         {
           "kind": "Reference",
           "text": "_types.Prettify",
-          "canonicalReference": "!_types.Prettify:type"
+          "canonicalReference": "@hashbrownai/angular!~Prettify:type"
         },
         {
           "kind": "Content",
@@ -23,19 +23,19 @@
         {
           "kind": "Reference",
           "text": "AngularSignalLike",
-          "canonicalReference": "@hashbrownai/angular!~AngularSignalLike:type"
+          "canonicalReference": "@hashbrownai/angular!AngularSignalLike:type"
         },
         { "kind": "Content", "text": "<infer U> ? " },
         {
           "kind": "Reference",
           "text": "s.Schema",
-          "canonicalReference": "!s.Schema:type"
+          "canonicalReference": "@hashbrownai/angular!~Schema:type"
         },
         { "kind": "Content", "text": "<U> : " },
         {
           "kind": "Reference",
           "text": "s.Schema",
-          "canonicalReference": "!s.Schema:type"
+          "canonicalReference": "@hashbrownai/angular!~Schema:type"
         },
         { "kind": "Content", "text": "<P[K]>;\n} : never>" },
         { "kind": "Content", "text": ";" }
@@ -54,13 +54,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -75,7 +75,7 @@
         {
           "kind": "Reference",
           "text": " _types.Prettify",
-          "canonicalReference": "!_types.Prettify:type"
+          "canonicalReference": "@hashbrownai/angular!~Prettify:type"
         },
         {
           "kind": "Content",
@@ -84,7 +84,7 @@
         {
           "kind": "Reference",
           "text": " AngularSignalLike",
-          "canonicalReference": "@hashbrownai/angular!~AngularSignalLike:type"
+          "canonicalReference": "@hashbrownai/angular!AngularSignalLike:type"
         },
         {
           "kind": "Content",
@@ -93,13 +93,13 @@
         {
           "kind": "Reference",
           "text": " s.Schema",
-          "canonicalReference": "!s.Schema:type"
+          "canonicalReference": "@hashbrownai/angular!~Schema:type"
         },
         { "kind": "Content", "text": " <U>\n          : " },
         {
           "kind": "Reference",
           "text": " s.Schema",
-          "canonicalReference": "!s.Schema:type"
+          "canonicalReference": "@hashbrownai/angular!~Schema:type"
         },
         { "kind": "Content", "text": " <P[K]>;\n      }\n    : never\n>;" }
       ]

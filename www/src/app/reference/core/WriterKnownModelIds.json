@@ -1,0 +1,51 @@
+{
+  "name": "WriterKnownModelIds",
+  "canonicalReference": "@hashbrownai/core!WriterKnownModelIds:type",
+  "kind": "TypeAlias",
+  "fileUrlPath": "../packages/core/src/utils/llm.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "TypeAlias",
+      "canonicalReference": "@hashbrownai/core!WriterKnownModelIds:type",
+      "docComment": "/**\n * This is a list of known Models for Writer. Refer to: https://dev.writer.com/home/models\n *\n * @public\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "export type WriterKnownModelIds = " },
+        {
+          "kind": "Content",
+          "text": "'palmyra-x5' | 'palmyra-x4' | 'palmyra-x-003-instruct' | 'palmyra-vision' | 'palmyra-med' | 'palmyra-fin' | 'palmyra-creative'"
+        },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../packages/core/src/utils/llm.ts",
+      "releaseTag": "Public",
+      "name": "WriterKnownModelIds",
+      "typeTokenRange": { "startIndex": 1, "endIndex": 2 },
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": true,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "This is a list of known Models for Writer. Refer to: https://dev.writer.com/home/models\n\n\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      },
+      "formattedContent": "export type WriterKnownModelIds =\n  | \"palmyra-x5\"\n  | \"palmyra-x4\"\n  | \"palmyra-x-003-instruct\"\n  | \"palmyra-vision\"\n  | \"palmyra-med\"\n  | \"palmyra-fin\"\n  | \"palmyra-creative\";",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "export type WriterKnownModelIds =\n  | \"palmyra-x5\"\n  | \"palmyra-x4\"\n  | \"palmyra-x-003-instruct\"\n  | \"palmyra-vision\"\n  | \"palmyra-med\"\n  | \"palmyra-fin\"\n  | \"palmyra-creative\";"
+        }
+      ]
+    }
+  ]
+}
