@@ -54,11 +54,11 @@ import { PostAttributes } from '../../models/blog.models';
         gap: 8px;
 
         > h1 {
-          color: #774625;
+          color: var(--gray-dark);
           font:
-            800 40px/56px 'KefirVariable',
+            700 28px/36px 'KefirVariable',
             sans-serif;
-          font-variation-settings: 'wght' 800;
+          font-variation-settings: 'wght' 700;
         }
 
         > .team {
@@ -163,6 +163,10 @@ import { PostAttributes } from '../../models/blog.models';
         font:
           700 16px/24px 'JetBrains Mono',
           monospace;
+      }
+
+      hb-code-example {
+        margin-bottom: 16px;
       }
 
       blockquote {
