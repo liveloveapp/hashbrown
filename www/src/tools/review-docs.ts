@@ -105,8 +105,8 @@ async function main() {
     recursive: true,
   });
   for (const f of mdFiles.filter((p) => p.endsWith('.md'))) {
-    // uncomment if you want to review a specific package
-    // if (!f.includes('react')) {
+    // uncomment if you want to review a specific package or file
+    // if (!f.includes('ui-chatbot')) {
     //   continue;
     // }
 
