@@ -17,7 +17,7 @@ import { Sell } from '../icons/Sell';
               React: Generative UI Engineering
             </a>
             <ul>
-              <li><span>September 22</span> <span>11 am to 6 pm ET</span></li>
+              <li><span>October 13</span> <span>11 am to 6 pm ET</span></li>
             </ul>
             <span class="price">
               <www-sell
@@ -43,7 +43,7 @@ import { Sell } from '../icons/Sell';
               >Angular: Generative UI Engineering</a
             >
             <ul>
-              <li><span>September 23</span> <span>11 am to 6 pm ET</span></li>
+              <li><span>October 14</span> <span>11 am to 6 pm ET</span></li>
             </ul>
             <span class="price">
               <www-sell
