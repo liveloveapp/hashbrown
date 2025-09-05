@@ -42,7 +42,7 @@ Streams an Ollama chat completion as a series of encoded frames. Handles content
 - **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
 - **Client Selection:**
   - Default: local Ollama via the `ollama` Node client (honors `OLLAMA_HOST`)
-  - Cloud: set `turbo.apiKey` to route via Ollama Cloud
+  - Turbo: set `turbo.apiKey` to route via Turbo
 - **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
 
 ---
@@ -54,7 +54,7 @@ import { HashbrownOllama } from '@hashbrownai/ollama';
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownOllama.stream.text({
-    // Optional: use Ollama Cloud
+    // Optional: use Ollama Turbo
     // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
     request: req.body, // must be Chat.Api.CompletionCreateParams
   });

@@ -1,9 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { addDoc, collection, getFirestore } from 'firebase/firestore';
-import { Header } from '../../components/Header';
-import { BrandLiveLoveApp } from '../../icons/BrandLiveLoveApp';
 import { Footer } from '../../components/Footer';
+import { Header } from '../../components/Header';
+import { Squircle } from '../../components/Squircle';
 import { FirebaseService } from '../../services/FirebaseService';
 
 const STATUS = {
@@ -14,22 +14,17 @@ const STATUS = {
 };
 
 @Component({
-  imports: [ReactiveFormsModule, Header, BrandLiveLoveApp, Footer],
+  imports: [ReactiveFormsModule, Header, Footer, Squircle],
   template: `
     <www-header />
-    <div class="bleed">
+    <main class="bleed">
       <div class="about">
-        <h1>Talk to our team</h1>
+        <h1>Contact sales</h1>
         <p>
-          We're a team of engineers, designers, and developers who are
-          passionate about building the next generation of web applications -
-          and we work at a software consultancy called LiveLoveApp.
+          Tell us a little bit more about your organization and we'll get in
+          touch with you. You can also reach our sales team directly at <a href="mailto:hello@liveloveapp.com">hello@liveloveapp.com</a>.
         </p>
-        <p>
-          Work with LiveLoveApp to accelerate the intelligence of your web
-          application using hashbrown.
-        </p>
-        <www-brand-liveloveapp />
+        <p><a href="https://liveloveapp.com">Learn more about LiveLoveApp</a></p>
       </div>
       <div class="contact-us">
         @if (status() === STATUS.SUCCESS) {
@@ -67,6 +62,7 @@ const STATUS = {
             <button
               type="submit"
               [disabled]="status() === STATUS.IN_PROGRESS || form.invalid"
+              wwwSquircle="8"
             >
               {{
                 status() === STATUS.IN_PROGRESS ? 'Sending...' : 'Send Message'
@@ -75,18 +71,24 @@ const STATUS = {
           </form>
         }
       </div>
-    </div>
+    </main>
     <www-footer />
   `,
   styles: `
     :host {
-      flex: 1 auto;
       display: flex;
       flex-direction: column;
-      height: 100%;
+      min-height: 100%;
+      background-color: var(--vanilla-ivory, #faf9f0);
+      background-image: url('/image/texture/fabric.png');
+      background-size: auto;
+      background-repeat: repeat;
+      background-position: center;
+      background-attachment: fixed;
     }
 
     .bleed {
+      flex: 1 auto;
       align-self: center;
       padding: 32px;
       display: grid;
@@ -100,7 +102,6 @@ const STATUS = {
         display: flex;
         flex-direction: column;
         gap: 32px;
-        border-right: 1px solid rgba(47, 47, 43, 0.24);
 
         > h1 {
           display: flex;
@@ -114,10 +115,19 @@ const STATUS = {
         }
 
         > p {
-          color: #774625;
+          color: var(--gray, #5e5c5a);
           font:
-            500 16px/24px Fredoka,
+            400 16px / 24px 'Fredoka',
             sans-serif;
+
+          > a {
+            text-decoration: underline;
+            text-decoration-color: var(--gray, #5e5c5a);
+
+            &:hover {
+              text-decoration-color: #fbbb52;
+            }
+          }
         }
 
         > div {
@@ -177,25 +187,16 @@ const STATUS = {
           }
 
           > button {
-            align-self: flex-end;
+            width: 100%;
             display: flex;
+            padding: 12px 24px;
             justify-content: center;
             align-items: center;
-            color: rgba(47, 47, 43, 0.88);
+            color: rgba(0, 0, 0, 0.64);
+            background: var(--sunshine-yellow-light, #fde4ba);
             font:
-              500 18px/24px 'Fredoka',
+              400 16px/18px 'Fredoka',
               sans-serif;
-            padding: 12px 24px;
-            border-radius: 48px;
-            border: 6px solid #d8ecef;
-            background: #9ecfd7;
-            transition:
-              color 0.2s ease-in-out,
-              border 0.2s ease-in-out;
-
-            &:hover {
-              color: #5e5c5a;
-            }
           }
         }
       }

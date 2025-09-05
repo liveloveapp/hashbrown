@@ -48,7 +48,7 @@ import { ConfigService } from '../services/ConfigService';
           <div class="title">Contact</div>
           <ul>
             <li>
-              <a routerLink="/contact-us" class="underline">Contact Us</a>
+              <a routerLink="/contact-us" class="underline">Contact sales</a>
             </li>
             <li>
               <a href="mailto:hello@liveloveapp.com" class="underline">

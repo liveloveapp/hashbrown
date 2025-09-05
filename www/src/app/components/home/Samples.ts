@@ -1,15 +1,11 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ChevronRight } from '../../icons/ChevronRight';
-import { Code } from '../../icons/Code';
-import { Components } from '../../icons/Components';
-import { Send } from '../../icons/Send';
 import { ConfigService } from '../../services/ConfigService';
 import { Squircle } from '../Squircle';
 
 @Component({
   selector: 'www-samples',
-  imports: [ChevronRight, Code, Components, RouterLink, Send, Squircle],
+  imports: [RouterLink, Squircle],
   template: `
     <div class="bleed">
       <a
@@ -25,14 +21,11 @@ import { Squircle } from '../Squircle';
             components and stream them into the page. Interfaces stay on-brand,
             context-aware, and production-ready.
           </p>
-          <div class="button" wwwSquircle="8">
-            <www-components />
-            <div class="text">
-              <span>Expose Components</span>
-              <small>Use an LLM to generate user interfaces</small>
-            </div>
-            <www-chevron-right height="32px" width="32px" />
-          </div>
+          <div class="gap"></div>
+          <small
+            >Learn how to build a chatbot with Generative UI and Tool
+            Calling</small
+          >
         </div>
         <div
           class="window"
@@ -71,14 +64,10 @@ import { Squircle } from '../Squircle';
             build friendlier apps. Streaming primitives keep interactions fast,
             responsive, and type-safe.
           </p>
-          <div class="button" wwwSquircle="8">
-            <www-code />
-            <div class="text">
-              <span>Structured Data</span>
-              <small>Turn natural language into strongly typed data</small>
-            </div>
-            <www-chevron-right height="32px" width="32px" />
-          </div>
+          <div class="gap"></div>
+          <small
+            >Learn how to convert natural language into structured data</small
+          >
         </div>
         <div
           class="window"
@@ -101,7 +90,7 @@ import { Squircle } from '../Squircle';
       </a>
 
       <a
-        [routerLink]="[docsUrl(), 'concept', 'streaming']"
+        [routerLink]="[docsUrl(), 'concept', 'structured-output']"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunset-orange, #e88c4d)"
@@ -110,17 +99,11 @@ import { Squircle } from '../Squircle';
           <h2>Instantly Predict the Next Action</h2>
           <p>
             Skip menus and dead ends. Use Hashbrown to suggest the right next
-            step from context, whether it’s navigation, filling a form, or
+            step from context, whether it's navigation, filling a form, or
             kicking off a task, so your users stay in the flow.
           </p>
-          <div class="button" wwwSquircle="8">
-            <www-send />
-            <div class="text">
-              <span>Predictive Actions</span>
-              <small>Skip menus and dead ends</small>
-            </div>
-            <www-chevron-right height="32px" width="32px" />
-          </div>
+          <div class="gap"></div>
+          <small>Learn the basics of generating structured output</small>
         </div>
         <div
           class="window"
@@ -167,19 +150,8 @@ import { Squircle } from '../Squircle';
 
         &:hover {
           > .header {
-            > .button {
-              > .text {
-                > span {
-                }
-                > small {
-                  color: var(--gray-dark, #3d3c3a);
-                }
-              }
-
-              > www-chevron-right {
-                opacity: 1;
-                transform: translateX(8px);
-              }
+            > small {
+              color: var(--gray-dark, #3d3c3a);
             }
           }
         }
@@ -218,37 +190,20 @@ import { Squircle } from '../Squircle';
               sans-serif;
           }
 
-          > .button {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 16px;
+          > .gap {
+            flex: 1 auto;
+          }
 
-            > .text {
-              display: flex;
-              flex-direction: column;
-              gap: 4px;
+          > small {
+            text-decoration: underline;
+            text-decoration-color: var(--gray, #5e5c5a);
+            color: var(--gray, #5e5c5a);
+            font:
+              400 14px/24px Fredoka,
+              sans-serif;
 
-              > span {
-                color: var(--gray, #5e5c5a);
-                font:
-                  700 14px/16px Fredoka,
-                  sans-serif;
-              }
-
-              > small {
-                color: var(--gray, #);
-                font:
-                  400 12px/16px Fredoka,
-                  sans-serif;
-              }
-            }
-
-            > www-chevron-right {
-              opacity: 0;
-              transition:
-                transform 0.2s ease-in-out,
-                opacity 0.2s ease-in-out;
+            &:hover {
+              text-decoration-color: #fbbb52;
             }
           }
         }
@@ -327,10 +282,10 @@ import { Squircle } from '../Squircle';
 
         > a {
           padding: 40px;
-          transition: transform 0.2s ease-in-out;
+          transition: transform 0.34s ease-in-out;
 
           &:hover {
-            transform: scale(1.02);
+            transform: scale(1.012);
           }
 
           &:first-child {

@@ -39,9 +39,8 @@ Learn how to integrate a remote MCP server with tool calling in Hashbrown in a R
 
 For trust and safety, an intelligent agent (human) should be in the loop and be able to allow or deny tool invocations.
 
-1. Integrate user interface for providing the user with control over the tools that the model can access.
-2. Create a clear visualization of the tools that are being invoked by the model.
-3. Integrating human confirmation prompts for tool calling.
+1. Create a clear visualization of the tools that are being invoked by the model.
+2. Integrating human confirmation prompts for tool calling.
 
 ## Prerequisites
 
