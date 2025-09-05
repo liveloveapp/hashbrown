@@ -2,13 +2,22 @@
 import { s } from '../schema';
 import { Prettify } from '../utils';
 
-type Component<T = any> =
+/**
+ * @public
+ */
+export type Component<T = any> =
   | { new (...args: any[]): T } // Angular
   | ((props: T) => any); // React (and probably Vue?)
 
-type AngularSignalLike<T> = () => T;
+/**
+ * @public
+ */
+export type AngularSignalLike<T> = () => T;
 
-type ComponentPropSchema<T> = Prettify<
+/**
+ * @public
+ */
+export type ComponentPropSchema<T> = Prettify<
   T extends Component<infer P>
     ? {
         [K in keyof P]?: P[K] extends AngularSignalLike<infer U>
@@ -22,6 +31,9 @@ type ComponentPropSchema<T> = Prettify<
       : never
 >;
 
+/**
+ * @public
+ */
 export interface ExposedComponent<T extends Component<unknown>> {
   component: T;
   name: string;
@@ -30,12 +42,18 @@ export interface ExposedComponent<T extends Component<unknown>> {
   props?: ComponentPropSchema<T>;
 }
 
+/**
+ * @public
+ */
 export type ComponentTree = {
   $tag: string;
   $children: ComponentTree[];
   $props: Record<string, any>;
 };
 
+/**
+ * @public
+ */
 export type ComponentTreeSchema = {
   [k in keyof ComponentTree]: s.Schema<ComponentTree[k]>;
 };
@@ -43,6 +61,8 @@ export type ComponentTreeSchema = {
 /**
  * Flattens a component hierarchy into a map of component names to their definitions.
  * This includes nested components defined in the children property.
+ *
+ * @public
  */
 export function flattenComponents(
   components: ExposedComponent<any>[],
@@ -66,8 +86,9 @@ export function flattenComponents(
  * Creates a schema for a list of exposed components, allowing for the definition
  * of component structures and their relationships.
  *
- * @param {ExposedComponent<any>[]} components - An array of components to create schemas for.
- * @returns {s.ObjectType<ComponentTree>} - A schema representing the structure of the components.
+ * @public
+ * @param components - An array of components to create schemas for.
+ * @returns A schema representing the structure of the components.
  */
 export function createComponentSchema(
   components: ExposedComponent<any>[],

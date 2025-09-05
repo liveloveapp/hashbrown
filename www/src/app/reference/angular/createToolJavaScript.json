@@ -8,11 +8,11 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!createToolJavaScript:function(1)",
-      "docComment": "/**\n * Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n *\n * @param options - The options for creating the tool.\n *\n * @returns The tool.\n */\n",
+      "docComment": "/**\n * Creates a tool that allows the LLM to run JavaScript code. It is run in a stateful JavaScript environment, with no access to the internet, the DOM, or any function that you have not explicitly defined.\n *\n * @param options - The options for creating the tool.\n *\n * @returns The tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
-          "text": "declare function createToolJavaScript({ runtime }: "
+          "text": "declare function createToolJavaScript<Result>({ runtime, }: "
         },
         {
           "kind": "Reference",
@@ -22,31 +22,47 @@
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
-          "text": "dist_packages_core_src_models_view_models.Tool",
-          "canonicalReference": "@hashbrownai/angular!~Tool:type"
+          "text": "Chat.Tool",
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
+        { "kind": "Content", "text": "<'javascript', " },
         {
-          "kind": "Content",
-          "text": "<\"javascript\", {\n    code: string;\n}, any>"
+          "kind": "Reference",
+          "text": "s.Infer",
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
+        { "kind": "Content", "text": "<typeof " },
+        {
+          "kind": "Reference",
+          "text": "schema",
+          "canonicalReference": "@hashbrownai/angular!~schema:var"
+        },
+        { "kind": "Content", "text": ">, Result>" },
         { "kind": "Content", "text": ";" }
       ],
       "fileUrlPath": "../dist/packages/angular/index.d.ts",
-      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
+      "returnTypeTokenRange": { "startIndex": 3, "endIndex": 9 },
       "releaseTag": "Public",
       "overloadIndex": 1,
       "parameters": [
         {
-          "parameterName": "{ runtime }",
+          "parameterName": "{ runtime, }",
           "parameterTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
           "isOptional": false
+        }
+      ],
+      "typeParameters": [
+        {
+          "typeParameterName": "Result",
+          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
+          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
         }
       ],
       "name": "createToolJavaScript",
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -56,7 +72,7 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The tool.\n",
+        "returns": " The tool.\n\n\n",
         "see": [],
         "params": [
           {
@@ -66,11 +82,11 @@
         ],
         "examples": []
       },
-      "formattedContent": "declare function createToolJavaScript(\n  { runtime }:  CreateToolJavaScriptOptions ,\n):  dist_packages_core_src_models_view_models.Tool <\n  \"javascript\",\n  {\n    code: string;\n  },\n  any\n>;",
+      "formattedContent": "declare function createToolJavaScript<Result>(\n  { runtime }:  CreateToolJavaScriptOptions ,\n):  Chat.Tool <\n  \"javascript\",\n   s.Infer <typeof  schema >,\n  Result\n>;",
       "overlayTokens": [
         {
           "kind": "Content",
-          "text": "declare function createToolJavaScript(\n  { runtime }: "
+          "text": "declare function createToolJavaScript<Result>(\n  { runtime }: "
         },
         {
           "kind": "Reference",
@@ -80,13 +96,22 @@
         { "kind": "Content", "text": ",\n): " },
         {
           "kind": "Reference",
-          "text": " dist_packages_core_src_models_view_models.Tool",
-          "canonicalReference": "@hashbrownai/angular!~Tool:type"
+          "text": " Chat.Tool",
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
+        { "kind": "Content", "text": " <\n  \"javascript\",\n  " },
         {
-          "kind": "Content",
-          "text": " <\n  \"javascript\",\n  {\n    code: string;\n  },\n  any\n>;"
-        }
+          "kind": "Reference",
+          "text": " s.Infer",
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
+        },
+        { "kind": "Content", "text": " <typeof " },
+        {
+          "kind": "Reference",
+          "text": " schema ",
+          "canonicalReference": "@hashbrownai/angular!~schema:var"
+        },
+        { "kind": "Content", "text": ">,\n  Result\n>;" }
       ]
     }
   ]

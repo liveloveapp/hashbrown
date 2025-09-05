@@ -3,12 +3,12 @@
 
 /**
  * Represents a minimal Redux-like store.
- * @template State - The shape of the store's state.
- * @property dispatch - Dispatches an action to update state.
- * @property select - Selects a slice of state using a selector function.
- * @property when - Registers a callback for one or more action types.
- * @property whenOnce - Registers a one-time callback for action types.
- * @property teardown - Cleans up any registered effects.
+ * @typeParam State - The shape of the store's state.
+ * @param dispatch - Dispatches an action to update state.
+ * @param select - Selects a slice of state using a selector function.
+ * @param when - Registers a callback for one or more action types.
+ * @param whenOnce - Registers a one-time callback for action types.
+ * @param teardown - Cleans up any registered effects.
  */
 export interface Store<State> {
   dispatch: (action: AnyAction) => void;
@@ -107,8 +107,8 @@ export class TrampolineScheduler implements Scheduler {
  * A generic action object.
  *
  * @typedef AnyAction
- * @property {string} type - The action type identifier.
- * @property {*} [payload] - Optional payload for the action.
+ * @param type - The action type identifier.
+ * @param payload - Optional payload for the action.
  */
 type AnyAction = { type: string; payload: any } | { type: string };
 
@@ -116,15 +116,15 @@ type AnyAction = { type: string; payload: any } | { type: string };
  * Defines a function type that produces payload objects for action creators.
  *
  * @typedef PropsFunction
- * @param {*} payload - The payload for the action.
- * @returns {*} The processed payload or void.
+ * @param payload - The payload for the action.
+ * @returns The processed payload or void.
  */
 type PropsFunction = (payload: any) => any | (() => void);
 
 /**
  * Extracts the payload type from a PropsFunction.
  *
- * @template T - A function type that defines action payload.
+ * @typeParam T - A function type that defines action payload.
  * @typedef Payload
  */
 type Payload<T extends PropsFunction> = T extends () => void
@@ -136,8 +136,8 @@ type Payload<T extends PropsFunction> = T extends () => void
 /**
  * Factory type for creating strongly-typed action creator functions.
  *
- * @template K - The action type string.
- * @template T - A PropsFunction defining the payload shape.
+ * @typeParam K - The action type string.
+ * @typeParam T - A PropsFunction defining the payload shape.
  * @typedef ActionCreator
  */
 type ActionCreator<
@@ -152,7 +152,7 @@ type ActionCreator<
 /**
  * Infers the action object type produced by an ActionCreator.
  *
- * @template T - The ActionCreator type.
+ * @typeParam T - The ActionCreator type.
  * @typedef ActionType
  */
 type ActionType<T> =
@@ -167,8 +167,8 @@ type ActionType<T> =
 /**
  * A mapping of action name keys to their corresponding ActionCreator functions.
  *
- * @template GroupName - The prefix group name for action types.
- * @template T - An object of payload function definitions.
+ * @typeParam GroupName - The prefix group name for action types.
+ * @typeParam T - An object of payload function definitions.
  * @typedef ActionCreators
  */
 type ActionCreators<
@@ -183,8 +183,8 @@ type ActionCreators<
 /**
  * Creates a payload projector function that returns its argument.
  *
- * @template T - The payload type.
- * @returns {(payload: T) => T} Function that returns the provided payload.
+ * @typeParam T - The payload type.
+ * @returns Function that returns the provided payload.
  */
 export function props<T>(): (payload: T) => T {
   return (payload: T) => payload;
@@ -193,7 +193,7 @@ export function props<T>(): (payload: T) => T {
 /**
  * Creates an action creator with no payload.
  *
- * @returns {() => void} Function that produces an action with only a type.
+ * @returns Function that produces an action with only a type.
  */
 export function emptyProps(): () => void {
   return () => {};
@@ -202,11 +202,11 @@ export function emptyProps(): () => void {
 /**
  * Generates a group of action creator functions with a common type prefix.
  *
- * @template GroupName - The modifier for action types (e.g., feature name).
- * @template T - An object whose values are payload creator functions.
- * @param {GroupName} name - The group prefix name.
- * @param {T} group - An object mapping action names to payload functions.
- * @returns {ActionCreators<GroupName, T>} A set of action creators.
+ * @typeParam GroupName - The modifier for action types (e.g., feature name).
+ * @typeParam T - An object whose values are payload creator functions.
+ * @param name - The group prefix name.
+ * @param group - An object mapping action names to payload functions.
+ * @returns A set of action creators.
  */
 export function createActionGroup<
   GroupName extends string,
@@ -237,10 +237,10 @@ export function createActionGroup<
 /**
  * Creates a reducer function that responds to specified action types.
  *
- * @template State - The type of the slice of state.
- * @template Actions - An array of ActionCreator types to handle.
- * @param {...Actions, Handler} params - One or more action creators followed by a reducer handler.
- * @returns {(state: State, action: AnyAction) => State} A reducer function.
+ * @typeParam State - The type of the slice of state.
+ * @typeParam Actions - An array of ActionCreator types to handle.
+ * @param params - One or more action creators followed by a reducer handler.
+ * @returns A reducer function.
  */
 export function on<
   State,
@@ -269,10 +269,10 @@ export function on<
 /**
  * Combines multiple reducer functions into a single root reducer.
  *
- * @template State - The combined state shape.
- * @param {State} initialState - The initial state when undefined is passed.
- * @param {...Function} reducers - One or more reducer functions.
- * @returns {(state: State|undefined, action: { type: string }) => State} The root reducer.
+ * @typeParam State - The combined state shape.
+ * @param initialState - The initial state when undefined is passed.
+ * @param reducers - One or more reducer functions.
+ * @returns The root reducer.
  */
 export function createReducer<State>(
   initialState: State,
@@ -295,16 +295,16 @@ export function createReducer<State>(
 /**
  * Defines an effect that can subscribe to store actions and return a cleanup function.
  *
- * @param {EffectFn} effectFn - Function that receives the store and returns a teardown callback.
- * @returns {EffectFn} The provided effect function.
+ * @param effectFn - Function that receives the store and returns a teardown callback.
+ * @returns The provided effect function.
  */
 type EffectFn = (store: Store<any>) => () => void;
 
 /**
  * Creates an effect function that can subscribe to store actions and return a cleanup function.
  *
- * @param {EffectFn} effectFn - Function that receives the store and returns a teardown callback.
- * @returns {EffectFn} The provided effect function.
+ * @param effectFn - Function that receives the store and returns a teardown callback.
+ * @returns The provided effect function.
  */
 export function createEffect(effectFn: EffectFn) {
   return effectFn;
@@ -322,8 +322,8 @@ interface SelectConfig {
 
 /**
  * Creates a memoized selector from one or more input selectors and a projector function.
- * @param {...Function, Function} params - Input selector functions followed by a projector.
- * @returns {(state: any) => any} A selector function that returns computed state.
+ * @param params - Input selector functions followed by a projector.
+ * @returns A selector function that returns computed state.
  */
 export function select<S, T0, R>(
   t0: (state: S) => T0,
@@ -428,6 +428,9 @@ export function select(...params: any[]): (state: any) => any {
  * ===    State Observable      ===
  * ================================
  */
+/**
+ * @public
+ */
 export interface StateSignal<State> {
   (): State;
   subscribe(onChange: (value: State) => void): () => void;
@@ -441,10 +444,10 @@ export interface StateSignal<State> {
 
 /**
  * Creates a store with reducers and effects.
- * @template Reducers - An object mapping keys to reducer functions.
- * @template State - The resulting state shape inferred from Reducers.
- * @param {{ reducers: Reducers; effects: EffectFn[] }} config - Configuration object.
- * @returns {Store<State>} The initialized store instance.
+ * @typeParam Reducers - An object mapping keys to reducer functions.
+ * @typeParam State - The resulting state shape inferred from Reducers.
+ * @param config - Configuration object.
+ * @returns The initialized store instance.
  */
 export function createStore<
   Reducers extends {
@@ -606,9 +609,9 @@ export function createStore<
 
 /**
  * Maintains a normalized collection of entities.
- * @template Entity - The type of the entity.
- * @property {string[]} ids - Array of entity IDs.
- * @property {Record<string, Entity>} entities - Map of IDs to entity objects.
+ * @typeParam Entity - The type of the entity.
+ * @param ids - Array of entity IDs.
+ * @param entities - Map of IDs to entity objects.
  */
 export interface EntityState<Entity> {
   ids: string[];
@@ -617,9 +620,9 @@ export interface EntityState<Entity> {
 
 /**
  * Describes a partial update to a single entity.
- * @template Entity - The entity type.
- * @property {string} id - The target entity ID.
- * @property {Partial<Entity>} updates - The fields to update.
+ * @typeParam Entity - The entity type.
+ * @param id - The target entity ID.
+ * @param updates - The fields to update.
  */
 export interface EntityChange<Entity> {
   id: string;
@@ -628,13 +631,13 @@ export interface EntityChange<Entity> {
 
 /**
  * Provides methods to manage a collection of entities.
- * @template Entity - The entity type.
- * @property updateOne - Updates a single entity.
- * @property updateMany - Updates multiple entities.
- * @property addOne - Adds a single new entity.
- * @property addMany - Adds multiple new entities.
- * @property removeOne - Removes a single entity by ID.
- * @property removeMany - Removes multiple entities by ID.
+ * @typeParam Entity - The entity type.
+ * @param updateOne - Updates a single entity.
+ * @param updateMany - Updates multiple entities.
+ * @param addOne - Adds a single new entity.
+ * @param addMany - Adds multiple new entities.
+ * @param removeOne - Removes a single entity by ID.
+ * @param removeMany - Removes multiple entities by ID.
  */
 export interface EntityAdapter<Entity> {
   updateOne: (
@@ -659,9 +662,9 @@ export interface EntityAdapter<Entity> {
 
 /**
  * Creates an EntityAdapter for performing immutable updates on entity collections.
- * @template Entity - The entity type.
- * @param {{ selectId: (entity: Entity) => string }} config - Configuration with a selectId function.
- * @returns {EntityAdapter<Entity>} Adapter with CRUD methods for entity state.
+ * @typeParam Entity - The entity type.
+ * @param config - Configuration with a selectId function.
+ * @returns Adapter with CRUD methods for entity state.
  */
 export function createEntityAdapter<Entity>(config: {
   selectId: (entity: Entity) => string;

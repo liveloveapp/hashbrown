@@ -6,12 +6,14 @@ import { Markdown } from '../pipes/Markdown';
   selector: 'www-symbol-examples',
   imports: [Markdown],
   template: `
-    <h2>Examples</h2>
-    <div class="content">
-      @for (example of examples(); track $index) {
-        <div class="example" [innerHTML]="example | markdown"></div>
-      }
-    </div>
+    @if (examples().length) {
+      <h2>Examples</h2>
+      <div class="content">
+        @for (example of examples(); track $index) {
+          <div class="example" [innerHTML]="example | markdown"></div>
+        }
+      </div>
+    }
   `,
   styles: `
     :host {

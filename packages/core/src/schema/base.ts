@@ -22,6 +22,9 @@ import {
   UnionToTuple,
 } from '../utils/types';
 
+/**
+ * @internal
+ */
 export const internal = '~schema';
 export type internal = typeof internal;
 
@@ -41,6 +44,9 @@ type TypeBox = {
   toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
 };
 
+/**
+ * @internal
+ */
 export interface HashbrownTypeCtor<
   T extends TypeBox,
   D = T[internal]['definition'],
@@ -52,6 +58,9 @@ export interface HashbrownTypeCtor<
   toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
 }
 
+/**
+ * @internal
+ */
 export const HashbrownTypeCtor = <
   T extends TypeBox,
   D extends TypeInternals['definition'] = T[internal]['definition'],
@@ -186,6 +195,9 @@ interface HashbrownTypeDefinition {
   description: string;
   streaming: boolean;
 }
+/**
+ * @public
+ */
 export interface HashbrownType<out Result = unknown> {
   [internal]: HashbrownTypeInternals<Result>;
   toJsonSchema: () => any;
@@ -195,7 +207,10 @@ export interface HashbrownType<out Result = unknown> {
   toStreaming: (object: unknown, path?: string[]) => unknown;
 }
 
-interface HashbrownTypeInternals<out Result = unknown>
+/**
+ * @internal
+ */
+export interface HashbrownTypeInternals<out Result = unknown>
   extends HashbrownType<Result> {
   definition: HashbrownTypeDefinition;
   result: Result;
@@ -237,10 +252,16 @@ interface StringTypeDefinition extends HashbrownTypeDefinition {
   type: 'string';
 }
 
-interface StringTypeInternals extends HashbrownTypeInternals<string> {
+/**
+ * @internal
+ */
+export interface StringTypeInternals extends HashbrownTypeInternals<string> {
   definition: StringTypeDefinition;
 }
 
+/**
+ * @public
+ */
 export interface StringType extends HashbrownType<string> {
   [internal]: StringTypeInternals;
 }
@@ -292,10 +313,16 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isStringType(type: HashbrownType): type is StringType {
   return type[internal].definition.type === 'string';
 }
 
+/**
+ * @public
+ */
 export function string(description: string): StringType {
   return new StringType({ type: 'string', description, streaming: false });
 }
@@ -315,12 +342,18 @@ interface LiteralTypeDefinition<
   value: T;
 }
 
-interface LiteralTypeInternals<
+/**
+ * @internal
+ */
+export interface LiteralTypeInternals<
   T extends string | number | boolean = string | number | boolean,
 > extends HashbrownTypeInternals<T> {
   definition: LiteralTypeDefinition<T>;
 }
 
+/**
+ * @public
+ */
 export interface LiteralType<
   T extends string | number | boolean = string | number | boolean,
 > extends HashbrownType<T> {
@@ -384,10 +417,16 @@ export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isLiteralType(type: HashbrownType): type is LiteralType {
   return type[internal].definition.type === 'literal';
 }
 
+/**
+ * @public
+ */
 export function literal<T extends string>(value: T): LiteralType<T> {
   return new LiteralType({
     type: 'literal',
@@ -408,10 +447,16 @@ interface NumberTypeDefinition extends HashbrownTypeDefinition {
   type: 'number';
 }
 
-interface NumberTypeInternals extends HashbrownTypeInternals<number> {
+/**
+ * @internal
+ */
+export interface NumberTypeInternals extends HashbrownTypeInternals<number> {
   definition: NumberTypeDefinition;
 }
 
+/**
+ * @public
+ */
 export interface NumberType extends HashbrownType<number> {
   [internal]: NumberTypeInternals;
 }
@@ -460,10 +505,16 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isNumberType(type: HashbrownType): type is NumberType {
   return type[internal].definition.type === 'number';
 }
 
+/**
+ * @public
+ */
 export function number(description: string) {
   return new NumberType({ type: 'number', description, streaming: false });
 }
@@ -480,10 +531,16 @@ interface BooleanTypeDefinition extends HashbrownTypeDefinition {
   type: 'boolean';
 }
 
-interface BooleanTypeInternals extends HashbrownTypeInternals<boolean> {
+/**
+ * @internal
+ */
+export interface BooleanTypeInternals extends HashbrownTypeInternals<boolean> {
   definition: BooleanTypeDefinition;
 }
 
+/**
+ * @public
+ */
 export interface BooleanType extends HashbrownType<boolean> {
   [internal]: BooleanTypeInternals;
 }
@@ -531,10 +588,16 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isBooleanType(type: HashbrownType): type is BooleanType {
   return type[internal].definition.type === 'boolean';
 }
 
+/**
+ * @public
+ */
 export function boolean(description: string) {
   return new BooleanType({ type: 'boolean', description, streaming: false });
 }
@@ -551,10 +614,16 @@ interface IntegerTypeDefinition extends HashbrownTypeDefinition {
   type: 'integer';
 }
 
-interface IntegerTypeInternals extends HashbrownTypeInternals<number> {
+/**
+ * @internal
+ */
+export interface IntegerTypeInternals extends HashbrownTypeInternals<number> {
   definition: IntegerTypeDefinition;
 }
 
+/**
+ * @public
+ */
 export interface IntegerType extends HashbrownType<number> {
   [internal]: IntegerTypeInternals;
 }
@@ -606,10 +675,16 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isIntegerType(type: HashbrownType): type is IntegerType {
   return type[internal].definition.type === 'integer';
 }
 
+/**
+ * @public
+ */
 export function integer(description: string) {
   return new IntegerType({ type: 'integer', description, streaming: false });
 }
@@ -637,11 +712,18 @@ interface ObjectTypeDefinition<
   readonly shape: Shape;
 }
 
-interface ObjectTypeInternals<Result extends Readonly<Record<string, any>>>
-  extends HashbrownTypeInternals<ObjectTypeResult<Result>> {
+/**
+ * @internal
+ */
+export interface ObjectTypeInternals<
+  Result extends Readonly<Record<string, any>>,
+> extends HashbrownTypeInternals<ObjectTypeResult<Result>> {
   definition: ObjectTypeDefinition<Result>;
 }
 
+/**
+ * @public
+ */
 export interface ObjectType<
   Result extends Readonly<Record<string, any>> = Readonly<Record<string, any>>,
 > extends HashbrownType {
@@ -732,10 +814,16 @@ ${' '.repeat(depth)}}`;
   },
 });
 
+/**
+ * @public
+ */
 export function isObjectType(type: HashbrownType): type is ObjectType {
   return type[internal].definition.type === 'object';
 }
 
+/**
+ * @public
+ */
 export function object<Shape extends Record<string, any>>(
   description: string,
   shape: Shape,
@@ -762,11 +850,17 @@ interface ArrayTypeDefinition<out Item extends HashbrownType = HashbrownType>
   element: Item;
 }
 
-interface ArrayTypeInternals<Item extends HashbrownType = HashbrownType>
+/**
+ * @internal
+ */
+export interface ArrayTypeInternals<Item extends HashbrownType = HashbrownType>
   extends HashbrownTypeInternals<Item[internal]['result'][]> {
   definition: ArrayTypeDefinition<Item>;
 }
 
+/**
+ * @public
+ */
 export interface ArrayType<Item extends HashbrownType = HashbrownType>
   extends HashbrownType {
   [internal]: ArrayTypeInternals<Item>;
@@ -838,10 +932,16 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isArrayType(type: HashbrownType): type is ArrayType {
   return type[internal].definition.type === 'array';
 }
 
+/**
+ * @public
+ */
 export function array<Item extends HashbrownType>(
   description: string,
   item: Item,
@@ -869,11 +969,17 @@ interface AnyOfTypeDefinition<
   options: Options;
 }
 
-interface AnyOfTypeInternals<Options extends readonly HashbrownType[]>
+/**
+ * @internal
+ */
+export interface AnyOfTypeInternals<Options extends readonly HashbrownType[]>
   extends HashbrownTypeInternals<Options[number][internal]['result']> {
   definition: AnyOfTypeDefinition<Options>;
 }
 
+/**
+ * @public
+ */
 export interface AnyOfType<
   Options extends readonly HashbrownType[] = readonly HashbrownType[],
 > extends HashbrownType<Options[number][internal]['result']> {
@@ -1160,10 +1266,16 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isAnyOfType(type: HashbrownType): type is AnyOfType {
   return type[internal].definition.type === 'any-of';
 }
 
+/**
+ * @public
+ */
 export function anyOf<const Options extends readonly HashbrownType[]>(
   options: Options,
 ): AnyOfType<Options> {
@@ -1195,11 +1307,14 @@ interface EnumTypeDefinition<out Entries extends readonly any[]>
 /**
  * @internal
  */
-interface EnumTypeInternals<Result extends readonly any[]>
+export interface EnumTypeInternals<Result extends readonly any[]>
   extends HashbrownTypeInternals<Result[number]> {
   definition: EnumTypeDefinition<Result>;
 }
 
+/**
+ * @public
+ */
 export interface EnumType<Entries extends readonly string[] = readonly string[]>
   extends HashbrownType {
   /**
@@ -1258,10 +1373,16 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isEnumType(type: HashbrownType): type is EnumType {
   return type[internal].definition.type === 'enum';
 }
 
+/**
+ * @public
+ */
 export function enumeration<const Entries extends readonly string[]>(
   description: string,
   entries: [...Entries],
@@ -1286,10 +1407,16 @@ interface NullTypeDefinition extends HashbrownTypeDefinition {
   type: 'null';
 }
 
-interface NullTypeInternals extends HashbrownTypeInternals<null> {
+/**
+ * @internal
+ */
+export interface NullTypeInternals extends HashbrownTypeInternals<null> {
   definition: NullTypeDefinition;
 }
 
+/**
+ * @public
+ */
 export interface NullType extends HashbrownType<null> {
   [internal]: NullTypeInternals;
 }
@@ -1338,10 +1465,16 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor({
   },
 });
 
+/**
+ * @public
+ */
 export function isNullType(type: HashbrownType): type is NullType {
   return type[internal].definition.type === 'null';
 }
 
+/**
+ * @public
+ */
 export function nullish(): NullType {
   return new NullType({ type: 'null', description: '', streaming: false });
 }
@@ -1371,6 +1504,9 @@ export function isStreaming(schema: HashbrownType): boolean {
   return schema[internal].definition.streaming;
 }
 
+/**
+ * @public
+ */
 export function isHashbrownType(type: any): type is HashbrownType {
   return type[internal] !== undefined;
 }
@@ -1383,9 +1519,15 @@ export function isHashbrownType(type: any): type is HashbrownType {
  * --------------------------------------
  */
 
+/**
+ * @public
+ */
 export type Infer<T extends HashbrownType> = T[internal]['result'];
 
-type SchemaForUnion<T> = AnyOfType<
+/**
+ * @internal
+ */
+export type SchemaForUnion<T> = AnyOfType<
   UnionToTuple<T> extends infer U
     ? U extends any[]
       ? { [K in keyof U]: Schema<U[K]> }
@@ -1393,6 +1535,9 @@ type SchemaForUnion<T> = AnyOfType<
     : never
 >;
 
+/**
+ * @public
+ */
 export type Schema<T> =
   IsStringUnion<T> extends true
     ? [T] extends [string]

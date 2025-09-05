@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useRuntimeFunction:function(1)",
-      "docComment": "/**\n * Creates a function with an input schema.\n *\n * @param cfg - The configuration for the function.\n *\n * @param  - cfg.name - The name of the function.\n *\n * @param  - cfg.description - The description of the function.\n *\n * @param  - cfg.args - The input schema of the function.\n *\n * @param  - cfg.result - The result schema of the function.\n *\n * @param  - cfg.handler - The handler of the function.\n *\n * @param  - cfg.deps - The dependencies of the function.\n *\n * @returns The function reference.\n */\n",
+      "docComment": "/**\n * Creates a function with an input schema.\n *\n * @param cfg - The configuration for the function containing: - name: The name of the function - description: The description of the function - args: The input schema of the function - result: The result schema of the function - handler: The handler of the function - deps: The dependencies of the function\n *\n * @returns The function reference.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,13 +17,13 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ", ResultSchema extends " },
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ">(cfg: " },
         {
@@ -42,7 +42,7 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ArgsSchema>, abortSignal?: " },
         {
@@ -54,7 +54,7 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ResultSchema> | " },
         {
@@ -66,26 +66,26 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ResultSchema>>;\n}" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "RuntimeFunctionRef",
-          "canonicalReference": "!unknown"
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
         },
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ArgsSchema>, " },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ResultSchema>>" },
         { "kind": "Content", "text": ";" }
@@ -117,7 +117,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -127,36 +127,12 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The function reference.\n",
+        "returns": " The function reference.\n\n\n",
         "see": [],
         "params": [
           {
             "name": "cfg",
-            "description": "The configuration for the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.name - The name of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.description - The description of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.args - The input schema of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.result - The result schema of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.handler - The handler of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.deps - The dependencies of the function.\n\n"
+            "description": "The configuration for the function containing: - name: The name of the function - description: The description of the function - args: The input schema of the function - result: The result schema of the function - handler: The handler of the function - deps: The dependencies of the function\n\n"
           }
         ],
         "examples": []
@@ -170,13 +146,13 @@
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ",\n  ResultSchema extends " },
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         {
           "kind": "Content",
@@ -194,7 +170,7 @@
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ArgsSchema>,\n    abortSignal?: " },
         {
@@ -206,7 +182,7 @@
         {
           "kind": "Reference",
           "text": "\n    | s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ResultSchema>\n    | " },
         {
@@ -218,21 +194,25 @@
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ResultSchema>\n      >;\n}): " },
-        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        {
+          "kind": "Reference",
+          "text": " RuntimeFunctionRef",
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
+        },
         { "kind": "Content", "text": " <\n  " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ArgsSchema>,\n  " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ResultSchema>\n>;" }
       ]
@@ -240,7 +220,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useRuntimeFunction:function(2)",
-      "docComment": "/**\n * Creates a function without an input schema.\n *\n * @param cfg - The configuration for the function.\n *\n * @param  - cfg.name - The name of the function.\n *\n * @param  - cfg.description - The description of the function.\n *\n * @param  - cfg.result - The result schema of the function.\n *\n * @param  - cfg.handler - The handler of the function.\n *\n * @param  - cfg.deps - The dependencies of the function.\n *\n * @returns The function reference.\n */\n",
+      "docComment": "/**\n * Creates a function without an input schema.\n *\n * @param cfg - The configuration for the function containing: - name: The name of the function - description: The description of the function - result: The result schema of the function - handler: The handler of the function - deps: The dependencies of the function\n *\n * @returns The function reference.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -249,7 +229,7 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ">(cfg: " },
         {
@@ -274,7 +254,7 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ResultSchema> | " },
         {
@@ -286,20 +266,20 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ResultSchema>>;\n}" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "RuntimeFunctionRef",
-          "canonicalReference": "!unknown"
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
         },
         { "kind": "Content", "text": "<null, " },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ResultSchema>>" },
         { "kind": "Content", "text": ";" }
@@ -341,27 +321,7 @@
         "params": [
           {
             "name": "cfg",
-            "description": "The configuration for the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.name - The name of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.description - The description of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.result - The result schema of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.handler - The handler of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.deps - The dependencies of the function.\n\n"
+            "description": "The configuration for the function containing: - name: The name of the function - description: The description of the function - result: The result schema of the function - handler: The handler of the function - deps: The dependencies of the function\n\n"
           }
         ],
         "examples": []
@@ -375,7 +335,7 @@
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         {
           "kind": "Content",
@@ -399,7 +359,7 @@
         {
           "kind": "Reference",
           "text": "\n    | s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ResultSchema>\n    | " },
         {
@@ -411,15 +371,19 @@
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ResultSchema>\n      >;\n}): " },
-        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        {
+          "kind": "Reference",
+          "text": " RuntimeFunctionRef",
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
+        },
         { "kind": "Content", "text": " <\n  null,\n  " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ResultSchema>\n>;" }
       ]
@@ -427,7 +391,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useRuntimeFunction:function(3)",
-      "docComment": "/**\n * Creates a function with an input schema.\n *\n * @param cfg - The configuration for the function.\n *\n * @param  - cfg.name - The name of the function.\n *\n * @param  - cfg.description - The description of the function.\n *\n * @param  - cfg.args - The args schema of the function.\n *\n * @param  - cfg.handler - The handler of the function.\n *\n * @param  - cfg.deps - The dependencies of the function.\n *\n * @returns The function reference.\n */\n",
+      "docComment": "/**\n * Creates a function with an input schema.\n *\n * @param cfg - The configuration for the function containing: - name: The name of the function - description: The description of the function - args: The args schema of the function - handler: The handler of the function - deps: The dependencies of the function\n *\n * @returns The function reference.\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -436,7 +400,7 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ">(cfg: " },
         {
@@ -455,7 +419,7 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ArgsSchema>, abortSignal?: " },
         {
@@ -474,13 +438,13 @@
         {
           "kind": "Reference",
           "text": "RuntimeFunctionRef",
-          "canonicalReference": "!unknown"
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
         },
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<ArgsSchema>, void>" },
         { "kind": "Content", "text": ";" }
@@ -522,27 +486,7 @@
         "params": [
           {
             "name": "cfg",
-            "description": "The configuration for the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.name - The name of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.description - The description of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.args - The args schema of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.handler - The handler of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.deps - The dependencies of the function.\n\n"
+            "description": "The configuration for the function containing: - name: The name of the function - description: The description of the function - args: The args schema of the function - handler: The handler of the function - deps: The dependencies of the function\n\n"
           }
         ],
         "examples": []
@@ -556,7 +500,7 @@
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         {
           "kind": "Content",
@@ -574,7 +518,7 @@
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ArgsSchema>,\n    abortSignal?: " },
         {
@@ -589,12 +533,16 @@
           "canonicalReference": "!Promise:interface"
         },
         { "kind": "Content", "text": " <void>;\n}): " },
-        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        {
+          "kind": "Reference",
+          "text": " RuntimeFunctionRef",
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
+        },
         { "kind": "Content", "text": " <\n  " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <ArgsSchema>,\n  void\n>;" }
       ]
@@ -602,7 +550,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useRuntimeFunction:function(4)",
-      "docComment": "/**\n * Creates a function without input or output schema.\n *\n * @param cfg - The configuration for the function.\n *\n * @param  - cfg.name - The name of the function.\n *\n * @param  - cfg.description - The description of the function.\n *\n * @param  - cfg.handler - The handler of the function, which returns void or a promise thereof.\n *\n * @param  - cfg.deps - The dependencies of the function.\n *\n * @returns The function reference.\n */\n",
+      "docComment": "/**\n * Creates a function without input or output schema.\n *\n * @param cfg - The configuration for the function containing: - name: The name of the function - description: The description of the function - handler: The handler of the function, which returns void or a promise thereof - deps: The dependencies of the function\n *\n * @returns The function reference.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -634,7 +582,7 @@
         {
           "kind": "Reference",
           "text": "RuntimeFunctionRef",
-          "canonicalReference": "!unknown"
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
         },
         { "kind": "Content", "text": "<null, void>" },
         { "kind": "Content", "text": ";" }
@@ -654,7 +602,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -664,28 +612,12 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The function reference.\n",
+        "returns": " The function reference.\n\n\n",
         "see": [],
         "params": [
           {
             "name": "cfg",
-            "description": "The configuration for the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.name - The name of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.description - The description of the function.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.handler - The handler of the function, which returns void or a promise thereof.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - cfg.deps - The dependencies of the function.\n\n"
+            "description": "The configuration for the function containing: - name: The name of the function - description: The description of the function - handler: The handler of the function, which returns void or a promise thereof - deps: The dependencies of the function\n\n"
           }
         ],
         "examples": []
@@ -714,7 +646,11 @@
           "canonicalReference": "!Promise:interface"
         },
         { "kind": "Content", "text": " <void>;\n}): " },
-        { "kind": "Content", "text": " RuntimeFunctionRef" },
+        {
+          "kind": "Reference",
+          "text": " RuntimeFunctionRef",
+          "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
+        },
         { "kind": "Content", "text": " <null, void>;" }
       ]
     }

@@ -4,6 +4,10 @@ import { useStructuredChat } from './use-structured-chat';
 
 /**
  * Options for the `useStructuredCompletion` hook.
+ *
+ * @public
+ * @typeParam Input - The type of the input to predict from.
+ * @typeParam Schema - The schema to use for the chat.
  */
 export interface UseStructuredCompletionOptions<
   Input,
@@ -55,6 +59,9 @@ export interface UseStructuredCompletionOptions<
 
 /**
  * The result object-type returned by the `useStructuredCompletion` hook that provides the structured output and state for the completion.
+ *
+ * @public
+ * @typeParam Output - The type of the output from the chat.
  */
 export interface UseStructuredCompletionResult<Output> {
   /**
@@ -97,14 +104,17 @@ export interface UseStructuredCompletionResult<Output> {
  * This React hook creates a completion instance that predicts structured data based on input context.
  * The result object contains the predicted structured output and state for monitoring the completion.
  *
- * @description
+ * @public
+ * @typeParam Input - The type of the input to predict from.
+ * @typeParam Schema - The schema to use for the chat.
+ * @remarks
  * The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for:
  * - Smart form field suggestions
  * - Context-aware recommendations
  * - Predictive UI generation
  * - Intelligent defaults
  *
- * @returns {UseStructuredCompletionResult} An object containing the predicted structured output and completion state.
+ * @returns An object containing the predicted structured output and completion state.
  *
  * @example
  * In this example, the LLM will predict a color palette based on a given theme or mood.

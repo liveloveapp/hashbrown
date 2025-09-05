@@ -11,7 +11,7 @@ type HashbrownSignal<T> = {
 /**
  * Connects a Hashbrown Signal to React's reactivity system
  *
- * @param signal The signal to connect to React
+ * @param signal - The signal to connect to React
  * @returns The value contained in the signal
  */
 export function useHashbrownSignal<T>(signal: HashbrownSignal<T>): T {

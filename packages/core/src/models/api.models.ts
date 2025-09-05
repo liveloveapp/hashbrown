@@ -1,12 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DeepPartial, KnownModelIds } from '../utils';
 
+/**
+ * @public
+ */
 export interface Tool {
   name: string;
   description: string;
   parameters: object;
 }
 
+/**
+ * @public
+ */
 export interface ToolCall {
   index: number;
   id: string;
@@ -17,22 +23,34 @@ export interface ToolCall {
   };
 }
 
+/**
+ * @public
+ */
 export interface AssistantMessage {
   role: 'assistant';
   content?: string;
   toolCalls?: ToolCall[];
 }
 
+/**
+ * @public
+ */
 export interface UserMessage {
   role: 'user';
   content: string;
 }
 
+/**
+ * @public
+ */
 export interface ErrorMessage {
   role: 'error';
   content: string;
 }
 
+/**
+ * @public
+ */
 export interface ToolMessage {
   role: 'tool';
   content: PromiseSettledResult<any>;
@@ -40,12 +58,18 @@ export interface ToolMessage {
   toolName: string;
 }
 
+/**
+ * @public
+ */
 export type Message =
   | UserMessage
   | ErrorMessage
   | AssistantMessage
   | ToolMessage;
 
+/**
+ * @public
+ */
 export interface CompletionChunkChoice {
   index: number;
   delta: {
@@ -56,12 +80,21 @@ export interface CompletionChunkChoice {
   finishReason: string | null;
 }
 
+/**
+ * @public
+ */
 export interface CompletionChunk {
   choices: CompletionChunkChoice[];
 }
 
+/**
+ * @public
+ */
 export type CompletionToolChoiceOption = 'auto' | 'none' | 'required';
 
+/**
+ * @public
+ */
 export interface CompletionCreateParams {
   model: KnownModelIds;
   system: string;

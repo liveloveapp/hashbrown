@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!exposeComponent:function(1)",
-      "docComment": "/**\n * Exposes a component by combining it with additional configuration details.\n *\n * @template T - The type of the Angular component.\n *\n * @param component - The Angular component to be exposed.\n *\n * @param config - The configuration object for the component, excluding the component itself.\n *\n * @returns {ExposedComponent<T>} - An object representing the exposed component, including the component and its configuration.\n */\n",
+      "docComment": "/**\n * Exposes a component by combining it with additional configuration details.\n *\n * @param component - The Angular component to be exposed.\n *\n * @param config - The configuration object for the component, excluding the component itself.\n *\n * @typeParam T - The type of the Angular component.\n *\n * @returns An object representing the exposed component, including the component and its configuration.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -21,7 +21,7 @@
         {
           "kind": "Reference",
           "text": "_types.Prettify",
-          "canonicalReference": "!_types.Prettify:type"
+          "canonicalReference": "@hashbrownai/angular!~Prettify:type"
         },
         { "kind": "Content", "text": "<" },
         {
@@ -81,17 +81,17 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Exposes a component by combining it with additional configuration details.\n\n@template T - The type of the Angular component.\n\n",
+        "summary": "Exposes a component by combining it with additional configuration details.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " {ExposedComponent<T>} - An object representing the exposed component, including the component and its configuration.\n",
+        "returns": " An object representing the exposed component, including the component and its configuration.\n\n\n",
         "see": [],
         "params": [
           {
@@ -114,7 +114,7 @@
         {
           "kind": "Reference",
           "text": " _types.Prettify",
-          "canonicalReference": "!_types.Prettify:type"
+          "canonicalReference": "@hashbrownai/angular!~Prettify:type"
         },
         { "kind": "Content", "text": " <\n    " },
         {

@@ -8,7 +8,7 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/core!RuntimeFunctionRef:type",
-      "docComment": "/**\n * A reference to a function in the runtime.\n *\n * @param Args - The args of the function.\n *\n * @param Result - The result of the function.\n *\n * @returns The function reference.\n */\n",
+      "docComment": "/**\n * A reference to a function in the runtime.\n *\n * @param Args - The args of the function.\n *\n * @param Result - The result of the function.\n *\n * @returns The function reference.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -66,7 +66,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -76,7 +76,7 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The function reference.\n",
+        "returns": " The function reference.\n\n\n",
         "see": [],
         "params": [
           { "name": "Args", "description": "The args of the function.\n\n" },

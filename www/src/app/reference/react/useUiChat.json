@@ -8,13 +8,13 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useUiChat:function(1)",
-      "docComment": "/**\n * This React hook creates a chat instance that can generate and render UI components. The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.\n *\n * @description The `useUiChat` hook provides functionality for generating UI components through chat. This is particularly useful for: - Dynamic UI generation - Interactive chat interfaces - Component-based responses - Building chat-based UIs\n *\n * @returns {UseUiChatResult} An object containing chat state, functions to interact with the chat, and rendered UI components.\n *\n * @example\n *\n * In this example, the LLM will respond with a UI component that can be rendered directly in your React application.\n * ```tsx\n * const { messages, sendMessage } = useUiChat({\n *   model: 'gpt-4o',\n *   system: 'You are a helpful assistant that can generate UI components.',\n *   components: [\n *     exposeComponent(Button, {\n *       name: 'Button',\n *       description: 'A clickable button component',\n *       props: {\n *         label: s.string('The text to display on the button'),\n *         onClick: s.function('Function to call when clicked')\n *       }\n *     })\n *   ]\n * });\n * ```\n *\n */\n",
+      "docComment": "/**\n * This React hook creates a chat instance that can generate and render UI components. The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.\n *\n * @remarks\n *\n * The `useUiChat` hook provides functionality for generating UI components through chat. This is particularly useful for: - Dynamic UI generation - Interactive chat interfaces - Component-based responses - Building chat-based UIs\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @returns An object containing chat state, functions to interact with the chat, and rendered UI components.\n *\n * @example\n *\n * In this example, the LLM will respond with a UI component that can be rendered directly in your React application.\n * ```tsx\n * const { messages, sendMessage } = useUiChat({\n *   model: 'gpt-4o',\n *   system: 'You are a helpful assistant that can generate UI components.',\n *   components: [\n *     exposeComponent(Button, {\n *       name: 'Button',\n *       description: 'A clickable button component',\n *       props: {\n *         label: s.string('The text to display on the button'),\n *         onClick: s.function('Function to call when clicked')\n *       }\n *     })\n *   ]\n * });\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "useUiChat: <Tools extends " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": ">(options: " },
         {
@@ -30,17 +30,20 @@
           "text": "UiChatMessage",
           "canonicalReference": "@hashbrownai/react!UiChatMessage:type"
         },
-        { "kind": "Content", "text": "<Tools>[];\n    setComponents: " },
         {
-          "kind": "Reference",
-          "text": "React.Dispatch",
-          "canonicalReference": "!React.Dispatch:type"
+          "kind": "Content",
+          "text": "<Tools>[];\n    setComponents: import(\"react\")."
         },
-        { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
-          "text": "React.SetStateAction",
-          "canonicalReference": "!React.SetStateAction:type"
+          "text": "Dispatch",
+          "canonicalReference": "@types/react!React.Dispatch:type"
+        },
+        { "kind": "Content", "text": "<import(\"react\")." },
+        {
+          "kind": "Reference",
+          "text": "SetStateAction",
+          "canonicalReference": "@types/react!React.SetStateAction:type"
         },
         { "kind": "Content", "text": "<" },
         {
@@ -61,13 +64,13 @@
         {
           "kind": "Reference",
           "text": "Chat.Message",
-          "canonicalReference": "!Chat.Message:type"
+          "canonicalReference": "@hashbrownai/react!~Message_3:type"
         },
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
           "text": "UiChatSchema",
-          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+          "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
         },
         {
           "kind": "Content",
@@ -76,13 +79,13 @@
         {
           "kind": "Reference",
           "text": "Chat.Message",
-          "canonicalReference": "!Chat.Message:type"
+          "canonicalReference": "@hashbrownai/react!~Message_3:type"
         },
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
           "text": "UiChatSchema",
-          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+          "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
         },
         {
           "kind": "Content",
@@ -120,30 +123,30 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "This React hook creates a chat instance that can generate and render UI components. The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.\n\n The `useUiChat` hook provides functionality for generating UI components through chat. This is particularly useful for: - Dynamic UI generation - Interactive chat interfaces - Component-based responses - Building chat-based UIs\n\n",
+        "summary": "This React hook creates a chat instance that can generate and render UI components. The result object contains functions and state enabling you to send and receive messages and monitor the state of the chat.\n\n",
         "usageNotes": "",
-        "remarks": "",
+        "remarks": "\n\nThe `useUiChat` hook provides functionality for generating UI components through chat. This is particularly useful for: - Dynamic UI generation - Interactive chat interfaces - Component-based responses - Building chat-based UIs\n\n",
         "deprecated": "",
-        "returns": " {UseUiChatResult} An object containing chat state, functions to interact with the chat, and rendered UI components.\n\n",
+        "returns": " An object containing chat state, functions to interact with the chat, and rendered UI components.\n\n",
         "see": [],
         "params": [],
         "examples": [
-          "\n\nIn this example, the LLM will respond with a UI component that can be rendered directly in your React application.\n```tsx\nconst { messages, sendMessage } = useUiChat({\n  model: 'gpt-4o',\n  system: 'You are a helpful assistant that can generate UI components.',\n  components: [\n    exposeComponent(Button, {\n      name: 'Button',\n      description: 'A clickable button component',\n      props: {\n        label: s.string('The text to display on the button'),\n        onClick: s.function('Function to call when clicked')\n      }\n    })\n  ]\n});\n```\n\n"
+          "\n\nIn this example, the LLM will respond with a UI component that can be rendered directly in your React application.\n```tsx\nconst { messages, sendMessage } = useUiChat({\n  model: 'gpt-4o',\n  system: 'You are a helpful assistant that can generate UI components.',\n  components: [\n    exposeComponent(Button, {\n      name: 'Button',\n      description: 'A clickable button component',\n      props: {\n        label: s.string('The text to display on the button'),\n        onClick: s.function('Function to call when clicked')\n      }\n    })\n  ]\n});\n```\n\n\n"
         ]
       },
-      "formattedContent": "useUiChat: <Tools extends Chat.AnyTool>(options: UiChatOptions<Tools>) => {\n    messages: UiChatMessage<Tools>[];\n    setComponents: React.Dispatch<React.SetStateAction<ExposedComponent<any>[]>>;\n    lastAssistantMessage: UiAssistantMessage<Tools> | undefined;\n    setMessages: (messages: Chat.Message<UiChatSchema, Tools>[]) => void;\n    sendMessage: (message: Chat.Message<UiChatSchema, Tools>) => void;\n    resendMessages: () => void;\n    stop: (clearStreamingMessage?: boolean) => void;\n    reload: () => void;\n    error: Error | undefined;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n    exhaustedRetries: boolean;\n}",
+      "formattedContent": "useUiChat: <Tools extends Chat.AnyTool>(options: UiChatOptions<Tools>) => {\n    messages: UiChatMessage<Tools>[];\n    setComponents: import(\"react\").Dispatch<import(\"react\").SetStateAction<ExposedComponent<any>[]>>;\n    lastAssistantMessage: UiAssistantMessage<Tools> | undefined;\n    setMessages: (messages: Chat.Message<UiChatSchema, Tools>[]) => void;\n    sendMessage: (message: Chat.Message<UiChatSchema, Tools>) => void;\n    resendMessages: () => void;\n    stop: (clearStreamingMessage?: boolean) => void;\n    reload: () => void;\n    error: Error | undefined;\n    isReceiving: boolean;\n    isSending: boolean;\n    isRunningToolCalls: boolean;\n    exhaustedRetries: boolean;\n}",
       "overlayTokens": [
         { "kind": "Content", "text": "useUiChat: <Tools extends " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": ">(options: " },
         {
@@ -157,17 +160,20 @@
           "text": "UiChatMessage",
           "canonicalReference": "@hashbrownai/react!UiChatMessage:type"
         },
-        { "kind": "Content", "text": "<Tools>[];\n    setComponents: " },
         {
-          "kind": "Reference",
-          "text": "React.Dispatch",
-          "canonicalReference": "!React.Dispatch:type"
+          "kind": "Content",
+          "text": "<Tools>[];\n    setComponents: import(\"react\")."
         },
-        { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
-          "text": "React.SetStateAction",
-          "canonicalReference": "!React.SetStateAction:type"
+          "text": "Dispatch",
+          "canonicalReference": "@types/react!React.Dispatch:type"
+        },
+        { "kind": "Content", "text": "<import(\"react\")." },
+        {
+          "kind": "Reference",
+          "text": "SetStateAction",
+          "canonicalReference": "@types/react!React.SetStateAction:type"
         },
         { "kind": "Content", "text": "<" },
         {
@@ -188,13 +194,13 @@
         {
           "kind": "Reference",
           "text": "Chat.Message",
-          "canonicalReference": "!Chat.Message:type"
+          "canonicalReference": "@hashbrownai/react!~Message_3:type"
         },
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
           "text": "UiChatSchema",
-          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+          "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
         },
         {
           "kind": "Content",
@@ -203,13 +209,13 @@
         {
           "kind": "Reference",
           "text": "Chat.Message",
-          "canonicalReference": "!Chat.Message:type"
+          "canonicalReference": "@hashbrownai/react!~Message_3:type"
         },
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
           "text": "UiChatSchema",
-          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+          "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
         },
         {
           "kind": "Content",

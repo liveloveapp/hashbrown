@@ -1,4 +1,5 @@
 {
+  "name": "@hashbrownai/www",
   "type": "module",
   "scripts": {
     "collect-docs": "npx tsx src/tools/extract-docs-content.ts",

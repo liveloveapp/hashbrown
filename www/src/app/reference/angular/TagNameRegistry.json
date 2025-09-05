@@ -8,7 +8,7 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/angular!TagNameRegistry:type",
-      "docComment": "",
+      "docComment": "/**\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "type TagNameRegistry = " },
         {
@@ -24,7 +24,7 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ">;\n        component: " },
         {
@@ -42,13 +42,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -56,7 +56,32 @@
         "see": [],
         "params": [],
         "examples": []
-      }
+      },
+      "formattedContent": "type TagNameRegistry = {\n  [tagName: string]: {\n    props:  Record <\n      string,\n       s.HashbrownType \n    >;\n    component:  Type <object>;\n  };\n};",
+      "overlayTokens": [
+        {
+          "kind": "Content",
+          "text": "type TagNameRegistry = {\n  [tagName: string]: {\n    props: "
+        },
+        {
+          "kind": "Reference",
+          "text": " Record",
+          "canonicalReference": "!Record:type"
+        },
+        { "kind": "Content", "text": " <\n      string,\n      " },
+        {
+          "kind": "Reference",
+          "text": " s.HashbrownType ",
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
+        },
+        { "kind": "Content", "text": "\n    >;\n    component: " },
+        {
+          "kind": "Reference",
+          "text": " Type",
+          "canonicalReference": "@angular/core!Type:interface"
+        },
+        { "kind": "Content", "text": " <object>;\n  };\n};" }
+      ]
     }
   ]
 }

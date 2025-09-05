@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!createTool:function(1)",
-      "docComment": "/**\n * Creates a tool with a schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
+      "docComment": "/**\n * Creates a tool with a schema.\n *\n * @param input - The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -19,7 +19,7 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ", Result>(input: " },
         {
@@ -29,7 +29,7 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": "<Schema>, abortSignal: " },
         {
@@ -48,13 +48,13 @@
         {
           "kind": "Reference",
           "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
         { "kind": "Content", "text": "<Name, " },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": "<Schema>, Result>" },
         { "kind": "Content", "text": ";" }
@@ -91,7 +91,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -101,25 +101,12 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The tool.\n",
+        "returns": " The tool.\n\n\n",
         "see": [],
         "params": [
-          { "name": "input", "description": "The input for the tool.\n\n" },
           {
-            "name": "",
-            "description": "  - input.name - The name of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.description - The description of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.schema - The schema of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.handler - The handler of the tool.\n\n"
+            "name": "input",
+            "description": "The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n\n"
           },
           { "name": "Name", "description": "The name of the tool.\n\n" },
           { "name": "Schema", "description": "The schema of the tool.\n\n" },
@@ -136,7 +123,7 @@
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
         },
         {
           "kind": "Content",
@@ -145,7 +132,7 @@
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": " <Schema>,\n    abortSignal: " },
         {
@@ -163,13 +150,13 @@
         {
           "kind": "Reference",
           "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
         { "kind": "Content", "text": " <\n  Name,\n  " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": " <Schema>,\n  Result\n>;" }
       ]
@@ -177,7 +164,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!createTool:function(2)",
-      "docComment": "/**\n * Creates a tool with a unknown JSON schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
+      "docComment": "/**\n * Creates a tool with a unknown JSON schema.\n *\n * @param input - The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -205,7 +192,7 @@
         {
           "kind": "Reference",
           "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
         { "kind": "Content", "text": "<Name, any, Result>" },
         { "kind": "Content", "text": ";" }
@@ -237,7 +224,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -247,25 +234,12 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The tool.\n",
+        "returns": " The tool.\n\n\n",
         "see": [],
         "params": [
-          { "name": "input", "description": "The input for the tool.\n\n" },
           {
-            "name": "",
-            "description": "  - input.name - The name of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.description - The description of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.schema - The schema of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.handler - The handler of the tool.\n\n"
+            "name": "input",
+            "description": "The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n\n"
           },
           { "name": "Name", "description": "The name of the tool.\n\n" },
           { "name": "Schema", "description": "The schema of the tool.\n\n" },
@@ -294,7 +268,7 @@
         {
           "kind": "Reference",
           "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
         { "kind": "Content", "text": " <Name, any, Result>;" }
       ]
@@ -302,7 +276,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!createTool:function(3)",
-      "docComment": "/**\n * Creates a tool without a schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param Name - The name of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
+      "docComment": "/**\n * Creates a tool without a schema.\n *\n * @param input - The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `handler`: The handler of the tool\n *\n * @param Name - The name of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -330,7 +304,7 @@
         {
           "kind": "Reference",
           "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
         { "kind": "Content", "text": "<Name, void, Result>" },
         { "kind": "Content", "text": ";" }
@@ -362,7 +336,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -372,21 +346,12 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The tool.\n",
+        "returns": " The tool.\n\n\n",
         "see": [],
         "params": [
-          { "name": "input", "description": "The input for the tool.\n\n" },
           {
-            "name": "",
-            "description": "  - input.name - The name of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.description - The description of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.handler - The handler of the tool.\n\n"
+            "name": "input",
+            "description": "The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `handler`: The handler of the tool\n\n"
           },
           { "name": "Name", "description": "The name of the tool.\n\n" },
           { "name": "Result", "description": "The result of the tool.\n\n" }
@@ -414,7 +379,7 @@
         {
           "kind": "Reference",
           "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/angular!~Tool_3:type"
         },
         { "kind": "Content", "text": " <Name, void, Result>;" }
       ]

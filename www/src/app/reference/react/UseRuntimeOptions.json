@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseRuntimeOptions:interface",
-      "docComment": "/**\n * Options for creating a runtime.\n */\n",
+      "docComment": "/**\n * Options for creating a runtime.\n *\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "export interface UseRuntimeOptions " }
       ],
@@ -27,7 +27,7 @@
             {
               "kind": "Reference",
               "text": "RuntimeFunctionRef",
-              "canonicalReference": "!unknown"
+              "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
             },
             { "kind": "Content", "text": "<any, any>[]]" },
             { "kind": "Content", "text": ";" }
@@ -58,14 +58,18 @@
           "formattedContent": "functions: [... (RuntimeFunctionRef  < any), any > []];",
           "overlayTokens": [
             { "kind": "Content", "text": "functions: [..." },
-            { "kind": "Content", "text": " (RuntimeFunctionRef " },
+            {
+              "kind": "Reference",
+              "text": " (RuntimeFunctionRef ",
+              "canonicalReference": "@hashbrownai/react!~RuntimeFunctionRef:type"
+            },
             { "kind": "Content", "text": " < any), any > []];" }
           ]
         },
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/react!UseRuntimeOptions#timeout:member",
-          "docComment": "/**\n * The timeout for the runtime.\n *\n * @default 10000\n */\n",
+          "docComment": "/**\n * The timeout for the runtime.\n *\n * @defaultValue\n *\n * 10000\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "timeout?: " },
             { "kind": "Content", "text": "number" },
@@ -85,7 +89,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "The timeout for the runtime.\n\n@default 10000\n",
+            "summary": "The timeout for the runtime.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -102,13 +106,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Options for creating a runtime.\n",
+        "summary": "Options for creating a runtime.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

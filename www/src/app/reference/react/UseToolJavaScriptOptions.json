@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseToolJavaScriptOptions:interface",
-      "docComment": "/**\n * Options for creating a tool that can run JavaScript code.\n */\n",
+      "docComment": "/**\n * Options for creating a tool that can run JavaScript code.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -29,7 +29,7 @@
             {
               "kind": "Reference",
               "text": "RuntimeRef",
-              "canonicalReference": "!unknown"
+              "canonicalReference": "@hashbrownai/react!~RuntimeRef:interface"
             },
             { "kind": "Content", "text": ";" }
           ],
@@ -59,7 +59,11 @@
           "formattedContent": "runtime:  RuntimeRef ;",
           "overlayTokens": [
             { "kind": "Content", "text": "runtime: " },
-            { "kind": "Content", "text": " RuntimeRef " },
+            {
+              "kind": "Reference",
+              "text": " RuntimeRef ",
+              "canonicalReference": "@hashbrownai/react!~RuntimeRef:interface"
+            },
             { "kind": "Content", "text": ";" }
           ]
         }
@@ -68,13 +72,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Options for creating a tool that can run JavaScript code.\n",
+        "summary": "Options for creating a tool that can run JavaScript code.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

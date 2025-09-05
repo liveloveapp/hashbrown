@@ -6,19 +6,29 @@ import { structuredChatResource } from './structured-chat-resource.fn';
 
 /**
  * A reference to the structured completion resource.
+ *
+ * @public
  */
 export interface StructuredCompletionResourceRef<Output>
   extends Resource<Output | null> {
+  /**
+   * Reloads the resource.
+   *
+   * @returns Whether the resource was reloaded.
+   */
   reload: () => boolean;
+
   /**
    * Stops any currently-streaming message.
-   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**
  * Options for the structured completion resource.
+ *
+ * @public
  */
 export interface StructuredCompletionResourceOptions<
   Input,
@@ -57,6 +67,7 @@ export interface StructuredCompletionResourceOptions<
 /**
  * Creates a structured completion resource.
  *
+ * @public
  * @param options - The options for the structured completion resource.
  * @returns The structured completion resource.
  */

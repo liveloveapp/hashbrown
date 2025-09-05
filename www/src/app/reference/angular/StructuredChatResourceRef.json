@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!StructuredChatResourceRef:interface",
-      "docComment": "/**\n * A reference to the structured chat resource.\n */\n",
+      "docComment": "/**\n * A reference to the structured chat resource.\n *\n * @typeParam Output - The type of the output from the chat.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": "> extends " },
         {
@@ -29,7 +29,7 @@
         {
           "kind": "Reference",
           "text": "Chat.Message",
-          "canonicalReference": "!Chat.Message:type"
+          "canonicalReference": "@hashbrownai/angular!~Message_3:type"
         },
         { "kind": "Content", "text": "<Output, Tools>[]>" },
         { "kind": "Content", "text": " " }
@@ -66,7 +66,7 @@
             {
               "kind": "Reference",
               "text": "Chat.AssistantMessage",
-              "canonicalReference": "!Chat.AssistantMessage:type"
+              "canonicalReference": "@hashbrownai/angular!~AssistantMessage_3:interface"
             },
             { "kind": "Content", "text": "<Output, Tools> | undefined>" },
             { "kind": "Content", "text": ";" }
@@ -106,7 +106,7 @@
             {
               "kind": "Reference",
               "text": " Chat.AssistantMessage",
-              "canonicalReference": "!Chat.AssistantMessage:type"
+              "canonicalReference": "@hashbrownai/angular!~AssistantMessage_3:interface"
             },
             { "kind": "Content", "text": " <Output, Tools> | undefined\n>;" }
           ]
@@ -114,7 +114,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceRef#reload:member",
-          "docComment": "",
+          "docComment": "/**\n * Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.\n *\n * @returns Whether the resource was reloaded.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "reload: " },
             { "kind": "Content", "text": "() => boolean" },
@@ -134,11 +134,11 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
-            "returns": "",
+            "returns": " Whether the resource was reloaded.\n",
             "see": [],
             "params": [],
             "examples": []
@@ -151,7 +151,7 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceRef#resendMessages:member",
-          "docComment": "",
+          "docComment": "/**\n * Cause current messages to be resent. Can be used after an error in chat.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "resendMessages: " },
             { "kind": "Content", "text": "() => void" },
@@ -171,7 +171,7 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Cause current messages to be resent. Can be used after an error in chat.\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -188,14 +188,14 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceRef#sendMessage:member",
-          "docComment": "",
+          "docComment": "/**\n * Send a new user message to the chat.\n *\n * @param message - The user message to send.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "sendMessage: " },
             { "kind": "Content", "text": "(message: " },
             {
               "kind": "Reference",
               "text": "Chat.UserMessage",
-              "canonicalReference": "!Chat.UserMessage:type"
+              "canonicalReference": "@hashbrownai/angular!~UserMessage_3:type"
             },
             { "kind": "Content", "text": ") => void" },
             { "kind": "Content", "text": ";" }
@@ -214,13 +214,18 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Send a new user message to the chat.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
             "returns": "",
             "see": [],
-            "params": [],
+            "params": [
+              {
+                "name": "message",
+                "description": "The user message to send.\n"
+              }
+            ],
             "examples": []
           },
           "formattedContent": "sendMessage: (message: Chat.UserMessage) => void;",
@@ -229,7 +234,7 @@
             {
               "kind": "Reference",
               "text": "Chat.UserMessage",
-              "canonicalReference": "!Chat.UserMessage:type"
+              "canonicalReference": "@hashbrownai/angular!~UserMessage_3:type"
             },
             { "kind": "Content", "text": ") => void;" }
           ]
@@ -237,14 +242,14 @@
         {
           "kind": "PropertySignature",
           "canonicalReference": "@hashbrownai/angular!StructuredChatResourceRef#setMessages:member",
-          "docComment": "",
+          "docComment": "/**\n * Update the chat messages.\n *\n * @param messages - The new array of chat messages.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "setMessages: " },
             { "kind": "Content", "text": "(messages: " },
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/angular!~Message_3:type"
             },
             { "kind": "Content", "text": "<Output, Tools>[]) => void" },
             { "kind": "Content", "text": ";" }
@@ -263,13 +268,18 @@
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "Update the chat messages.\n\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
             "returns": "",
             "see": [],
-            "params": [],
+            "params": [
+              {
+                "name": "messages",
+                "description": "The new array of chat messages.\n"
+              }
+            ],
             "examples": []
           },
           "formattedContent": "setMessages: (messages: Chat.Message<Output, Tools>[]) => void;",
@@ -278,7 +288,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/angular!~Message_3:type"
             },
             { "kind": "Content", "text": "<Output, Tools>[]) => void;" }
           ]
@@ -336,13 +346,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "A reference to the structured chat resource.\n",
+        "summary": "A reference to the structured chat resource.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -360,7 +370,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": "> extends " },
         {
@@ -372,7 +382,7 @@
         {
           "kind": "Reference",
           "text": "Chat.Message",
-          "canonicalReference": "!Chat.Message:type"
+          "canonicalReference": "@hashbrownai/angular!~Message_3:type"
         },
         { "kind": "Content", "text": "<Output, Tools>[]>" }
       ]

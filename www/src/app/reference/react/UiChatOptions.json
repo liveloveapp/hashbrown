@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UiChatOptions:interface",
-      "docComment": "/**\n * Options for the `useUiChat` hook.\n */\n",
+      "docComment": "/**\n * Options for the `useUiChat` hook.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": "> " }
       ],
@@ -164,13 +164,13 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<" },
             {
               "kind": "Reference",
               "text": "UiChatSchema",
-              "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+              "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
             },
             { "kind": "Content", "text": ", Tools>[]" },
             { "kind": "Content", "text": ";" }
@@ -204,13 +204,13 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<" },
             {
               "kind": "Reference",
               "text": "UiChatSchema",
-              "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+              "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
             },
             { "kind": "Content", "text": ", Tools>[];" }
           ]
@@ -224,7 +224,7 @@
             {
               "kind": "Reference",
               "text": "KnownModelIds",
-              "canonicalReference": "!unknown"
+              "canonicalReference": "@hashbrownai/react!~KnownModelIds:type"
             },
             { "kind": "Content", "text": ";" }
           ],
@@ -254,7 +254,11 @@
           "formattedContent": "model:  KnownModelIds ;",
           "overlayTokens": [
             { "kind": "Content", "text": "model: " },
-            { "kind": "Content", "text": " KnownModelIds " },
+            {
+              "kind": "Reference",
+              "text": " KnownModelIds ",
+              "canonicalReference": "@hashbrownai/react!~KnownModelIds:type"
+            },
             { "kind": "Content", "text": ";" }
           ]
         },
@@ -264,14 +268,19 @@
           "docComment": "/**\n * The system message to use for the chat.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "system: " },
-            { "kind": "Content", "text": "string" },
+            { "kind": "Content", "text": "string | " },
+            {
+              "kind": "Reference",
+              "text": "SystemPrompt",
+              "canonicalReference": "@hashbrownai/react!~SystemPrompt:type"
+            },
             { "kind": "Content", "text": ";" }
           ],
           "isReadonly": false,
           "isOptional": false,
           "releaseTag": "Public",
           "name": "system",
-          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 2 },
+          "propertyTypeTokenRange": { "startIndex": 1, "endIndex": 3 },
           "docs": {
             "modifiers": {
               "isInternal": false,
@@ -290,8 +299,16 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "system: string;",
-          "overlayTokens": [{ "kind": "Content", "text": "system: string;" }]
+          "formattedContent": "system: string |  SystemPrompt ;",
+          "overlayTokens": [
+            { "kind": "Content", "text": "system: string | " },
+            {
+              "kind": "Reference",
+              "text": " SystemPrompt ",
+              "canonicalReference": "@hashbrownai/react!~SystemPrompt:type"
+            },
+            { "kind": "Content", "text": ";" }
+          ]
         },
         {
           "kind": "PropertySignature",
@@ -333,13 +350,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Options for the `useUiChat` hook.\n",
+        "summary": "Options for the `useUiChat` hook.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -357,7 +374,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": ">" }
       ]

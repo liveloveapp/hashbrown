@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!structuredChatResource:function(1)",
-      "docComment": "/**\n * Creates a structured chat resource.\n *\n * @param options - The options for the structured chat resource.\n *\n * @returns The structured chat resource.\n */\n",
+      "docComment": "/**\n * Creates a structured chat resource.\n *\n * @param options - The options for the structured chat resource.\n *\n * @returns The structured chat resource.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,26 +17,26 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ", Tools extends " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ", Output extends " },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": "<Schema>" },
         { "kind": "Content", "text": " = " },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": "<Schema>" },
         { "kind": "Content", "text": ">(options: " },
@@ -87,7 +87,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -97,7 +97,7 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The structured chat resource.\n",
+        "returns": " The structured chat resource.\n\n\n",
         "see": [],
         "params": [
           {
@@ -116,25 +116,25 @@
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ",\n  Tools extends " },
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ",\n  Output extends\n    " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": " <Schema> = " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/angular!~Infer:type"
         },
         { "kind": "Content", "text": " <Schema>,\n>(\n  options: " },
         {

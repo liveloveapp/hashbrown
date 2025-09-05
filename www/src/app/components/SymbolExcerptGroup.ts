@@ -10,7 +10,9 @@ import { Squircle } from './Squircle';
     [wwwSquircleBorderWidth]="8"
     wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
   >
-    <ng-content />
+    <div class="content">
+      <ng-content />
+    </div>
   </div>`,
   styles: [
     `
@@ -21,11 +23,15 @@ import { Squircle } from './Squircle';
       .group {
         display: flex;
         flex-direction: column;
+        gap: 4px;
         background: #3d3c3a;
         min-width: 100%;
         width: auto;
-        overflow-x: auto;
-        padding: 24px;
+
+        > .content {
+          overflow-x: auto;
+          padding: 24px;
+        }
       }
     `,
   ],

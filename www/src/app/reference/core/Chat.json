@@ -18,7 +18,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.AnyMessage:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type AnyMessage = " },
             {
@@ -42,13 +42,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -77,7 +77,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.AnyTool:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type AnyTool = " },
             {
@@ -95,13 +95,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -124,7 +124,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.AnyToolCall:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type AnyToolCall = " },
             {
@@ -148,13 +148,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -193,7 +193,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.AssistantMessage:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -332,13 +332,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -358,7 +358,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunk:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -423,13 +423,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -449,7 +449,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionChunkChoice:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -610,13 +610,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -636,7 +636,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionCreateParams:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -917,13 +917,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -943,7 +943,7 @@
             {
               "kind": "TypeAlias",
               "canonicalReference": "@hashbrownai/core!Chat.Api.CompletionToolChoiceOption:type",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -959,13 +959,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -985,7 +985,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.ErrorMessage:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface ErrorMessage " }
               ],
@@ -1073,13 +1073,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -1096,7 +1096,7 @@
             {
               "kind": "TypeAlias",
               "canonicalReference": "@hashbrownai/core!Chat.Api.Message:type",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export type Message = " },
                 {
@@ -1131,13 +1131,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -1178,7 +1178,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.Tool:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface Tool " }
               ],
@@ -1303,13 +1303,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -1326,7 +1326,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.ToolCall:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface ToolCall " }
               ],
@@ -1494,13 +1494,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -1517,7 +1517,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.ToolMessage:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface ToolMessage " }
               ],
@@ -1690,13 +1690,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -1713,7 +1713,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Api.UserMessage:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface UserMessage " }
               ],
@@ -1801,13 +1801,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -1846,7 +1846,7 @@
         {
           "kind": "Interface",
           "canonicalReference": "@hashbrownai/core!Chat.AssistantMessage:interface",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -2003,13 +2003,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -2035,7 +2035,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.ErrorMessage:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type ErrorMessage = " },
             {
@@ -2051,13 +2051,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -2118,7 +2118,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Internal.AssistantMessage:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 {
                   "kind": "Content",
@@ -2246,13 +2246,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -2272,7 +2272,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Internal.ErrorMessage:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface ErrorMessage " }
               ],
@@ -2360,13 +2360,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -2383,7 +2383,7 @@
             {
               "kind": "TypeAlias",
               "canonicalReference": "@hashbrownai/core!Chat.Internal.Message:type",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export type Message = " },
                 {
@@ -2412,13 +2412,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -2453,7 +2453,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Internal.Tool:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface Tool " }
               ],
@@ -2653,13 +2653,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -2676,7 +2676,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Internal.ToolCall:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface ToolCall " }
               ],
@@ -2926,13 +2926,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -2949,7 +2949,7 @@
             {
               "kind": "Interface",
               "canonicalReference": "@hashbrownai/core!Chat.Internal.UserMessage:interface",
-              "docComment": "",
+              "docComment": "/**\n * @public\n */\n",
               "excerptTokens": [
                 { "kind": "Content", "text": "export interface UserMessage " }
               ],
@@ -3047,13 +3047,13 @@
               "docs": {
                 "modifiers": {
                   "isInternal": false,
-                  "isPublic": false,
+                  "isPublic": true,
                   "isAlpha": false,
                   "isBeta": false,
                   "isOverride": false,
                   "isExperimental": false
                 },
-                "summary": "",
+                "summary": "\n",
                 "usageNotes": "",
                 "remarks": "",
                 "deprecated": "",
@@ -3092,7 +3092,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.Message:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -3142,13 +3142,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -3192,7 +3192,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.Middleware:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type Middleware = " },
             { "kind": "Content", "text": "(fetchInit: " },
@@ -3229,13 +3229,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -3279,7 +3279,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.Tool:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -3336,13 +3336,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -3383,7 +3383,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.ToolCall:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             {
               "kind": "Content",
@@ -3435,13 +3435,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",
@@ -3491,7 +3491,7 @@
         {
           "kind": "TypeAlias",
           "canonicalReference": "@hashbrownai/core!Chat.UserMessage:type",
-          "docComment": "",
+          "docComment": "/**\n * @public\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "export type UserMessage = " },
             {
@@ -3513,13 +3513,13 @@
           "docs": {
             "modifiers": {
               "isInternal": false,
-              "isPublic": false,
+              "isPublic": true,
               "isAlpha": false,
               "isBeta": false,
               "isOverride": false,
               "isExperimental": false
             },
-            "summary": "",
+            "summary": "\n",
             "usageNotes": "",
             "remarks": "",
             "deprecated": "",

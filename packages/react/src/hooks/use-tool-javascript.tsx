@@ -3,6 +3,8 @@ import { useTool } from './use-tool';
 
 /**
  * Options for creating a tool that can run JavaScript code.
+ *
+ * @public
  */
 export interface UseToolJavaScriptOptions {
   /**
@@ -16,6 +18,7 @@ export interface UseToolJavaScriptOptions {
  * in a stateful JavaScript environment, with no access to the internet, the DOM,
  * or any function that you have not explicitly defined.
  *
+ * @public
  * @param options - The options for creating the tool.
  * @returns The tool.
  */

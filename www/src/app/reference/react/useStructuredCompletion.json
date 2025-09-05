@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useStructuredCompletion:function(1)",
-      "docComment": "/**\n * This React hook creates a completion instance that predicts structured data based on input context. The result object contains the predicted structured output and state for monitoring the completion.\n *\n * @description The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for: - Smart form field suggestions - Context-aware recommendations - Predictive UI generation - Intelligent defaults\n *\n * @returns {UseStructuredCompletionResult} An object containing the predicted structured output and completion state.\n *\n * @example\n *\n * In this example, the LLM will predict a color palette based on a given theme or mood.\n * ```tsx\n * const { output } = useStructuredCompletion({\n *   model: 'gpt-4o',\n *   system: `Predict a color palette based on the given mood or theme. For example,\n *   if the theme is \"Calm Ocean\", suggest appropriate colors.`,\n *   input: theme,\n *   schema: s.object('Color Palette', {\n *     colors: s.array(\n *       'The colors in the palette',\n *       s.string('Hex color code')\n *     )\n *   })\n * });\n * ```\n *\n */\n",
+      "docComment": "/**\n * This React hook creates a completion instance that predicts structured data based on input context. The result object contains the predicted structured output and state for monitoring the completion.\n *\n * @remarks\n *\n * The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for: - Smart form field suggestions - Context-aware recommendations - Predictive UI generation - Intelligent defaults\n *\n * @typeParam Input - The type of the input to predict from.\n *\n * @typeParam Schema - The schema to use for the chat.\n *\n * @returns An object containing the predicted structured output and completion state.\n *\n * @example\n *\n * In this example, the LLM will predict a color palette based on a given theme or mood.\n * ```tsx\n * const { output } = useStructuredCompletion({\n *   model: 'gpt-4o',\n *   system: `Predict a color palette based on the given mood or theme. For example,\n *   if the theme is \"Calm Ocean\", suggest appropriate colors.`,\n *   input: theme,\n *   schema: s.object('Color Palette', {\n *     colors: s.array(\n *       'The colors in the palette',\n *       s.string('Hex color code')\n *     )\n *   })\n * });\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ">(options: " },
         {
@@ -36,7 +36,7 @@
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<Schema>>" },
         { "kind": "Content", "text": ";" }
@@ -68,21 +68,21 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "This React hook creates a completion instance that predicts structured data based on input context. The result object contains the predicted structured output and state for monitoring the completion.\n\n The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for: - Smart form field suggestions - Context-aware recommendations - Predictive UI generation - Intelligent defaults\n\n",
+        "summary": "This React hook creates a completion instance that predicts structured data based on input context. The result object contains the predicted structured output and state for monitoring the completion.\n\n",
         "usageNotes": "",
-        "remarks": "",
+        "remarks": "\n\nThe `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for: - Smart form field suggestions - Context-aware recommendations - Predictive UI generation - Intelligent defaults\n\n",
         "deprecated": "",
-        "returns": " {UseStructuredCompletionResult} An object containing the predicted structured output and completion state.\n\n",
+        "returns": " An object containing the predicted structured output and completion state.\n\n",
         "see": [],
         "params": [],
         "examples": [
-          "\n\nIn this example, the LLM will predict a color palette based on a given theme or mood.\n```tsx\nconst { output } = useStructuredCompletion({\n  model: 'gpt-4o',\n  system: `Predict a color palette based on the given mood or theme. For example,\n  if the theme is \"Calm Ocean\", suggest appropriate colors.`,\n  input: theme,\n  schema: s.object('Color Palette', {\n    colors: s.array(\n      'The colors in the palette',\n      s.string('Hex color code')\n    )\n  })\n});\n```\n\n"
+          "\n\nIn this example, the LLM will predict a color palette based on a given theme or mood.\n```tsx\nconst { output } = useStructuredCompletion({\n  model: 'gpt-4o',\n  system: `Predict a color palette based on the given mood or theme. For example,\n  if the theme is \"Calm Ocean\", suggest appropriate colors.`,\n  input: theme,\n  schema: s.object('Color Palette', {\n    colors: s.array(\n      'The colors in the palette',\n      s.string('Hex color code')\n    )\n  })\n});\n```\n\n\n"
         ]
       },
       "formattedContent": "export declare function useStructuredCompletion<\n  Input,\n  Schema extends  s.HashbrownType ,\n>(\n  options:  UseStructuredCompletionOptions <\n    Input,\n    Schema\n  >,\n):  UseStructuredCompletionResult <\n   s.Infer <Schema>\n>;",
@@ -94,7 +94,7 @@
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ",\n>(\n  options: " },
         {
@@ -112,7 +112,7 @@
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <Schema>\n>;" }
       ]

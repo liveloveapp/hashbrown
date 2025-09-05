@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!chatResource:function(1)",
-      "docComment": "/**\n * This Angular resource provides a reactive chat interface for send and receiving messages from a model. The resource-based API includes signals for the current messages, status, and control methods for sending and stopping messages.\n *\n * @remarks\n *\n * The `chatResource` function provides the most basic functionality for un-structured chats. Unstructured chats include things like general chats and natural language controls.\n *\n * @param options - Configuration for the chat resource.\n *\n * @returns {ChatResourceRef<Tools>} An object with reactive signals and methods for interacting with the chat.  @template Tools\n *\n * @example\n *\n * This example demonstrates how to use the `chatResource` function to create a simple chat component.\n * ```ts\n * const chat = chatResource({\n *   system: 'hashbrowns should be covered and smothered',\n *   model: 'gpt-5',\n * });\n *\n * chat.sendMessage({ role: 'user', content: 'Write a short story about breakfast.' });\n * ```\n *\n */\n",
+      "docComment": "/**\n * This Angular resource provides a reactive chat interface for send and receiving messages from a model. The resource-based API includes signals for the current messages, status, and control methods for sending and stopping messages.\n *\n * @remarks\n *\n * The `chatResource` function provides the most basic functionality for un-structured chats. Unstructured chats include things like general chats and natural language controls.\n *\n * @param options - Configuration for the chat resource.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @returns An object with reactive signals and methods for interacting with the chat.\n *\n * @example\n *\n * This example demonstrates how to use the `chatResource` function to create a simple chat component.\n * ```ts\n * const chat = chatResource({\n *   system: 'hashbrowns should be covered and smothered',\n *   model: 'gpt-5',\n * });\n *\n * chat.sendMessage(\\{ role: 'user', content: 'Write a short story about breakfast.' \\});\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ">(options: " },
         {
@@ -57,7 +57,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -67,7 +67,7 @@
         "usageNotes": "",
         "remarks": "\n\nThe `chatResource` function provides the most basic functionality for un-structured chats. Unstructured chats include things like general chats and natural language controls.\n\n",
         "deprecated": "",
-        "returns": " {ChatResourceRef<Tools>} An object with reactive signals and methods for interacting with the chat.  @template Tools\n\n",
+        "returns": " An object with reactive signals and methods for interacting with the chat.\n\n",
         "see": [],
         "params": [
           {
@@ -76,7 +76,7 @@
           }
         ],
         "examples": [
-          "\n\nThis example demonstrates how to use the `chatResource` function to create a simple chat component.\n```ts\nconst chat = chatResource({\n  system: 'hashbrowns should be covered and smothered',\n  model: 'gpt-5',\n});\n\nchat.sendMessage({ role: 'user', content: 'Write a short story about breakfast.' });\n```\n\n"
+          "\n\nThis example demonstrates how to use the `chatResource` function to create a simple chat component.\n```ts\nconst chat = chatResource({\n  system: 'hashbrowns should be covered and smothered',\n  model: 'gpt-5',\n});\n\nchat.sendMessage(\\{ role: 'user', content: 'Write a short story about breakfast.' \\});\n```\n\n\n"
         ]
       },
       "formattedContent": "declare function chatResource<\n  Tools extends  Chat.AnyTool ,\n>(\n  options:  ChatResourceOptions <Tools>,\n):  ChatResourceRef <Tools>;",
@@ -88,7 +88,7 @@
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ",\n>(\n  options: " },
         {

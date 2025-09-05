@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@hashbrownai/core": ["dist/packages/core/"]
+      "@hashbrownai/core": ["dist/packages/core/index.d.ts"]
     }
   }
 }

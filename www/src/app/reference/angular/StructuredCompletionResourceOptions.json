@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!StructuredCompletionResourceOptions:interface",
-      "docComment": "/**\n * Options for the structured completion resource.\n */\n",
+      "docComment": "/**\n * Options for the structured completion resource.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
         },
         { "kind": "Content", "text": "> " }
       ],
@@ -167,7 +167,7 @@
             {
               "kind": "Reference",
               "text": "KnownModelIds",
-              "canonicalReference": "!unknown"
+              "canonicalReference": "@hashbrownai/angular!~KnownModelIds:type"
             },
             { "kind": "Content", "text": ";" }
           ],
@@ -197,7 +197,11 @@
           "formattedContent": "model:  KnownModelIds ;",
           "overlayTokens": [
             { "kind": "Content", "text": "model: " },
-            { "kind": "Content", "text": " KnownModelIds " },
+            {
+              "kind": "Reference",
+              "text": " KnownModelIds ",
+              "canonicalReference": "@hashbrownai/angular!~KnownModelIds:type"
+            },
             { "kind": "Content", "text": ";" }
           ]
         },
@@ -245,7 +249,7 @@
             {
               "kind": "Reference",
               "text": "SignalLike",
-              "canonicalReference": "@hashbrownai/angular!~SignalLike:type"
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
             },
             { "kind": "Content", "text": "<string>" },
             { "kind": "Content", "text": ";" }
@@ -279,7 +283,7 @@
             {
               "kind": "Reference",
               "text": " SignalLike",
-              "canonicalReference": "@hashbrownai/angular!~SignalLike:type"
+              "canonicalReference": "@hashbrownai/angular!SignalLike:type"
             },
             { "kind": "Content", "text": " <string>;" }
           ]
@@ -293,7 +297,7 @@
             {
               "kind": "Reference",
               "text": "Chat.AnyTool",
-              "canonicalReference": "!Chat.AnyTool:type"
+              "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
             },
             { "kind": "Content", "text": "[]" },
             { "kind": "Content", "text": ";" }
@@ -327,7 +331,7 @@
             {
               "kind": "Reference",
               "text": "Chat.AnyTool",
-              "canonicalReference": "!Chat.AnyTool:type"
+              "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
             },
             { "kind": "Content", "text": "[];" }
           ]
@@ -337,13 +341,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Options for the structured completion resource.\n",
+        "summary": "Options for the structured completion resource.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -361,7 +365,7 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/angular!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ">" }
       ]

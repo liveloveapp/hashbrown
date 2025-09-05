@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/core!Hashbrown:interface",
-      "docComment": "/**\n * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.\n *\n * @template Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.  @template Tools - The set of tools available to the chat instance.\n */\n",
+      "docComment": "/**\n * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.\n *\n * @typeParam Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.\n *\n * @typeParam Tools - The set of tools available to the chat instance.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -47,7 +47,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<" },
             {
@@ -87,7 +87,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <\n  " },
             {
@@ -107,7 +107,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<boolean>" },
             { "kind": "Content", "text": ";" }
@@ -141,7 +141,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <boolean>;" }
           ]
@@ -155,7 +155,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<boolean>" },
             { "kind": "Content", "text": ";" }
@@ -189,7 +189,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <boolean>;" }
           ]
@@ -203,7 +203,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<boolean>" },
             { "kind": "Content", "text": ";" }
@@ -237,7 +237,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <boolean>;" }
           ]
@@ -251,7 +251,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<boolean>" },
             { "kind": "Content", "text": ";" }
@@ -285,7 +285,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <boolean>;" }
           ]
@@ -299,7 +299,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<boolean>" },
             { "kind": "Content", "text": ";" }
@@ -333,7 +333,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <boolean>;" }
           ]
@@ -347,7 +347,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<" },
             {
@@ -387,7 +387,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <\n  " },
             {
@@ -407,7 +407,7 @@
             {
               "kind": "Reference",
               "text": "StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": "<" },
             {
@@ -447,7 +447,7 @@
             {
               "kind": "Reference",
               "text": " StateSignal",
-              "canonicalReference": "@hashbrownai/core!~StateSignal:interface"
+              "canonicalReference": "@hashbrownai/core!StateSignal:interface"
             },
             { "kind": "Content", "text": " <\n  " },
             {
@@ -781,13 +781,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.\n\n@template Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.  @template Tools - The set of tools available to the chat instance.\n",
+        "summary": "Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

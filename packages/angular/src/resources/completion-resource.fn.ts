@@ -18,6 +18,8 @@ import { readSignalLike, toNgSignal } from '../utils/signals';
 
 /**
  * A reference to the completion resource.
+ *
+ * @public
  */
 export interface CompletionResourceRef extends Resource<string | null> {
   /**
@@ -26,33 +28,40 @@ export interface CompletionResourceRef extends Resource<string | null> {
    * @returns Whether the resource was reloaded.
    */
   reload: () => boolean;
+
   /**
    * Stops any currently-streaming message.
-   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**
  * Options for the completion resource.
+ *
+ * @public
  */
 export interface CompletionResourceOptions<Input> {
   /**
    * The model to use for the completion.
    */
   model: SignalLike<string>;
+
   /**
    * The input to the completion.
    */
   input: Signal<Input | null | undefined>;
+
   /**
    * The system prompt to use for the completion.
    */
   system: SignalLike<string>;
+
   /**
    * The API URL to use for the completion.
    */
   apiUrl?: string;
+
   /**
    * The debug name for the completion resource.
    */
@@ -62,7 +71,9 @@ export interface CompletionResourceOptions<Input> {
 /**
  * Creates a completion resource.
  *
+ * @public
  * @param options - The options for the completion resource.
+ * @typeParam Input - The type of the input to the completion.
  * @returns The completion resource.
  */
 export function completionResource<Input>(

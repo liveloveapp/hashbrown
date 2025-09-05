@@ -8,19 +8,19 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/angular!UiChatMessage:type",
-      "docComment": "",
+      "docComment": "/**\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "type UiChatMessage<Tools extends " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": " = " },
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": "> = " },
         {
@@ -56,13 +56,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -80,13 +80,13 @@
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": " = " },
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/angular!~AnyTool:type"
         },
         { "kind": "Content", "text": ",\n> = " },
         {

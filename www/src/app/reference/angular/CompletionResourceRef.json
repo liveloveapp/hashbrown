@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/angular!CompletionResourceRef:interface",
-      "docComment": "/**\n * A reference to the completion resource.\n */\n",
+      "docComment": "/**\n * A reference to the completion resource.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -117,13 +117,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "A reference to the completion resource.\n",
+        "summary": "A reference to the completion resource.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

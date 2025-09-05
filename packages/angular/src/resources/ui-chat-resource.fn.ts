@@ -11,42 +11,59 @@ import {
 } from '../utils/ui-chat.helpers';
 import { readSignalLike } from '../utils';
 
-type UiChatMessageOutput = s.ObjectType<{
+/**
+ * @public
+ */
+export type UiChatMessageOutput = s.ObjectType<{
   ui: s.ArrayType<s.ObjectType<ɵui.ComponentTreeSchema>>;
 }>;
 
 /**
  * Options for the UI chat resource.
+ *
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The components to use for the UI chat resource.
    */
   components: ExposedComponent<any>[];
+
   /**
    * The model to use for the UI chat resource.
    */
   model: KnownModelIds;
+
   /**
    * The system prompt to use for the UI chat resource.
    */
   system: string | Signal<string> | SystemPrompt | Signal<SystemPrompt>;
+
   /**
    * The initial messages for the UI chat resource.
+   *
+   * @typeParam Tools - The set of tool definitions available to the chat.
    */
   messages?: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[];
+
   /**
    * The tools to use for the UI chat resource.
+   *
+   * @typeParam Tools - The set of tool definitions available to the chat.
    */
   tools?: Tools[];
+
   /**
    * The debug name for the UI chat resource.
    */
   debugName?: string;
+
   /**
    * The debounce time for the UI chat resource.
    */
   debounce?: number;
+
   /**
    * The API URL to use for the UI chat resource.
    */
@@ -55,16 +72,30 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
 
 /**
  * A reference to the UI chat resource.
+ *
+ * @public
  */
 export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<UiChatMessage<Tools>[]> {
+  /**
+   * Send a new user message to the chat.
+   *
+   * @param message - The user message to send.
+   */
   sendMessage: (message: Chat.UserMessage) => void;
+
+  /**
+   * Cause current messages to be resent.  Can be used after an error in chat.
+   */
   resendMessages: () => void;
+
   /**
    * Stops any currently-streaming message.
-   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   *
+   * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+
   /**
    * The last assistant message for the UI chat resource.
    */
@@ -74,6 +105,7 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 /**
  * Creates a UI chat resource.
  *
+ * @public
  * @param args - The arguments for the UI chat resource.
  * @returns The UI chat resource.
  */

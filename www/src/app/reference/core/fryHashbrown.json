@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/core!fryHashbrown:function(1)",
-      "docComment": "/**\n * Initialize a Hashbrown chat instance with the given configuration.\n *\n * @template Output - The type of messages expected from the LLM.  @template Tools - The set of tools to register with the chat instance.\n *\n * @param init - Initialization options.\n *\n * @param  - {string} [init.debugName] - Optional debug name for devtools tracing.\n *\n * @param  - {string} init.apiUrl - Base URL of the Hashbrown API endpoint.\n *\n * @param  - {string} init.model - The LLM model identifier to use.\n *\n * @param  - {string} init.system - System prompt or initial context for the chat.\n *\n * @param  - {Chat.Message<Output, Tools>[]} [init.messages] - Initial message history.\n *\n * @param  - {Tools[]} [init.tools] - Array of tools to enable in the instance.\n *\n * @param  - {s.HashbrownType} [init.responseSchema] - JSON schema for validating structured output.\n *\n * @param  - {Chat.Middleware[]} [init.middleware] - Middleware functions to run on messages.\n *\n * @param  - {boolean} [init.emulateStructuredOutput] - Whether to emulate structured output behavior.\n *\n * @param  - {number} [init.debounce] - Debounce interval in milliseconds for sending messages.\n *\n * @returns {Hashbrown<Output, Tools>} A configured Hashbrown instance.\n *\n * @throws\n *\n * {Error} If a reserved tool name (\"output\") is used.\n */\n",
+      "docComment": "/**\n * Initialize a Hashbrown chat instance with the given configuration.\n *\n * @param init - Initialization options containing: - `debugName`: Optional debug name for devtools tracing - `apiUrl`: Base URL of the Hashbrown API endpoint - `model`: The LLM model identifier to use - `system`: System prompt or initial context for the chat - `messages`: Initial message history - `tools`: Array of tools to enable in the instance - `responseSchema`: JSON schema for validating structured output - `middleware`: Middleware functions to run on messages - `emulateStructuredOutput`: Whether to emulate structured output behavior - `debounce`: Debounce interval in milliseconds for sending messages\n *\n * @typeParam Output - The type of messages expected from the LLM.\n *\n * @typeParam Tools - The set of tools to register with the chat instance.\n *\n * @returns A configured Hashbrown instance.\n *\n * @throws\n *\n * If a reserved tool name (\"output\") is used.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -82,59 +82,22 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Initialize a Hashbrown chat instance with the given configuration.\n\n@template Output - The type of messages expected from the LLM.  @template Tools - The set of tools to register with the chat instance.\n\n",
+        "summary": "Initialize a Hashbrown chat instance with the given configuration.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " {Hashbrown<Output, Tools>} A configured Hashbrown instance.\n\n",
+        "returns": " A configured Hashbrown instance.\n\n",
         "see": [],
         "params": [
-          { "name": "init", "description": "Initialization options.\n\n" },
           {
-            "name": "",
-            "description": "  - {string} [init.debugName] - Optional debug name for devtools tracing.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {string} init.apiUrl - Base URL of the Hashbrown API endpoint.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {string} init.model - The LLM model identifier to use.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {string} init.system - System prompt or initial context for the chat.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {Chat.Message<Output, Tools>[]} [init.messages] - Initial message history.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {Tools[]} [init.tools] - Array of tools to enable in the instance.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {s.HashbrownType} [init.responseSchema] - JSON schema for validating structured output.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {Chat.Middleware[]} [init.middleware] - Middleware functions to run on messages.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {boolean} [init.emulateStructuredOutput] - Whether to emulate structured output behavior.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - {number} [init.debounce] - Debounce interval in milliseconds for sending messages.\n\n"
+            "name": "init",
+            "description": "Initialization options containing: - `debugName`: Optional debug name for devtools tracing - `apiUrl`: Base URL of the Hashbrown API endpoint - `model`: The LLM model identifier to use - `system`: System prompt or initial context for the chat - `messages`: Initial message history - `tools`: Array of tools to enable in the instance - `responseSchema`: JSON schema for validating structured output - `middleware`: Middleware functions to run on messages - `emulateStructuredOutput`: Whether to emulate structured output behavior - `debounce`: Debounce interval in milliseconds for sending messages\n\n"
           }
         ],
         "examples": []
@@ -189,7 +152,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/core!fryHashbrown:function(2)",
-      "docComment": "",
+      "docComment": "/**\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -293,13 +256,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

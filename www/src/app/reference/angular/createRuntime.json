@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/angular!createRuntime:function(1)",
-      "docComment": "/**\n * Creates a new runtime.\n *\n * @param options - The options for creating the runtime.\n *\n * @returns A reference to the runtime.\n */\n",
+      "docComment": "/**\n * Creates a new runtime.\n *\n * @param options - The options for creating the runtime.\n *\n * @returns A reference to the runtime.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -23,7 +23,7 @@
         {
           "kind": "Reference",
           "text": "RuntimeRef",
-          "canonicalReference": "!unknown"
+          "canonicalReference": "@hashbrownai/angular!~RuntimeRef:interface"
         },
         { "kind": "Content", "text": ";" }
       ],
@@ -42,7 +42,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -52,7 +52,7 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " A reference to the runtime.\n",
+        "returns": " A reference to the runtime.\n\n\n",
         "see": [],
         "params": [
           {
@@ -74,7 +74,11 @@
           "canonicalReference": "@hashbrownai/angular!CreateRuntimeOptions:interface"
         },
         { "kind": "Content", "text": ",\n): " },
-        { "kind": "Content", "text": " RuntimeRef; " }
+        {
+          "kind": "Reference",
+          "text": " RuntimeRef; ",
+          "canonicalReference": "@hashbrownai/angular!~RuntimeRef:interface"
+        }
       ]
     }
   ]

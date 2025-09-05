@@ -8,12 +8,14 @@ import { useMemo } from 'react';
 
 /**
  * Options for creating a runtime.
+ *
+ * @public
  */
 export interface UseRuntimeOptions {
   /**
    * The timeout for the runtime.
    *
-   * @default 10000
+   * @defaultValue 10000
    */
   timeout?: number;
 
@@ -28,6 +30,8 @@ export interface UseRuntimeOptions {
  *
  * @param options - The options for creating the runtime.
  * @returns A reference to the runtime.
+ *
+ * @public
  */
 export function useRuntime(options: UseRuntimeOptions): RuntimeRef {
   // eslint-disable-next-line react-hooks/exhaustive-deps

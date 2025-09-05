@@ -8,7 +8,7 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/react!UiAssistantMessage:type",
-      "docComment": "/**\n * A message from the assistant that includes rendered UI components. Extends the base assistant message with UI-specific content.\n */\n",
+      "docComment": "/**\n * A message from the assistant that includes rendered UI components. Extends the base assistant message with UI-specific content.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,25 +17,25 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": "> = " },
         {
           "kind": "Reference",
           "text": "Chat.AssistantMessage",
-          "canonicalReference": "!Chat.AssistantMessage:type"
+          "canonicalReference": "@hashbrownai/react!~AssistantMessage_3:interface"
         },
         { "kind": "Content", "text": "<" },
         {
           "kind": "Reference",
           "text": "UiChatSchema",
-          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+          "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
         },
         { "kind": "Content", "text": ", Tools> & {\n    ui: " },
         {
           "kind": "Reference",
-          "text": "React.ReactElement",
-          "canonicalReference": "!React.ReactElement:type"
+          "text": "ReactElement",
+          "canonicalReference": "@types/react!React.ReactElement:interface"
         },
         { "kind": "Content", "text": "[] | null;\n}" },
         { "kind": "Content", "text": ";" }
@@ -54,13 +54,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "A message from the assistant that includes rendered UI components. Extends the base assistant message with UI-specific content.\n",
+        "summary": "A message from the assistant that includes rendered UI components. Extends the base assistant message with UI-specific content.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -69,7 +69,7 @@
         "params": [],
         "examples": []
       },
-      "formattedContent": "export type UiAssistantMessage<\n  Tools extends  Chat.AnyTool ,\n> =  Chat.AssistantMessage <\n   UiChatSchema ,\n  Tools\n> & {\n  ui:  React.ReactElement [] | null;\n};",
+      "formattedContent": "export type UiAssistantMessage<\n  Tools extends  Chat.AnyTool ,\n> =  Chat.AssistantMessage <\n   UiChatSchema ,\n  Tools\n> & {\n  ui:  ReactElement [] | null;\n};",
       "overlayTokens": [
         {
           "kind": "Content",
@@ -78,25 +78,25 @@
         {
           "kind": "Reference",
           "text": " Chat.AnyTool ",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": ",\n> = " },
         {
           "kind": "Reference",
           "text": " Chat.AssistantMessage",
-          "canonicalReference": "!Chat.AssistantMessage:type"
+          "canonicalReference": "@hashbrownai/react!~AssistantMessage_3:interface"
         },
         { "kind": "Content", "text": " <\n  " },
         {
           "kind": "Reference",
           "text": " UiChatSchema ",
-          "canonicalReference": "@hashbrownai/react!~UiChatSchema:interface"
+          "canonicalReference": "@hashbrownai/react!UiChatSchema:interface"
         },
         { "kind": "Content", "text": ",\n  Tools\n> & {\n  ui: " },
         {
           "kind": "Reference",
-          "text": " React.ReactElement ",
-          "canonicalReference": "!React.ReactElement:type"
+          "text": " ReactElement ",
+          "canonicalReference": "@types/react!React.ReactElement:interface"
         },
         { "kind": "Content", "text": "[] | null;\n};" }
       ]

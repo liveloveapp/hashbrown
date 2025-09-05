@@ -8,13 +8,13 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/angular!UiUserMessage:type",
-      "docComment": "",
+      "docComment": "/**\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "type UiUserMessage = " },
         {
           "kind": "Reference",
           "text": "Chat.UserMessage",
-          "canonicalReference": "!Chat.UserMessage:type"
+          "canonicalReference": "@hashbrownai/angular!~UserMessage_3:type"
         },
         { "kind": "Content", "text": ";" }
       ],
@@ -25,13 +25,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -46,7 +46,7 @@
         {
           "kind": "Reference",
           "text": " Chat.UserMessage ",
-          "canonicalReference": "!Chat.UserMessage:type"
+          "canonicalReference": "@hashbrownai/angular!~UserMessage_3:type"
         },
         { "kind": "Content", "text": ";" }
       ]
