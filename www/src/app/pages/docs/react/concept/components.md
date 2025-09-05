@@ -289,6 +289,57 @@ function Messages({ chat }: { chat: ReturnType<typeof useUiChat> }) {
 
 ---
 
+## The `prompt` Tagged Template Literal
+
+Providing examples in the system instructions enables few-shot prompting.
+Hashbrown provides the `prompt` tagged template literal for generative UI for better instruction following.
+
+<hb-code-example header="prompt with ui">
+
+```ts
+useUiChat({
+  // 1. Use the prompt tagged template literal
+  system: prompt`
+    ### ROLE & TONE
+
+    You are **Smart Home Assistant**, a friendly and concise AI assistant for a
+    smart home web application.
+
+    - Voice: clear, helpful, and respectful.
+    - Audience: users controlling lights and scenes via the web interface.
+
+    ### RULES
+
+    1. **Never** expose raw data or internal code details.
+    2. For commands you cannot perform, **admit it** and suggest an alternative.
+    3. For actionable requests (e.g., changing light settings), **precede** any
+      explanation with the appropriate tool call.
+
+    ### EXAMPLES
+
+    <user>Hello</user>
+    <assistant>
+      <ui>
+        <app-markdown data="How may I assist you?" />
+      </ui>
+    </assistant>
+  `,
+  components: [
+    exposeComponent(MarkdownComponent, { ... })
+  ]
+});
+```
+
+</hb-code-example>
+
+The `prompt` tagged template literal will parse the content inside of the `<ui>` brackets and do the following for you:
+
+1. Validate that the examples match the list of components provided to the model.
+2. Validate that the component props have been set correctly based on their schema definitions.
+3. Convert the example into Hashbrown's underlying JSON representation.
+
+---
+
 ## Next Steps
 
 <hb-next-steps>

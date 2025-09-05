@@ -242,19 +242,21 @@ function useMcpClient(accessToken: string) {
 ```ts
 import type { Chat } from '@hashbrownai/core';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { useState, useEffect } from 'react';
 
 function useRemoteMcpTools(client: Client | null) {
   const [remoteTools, setRemoteTools] = useState<Chat.AnyTool[]>([]);
 
   useEffect(() => {
-    if (!client) return;
-    let cancelled = false;
+    if (!client) {
+      setRemoteTools([]);
+      return;
+    }
 
-    (async () => {
-      const { tools: mcpTools } = await client.listTools();
-
-      const tools: Chat.AnyTool[] = mcpTools.map((tool) => (
-        return useTool({
+    async function loadTools() {
+      try {
+        const { tools } = await client.listTools();
+        const hashbrownTools = tools.map((tool) => ({
           name: tool.name,
           description: tool.description ?? '',
           schema: {
@@ -269,27 +271,28 @@ function useRemoteMcpTools(client: Client | null) {
             });
             return result;
           },
-        });
-      }));
+        }));
+        setRemoteTools(hashbrownTools);
+      } catch (error) {
+        console.error('Failed to load remote tools:', error);
+        setRemoteTools([]);
+      }
+    }
 
-      if (!cancelled) setRemoteTools(tools);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    loadTools();
   }, [client]);
 
-  return remoteTools;
+  return { remoteTools };
 }
 ```
 
 </hb-code-example>
 
-1. Fetch the list of tools from the remote MCP server using `client.listTools()`.
-2. The `useTool()` hook creates a Hashbrown tool for each remote MCP tool.
+1. Use `useState` and `useEffect` to load tools from the remote MCP server using `client.listTools()`.
+2. Map each remote MCP tool to a Hashbrown-compatible tool structure.
 3. Implement the `handler` function to call the remote MCP tool using `client.callTool()`.
 4. Store the resulting `Chat.AnyTool[]` in React state to be provided to the model.
+5. Handle loading states and errors appropriately.
 
 ---
 
@@ -299,18 +302,27 @@ function useRemoteMcpTools(client: Client | null) {
 
 ```tsx
 import { useChat, useTool } from '@hashbrownai/react';
+import { useMemo } from 'react';
+
+// Example function to fetch user data
+async function fetchUser({ signal }: { signal?: AbortSignal }) {
+  const response = await fetch('/api/user', { signal });
+  return response.json();
+}
 
 function App({ accessToken }: { accessToken: string }) {
   // 1) Connect to MCP and load remote tools
   const mcpClientRef = useMcpClient(accessToken);
-  const remoteTools = useRemoteMcpTools(mcpClientRef.current);
+  const { remoteTools } = useRemoteMcpTools(mcpClientRef.current);
 
   // 2) Define any local React tools with useTool()
   const getUser = useTool({
     name: 'getUser',
     description: 'Get information about the current user',
-    handler: async (abortSignal) => fetchUser({ signal: abortSignal }),
-    deps: [fetchUser],
+    handler: async (abortSignal) => {
+      return await fetchUser({ signal: abortSignal });
+    },
+    deps: [],
   });
 
   // 3) Combine remote and local tools
@@ -321,6 +333,9 @@ function App({ accessToken }: { accessToken: string }) {
 
   // 4) Provide tools to the model
   const chat = useChat({
+    model: 'gpt-4o',
+    system:
+      'You are a helpful assistant with access to both local and remote tools.',
     tools,
   });
 
