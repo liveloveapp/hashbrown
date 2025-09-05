@@ -126,6 +126,31 @@ s.anyOf([s.string('A string value'), s.nullish()]);
 
 ---
 
+## Inferring Types
+
+Skillet infers a static type from a schema using `s.Infer<T>`.
+
+<hb-code-example header="infer">
+
+```ts
+// 1. define the schema
+const schema = s.streaming.object('The result', {
+  code: s.streaming.string('The JavaScript code to run'),
+});
+
+// 2. define static type using s.Infer<T>
+type Result = s.Infer<schema>;
+
+// 3. use the type
+const mockResult: Result = {
+  code: 'let i = 0',
+};
+```
+
+</hb-code-example>
+
+---
+
 ## Numeric Types
 
 Skillet supports numeric types using either the `number()` or `integer()` function.
