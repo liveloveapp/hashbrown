@@ -97,8 +97,6 @@ export function createTool(
         handler: (a: unknown, s: AbortSignal) => Promise<unknown>;
       },
 ): unknown {
-  const injector = inject(Injector);
-
   if ('schema' in input) {
     const { name, description, schema, handler } = input;
     return {
@@ -106,9 +104,7 @@ export function createTool(
       description,
       schema,
       handler: (args: unknown, abortSignal: AbortSignal) =>
-        untracked(() =>
-          runInInjectionContext(injector, () => handler(args, abortSignal)),
-        ),
+        handler(args, abortSignal),
     };
   } else {
     const { name, description, handler } = input;
@@ -116,10 +112,19 @@ export function createTool(
       name,
       description,
       schema: s.object('Empty Object', {}),
-      handler: (_: void, abortSignal: AbortSignal) =>
-        untracked(() =>
-          runInInjectionContext(injector, () => handler(abortSignal)),
-        ),
+      handler: (_: void, abortSignal: AbortSignal) => handler(abortSignal),
     };
   }
+}
+
+export function bindToolToInjector<
+  T extends Chat.Tool<string, unknown, unknown>,
+>(tool: T, injector: Injector): T {
+  return {
+    ...tool,
+    handler: (args: unknown, abortSignal: AbortSignal) =>
+      untracked(() =>
+        runInInjectionContext(injector, () => tool.handler(args, abortSignal)),
+      ),
+  };
 }

@@ -13,6 +13,7 @@ import {
 import { Chat, fryHashbrown, KnownModelIds, s } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
+import { bindToolToInjector } from '../utils/create-tool.fn';
 
 /**
  * A reference to the structured chat resource.
@@ -142,7 +143,7 @@ export function structuredChatResource<
     system: readSignalLike(options.system),
     messages: [...(options.messages ?? [])],
     model: readSignalLike(options.model),
-    tools: options.tools,
+    tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     responseSchema: options.schema,
     debugName: options.debugName,
     emulateStructuredOutput: config.emulateStructuredOutput,
