@@ -65,30 +65,6 @@ import { Footer } from '../components/Footer';
               >
             </div>
           </div>
-          <div class="course">
-            <a routerLink="mcp-fundamentals">MCP Fundamentals</a>
-            <ul>
-              <li><span>September 23</span> <span>11 am to 6 pm ET</span></li>
-            </ul>
-            <span class="price">
-              <www-sell
-                height="14px"
-                width="14px"
-                stroke="#E88C4D"
-                fill="#E88C4D"
-              />
-              $350 per person. Group discounts available.
-            </span>
-            <div class="action">
-              <a
-                href="https://ti.to/liveloveapp/mcp-fundamentals-sep-2025"
-                target="_blank"
-                wwwSquircle="8"
-              >
-                Reserve to Attend Online</a
-              >
-            </div>
-          </div>
           <div class="contact-us">
             <h2>Contact Sales</h2>
             <p>

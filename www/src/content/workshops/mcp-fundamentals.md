@@ -1,7 +1,7 @@
 ---
 title: MCP Fundamentals
 description: Learn the basics of AI engineering and the Model Context Protocol (MCP), building an MCP server, testing it with Postman, integrating the MCP client with Hashbrown's tool calling, and building trust and safety with your users.
-active: true
+active: false
 order: 3
 ---
 
