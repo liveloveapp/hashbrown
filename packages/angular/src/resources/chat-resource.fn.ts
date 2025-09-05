@@ -12,6 +12,7 @@ import {
 import { Chat, fryHashbrown, KnownModelIds } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
+import { bindToolToInjector } from '../utils/create-tool.fn';
 
 /**
  * Represents the reactive chat resource, including current messages and control methods.
@@ -146,7 +147,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     }),
     system: readSignalLike(options.system),
     model: readSignalLike(options.model),
-    tools: options.tools,
+    tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     emulateStructuredOutput: config.emulateStructuredOutput,
     debugName: options.debugName,
   });
