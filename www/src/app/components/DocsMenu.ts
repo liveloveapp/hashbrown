@@ -197,6 +197,14 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'recipes', 'ui-chatbot']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >UI Chatbot with Tools</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'recipes', 'remote-mcp']"
             routerLinkActive="active"
             wwwSquircle="8"

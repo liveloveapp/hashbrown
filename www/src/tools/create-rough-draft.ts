@@ -79,7 +79,7 @@ const FORCE = Boolean(argv.force);
 /* OPENAI CONFIG                                                       */
 /* ------------------------------------------------------------------ */
 const openai = new OpenAI();
-const MODEL = 'o3';
+const MODEL = 'gpt-4.1';
 
 /* ------------------------------------------------------------------ */
 /* CONFIG & HELPERS                                                    */
@@ -218,6 +218,7 @@ STYLE & CONSTRAINTS
 
 MARKDOWN EXTENSION
 ------------------
+### Symbol References
 The generated Markdown has a special extension in it that allows referencing a specific symbol.
 Use the reference ID for a symbol to leverage this extension.
 
@@ -229,6 +230,19 @@ Call @hashbrownai/react!useTool:function to create a tool
 This will be rendered as a link to the \`useTool\` function in the React docs. Only use this
 in paragraph blocks.
 
+### Code Fences
+
+You can wrap code fences to create a UI with a filename and a copy button:
+
+<hb-code-example header="MyComponent.ts">
+
+\`\`\`ts
+function MyComponent() {
+  return <div>Hello, world!</div>;
+}
+\`\`\`
+
+</hb-code-example>
 
 REACT
 -----

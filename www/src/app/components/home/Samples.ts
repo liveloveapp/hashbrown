@@ -13,7 +13,7 @@ import { Squircle } from '../Squircle';
   template: `
     <div class="bleed">
       <a
-        [routerLink]="[docsUrl(), 'concept', 'components']"
+        [routerLink]="[docsUrl(), 'recipes', 'ui-chatbot']"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunshine-yellow, #fbbb52)"
