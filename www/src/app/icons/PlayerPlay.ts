@@ -1,23 +1,32 @@
 import { Component, input } from '@angular/core';
 
-/**
- * Source: https://tablericons.com/icon/player-play
- */
 @Component({
   selector: 'www-player-play',
   template: `
     <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
       [style.height]="height()"
       [style.width]="width()"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M7 4v16l13 -8z" />
+      <mask
+        id="mask0_2094_130"
+        style="mask-type:alpha"
+        maskUnits="userSpaceOnUse"
+        x="0"
+        y="0"
+        width="24"
+        height="24"
+      >
+        <rect width="24" height="24" fill="#D9D9D9" />
+      </mask>
+      <g mask="url(#mask0_2094_130)">
+        <path
+          d="M8 19V5L19 12L8 19ZM10 15.35L15.25 12L10 8.65V15.35Z"
+          fill="#1C1B1F"
+        />
+      </g>
     </svg>
   `,
   styles: `

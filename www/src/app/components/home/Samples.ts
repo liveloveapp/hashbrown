@@ -18,8 +18,8 @@ import { Squircle } from '../Squircle';
           <h2>Generate UI, Not Just Text</h2>
           <p>
             With Hashbrown, large language models compose real views from your
-            components and stream them into the page. Interfaces stay on-brand,
-            context-aware, and production-ready.
+            components and stream them into the page. Interfaces stay
+            on&#8209;brand, context&#8209;aware, and production&#8209;ready.
           </p>
           <div class="gap"></div>
           <small
