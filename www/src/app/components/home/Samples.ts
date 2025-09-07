@@ -90,7 +90,7 @@ import { Squircle } from '../Squircle';
       </a>
 
       <a
-        [routerLink]="[docsUrl(), 'concept', 'structured-output']"
+        [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunset-orange, #e88c4d)"
@@ -103,7 +103,7 @@ import { Squircle } from '../Squircle';
             kicking off a task, so your users stay in the flow.
           </p>
           <div class="gap"></div>
-          <small>Learn the basics of generating structured output</small>
+          <small>Learn to build predictive suggestions and shortcuts</small>
         </div>
         <div
           class="window"
