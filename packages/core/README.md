@@ -3,8 +3,8 @@
 <p align="center">
   <img src="https://hashbrown.dev/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
-  <em>Hashbrown is a framework for building AI-powered user interfaces in Angular
-    <br> and React on top of LLMs from OpenAI, Google, and Writer.</em>
+  <em>Hashbrown is an open-source framework for building user interfaces
+    <br />that converse with users, dynamically reorganize, and even code themselves.</em>
   <br>
 </p>
 
@@ -55,12 +55,13 @@ export const appConfig: ApplicationConfig = {
 
 ## Adapters
 
-To get started, we recommend running a local express server following the Hashbrown adapter documentation.
+Hashbrown supports multiple providers:
 
 - [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
 - [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
 - [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
 - [Writer](https://hashbrown.dev/docs/angular/platform/writer)
+- [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
 
 ## Contributing
 
