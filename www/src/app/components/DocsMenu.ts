@@ -205,6 +205,14 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Predictive Suggestions</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'recipes', 'remote-mcp']"
             routerLinkActive="active"
             wwwSquircle="8"
