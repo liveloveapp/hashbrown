@@ -3,8 +3,8 @@
 <p align="center">
   <img src="www/public/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
-  <em>Hashbrown is a framework for building AI-powered user interfaces in Angular
-    <br> and React on top of LLMs from OpenAI, Google, and Writer.</em>
+  <em>Hashbrown is an open-source framework for building user interfaces
+    <br />that converse with users, dynamically reorganize, and even code themselves.</em>
   <br>
 </p>
 
@@ -15,9 +15,7 @@
 
 <p align="center">
   <a href="CONTRIBUTING.md">Contributing Guidelines</a>
-  ·
   <a href="https://github.com/liveloveapp/hashbrown/issues">Submit an Issue</a>
-  ·
   <a href="CODE_OF_CONDUCT.md">Code of Conduct</a>
   <br>
   <br>
@@ -31,16 +29,57 @@
 
 <hr>
 
-## Examples
+## Getting Started with React
 
-To see hashbrown in action, bring your own LLM provider API Key and try a bite of hashbrown:
+Install:
 
-- [Angular example app](https://hashbrown.dev/examples/angular/ui-chat)
-- [React example app](https://hashbrown.dev/examples/react/ui-chat)
+```sh
+npm install @hashbrownai/{core,react,openai} --save
+```
+
+Configure the provider:
+
+```ts
+export function Providers() {
+  return (
+    <HashbrownProvider url={url}>
+      {children}
+    </HashbrownProvider>
+  )
+}
+```
+
+## Getting Started with Angular
+
+Install:
+
+```sh
+npm install @hashbrownai/{core,angular,openai} --save
+```
+
+Configure the provider:
+
+```ts
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHashbrown({
+      baseUrl: '/api/chat',
+    }),
+  ],
+};
+```
+
+## Adapters
+
+Hashbrown supports multiple providers:
+
+- [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
+- [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
+- [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
+- [Writer](https://hashbrown.dev/docs/angular/platform/writer)
+- [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
 
 ## Samples
-
-**Want more than a quick bite?**
 
 ### Angular Smart Home App
 
@@ -63,7 +102,7 @@ npx nx serve smart-home-server && npx nx serve smart-home-react
 ```shell
 nvm use
 npm install
-npx nx serve finance-angular-client
+npx nx serve finance-angular
 ```
 
 Run the documentation website locally:
@@ -93,21 +132,13 @@ Hashbrown is a community effort built by the following developers:
 | <a href="https://github.com/c0yote"><img src="www/public/image/team/ug.png" alt="U.G. Wilson" width="128px"/></a>       | **U.G. Wilson**<br>U.G. Wilson currently leads the Digital Innovation engineering team at Barry-Wehmiller where he leverages his diverse engineering and leadership experience to drive digital transformation and product-led Industrial IoT.                                                                                                                                                        |
 | <a href="https://github.com/hb-coding"><img src="www/public/image/team/hayden.png" alt="Hayden" width="128px"/></a>     | **Hayden**<br>Hayden is a versatile Software Engineer with extensive experience across Front End, Back End, and Cloud technologies. He has successfully delivered solutions in a diverse range of industries, including startups, large enterprises, government, and consulting. He is Passionate about tackling complex challenges and loves staying up to date in the dynamic JavaScript ecosystem. |
 
-## Enterprise Support
+hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.
 
-The team behind hashbrown wants to help you with your project. We offer the following services:
+## Workshops and Consulting
 
-**AI Engineering Sprint**
+Want to learn how to build Angular apps with AI? [Learn more about our workshops](https://hashbrown.dev/workshops).
 
-Get your team up to speed with a one-week AI engineering sprint. Includes a hands-on workshop with hashbrown and collaborative development time with our core team to bring your ideas to life.
-
-**Long Term Support**
-
-Ensure reliable, high-performance deployments with our Long Term Support plan. Includes an ongoing support retainer, SLA-backed issue resolution, and guided upgrades.
-
-**Consulting**
-
-LiveLoveApp provides hands-on engagement with our AI engineers for architecture reviews, custom integrations, proof-of-concept builds, performance tuning, and expert guidance on best practices.
+LiveLoveApp provides hands-on engagement with our AI engineers for architecture reviews, custom integrations, proof-of-concept builds, performance tuning, and expert guidance on best practices. [Learn more about LiveLoveApp](https://liveloveapp.com).
 
 ## License
 
