@@ -25,7 +25,7 @@ import { DropdownMenu } from './DropDownMenu';
                 <a routerLink="/api" routerLinkActive="active">api</a>
               </li>
               <li>
-                <a routerLink="/workshops" routerLinkActive="active">
+                <a [routerLink]="workshopsUrl()" routerLinkActive="active">
                   workshops
                 </a>
               </li>
@@ -207,5 +207,16 @@ export class Header {
 
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/intro`;
+  });
+
+  workshopsUrl = computed(() => {
+    switch (this.configService.sdk()) {
+      case 'react':
+        return '/workshops/react-generative-ui-engineering';
+      case 'angular':
+        return '/workshops/angular-generative-ui-engineering';
+      default:
+        return '/workshops';
+    }
   });
 }
