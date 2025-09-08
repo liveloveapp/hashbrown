@@ -9,6 +9,8 @@ order: 2
 
 <p class="subtitle">Discover how to turn natural language into working UIs, intelligent forms, and agentic workflows with Hashbrown’s generative AI Angular resources.</p>
 
+<div style="position: relative; padding-bottom: 64.90384615384616%; height: 0;"><iframe src="https://www.loom.com/embed/024771a5020c4651af7240a6cdba9956?sid=06b1a102-5c15-45da-a8a3-486977bf458f" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+
 ## 1. The Basics of AI Engineering
 
 Learn how to use Large Language Models (LLMs) in your Angular app using Hashbrown.  
