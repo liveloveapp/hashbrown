@@ -40,7 +40,7 @@ import { ConfigService } from '../services/ConfigService';
           <div class="title">Learn</div>
           <ul>
             <li>
-              <a routerLink="/workshops" class="underline"> Workshops </a>
+              <a [routerLink]="workshopsUrl()" class="underline">Workshops</a>
             </li>
           </ul>
         </div>
@@ -390,5 +390,15 @@ export class Footer {
   });
   examplesUrl = computed(() => {
     return `/examples/${this.configService.sdk()}/ui-chat`;
+  });
+  workshopsUrl = computed(() => {
+    switch (this.configService.sdk()) {
+      case 'react':
+        return '/workshops/react-generative-ui-engineering';
+      case 'angular':
+        return '/workshops/angular-generative-ui-engineering';
+      default:
+        return '/workshops';
+    }
   });
 }
