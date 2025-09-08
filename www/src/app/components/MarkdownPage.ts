@@ -42,7 +42,7 @@ type Heading = { level: number; text: string; id: string; url: string };
       :host {
         display: block;
         position: relative;
-        padding: 24px;
+        padding: 32px;
         overflow: hidden;
       }
 
@@ -84,7 +84,6 @@ type Heading = { level: number; text: string; id: string; url: string };
       article ::ng-deep analog-markdown-route > div {
         display: flex;
         flex-direction: column;
-        gap: 8px;
         color: var(--gray-dark, #3d3c3a);
         font:
           400 15px/21px Fredoka,
@@ -96,17 +95,14 @@ type Heading = { level: number; text: string; id: string; url: string };
             750 22px/32px KefirVariable,
             sans-serif;
           font-variation-settings: 'wght' 750;
-
-          &:first-child {
-            margin-top: 0;
-          }
+          margin: 0 0 8px 0;
         }
 
         h2,
         h3,
         h4 {
           color: var(--gray, #5e5c5a);
-          margin: 8px 0;
+          margin-bottom: 8px;
           font:
             500 18px/24px Fredoka,
             sans-serif;
@@ -124,11 +120,13 @@ type Heading = { level: number; text: string; id: string; url: string };
         }
 
         p {
-          margin: 8px 0;
+          margin: 0 0 8px 0;
+          padding: 0;
+          line-height: 1.6;
 
           &.subtitle {
-            color: var(--gray-light, #a4a3a1);
-            margin: 0;
+            color: var(--chocolate-brown-light);
+            margin: -8px 0 16px 0;
             font:
               300 18px/24px Fredoka,
               sans-serif;
@@ -137,7 +135,7 @@ type Heading = { level: number; text: string; id: string; url: string };
 
         ul,
         ol {
-          margin: 8px 0;
+          margin: 0 0 8px 0;
         }
 
         hr {
@@ -156,6 +154,7 @@ type Heading = { level: number; text: string; id: string; url: string };
           flex-direction: column;
           list-style: none;
           margin-left: 8px;
+          margin-bottom: 8px;
 
           > li {
             position: relative;
@@ -170,6 +169,8 @@ type Heading = { level: number; text: string; id: string; url: string };
           gap: 8px;
 
           > li {
+            padding-left: 32px;
+
             &::before {
               position: absolute;
               top: 9px;
@@ -177,7 +178,7 @@ type Heading = { level: number; text: string; id: string; url: string };
               width: 6px;
               height: 6px;
               border-radius: 50%;
-              background: var(--gray, #5e5c5a);
+              background: var(--chocolate-brown);
               content: '';
             }
           }
@@ -186,6 +187,7 @@ type Heading = { level: number; text: string; id: string; url: string };
         ol {
           gap: 16px;
           counter-reset: ordered-listitem;
+          margin-top: 8px;
 
           > li {
             &::after {
@@ -203,6 +205,10 @@ type Heading = { level: number; text: string; id: string; url: string };
               counter-increment: ordered-listitem;
             }
           }
+        }
+
+        hb-code-example {
+          margin-bottom: 16px;
         }
 
         :not(hb-symbol-link) > a {
