@@ -79,7 +79,7 @@ type FeatureListItem = {
       width: 100%;
       display: flex;
       justify-content: center;
-      padding: 64px 24px;
+      padding: 32px 24px;
     }
 
     .features {
