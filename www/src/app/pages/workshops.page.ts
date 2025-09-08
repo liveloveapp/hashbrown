@@ -15,7 +15,7 @@ import { Footer } from '../components/Footer';
         <div class="courses">
           <div class="course">
             <a routerLink="react-generative-ui-engineering">
-              React: Generative UI Engineering
+              Building Generative UIs with React
             </a>
             <ul>
               <li><span>October 13</span> <span>11 am to 6 pm ET</span></li>
@@ -41,7 +41,7 @@ import { Footer } from '../components/Footer';
           </div>
           <div class="course">
             <a routerLink="angular-generative-ui-engineering"
-              >Angular: Generative UI Engineering</a
+              >Building Generative UIs with Angular</a
             >
             <ul>
               <li><span>October 14</span> <span>11 am to 6 pm ET</span></li>

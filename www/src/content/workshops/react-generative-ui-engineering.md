@@ -9,6 +9,8 @@ order: 1
 
 <p class="subtitle">Discover how to turn natural language into working UIs, intelligent forms, and agentic workflows with Hashbrown’s generative AI React hooks.</p>
 
+<div style="position: relative; padding-bottom: 64.90384615384616%; height: 0;"><iframe src="https://www.loom.com/embed/9469f2fc28364094b5bf8c10c1a58ae6?sid=7925a4d8-2669-4790-a774-7746923ff250" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+
 ## 1. The Basics of AI Engineering
 
 Learn how to use Large Language Models (LLMs) in your React app using Hashbrown.  
