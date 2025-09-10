@@ -25,9 +25,11 @@ import { SmartHome } from '../smart-home';
     button {
       display: inline-flex;
       flex-direction: column-reverse;
-      width: 160px;
+      align-items: flex-start;
+      justify-content: center;
+      width: 188px;
       height: 48px;
-      padding: 16px;
+      padding: 0 16px;
       margin: 4px 6px;
       cursor: pointer;
       background-image: linear-gradient(
@@ -47,9 +49,10 @@ import { SmartHome } from '../smart-home';
     }
 
     button span {
-      align-self: flex-start;
-      justify-self: flex-start;
-      text-align: left;
+      max-height: 48px;
+      overflow-x: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   `,
   animations: [

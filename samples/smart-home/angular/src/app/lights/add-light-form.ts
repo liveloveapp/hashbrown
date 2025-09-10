@@ -6,7 +6,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { completionResource } from '@hashbrownai/angular';
+import { structuredCompletionResource } from '@hashbrownai/angular';
 import {
   FormControl,
   FormGroup,
@@ -20,6 +20,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { SmartHome } from '../smart-home';
+import { s } from '@hashbrownai/core';
 
 @Component({
   selector: 'app-add-light-form',
@@ -40,7 +41,9 @@ import { SmartHome } from '../smart-home';
           <mat-label>Name</mat-label>
           <div class="ghost-input">
             <span class="current-input">{{ form.get('name')?.value }}</span>
-            <span class="completion">{{ nameCompletion.value() }}</span>
+            <span class="completion">{{
+              nameCompletion.value()?.nextToAppend
+            }}</span>
           </div>
           <input
             matInput
@@ -63,7 +66,9 @@ import { SmartHome } from '../smart-home';
         }
 
         <div class="actions">
-          <button mat-button type="button" (click)="onCancel()">Cancel</button>
+          <button mat-button type="button" (click)="closeDialog()">
+            Cancel
+          </button>
           <button
             mat-raised-button
             color="primary"
@@ -115,7 +120,7 @@ import { SmartHome } from '../smart-home';
       }
 
       .ghost-input .completion {
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(0, 0, 0, 0.5);
         font-style: italic;
       }
 
@@ -148,7 +153,7 @@ export class AddLightForm {
     this.smartHome.lights().map((light) => light.name),
   );
 
-  readonly nameCompletion = completionResource({
+  readonly nameCompletion = structuredCompletionResource({
     model: 'gpt-4.1-mini',
     system: `
       You are an assistant that helps the user finish typing a name for a light.
@@ -176,6 +181,11 @@ export class AddLightForm {
         existingNames: this.lightNames(),
       };
     }),
+    schema: s.object('Result', {
+      nextToAppend: s.streaming.string(
+        'The next characters to append to the name',
+      ),
+    }),
   });
 
   readonly nameInputRef = viewChild<ElementRef<HTMLInputElement>>('nameInput');
@@ -184,7 +194,7 @@ export class AddLightForm {
     () => this.nameCompletion.status() === 'error',
   );
 
-  protected onCancel() {
+  protected closeDialog() {
     this.dialogRef.close();
   }
 
@@ -198,13 +208,14 @@ export class AddLightForm {
       }
 
       this.smartHome.addLight({ name, brightness: 100 });
+      this.closeDialog();
     }
   }
 
   protected completeName(_event: Event): void {
     const event = _event as KeyboardEvent;
     event.preventDefault();
-    const suggestion = this.nameCompletion.value();
+    const suggestion = this.nameCompletion.value()?.nextToAppend;
     if (suggestion) {
       const current = this.nameControl.value || '';
       const updated = current + suggestion;

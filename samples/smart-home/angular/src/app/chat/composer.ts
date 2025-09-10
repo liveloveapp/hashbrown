@@ -58,6 +58,7 @@ import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
         position: absolute;
         right: 8px;
         top: 4px;
+        color: #774625;
       }
     `,
   ],

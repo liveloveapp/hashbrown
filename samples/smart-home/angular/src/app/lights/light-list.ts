@@ -24,9 +24,10 @@ import { MatIconModule } from '@angular/material/icon';
         display: flex;
         flex-direction: column;
         gap: 8px;
-        background-color: var(--mat-sys-surface-bright);
+        background-color: #fff;
         border-radius: 8px;
         border: 1px solid var(--mat-sys-outline);
+        margin-bottom: 8px;
       }
 
       .list-header {
