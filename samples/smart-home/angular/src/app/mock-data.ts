@@ -100,6 +100,10 @@ export const mockScenes: Scene[] = [
         lightId: 'light-5',
         brightness: 100,
       },
+      {
+        lightId: 'light-6',
+        brightness: 100,
+      },
     ],
   },
   {
@@ -114,6 +118,10 @@ export const mockScenes: Scene[] = [
         lightId: 'light-5',
         brightness: 0,
       },
+      {
+        lightId: 'light-6',
+        brightness: 0,
+      },
     ],
   },
   {
@@ -126,6 +134,10 @@ export const mockScenes: Scene[] = [
       },
       {
         lightId: 'light-5',
+        brightness: 30,
+      },
+      {
+        lightId: 'light-6',
         brightness: 30,
       },
     ],

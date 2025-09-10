@@ -11,8 +11,16 @@ export class SmartHome {
     this.loadFromLocalStorage('scenes') || mockScenes,
   );
 
-  readonly lights = this.lightsSignal.asReadonly();
-  readonly scenes = this.scenesSignal.asReadonly();
+  readonly lights = computed(() => {
+    return this.lightsSignal()
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+  readonly scenes = computed(() => {
+    return this.scenesSignal()
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   constructor() {
     effect(() => {
@@ -167,6 +175,24 @@ export class SmartHome {
     );
 
     return Promise.resolve({ lightId, sceneId, brightness });
+  }
+
+  removeLightFromScene(
+    lightId: string,
+    sceneId: string,
+  ): Promise<{ lightId: string; sceneId: string }> {
+    this.scenesSignal.update((scenes) =>
+      scenes.map((scene) =>
+        scene.id === sceneId
+          ? {
+              ...scene,
+              lights: scene.lights.filter((light) => light.lightId !== lightId),
+            }
+          : scene,
+      ),
+    );
+
+    return Promise.resolve({ lightId, sceneId });
   }
 
   controlLight(lightId: string, brightness: number) {

@@ -1,4 +1,5 @@
 @use '@angular/material' as mat;
+@use './_hashbrown-colors' as hashbrownTheme;
 
 // Reset and global styles
 html,
@@ -137,10 +138,10 @@ table {
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   @include mat.theme(
     (
-      color: mat.$cyan-palette,
+      color: hashbrownTheme.$primary-palette,
       accent: mat.$orange-palette,
       typography: (
         plain-family: Roboto,

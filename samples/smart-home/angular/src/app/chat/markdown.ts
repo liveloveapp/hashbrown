@@ -12,7 +12,7 @@ import { MarkdownComponent as NgxMarkdownComponent } from 'ngx-markdown';
       display: block;
       font-family: Arial, sans-serif;
       line-height: 1.6;
-      color: #e0e0e0;
+      color: #3d3c3a;
     }
 
     .app-markdown h1,
@@ -23,7 +23,6 @@ import { MarkdownComponent as NgxMarkdownComponent } from 'ngx-markdown';
     .app-markdown h6 {
       font-weight: bold;
       margin: 1em 0 0.5em;
-      color: #ff79c6;
     }
 
     .app-markdown p {
