@@ -63,6 +63,37 @@ app.post('/chat', async (req, res) => {
 
 ---
 
+### Transform Request Options
+
+The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Writer. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
+
+```ts
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownWriter.stream.text({
+    apiKey: process.env.WRITER_API_KEY!,
+    request: req.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful AI writing assistant.' },
+          ...options.messages,
+        ],
+        // Adjust parameters based on writing task
+        temperature: req.body.taskType === 'creative' ? 0.8 : 0.3,
+      };
+    },
+  });
+
+  // ... rest of the code
+});
+```
+
+[Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
+
+---
+
 ### Advanced: Tools and Response Schema
 
 - **Tools:** Add tools using function specs (name, description, parameters) compatible with Writer.
