@@ -6,11 +6,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import {
-  createTool,
-  exposeComponent,
-  uiChatResource,
-} from '@hashbrownai/angular';
+import { exposeComponent, uiChatResource } from '@hashbrownai/angular';
 import { prompt, s } from '@hashbrownai/core';
 import { SmartHome } from '../smart-home';
 import { LightCard } from '../lights/light-card';
@@ -20,11 +16,24 @@ import { ChatMessages } from './chat-messages';
 import { Composer } from './composer';
 import { Markdown } from './markdown';
 import { ChatLayout } from './chat-layout';
+import {
+  applySceneTool,
+  controlLightTool,
+  getLightsTools,
+  getScenesTool,
+} from './tools';
+import { ChatPrompts } from './chat-prompts';
 
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
-  imports: [MatProgressBarModule, Composer, ChatMessages, ChatLayout],
+  imports: [
+    MatProgressBarModule,
+    Composer,
+    ChatMessages,
+    ChatLayout,
+    ChatPrompts,
+  ],
   template: `
     @if (chat.isLoading()) {
       <div class="chat-loading">
@@ -37,6 +46,9 @@ import { ChatLayout } from './chat-layout';
           [messages]="chat.value()"
           (retry)="retryMessages()"
         />
+        @if (chat.value().length === 0) {
+          <app-chat-prompts (selectPrompt)="sendMessage($event)" />
+        }
       </div>
 
       <div class="chat-composer">
@@ -73,6 +85,7 @@ import { ChatLayout } from './chat-layout';
         display: flex;
         flex-direction: column;
         gap: 16px;
+        position: relative;
       }
 
       .chat-composer {
@@ -188,42 +201,7 @@ export class ChatPanelComponent {
         },
       }),
     ],
-    tools: [
-      createTool({
-        name: 'getLights',
-        description: 'Get the current lights',
-        handler: () => this.smartHome.fetchLights(),
-      }),
-      createTool({
-        name: 'getScenes',
-        description: 'Get the current scenes',
-        handler: () => this.smartHome.fetchScenes(),
-      }),
-      createTool({
-        name: 'controlLight',
-        description: 'Control a light',
-        schema: s.object('Control light input', {
-          lightId: s.string('The id of the light'),
-          brightness: s.number('The brightness of the light'),
-        }),
-        handler: async (input) => {
-          return await this.smartHome.controlLight(
-            input.lightId,
-            input.brightness,
-          );
-        },
-      }),
-      createTool({
-        name: 'applyScene',
-        description: 'Applies a scene',
-        schema: s.object('Apply Scene Input', {
-          sceneId: s.string('The id of the scene'),
-        }),
-        handler: async (input) => {
-          return await this.smartHome.applyScene(input.sceneId);
-        },
-      }),
-    ],
+    tools: [getLightsTools, getScenesTool, controlLightTool, applySceneTool],
   });
 
   sendMessage(message: string) {
