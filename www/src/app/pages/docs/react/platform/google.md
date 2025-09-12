@@ -63,8 +63,41 @@ app.post('/chat', async (req, res) => {
 
 ---
 
+### Transform Request Options
+
+The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Google Gemini. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
+
+```ts
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    request: req.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add system instructions for Gemini
+        systemInstruction: {
+          parts: [{ text: 'You are a helpful AI assistant specialized in technical topics.' }]
+        },
+        // Adjust generation config based on content type
+        generationConfig: {
+          ...options.generationConfig,
+          temperature: req.body.contentType === 'creative' ? 0.8 : 0.2,
+        },
+      };
+    },
+  });
+
+  // ... rest of the code
+});
+```
+
+[Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
+
+---
+
 ### Advanced: Tools and Response Schema
 
 - **Tools:** Add tools using OpenAI-style function specs. They will be auto-converted for Gemini.
-- **Tool Calling:** Supported via Gemini’s tool configuration, with control over `auto`, `required`, or `none` modes.
+- **Tool Calling:** Supported via Gemini's tool configuration, with control over `auto`, `required`, or `none` modes.
 - **Response Format:** Pass a JSON schema in `responseFormat` for structured output.
