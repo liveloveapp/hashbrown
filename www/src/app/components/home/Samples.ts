@@ -10,9 +10,8 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
   imports: [RouterLink, Squircle, PlayerPlay, ArrowUpRight],
   template: `
     <div class="bleed">
-      <a
-        href="https://finance.hashbrown.dev"
-        target="_blank"
+      <div
+        class="block"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunshine-yellow, #fbbb52)"
@@ -24,14 +23,12 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             components and stream them into the page. Interfaces stay
             on&#8209;brand, context&#8209;aware, and production&#8209;ready.
           </p>
-          <div class="gap"></div>
-          <div class="button">
-            <www-player-play height="32px" width="32px" />
-            <small
-              >Launch Finance App
-              <www-arrow-up-right height="16px" width="16px"
-            /></small>
-          </div>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'ui-chatbot']"
+            class="docsLink"
+          >
+            Learn how to build a chatbot with Generative UI and Tool Calling
+          </a>
         </div>
         <div
           class="window"
@@ -43,6 +40,17 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             <div class="button">
               <h3>Finance App</h3>
             </div>
+            <a
+              href="https://finance.hashbrown.dev"
+              target="_blank"
+              class="runLink"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+            >
+              <www-player-play height="16px" width="16px" />
+              Run this App
+            </a>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
             <img
@@ -51,11 +59,10 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             />
           </div>
         </div>
-      </a>
+      </div>
 
-      <a
-        href="https://smart-home.hashbrown.dev"
-        target="_blank"
+      <div
+        class="block"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sky-blue, #9ECFD7)"
@@ -67,14 +74,16 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             build friendlier apps. Streaming primitives keep interactions fast,
             responsive, and type-safe.
           </p>
-          <div class="gap"></div>
-          <div class="button">
-            <www-player-play height="32px" width="32px" />
-            <small
-              >Launch Smart Home App
-              <www-arrow-up-right height="16px" width="16px"
-            /></small>
-          </div>
+          <a
+            [routerLink]="[
+              docsUrl(),
+              'recipes',
+              'natural-language-to-structured-data',
+            ]"
+            class="docsLink"
+          >
+            Learn how to convert natural language into structured data
+          </a>
         </div>
         <div
           class="window"
@@ -86,6 +95,17 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             <div class="button">
               <h3>Smart Home App</h3>
             </div>
+            <a
+              href="https://smart-home.hashbrown.dev"
+              target="_blank"
+              class="runLink"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+            >
+              <www-player-play height="16px" width="16px" />
+              Run this App
+            </a>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
             <img
@@ -94,11 +114,10 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             />
           </div>
         </div>
-      </a>
+      </div>
 
-      <a
-        href="https://smart-home.hashbrown.dev"
-        target="_blank"
+      <div
+        class="block"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunset-orange, #e88c4d)"
@@ -110,14 +129,12 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             step from context, whether it's navigation, filling a form, or
             kicking off a task, so your users stay in the flow.
           </p>
-          <div class="gap"></div>
-          <div class="button">
-            <www-player-play height="32px" width="32px" />
-            <small
-              >Launch Smart Home App
-              <www-arrow-up-right height="16px" width="16px"
-            /></small>
-          </div>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
+            class="docsLink"
+          >
+            Learn to build predictive suggestions and shortcuts
+          </a>
         </div>
         <div
           class="window"
@@ -129,6 +146,17 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             <div class="button">
               <h3>Smart Home App</h3>
             </div>
+            <a
+              href="https://smart-home.hashbrown.dev"
+              target="_blank"
+              class="runLink"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+            >
+              <www-player-play height="16px" width="16px" />
+              Run this App
+            </a>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
             <img
@@ -137,7 +165,7 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             />
           </div>
         </div>
-      </a>
+      </div>
     </div>
   `,
   styles: `
@@ -155,20 +183,12 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
       max-width: 1200px;
       width: 100%;
 
-      > a {
+      > .block {
         display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 32px;
         padding: 16px;
-
-        &:hover {
-          > .header {
-            > small {
-              color: var(--gray-dark, #3d3c3a);
-            }
-          }
-        }
 
         &:first-child {
           background: var(--sunshine-yellow-light, #fde4ba);
@@ -182,11 +202,40 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
           background: var(--sunset-orange-light, #f6d1b8);
         }
 
+        .docsLink {
+          text-decoration: underline;
+          text-decoration-color: var(--gray, #5e5c5a);
+          color: var(--gray, #5e5c5a);
+          font:
+            400 14px/24px Fredoka,
+            sans-serif;
+
+          &:hover {
+            text-decoration-color: #fbbb52;
+          }
+        }
+
+        .runLink {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background-color: #fff;
+          padding: 3px 9px 3px 6px;
+          font:
+            400 12px/24px Fredoka,
+            sans-serif;
+          transition: background-color 0.34s ease-in-out;
+
+          &:hover {
+            background-color: var(--sunshine-yellow-light, #fde4ba);
+          }
+        }
+
         > .header {
           align-self: stretch;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 8px;
 
           > h2 {
             color: rgba(0, 0, 0, 0.56);
@@ -203,38 +252,6 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
               400 15px/24px Fredoka,
               sans-serif;
           }
-
-          > .gap {
-            flex: 1 auto;
-          }
-
-          > .button {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-
-            > www-player-play {
-              padding: 8px;
-              border-radius: 32px;
-              background: #fff;
-            }
-          }
-
-          > .button > small,
-          > small {
-            display: flex;
-            gap: 4px;
-            text-decoration: underline;
-            text-decoration-color: var(--gray, #5e5c5a);
-            color: var(--gray, #5e5c5a);
-            font:
-              600 15px/24px Fredoka,
-              sans-serif;
-
-            &:hover {
-              text-decoration-color: #fbbb52;
-            }
-          }
         }
 
         > .window {
@@ -242,14 +259,15 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
           flex-direction: column;
           align-items: stretch;
           background: var(--vanilla-ivory, #faf9f0);
-          margin-bottom: -23px;
           height: calc(100% + 23px);
+          top: 4px;
+          position: relative;
 
           > .nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px;
+            padding: 12px 12px 8px 16px;
 
             > .button {
               position: relative;
@@ -309,13 +327,8 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
         gap: 16px;
         padding: 64px;
 
-        > a {
+        > .block {
           padding: 40px;
-          transition: transform 0.34s ease-in-out;
-
-          &:hover {
-            transform: scale(1.012);
-          }
 
           &:first-child {
             grid-column: 1 / 3;
