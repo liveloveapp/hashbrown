@@ -1,12 +1,21 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { ConfigService } from '../services/ConfigService';
+import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { Menu } from '../icons/Menu';
+import { ConfigService } from '../services/ConfigService';
 import { DropdownMenu } from './DropDownMenu';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-header',
-  imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu],
+  imports: [
+    ArrowUpRight,
+    Menu,
+    RouterLink,
+    RouterLinkActive,
+    DropdownMenu,
+    Squircle,
+  ],
   template: `
     <header>
       <menu>
@@ -23,6 +32,32 @@ import { DropdownMenu } from './DropDownMenu';
               </li>
               <li>
                 <a routerLink="/api" routerLinkActive="active">api</a>
+              </li>
+              <li>
+                <www-dropdown-menu
+                  [positions]="[
+                    {
+                      originX: 'end',
+                      originY: 'bottom',
+                      overlayX: 'end',
+                      overlayY: 'top',
+                      offsetX: 16,
+                      offsetY: 8,
+                    },
+                  ]"
+                  openMode="hover"
+                >
+                  <label>examples</label>
+                  <div content class="dropdown-content">
+                    <a
+                      href="https://finance.hashbrown.dev"
+                      target="_blank"
+                      class="menu-item"
+                      wwwSquircle="8"
+                      >finance app <www-arrow-up-right />
+                    </a>
+                  </div>
+                </www-dropdown-menu>
               </li>
               <li>
                 <a [routerLink]="workshopsUrl()" routerLinkActive="active">
@@ -58,15 +93,20 @@ import { DropdownMenu } from './DropDownMenu';
             ]"
           >
             <label><www-menu /></label>
-            <div content>
-              <a routerLink="/" class="menu-item">home</a>
-              <a [routerLink]="docsUrl()" class="menu-item">docs</a>
-              <a routerLink="/workshops" class="menu-item"> workshops </a>
-              <a routerLink="/blog" class="menu-item">blog</a>
+            <div content class="dropdown-content">
+              <a routerLink="/" class="menu-item" wwwSquircle="8">home</a>
+              <a [routerLink]="docsUrl()" class="menu-item" wwwSquircle="8"
+                >docs</a
+              >
+              <a routerLink="/workshops" class="menu-item" wwwSquircle="8">
+                workshops
+              </a>
+              <a routerLink="/blog" class="menu-item" wwwSquircle="8">blog</a>
               <a
                 href="https://github.com/liveloveapp/hashbrown"
                 target="_blank"
                 class="menu-item"
+                wwwSquircle="8"
                 >github</a
               >
             </div>
@@ -119,7 +159,8 @@ import { DropdownMenu } from './DropDownMenu';
                   justify-content: center;
                   align-items: center;
 
-                  > a {
+                  > a,
+                  > www-dropdown-menu button > label {
                     display: flex;
                     align-items: center;
                     gap: 4px;
@@ -142,20 +183,6 @@ import { DropdownMenu } from './DropDownMenu';
             display: flex;
             margin-top: -4px;
             margin-bottom: -4px;
-
-            ::ng-deep button {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 4px;
-              color: var(--gray, #5e5c5a);
-              border-radius: 4px;
-              transition: background-color 0.2s ease;
-
-              &:hover {
-                background-color: rgba(0, 0, 0, 0.04);
-              }
-            }
           }
         }
       }
@@ -173,10 +200,20 @@ import { DropdownMenu } from './DropDownMenu';
         transition: background-color 0.2s ease;
 
         &:hover {
-          background-color: rgba(119, 70, 37, 0.04);
+          background-color: var(--sunshine-yellow-light, #fbd38e);
           text-decoration: underline;
           text-decoration-color: #774625;
         }
+      }
+
+      .dropdown-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
+        background: #fff;
       }
 
       @media print {

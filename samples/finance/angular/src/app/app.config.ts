@@ -18,12 +18,6 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     provideHashbrown({
       baseUrl: '/api/chat',
-      emulateStructuredOutput: true,
-      middleware: [
-        function (request: RequestInit) {
-          return request;
-        },
-      ],
     }),
   ],
 };

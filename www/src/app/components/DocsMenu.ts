@@ -62,7 +62,7 @@ import { Squircle } from './Squircle';
             </label>
           }
         }
-        <div content>
+        <div content class="dropdown-content">
           <a [routerLink]="angularDocsUrl()" class="menu-item">
             <www-angular height="16px" width="16px" fill="#774625" />
             Angular
@@ -319,6 +319,16 @@ import { Squircle } from './Squircle';
           }
         }
       }
+    }
+
+    .dropdown-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
+      background: #fff;
     }
 
     .sdk ::ng-deep button {

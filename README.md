@@ -102,7 +102,7 @@ npx nx serve smart-home-server && npx nx serve smart-home-react
 ```shell
 nvm use
 npm install
-npx nx serve finance-angular
+npx nx serve finance-server && npx nx serve finance-angular
 ```
 
 Run the documentation website locally:
