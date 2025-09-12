@@ -56,6 +56,13 @@ import { Squircle } from './Squircle';
                       wwwSquircle="8"
                       >finance app <www-arrow-up-right />
                     </a>
+                    <a
+                      href="https://smart-home.hashbrown.dev"
+                      target="_blank"
+                      class="menu-item"
+                      wwwSquircle="8"
+                      >smart home app <www-arrow-up-right />
+                    </a>
                   </div>
                 </www-dropdown-menu>
               </li>
