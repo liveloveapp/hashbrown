@@ -28,7 +28,7 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
           <div class="button">
             <www-player-play height="32px" width="32px" />
             <small
-              >Launch the Finance Sample App
+              >Launch Finance App
               <www-arrow-up-right height="16px" width="16px"
             /></small>
           </div>
@@ -41,7 +41,7 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
         >
           <div class="nav">
             <div class="button">
-              <h3>Finance Sample</h3>
+              <h3>Finance App</h3>
             </div>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
@@ -54,11 +54,8 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
       </a>
 
       <a
-        [routerLink]="[
-          docsUrl(),
-          'recipes',
-          'natural-language-to-structured-data',
-        ]"
+        href="https://smart-home.hashbrown.dev"
+        target="_blank"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sky-blue, #9ECFD7)"
@@ -71,9 +68,13 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             responsive, and type-safe.
           </p>
           <div class="gap"></div>
-          <small
-            >Learn how to convert natural language into structured data</small
-          >
+          <div class="button">
+            <www-player-play height="32px" width="32px" />
+            <small
+              >Launch Smart Home App
+              <www-arrow-up-right height="16px" width="16px"
+            /></small>
+          </div>
         </div>
         <div
           class="window"
@@ -83,7 +84,7 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
         >
           <div class="nav">
             <div class="button">
-              <h3>Finance Sample</h3>
+              <h3>Smart Home App</h3>
             </div>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
@@ -96,7 +97,8 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
       </a>
 
       <a
-        [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
+        href="https://smart-home.hashbrown.dev"
+        target="_blank"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunset-orange, #e88c4d)"
@@ -109,7 +111,13 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
             kicking off a task, so your users stay in the flow.
           </p>
           <div class="gap"></div>
-          <small>Learn to build predictive suggestions and shortcuts</small>
+          <div class="button">
+            <www-player-play height="32px" width="32px" />
+            <small
+              >Launch Smart Home App
+              <www-arrow-up-right height="16px" width="16px"
+            /></small>
+          </div>
         </div>
         <div
           class="window"
@@ -119,7 +127,7 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
         >
           <div class="nav">
             <div class="button">
-              <h3>Smart Home Sample</h3>
+              <h3>Smart Home App</h3>
             </div>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
@@ -178,7 +186,7 @@ import { ArrowUpRight } from '../../icons/ArrowUpRight';
           align-self: stretch;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 24px;
 
           > h2 {
             color: rgba(0, 0, 0, 0.56);

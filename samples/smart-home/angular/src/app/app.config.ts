@@ -13,6 +13,6 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideAnimations(),
     provideMarkdown(),
-    provideHashbrown({ baseUrl: 'http://localhost:3000/api/chat' }),
+    provideHashbrown({ baseUrl: '/api/chat' }),
   ],
 };

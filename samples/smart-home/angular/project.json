@@ -9,6 +9,7 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
+      "dependsOn": ["smart-home-netlify:build"],
       "options": {
         "outputPath": "dist/samples/smart-home/angular",
         "browser": "samples/smart-home/angular/src/main.ts",
@@ -51,7 +52,8 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "options": {
-        "port": 4900
+        "port": 4900,
+        "proxyConfig": "samples/smart-home/angular/proxy.conf.json"
       },
       "configurations": {
         "production": {
