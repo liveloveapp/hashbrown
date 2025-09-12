@@ -90,7 +90,7 @@ const RRuleSchema = s.streaming.object('RRULE', {
 
 const ParseErrorSchema = s.object('PARSE_ERROR', {
   type: s.literal('PARSE_ERROR'),
-  error: s.string('The error message'),
+  error: s.streaming.string('The error message'),
 });
 
 const ParseResultSchema = s.object('Parse Result', {
@@ -227,7 +227,7 @@ export class RRuleParser {
   
         - Input: "sometime next week"  
           Output:
-          { "error": "Not enough information to build a recurrence rule" }
+          { "error": "This description is too vague. Please clarify the date and time." }
       `,
       schema: ParseResultSchema,
     });
