@@ -4,23 +4,31 @@ import {
   ConnectedPosition,
 } from '@angular/cdk/overlay';
 import {
+  ChangeDetectionStrategy,
   Component,
+  computed,
   ElementRef,
   HostListener,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-dropdown-menu',
   imports: [CdkConnectedOverlay, CdkOverlayOrigin, Squircle],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button
-      (click)="open.set(!open())"
+      (click)="onTriggerClick()"
+      (mouseenter)="onTriggerEnter()"
+      (mouseleave)="onTriggerLeave()"
       type="button"
       cdkOverlayOrigin
       [wwwSquircle]="squircle()"
+      [attr.aria-haspopup]="'menu'"
+      [attr.aria-expanded]="isOpen()"
       #trigger="cdkOverlayOrigin"
     >
       <ng-content select="label"></ng-content>
@@ -28,12 +36,19 @@ import { Squircle } from './Squircle';
     <ng-template
       cdkConnectedOverlay
       [cdkConnectedOverlayOrigin]="trigger"
-      [cdkConnectedOverlayOpen]="open()"
+      [cdkConnectedOverlayOpen]="isOpen()"
       [cdkConnectedOverlayPositions]="positions()"
       [cdkConnectedOverlayPanelClass]="'dropdown-panel'"
-      (detach)="open.set(false)"
+      (detach)="onOverlayDetach()"
     >
-      <ng-content select="[content]"></ng-content>
+      <div
+        #overlayContent
+        (mouseenter)="onOverlayEnter()"
+        (mouseleave)="onOverlayLeave()"
+        role="menu"
+      >
+        <ng-content select="[content]"></ng-content>
+      </div>
     </ng-template>
   `,
   styles: [
@@ -58,11 +73,6 @@ import { Squircle } from './Squircle';
 
       ::ng-deep.dropdown-panel {
         display: flex;
-        padding: 16px;
-        border-radius: 16px;
-        box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
-        background: #fff;
-        backdrop-filter: blur(24px);
       }
     `,
   ],
@@ -77,19 +87,117 @@ export class DropdownMenu {
       overlayY: 'top',
     },
   ]);
+  openMode = input<'click' | 'hover'>('click');
+
   open = signal(false);
+  isPointerOverTrigger = signal(false);
+  isPointerOverOverlay = signal(false);
+
+  private overlayTimeoutId: number | undefined;
+  private triggerTimeoutId: number | undefined;
+
+  isOpen = computed(() => {
+    console.log(
+      'isOpen',
+      this.openMode(),
+      this.isPointerOverTrigger(),
+      this.isPointerOverOverlay(),
+    );
+    return this.openMode() === 'hover'
+      ? this.isPointerOverTrigger() || this.isPointerOverOverlay()
+      : this.open();
+  });
+
+  overlayContent = viewChild<ElementRef<HTMLElement>>('overlayContent');
+
+  onTriggerClick() {
+    if (this.openMode() === 'click') {
+      this.open.set(!this.open());
+    }
+  }
+
+  onTriggerEnter() {
+    if (this.openMode() === 'hover') {
+      this.clearTriggerTimeout();
+      this.isPointerOverTrigger.set(true);
+    }
+  }
+
+  onTriggerLeave() {
+    console.log('onTriggerLeave');
+    if (this.openMode() === 'hover') {
+      this.clearTriggerTimeout();
+      this.triggerTimeoutId = window.setTimeout(() => {
+        this.isPointerOverTrigger.set(false);
+      }, 200);
+    }
+  }
+
+  onOverlayEnter() {
+    if (this.openMode() === 'hover') {
+      this.clearOverlayTimeout();
+      this.isPointerOverOverlay.set(true);
+    }
+  }
+
+  onOverlayLeave() {
+    if (this.openMode() === 'hover') {
+      this.clearOverlayTimeout();
+      this.overlayTimeoutId = window.setTimeout(() => {
+        this.isPointerOverOverlay.set(false);
+      }, 200);
+    }
+  }
+
+  onOverlayDetach() {
+    if (this.openMode() === 'click') {
+      this.open.set(false);
+    } else {
+      this.isPointerOverTrigger.set(false);
+      this.isPointerOverOverlay.set(false);
+    }
+  }
+
+  private clearOverlayTimeout() {
+    if (this.overlayTimeoutId !== undefined) {
+      clearTimeout(this.overlayTimeoutId);
+      this.overlayTimeoutId = undefined;
+    }
+  }
+
+  private clearTriggerTimeout() {
+    if (this.triggerTimeoutId !== undefined) {
+      clearTimeout(this.triggerTimeoutId);
+      this.triggerTimeoutId = undefined;
+    }
+  }
 
   @HostListener('document:click', ['$event.target'])
   onClickOutside(target: HTMLElement) {
-    if (this.open() && !this.el.nativeElement.contains(target)) {
+    const hostContains = this.el.nativeElement.contains(target);
+    const overlayContains =
+      !!this.overlayContent()?.nativeElement.contains(target);
+    if (
+      this.openMode() === 'click' &&
+      this.open() &&
+      !hostContains &&
+      !overlayContains
+    ) {
       this.open.set(false);
     }
   }
 
   @HostListener('document:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && this.open()) {
-      this.open.set(false);
+    if (event.key === 'Escape') {
+      if (this.openMode() === 'click') {
+        if (this.open()) {
+          this.open.set(false);
+        }
+      } else {
+        this.isPointerOverTrigger.set(false);
+        this.isPointerOverOverlay.set(false);
+      }
     }
   }
 

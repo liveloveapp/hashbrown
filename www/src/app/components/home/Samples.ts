@@ -2,14 +2,17 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ConfigService } from '../../services/ConfigService';
 import { Squircle } from '../Squircle';
+import { PlayerPlay } from '../../icons/PlayerPlay';
+import { ArrowUpRight } from '../../icons/ArrowUpRight';
 
 @Component({
   selector: 'www-samples',
-  imports: [RouterLink, Squircle],
+  imports: [RouterLink, Squircle, PlayerPlay, ArrowUpRight],
   template: `
     <div class="bleed">
       <a
-        [routerLink]="[docsUrl(), 'recipes', 'ui-chatbot']"
+        href="https://finance.hashbrown.dev"
+        target="_blank"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunshine-yellow, #fbbb52)"
@@ -22,10 +25,13 @@ import { Squircle } from '../Squircle';
             on&#8209;brand, context&#8209;aware, and production&#8209;ready.
           </p>
           <div class="gap"></div>
-          <small
-            >Learn how to build a chatbot with Generative UI and Tool
-            Calling</small
-          >
+          <div class="button">
+            <www-player-play height="32px" width="32px" />
+            <small
+              >Launch the Finance Sample App
+              <www-arrow-up-right height="16px" width="16px"
+            /></small>
+          </div>
         </div>
         <div
           class="window"
@@ -194,12 +200,27 @@ import { Squircle } from '../Squircle';
             flex: 1 auto;
           }
 
+          > .button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            > www-player-play {
+              padding: 8px;
+              border-radius: 32px;
+              background: #fff;
+            }
+          }
+
+          > .button > small,
           > small {
+            display: flex;
+            gap: 4px;
             text-decoration: underline;
             text-decoration-color: var(--gray, #5e5c5a);
             color: var(--gray, #5e5c5a);
             font:
-              400 14px/24px Fredoka,
+              600 15px/24px Fredoka,
               sans-serif;
 
             &:hover {

@@ -1,8 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import type { Ingredient } from '../../server/ingredients';
-
-export { Ingredient };
+import type { Ingredient } from '../models/ingredient';
 
 @Injectable({ providedIn: 'root' })
 export class Ingredients {

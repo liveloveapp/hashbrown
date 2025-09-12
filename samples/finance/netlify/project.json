@@ -1,0 +1,62 @@
+{
+  "name": "finance-netlify",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/finance/netlify/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "browser",
+        "outputPath": "dist/samples/finance/netlify",
+        "format": ["esm"],
+        "bundle": true,
+        "thirdParty": true,
+        "main": "samples/finance/netlify/src/chat.ts",
+        "additionalEntryPoints": ["samples/finance/netlify/src/ingredients.ts"],
+        "tsConfig": "samples/finance/netlify/tsconfig.app.json",
+        "generatePackageJson": false,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "mainFields": ["browser", "module", "main"],
+          "conditions": ["browser"],
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "finance-netlify:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "finance-netlify:build:development"
+        },
+        "production": {
+          "buildTarget": "finance-netlify:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}
