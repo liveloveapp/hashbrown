@@ -23,6 +23,7 @@ import { RRuleParser } from './rrule-parser';
 @Component({
   selector: 'app-add-scene-form',
   standalone: true,
+  host: { class: 'scene-dialog' },
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -41,7 +42,7 @@ import { RRuleParser } from './rrule-parser';
       <mat-dialog-content>
         <mat-form-field appearance="fill">
           <mat-label>Name</mat-label>
-          <input matInput formControlName="name" />
+          <input matInput formControlName="name" name="sceneName" />
           @if (
             form.get('name')?.errors?.['required'] && form.get('name')?.touched
           ) {
@@ -141,6 +142,7 @@ import { RRuleParser } from './rrule-parser';
           color="primary"
           [disabled]="!form.valid"
           type="submit"
+          id="submit-scene-button"
         >
           Add
         </button>

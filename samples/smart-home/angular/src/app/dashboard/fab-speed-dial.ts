@@ -34,7 +34,7 @@ import { AddSceneForm } from '../scenes/add-scene-form';
           <mat-icon>lightbulb</mat-icon>
           Add Light
         </button>
-        <button mat-fab extended (click)="addScene()">
+        <button mat-fab extended id="add-scene-button" (click)="addScene()">
           <mat-icon>theaters</mat-icon>
           Add Scene
         </button>

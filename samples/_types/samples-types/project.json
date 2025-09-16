@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "samples-types",
+  "projectType": "library",
+  "sourceRoot": "samples/_types/samples-types/src",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/samples/_types/samples-types",
+        "tsConfig": "samples/_types/samples-types/tsconfig.lib.json",
+        "main": "samples/_types/samples-types/src/index.ts",
+        "assets": []
+      }
+    }
+  },
+  "tags": ["scope:samples", "type:types"]
+}
