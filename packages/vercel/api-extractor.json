@@ -1,0 +1,7 @@
+{
+  "extends": "../../api-extractor.base.json",
+  "compiler": {
+    "tsconfigFilePath": "<projectFolder>/tsconfig.docs.json"
+  },
+  "mainEntryPointFilePath": "../../dist/packages/vercel/src/index.d.ts"
+}

@@ -1,0 +1,67 @@
+{
+  "name": "vercel",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/vercel/src",
+  "projectType": "library",
+  "release": {
+    "version": {
+      "generatorOptions": {
+        "packageRoot": "dist/{projectRoot}",
+        "currentVersionResolver": "git-tag",
+        "fallbackCurrentVersionResolver": "disk"
+      }
+    }
+  },
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/vercel",
+        "tsConfig": "packages/vercel/tsconfig.lib.json",
+        "packageJson": "packages/vercel/package.json",
+        "main": "packages/vercel/src/index.ts",
+        "assets": ["packages/vercel/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/vercel/jest.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/vercel/jest.e2e.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    },
+    "build-api-report": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx api-extractor run --local --config packages/vercel/api-extractor.json",
+        "parallel": true
+      },
+      "dependsOn": [
+        {
+          "projects": ["vercel"],
+          "target": "build"
+        }
+      ]
+    }
+  }
+}
