@@ -1,4 +1,4 @@
-import { CommonModule, JsonPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -19,6 +19,7 @@ import { SmartHome } from '../smart-home';
 import { Scene } from '../types';
 import { LightPredictor } from './light-predictor';
 import { RRuleParser } from './rrule-parser';
+import { RruleVisualization } from './rrule-visualization/rrule-visualization';
 
 @Component({
   selector: 'app-add-scene-form',
@@ -33,7 +34,7 @@ import { RRuleParser } from './rrule-parser';
     MatSelectModule,
     MatSliderModule,
     MatIconModule,
-    JsonPipe,
+    RruleVisualization,
   ],
   template: `
     <h2 mat-dialog-title>Add Scene</h2>
@@ -61,9 +62,12 @@ import { RRuleParser } from './rrule-parser';
           </div>
         }
 
-        @if (rruleParserResult.rrule()) {
-          <div class="rrule">
-            <pre>{{ rruleParserResult.rrule() | json }}</pre>
+        @if (rruleParserResult.schedule(); as schedule) {
+          <app-rrule-visualization [schedule]="schedule" />
+        } @else if (rruleParserResult.error(); as parseError) {
+          <div class="rrule-error">
+            <mat-icon inline>error</mat-icon>
+            <span>{{ parseError.error }}</span>
           </div>
         }
 
@@ -206,13 +210,22 @@ import { RRuleParser } from './rrule-parser';
       gap: 8px;
     }
 
-    .rrule {
-      background-color: var(--mat-sys-surface-container-high);
-      padding: 16px;
-      height: 120px;
-      overflow-y: auto;
-      font-family: monospace;
-      margin-bottom: 16px;
+    app-rrule-visualization {
+      display: block;
+    }
+
+    .rrule-error {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: var(--mat-sys-error-container);
+      color: var(--mat-sys-on-error-container);
+      padding: 12px 16px;
+      border-radius: 16px;
+
+      mat-icon {
+        flex-shrink: 0;
+      }
     }
 
     .error {
@@ -255,7 +268,7 @@ export class AddSceneForm {
    * Predicted Lights Resource
    * --------------------------------------------------------------------------
    */
-  predictedLightsResult = this.lightPredictor.predictLights(
+  readonly predictedLightsResult = this.lightPredictor.predictLights(
     this.sceneNameSignal,
   );
 
@@ -264,7 +277,7 @@ export class AddSceneForm {
    * RRule Parser Resource
    * --------------------------------------------------------------------------
    */
-  rruleParserResult = this.rruleParser.parse(this.rruleSignal);
+  readonly rruleParserResult = this.rruleParser.parse(this.rruleSignal);
 
   protected addLight(light?: { lightId: string; brightness: number }) {
     const lightGroup = new FormGroup({
