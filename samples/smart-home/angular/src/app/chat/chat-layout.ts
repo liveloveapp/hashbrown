@@ -7,7 +7,7 @@ import { Component } from '@angular/core';
     :host {
       display: grid;
       flex-grow: 0;
-      height: 100dvh;
+      height: 100%;
       width: 100%;
       grid-template-columns: 1fr;
       grid-template-rows: 1fr auto;
