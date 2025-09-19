@@ -75,6 +75,7 @@ To get started, we recommend running a local express server following the Hashbr
 - [Azure OpenAI](/docs/angular/platform/azure)
 - [Google Gemini](/docs/angular/platform/google)
 - [Writer](/docs/angular/platform/writer)
+- [Ollama](/docs/angular/platform/ollama)
 
 ---
 
