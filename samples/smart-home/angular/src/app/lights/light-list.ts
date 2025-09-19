@@ -24,9 +24,6 @@ import { MatIconModule } from '@angular/material/icon';
         display: flex;
         flex-direction: column;
         gap: 8px;
-        background-color: #fff;
-        border-radius: 8px;
-        border: 1px solid var(--mat-sys-outline);
         margin-bottom: 8px;
       }
 
@@ -36,6 +33,15 @@ import { MatIconModule } from '@angular/material/icon';
         align-items: center;
         column-gap: 24px;
         padding: 16px 16px 8px;
+      }
+
+      .list-title {
+        color: var(--chocolate-brown, #774625);
+        font-family: Fredoka;
+        font-size: 14px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
       }
 
       .list-icon {

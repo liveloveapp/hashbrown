@@ -8,21 +8,22 @@ import {
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { exposeComponent, uiChatResource } from '@hashbrownai/angular';
 import { prompt, s } from '@hashbrownai/core';
-import { SmartHome } from '../smart-home';
 import { LightCard } from '../lights/light-card';
 import { LightList } from '../lights/light-list';
 import { SceneButton } from '../scenes/scene-button';
+import { SmartHome } from '../smart-home';
+import { Squircle } from '../squircle';
+import { ChatLayout } from './chat-layout';
 import { ChatMessages } from './chat-messages';
+import { ChatPrompts } from './chat-prompts';
 import { Composer } from './composer';
 import { Markdown } from './markdown';
-import { ChatLayout } from './chat-layout';
 import {
   applySceneTool,
   controlLightTool,
   getLightsTools,
   getScenesTool,
 } from './tools';
-import { ChatPrompts } from './chat-prompts';
 
 @Component({
   selector: 'app-chat-panel',
@@ -33,30 +34,35 @@ import { ChatPrompts } from './chat-prompts';
     ChatMessages,
     ChatLayout,
     ChatPrompts,
+    Squircle,
   ],
   template: `
-    @if (chat.isLoading()) {
-      <div class="chat-loading">
-        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-      </div>
-    }
-    <app-chat-layout>
-      <div class="chat-messages" #contentDiv>
-        <app-chat-messages
-          [messages]="chat.value()"
-          (retry)="retryMessages()"
-        />
-        @if (chat.value().length === 0) {
-          <app-chat-prompts (selectPrompt)="sendMessage($event)" />
-        }
-      </div>
-
-      <div class="chat-composer">
+    <div
+      class="container"
+      appSquircle="16"
+      [appSquircleBorderWidth]="2"
+      appSquircleBorderColor="#EEC7AD"
+    >
+      @if (chat.isLoading()) {
+        <div class="chat-loading">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        </div>
+      }
+      <app-chat-layout>
+        <div class="chat-messages" #contentDiv>
+          <app-chat-messages
+            [messages]="chat.value()"
+            (retry)="retryMessages()"
+          />
+          @if (chat.value().length === 0) {
+            <app-chat-prompts (selectPrompt)="sendMessage($event)" />
+          }
+        </div>
         <app-chat-composer
           (sendMessage)="sendMessage($event)"
         ></app-chat-composer>
-      </div>
-    </app-chat-layout>
+      </app-chat-layout>
+    </div>
   `,
   styles: [
     `
@@ -65,8 +71,14 @@ import { ChatPrompts } from './chat-prompts';
         --chat-width: 480px;
         width: var(--chat-width);
         height: 100dvh;
-        background-color: var(--mat-sys-surface);
-        border-left: 1px solid var(--mat-sys-outline-variant);
+        padding: 16px;
+      }
+
+      .container {
+        background: #fdf4ef;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
       }
 
       .chat-loading {
@@ -86,11 +98,6 @@ import { ChatPrompts } from './chat-prompts';
         flex-direction: column;
         gap: 16px;
         position: relative;
-      }
-
-      .chat-composer {
-        padding: 16px;
-        border-top: 1px solid var(--mat-sys-outline-variant);
       }
     `,
   ],
