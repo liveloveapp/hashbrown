@@ -39,18 +39,20 @@ Hashbrown is a set of core and framework-specific packages for the UI along with
 
 ## Installation
 
-Hashbrown typically needs three libs installed
+Hashbrown typically needs three packages installed:
 
-* @hashbrownai/core: a shared set of primitives for managing state to/from LLM providers
-* @hashbrownai/<angular|react>: a framework-specific set of wrappers for the core primitives to easily tie Hashbrown into framework lifecycle flows
-* @hashbrownai/<provider>: A provider-specific wrapper for Node backends that wraps a provider SDK to provide consistency between providers.
+- @hashbrownai/core: a shared set of primitives for managing state to/from LLM providers
+- @hashbrownai/<angular|react>: a framework-specific set of wrappers for the core primitives to easily tie Hashbrown into framework lifecycle flows
+- @hashbrownai/<provider>: A provider-specific wrapper for Node backends that wraps a provider SDK to provide consistency between providers.
 
 For example, to use Hashbrown with Angular and OpenAI's GPT models, you could install the requisite packages like so:
+
 ```sh
 npm install @hashbrownai/{core,angular,openai} --save
 ```
 
 To use Hashbrown with React and Azure, you'd instead do:
+
 ```sh
 npm install @hashbrownai/{core,react,azure} --save
 ```
@@ -72,28 +74,46 @@ Coming soon:
 - Anthropic
 - Vercel
 
-Note that any model supported by a vendor's SDK will generally be usable via Hashbrown.  That said, not all models (especially some older, smaller ones) will be able to handle the full feature set of Hashbrown.
+Note that any model supported by a vendor's SDK will generally be usable via Hashbrown. That said, not all models (especially some older, smaller ones) will be able to handle the full feature set of Hashbrown.
 
 ## Getting Started
 
 ### In Node
 
-// TODO: drop a bit here on why this is needed
+Hashbrown backend SDK wrappers put a consistent API surface around varied SDK APIs, and allow you to provide API keys and model choices, as well as other vendor-specific parameters.
 
-// TODO: code example showing usage with open ai (get from slim sample app)
+Hashbrown uses HTTP streaming to communicate between Node backends and UI
+hooks/resources.
 
-// TODO: call out where API key goes and why
+The below example demonstrates exposing a POST endpoint `/chat` that:
+
+- takes in a completion parameters, like a set of messages, schema and tool calls/definitions
+- streams LLM responses back to the Hashbrown UI mechanisms
+
+Note: the URL is configurable in Hashbrown and need not be 'chat', so long as it matches in the backend and UI.
+
+```typescript
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: req.body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk); // Pipe each encoded frame as it arrives
+  }
+
+  res.end();
+});
+```
+
+See [sample server main.ts](/samples/smart-home/server/src/main.ts) for a fuller example.
 
 ### In React
-
-Install:
-
-// TODO: take the openai part out of this and angular so we can
-// explain it separately
-
-```sh
-npm install @hashbrownai/{core,react,openai} --save
-```
 
 Configure the provider:
 
@@ -107,13 +127,11 @@ export function Providers() {
 }
 ```
 
+With the provider set up, you can use Hashbrown hooks anywhere in your application.
+
+Our docs site has various examples and recipes, like [extracting structured data from a text input](https://hashbrown.dev/docs/react/recipes/natural-language-to-structured-data).
+
 ### In Angular
-
-Install:
-
-```sh
-npm install @hashbrownai/{core,angular,openai} --save
-```
 
 Configure the provider:
 
@@ -127,19 +145,37 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
+With the provider set up, you can use Hashbrown hooks anywhere in your application.
+
+Our docs site has various examples and recipes, like [equipping a chatbot with tool calling](https://hashbrown.dev/docs/angular/recipes/ui-chatbot).
+
 ## Features
 
-// TODO: walkthrough completions, etc
+Hashbrown offers a toolkit of ways to enhance a UI with intelligence:
 
-// TODO: link to docs, multiple links to multiple places to help them find
-// their way
+- input completions
+- structured completions (i.e. natural language )
+- component selection and rendering
+- tool calling
+- code generation and execution
+
+Each of these can interact with an app's state, persistence, components, etc., so there is a maximum flexibility in how and when to apply AI.
+
+In addition, because LLMs can handle most languages, all Hashbrown features can handle most any language as an input or output.
+
+We've chosen to document them in the context of each UI framework we support.
+
+For Angular: https://hashbrown.dev/docs/angular/start/intro
+
+For React: https://hashbrown.dev/docs/react/start/intro
 
 ## Sample Apps
 
-To enable demonstration, ideation and development, we've added several sample apps to the repo.  These apps have state, reactivity, etc., just like a full-fledged app.  They also each include a simple backend server to enable using LLM providers, but they don't generally include persistence, etc.
+To enable demonstration, ideation and development, we've added several sample apps to the repo. These apps have state, reactivity, etc., just like a full-fledged app. They also each include a simple backend server to enable using LLM providers, but they don't generally include persistence, etc.
 
-### Angular Smart Home 
-An Angular-based smart home app that can control lights, create and apply scenes and schedule events.  Users can interact with a chat prompt that can render lights, scenes, etc. right in the chat.
+### Angular Smart Home
+
+An Angular-based smart home app that can control lights, create and apply scenes and schedule events. Users can interact with a chat prompt that can render lights, scenes, etc. right in the chat.
 
 Smart-home-server is set up to use OpenAI (you'll just need to provide your API key as an environment variable), but can be quickly adapted to any of our other backend wrappers.
 
@@ -149,8 +185,9 @@ npm install
 npx nx serve smart-home-server && npx nx serve smart-home-angular
 ```
 
-### React Smart Home 
-A React-based smart home app that can control lights, create and apply scenes and schedule events.  Users can interact with a chat prompt that can render lights, scenes, etc. right in the chat.
+### React Smart Home
+
+A React-based smart home app that can control lights, create and apply scenes and schedule events. Users can interact with a chat prompt that can render lights, scenes, etc. right in the chat.
 
 Smart-home-server is set up to use OpenAI (you'll just need to provide your API key as an environment variable), but can be quickly adapted to any of our other backend wrappers.
 
@@ -162,7 +199,7 @@ npx nx serve smart-home-server && npx nx serve smart-home-react
 
 ### Angular Finance
 
-The finance app comes with a large amount of data representing breakfast food supplies, and it demonstrates Hashbrown's ability to generate Javascript to slice/rollup data, configure a chart in an arbitrary way, and then render that chart for a user.  
+The finance app comes with a large amount of data representing breakfast food supplies, and it demonstrates Hashbrown's ability to generate Javascript to slice/rollup data, configure a chart in an arbitrary way, and then render that chart for a user.
 
 Note: the theme can be changed via natural language, like "Make the legend bigger and green". "1990s Excel" has proven a popular choice.
 
@@ -174,7 +211,7 @@ npx nx serve finance-server && npx nx serve finance-angular
 
 ### Angular Kitchen Sink
 
-The Kitchen Sink app is a version of the Angular smart home app with an expanded feature set.  It serves as an experimental playground for contributors exploring and adding new features and mechanisms (i.e. "explain this page to me").  
+The Kitchen Sink app is a version of the Angular smart home app with an expanded feature set. It serves as an experimental playground for contributors exploring and adding new features and mechanisms (i.e. "explain this page to me").
 
 ```shell
 nvm use
@@ -182,7 +219,7 @@ npm install
 npx nx serve kitchen-sink-server && npx nx serve kitchen-sink-angular
 ```
 
-## Hashbrown.dev 
+## Hashbrown.dev
 
 Run the documentation website locally:
 
@@ -190,7 +227,7 @@ Run the documentation website locally:
 nvm use
 npm install
 # If needed, generate build dependencies (i.e. docs from code)
-npx nx run www:collect-docs 
+npx nx run www:collect-docs
 # Run the server
 npx nx serve www
 ```
