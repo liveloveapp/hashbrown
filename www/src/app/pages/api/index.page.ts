@@ -1,9 +1,28 @@
+import { RouteMeta } from '@analogjs/router';
 import { Component, computed, inject, signal } from '@angular/core';
 import { KindChip } from '../../components/KindChip';
 import { SymbolChip } from '../../components/SymbolChip';
 import { Search } from '../../icons/Search';
 import { MinimizedApiMemberSummary } from '../../models/api-report.models';
 import { ApiService } from '../../services/ApiService';
+
+export const routeMeta: RouteMeta = {
+  title: 'Home: Hashbrown API',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Home: Hashbrown API',
+    },
+    {
+      name: 'og:description',
+      content: 'Hashbrown API documentation.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
+};
 
 @Component({
   imports: [SymbolChip, Search, KindChip],

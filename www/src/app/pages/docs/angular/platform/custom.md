@@ -1,3 +1,9 @@
+---
+title: 'Custom Adapter (Angular): Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.'
+---
 # Custom Adapter (Angular)
 
 Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.

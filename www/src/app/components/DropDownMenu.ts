@@ -23,7 +23,6 @@ import { Squircle } from './Squircle';
     <button
       (click)="onTriggerClick()"
       (mouseenter)="onTriggerEnter()"
-      (mouseleave)="onTriggerLeave()"
       type="button"
       cdkOverlayOrigin
       [wwwSquircle]="squircle()"
@@ -97,12 +96,6 @@ export class DropdownMenu {
   private triggerTimeoutId: number | undefined;
 
   isOpen = computed(() => {
-    console.log(
-      'isOpen',
-      this.openMode(),
-      this.isPointerOverTrigger(),
-      this.isPointerOverOverlay(),
-    );
     return this.openMode() === 'hover'
       ? this.isPointerOverTrigger() || this.isPointerOverOverlay()
       : this.open();
@@ -120,16 +113,6 @@ export class DropdownMenu {
     if (this.openMode() === 'hover') {
       this.clearTriggerTimeout();
       this.isPointerOverTrigger.set(true);
-    }
-  }
-
-  onTriggerLeave() {
-    console.log('onTriggerLeave');
-    if (this.openMode() === 'hover') {
-      this.clearTriggerTimeout();
-      this.triggerTimeoutId = window.setTimeout(() => {
-        this.isPointerOverTrigger.set(false);
-      }, 200);
     }
   }
 

@@ -1,7 +1,7 @@
 ---
 title: Introducing Hashbrown
 slug: 2025-06-25-Hashbrown-launch
-description: Hashbrown is a framework for building generative user interfaces in Angular and React. It is open source and MIT licensed.
+description: Introducing Hashbrown - a TypeScript framework for building generative user interfaces in Angular and React. Features streaming, tool calling, structured output, generative UI, and a JavaScript runtime for LLM-generated code execution.
 tags:
   - story
   - release

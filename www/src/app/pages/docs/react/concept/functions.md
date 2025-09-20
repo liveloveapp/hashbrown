@@ -1,3 +1,9 @@
+---
+title: 'Tool Calling: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Give the model access to your application state and enable the model to take action.'
+---
 # Tool Calling
 
 <p class="subtitle">Give the model access to your application state and enable the model to take action.</p>

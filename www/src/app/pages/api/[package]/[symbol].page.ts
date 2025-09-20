@@ -1,3 +1,4 @@
+import { RouteMeta } from '@analogjs/router';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -5,8 +6,27 @@ import {
   input,
   resource,
 } from '@angular/core';
+import { ActivatedRouteSnapshot } from '@angular/router';
 import { Symbol } from '../../../components/Symbol';
 import { ApiService } from '../../../services/ApiService';
+
+export const routeMeta: RouteMeta = {
+  title: (route: ActivatedRouteSnapshot) => {
+    return `@hashbrownai/${route.params['package']}.${route.params['symbol']}: Hashbrown API`;
+  },
+  meta: (route: ActivatedRouteSnapshot) => {
+    return [
+      {
+        name: 'og:title',
+        content: `@hashbrownai/${route.params['package']}.${route.params['symbol']}: Hashbrown API`,
+      },
+      {
+        name: 'og:image',
+        content: `https://hashbrown.dev/image/meta/og-default.png`,
+      },
+    ];
+  },
+};
 
 @Component({
   imports: [Symbol],

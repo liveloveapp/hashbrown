@@ -1,3 +1,9 @@
+---
+title: 'Custom Adapter (React): Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.'
+---
 # Custom Adapter (React)
 
 Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.

@@ -1,14 +1,56 @@
-import { injectContent, MarkdownComponent } from '@analogjs/content';
-import { Component, effect } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { injectContentFiles, MarkdownComponent } from '@analogjs/content';
+import { contentFileResource } from '@analogjs/content/resources';
+import { RouteMeta } from '@analogjs/router';
+import { Component, inject, signal } from '@angular/core';
+import { ActivatedRoute, ActivatedRouteSnapshot } from '@angular/router';
 import { Youtube } from '../../components/Youtube';
 import { PostAttributes } from '../../models/blog.models';
+
+export const routeMeta: RouteMeta = {
+  title: (route: ActivatedRouteSnapshot) => {
+    const content = injectContentFiles<PostAttributes>().find(
+      (contentFile) =>
+        contentFile.filename ===
+          `/src/content/blog/${route.params['slug']}.md` ||
+        contentFile.slug === route.params['slug'],
+    );
+    if (!content) {
+      return 'Home - Hashbrown Blog';
+    }
+    return content.attributes.title ?? 'Home - Hashbrown Blog';
+  },
+  meta: (route: ActivatedRouteSnapshot) => {
+    const content = injectContentFiles<PostAttributes>().find(
+      (contentFile) =>
+        contentFile.filename ===
+          `/src/content/blog/${route.params['slug']}.md` ||
+        contentFile.slug === route.params['slug'],
+    );
+    if (!content) {
+      return [];
+    }
+    return [
+      { name: 'og:title', content: content.attributes.title ?? '' },
+      { name: 'og:description', content: content.attributes.description ?? '' },
+      {
+        name: 'og:image',
+        content:
+          content.attributes.ogImage ??
+          'https://hashbrown.dev/image/meta/og-default.png',
+      },
+      {
+        name: 'og:date',
+        content: content.attributes.date?.toISOString() ?? '',
+      },
+    ];
+  },
+};
 
 @Component({
   imports: [MarkdownComponent, Youtube],
   template: `
     <div class="bleed">
-      @if (post(); as p) {
+      @if (post.value(); as p) {
         <div class="title">
           <h1>{{ p.attributes.title }}</h1>
           <div class="team">
@@ -270,9 +312,8 @@ import { PostAttributes } from '../../models/blog.models';
   `,
 })
 export default class BlogPostComponent {
-  readonly post$ = injectContent<PostAttributes>({
-    subdirectory: 'blog',
-    param: 'slug',
-  });
-  readonly post = toSignal(this.post$);
+  readonly route = inject(ActivatedRoute);
+  readonly post = contentFileResource<PostAttributes>(
+    signal(`blog/${this.route.snapshot.params['slug']}`),
+  );
 }

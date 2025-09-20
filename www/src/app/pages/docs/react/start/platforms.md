@@ -1,3 +1,9 @@
+---
+title: 'Platforms: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Hashbrown uses the adapter pattern for supporting multiple platforms.'
+---
 # Platforms
 
 Hashbrown uses the adapter pattern for supporting multiple platforms.

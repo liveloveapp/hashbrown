@@ -1,3 +1,9 @@
+---
+title: 'OpenAI: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Hashbrown’s OpenAI adapter lets you stream chat completions from OpenAI’s GPT models, including support for function calling, response schemas, and request transforms.'
+---
 # OpenAI
 
 First, install the OpenAI adapter package:

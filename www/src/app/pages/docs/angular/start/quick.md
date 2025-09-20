@@ -1,3 +1,9 @@
+---
+title: 'Angular Quick Start: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Take your first steps with Hashbrown.'
+---
 # Angular Quick Start
 
 <p class="subtitle">Take your first steps with Hashbrown.</p>

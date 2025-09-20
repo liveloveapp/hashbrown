@@ -1,3 +1,9 @@
+---
+title: 'Generative UI with React Components: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Expose trusted , tested , and compliant components to the model.'
+---
 # Generative UI with React Components
 
 <p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>

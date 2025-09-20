@@ -1,3 +1,9 @@
+---
+title: 'Prompt Engineering: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Hashbrown''s Angular SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the Angular SDK.'
+---
 # Prompt Engineering
 
 Hashbrown's Angular SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the Angular SDK.

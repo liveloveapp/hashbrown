@@ -1,3 +1,9 @@
+---
+title: 'Ollama: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'First, install the Ollama adapter package:'
+---
 # Ollama
 
 First, install the Ollama adapter package:

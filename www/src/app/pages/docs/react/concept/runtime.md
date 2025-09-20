@@ -1,3 +1,9 @@
+---
+title: 'JS Runtime: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Safe execution of model generated JavaScript code in the browser.'
+---
 # JS Runtime
 
 <p class="subtitle">Safe execution of model generated JavaScript code in the browser.</p>

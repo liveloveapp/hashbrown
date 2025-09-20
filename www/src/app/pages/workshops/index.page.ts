@@ -1,9 +1,28 @@
 import { injectContentFiles } from '@analogjs/content';
+import { RouteMeta } from '@analogjs/router';
 import { Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Squircle } from '../../components/Squircle';
 import { ChevronRight } from '../../icons/ChevronRight';
 import { WorkshopAttributes } from '../../models/workshop.models';
+
+export const routeMeta: RouteMeta = {
+  title: 'Hashbrown AI Workshops',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Hashbrown AI Workshops',
+    },
+    {
+      name: 'og:description',
+      content: 'Hashbrown AI Workshops.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
+};
 
 @Component({
   imports: [ChevronRight, RouterLink, Squircle],

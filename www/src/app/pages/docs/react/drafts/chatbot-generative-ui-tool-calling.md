@@ -1,3 +1,9 @@
+---
+title: 'Building a Chatbot with Generative UI and Tool Calling in React: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'This guide walks you step-by-step through building a modern chatbot in React using Hashbrown. You''ll learn how to:'
+---
 # Building a Chatbot with Generative UI and Tool Calling in React
 
 This guide walks you step-by-step through building a modern chatbot in React using Hashbrown. You'll learn how to:

@@ -1,3 +1,9 @@
+---
+title: 'Streaming: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Drop-in streaming support for eagerly parsing JSON'
+---
 # Streaming
 
 <p class="subtitle">Drop-in streaming support for eagerly parsing JSON</p>

@@ -1,3 +1,9 @@
+---
+title: 'Choosing Model: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Hashbrown''s React SDK supports a variety of LLM providers and models. You can specify the model to use by passing the model option to any of the React hooks, such as useChat, useCompletion, useStructuredChat, or useStructuredCompletion.'
+---
 # Choosing Model
 
 Hashbrown's React SDK supports a variety of LLM providers and models. You can specify the model to use by passing the `model` option to any of the React hooks, such as `useChat`, `useCompletion`, `useStructuredChat`, or `useStructuredCompletion`.

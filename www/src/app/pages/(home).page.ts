@@ -8,6 +8,26 @@ import { Samples } from '../components/home/Samples';
 import { TheGravy } from '../components/home/TheGravy';
 import { TheVisual } from '../components/home/TheVisual';
 import { Features } from '../components/home/Features';
+import { RouteMeta } from '@analogjs/router';
+
+export const routeMeta: RouteMeta = {
+  title: 'Hashbrown: The TypeScript Framework for Generative UI',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Hashbrown: The TypeScript Framework for Generative UI',
+    },
+    {
+      name: 'og:description',
+      content:
+        'Hashbrown is a TypeScript framework for building generative user interfaces that converse with users, dynamically reorganize, and even code themselves.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
+};
 
 @Component({
   imports: [

@@ -1,8 +1,27 @@
+import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ApiMenu } from '../components/ApiMenu';
 import { Header } from '../components/Header';
 import { Squircle } from '../components/Squircle';
+
+export const routeMeta: RouteMeta = {
+  title: 'Home: Hashbrown API',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Home: Hashbrown API',
+    },
+    {
+      name: 'og:description',
+      content: 'Hashbrown API documentation.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
+};
 
 @Component({
   imports: [RouterOutlet, Header, ApiMenu, Squircle],

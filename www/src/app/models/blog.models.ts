@@ -6,6 +6,7 @@ export interface PostAttributes {
   tags: string[];
   team: string[];
   youtube?: string;
+  ogImage?: string;
 }
 
 export type Filter = {

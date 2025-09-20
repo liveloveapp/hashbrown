@@ -1,3 +1,9 @@
+---
+title: 'Sample App: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Smart home client built with Angular.'
+---
 # Sample App
 
 <p class="subtitle">Smart home client built with Angular.</p>

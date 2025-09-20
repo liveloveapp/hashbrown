@@ -1,3 +1,9 @@
+---
+title: 'Introduction: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Hashbrown is an open source framework for building generative user interfaces in React.'
+---
 # Introduction
 
 <p class="subtitle">Hashbrown is an open source framework for building generative user interfaces in React.</p>

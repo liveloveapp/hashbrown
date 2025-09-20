@@ -1,3 +1,9 @@
+---
+title: 'Skillet Schema Language: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Skillet is a Zod-like schema language that is LLM-optimized.'
+---
 # Skillet Schema Language
 
 <p class="subtitle">Skillet is a Zod-like schema language that is LLM-optimized.</p>

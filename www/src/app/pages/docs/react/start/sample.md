@@ -1,3 +1,9 @@
+---
+title: 'Sample App: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Smart home client built with React.'
+---
 # Sample App
 
 <p class="subtitle">Smart home client built with React.</p>
