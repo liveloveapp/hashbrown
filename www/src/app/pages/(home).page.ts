@@ -1,14 +1,15 @@
+import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
+import { Features } from '../components/home/Features';
 import { Hero } from '../components/home/Hero';
 import { Media } from '../components/home/Media';
 import { OpenSource } from '../components/home/OpenSource';
+import { Sample } from '../components/home/Sample';
 import { Samples } from '../components/home/Samples';
 import { TheGravy } from '../components/home/TheGravy';
 import { TheVisual } from '../components/home/TheVisual';
-import { Features } from '../components/home/Features';
-import { RouteMeta } from '@analogjs/router';
 
 export const routeMeta: RouteMeta = {
   title: 'Hashbrown: The TypeScript Framework for Generative UI',
@@ -37,6 +38,7 @@ export const routeMeta: RouteMeta = {
     Hero,
     Media,
     OpenSource,
+    Sample,
     Samples,
     TheGravy,
     TheVisual,
@@ -45,6 +47,7 @@ export const routeMeta: RouteMeta = {
     <www-header />
     <main class="home">
       <www-hero />
+      <www-sample />
       <www-samples />
       <www-open-source />
       <www-features />

@@ -25,6 +25,7 @@ import { Squircle } from '../squircle';
           cdkAutosizeMaxRows="5"
           class="chat-composer"
           placeholder="Ask"
+          id="chat-input"
           (keydown.enter)="onHitEnter(textarea, $event)"
         ></textarea>
       </div>

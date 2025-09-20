@@ -65,7 +65,8 @@ import { Squircle } from './Squircle';
         background: none;
         cursor: pointer;
 
-        > label {
+        > label,
+        > [label] {
           cursor: pointer;
         }
       }

@@ -54,8 +54,8 @@ import { Squircle } from '../squircle';
       display: flex;
       flex-direction: column;
       gap: 32px;
-      overflow-y: auto;
-      padding: 24px;
+      padding: 16px;
+      overflow: hidden;
 
       > header {
         display: flex;
@@ -66,6 +66,9 @@ import { Squircle } from '../squircle';
       }
 
       > section {
+        flex: 1 auto;
+        overflow-y: auto;
+
         > h2 {
           padding: 0 8px;
           margin: 0 0 8px;
@@ -78,13 +81,14 @@ import { Squircle } from '../squircle';
         > .scenes {
           display: flex;
           flex-wrap: wrap;
-          gap: 16px;
+          gap: 8px;
         }
 
         > .lights {
+          flex: 1 auto;
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 8px;
         }
       }
     }
