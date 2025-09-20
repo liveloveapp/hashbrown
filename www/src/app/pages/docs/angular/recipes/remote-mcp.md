@@ -1,3 +1,9 @@
+---
+title: 'Remote Model Context Protocol (MCP): Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Expose remote MCP servers to models for better task following and responses.'
+---
 # Remote Model Context Protocol (MCP)
 
 <p class="subtitle">Expose remote MCP servers to models for better task following and responses.</p>

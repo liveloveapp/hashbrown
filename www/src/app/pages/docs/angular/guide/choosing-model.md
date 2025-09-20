@@ -1,3 +1,9 @@
+---
+title: 'Choosing Model: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Hashbrown''s Angular SDK supports a variety of LLM providers and models.'
+---
 # Choosing Model
 
 Hashbrown's Angular SDK supports a variety of LLM providers and models. You can specify the model to use by passing the `model` option to any of the Angular composables, such as `useChat`, `useCompletion`, `useStructuredChat`, or `useStructuredCompletion`.

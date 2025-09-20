@@ -5,12 +5,31 @@ import { Footer } from '../../components/Footer';
 import { Header } from '../../components/Header';
 import { Squircle } from '../../components/Squircle';
 import { FirebaseService } from '../../services/FirebaseService';
+import { RouteMeta } from '@analogjs/router';
 
 const STATUS = {
   IN_PROGRESS: 0,
   NOT_SUBMITTED: 1,
   SUCCESS: 2,
   ERROR: 3,
+};
+
+export const routeMeta: RouteMeta = {
+  title: 'Contact Us: Hashbrown',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Contact Us: Hashbrown',
+    },
+    {
+      name: 'og:description',
+      content: 'Contact the Hashbrown team.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
 };
 
 @Component({

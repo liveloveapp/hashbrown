@@ -1,3 +1,9 @@
+---
+title: 'Building Predictive Suggestions and Shortcuts Using Angular: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Use Hashbrown structured outputs to suggest a user''s next action in your app.'
+---
 # Building Predictive Suggestions and Shortcuts Using Angular
 
 <p class="subtitle">Use Hashbrown structured outputs to suggest a user's next action in your app.</p>

@@ -1,3 +1,9 @@
+---
+title: 'API Overview: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Get familiar with Hashbrown''s hooks and APIs.'
+---
 # API Overview
 
 <p class="subtitle">Get familiar with Hashbrown's hooks and APIs.</p>

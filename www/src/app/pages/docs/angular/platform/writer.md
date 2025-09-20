@@ -1,3 +1,9 @@
+---
+title: 'Writer: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Hashbrown’s Writer adapter lets you stream chat completions from Writer models, including support for function calling, response schemas, and request transforms.'
+---
 # Writer
 
 First, install the Writer adapter package:

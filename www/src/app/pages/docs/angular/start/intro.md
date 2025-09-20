@@ -1,3 +1,9 @@
+---
+title: 'Introduction: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Hashbrown is an open source framework for building generative user interfaces in Angular.'
+---
 # Introduction
 
 <p class="subtitle">Hashbrown is an open source framework for building generative user interfaces in Angular.</p>

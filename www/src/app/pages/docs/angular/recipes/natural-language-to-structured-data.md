@@ -1,3 +1,9 @@
+---
+title: 'Converting Natural Language to Structured Data: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'This recipe shows how to replace complex form controls with a single natural-language input in Angular. We use a large-language model to parse what the user types and convert it into structured data that your backend already expects.'
+---
 # Converting Natural Language to Structured Data
 
 This recipe shows how to replace complex form controls with a single natural-language input in Angular. We use a large-language model to parse what the user types and convert it into structured data that your backend already expects. You should be comfortable with:

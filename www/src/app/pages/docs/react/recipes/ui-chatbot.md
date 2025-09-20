@@ -1,3 +1,9 @@
+---
+title: 'Building a Chatbot with Generative UI and Tool Calling: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'This step-by-step guide will walk you through building a conversational Smart Home chatbot using Hashbrown''s useUiChat React hook. Our assistant will:'
+---
 # Building a Chatbot with Generative UI and Tool Calling
 
 This step-by-step guide will walk you through building a conversational Smart Home chatbot using Hashbrown's `useUiChat` React hook. Our assistant will:

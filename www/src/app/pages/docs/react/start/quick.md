@@ -1,3 +1,9 @@
+---
+title: 'React Quick Start: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Take your first steps with Hashbrown.'
+---
 # React Quick Start
 
 <p class="subtitle">Take your first steps with Hashbrown.</p>

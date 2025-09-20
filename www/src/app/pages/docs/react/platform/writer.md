@@ -1,3 +1,9 @@
+---
+title: 'Writer (React): Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Hashbrown’s Writer adapter lets you stream chat completions from Writer models, including support for tool calling, response schemas, and request transforms.'
+---
 # Writer (React)
 
 First, install the Writer adapter package:

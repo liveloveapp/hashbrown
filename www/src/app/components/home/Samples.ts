@@ -3,11 +3,10 @@ import { RouterLink } from '@angular/router';
 import { ConfigService } from '../../services/ConfigService';
 import { Squircle } from '../Squircle';
 import { PlayerPlay } from '../../icons/PlayerPlay';
-import { ArrowUpRight } from '../../icons/ArrowUpRight';
 
 @Component({
   selector: 'www-samples',
-  imports: [RouterLink, Squircle, PlayerPlay, ArrowUpRight],
+  imports: [RouterLink, Squircle, PlayerPlay],
   template: `
     <div class="bleed">
       <div

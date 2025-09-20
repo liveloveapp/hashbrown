@@ -1,3 +1,9 @@
+---
+title: 'Microsoft Azure: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'First, install the Microsoft Azure adapter package:'
+---
 # Microsoft Azure
 
 First, install the Microsoft Azure adapter package:

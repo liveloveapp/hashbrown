@@ -1,3 +1,9 @@
+---
+title: 'Building a Chatbot with Generative UI and Tool Calling in Angular: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'This guide walks you step-by-step through building a modern chatbot in Angular using Hashbrown. You''ll learn how to:'
+---
 # Building a Chatbot with Generative UI and Tool Calling in Angular
 
 This guide walks you step-by-step through building a modern chatbot in Angular using Hashbrown. You'll learn how to:

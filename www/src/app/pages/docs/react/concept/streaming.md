@@ -1,3 +1,9 @@
+---
+title: 'Streaming: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application.'
+---
 # Streaming
 
 Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application. Hashbrown is architected to make streaming as easy and simple to consume for you, the developer, as possible.

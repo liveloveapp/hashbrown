@@ -1,3 +1,9 @@
+---
+title: 'Transform Request Options: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Intercept and modify requests before they are sent to LLM providers.'
+---
 # Transform Request Options
 
 <p class="subtitle">Intercept and modify requests before they are sent to LLM providers.</p>

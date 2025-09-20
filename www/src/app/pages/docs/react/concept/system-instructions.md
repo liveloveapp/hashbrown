@@ -1,3 +1,9 @@
+---
+title: 'System Instructions: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'The instruction defines the initial system-level guidance given to the language model. It sets the AI''s role, tone, and behavior across the interaction.'
+---
 # System Instructions
 
 The instruction defines the initial system-level guidance given to the language model. It sets the AI's role, tone, and behavior across the interaction. This is equivalent to OpenAI's system message or Google's system instruction setting — it influences how the assistant behaves before user input is considered.

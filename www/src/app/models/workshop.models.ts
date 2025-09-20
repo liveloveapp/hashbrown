@@ -3,4 +3,5 @@ export interface WorkshopAttributes {
   description: string;
   active: boolean;
   order: number;
+  ogImage?: string;
 }

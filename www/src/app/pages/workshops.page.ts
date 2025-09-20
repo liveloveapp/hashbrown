@@ -1,9 +1,28 @@
+import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { Squircle } from '../components/Squircle';
 import { Sell } from '../icons/Sell';
-import { Footer } from '../components/Footer';
+
+export const routeMeta: RouteMeta = {
+  title: 'Hashbrown AI Workshops',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Hashbrown AI Workshops',
+    },
+    {
+      name: 'og:description',
+      content: 'Hashbrown AI Workshops.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
+};
 
 @Component({
   imports: [Sell, RouterOutlet, Header, Squircle, RouterLink, Footer],

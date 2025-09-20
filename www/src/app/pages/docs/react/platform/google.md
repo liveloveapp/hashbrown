@@ -1,3 +1,9 @@
+---
+title: 'Google Gemini (React): Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Hashbrown’s Google Gemini adapter lets you stream chat completions from Google Gemini models, handling function calls, response schemas, and request transforms.'
+---
 # Google Gemini (React)
 
 First, install the Google adapter package:
