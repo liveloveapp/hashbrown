@@ -88,21 +88,38 @@ const RRuleSchema = s.streaming.object('RRULE', {
   ]),
 });
 
+const ScheduleSchema = s.streaming.object('SCHEDULE', {
+  type: s.literal('SCHEDULE'),
+  dtstart: s.string(
+    'Start date-time (DTSTART) in RFC 5545 basic format YYYYMMDDTHHMMSS, optionally suffixed with "Z" for UTC or prefixed with "TZID=ZoneID:" for a specific time-zone',
+  ),
+  exdate: s.anyOf([
+    s.nullish(),
+    s.array(
+      'Exclusion dates (EXDATE) in RFC 5545 format YYYYMMDDTHHMMSS[Z]',
+      s.string(
+        'Exclusion date-time in RFC 5545 basic format; support TZID prefix or trailing Z',
+      ),
+    ),
+  ]),
+  rrule: s.anyOf([RRuleSchema, s.nullish()]),
+});
+
 const ParseErrorSchema = s.object('PARSE_ERROR', {
   type: s.literal('PARSE_ERROR'),
   error: s.streaming.string('The error message'),
 });
 
 const ParseResultSchema = s.object('Parse Result', {
-  result: s.anyOf([RRuleSchema, ParseErrorSchema]),
+  result: s.anyOf([ScheduleSchema, ParseErrorSchema]),
 });
 
 @Injectable({ providedIn: 'root' })
 export class RRuleParser {
   parse(input: Signal<string | null | undefined>): {
-    rrule: Signal<s.Infer<typeof ParseResultSchema>['result'] | null>;
+    schedule: Signal<s.Infer<typeof ScheduleSchema> | null>;
     isLoading: Signal<boolean>;
-    error: Signal<Error | undefined>;
+    error: Signal<s.Infer<typeof ParseErrorSchema> | null>;
   } {
     const resource = structuredCompletionResource({
       model: 'gpt-4.1',
@@ -120,127 +137,126 @@ export class RRuleParser {
       }),
       system: `
         You are an RFC 5545-compliant scheduling parser.
-  
+
         INPUT FORMAT:
           - input: A short English description of a one-off or recurring event (e.g. "every other Tuesday at 7 pm", "June 27th at 6 pm and every Monday thereafter", "first Mon of each month at 09:00 PST").
-          - timezone: The timezone of the user.
+          - timezone: The user's IANA timezone.
           - today: The current date in the user's timezone as an ISO string.
-  
-        OUTPUT: **Only** a JSON object that strictly matches the schema provided by the host application.  
-        • If parsing succeeds -> contains the RRULE fields.  
-        • If parsing fails -> \`"error"\` contains a short English message.
-  
+
+        OUTPUT: **Only** a JSON object that strictly matches the schema provided by the host application.
+        • If parsing succeeds -> \`result\` MUST be an object with:
+            ▸ \`dtstart\`: RFC 5545 DATE or DATE-TIME string (may include TZID or trailing Z) that is strictly after \`today\`.
+            ▸ \`exdate\`: either omitted/null, or an array of RFC 5545 DATE/DATE-TIME strings matching the DTSTART value type.
+            ▸ \`rrule\`: either a valid RRULE object per the provided schema or null for one-off events.
+        • If parsing fails -> \`result\` MUST be \`{ "type": "PARSE_ERROR", "error": "..." }\` with a short English message.
+
         ─────────────────────────────────────────────────────────────────────────────
-        GENERAL RULES
-        1.  **Time-zone detection**  
-            ▸ If the user names a zone or says “UTC”/“Z”, honour it.  
-            ▸ Otherwise use the timezone provided in the input.
-        2.  **DTSTART**  
-            ▸ Assume it starts today if not specified.
-            ▸ Local zone: \`"TZID=<Zone>:YYYYMMDDThhmmss"\` (RFC 5545 basic).  
-            ▸ UTC: \`"YYYYMMDDThhmmssZ"\`.  
-        3.  **UNTIL**  
-            ▸ Only emit if the user gives an explicit end.  
-            ▸ When \`DTSTART\` carries \`TZID\`, convert UNTIL to UTC and append **Z**.  
-        4.  **Keep DTSTART and UNTIL the same value-type** (DATE vs DATE-TIME).  
-        5.  Omit any property that is \`null\` or \`undefined\`; never include extras.  
-        6.  BY-lists (BYHOUR, BYMINUTE, ...) are always arrays. Even single values go in arrays.  
-        7.  Only include \`WKST\` if the user says something like “weeks start on Monday”.  
-        8.  Reject ambiguous or unsupported input with an error. Do **not** guess.  
-        9.  Resolve relative dates to the current date using the today provided in the input.
-  
+        FIELD RULES
+        1. **Time-zone detection**
+           ▸ Honour explicit zones or “UTC”/“Z”.
+           ▸ Otherwise, default to the supplied \`timezone\`.
+        2. **DTSTART**
+           ▸ Always emit.
+           ▸ When unspecified, assume the earliest future instance consistent with the description.
+           ▸ Local zone: \`"TZID=<Zone>:YYYYMMDDThhmmss"\` (RFC 5545 basic).
+           ▸ UTC: \`"YYYYMMDDThhmmssZ"\`.
+           ▸ Must be strictly later than \`today\`.
+        3. **EXDATE**
+           ▸ Only include when the user specifies exclusions.
+           ▸ Match DTSTART's value type (pure dates stay dates; date-times stay date-times).
+           ▸ De-duplicate entries.
+        4. **RRULE**
+           ▸ Use null for single occurrences.
+           ▸ Apply schema rules: keep DTSTART/UNTIL value types aligned, convert UNTIL to UTC when DTSTART uses TZID, put singular values in arrays, and omit WKST unless stated.
+        5. **General**
+           ▸ Omit properties that are null or undefined; never add extras.
+           ▸ Reject ambiguous or unsupported requests with a parse error.
+           ▸ Resolve relative language (“next Friday”) against \`today\`.
+
         ─────────────────────────────────────────────────────────────────────────────
         PHRASE -> RULE TRANSLATIONS
-        • “every &lt;day&gt; thereafter”            -> DTSTART = first date/time, FREQ=WEEKLY, BYDAY = [&lt;day&gt;].  
-        • “every other …” / “alternate …”           -> INTERVAL = 2.  
-        • “first/second/last &lt;day&gt; of month”  -> FREQ=MONTHLY, BYDAY = [&lt;day&gt;], BYSETPOS = [1 | 2 | -1].  
-        • “for N times/days/weeks/occurrences”      -> COUNT = N.  
-        • “until &lt;date/time&gt;”                 -> UNTIL = that absolute moment.  
-  
+        • “every <day> thereafter”             -> DTSTART = first occurrence, RRULE.freq = WEEKLY, BYDAY = [<day>].
+        • “every other ...” / “alternate ...”  -> RRULE.interval = 2.
+        • “first/second/last <day> of month”   -> RRULE.freq = MONTHLY, BYDAY = [<day>], BYSETPOS = [1 | 2 | -1].
+        • “for N times/days/weeks”             -> RRULE.count = N.
+        • “until <date/time>”                  -> RRULE.until = absolute instant (UTC when DTSTART has TZID).
+
         ─────────────────────────────────────────────────────────────────────────────
         OUTPUT FORMAT
         \`\`\`json
-        { "error": null, ... }
+        { "result": { "dtstart": "...", "exdate": null, "rrule": { ... } } }
         \`\`\`
-        Nothing else—no markdown, no prose.
-  
+        Nothing else — no markdown, no commentary.
+
         ─────────────────────────────────────────────────────────────────────────────
         EXAMPLES
         - Input: "Every other Tuesday at 7:00 PM"  
           Output:
-          { "error": null,
-            "freq": "WEEKLY",
-            "interval": 2,
-            "byday": ["TU"],
-            "byhour": [19],
-            "byminute": [0]
-          }
-  
-        - Input: "First Monday of each month at 9am PST"  
-          Output:
-          { "error": null,
-            "freq": "MONTHLY",
-            "byday": ["MO"],
-            "bysetpos": [1],
-            "byhour": [9],
-            "byminute": [0]
-          }
-  
-        - Input: "Every day at 6:30 for 10 days"  
-          Output:
-          { "error": null,
-            "freq": "DAILY",
-            "byhour": [6],
-            "byminute": [30],
-            "count": 10
-          }
-  
-        - Input: "March 10 2026 14:00 UTC"  
-          Output:
-          { "error": null,
-            "dtstart": "20260310T140000Z",
-            "freq": "DAILY",
-            "byhour": [14],
-            "byminute": [0],
-            "count": 1,
-            "until": "20260310T140000Z"
-          }
-  
-        - Input: "Start on July 4 2025 at 9:00 AM America/Los_Angeles and repeat daily"  
-          Output:
-          { "error": null,
-            "dtstart": "TZID=America/Los_Angeles:20250704T090000",
-            "freq": "DAILY",
-            "byhour": [9],
-            "byminute": [0]
-          }
-  
+          { "result": {
+              "dtstart": "TZID=America/Los_Angeles:20250701T190000",
+              "exdate": null,
+              "rrule": {
+                "type": "RRULE",
+                "freq": "WEEKLY",
+                "interval": 2,
+                "byday": ["TU"],
+                "byhour": [19],
+                "byminute": [0],
+                "dtstart": "TZID=America/Los_Angeles:20250701T190000"
+              }
+            } }
+
         - Input: "June 27th at 6:00 pm and every Monday thereafter"  
           Output:
-          { "error": null,
-            "dtstart": "TZID=America/Los_Angeles:20250627T180000",
-            "freq": "WEEKLY",
-            "byday": ["MO"],
-            "byhour": [18],
-            "byminute": [0]
-          }
-  
-        - Input: "sometime next week"  
+          { "result": {
+              "dtstart": "TZID=America/Los_Angeles:20250627T180000",
+              "exdate": null,
+              "rrule": {
+                "type": "RRULE",
+                "freq": "WEEKLY",
+                "byday": ["MO"],
+                "byhour": [18],
+                "byminute": [0],
+                "dtstart": "TZID=America/Los_Angeles:20250627T180000"
+              }
+            } }
+
+        - Input: "Tomorrow at 9am"  
           Output:
-          { "error": "This description is too vague. Please clarify the date and time." }
+          { "result": {
+              "dtstart": "TZID=America/Los_Angeles:20250625T090000",
+              "exdate": null,
+              "rrule": null
+            } }
+
+        - Input: "Sometime next week"  
+          Output:
+          { "result": { "type": "PARSE_ERROR", "error": "This description is too vague. Please clarify the date and time." } }
       `,
       schema: ParseResultSchema,
     });
 
+    const result = computed(() => {
+      const value = resource.value();
+
+      return value?.result;
+    });
+
+    const error = computed(() => {
+      const value = result();
+
+      return value && value.type === 'PARSE_ERROR' ? value : null;
+    });
+
+    const schedule = computed(() => {
+      const value = result();
+
+      return value && value.type === 'SCHEDULE' ? value : null;
+    });
+
     return {
-      rrule: computed(() => {
-        const value = resource.value();
-
-        if (!value) return null;
-
-        return value.result;
-      }),
-      error: resource.error,
+      schedule,
+      error,
       isLoading: resource.isLoading,
     };
   }
