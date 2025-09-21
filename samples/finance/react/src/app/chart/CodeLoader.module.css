@@ -1,0 +1,49 @@
+.root {
+  width: 240px;
+  height: 200px;
+  background-color: #fff;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  scroll-behavior: smooth;
+  border-radius: 4px;
+  opacity: 0.12;
+}
+
+.line {
+  height: 4px;
+  max-width: 100%;
+  border-radius: 4px;
+  animation: slideIn 0.3s ease-out forwards;
+  transition: width 0.3s ease-out;
+  flex-shrink: 0;
+}
+
+.line:nth-child(4n) {
+  background-color: #9ecfd7;
+}
+
+.line:nth-child(4n + 1) {
+  background-color: #b76060;
+}
+
+.line:nth-child(4n + 2) {
+  background-color: #e88c4d;
+}
+
+.line:nth-child(4n + 3) {
+  background-color: #fbbb52;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
