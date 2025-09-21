@@ -21,6 +21,7 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { SmartHome } from '../smart-home';
 import { s } from '@hashbrownai/core';
+import { Suggestor } from '../suggestions/suggestor';
 
 @Component({
   selector: 'app-add-light-form',
@@ -144,6 +145,7 @@ import { s } from '@hashbrownai/core';
 export class AddLightForm {
   readonly smartHome = inject(SmartHome);
   readonly dialogRef = inject(MatDialogRef<AddLightForm>);
+  readonly suggestor = inject(Suggestor);
   readonly nameControl = new FormControl('', [Validators.required]);
   readonly form = new FormGroup({
     name: this.nameControl,
@@ -208,6 +210,7 @@ export class AddLightForm {
       }
 
       this.smartHome.addLight({ name, brightness: 100 });
+      this.suggestor.notify('addLight', { name, brightness: 100 });
       this.closeDialog();
     }
   }
