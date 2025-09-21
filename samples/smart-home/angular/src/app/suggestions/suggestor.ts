@@ -4,6 +4,8 @@ import {
   inject,
   Injectable,
   linkedSignal,
+  signal,
+  untracked,
   WritableSignal,
 } from '@angular/core';
 import { structuredCompletionResource } from '@hashbrownai/angular';
@@ -13,6 +15,10 @@ import { Suggestions, SuggestionsSchema } from './suggestions-schema';
 @Injectable({ providedIn: 'root' })
 export class Suggestor {
   private readonly smartHome = inject(SmartHome);
+  private readonly lastAction = signal<{
+    userAction: string;
+    payload: object;
+  } | null>(null);
   private readonly suggestionsResource = structuredCompletionResource({
     model: 'gpt-4.1',
     debugName: 'suggestionsResource',
@@ -33,11 +39,16 @@ export class Suggestor {
     `,
     input: computed(
       () => {
+        const lastAction = this.lastAction();
+        const lights = untracked(() => this.smartHome.lights());
+        const scenes = untracked(() => this.smartHome.scenes());
+
+        if (lastAction === null) return null;
+
         return {
-          lights: this.smartHome
-            .lights()
-            .map((light) => ({ id: light.id, name: light.name })),
-          scenes: this.smartHome.scenes(),
+          lastAction,
+          lights,
+          scenes,
         };
       },
       { equal: (a, b) => this.isDeepEqual(a, b) },
@@ -48,8 +59,8 @@ export class Suggestor {
   private readonly suggestionsList: WritableSignal<Suggestions[]> =
     linkedSignal({
       source: this.suggestionsResource.value,
-      computation: (source, previous): Suggestions[] => {
-        if (!source) return previous?.source?.suggestions ?? [];
+      computation: (source): Suggestions[] => {
+        if (source === undefined || source === null) return [];
 
         return source.suggestions;
       },
@@ -80,6 +91,10 @@ export class Suggestor {
     }
 
     return false;
+  }
+
+  notify(userAction: string, payload: object): void {
+    this.lastAction.set({ userAction, payload });
   }
 
   removeSuggestion(index: number) {

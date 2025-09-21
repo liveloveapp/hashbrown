@@ -20,6 +20,7 @@ import { Scene } from '../types';
 import { LightPredictor } from './light-predictor';
 import { RRuleParser } from './rrule-parser';
 import { RruleVisualization } from './rrule-visualization/rrule-visualization';
+import { Suggestor } from '../suggestions/suggestor';
 
 @Component({
   selector: 'app-add-scene-form',
@@ -244,6 +245,7 @@ export class AddSceneForm {
   readonly smartHome = inject(SmartHome);
   readonly lightPredictor = inject(LightPredictor);
   readonly rruleParser = inject(RRuleParser);
+  readonly suggestor = inject(Suggestor);
   readonly nameControl = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required],
@@ -344,6 +346,7 @@ export class AddSceneForm {
     const scene = this.form.value;
 
     this.smartHome.addScene(scene as unknown as Omit<Scene, 'id'>);
+    this.suggestor.notify('addScene', scene);
     this.closeDialog();
   }
 }
