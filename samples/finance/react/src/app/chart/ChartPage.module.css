@@ -1,0 +1,155 @@
+.page {
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  grid-template-rows: 64px 4px 1fr;
+  color: rgba(0, 0, 0, 0.8);
+  background-color: #faf9f0;
+}
+
+.header {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: #faf9f0;
+}
+
+.input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #faf9f0;
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 16px;
+  font-family: 'Fredoka', sans-serif;
+}
+
+.input:disabled {
+  opacity: 0.5;
+}
+
+.sendButton {
+  background-color: #fbbb52;
+  color: #774625;
+  text-transform: lowercase;
+  font-weight: 900;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-family: 'Fredoka', sans-serif;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sendButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.loaderArea {
+  width: 100%;
+  height: 4px;
+  background-color: transparent;
+  position: relative;
+}
+
+.progressBar {
+  position: absolute;
+  inset: 0;
+  background-color: transparent;
+  overflow: hidden;
+}
+
+.progressIndicator {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, #fde4ba, #e8a23d);
+  animation: slide 1s linear infinite;
+}
+
+@keyframes slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.chartArea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: calc(100vh - 64px);
+  padding: 24px;
+  position: relative;
+}
+
+.canvas {
+  transition: opacity 0.3s ease;
+  max-height: 100%;
+}
+
+.canvasRendering {
+  opacity: 0;
+}
+
+.toastArea {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.toastArea > * {
+  pointer-events: auto;
+}
+
+.codeButton {
+  position: fixed;
+  right: 4px;
+  bottom: 4px;
+  opacity: 0.2;
+  transition: opacity 0.3s ease;
+  background-color: #faf9f0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: 'Fredoka', sans-serif;
+  cursor: pointer;
+}
+
+.codeButton:hover {
+  opacity: 1;
+}
+
+.examples {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}

@@ -1,0 +1,107 @@
+.root {
+  display: block;
+  width: 320px;
+  height: 0;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease,
+    height 0.3s ease;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Fredoka', sans-serif;
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.8);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.titleText {
+  color: inherit;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: inherit;
+}
+
+.iconButton .icon {
+  font-size: 16px;
+}
+
+.message {
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.8);
+  white-space: pre-wrap;
+}
+
+@keyframes lineIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.line {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  animation: lineIn 0.3s ease;
+}
+
+.root.refusal {
+  background-color: rgba(226, 118, 118, 0.72);
+}
+
+.root.success {
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+.root.info {
+  background-color: rgba(216, 236, 239, 0.72);
+}
+
+.root.closing {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.root.closed {
+  display: none;
+}
+
+.measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
