@@ -23,28 +23,34 @@ import { Squircle } from './Squircle';
     <button
       (click)="onTriggerClick()"
       (mouseenter)="onTriggerEnter()"
-      type="button"
-      cdkOverlayOrigin
-      [wwwSquircle]="squircle()"
+      (mouseleave)="onTriggerLeave()"
+      [attr.aria-controls]="menuId"
+      [attr.aria-expanded]="isOpen() ? 'true' : 'false'"
       [attr.aria-haspopup]="'menu'"
-      [attr.aria-expanded]="isOpen()"
+      [wwwSquircle]="squircle()"
       #trigger="cdkOverlayOrigin"
+      cdkOverlayOrigin
+      type="button"
     >
       <ng-content select="label"></ng-content>
     </button>
     <ng-template
-      cdkConnectedOverlay
-      [cdkConnectedOverlayOrigin]="trigger"
-      [cdkConnectedOverlayOpen]="isOpen()"
-      [cdkConnectedOverlayPositions]="positions()"
-      [cdkConnectedOverlayPanelClass]="'dropdown-panel'"
       (detach)="onOverlayDetach()"
+      (overlayOutsideClick)="onOverlayOutsideClick()"
+      [cdkConnectedOverlayOpen]="isOpen()"
+      [cdkConnectedOverlayOrigin]="trigger"
+      [cdkConnectedOverlayPanelClass]="'dropdown-panel'"
+      [cdkConnectedOverlayPositions]="positions()"
+      cdkConnectedOverlay
     >
       <div
-        #overlayContent
+        (click)="onOverlayClick()"
         (mouseenter)="onOverlayEnter()"
         (mouseleave)="onOverlayLeave()"
+        [attr.id]="menuId"
+        #overlayContent
         role="menu"
+        tabindex="-1"
       >
         <ng-content select="[content]"></ng-content>
       </div>
@@ -84,6 +90,28 @@ export class DropdownMenu {
       originY: 'bottom',
       overlayX: 'start',
       overlayY: 'top',
+      offsetY: 4,
+    },
+    {
+      originX: 'start',
+      originY: 'top',
+      overlayX: 'start',
+      overlayY: 'bottom',
+      offsetY: -4,
+    },
+    {
+      originX: 'end',
+      originY: 'bottom',
+      overlayX: 'end',
+      overlayY: 'top',
+      offsetY: 4,
+    },
+    {
+      originX: 'end',
+      originY: 'top',
+      overlayX: 'end',
+      overlayY: 'bottom',
+      offsetY: -4,
     },
   ]);
   openMode = input<'click' | 'hover'>('click');
@@ -91,6 +119,8 @@ export class DropdownMenu {
   open = signal(false);
   isPointerOverTrigger = signal(false);
   isPointerOverOverlay = signal(false);
+
+  menuId = 'www-dropdown-' + Math.random().toString(36).slice(2);
 
   private overlayTimeoutId: number | undefined;
   private triggerTimeoutId: number | undefined;
@@ -132,12 +162,28 @@ export class DropdownMenu {
     }
   }
 
+  onOverlayClick() {
+    if (this.openMode() === 'click') {
+      this.open.set(false);
+    }
+  }
+
   onOverlayDetach() {
     if (this.openMode() === 'click') {
       this.open.set(false);
+      const triggerButton = this.el.nativeElement.querySelector(
+        'button',
+      ) as HTMLButtonElement | null;
+      triggerButton?.focus();
     } else {
       this.isPointerOverTrigger.set(false);
       this.isPointerOverOverlay.set(false);
+    }
+  }
+
+  onOverlayOutsideClick() {
+    if (this.openMode() === 'click' && this.open()) {
+      this.open.set(false);
     }
   }
 
@@ -155,18 +201,12 @@ export class DropdownMenu {
     }
   }
 
-  @HostListener('document:click', ['$event.target'])
-  onClickOutside(target: HTMLElement) {
-    const hostContains = this.el.nativeElement.contains(target);
-    const overlayContains =
-      !!this.overlayContent()?.nativeElement.contains(target);
-    if (
-      this.openMode() === 'click' &&
-      this.open() &&
-      !hostContains &&
-      !overlayContains
-    ) {
-      this.open.set(false);
+  onTriggerLeave() {
+    if (this.openMode() === 'hover') {
+      this.clearTriggerTimeout();
+      this.triggerTimeoutId = window.setTimeout(() => {
+        this.isPointerOverTrigger.set(false);
+      }, 200);
     }
   }
 
@@ -185,4 +225,9 @@ export class DropdownMenu {
   }
 
   constructor(private el: ElementRef<HTMLElement>) {}
+
+  ngOnDestroy() {
+    this.clearOverlayTimeout();
+    this.clearTriggerTimeout();
+  }
 }

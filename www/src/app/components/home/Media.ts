@@ -228,6 +228,11 @@ export class Media {
 
   videos = signal<Video[]>([
     {
+      id: 'gAeLTcxF-0o',
+      title: 'Web Dev Challenge - Spotify Game',
+      description: 'September 9, 2025',
+    },
+    {
       id: 'ekQ7t6_MvOQ',
       title: 'Generative UI on Learn with Jason',
       description: 'July 23, 2025',

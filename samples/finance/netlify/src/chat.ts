@@ -40,7 +40,10 @@ export default async function handler(
   }
 
   const req = (await request.json()) as Chat.Api.CompletionCreateParams;
-  const stream = HashbrownOpenAI.stream.text({ apiKey, request: req });
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey,
+    request: req,
+  });
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {

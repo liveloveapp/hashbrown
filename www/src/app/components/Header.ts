@@ -1,6 +1,11 @@
-import { Component, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { Menu } from '../icons/Menu';
 import { ConfigService } from '../services/ConfigService';
 import { DropdownMenu } from './DropDownMenu';
@@ -8,14 +13,8 @@ import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-header',
-  imports: [
-    ArrowUpRight,
-    Menu,
-    RouterLink,
-    RouterLinkActive,
-    DropdownMenu,
-    Squircle,
-  ],
+  imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu, Squircle],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header>
       <menu>
@@ -47,29 +46,62 @@ import { Squircle } from './Squircle';
                   ]"
                   openMode="hover"
                 >
-                  <label>examples</label>
+                  <label>
+                    <a routerLink="/samples" routerLinkActive="active">
+                      examples
+                    </a>
+                  </label>
                   <div content class="dropdown-content">
                     <a
-                      href="https://finance.hashbrown.dev"
-                      target="_blank"
+                      routerLink="/samples/finance"
                       class="menu-item"
                       wwwSquircle="8"
-                      >finance app <www-arrow-up-right />
+                      >finance app
                     </a>
                     <a
-                      href="https://smart-home.hashbrown.dev"
-                      target="_blank"
+                      routerLink="/samples/smart-home"
                       class="menu-item"
                       wwwSquircle="8"
-                      >smart home app <www-arrow-up-right />
+                    >
+                      smart home app
                     </a>
                   </div>
                 </www-dropdown-menu>
               </li>
               <li>
-                <a [routerLink]="workshopsUrl()" routerLinkActive="active">
-                  workshops
-                </a>
+                <www-dropdown-menu
+                  [positions]="[
+                    {
+                      originX: 'end',
+                      originY: 'bottom',
+                      overlayX: 'end',
+                      overlayY: 'top',
+                      offsetX: 16,
+                      offsetY: 8,
+                    },
+                  ]"
+                  openMode="hover"
+                >
+                  <label>
+                    <a routerLink="/workshops" routerLinkActive="active">
+                      workshops
+                    </a>
+                  </label>
+                  <div content class="dropdown-content">
+                    <a
+                      routerLink="/workshops/react-generative-ui-engineering"
+                      class="menu-item"
+                      wwwSquircle="8"
+                      >react workshop</a
+                    >
+                    <a
+                      routerLink="/workshops/angular-generative-ui-engineering"
+                      class="menu-item"
+                      wwwSquircle="8"
+                      >angular workshop</a
+                    >
+                  </div>
+                </www-dropdown-menu>
               </li>
               <li>
                 <a routerLink="/blog" routerLinkActive="active">blog</a>
@@ -251,16 +283,5 @@ export class Header {
 
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/intro`;
-  });
-
-  workshopsUrl = computed(() => {
-    switch (this.configService.sdk()) {
-      case 'react':
-        return '/workshops/react-generative-ui-engineering';
-      case 'angular':
-        return '/workshops/angular-generative-ui-engineering';
-      default:
-        return '/workshops';
-    }
   });
 }
