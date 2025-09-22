@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
 import { Close } from '../icons/Close';
-import { PlayerPlay } from '../icons/PlayerPlay';
+import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-announcement',
-  imports: [Close, PlayerPlay, Squircle],
+  imports: [Close, ArrowUpRight, Squircle],
   template: `
     @if (showAnnouncement) {
       <div class="alert">
@@ -29,8 +29,10 @@ import { Squircle } from './Squircle';
                 href="https://www.youtube.com/watch?v=nUSbmGQRsv4&list=PLz8Iz-Fnk_eTkZvSNWXW_TKZ2UwVirT2M"
                 target="_blank"
                 wwwSquircle="8"
+                [wwwSquircleBorderWidth]="2"
+                wwwSquircleBorderColor="var(--gray-light)"
               >
-                Watch Now <www-player-play height="16px" width="16px" />
+                Watch Now <www-arrow-up-right height="16px" width="16px" />
               </a>
             </div>
           </div>
@@ -38,7 +40,7 @@ import { Squircle } from './Squircle';
         <button (click)="onDismiss()" aria-label="Dismiss announcement">
           <www-close height="16px" width="16px" />
         </button>
-        <div class="gradient"></div>
+        <!-- <div class="gradient"></div> -->
       </div>
     }
   `,
@@ -65,7 +67,7 @@ import { Squircle } from './Squircle';
         display: inline-grid;
         grid-template-areas: 'announcement close' 'gradient gradient';
         grid-template-columns: 1fr 32px;
-        grid-template-rows: 1fr 8px;
+        grid-template-rows: 1fr 0px;
         max-width: 680px;
         width: 100%;
         overflow: hidden;
@@ -136,8 +138,8 @@ import { Squircle } from './Squircle';
                 align-items: center;
                 gap: 4px;
                 padding: 8px 16px;
-                background: var(--sky-blue, #9ecfd7);
-                color: rgba(0, 0, 0, 0.64);
+                background: #a4a3a11f;
+                color: var(--gray);
                 font:
                   400 13px/140% 'Fredoka',
                   sans-serif;
@@ -182,7 +184,7 @@ import { Squircle } from './Squircle';
   `,
 })
 export class Announcement {
-  currentAnnouncementDate = new Date('2025-08-17');
+  currentAnnouncementDate = new Date('2025-09-22');
   showAnnouncement = false;
 
   constructor() {
