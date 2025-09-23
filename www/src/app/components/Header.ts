@@ -13,12 +13,14 @@ import { DropdownMenu } from './DropDownMenu';
 import { FullscreenMenu } from './FullscreenMenu';
 import { Squircle } from './Squircle';
 import { ApiMenu } from './ApiMenu';
+import { GitHubStarButton } from './GitHubStarButton';
 
 @Component({
   selector: 'www-header',
   imports: [
     ApiMenu,
     DocsMenu,
+    GitHubStarButton,
     DropdownMenu,
     FullscreenMenu,
     Menu,
@@ -119,13 +121,7 @@ import { ApiMenu } from './ApiMenu';
                 <a routerLink="/blog" routerLinkActive="active">blog</a>
               </li>
               <li>
-                <a
-                  href="https://github.com/liveloveapp/hashbrown"
-                  target="_blank"
-                  class="github"
-                >
-                  github
-                </a>
+                <www-github-star-button />
               </li>
             </ul>
           </nav>
