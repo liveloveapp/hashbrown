@@ -8,12 +8,24 @@ import {
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Menu } from '../icons/Menu';
 import { ConfigService } from '../services/ConfigService';
+import { DocsMenu } from './DocsMenu';
 import { DropdownMenu } from './DropDownMenu';
+import { FullscreenMenu } from './FullscreenMenu';
 import { Squircle } from './Squircle';
+import { ApiMenu } from './ApiMenu';
 
 @Component({
   selector: 'www-header',
-  imports: [Menu, RouterLink, RouterLinkActive, DropdownMenu, Squircle],
+  imports: [
+    ApiMenu,
+    DocsMenu,
+    DropdownMenu,
+    FullscreenMenu,
+    Menu,
+    RouterLink,
+    RouterLinkActive,
+    Squircle,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header>
@@ -119,7 +131,7 @@ import { Squircle } from './Squircle';
           </nav>
         </div>
         <div class="menu">
-          <www-dropdown-menu
+          <www-fullscreen-menu
             [positions]="[
               {
                 originX: 'start',
@@ -132,24 +144,42 @@ import { Squircle } from './Squircle';
             ]"
           >
             <label><www-menu /></label>
-            <div content class="dropdown-content">
-              <a routerLink="/" class="menu-item" wwwSquircle="8">home</a>
-              <a [routerLink]="docsUrl()" class="menu-item" wwwSquircle="8"
-                >docs</a
-              >
-              <a routerLink="/workshops" class="menu-item" wwwSquircle="8">
-                workshops
-              </a>
-              <a routerLink="/blog" class="menu-item" wwwSquircle="8">blog</a>
-              <a
-                href="https://github.com/liveloveapp/hashbrown"
-                target="_blank"
-                class="menu-item"
-                wwwSquircle="8"
-                >github</a
-              >
+            <div content class="fullscreen">
+              <div class="header">
+                <a routerLink="/">
+                  <img
+                    src="/image/logo/word-mark.svg"
+                    alt="hashbrown"
+                    height="24"
+                  />
+                </a>
+              </div>
+              <div class="content">
+                <div class="actions">
+                  <button
+                    wwwSquircle="8"
+                    [class.active]="menu() === 'docs'"
+                    (click)="menu.set('docs')"
+                  >
+                    docs
+                  </button>
+                  <button
+                    wwwSquircle="8"
+                    [class.active]="menu() === 'api'"
+                    (click)="menu.set('api')"
+                  >
+                    api
+                  </button>
+                </div>
+                <div class="docs-menu" [class.active]="menu() === 'docs'">
+                  <www-docs-menu />
+                </div>
+                <div class="api-menu" [class.active]="menu() === 'api'">
+                  <www-api-menu />
+                </div>
+              </div>
             </div>
-          </www-dropdown-menu>
+          </www-fullscreen-menu>
         </div>
       </menu>
     </header>
@@ -165,7 +195,7 @@ import { Squircle } from './Squircle';
         display: flex;
         justify-content: center;
         width: 100%;
-        padding: 24px;
+        padding: 16px;
 
         > menu {
           display: flex;
@@ -255,6 +285,85 @@ import { Squircle } from './Squircle';
         background: #fff;
       }
 
+      .fullscreen {
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        height: 100%;
+
+        > .header {
+          display: flex;
+          align-items: center;
+          padding: 16px;
+
+          > a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+        }
+
+        > .content {
+          flex: 1 auto;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 16px;
+          padding: 16px;
+          background: var(--vanilla-ivory, #faf9f0);
+          overflow: hidden;
+
+          > .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+
+            > button {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              gap: 4px;
+              padding: 12px 16px;
+              color: rgba(0, 0, 0, 0.64);
+              background: transparent;
+              font:
+                500 18px/140% Fredoka,
+                sans-serif;
+
+              &.active {
+                background: var(--sunshine-yellow-light, #fbd38e);
+              }
+
+              &:hover {
+                color: var(--gray-dark, #3d3c3a);
+              }
+            }
+          }
+
+          > .docs-menu {
+            display: none;
+            overflow-y: auto;
+
+            &.active {
+              display: flex;
+            }
+          }
+
+          > .api-menu {
+            display: none;
+            overflow-y: auto;
+
+            &.active {
+              display: flex;
+            }
+
+            > www-api-menu {
+              width: 100%;
+            }
+          }
+        }
+      }
+
       @media print {
         header {
           display: none;
@@ -263,6 +372,8 @@ import { Squircle } from './Squircle';
 
       @media screen and (min-width: 768px) {
         header {
+          padding: 24px;
+
           > menu {
             > .right {
               display: flex;
@@ -280,6 +391,8 @@ import { Squircle } from './Squircle';
 export class Header {
   configService = inject(ConfigService);
   sdk = this.configService.sdk;
+
+  menu = signal<'docs' | 'api'>('docs');
 
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/intro`;

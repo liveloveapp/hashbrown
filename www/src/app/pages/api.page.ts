@@ -53,7 +53,7 @@ export const routeMeta: RouteMeta = {
       grid-template-columns: auto;
       overflow: hidden;
 
-      > www-ref-menu {
+      > www-api-menu {
         display: none;
       }
 
@@ -68,7 +68,7 @@ export const routeMeta: RouteMeta = {
       .api {
         grid-template-columns: 192px auto;
 
-        > www-ref-menu {
+        > www-api-menu {
           display: flex;
         }
       }
