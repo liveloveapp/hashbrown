@@ -58,6 +58,7 @@ export const routeMeta: RouteMeta = {
 
       > www-docs-menu {
         display: none;
+        padding: 16px;
       }
 
       > div {
