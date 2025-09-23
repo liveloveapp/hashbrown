@@ -60,7 +60,9 @@ import { ChartExamples } from './ChartExamples';
         <app-chart-examples (selectExample)="sendMessage($event.prompt)" />
       }
       @if (chat.code() && !hasRenderedAChart()) {
-        <app-code-loader [code]="chat.code()!" />
+        <button (click)="openCodeModal()">
+          <app-code-loader [code]="chat.code()!" />
+        </button>
       }
       <canvas #canvasRef></canvas>
     </div>
@@ -129,6 +131,15 @@ import { ChartExamples } from './ChartExamples';
       height: calc(100vh - 64px);
       padding: 24px;
       position: relative;
+
+      > button {
+        border: none;
+        background: none;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+        outline: none;
+      }
     }
 
     app-code-loader {
