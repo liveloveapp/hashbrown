@@ -37,7 +37,7 @@ import { Component, input } from '@angular/core';
   `,
 })
 export class Angular {
-  fill = input<string>('#fff');
+  fill = input<string>('currentColor');
   height = input<string>('24px');
   width = input<string>('24px');
 }
