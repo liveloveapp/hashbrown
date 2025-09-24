@@ -490,7 +490,7 @@ function formatISO(d: Date): ISODate {
 }
 
 // Simulation parameters
-const SIM_DAYS = 365 * 5;
+const SIM_DAYS = 365 * 2;
 const WASTAGE_MIN_PCT = 0.01;
 const WASTAGE_MAX_PCT = 0.05;
 const SAFETY_STOCK_FRACT = 0.5;
