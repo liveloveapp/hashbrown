@@ -476,7 +476,7 @@ function formatISO(d: Date): ISODate {
   return d.toISOString().slice(0, 10) as ISODate;
 }
 
-const SIM_DAYS = 365 * 2;
+const SIM_DAYS = 365 * 5;
 const SAFETY_STOCK_FRACT = 0.5;
 const REORDER_FRAC = 0.25;
 const DELIVERY_SIZE_DAYS = 7;
