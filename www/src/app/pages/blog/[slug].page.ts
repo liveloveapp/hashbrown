@@ -232,31 +232,17 @@ export const routeMeta: RouteMeta = {
         padding: 32px;
       }
 
+      hb-carousel {
+        margin: 32px 0 56px;
+      }
+
       .carousel {
-        display: flex;
-        gap: 16px;
         overflow-x: auto;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
-
-        > img {
-          margin: 0;
-          padding: 0;
-        }
       }
 
       .carousel::-webkit-scrollbar {
-        display: none;
-      }
-
-      .carousel > * {
-        flex: 0 0 100%;
-        scroll-snap-align: start;
-        border-radius: 16px;
-        overflow: hidden;
-      }
-
-      .carousel > :nth-child(n + 6) {
         display: none;
       }
 
@@ -294,18 +280,6 @@ export const routeMeta: RouteMeta = {
 
         code {
           white-space: nowrap;
-        }
-      }
-
-      @media screen and (min-width: 768px) {
-        .carousel > * {
-          flex: 0 0 calc(50% - 8px);
-        }
-      }
-
-      @media screen and (min-width: 1024px) {
-        .carousel > * {
-          flex: 0 0 calc(33.333% - 10.66px);
         }
       }
     }

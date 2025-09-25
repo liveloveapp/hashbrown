@@ -238,6 +238,11 @@ export class Media {
       description: 'July 23, 2025',
     },
     {
+      id: 'UAQe2dtBmgo',
+      title: 'Hashbrown at NG Rome 2025 Edition',
+      description: 'June 20, 2025',
+    },
+    {
       id: 'Vd2WLQ8vqfU',
       title: 'Introduction to Hashbrown on AngularAir',
       description: 'June 6, 2025',
