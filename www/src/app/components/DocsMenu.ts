@@ -273,7 +273,7 @@ import { Squircle } from './Squircle';
       flex-direction: column;
       gap: 16px;
       height: 100%;
-      padding: 16px;
+      width: 100%;
       overflow-y: auto;
       overflow-x: hidden;
 
@@ -361,7 +361,7 @@ import { Squircle } from './Squircle';
       align-items: center;
       gap: 8px;
       padding: 6px 12px;
-      width: 192px;
+      width: 100%;
       border-radius: 8px;
       color: var(--chocolate-brown, #774625);
       font:
@@ -371,6 +371,18 @@ import { Squircle } from './Squircle';
       &:hover,
       &.active {
         background: var(--sunshine-yellow-light, #fde4ba);
+      }
+    }
+
+    @media screen and (min-width: 768px) {
+      .menu-item {
+        width: 128px;
+      }
+    }
+
+    @media screen and (min-width: 1024px) {
+      .menu-item {
+        width: 192px;
       }
     }
   `,

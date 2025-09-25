@@ -9,18 +9,24 @@ import { Ollama } from './providers/Ollama';
 import { OpenAi } from './providers/OpenAi';
 import { React } from './providers/React';
 import { Writer } from './providers/Writer';
+import { PlayerPlay } from '../../icons/PlayerPlay';
+import { Angular as AngularIcon } from '../../icons/Angular';
+import { React as ReactIcon } from '../../icons/React';
 
 @Component({
   selector: 'www-hero',
   imports: [
     RouterLink,
+    PlayerPlay,
+    Angular,
+    React,
     VideoOverlay,
     Squircle,
-    Angular,
+    AngularIcon,
     Gemini,
     Ollama,
     OpenAi,
-    React,
+    ReactIcon,
     Writer,
   ],
   template: `
@@ -35,9 +41,9 @@ import { Writer } from './providers/Writer';
         <div class="container">
           <div class="heading">
             <h1>
-              Build
-              <div class="ai-underline">generative</div>
-              user interfaces
+              Use
+              <div class="ai-underline">LLMs</div>
+              in Your Components
             </h1>
             <p>
               Hashbrown is an open-source framework for building user interfaces
@@ -46,10 +52,38 @@ import { Writer } from './providers/Writer';
             </p>
           </div>
           <div class="actions">
-            <a [routerLink]="docsUrl()" wwwSquircle="8">Read the Docs</a>
-            <button (click)="openDemoVideo()" wwwSquircle="8">
+            <!--<button
+              (click)="openDemoVideo()"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="2"
+              wwwSquircleBorderColor="var(--sunshine-yellow)"
+              class="demo-button"
+            >
+              <www-player-play height="16px" width="16px" />
               Watch a Demo
-            </button>
+            </button> -->
+            <a
+              [routerLink]="['/docs', 'angular', 'start', 'intro']"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="2"
+              wwwSquircleBorderColor="var(--indian-red-light)"
+              class="angular-docs-button"
+              (click)="onOpenAngularDocs()"
+            >
+              <www-angular height="16px" width="16px" />
+              Read Angular Docs
+            </a>
+            <a
+              [routerLink]="['/docs', 'react', 'start', 'intro']"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="2"
+              wwwSquircleBorderColor="var(--sky-blue)"
+              class="react-docs-button"
+              (click)="onOpenReactDocs()"
+            >
+              <www-react height="16px" width="16px" />
+              Read React Docs
+            </a>
           </div>
           <div class="providers">
             <app-home-react></app-home-react>
@@ -130,7 +164,7 @@ import { Writer } from './providers/Writer';
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             align-self: stretch;
 
             > h1 {
@@ -153,10 +187,10 @@ import { Writer } from './providers/Writer';
                 content: '';
                 position: relative;
                 display: block;
-                width: calc(100% - 20px);
+                width: calc(100%);
                 height: 3px;
                 top: -5px;
-                left: 20px;
+                left: 0px;
                 z-index: -1;
                 background: var(--sunshine-yellow);
                 border-radius: 2px;
@@ -180,7 +214,7 @@ import { Writer } from './providers/Writer';
               color: var(--gray, #5e5c5a);
               text-align: center;
               font:
-                500 18px/24px 'Fredoka',
+                500 16px/1.3em 'Fredoka',
                 sans-serif;
             }
 
@@ -217,21 +251,26 @@ import { Writer } from './providers/Writer';
             > button,
             > a {
               display: flex;
-              padding: 12px 24px;
+              padding: 12px 16px;
               justify-content: center;
               align-items: center;
               color: rgba(0, 0, 0, 0.64);
+              gap: 8px;
               font:
                 700 14px/16px 'Fredoka',
                 sans-serif;
             }
 
-            > button {
-              background: #e1e1e1;
+            > .demo-button {
+              background: var(--sunshine-yellow-light);
             }
 
-            > a {
-              background: var(--sunshine-yellow, #fbbb52);
+            > .angular-docs-button {
+              background: #e2767652;
+            }
+
+            > .react-docs-button {
+              background: var(--sky-blue-light);
             }
           }
 
@@ -294,5 +333,17 @@ export class Hero {
 
   openDemoVideo() {
     this.demoVideoOpen.set(true);
+  }
+
+  onOpenReactDocs() {
+    this.configService.set({
+      sdk: 'react',
+    });
+  }
+
+  onOpenAngularDocs() {
+    this.configService.set({
+      sdk: 'angular',
+    });
   }
 }
