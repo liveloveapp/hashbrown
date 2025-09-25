@@ -1,10 +1,12 @@
-import { Component, inject } from '@angular/core';
+import { afterNextRender, Component, inject } from '@angular/core';
+import { Overlay } from '@angular/cdk/overlay';
 import { LightCard } from '../lights/light-card';
 import { SmartHome } from '../smart-home';
 import { SceneButton } from '../scenes/scene-button';
 import { FabSpeedDial } from './fab-speed-dial';
 import { ChatPanelComponent } from '../chat/chat-panel';
 import { Squircle } from '../squircle';
+import { openWelcomeOverlay } from './welcome';
 
 @Component({
   selector: 'app-dashboard',
@@ -16,10 +18,15 @@ import { Squircle } from '../squircle';
         [appSquircleBorderWidth]="2"
         appSquircleBorderColor="rgba(0, 0, 0, 0.12)"
       >
-        <a href="https://hashbrown.dev" target="_blank">
-          <img src="/brand-mark.svg" alt="Hashbrown" height="32" />
-        </a>
-        <h1>Smart Home</h1>
+        <div class="brand">
+          <a href="https://hashbrown.dev" target="_blank">
+            <img src="/brand-mark.svg" alt="Hashbrown" height="32" />
+          </a>
+          <h1>Smart Home</h1>
+        </div>
+        <button type="button" class="tour-button" (click)="openWelcome()">
+          Welcome tour
+        </button>
       </header>
       <section>
         <h2>Scenes</h2>
@@ -60,9 +67,39 @@ import { Squircle } from '../squircle';
       > header {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 16px;
         background: #fff;
         padding: 16px;
+
+        > .brand {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+
+          > h1 {
+            margin: 0;
+          }
+        }
+
+        > .tour-button {
+          border: none;
+          border-radius: 9999px;
+          background: var(--sunshine-yellow-light, #fde4ba);
+          color: var(--chocolate-brown, #774625);
+          font:
+            600 12px / 16px Fredoka,
+            sans-serif;
+          padding: 8px 14px;
+          cursor: pointer;
+          transition: background 120ms ease;
+        }
+
+        > .tour-button:hover,
+        > .tour-button:focus-visible {
+          background: var(--sunshine-yellow, #f9ce77);
+          outline: none;
+        }
       }
 
       > section {
@@ -98,4 +135,13 @@ import { Squircle } from '../squircle';
 })
 export class Dashboard {
   readonly smartHome = inject(SmartHome);
+  private readonly overlay = inject(Overlay);
+
+  constructor() {
+    afterNextRender(() => openWelcomeOverlay(this.overlay));
+  }
+
+  protected openWelcome() {
+    openWelcomeOverlay(this.overlay);
+  }
 }

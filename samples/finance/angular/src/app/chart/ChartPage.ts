@@ -1,4 +1,5 @@
 import {
+  afterNextRender,
   Component,
   computed,
   effect,
@@ -17,6 +18,8 @@ import { CodeModal } from './CodeModal';
 import { CodeLoader } from './CodeLoader';
 import { Ingredients } from './Ingredients';
 import { ChartExamples } from './ChartExamples';
+import { Overlay } from '@angular/cdk/overlay';
+import { openWelcomeOverlay } from './Welcome';
 
 @Component({
   selector: 'app-chart-page',
@@ -198,6 +201,7 @@ export class ChartPage {
   chat = inject(Chat);
   dialog = inject(MatDialog);
   ingredients = inject(Ingredients);
+  overlay = inject(Overlay);
   canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvasRef');
   inputRef = viewChild.required<ElementRef<HTMLInputElement>>('input');
   disabled = computed(() => this.chat.isLoading());
@@ -210,6 +214,8 @@ export class ChartPage {
   });
   hasRenderedAChart = signal(false);
   constructor() {
+    afterNextRender(() => openWelcomeOverlay(this.overlay));
+
     effect(async (onCleanup) => {
       const canvas = this.canvasRef().nativeElement;
       const chartConfig = this.chat.chart();

@@ -9,7 +9,6 @@ import { Ollama } from './providers/Ollama';
 import { OpenAi } from './providers/OpenAi';
 import { React } from './providers/React';
 import { Writer } from './providers/Writer';
-import { PlayerPlay } from '../../icons/PlayerPlay';
 import { Angular as AngularIcon } from '../../icons/Angular';
 import { React as ReactIcon } from '../../icons/React';
 
@@ -17,7 +16,6 @@ import { React as ReactIcon } from '../../icons/React';
   selector: 'www-hero',
   imports: [
     RouterLink,
-    PlayerPlay,
     Angular,
     React,
     VideoOverlay,
