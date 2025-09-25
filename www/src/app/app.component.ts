@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { Alert } from './components/Alert';
 import { Announcement } from './components/Announcement';
 import { CodeExample } from './components/CodeExample';
+import { Carousel } from './components/Carousel';
 import { Expander } from './components/Expander';
 import { MarkdownSymbolLink } from './components/MarkdownSymbolLink';
 import { NextStep } from './components/NextStep';
@@ -62,6 +63,11 @@ export class AppComponent {
       injector: this.injector,
     });
     customElements.define('hb-code-example', codeExampleElement);
+
+    const carouselElement = createCustomElement(Carousel, {
+      injector: this.injector,
+    });
+    customElements.define('hb-carousel', carouselElement);
 
     const components = createCustomElement(Components, {
       injector: this.injector,
