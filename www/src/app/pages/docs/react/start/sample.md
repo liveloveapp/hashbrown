@@ -59,7 +59,7 @@ OPENAI_API_KEY=your_openai_api_key
 
 Open up the `samples/smart-home/react` directory.
 
-## Startthe Application
+## Start the Application
 
 You will need to start both the server and the client to run the sample application.
 
