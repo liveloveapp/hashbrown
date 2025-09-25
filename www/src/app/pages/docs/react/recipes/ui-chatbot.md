@@ -41,7 +41,7 @@ We'll use `gpt-4.1` as our model and the OpenAI Hashbrown adapter, but you can u
 
 First, define basic types and a minimal SmartHome context in your app for lights and scenes.
 
-<hb-code-example header="smart-home.ts">
+<hb-code-example header="smart-home.tsx">
 
 ```ts
 import React, { createContext, useContext, useState, useCallback } from 'react';
@@ -557,7 +557,7 @@ export const App = () => (
 
 </hb-code-example>
 
-_Example user: "Show all scenes"_  
+_Example user: "Show all scenes"_
 Assistant could reply with a markdown intro and a card containing a list of `<SceneListItem />`s. Hitting "Apply" on a scene list item will apply the scene in your backend.
 
 Try controlling lights by ID or requesting lists for more sophisticated flows. The assistant cannot display anything except the components you expose, so you can safely continue adding components and functionality.
