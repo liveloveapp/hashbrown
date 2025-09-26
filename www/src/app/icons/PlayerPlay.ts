@@ -19,12 +19,12 @@ import { Component, input } from '@angular/core';
         width="24"
         height="24"
       >
-        <rect width="24" height="24" fill="#D9D9D9" />
+        <rect width="24" height="24" fill="currentColor" />
       </mask>
       <g mask="url(#mask0_2094_130)">
         <path
           d="M8 19V5L19 12L8 19ZM10 15.35L15.25 12L10 8.65V15.35Z"
-          fill="#1C1B1F"
+          fill="currentColor"
         />
       </g>
     </svg>

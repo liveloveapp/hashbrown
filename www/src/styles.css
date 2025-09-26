@@ -190,7 +190,7 @@ a.underline {
 }
 
 a.underline:hover {
-  text-decoration-color: #2f2f2b;
+  text-decoration-color: rgba(61, 60, 58, 0.64);
 }
 
 button {

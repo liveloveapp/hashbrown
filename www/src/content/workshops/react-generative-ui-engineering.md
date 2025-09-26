@@ -1,7 +1,12 @@
 ---
-title: Building Generative UIs with React
-description: Discover how to turn natural language into working UIs, intelligent forms, and agentic workflows with Hashbrown’s generative AI React hooks.
 active: true
+title: Building Generative UIs with React
+description: "Hashbrown makes using an LLM in your web app as simple as a hook. In this course, we'll learn the basics of AI engineering, Hashbrown hooks to simplify forms and provide suggestions, how to build chat interfaces and exposing React components to the LLM, and advanced generative UI using Hashbrown's JS runtime."
+tags:
+  - React 18+
+  - Hooks API
+  - Generative UI
+  - JS Runtime
 order: 1
 ---
 

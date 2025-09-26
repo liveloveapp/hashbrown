@@ -1,14 +1,14 @@
+import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
+import { Features } from '../components/home/Features';
 import { Hero } from '../components/home/Hero';
 import { Media } from '../components/home/Media';
 import { OpenSource } from '../components/home/OpenSource';
 import { Samples } from '../components/home/Samples';
-import { TheGravy } from '../components/home/TheGravy';
 import { TheVisual } from '../components/home/TheVisual';
-import { Features } from '../components/home/Features';
-import { RouteMeta } from '@analogjs/router';
+import { TheGravy } from '../components/TheGravy';
 
 export const routeMeta: RouteMeta = {
   title: 'Hashbrown: The TypeScript Framework for Generative UI',
@@ -20,7 +20,7 @@ export const routeMeta: RouteMeta = {
     {
       name: 'og:description',
       content:
-        'Hashbrown is a TypeScript framework for building generative user interfaces that converse with users, dynamically reorganize, and even code themselves.',
+        'TypeScript framework to use LLMs in your React or Angular app with client-side tools, real-time UI streaming, and safe LLM-generated code execution.',
     },
     {
       name: 'og:image',

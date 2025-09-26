@@ -1,7 +1,12 @@
 ---
-title: Building Generative UIs with Angular
-description: Discover how to turn natural language into working UIs, intelligent forms, and agentic workflows with Hashbrown’s generative AI Angular resources.
 active: true
+title: Building Generative UIs with Angular
+description: Hashbrown makes using an LLM in your Angular app as simple as a resource. In this course, we'll learn the basics of AI engineering, Hashbrown resources to simplify forms and provide suggestions, resources for building chat interfaces and exposing Angular components to the LLM, and advanced generative UI using Hashbrown's JS runtime.
+tags:
+  - Angular 20+
+  - Resource API
+  - Generative UI
+  - JS Runtime
 order: 2
 ---
 

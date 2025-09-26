@@ -42,7 +42,7 @@ type Heading = { level: number; text: string; id: string; url: string };
       :host {
         display: block;
         position: relative;
-        padding: 32px;
+        padding: 16px;
         overflow: hidden;
       }
 
@@ -298,6 +298,7 @@ type Heading = { level: number; text: string; id: string; url: string };
       @media screen and (min-width: 1024px) {
         :host {
           max-width: 800px;
+          padding: 24px;
         }
       }
 
