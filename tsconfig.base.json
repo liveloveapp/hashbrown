@@ -17,6 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@hashbrownai/angular": ["packages/angular/src/index.ts"],
+      "@hashbrownai/anthropic": ["packages/anthropic/src/index.ts"],
       "@hashbrownai/azure": ["packages/azure/src/index.ts"],
       "@hashbrownai/core": ["packages/core/src/index.ts"],
       "@hashbrownai/google": ["packages/google/src/index.ts"],
