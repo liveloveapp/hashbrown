@@ -36,74 +36,83 @@ export const routeMeta: RouteMeta = {
   imports: [ReactiveFormsModule, Header, Footer, Squircle],
   template: `
     <www-header />
-    <main class="bleed">
-      <div class="about">
-        <h1>Contact sales</h1>
-        <p>
-          Tell us a little bit more about your organization and we'll get in
-          touch with you. You can also reach our sales team directly at <a href="mailto:hello@liveloveapp.com">hello@liveloveapp.com</a>.
-        </p>
-        <p><a href="https://liveloveapp.com">Learn more about LiveLoveApp</a></p>
-      </div>
-      <div class="contact-us">
-        @if (status() === STATUS.SUCCESS) {
-          <p class="success">
-            Thank you for your message! We will get back to you soon.
+    <div class="container" wwwSquircle="16 16 0 0">
+      <main class="bleed">
+        <div class="about">
+          <h1>Contact sales</h1>
+          <p>
+            Tell us a little bit more about your organization and we'll get in
+            touch with you. You can also reach our sales team directly at <a href="mailto:hello@liveloveapp.com">hello@liveloveapp.com</a>.
           </p>
-        } @else {
-          <form [formGroup]="form" (ngSubmit)="handleSubmit()" novalidate>
-            <div>
-              <label for="name">Full Name</label>
-              <input id="name" type="text" formControlName="name" required />
-              @if (form.get('name')?.invalid && form.get('name')?.touched) {
-                <p class="error">Please enter your full name.</p>
-              }
-            </div>
-            <div>
-              <label for="email">Company Email</label>
-              <input id="email" type="email" formControlName="email" required />
-              @if (form.get('email')?.invalid && form.get('email')?.touched) {
-                @if (form.get('email')?.errors?.['required']) {
-                  <p class="error">Email is required.</p>
-                } @else {
-                  <p class="error">Enter a valid email address.</p>
+          <p><a href="https://liveloveapp.com">Learn more about LiveLoveApp</a></p>
+        </div>
+        <div class="contact-us">
+          @if (status() === STATUS.SUCCESS) {
+            <p class="success">
+              Thank you for your message! We will get back to you soon.
+            </p>
+          } @else {
+            <form [formGroup]="form" (ngSubmit)="handleSubmit()" novalidate>
+              <div>
+                <label for="name">Full Name</label>
+                <input id="name" type="text" formControlName="name" required />
+                @if (form.get('name')?.invalid && form.get('name')?.touched) {
+                  <p class="error">Please enter your full name.</p>
                 }
-              }
-            </div>
-            <div>
-              <label for="message">How can we help?</label>
-              <textarea
-                id="message"
-                rows="5"
-                formControlName="message"
-              ></textarea>
-            </div>
-            <button
-              type="submit"
-              [disabled]="status() === STATUS.IN_PROGRESS || form.invalid"
-              wwwSquircle="8"
-            >
-              {{
-                status() === STATUS.IN_PROGRESS ? 'Sending...' : 'Send Message'
-              }}
-            </button>
-          </form>
-        }
-      </div>
-    </main>
-    <www-footer />
+              </div>
+              <div>
+                <label for="email">Company Email</label>
+                <input id="email" type="email" formControlName="email" required />
+                @if (form.get('email')?.invalid && form.get('email')?.touched) {
+                  @if (form.get('email')?.errors?.['required']) {
+                    <p class="error">Email is required.</p>
+                  } @else {
+                    <p class="error">Enter a valid email address.</p>
+                  }
+                }
+              </div>
+              <div>
+                <label for="message">How can we help?</label>
+                <textarea
+                  id="message"
+                  rows="5"
+                  formControlName="message"
+                ></textarea>
+              </div>
+              <button
+                type="submit"
+                [disabled]="status() === STATUS.IN_PROGRESS || form.invalid"
+                wwwSquircle="8"
+              >
+                {{
+                  status() === STATUS.IN_PROGRESS ? 'Sending...' : 'Send Message'
+                }}
+              </button>
+            </form>
+          }
+        </div>
+      </main>
+      <www-footer />
+    </div>
   `,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
-      min-height: 100%;
+      height: 100%;
       background-color: var(--vanilla-ivory, #faf9f0);
       background-image: url('/image/texture/fabric.png');
       background-size: auto;
       background-repeat: repeat;
       background-position: center;
       background-attachment: fixed;
+    }
+
+    .container {
+      flex: 1 auto;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
     }
 
     .bleed {
@@ -192,7 +201,7 @@ export const routeMeta: RouteMeta = {
             > textarea {
               padding: 8px;
               border-radius: 8px;
-              border: 1px solid rgba(47, 47, 43, 0.24);
+              border: 1px solid rgba(61, 60, 58, 0.24);
               font:
                 400 16px/24px Fredoka,
                 sans-serif;

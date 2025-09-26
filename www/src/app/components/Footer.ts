@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { BrandBlueSky } from '../icons/BrandBlueSky';
 import { BrandGitHub } from '../icons/BrandGitHub';
 import { BrandLinkedIn } from '../icons/BrandLinkedIn';
@@ -7,7 +8,7 @@ import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-footer',
-  imports: [BrandBlueSky, BrandGitHub, BrandLinkedIn, RouterLink],
+  imports: [ArrowUpRight, BrandBlueSky, BrandGitHub, BrandLinkedIn, RouterLink],
   template: `
     <footer>
       <div class="links">
@@ -17,9 +18,9 @@ import { ConfigService } from '../services/ConfigService';
           </div>
           <small>
             © LiveLoveApp, LLC {{ currentYear }}. <br />
-            Based in Oregon.<br />
             <a href="https://analogjs.org" target="_blank">
               Built with AnalogJS
+              <www-arrow-up-right height="12px" width="12px" />
             </a>
           </small>
         </div>
@@ -34,6 +35,18 @@ import { ConfigService } from '../services/ConfigService';
             </li>
             <li>
               <a routerLink="/samples" class="underline">Examples</a>
+            </li>
+            <li>
+              <a href="/llms.txt" target="_blank" class="underline">
+                llms.txt
+                <www-arrow-up-right height="12px" width="12px" />
+              </a>
+            </li>
+            <li>
+              <a href="/llms-full.txt" target="_blank" class="underline">
+                llms-full.txt
+                <www-arrow-up-right height="12px" width="12px" />
+              </a>
             </li>
           </ul>
         </div>
@@ -212,6 +225,7 @@ import { ConfigService } from '../services/ConfigService';
     :host {
       display: flex;
       flex-direction: column;
+      border-top: 1px solid rgba(61, 60, 58, 0.24);
     }
 
     footer {
@@ -254,8 +268,23 @@ import { ConfigService } from '../services/ConfigService';
           }
 
           > small {
-            font: 400 14px/20px sans-serif;
-            color: rgba(61, 60, 58, 0.72);
+            font:
+              300 11px/16px Fredoka,
+              sans-serif;
+            color: rgba(61, 60, 58, 0.64);
+
+            > a {
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+              text-decoration: underline;
+              text-decoration-color: transparent;
+              transition: text-decoration-color 0.2s ease-in-out;
+
+              &:hover {
+                text-decoration-color: rgba(61, 60, 58, 0.64);
+              }
+            }
           }
         }
 
@@ -290,6 +319,10 @@ import { ConfigService } from '../services/ConfigService';
 
             > li {
               > a {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+
                 > span:first-child {
                   display: block;
                 }
@@ -367,6 +400,7 @@ import { ConfigService } from '../services/ConfigService';
 
     @media screen and (min-width: 1024px) {
       footer {
+        padding: 64px 24px 24px;
         > .links {
           > .brand {
             grid-column: span 4;

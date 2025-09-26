@@ -1,8 +1,10 @@
 import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Footer } from '../../components/Footer';
 import { Header } from '../../components/Header';
 import { Squircle } from '../../components/Squircle';
+import { TheGravy } from '../../components/TheGravy';
 import { PlayerPlay } from '../../icons/PlayerPlay';
 
 export const routeMeta: RouteMeta = {
@@ -24,114 +26,89 @@ export const routeMeta: RouteMeta = {
 };
 
 @Component({
-  imports: [Header, PlayerPlay, RouterLink, Squircle],
+  imports: [PlayerPlay, RouterLink, Squircle, TheGravy, Footer, Header],
   template: `
     <www-header />
     <div class="container" wwwSquircle="16 16 0 0">
-      <div class="bleed">
+      <main class="bleed">
         <div class="heading">
           <h1>
             See
             <div class="ai-underline">generative</div>
             UI in Action
           </h1>
-          <p>Build the next generation of web apps with Hashbrown.</p>
+          <p>Bring the power of ChatGPT into your web apps.</p>
         </div>
         <div class="samples">
           <a
             routerLink="/samples/finance"
             wwwSquircle="16"
-            [wwwSquircleBorderWidth]="8"
+            [wwwSquircleBorderWidth]="2"
             wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
           >
-            <div class="window">
-              <div class="nav">
-                <div class="button">
-                  <h3>Finance App</h3>
-                </div>
-              </div>
-              <div class="body" wwwSquircle="16 16 0 0">
-                <img
-                  src="/image/landing-page/yellow-box-demo.svg"
-                  alt="Render a chart in response to natural language"
-                />
-              </div>
+            <div>
+              <h2>Finance App</h2>
+              <p>
+                Describe the chart you need, and the app transforms your words
+                into polished Chart.js visualizations.
+              </p>
             </div>
-            <div class="content">
-              <div>
-                <h2>Finance App</h2>
-                <p>
-                  Describe the chart you need, and the app transforms your words
-                  into polished Chart.js visualizations that are safely
-                  generated and executed with Hashbrown's typed, sandboxed
-                  JavaScript runtime.
-                </p>
-              </div>
-              <div class="pills">
-                <span wwwSquircle="8">Generative UI</span>
-                <span wwwSquircle="8">Streaming</span>
-                <span wwwSquircle="8">JS Runtime</span>
-              </div>
-              <div class="actions">
-                <div class="action" wwwSquircle="8">
-                  <span>Run this App</span>
-                  <www-player-play height="16px" width="16px" />
-                </div>
+            <div class="pills">
+              <span wwwSquircle="8">Generative UI</span>
+              <span wwwSquircle="8">Streaming</span>
+              <span wwwSquircle="8">JS Runtime</span>
+            </div>
+            <img
+              src="/image/samples/finance.png"
+              alt="Finance App screenshot"
+            />
+            <div class="actions">
+              <div class="action" wwwSquircle="8">
+                <span>Run this App</span>
+                <www-player-play height="16px" width="16px" />
               </div>
             </div>
           </a>
           <a
             routerLink="/samples/smart-home"
             wwwSquircle="16"
-            [wwwSquircleBorderWidth]="8"
+            [wwwSquircleBorderWidth]="2"
             wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
           >
-            <div class="window">
-              <div class="nav">
-                <div class="button">
-                  <h3>Smart Home App</h3>
-                </div>
-              </div>
-              <div class="body" wwwSquircle="16 16 0 0">
-                <img
-                  src="/image/landing-page/red-box-demo.svg"
-                  alt="Instantly predict the next action"
-                />
-              </div>
+            <div>
+              <h2>Smart Home App</h2>
+              <p>
+                Describe the ambience you want, and the app orchestrates lights
+                and scenes in real time.
+              </p>
             </div>
-            <div class="content">
-              <div>
-                <h2>Smart Home App</h2>
-                <p>
-                  Describe the ambience you want, and the app orchestrates
-                  lights and scenes in real time powered by Hashbrown's
-                  generative UI with streaming chat, predictive suggestions, and
-                  safe tool calls for instant control.
-                </p>
-              </div>
-              <div class="pills">
-                <span wwwSquircle="8">Generative UI</span>
-                <span wwwSquircle="8">Streaming</span>
-                <span wwwSquircle="8">Structured Data</span>
-                <span wwwSquircle="8">Chatbot</span>
-              </div>
-              <div class="actions">
-                <div class="action" wwwSquircle="8">
-                  <span>Run this App</span>
-                  <www-player-play height="16px" width="16px" />
-                </div>
+            <div class="pills">
+              <span wwwSquircle="8">Generative UI</span>
+              <span wwwSquircle="8">Streaming</span>
+              <span wwwSquircle="8">Structured Data</span>
+              <span wwwSquircle="8">Chatbot</span>
+            </div>
+            <img
+              src="/image/samples/smart-home.png"
+              alt="Smart Home App screenshot"
+            />
+            <div class="actions">
+              <div class="action" wwwSquircle="8">
+                <span>Run this App</span>
+                <www-player-play height="16px" width="16px" />
               </div>
             </div>
           </a>
         </div>
-      </div>
+      </main>
+      <www-the-gravy id="dd18d015-795c-4c3b-a7c1-3c6f73caa7f0" />
+      <www-footer />
     </div>
   `,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
-      height: 100%;
       background-color: var(--vanilla-ivory, #faf9f0);
       background-image: url('/image/texture/fabric.png');
       background-size: auto;
@@ -143,7 +120,6 @@ export const routeMeta: RouteMeta = {
     .container {
       display: flex;
       flex-direction: column;
-      height: 100%;
       background: #fff;
     }
 
@@ -153,7 +129,7 @@ export const routeMeta: RouteMeta = {
       align-items: center;
       align-self: center;
       padding: 16px;
-      gap: 48px;
+      gap: 80px;
 
       > .heading {
         display: flex;
@@ -210,163 +186,100 @@ export const routeMeta: RouteMeta = {
           color: var(--gray, #5e5c5a);
           text-align: center;
           font:
-            500 18px/24px 'Fredoka',
+            400 18px/24px 'Fredoka',
             sans-serif;
         }
       }
 
       > .samples {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
+        grid-template-columns: 1fr;
+        gap: 32px;
         width: 100%;
 
         > a {
           display: flex;
           flex-direction: column;
           align-items: stretch;
-          height: 100%;
+          padding: 24px;
+          gap: 32px;
           transition: transform 0.16s ease-in-out;
 
           &:hover {
             transform: scale(1.006);
           }
 
-          > .window {
-            flex: 1 auto;
+          > div {
             display: flex;
             flex-direction: column;
-            align-items: stretch;
-            background: var(--gray, #5e5c5a);
-            position: relative;
+            gap: 16px;
 
-            > .nav {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              padding: 16px 32px;
-
-              > .button {
-                position: relative;
-
-                &::before {
-                  content: '';
-                  position: absolute;
-                  bottom: 0;
-                  left: 0;
-                  width: 100%;
-                  height: 3px;
-                  margin-bottom: -16px;
-                  border-radius: 1px;
-                  background: linear-gradient(
-                    to right,
-                    #fbbb52 0%,
-                    var(--sunset-orange) 25%,
-                    var(--indian-red-light) 50%,
-                    var(--sky-blue-dark) 75%,
-                    var(--olive-green-light) 100%
-                  );
-                  background-clip: border-box;
-                }
-
-                > h3 {
-                  color: var(--vanilla-ivory, #faf9f0);
-                  font:
-                    500 12px/16px Fredoka,
-                    sans-serif;
-                }
-              }
+            > h2 {
+              color: var(--gray, #5e5c5a);
+              font:
+                500 24px/32px 'Fredoka',
+                sans-serif;
             }
 
-            > .body {
-              flex: 1 auto;
-              display: flex;
-              flex-direction: column;
-              align-items: stretch;
-              gap: 16px;
-              background: #fff;
-              padding: 16px;
-              margin: 0 4px;
-              height: 100%;
-
-              > img {
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-              }
+            > p {
+              color: var(--gray-dark, #3d3c3a);
+              font:
+                300 18px/24px Fredoka,
+                sans-serif;
             }
           }
 
-          > .content {
+          > .pills {
             display: flex;
-            flex-direction: column;
-            padding: 32px;
-            gap: 16px;
-            border-top: 1px solid var(--gray, #5e5c5a);
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
 
-            > div {
-              display: flex;
-              flex-direction: column;
-              gap: 4px;
-
-              > h2 {
-                color: var(--gray, #5e5c5a);
-                font:
-                  500 24px/32px 'Fredoka',
-                  sans-serif;
-              }
-
-              > p {
-                color: var(--gray-dark, #3d3c3a);
-                font:
-                  400 15px/24px Fredoka,
-                  sans-serif;
-              }
+            > span {
+              background: rgba(0, 0, 0, 0.06);
+              color: var(--gray, #5e5c5a);
+              font:
+                400 10px/16px 'Fredoka',
+                sans-serif;
+              padding: 8px 16px;
+              word-break: keep-all;
+              white-space: nowrap;
             }
+          }
 
-            > .pills {
+          > img {
+            height: auto;
+            width: 80%;
+            align-self: center;
+            object-fit: contain;
+            margin: 32px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(61, 60, 58, 0.24);
+          }
+
+          > .actions {
+            flex: 1 auto;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+            align-items: flex-end;
+            gap: 16px;
+            margin-top: 32px;
+
+            > .action {
               display: flex;
-              flex-direction: row;
               align-items: center;
-              gap: 8px;
+              gap: 4px;
+              background: var(--sunshine-yellow, #fbbb52);
+              padding: 8px 16px;
+              border-radius: 8px;
 
               > span {
-                background: var(--sky-blue-light, #d8ecef);
                 color: var(--gray, #5e5c5a);
                 font:
-                  400 11px/16px 'Fredoka',
+                  400 16px/24px 'Fredoka',
                   sans-serif;
-                padding: 4px 8px;
-              }
-            }
-
-            > .actions {
-              display: flex;
-              flex-direction: row;
-              justify-content: flex-end;
-              align-items: center;
-              gap: 16px;
-              margin-top: 32px;
-
-              > .action {
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                background: var(--sunshine-yellow, #fbbb52);
-                padding: 8px 16px;
-                border-radius: 8px;
-
-                > span {
-                  color: var(--gray, #5e5c5a);
-                  font:
-                    400 16px/24px 'Fredoka',
-                    sans-serif;
-                }
-
-                > www-player-play {
-                  height: 16px;
-                  width: 16px;
-                }
               }
             }
           }
@@ -376,8 +289,12 @@ export const routeMeta: RouteMeta = {
 
     @media screen and (min-width: 1024px) {
       .bleed {
-        padding: 32px;
-        max-width: 1024px;
+        padding: 64px 32px;
+        max-width: 1281px;
+
+        > .samples {
+          grid-template-columns: 1fr 1fr;
+        }
       }
     }
   `,

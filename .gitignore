@@ -68,3 +68,11 @@ reports
 tsdoc-metadata.json
 temp
 packages/*/*.api.md
+
+# Samples
+samples/finance/netlify/src/*.json
+samples/finance/server/src/*.txt
+
+## LLMs
+llms.txt
+llms-full.txt

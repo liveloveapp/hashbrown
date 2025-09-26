@@ -3,8 +3,10 @@ import { RouteMeta } from '@analogjs/router';
 import { Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Squircle } from '../../components/Squircle';
+import { TheGravy } from '../../components/TheGravy';
 import { ChevronRight } from '../../icons/ChevronRight';
 import { WorkshopAttributes } from '../../models/workshop.models';
+import { Markdown } from '../../pipes/Markdown';
 
 export const routeMeta: RouteMeta = {
   title: 'Hashbrown AI Workshops',
@@ -25,197 +27,224 @@ export const routeMeta: RouteMeta = {
 };
 
 @Component({
-  imports: [ChevronRight, RouterLink, Squircle],
+  imports: [ChevronRight, RouterLink, Squircle, Markdown, TheGravy],
   template: `
-    <div class="header">
-      <h1>Workshops</h1>
-      <p>
-        Start building the future of web apps with generative UI - not just
-        chatbots and text - but, yeah, you can do that with Hashbrown too.
-      </p>
-      <p>Join our live, remote, hands-on workshops with the Hashbrown team.</p>
-    </div>
-    <img
-      src="/image/product/workshop/mike-whiteboard.jpg"
-      alt="Mike Ryan drawing software architecture diagrams on a whiteboard"
-      wwwSquircle="16"
-    />
-    <section>
-      <h2>Start Building Web Apps with AI</h2>
-      <p>
-        Users are falling in love with the capabilities of using natural
-        language to learn, browse, and do.
-      </p>
-      <p>
-        And, as web developers, we are using AI to code, build, and test our
-        apps, close issues, automate workflows, and more.
-      </p>
-      <p>
-        <strong
-          >But, what if we could bring the power of ChatGPT into our web
-          apps?</strong
-        >
-        Let's start building the web that uses the power of AI models to
-        <em>modernize</em>&nbsp;<em>web</em>&nbsp;<em>apps</em>. Generate text
-        input completions, simplify and get rid of complex forms, allow the user
-        to take an action or navigate within your app by providing suggestions
-        based on their past actions and interactions, and stream generative user
-        interfaces into your web app that is adaptive, dynamic, and
-        customizable. We're talking more than just chatbots and text!
-      </p>
-      <p>
-        <strong
-          >Show me a graph of the quarterly sales year over year. Make it a
-          grouped bar chart by quarter. Oh, and put the legend on the
-          bottom.</strong
-        >
-        Using Hashbrown, you can build agentic user experiences like this - that
-        assemble and generate the interface using your
-        <em>existing</em>&nbsp;<em>components</em>.
-      </p>
-    </section>
-    <section>
-      <h2>Workshops</h2>
+    <div class="bleed">
+      <div class="heading">
+        <h1>
+          Learn to Use
+          <div class="ai-underline">LLMs</div>
+          in Your Components
+        </h1>
+        <p>Bring the power of ChatGPT into your web apps.</p>
+      </div>
       <div class="workshops">
         @for (workshop of workshops(); track workshop.filename) {
           <a
             [routerLink]="workshop.slug"
             wwwSquircle="16"
-            [wwwSquircleBorderWidth]="1"
-            wwwSquircleBorderColor="var(--sky-blue, #9ecff5)"
+            [wwwSquircleBorderWidth]="2"
+            wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
           >
             <div>
-              <h3>{{ workshop.attributes.title }}</h3>
-              <p>{{ workshop.attributes.description }}</p>
+              <h2>{{ workshop.attributes.title }}</h2>
+              <div
+                [innerHTML]="workshop.attributes.description | markdown"
+                class="description"
+              ></div>
             </div>
-            <www-chevron-right />
+            <div class="tags">
+              @for (tag of workshop.attributes.tags; track tag) {
+                <span wwwSquircle="8">{{ tag }}</span>
+              }
+            </div>
+            <div class="actions">
+              <div class="action" wwwSquircle="8">
+                <span>Learn More</span>
+                <www-chevron-right />
+              </div>
+            </div>
           </a>
         }
       </div>
-    </section>
+    </div>
+    <www-the-gravy id="dd18d015-795c-4c3b-a7c1-3c6f73caa7f0" />
   `,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
-      gap: 48px;
     }
 
-    .header {
+    .bleed {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      width: fit-content;
+      align-items: center;
+      align-self: center;
+      padding: 16px;
+      gap: 80px;
 
-      > h1 {
-        color: var(--gray, #5e5c5a);
-        font:
-          750 32px / 40px 'KefirVariable',
-          sans-serif;
-        font-variation-settings: 'wght' 750;
-      }
+      > .heading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        align-self: center;
+        padding: 16px;
 
-      > p {
-        text-wrap: balance;
-        color: var(--gray-dark, #3d3c3a);
-        margin: 0;
-        font:
-          300 18px/24px Fredoka,
-          sans-serif;
-      }
-    }
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    section {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-
-      > h2 {
-        color: var(--gray, #5e5c5a);
-        font:
-          500 normal 24px/32px Fredoka,
-          sans-serif;
-      }
-
-      > p {
-        text-wrap: balance;
-        color: var(--gray, #5e5c5a);
-        font:
-          300 normal 18px/30px Fredoka,
-          sans-serif;
-
-        > strong {
-          font-weight: 400;
-          color: var(--gray-dark, #3d3c3a);
-        }
-
-        > em {
+        > h1 {
+          color: var(--gray);
+          text-align: center;
           position: relative;
-          font-style: italic;
           z-index: 1;
+          font:
+            800 32px/40px 'KefirVariable',
+            sans-serif;
+          font-variation-settings: 'wght' 800;
+          text-shadow: 0 0 1px var(--vanilla-ivory);
 
-          &::after {
+          .ai-underline {
+            display: inline-block;
+            width: fit-content;
+          }
+
+          .ai-underline:after {
             content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
+            position: relative;
+            display: block;
+            height: 3px;
+            top: -5px;
             z-index: -1;
-            background-image: linear-gradient(
-              to right,
-              #fbbb52 0%,
+            background: var(--sunshine-yellow);
+            border-radius: 2px;
+            background: linear-gradient(
+              90deg,
+              var(--sunshine-yellow) 0%,
               var(--sunset-orange) 25%,
               var(--indian-red-light) 50%,
-              var(--sky-blue-dark) 75%,
+              var(--sky-blue) 75%,
               var(--olive-green-light) 100%
             );
+            transition: width 0.5s ease;
+
+            @starting-style {
+              width: 0;
+            }
+          }
+        }
+
+        > p {
+          color: var(--gray, #5e5c5a);
+          text-align: center;
+          font:
+            400 18px/24px 'Fredoka',
+            sans-serif;
+        }
+      }
+
+      > .workshops {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 32px;
+        width: 100%;
+
+        > a {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          padding: 24px;
+          gap: 32px;
+          transition: transform 0.16s ease-in-out;
+
+          &:hover {
+            transform: scale(1.006);
+          }
+
+          > div {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+
+            > h2 {
+              color: var(--gray, #5e5c5a);
+              font:
+                500 24px/32px 'Fredoka',
+                sans-serif;
+            }
+
+            > .description {
+              color: var(--gray-dark, #3d3c3a);
+              font:
+                300 18px/24px Fredoka,
+                sans-serif;
+            }
+          }
+
+          > .tags {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+
+            > span {
+              background: rgba(0, 0, 0, 0.06);
+              color: var(--gray, #5e5c5a);
+              font:
+                400 10px/16px 'Fredoka',
+                sans-serif;
+              padding: 8px 16px;
+              word-break: keep-all;
+              white-space: nowrap;
+            }
+          }
+
+          > img {
+            height: auto;
+            width: 80%;
+            align-self: center;
+            object-fit: contain;
+            margin: 32px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(61, 60, 58, 0.24);
+          }
+
+          > .actions {
+            flex: 1 auto;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+            align-items: flex-end;
+            gap: 16px;
+            margin-top: 32px;
+
+            > .action {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              background: var(--sunshine-yellow, #fbbb52);
+              padding: 8px 16px;
+              border-radius: 8px;
+
+              > span {
+                color: var(--gray, #5e5c5a);
+                font:
+                  400 16px/24px 'Fredoka',
+                  sans-serif;
+              }
+            }
           }
         }
       }
     }
 
-    .workshops {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      width: 100%;
+    @media screen and (min-width: 1024px) {
+      .bleed {
+        padding: 64px 32px;
+        max-width: 1281px;
 
-      > a {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px;
-        background-color: var(--sky-blue-light, #d8e8e8);
-        text-decoration: none;
-        color: var(--gray-dark, #3d3c3a);
-
-        > div {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-
-          > h3 {
-            font:
-              500 normal 18px/24px Fredoka,
-              sans-serif;
-          }
-
-          > p {
-            font:
-              300 normal 14px/18px Fredoka,
-              sans-serif;
-          }
-        }
-
-        > www-chevron-right {
-          flex-shrink: 0;
+        > .workshops {
+          grid-template-columns: 1fr 1fr;
         }
       }
     }

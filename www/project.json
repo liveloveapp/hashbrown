@@ -69,6 +69,12 @@
         }
       ]
     },
+    "generate-llms": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "generate-llms"
+      }
+    },
     "review-docs": {
       "executor": "nx:run-script",
       "options": {

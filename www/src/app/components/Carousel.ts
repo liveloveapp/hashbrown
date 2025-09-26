@@ -78,8 +78,7 @@ import { ChevronRight } from '../icons/ChevronRight';
     }
 
     .scroller ::ng-deep > * {
-      max-width: calc(100% + var(--peek));
-      padding: 16px;
+      padding: 0;
       margin: 0;
     }
 
@@ -91,18 +90,17 @@ import { ChevronRight } from '../icons/ChevronRight';
       gap: 8px;
 
       > button {
-        background: var(--sky-blue, #64afb5);
-        color: var(--gray-dark, #3d3c3a);
+        background: rgba(61, 60, 58, 0.24);
+        color: var(--gray-light, #a4a3a1);
         width: 24px;
         height: 24px;
         border-radius: 50%;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        opacity: 0.4;
 
         &.active {
-          opacity: 1;
+          color: var(--gray-dark, #3d3c3a);
         }
       }
     }
@@ -115,7 +113,6 @@ import { ChevronRight } from '../icons/ChevronRight';
       .scroller {
         grid-auto-rows: 1fr;
         align-items: stretch;
-        /* Let items size by their intrinsic widths at the set height */
         grid-auto-columns: max-content;
         padding-right: var(--peek);
       }
@@ -141,7 +138,6 @@ import { ChevronRight } from '../icons/ChevronRight';
       .scroller {
         grid-auto-rows: 1fr;
         align-items: stretch;
-        /* Let items size by their intrinsic widths at the set height */
         grid-auto-columns: max-content;
         padding-right: var(--peek);
       }

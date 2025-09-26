@@ -7,6 +7,7 @@ import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRouteSnapshot } from '@angular/router';
+import { CoursesMenu } from '../../components/CoursesMenu';
 import { WorkshopAttributes } from '../../models/workshop.models';
 
 export const routeMeta: RouteMeta = {
@@ -52,23 +53,42 @@ export const routeMeta: RouteMeta = {
 };
 
 @Component({
-  imports: [MarkdownComponent],
+  imports: [MarkdownComponent, CoursesMenu],
   template: `
-    <article>
-      @if (post(); as p) {
-        <analog-markdown [content]="p.content"></analog-markdown>
-      }
-    </article>
+    <div class="bleed">
+      <article>
+        @if (post(); as p) {
+          <analog-markdown [content]="p.content"></analog-markdown>
+        }
+      </article>
+      <div class="courses">
+        <www-courses-menu />
+      </div>
+    </div>
   `,
   styles: `
     :host {
       display: flex;
     }
 
+    .bleed {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      padding: 16px;
+      margin: 0 auto 48px;
+
+      > .courses {
+        position: sticky;
+        top: 154px;
+      }
+    }
+
     article ::ng-deep .analog-markdown {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      max-width: 767px;
 
       h1 {
         color: var(--gray, #5e5c5a);
@@ -159,6 +179,14 @@ export const routeMeta: RouteMeta = {
             counter-increment: ordered-listitem;
           }
         }
+      }
+    }
+
+    @media screen and (min-width: 1024px) {
+      .bleed {
+        grid-template-columns: auto 316px;
+        gap: 64px;
+        padding: 64px 32px;
       }
     }
   `,

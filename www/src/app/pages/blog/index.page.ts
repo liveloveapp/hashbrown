@@ -53,14 +53,13 @@ export const routeMeta: RouteMeta = {
     :host {
       display: flex;
       flex-direction: column;
-      width: 100%;
       height: 100%;
     }
 
     .hero {
       width: 100%;
       height: 100%;
-      max-height: 600px;
+      max-height: 480px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -77,7 +76,7 @@ export const routeMeta: RouteMeta = {
       display: flex;
       flex-direction: column;
       gap: 56px;
-      padding: 64px 32px;
+      padding: 24px;
       width: 100%;
       max-width: 1024px;
 
@@ -167,6 +166,8 @@ export const routeMeta: RouteMeta = {
 
     @media screen and (min-width: 1024px) {
       .bleed {
+        padding: 64px 32px;
+
         > .filters {
           display: flex;
         }

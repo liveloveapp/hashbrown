@@ -44,9 +44,9 @@ import { React as ReactIcon } from '../../icons/React';
               in Your Components
             </h1>
             <p>
-              Hashbrown is an open-source framework for building user interfaces
-              that converse with users, dynamically reorganize, and even code
-              themselves.
+              TypeScript framework to use LLMs in your React or Angular app with
+              client-side tools, real-time UI streaming, and safe LLM-generated
+              code execution.
             </p>
           </div>
           <div class="actions">

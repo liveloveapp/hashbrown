@@ -78,7 +78,7 @@ export const routeMeta: RouteMeta = {
       .controls {
         display: flex;
         align-items: flex-end;
-        padding: 24px;
+        padding: 16px;
         width: 100%;
         justify-content: space-between;
 
@@ -118,7 +118,7 @@ export const routeMeta: RouteMeta = {
         display: flex;
         flex-direction: column;
         gap: 16px;
-        padding: 24px;
+        padding: 16px;
 
         .kinds {
           display: grid;
@@ -139,7 +139,7 @@ export const routeMeta: RouteMeta = {
         gap: 32px;
         width: 100%;
         max-width: 767px;
-        padding: 24px;
+        padding: 16px;
 
         > h2 {
           font:
@@ -164,7 +164,17 @@ export const routeMeta: RouteMeta = {
       }
 
       @media screen and (min-width: 768px) {
+        .controls {
+          padding: 24px;
+        }
+
+        .filters {
+          padding: 24px;
+        }
+
         .packages {
+          padding: 24px;
+
           > .symbols {
             grid-template-columns: repeat(2, 1fr);
           }
