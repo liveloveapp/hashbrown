@@ -46,6 +46,10 @@ you must also retain the notices that follow.
    Copyright © QuickJS authors and Emscripten port contributors  
    <https://github.com/quickjs-community/quickjs-emscripten>
 
+5. **@ngrx/signals**  
+   Copyright © NgRx Team  
+   <https://github.com/ngrx/platform>
+
 Each of the above projects is distributed under the MIT License, reproduced
 here for convenience:
 

@@ -14,6 +14,7 @@ import { Chat, fryHashbrown, KnownModelIds, s } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
 import { bindToolToInjector } from '../utils/create-tool.fn';
+import { toDeepSignal } from '../utils/deep-signal';
 
 /**
  * A reference to the structured chat resource.
@@ -168,10 +169,11 @@ export function structuredChatResource<
     optionsEffect.destroy();
   });
 
-  const value = toNgSignal(
+  const valueSignal = toNgSignal(
     hashbrown.messages,
     options.debugName && `${options.debugName}.value`,
   );
+  const value = toDeepSignal(valueSignal);
   const isReceiving = toNgSignal(
     hashbrown.isReceiving,
     options.debugName && `${options.debugName}.isReceiving`,

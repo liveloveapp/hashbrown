@@ -3,6 +3,7 @@ import { computed, effect, Resource, Signal } from '@angular/core';
 import { Chat, KnownModelIds, s } from '@hashbrownai/core';
 import { SignalLike } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
+import { toDeepSignal } from '../utils/deep-signal';
 
 /**
  * A reference to the structured completion resource.
@@ -105,7 +106,7 @@ export function structuredCompletionResource<
     ]);
   });
 
-  const value = computed(
+  const valueSignal = computed(
     () => {
       const lastMessage = resource.value()[resource.value().length - 1];
       if (
@@ -120,6 +121,7 @@ export function structuredCompletionResource<
     },
     { debugName: debugName && `${debugName}.value` },
   );
+  const value = toDeepSignal(valueSignal);
 
   const status = resource.status;
   const error = resource.error;
@@ -128,7 +130,7 @@ export function structuredCompletionResource<
   const stop = resource.stop;
 
   function hasValue(this: StructuredCompletionResourceRef<Output>) {
-    return Boolean(value());
+    return Boolean(valueSignal());
   }
 
   return {
