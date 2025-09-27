@@ -40,12 +40,7 @@ export const routeMeta: RouteMeta = {
       </div>
       <div class="workshops">
         @for (workshop of workshops(); track workshop.filename) {
-          <a
-            [routerLink]="workshop.slug"
-            wwwSquircle="16"
-            [wwwSquircleBorderWidth]="2"
-            wwwSquircleBorderColor="var(--gray-light, #a4a3a1)"
-          >
+          <a [routerLink]="workshop.slug" wwwSquircle="16">
             <div>
               <h2>{{ workshop.attributes.title }}</h2>
               <div
@@ -81,8 +76,8 @@ export const routeMeta: RouteMeta = {
       flex-direction: column;
       align-items: center;
       align-self: center;
-      padding: 16px;
-      gap: 80px;
+      padding: 16px 16px 64px;
+      gap: 24px;
 
       > .heading {
         display: flex;
@@ -98,37 +93,37 @@ export const routeMeta: RouteMeta = {
           position: relative;
           z-index: 1;
           font:
-            800 32px/40px 'KefirVariable',
+            600 24px/32px 'KefirVariable',
             sans-serif;
-          font-variation-settings: 'wght' 800;
+          font-variation-settings: 'wght' 600;
           text-shadow: 0 0 1px var(--vanilla-ivory);
 
-          .ai-underline {
+          > .ai-underline {
             display: inline-block;
             width: fit-content;
-          }
 
-          .ai-underline:after {
-            content: '';
-            position: relative;
-            display: block;
-            height: 3px;
-            top: -5px;
-            z-index: -1;
-            background: var(--sunshine-yellow);
-            border-radius: 2px;
-            background: linear-gradient(
-              90deg,
-              var(--sunshine-yellow) 0%,
-              var(--sunset-orange) 25%,
-              var(--indian-red-light) 50%,
-              var(--sky-blue) 75%,
-              var(--olive-green-light) 100%
-            );
-            transition: width 0.5s ease;
+            &::after {
+              content: '';
+              position: relative;
+              display: block;
+              height: 3px;
+              top: -5px;
+              z-index: -1;
+              background: var(--sunshine-yellow);
+              border-radius: 2px;
+              background: linear-gradient(
+                90deg,
+                var(--sunshine-yellow) 0%,
+                var(--sunset-orange) 25%,
+                var(--indian-red-light) 50%,
+                var(--sky-blue) 75%,
+                var(--olive-green-light) 100%
+              );
+              transition: width 0.5s ease;
 
-            @starting-style {
-              width: 0;
+              @starting-style {
+                width: 0;
+              }
             }
           }
         }
@@ -137,7 +132,7 @@ export const routeMeta: RouteMeta = {
           color: var(--gray, #5e5c5a);
           text-align: center;
           font:
-            400 18px/24px 'Fredoka',
+            400 14px/18px 'Fredoka',
             sans-serif;
         }
       }
@@ -154,10 +149,19 @@ export const routeMeta: RouteMeta = {
           align-items: stretch;
           padding: 24px;
           gap: 32px;
-          transition: transform 0.16s ease-in-out;
+          background: rgba(61, 60, 58, 0.036);
+          transition:
+            transform 800ms cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow 800ms cubic-bezier(0.16, 1, 0.3, 1),
+            filter 800ms cubic-bezier(0.16, 1, 0.3, 1);
+          transform-origin: center;
+          will-change: transform;
+          backface-visibility: hidden;
 
           &:hover {
-            transform: scale(1.006);
+            transform: translateY(-1px) scale(1.006);
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.1);
+            filter: saturate(1.04) contrast(1.02);
           }
 
           > div {
@@ -173,10 +177,41 @@ export const routeMeta: RouteMeta = {
             }
 
             > .description {
-              color: var(--gray-dark, #3d3c3a);
-              font:
-                300 18px/24px Fredoka,
-                sans-serif;
+              > p {
+                color: var(--gray, #5e5c5a);
+                font:
+                  300 18px/24px Fredoka,
+                  sans-serif;
+
+                > strong {
+                  font-weight: 400;
+                  color: var(--gray-dark, #3d3c3a);
+                }
+
+                > em {
+                  position: relative;
+                  font-style: italic;
+                  z-index: 1;
+
+                  &::after {
+                    content: '';
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 2px;
+                    z-index: -1;
+                    background-image: linear-gradient(
+                      to right,
+                      #fbbb52 0%,
+                      var(--sunset-orange) 25%,
+                      var(--indian-red-light) 50%,
+                      var(--sky-blue-dark) 75%,
+                      var(--olive-green-light) 100%
+                    );
+                  }
+                }
+              }
             }
           }
 
@@ -188,10 +223,10 @@ export const routeMeta: RouteMeta = {
             gap: 8px;
 
             > span {
-              background: rgba(0, 0, 0, 0.06);
+              background: rgba(61, 60, 58, 0.08);
               color: var(--gray, #5e5c5a);
               font:
-                400 10px/16px 'Fredoka',
+                500 10px/16px 'Fredoka',
                 sans-serif;
               padding: 8px 16px;
               word-break: keep-all;
@@ -238,10 +273,26 @@ export const routeMeta: RouteMeta = {
       }
     }
 
-    @media screen and (min-width: 1024px) {
+    @media screen and (min-width: 768px) {
       .bleed {
         padding: 64px 32px;
         max-width: 1281px;
+        gap: 64px;
+
+        > .heading {
+          > h1 {
+            font:
+              800 32px/40px 'KefirVariable',
+              sans-serif;
+            font-variation-settings: 'wght' 800;
+          }
+
+          > p {
+            font:
+              400 18px/24px 'Fredoka',
+              sans-serif;
+          }
+        }
 
         > .workshops {
           grid-template-columns: 1fr 1fr;

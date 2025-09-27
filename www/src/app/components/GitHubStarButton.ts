@@ -1,5 +1,5 @@
 import { httpResource } from '@angular/common/http';
-import { Component } from '@angular/core';
+import { Component, effect, signal } from '@angular/core';
 import { StarShine } from '../icons/StarShine';
 import { Squircle } from './Squircle';
 
@@ -16,9 +16,11 @@ import { Squircle } from './Squircle';
       wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
     >
       <div class="stars">
-        <div class="count">
-          {{ stars.value()?.stargazers_count }}
-        </div>
+        @if (stars() > 0) {
+          <div class="count">
+            {{ stars() }}
+          </div>
+        }
         <www-star-shine />
         <div class="label">on GitHub</div>
       </div>
@@ -63,7 +65,32 @@ import { Squircle } from './Squircle';
   `,
 })
 export class GitHubStarButton {
-  stars = httpResource<{ stargazers_count: number }>(
+  starsResource = httpResource<{ stargazers_count: number }>(
     () => 'https://api.github.com/repos/liveloveapp/hashbrown',
   );
+
+  stars = signal<number>(0);
+
+  constructor() {
+    if (typeof localStorage !== 'undefined') {
+      const gitHubStarCount = Number(localStorage.getItem('gitHubStarCount'));
+      if (!isNaN(gitHubStarCount)) {
+        this.stars.set(gitHubStarCount);
+      }
+    }
+
+    effect(() => {
+      const value = this.starsResource.value();
+      if (!value) {
+        return;
+      }
+      this.stars.set(value.stargazers_count);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(
+          'gitHubStarCount',
+          value.stargazers_count.toString(),
+        );
+      }
+    });
+  }
 }

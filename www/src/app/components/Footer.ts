@@ -108,121 +108,11 @@ import { ConfigService } from '../services/ConfigService';
         </ul>
       </div>
     </footer>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="100%"
-      height="9"
-      viewBox="0 0 1728 9"
-      fill="none"
-    >
-      <g clip-path="url(#clip0_72_106)">
-        <rect width="1728" height="9" fill="#3D3C3A" />
-        <rect
-          x="301.191"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 301.191 -124)"
-          fill="#A0A985"
-        />
-        <rect
-          x="1037.19"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 1037.19 -124)"
-          fill="#AF68B4"
-        />
-        <rect
-          x="-66.8086"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 -66.8086 -124)"
-          fill="#AF68B4"
-        />
-        <rect
-          x="485.191"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 485.191 -124)"
-          fill="#FBBB52"
-        />
-        <rect
-          x="1221.19"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 1221.19 -124)"
-          fill="#9ECFD7"
-        />
-        <rect
-          x="117.191"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 117.191 -124)"
-          fill="#9ECFD7"
-        />
-        <rect
-          x="669.191"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 669.191 -124)"
-          fill="#E88C4D"
-        />
-        <rect
-          x="1773.19"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 1773.19 -124)"
-          fill="#E88C4D"
-        />
-        <rect
-          x="1405.19"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 1405.19 -124)"
-          fill="#A0A985"
-        />
-        <rect
-          x="853.191"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 853.191 -124)"
-          fill="#E27676"
-        />
-        <rect
-          x="1957.19"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 1957.19 -124)"
-          fill="#E27676"
-        />
-        <rect
-          x="1589.19"
-          y="-124"
-          width="160"
-          height="614.383"
-          transform="rotate(30 1589.19 -124)"
-          fill="#FBBB52"
-        />
-      </g>
-      <defs>
-        <clipPath id="clip0_72_106">
-          <rect width="1728" height="9" fill="white" />
-        </clipPath>
-      </defs>
-    </svg>
+    <div class="stripe"></div>
   `,
   styles: `
     :host {
+      position: relative;
       display: flex;
       flex-direction: column;
       border-top: 1px solid rgba(61, 60, 58, 0.24);
@@ -289,11 +179,11 @@ import { ConfigService } from '../services/ConfigService';
         }
 
         > .docs {
-          grid-column: span 6;
+          grid-column: span 12;
         }
 
         > .learn {
-          grid-column: span 6;
+          grid-column: span 12;
         }
 
         > .docs,
@@ -358,6 +248,18 @@ import { ConfigService } from '../services/ConfigService';
           }
         }
       }
+    }
+
+    .stripe {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background-image: url('/image/footer/stripe.svg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
     @media screen and (min-width: 768px) and (max-width: 1023px) {

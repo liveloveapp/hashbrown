@@ -1,11 +1,47 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const DOCS_ROOT = path.resolve(process.cwd(), 'src/app/pages/docs');
-const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
-const LLMS_FILE = path.join(PUBLIC_DIR, 'llms.txt');
-const LLMS_FULL_FILE = path.join(PUBLIC_DIR, 'llms-full.txt');
-const BASE_URL = 'https://hashbrown.dev';
+// Resolve key paths relative to this file to avoid relying on process.cwd()
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..'); // www/
+const WORKSPACE_ROOT = path.resolve(PROJECT_ROOT, '..');
+let DOCS_ROOT = path.resolve(PROJECT_ROOT, 'src/app/pages/docs');
+
+// Default output directory when not provided via CLI args
+const DEFAULT_OUTPUT_DIR = path.resolve(WORKSPACE_ROOT, 'dist/www/client');
+// Default output directory when not provided via CLI args
+let BASE_URL = 'https://hashbrown.dev';
+
+function parseArgs(argv) {
+  const args = {};
+  const tokens = [...argv];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (!token.startsWith('--')) continue;
+
+    const eqIndex = token.indexOf('=');
+    if (eqIndex !== -1) {
+      const key = token.slice(2, eqIndex);
+      const value = token.slice(eqIndex + 1);
+      args[key] = value;
+      continue;
+    }
+
+    const key = token.slice(2);
+    const next = tokens[i + 1];
+    if (next && !next.startsWith('--')) {
+      args[key] = next;
+      i++;
+    } else {
+      args[key] = true;
+    }
+  }
+
+  return args;
+}
 
 const DOC_SECTIONS = [
   { label: 'React Documentation', slug: 'react' },
@@ -64,7 +100,7 @@ function toUrl(slug, absolutePath) {
   let urlPath = relativePath.replace(/\.md$/i, '');
 
   if (urlPath.endsWith('/index')) {
-    urlPath = urlPath.slice(0, -('/index'.length));
+    urlPath = urlPath.slice(0, -'/index'.length);
   }
 
   if (!urlPath) {
@@ -87,13 +123,19 @@ function resolveDocLink(link, slug) {
     const base = `${BASE_URL}/docs/${slug}/`;
     return new URL(link, base).toString();
   } catch (error) {
-    console.warn(`Unable to resolve next-step link "${link}" for ${slug}:`, error);
+    console.warn(
+      `Unable to resolve next-step link "${link}" for ${slug}:`,
+      error,
+    );
     return link;
   }
 }
 
 function stripHtml(value) {
-  return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function decodeEntities(value) {
@@ -118,9 +160,7 @@ function transformNextSteps(content, slug) {
         : undefined;
       const resolvedLink = resolveDocLink(link.trim(), slug);
 
-      const base = resolvedLink
-        ? `[${title}](${resolvedLink})`
-        : title;
+      const base = resolvedLink ? `[${title}](${resolvedLink})` : title;
       return description ? `- ${base} — ${description}` : `- ${base}`;
     },
   );
@@ -194,7 +234,7 @@ async function buildSectionLinks({ slug }) {
   return links.sort((a, b) => a.title.localeCompare(b.title));
 }
 
-async function buildLlmsFile() {
+async function buildLlmsFile(outputDir) {
   const sectionsWithLinks = await Promise.all(
     DOC_SECTIONS.map(async (section) => ({
       ...section,
@@ -224,8 +264,8 @@ async function buildLlmsFile() {
     lines.push('');
   }
 
-  await mkdir(PUBLIC_DIR, { recursive: true });
-  await writeFile(LLMS_FILE, lines.join('\n'));
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(path.join(outputDir, 'llms.txt'), lines.join('\n'));
 }
 
 async function collectDocsForSection(section) {
@@ -250,7 +290,7 @@ async function collectDocsForSection(section) {
   return docs;
 }
 
-async function buildLlmsFullFile() {
+async function buildLlmsFullFile(outputDir) {
   const lines = ['# Hashbrown Documentation', ''];
 
   for (const section of DOC_SECTIONS) {
@@ -279,11 +319,35 @@ async function buildLlmsFullFile() {
     lines.pop();
   }
 
-  await writeFile(LLMS_FULL_FILE, `${lines.join('\n')}\n`);
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(
+    path.join(outputDir, 'llms-full.txt'),
+    `${lines.join('\n')}\n`,
+  );
 }
 
 async function main() {
-  await Promise.all([buildLlmsFile(), buildLlmsFullFile()]);
+  const args = parseArgs(process.argv.slice(2));
+
+  if (args.baseUrl || args['base-url']) {
+    BASE_URL = String(args.baseUrl ?? args['base-url']);
+  }
+
+  if (args.docsRoot || args['docs-root']) {
+    const provided = String(args.docsRoot ?? args['docs-root']);
+    DOCS_ROOT = path.isAbsolute(provided)
+      ? provided
+      : path.resolve(WORKSPACE_ROOT, provided);
+  }
+
+  const outputDirArg = args.outputDir ?? args['output-dir'];
+  const outputDir = outputDirArg
+    ? path.isAbsolute(String(outputDirArg))
+      ? String(outputDirArg)
+      : path.resolve(WORKSPACE_ROOT, String(outputDirArg))
+    : DEFAULT_OUTPUT_DIR;
+
+  await Promise.all([buildLlmsFile(outputDir), buildLlmsFullFile(outputDir)]);
 }
 
 main().catch((error) => {
