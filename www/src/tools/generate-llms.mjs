@@ -10,7 +10,10 @@ const WORKSPACE_ROOT = path.resolve(PROJECT_ROOT, '..');
 let DOCS_ROOT = path.resolve(PROJECT_ROOT, 'src/app/pages/docs');
 
 // Default output directory when not provided via CLI args
-const DEFAULT_OUTPUT_DIR = path.resolve(WORKSPACE_ROOT, 'dist/www/client');
+const DEFAULT_OUTPUT_DIR = path.resolve(
+  WORKSPACE_ROOT,
+  'dist/www/analog/public',
+);
 // Default output directory when not provided via CLI args
 let BASE_URL = 'https://hashbrown.dev';
 

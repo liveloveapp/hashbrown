@@ -72,7 +72,7 @@
     "netlify": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node src/tools/generate-llms.mjs --outputDir=dist/www/client --docsRoot=src/app/pages/docs --baseUrl=https://hashbrown.dev",
+        "command": "node src/tools/generate-llms.mjs --outputDir=dist/www/analog/public --docsRoot=src/app/pages/docs --baseUrl=https://hashbrown.dev",
         "cwd": "{projectRoot}"
       },
       "dependsOn": ["build"]
