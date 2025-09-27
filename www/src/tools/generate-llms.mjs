@@ -337,7 +337,7 @@ async function main() {
     const provided = String(args.docsRoot ?? args['docs-root']);
     DOCS_ROOT = path.isAbsolute(provided)
       ? provided
-      : path.resolve(WORKSPACE_ROOT, provided);
+      : path.resolve(PROJECT_ROOT, provided);
   }
 
   const outputDirArg = args.outputDir ?? args['output-dir'];

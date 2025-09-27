@@ -30,7 +30,7 @@
         "tsConfig": "www/tsconfig.app.json",
         "styles": ["@angular/cdk/overlay-prebuilt.css"]
       },
-      "dependsOn": ["^collect-docs", "^generate-llms"]
+      "dependsOn": ["^collect-docs"]
     },
     "serve": {
       "executor": "@analogjs/platform:vite-dev-server",
@@ -69,12 +69,13 @@
         }
       ]
     },
-    "generate-llms": {
+    "netlify": {
       "executor": "nx:run-commands",
       "options": {
         "command": "node src/tools/generate-llms.mjs --outputDir=dist/www/client --docsRoot=src/app/pages/docs --baseUrl=https://hashbrown.dev",
         "cwd": "{projectRoot}"
-      }
+      },
+      "dependsOn": ["build"]
     },
     "review-docs": {
       "executor": "nx:run-script",
