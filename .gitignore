@@ -71,7 +71,7 @@ packages/*/*.api.md
 
 # Samples
 samples/finance/netlify/src/*.json
-samples/finance/server/src/*.txt
+samples/finance/server/src/*.json
 
 ## LLMs
 llms.txt

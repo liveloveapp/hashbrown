@@ -28,17 +28,16 @@ export const routeMeta: RouteMeta = {
   imports: [RouterOutlet, Footer, Header, Squircle, TheGravy],
   template: `
     <www-header />
-    <main class="container" wwwSquircle="16 16 0 0">
+    <div class="container" wwwSquircle="16 16 0 0">
       <router-outlet></router-outlet>
-    </main>
-    <www-the-gravy id="dd18d015-795c-4c3b-a7c1-3c6f73caa7f0" />
-    <www-footer />
+      <www-the-gravy id="dd18d015-795c-4c3b-a7c1-3c6f73caa7f0" />
+      <www-footer />
+    </div>
   `,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
-      height: 100%;
       background-color: var(--vanilla-ivory, #faf9f0);
       background-image: url('/image/texture/fabric.png');
       background-size: auto;

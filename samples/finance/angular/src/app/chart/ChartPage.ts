@@ -131,7 +131,6 @@ import { openWelcomeOverlay } from './Welcome';
       align-items: center;
       justify-content: center;
       width: 100%;
-      height: calc(100vh - 64px);
       padding: 24px;
       position: relative;
 

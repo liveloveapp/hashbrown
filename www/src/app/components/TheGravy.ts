@@ -11,7 +11,7 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
         <img src="/image/thegravy/brand-and-word-mark.svg" alt="The Gravy" />
         <div>
           <p>
-            Staying on top of JS + AI has never been more entertaining.
+            Staying on top of JS + AI has never been tastier.
             <br />Served fresh on Thursdays. Free.
           </p>
           <p class="subtitle">
@@ -43,8 +43,8 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 64px;
-      padding: 16px;
+      gap: 24px;
+      padding: 64px 16px;
       width: 100%;
       max-width: 800px;
 
@@ -52,11 +52,11 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 48px;
+        gap: 32px;
 
         > img {
-          width: 160px;
-          height: auto;
+          width: auto;
+          height: 128px;
           flex-shrink: 0;
           aspect-ratio: 83/100;
         }
@@ -70,12 +70,12 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
             color: var(--grey-dark, #414042);
             text-align: center;
             font:
-              500 24px/32px Fredoka,
+              500 16px/24px Fredoka,
               sans-serif;
 
             &.subtitle {
               font:
-                300 16px/24px Fredoka,
+                300 12px/16px Fredoka,
                 sans-serif;
 
               > a {
@@ -104,7 +104,30 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
 
     @media screen and (min-width: 1024px) {
       .bleed {
-        padding: 64px;
+        padding: 64px 32px;
+        gap: 80px;
+
+        > .title {
+          gap: 48px;
+
+          > img {
+            width: 144px;
+          }
+
+          > div {
+            > p {
+              font:
+                500 24px/32px Fredoka,
+                sans-serif;
+
+              &.subtitle {
+                font:
+                  300 16px/24px Fredoka,
+                  sans-serif;
+              }
+            }
+          }
+        }
       }
     }
   `,

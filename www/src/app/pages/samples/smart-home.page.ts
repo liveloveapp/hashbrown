@@ -1,9 +1,11 @@
 import { Component } from '@angular/core';
+import { Header } from '../../components/Header';
 import { Squircle } from '../../components/Squircle';
 
 @Component({
-  imports: [Squircle],
+  imports: [Header, Squircle],
   template: `
+    <www-header />
     <main class="container" wwwSquircle="16 16 0 0">
       <iframe src="https://smart-home.hashbrown.dev"></iframe>
     </main>

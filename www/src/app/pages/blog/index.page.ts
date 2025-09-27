@@ -58,8 +58,7 @@ export const routeMeta: RouteMeta = {
 
     .hero {
       width: 100%;
-      height: 100%;
-      max-height: 480px;
+      height: 480px;
       display: flex;
       justify-content: center;
       align-items: center;

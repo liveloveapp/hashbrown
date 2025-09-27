@@ -85,8 +85,8 @@ export const routeMeta: RouteMeta = {
     .bleed {
       display: flex;
       flex-direction: column;
-      gap: 64px;
-      padding: 64px 32px;
+      gap: 24px;
+      padding: 16px 16px 64px;
       max-width: 767px;
       width: 100%;
 
@@ -280,6 +280,33 @@ export const routeMeta: RouteMeta = {
 
         code {
           white-space: nowrap;
+        }
+      }
+    }
+
+    @media screen and (min-width: 768px) {
+      .bleed {
+        padding: 64px 32px;
+        max-width: 1281px;
+        gap: 64px;
+
+        > .title {
+          > h1 {
+            font:
+              800 32px/40px 'KefirVariable',
+              sans-serif;
+            font-variation-settings: 'wght' 800;
+          }
+
+          > p {
+            font:
+              400 18px/24px 'Fredoka',
+              sans-serif;
+          }
+        }
+
+        > .workshops {
+          grid-template-columns: 1fr 1fr;
         }
       }
     }

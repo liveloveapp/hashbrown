@@ -128,6 +128,7 @@ import { GitHubStarButton } from './GitHubStarButton';
         </div>
         <div class="menu">
           <www-fullscreen-menu
+            #fullScreenMenu
             [positions]="[
               {
                 originX: 'start',
@@ -172,6 +173,29 @@ import { GitHubStarButton } from './GitHubStarButton';
                 </div>
                 <div class="api-menu" [class.active]="menu() === 'api'">
                   <www-api-menu />
+                </div>
+                <div class="footer">
+                  <a
+                    (click)="fullScreenMenu.onClick()"
+                    routerLink="/samples"
+                    wwwSquircle="8"
+                  >
+                    examples
+                  </a>
+                  <a
+                    (click)="fullScreenMenu.onClick()"
+                    routerLink="/workshops"
+                    wwwSquircle="8"
+                  >
+                    workshops
+                  </a>
+                  <a
+                    (click)="fullScreenMenu.onClick()"
+                    routerLink="/blog"
+                    wwwSquircle="8"
+                  >
+                    blog
+                  </a>
                 </div>
               </div>
             </div>
@@ -225,7 +249,7 @@ import { GitHubStarButton } from './GitHubStarButton';
                   align-items: center;
 
                   > a,
-                  > www-dropdown-menu button > label {
+                  > www-dropdown-menu button label > a {
                     display: flex;
                     align-items: center;
                     gap: 4px;
@@ -311,17 +335,18 @@ import { GitHubStarButton } from './GitHubStarButton';
 
           > .actions {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(2, 1fr);
             gap: 8px;
 
-            > button {
+            > button,
+            > a {
               display: flex;
               justify-content: center;
               align-items: center;
               gap: 4px;
               padding: 12px 16px;
               color: rgba(0, 0, 0, 0.64);
-              background: transparent;
+              background: rgba(61, 60, 58, 0.036);
               font:
                 500 18px/140% Fredoka,
                 sans-serif;
@@ -334,6 +359,11 @@ import { GitHubStarButton } from './GitHubStarButton';
                 color: var(--gray-dark, #3d3c3a);
               }
             }
+          }
+
+          > .docs-menu,
+          > .api-menu {
+            flex: 1 auto;
           }
 
           > .docs-menu {
@@ -355,6 +385,34 @@ import { GitHubStarButton } from './GitHubStarButton';
 
             > www-api-menu {
               width: 100%;
+            }
+          }
+
+          > .footer {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+
+            > button,
+            > a {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              gap: 4px;
+              padding: 12px 16px;
+              color: rgba(0, 0, 0, 0.64);
+              background: rgba(61, 60, 58, 0.036);
+              font:
+                500 18px/140% Fredoka,
+                sans-serif;
+
+              &.active {
+                background: var(--sunshine-yellow-light, #fbd38e);
+              }
+
+              &:hover {
+                color: var(--gray-dark, #3d3c3a);
+              }
             }
           }
         }
