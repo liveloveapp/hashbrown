@@ -1,5 +1,5 @@
 [build]
-  command   = "npx nx run www:build"
+  command   = "npx nx run www:netlify:production"
   publish   = "dist/www/analog/public"
   functions = "dist/www/analog"
 [build.environment]
