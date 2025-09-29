@@ -1,11 +1,5 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  computed,
-  inject,
-  linkedSignal,
-  untracked,
-} from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -21,10 +15,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
-import { structuredCompletionResource } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
 import { SmartHome } from '../smart-home';
 import { Scene } from '../types';
+import { LightPredictor } from './light-predictor';
+import { RRuleParser } from './rrule-parser';
+import { RruleVisualization } from './rrule-visualization/rrule-visualization';
+import { Suggestor } from '../suggestions/suggestor';
 
 @Component({
   selector: 'app-add-scene-form',
@@ -39,6 +35,7 @@ import { Scene } from '../types';
     MatSelectModule,
     MatSliderModule,
     MatIconModule,
+    RruleVisualization,
   ],
   template: `
     <h2 mat-dialog-title>Add Scene</h2>
@@ -53,6 +50,27 @@ import { Scene } from '../types';
             <mat-error>Name is required</mat-error>
           }
         </mat-form-field>
+
+        <mat-form-field appearance="fill">
+          <mat-label>When should this scene run?</mat-label>
+          <input matInput formControlName="rrule" />
+        </mat-form-field>
+
+        @if (rruleParserResult.isLoading()) {
+          <div class="rrule-loading">
+            <mat-icon inline>hourglass_empty</mat-icon>
+            Parsing...
+          </div>
+        }
+
+        @if (rruleParserResult.schedule(); as schedule) {
+          <app-rrule-visualization [schedule]="schedule" />
+        } @else if (rruleParserResult.error(); as parseError) {
+          <div class="rrule-error">
+            <mat-icon inline>error</mat-icon>
+            <span>{{ parseError.error }}</span>
+          </div>
+        }
 
         <div formArrayName="lights">
           @for (light of lightsArrayControl.controls; track $index) {
@@ -87,12 +105,15 @@ import { Scene } from '../types';
           }
         </div>
 
-        @if (predictedLights().length) {
+        @if (predictedLightsResult.predictedLights().length) {
           <h5>
             <mat-icon aria-hidden="true" inline>bolt</mat-icon>
             Suggestions
           </h5>
-          @for (light of predictedLights(); track light.lightId) {
+          @for (
+            light of predictedLightsResult.predictedLights();
+            track light.lightId
+          ) {
             @let suggestedLight = smartHome.light(light.lightId)();
 
             <div class="predicted-light">
@@ -111,7 +132,7 @@ import { Scene } from '../types';
 
         <button mat-button type="button" (click)="addLight()">Add Light</button>
 
-        @if (lostService()) {
+        @if (predictedLightsResult.error()) {
           <div class="error">
             <mat-icon inline>error</mat-icon>Structured completion is not
             available.
@@ -131,75 +152,105 @@ import { Scene } from '../types';
       </mat-dialog-actions>
     </form>
   `,
-  styles: [
-    `
-      h5 {
-        display: flex;
-        align-items: center;
-      }
+  styles: `
+    h2 {
+      padding-bottom: 0;
+    }
 
-      :host,
-      form,
-      mat-dialog-content {
-        width: 400px;
-      }
+    h5 {
+      display: flex;
+      align-items: center;
+    }
 
-      form {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        padding: 16px 0;
-      }
+    :host,
+    form,
+    mat-dialog-content {
+      width: 400px;
+    }
 
-      mat-form-field {
-        width: 100%;
-      }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 0 0 16px 0;
+    }
 
-      .light-config {
-        display: flex;
-        gap: 16px;
-        align-items: center;
-      }
+    mat-form-field {
+      width: 100%;
+    }
 
-      .light-config:not(:last-child) {
-        margin-bottom: 8px;
-      }
+    .light-config {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
 
-      .predicted-light {
-        display: grid;
-        gap: 8px;
-        grid-template-areas: 'a a a';
-        grid-auto-columns: auto 24px 50px;
-        align-items: center;
-      }
+    .light-config:not(:last-child) {
+      margin-bottom: 8px;
+    }
 
-      mat-form-field {
-        flex: 1;
-      }
+    .predicted-light {
+      display: grid;
+      gap: 8px;
+      grid-template-areas: 'a a a';
+      grid-auto-columns: auto 24px 50px;
+      align-items: center;
+    }
 
-      h5 {
-        margin-top: 8px;
-      }
+    mat-form-field {
+      flex: 1;
+    }
 
-      .error {
-        background-color: var(--mat-sys-error-container);
-        width: fit-content;
-        padding: 16px;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
+    h5 {
+      margin-top: 8px;
+    }
+
+    .rrule-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    app-rrule-visualization {
+      display: block;
+    }
+
+    .rrule-error {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: var(--mat-sys-error-container);
+      color: var(--mat-sys-on-error-container);
+      padding: 12px 16px;
+      border-radius: 16px;
+
+      mat-icon {
+        flex-shrink: 0;
       }
-    `,
-  ],
+    }
+
+    .error {
+      background-color: var(--mat-sys-error-container);
+      width: fit-content;
+      padding: 16px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  `,
 })
 export class AddSceneForm {
   readonly dialogRef = inject(MatDialogRef<AddSceneForm>);
   readonly smartHome = inject(SmartHome);
+  readonly lightPredictor = inject(LightPredictor);
+  readonly rruleParser = inject(RRuleParser);
+  readonly suggestor = inject(Suggestor);
   readonly nameControl = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required],
   });
+  readonly rruleControl = new FormControl('');
   readonly lightsArrayControl = new FormArray<
     FormGroup<{
       lightId: FormControl<string>;
@@ -208,62 +259,27 @@ export class AddSceneForm {
   >([]);
   readonly form = new FormGroup({
     name: this.nameControl,
+    rrule: this.rruleControl,
     lights: this.lightsArrayControl,
   });
   readonly sceneNameSignal = toSignal(this.nameControl.valueChanges);
+  readonly rruleSignal = toSignal(this.rruleControl.valueChanges);
 
   /**
    * --------------------------------------------------------------------------
    * Predicted Lights Resource
    * --------------------------------------------------------------------------
    */
-  predictedLightsResource = structuredCompletionResource({
-    model: 'gpt-4.1-mini',
-    debugName: 'predictedLightsResource',
-    system: `
-      You are an assistant that helps the user configure a lighting scene.
-      The user will choose a name for the scene, and you will predict the
-      lights that should be added to the scene based on the name. The input
-      will be the scene name and the list of lights that are available.
-
-      # Rules
-      - Only suggest lights from the provided "availableLights" input list.
-      - Pick a brightness level for each light that is appropriate for the scene.
-    `,
-    input: computed(() => {
-      if (!this.sceneNameSignal()) return null;
-
-      return {
-        input: this.sceneNameSignal(),
-        availableLights: untracked(() => this.smartHome.lights()).map(
-          (light) => ({
-            id: light.id,
-            name: light.name,
-          }),
-        ),
-      };
-    }),
-    schema: s.streaming.array(
-      'The lights to add to the scene',
-      s.object('A join between a light and a scene', {
-        lightId: s.string('the ID of the light to add'),
-        brightness: s.number('the brightness of the light from 0 to 100'),
-      }),
-    ),
-  });
-
-  predictedLights = linkedSignal({
-    source: this.predictedLightsResource.value,
-    computation: (source) => {
-      if (source === undefined || source === null) return [];
-
-      return source;
-    },
-  });
-
-  protected lostService = computed(
-    () => this.predictedLightsResource.status() === 'error',
+  readonly predictedLightsResult = this.lightPredictor.predictLights(
+    this.sceneNameSignal,
   );
+
+  /**
+   * --------------------------------------------------------------------------
+   * RRule Parser Resource
+   * --------------------------------------------------------------------------
+   */
+  readonly rruleParserResult = this.rruleParser.parse(this.rruleSignal);
 
   protected addLight(light?: { lightId: string; brightness: number }) {
     const lightGroup = new FormGroup({
@@ -295,7 +311,7 @@ export class AddSceneForm {
       brightness: number;
     },
   ) {
-    this.predictedLights.update((lights) =>
+    this.predictedLightsResult.predictedLights.update((lights) =>
       lights.filter((_, i) => i !== index),
     );
 
@@ -330,6 +346,7 @@ export class AddSceneForm {
     const scene = this.form.value;
 
     this.smartHome.addScene(scene as unknown as Omit<Scene, 'id'>);
+    this.suggestor.notify('addScene', scene);
     this.closeDialog();
   }
 }

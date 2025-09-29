@@ -8,8 +8,6 @@ import {
   DocNode,
   TSDocConfiguration,
   TSDocParser,
-  TSDocTagDefinition,
-  TSDocTagSyntaxKind,
 } from '@microsoft/tsdoc';
 import fs from 'fs';
 import path from 'path';
@@ -55,6 +53,11 @@ const PACKAGES_TO_PARSE: ApiPackage[] = [
     entryPoint: 'dist/packages/react/index.d.ts',
   },
 ];
+
+function loadTsDocConfig(): TSDocConfiguration {
+  // Use default TSDoc configuration without custom tags
+  return new TSDocConfiguration();
+}
 
 function loadExtractorConfig(
   pkg: ApiPackage,
@@ -136,6 +139,7 @@ function filterMembersForAngularThetaChar(members: ApiMember[]): ApiMember[] {
 }
 
 async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
+  const tsdocConfig = loadTsDocConfig();
   const apiReportPath = path.join(
     MONOREPO_ROOT,
     `dist/reports/${pkg.alias}.api.json`,
@@ -317,7 +321,7 @@ async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
   }
 
   async function recursivelyParseDocs(apiMember: ApiMember): Promise<void> {
-    apiMember.docs = parseTSDoc(apiMember.docComment ?? '');
+    apiMember.docs = parseTSDoc(apiMember.docComment ?? '', tsdocConfig);
     const { formattedContent, overlayTokens } =
       await computeFormattedContentAndOverlayTokens(apiMember);
     apiMember.formattedContent = formattedContent;
@@ -385,14 +389,11 @@ function renderDocNode(annotation: string, docNode?: DocNode): string {
   return result.replace(annotation, '');
 }
 
-function parseTSDoc(foundComment: string): ApiDocs {
-  const customConfiguration = new TSDocConfiguration();
-  const usageNotesDefinition = new TSDocTagDefinition({
-    tagName: '@usageNotes',
-    syntaxKind: TSDocTagSyntaxKind.BlockTag,
-  });
-
-  customConfiguration.addTagDefinitions([usageNotesDefinition]);
+function parseTSDoc(
+  foundComment: string,
+  configuration?: TSDocConfiguration,
+): ApiDocs {
+  const customConfiguration = configuration || new TSDocConfiguration();
 
   const tsdocParser = new TSDocParser(customConfiguration);
   const parserContext = tsdocParser.parseString(foundComment);

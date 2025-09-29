@@ -3,6 +3,7 @@ import { Frame } from './frame-types';
 /**
  * Encodes a frame into a binary format.
  *
+ * @public
  * @param frame - The frame to encode.
  * @returns The encoded frame.
  */

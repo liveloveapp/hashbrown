@@ -1,9 +1,28 @@
+import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DocsMenu } from '../components/DocsMenu';
 import { Header } from '../components/Header';
 import { MarkdownPage } from '../components/MarkdownPage';
 import { Squircle } from '../components/Squircle';
+
+export const routeMeta: RouteMeta = {
+  title: 'Home: Hashbrown Docs',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Home: Hashbrown Docs',
+    },
+    {
+      name: 'og:description',
+      content: 'Hashbrown Docs.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
+};
 
 @Component({
   imports: [DocsMenu, Header, MarkdownPage, RouterOutlet, Squircle],
@@ -39,6 +58,7 @@ import { Squircle } from '../components/Squircle';
 
       > www-docs-menu {
         display: none;
+        padding: 16px;
       }
 
       > div {

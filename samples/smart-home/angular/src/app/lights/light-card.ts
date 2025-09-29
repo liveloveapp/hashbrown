@@ -4,24 +4,34 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { SmartHome } from '../smart-home';
+import { Squircle } from '../squircle';
 
 @Component({
   selector: 'app-light-card',
-  imports: [MatCardModule, MatSliderModule, MatButtonModule, MatIconModule],
+  imports: [
+    MatCardModule,
+    MatSliderModule,
+    MatButtonModule,
+    MatIconModule,
+    Squircle,
+  ],
   template: `
-    <div class="light-icon">
-      <button
-        mat-icon-button
-        (click)="onToggle()"
-        [class.on]="light().brightness > 0"
-      >
-        <mat-icon>lightbulb</mat-icon>
-      </button>
-    </div>
-
-    <div class="light-name">{{ light().name }}</div>
-
-    <div class="light-slider">
+    <div
+      class="card"
+      appSquircle="16"
+      [appSquircleBorderWidth]="2"
+      appSquircleBorderColor="var(--sunshine-yellow-light, #fde4ba)"
+    >
+      <div class="card-title">
+        <button
+          (click)="onToggle()"
+          [class.on]="light().brightness > 0"
+          appSquircle="4"
+        >
+          <mat-icon>lightbulb</mat-icon>
+        </button>
+        <p>{{ light().name }}</p>
+      </div>
       <mat-slider min="0" max="100" step="1">
         <input
           matSliderThumb
@@ -34,42 +44,48 @@ import { SmartHome } from '../smart-home';
   styles: [
     `
       :host {
-        display: grid;
-        width: 100%;
-        grid-template-columns: 32px 1fr;
-        grid-template-rows: auto auto;
-        grid-template-areas:
-          'icon name'
-          'icon slider';
-        column-gap: 16px;
-        padding: 8px 16px;
+        display: block;
       }
 
-      .light-icon {
-        grid-area: icon;
-        font-size: 24px;
+      .card {
         display: flex;
-        align-items: center;
-        justify-content: center;
-      }
+        flex-direction: column;
+        gap: 8px;
+        padding: 16px;
+        background: #fff;
 
-      .light-icon .on {
-        color: var(--mat-sys-primary);
-      }
+        > .card-title {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 8px;
 
-      .light-name {
-        font-size: 13px;
-        grid-area: name;
-        padding-left: 8px;
-      }
+          > button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            width: 24px;
 
-      .light-slider {
-        grid-area: slider;
-        padding-right: 16px;
-      }
+            &.on {
+              background: var(--sunshine-yellow-light, #fde4ba);
+            }
 
-      mat-slider {
-        width: 100%;
+            mat-icon {
+              font-size: 14px;
+              width: 14px;
+              height: 14px;
+            }
+          }
+
+          > p {
+            margin: 0;
+            color: var(--chocolate-brown, #774625);
+            font:
+              500 12px / 12px Fredoka,
+              sans-serif;
+          }
+        }
       }
     `,
   ],

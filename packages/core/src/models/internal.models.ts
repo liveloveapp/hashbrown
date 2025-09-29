@@ -2,6 +2,9 @@
 import { s } from '../schema';
 import { JsonValue } from '../utils';
 
+/**
+ * @public
+ */
 export interface Tool {
   name: string;
   description: string;
@@ -9,6 +12,9 @@ export interface Tool {
   handler: (input: any, abortSignal: AbortSignal) => Promise<any>;
 }
 
+/**
+ * @public
+ */
 export interface ToolCall {
   id: string;
   name: string;
@@ -18,20 +24,32 @@ export interface ToolCall {
   status: 'pending' | 'done';
 }
 
+/**
+ * @public
+ */
 export interface AssistantMessage {
   role: 'assistant';
   content?: string;
   toolCallIds: string[];
 }
 
+/**
+ * @public
+ */
 export interface UserMessage {
   role: 'user';
   content: JsonValue;
 }
 
+/**
+ * @public
+ */
 export interface ErrorMessage {
   role: 'error';
   content: string;
 }
 
+/**
+ * @public
+ */
 export type Message = AssistantMessage | UserMessage | ErrorMessage;

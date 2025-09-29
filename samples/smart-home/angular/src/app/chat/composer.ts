@@ -1,46 +1,57 @@
-import { Component, output, viewChild } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
+import { Component, output, viewChild } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { Squircle } from '../squircle';
 
 @Component({
   selector: 'app-chat-composer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, TextFieldModule],
+  imports: [MatIconModule, MatButtonModule, TextFieldModule, Squircle],
   template: `
-    <div class="textareaWrapper">
-      <textarea
-        name="Message"
-        #textarea
-        matInput
-        cdkTextareaAutosize
-        cdkAutosizeMinRows="1"
-        cdkAutosizeMaxRows="5"
-        class="chat-composer"
-        placeholder="Message..."
-        (keydown.enter)="onHitEnter(textarea, $event)"
-      ></textarea>
-    </div>
-    <button
-      mat-icon-button
-      class="send-button"
-      aria-label="Send"
-      (click)="onSendMessage(textarea)"
+    <div
+      class="container"
+      appSquircle="12"
+      [appSquircleBorderWidth]="2"
+      appSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
     >
-      <mat-icon>send</mat-icon>
-    </button>
+      <div class="textareaWrapper">
+        <textarea
+          name="Message"
+          #textarea
+          matInput
+          cdkTextareaAutosize
+          cdkAutosizeMinRows="1"
+          cdkAutosizeMaxRows="5"
+          class="chat-composer"
+          placeholder="Ask"
+          (keydown.enter)="onHitEnter(textarea, $event)"
+        ></textarea>
+      </div>
+      <button
+        mat-icon-button
+        class="send-button"
+        aria-label="Send"
+        (click)="onSendMessage(textarea)"
+      >
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
   `,
   styles: [
     `
       :host {
         display: block;
+        padding: 16px;
+      }
+
+      .container {
         position: relative;
+        background: #fff;
       }
 
       .textareaWrapper {
         padding: 16px 48px 16px 16px;
-        border-radius: 24px;
-        background-color: var(--mat-sys-surface-container-high);
       }
 
       textarea {
@@ -58,6 +69,7 @@ import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
         position: absolute;
         right: 8px;
         top: 4px;
+        color: #774625;
       }
     `,
   ],

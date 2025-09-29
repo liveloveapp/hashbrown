@@ -3,6 +3,25 @@
   "compiler": {
     "tsconfigFilePath": "<projectFolder>/tsconfig.lib.json"
   },
+  "messages": {
+    "tsdocMessageReporting": {
+      "default": {
+        "logLevel": "warning"
+      },
+      "tsdoc-undefined-tag": {
+        "logLevel": "none"
+      }
+    },
+    "extractorMessageReporting": {
+      "default": {
+        "logLevel": "warning"
+      }
+    }
+  },
+  "tsdocMetadata": {
+    "enabled": true,
+    "tsdocMetadataFilePath": "<projectFolder>/tsdoc-metadata.json"
+  },
   "apiReport": {
     "enabled": true,
     "reportFolder": "<projectFolder>",
@@ -15,5 +34,5 @@
     "enabled": false
   },
   "newlineKind": "lf",
-  "bundledPackages": []
+  "bundledPackages": ["@hashbrownai/core"]
 }

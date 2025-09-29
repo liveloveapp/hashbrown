@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!exposeComponent:function(1)",
-      "docComment": "/**\n * Creates an object used to expose a component for use by the LLM.\n *\n * @returns {ExposedComponent<T>} - An object representing the component in order to expose it to the LLM.\n *\n * @example\n * ```ts\n * exposeComponent(\n *   CardComponent, // The React component to be exposed.\n *   { // The exposed component configuration.\n *     name: 'CardComponent',\n *     description: 'Show a card with children components to the user',\n *     children: 'any',\n *     props: {\n *       title: s.string('The title of the card'),\n *       description: s.streaming.string('The description of the card'),\n *     },\n *   },\n * });\n * ```\n *\n */\n",
+      "docComment": "/**\n * Creates an object used to expose a component for use by the LLM.\n *\n * @returns An object representing the component in order to expose it to the LLM.\n *\n * @example\n * ```ts\n * exposeComponent(\n *   CardComponent, // The React component to be exposed.\n *   { // The exposed component configuration.\n *     name: 'CardComponent',\n *     description: 'Show a card with children components to the user',\n *     children: 'any',\n *     props: {\n *       title: s.string('The title of the card'),\n *       description: s.streaming.string('The description of the card'),\n *     },\n *   },\n * });\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -26,7 +26,7 @@
         {
           "kind": "Reference",
           "text": "ɵtypes.Prettify",
-          "canonicalReference": "!ɵtypes.Prettify:type"
+          "canonicalReference": "@hashbrownai/react!~Prettify:type"
         },
         { "kind": "Content", "text": "<" },
         {
@@ -77,7 +77,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -87,11 +87,11 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " {ExposedComponent<T>} - An object representing the component in order to expose it to the LLM.\n\n",
+        "returns": " An object representing the component in order to expose it to the LLM.\n\n",
         "see": [],
         "params": [],
         "examples": [
-          "\n```ts\nexposeComponent(\n  CardComponent, // The React component to be exposed.\n  { // The exposed component configuration.\n    name: 'CardComponent',\n    description: 'Show a card with children components to the user',\n    children: 'any',\n    props: {\n      title: s.string('The title of the card'),\n      description: s.streaming.string('The description of the card'),\n    },\n  },\n});\n```\n\n"
+          "\n```ts\nexposeComponent(\n  CardComponent, // The React component to be exposed.\n  { // The exposed component configuration.\n    name: 'CardComponent',\n    description: 'Show a card with children components to the user',\n    children: 'any',\n    props: {\n      title: s.string('The title of the card'),\n      description: s.streaming.string('The description of the card'),\n    },\n  },\n});\n```\n\n\n"
         ]
       },
       "formattedContent": "export declare function exposeComponent<\n  T extends  ComponentType <any>,\n>(\n  component: T,\n  config:  ɵtypes.Prettify <\n     Omit <\n       ExposedComponent <T>,\n      \"component\"\n    >\n  >,\n):  ExposedComponent <T>;",
@@ -112,7 +112,7 @@
         {
           "kind": "Reference",
           "text": " ɵtypes.Prettify",
-          "canonicalReference": "!ɵtypes.Prettify:type"
+          "canonicalReference": "@hashbrownai/react!~Prettify:type"
         },
         { "kind": "Content", "text": " <\n    " },
         {

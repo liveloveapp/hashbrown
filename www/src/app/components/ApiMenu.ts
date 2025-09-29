@@ -28,6 +28,10 @@ import { ApiService } from '../services/ApiService';
       transition: transform 0.2s ease-in-out;
     }
 
+    .window.level-1 {
+      transform: translateX(-100%);
+    }
+
     @media screen and (min-width: 768px) {
       .window.level-1 {
         transform: translateX(-196px);

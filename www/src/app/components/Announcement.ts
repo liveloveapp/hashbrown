@@ -1,40 +1,46 @@
 import { Component } from '@angular/core';
+import { Close } from '../icons/Close';
+import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { Squircle } from './Squircle';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'www-announcement',
-  imports: [Squircle, RouterLink],
+  imports: [Close, ArrowUpRight, Squircle],
   template: `
     @if (showAnnouncement) {
-      <div class="alert" wwwSquircle="0 0 8 8">
-        <a routerLink="/workshops">
-          <strong>New!</strong> Workshop tickets for
-          <em>Build Generative UIs in React</em>
-          are on sale now.
-        </a>
-        <button
-          class="close"
-          (click)="onDismiss()"
-          aria-label="Dismiss announcement"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="lucide lucide-x"
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
+      <div class="alert">
+        <div class="content">
+          <div class="player">
+            <img
+              src="/image/landing-page/wdc-s2e9.jpg"
+              alt="Hashbrown on the Web Dev Challenge Season 2 Episode 9"
+            />
+          </div>
+          <div class="text">
+            <div class="announcement">
+              <h3>Hashbrown on the Web Dev Challenge</h3>
+              <p>
+                The challenge: three teams had 30 minutes to plan and 4 hours to
+                build an app with Hashbrown.
+              </p>
+            </div>
+            <div class="actions">
+              <a
+                href="https://www.youtube.com/watch?v=nUSbmGQRsv4&list=PLz8Iz-Fnk_eTkZvSNWXW_TKZ2UwVirT2M"
+                target="_blank"
+                wwwSquircle="8"
+                [wwwSquircleBorderWidth]="2"
+                wwwSquircleBorderColor="var(--gray-light)"
+              >
+                Watch Now <www-arrow-up-right height="16px" width="16px" />
+              </a>
+            </div>
+          </div>
+        </div>
+        <button (click)="onDismiss()" aria-label="Dismiss announcement">
+          <www-close height="16px" width="16px" />
         </button>
-        <div class="gradient"></div>
+        <!-- <div class="gradient"></div> -->
       </div>
     }
   `,
@@ -44,77 +50,119 @@ import { RouterLink } from '@angular/router';
       flex-direction: column;
       align-items: center;
       width: 100%;
-      max-width: 100vw;
       position: fixed;
       bottom: 32px;
       z-index: 1000;
       opacity: 1;
       transition: opacity 800ms ease-in-out;
       padding: 0 16px;
+      pointer-events: none;
 
       @starting-style {
         opacity: 0;
       }
 
       .alert {
+        pointer-events: auto;
         display: inline-grid;
         grid-template-areas: 'announcement close' 'gradient gradient';
         grid-template-columns: 1fr 32px;
-        grid-template-rows: 1fr 8px;
-        justify-content: center;
-        align-items: center;
-        border-radius: 8px 8px 1px 1px;
+        grid-template-rows: 1fr 0px;
+        max-width: 680px;
+        width: 100%;
+        overflow: hidden;
+        border-radius: 24px;
         background: rgba(255, 255, 255, 0.8);
         backdrop-filter: blur(10px);
-        box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.12);
-        width: auto;
+        box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
         transition: background-color 300ms ease-in-out;
 
         &:hover {
           background: rgba(255, 255, 255, 0.92);
         }
 
-        a {
+        > .content {
           grid-area: announcement;
-          padding: 11px 24px 12px 24px;
+          display: inline-grid;
+          grid-template-columns: 160px 1fr;
+          gap: 16px;
+          padding: 16px;
           color: rgba(0, 0, 0, 0.64);
-          text-align: center;
           font:
             400 13px/140% 'Fredoka',
             sans-serif;
 
-          strong {
-            font-weight: 700;
+          > .player {
+            width: 160px;
+            height: 107px;
+            position: relative;
+
+            > img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
           }
 
-          em {
-            text-decoration: underline;
-            text-decoration-style: solid;
-            text-decoration-thickness: 1px;
-            transition: text-decoration-thickness 0.2s ease-in-out;
-          }
+          > .text {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
 
-          &:hover em {
-            text-decoration-thickness: 2px;
+            > .announcement {
+              display: flex;
+              flex-direction: column;
+
+              > h3 {
+                color: var(--gray-dark, #3d3c3a);
+                font:
+                  750 16px/24px KefirVariable,
+                  sans-serif;
+                font-variation-settings: 'wght' 750;
+              }
+
+              > p {
+                text-wrap: balance;
+                color: rgba(0, 0, 0, 0.64);
+                font:
+                  600 13px/140% 'Fredoka',
+                  sans-serif;
+              }
+            }
+
+            > .actions {
+              display: flex;
+
+              > a {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                padding: 8px 16px;
+                background: #a4a3a11f;
+                color: var(--gray);
+                font:
+                  400 13px/140% 'Fredoka',
+                  sans-serif;
+              }
+            }
           }
         }
-      }
 
-      .close {
-        grid-area: close;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 24px;
-        padding-right: 8px;
-        background: none;
-        border: none;
-        opacity: 0.56;
-        transition: opacity 0.2s ease-in-out;
+        > button {
+          grid-area: close;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          padding: 24px 24px 0 0;
+          opacity: 0.56;
+          transition: opacity 0.2s ease-in-out;
+          cursor: pointer;
 
-        &:hover {
-          opacity: 1;
+          &:hover {
+            opacity: 1;
+          }
         }
       }
 
@@ -136,7 +184,7 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class Announcement {
-  currentAnnouncementDate = new Date('2025-08-17');
+  currentAnnouncementDate = new Date('2025-09-22');
   showAnnouncement = false;
 
   constructor() {

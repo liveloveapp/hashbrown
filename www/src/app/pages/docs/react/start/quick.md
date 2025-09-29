@@ -1,3 +1,9 @@
+---
+title: 'React Quick Start: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Take your first steps with Hashbrown.'
+---
 # React Quick Start
 
 <p class="subtitle">Take your first steps with Hashbrown.</p>
@@ -73,11 +79,11 @@ export function Providers() {
 
 To get started, we recommend running a local express server following the Hashbrown adapter documentation.
 
-- [OpenAI](/docs/angular/platform/openai)
-- [Azure OpenAI](/docs/angular/platform/azure)
-- [Google Gemini](/docs/angular/platform/google)
-- [Writer](/docs/angular/platform/writer)
-
+- [OpenAI](/docs/react/platform/openai)
+- [Azure OpenAI](/docs/react/platform/azure)
+- [Google Gemini](/docs/react/platform/google)
+- [Writer](/docs/react/platform/writer)
+- [Ollama](/docs/react/platform/ollama)
 ---
 
 ## The `useChat()` Hook

@@ -1,0 +1,92 @@
+{
+  "name": "UiChatMessageOutput",
+  "canonicalReference": "@hashbrownai/angular!UiChatMessageOutput:type",
+  "kind": "TypeAlias",
+  "fileUrlPath": "../dist/packages/angular/index.d.ts",
+  "isDeprecated": false,
+  "members": [
+    {
+      "kind": "TypeAlias",
+      "canonicalReference": "@hashbrownai/angular!UiChatMessageOutput:type",
+      "docComment": "/**\n * @public\n */\n",
+      "excerptTokens": [
+        { "kind": "Content", "text": "type UiChatMessageOutput = " },
+        {
+          "kind": "Reference",
+          "text": "s.ObjectType",
+          "canonicalReference": "@hashbrownai/angular!~ObjectType:interface"
+        },
+        { "kind": "Content", "text": "<{\n    ui: " },
+        {
+          "kind": "Reference",
+          "text": "s.ArrayType",
+          "canonicalReference": "@hashbrownai/angular!~ArrayType:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "s.ObjectType",
+          "canonicalReference": "@hashbrownai/angular!~ObjectType:interface"
+        },
+        { "kind": "Content", "text": "<" },
+        {
+          "kind": "Reference",
+          "text": "_ui.ComponentTreeSchema",
+          "canonicalReference": "@hashbrownai/angular!~ComponentTreeSchema:type"
+        },
+        { "kind": "Content", "text": ">>;\n}>" },
+        { "kind": "Content", "text": ";" }
+      ],
+      "fileUrlPath": "../dist/packages/angular/index.d.ts",
+      "releaseTag": "Public",
+      "name": "UiChatMessageOutput",
+      "typeTokenRange": { "startIndex": 1, "endIndex": 9 },
+      "docs": {
+        "modifiers": {
+          "isInternal": false,
+          "isPublic": true,
+          "isAlpha": false,
+          "isBeta": false,
+          "isOverride": false,
+          "isExperimental": false
+        },
+        "summary": "\n",
+        "usageNotes": "",
+        "remarks": "",
+        "deprecated": "",
+        "returns": "",
+        "see": [],
+        "params": [],
+        "examples": []
+      },
+      "formattedContent": "type UiChatMessageOutput =  s.ObjectType <{\n  ui:  s.ArrayType <\n     s.ObjectType < _ui.ComponentTreeSchema >\n  >;\n}>;",
+      "overlayTokens": [
+        { "kind": "Content", "text": "type UiChatMessageOutput = " },
+        {
+          "kind": "Reference",
+          "text": " s.ObjectType",
+          "canonicalReference": "@hashbrownai/angular!~ObjectType:interface"
+        },
+        { "kind": "Content", "text": " <{\n  ui: " },
+        {
+          "kind": "Reference",
+          "text": " s.ArrayType",
+          "canonicalReference": "@hashbrownai/angular!~ArrayType:interface"
+        },
+        { "kind": "Content", "text": " <\n    " },
+        {
+          "kind": "Reference",
+          "text": " s.ObjectType",
+          "canonicalReference": "@hashbrownai/angular!~ObjectType:interface"
+        },
+        { "kind": "Content", "text": " <" },
+        {
+          "kind": "Reference",
+          "text": " _ui.ComponentTreeSchema ",
+          "canonicalReference": "@hashbrownai/angular!~ComponentTreeSchema:type"
+        },
+        { "kind": "Content", "text": ">\n  >;\n}>;" }
+      ]
+    }
+  ]
+}

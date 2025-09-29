@@ -10,11 +10,12 @@ import {
 /**
  * Creates a tool with a schema.
  *
- * @param input - The input for the tool.
- * @param input.name - The name of the tool.
- * @param input.description - The description of the tool.
- * @param input.schema - The schema of the tool.
- * @param input.handler - The handler of the tool.
+ * @public
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `schema`: The schema of the tool
+ *   - `handler`: The handler of the tool
  * @param Name - The name of the tool.
  * @param Schema - The schema of the tool.
  * @param Result - The result of the tool.
@@ -37,11 +38,12 @@ export function createTool<
 /**
  * Creates a tool with a unknown JSON schema.
  *
- * @param input - The input for the tool.
- * @param input.name - The name of the tool.
- * @param input.description - The description of the tool.
- * @param input.schema - The schema of the tool.
- * @param input.handler - The handler of the tool.
+ * @public
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `schema`: The schema of the tool
+ *   - `handler`: The handler of the tool
  * @param Name - The name of the tool.
  * @param Schema - The schema of the tool.
  * @param Result - The result of the tool.
@@ -57,10 +59,11 @@ export function createTool<const Name extends string, Result>(input: {
 /**
  * Creates a tool without a schema.
  *
- * @param input - The input for the tool.
- * @param input.name - The name of the tool.
- * @param input.description - The description of the tool.
- * @param input.handler - The handler of the tool.
+ * @public
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `handler`: The handler of the tool
  * @param Name - The name of the tool.
  * @param Result - The result of the tool.
  * @returns The tool.
@@ -71,6 +74,9 @@ export function createTool<const Name extends string, Result>(input: {
   handler: (abortSignal: AbortSignal) => Promise<Result>;
 }): Chat.Tool<Name, void, Result>;
 
+/**
+ * @public
+ */
 export function createTool(
   input:
     | {
@@ -91,8 +97,6 @@ export function createTool(
         handler: (a: unknown, s: AbortSignal) => Promise<unknown>;
       },
 ): unknown {
-  const injector = inject(Injector);
-
   if ('schema' in input) {
     const { name, description, schema, handler } = input;
     return {
@@ -100,9 +104,7 @@ export function createTool(
       description,
       schema,
       handler: (args: unknown, abortSignal: AbortSignal) =>
-        untracked(() =>
-          runInInjectionContext(injector, () => handler(args, abortSignal)),
-        ),
+        handler(args, abortSignal),
     };
   } else {
     const { name, description, handler } = input;
@@ -110,10 +112,19 @@ export function createTool(
       name,
       description,
       schema: s.object('Empty Object', {}),
-      handler: (_: void, abortSignal: AbortSignal) =>
-        untracked(() =>
-          runInInjectionContext(injector, () => handler(abortSignal)),
-        ),
+      handler: (_: void, abortSignal: AbortSignal) => handler(abortSignal),
     };
   }
+}
+
+export function bindToolToInjector<
+  T extends Chat.Tool<string, unknown, unknown>,
+>(tool: T, injector: Injector): T {
+  return {
+    ...tool,
+    handler: (args: unknown, abortSignal: AbortSignal) =>
+      untracked(() =>
+        runInInjectionContext(injector, () => tool.handler(args, abortSignal)),
+      ),
+  };
 }

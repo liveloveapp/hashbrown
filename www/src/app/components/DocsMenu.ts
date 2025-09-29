@@ -1,12 +1,13 @@
-import { Component, inject } from '@angular/core';
-import { ConfigService } from '../services/ConfigService';
-import { computed } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
-import { Squircle } from './Squircle';
-import { DropdownMenu } from './DropDownMenu';
+import { Component, computed, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map, startWith } from 'rxjs/operators';
 import { Angular } from '../icons/Angular';
-import { React } from '../icons/React';
 import { ChevronDown } from '../icons/ChevronDown';
+import { React } from '../icons/React';
+import { ConfigService } from '../services/ConfigService';
+import { DropdownMenu } from './DropDownMenu';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-docs-menu',
@@ -61,12 +62,12 @@ import { ChevronDown } from '../icons/ChevronDown';
             </label>
           }
         }
-        <div content>
-          <a routerLink="/docs/angular/start/intro" class="menu-item">
+        <div content class="dropdown-content">
+          <a [routerLink]="angularDocsUrl()" class="menu-item">
             <www-angular height="16px" width="16px" fill="#774625" />
             Angular
           </a>
-          <a routerLink="/docs/react/start/intro" class="menu-item">
+          <a [routerLink]="reactDocsUrl()" class="menu-item">
             <www-react height="16px" width="16px" fill="#774625" />
             React
           </a>
@@ -114,7 +115,10 @@ import { ChevronDown } from '../icons/ChevronDown';
       <h2>Guide</h2>
       <ol>
         <li>
-          <a [routerLink]="[docsUrl(), 'concept', 'ai-basics']"
+          <a
+            [routerLink]="[docsUrl(), 'concept', 'ai-basics']"
+            routerLinkActive="active"
+            wwwSquircle="8"
             >1. Basics of AI</a
           >
         </li>
@@ -193,6 +197,22 @@ import { ChevronDown } from '../icons/ChevronDown';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'recipes', 'ui-chatbot']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >UI Chatbot with Tools</a
+          >
+        </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Predictive Suggestions</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'recipes', 'remote-mcp']"
             routerLinkActive="active"
             wwwSquircle="8"
@@ -236,6 +256,14 @@ import { ChevronDown } from '../icons/ChevronDown';
             >Writer</a
           >
         </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'ollama']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Ollama</a
+          >
+        </li>
       </ul>
     </div>
   `,
@@ -245,7 +273,7 @@ import { ChevronDown } from '../icons/ChevronDown';
       flex-direction: column;
       gap: 16px;
       height: 100%;
-      padding: 16px;
+      width: 100%;
       overflow-y: auto;
       overflow-x: hidden;
 
@@ -293,6 +321,16 @@ import { ChevronDown } from '../icons/ChevronDown';
       }
     }
 
+    .dropdown-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
+      background: #fff;
+    }
+
     .sdk ::ng-deep button {
       display: flex;
       height: 40px;
@@ -323,7 +361,7 @@ import { ChevronDown } from '../icons/ChevronDown';
       align-items: center;
       gap: 8px;
       padding: 6px 12px;
-      width: 192px;
+      width: 100%;
       border-radius: 8px;
       color: var(--chocolate-brown, #774625);
       font:
@@ -335,13 +373,69 @@ import { ChevronDown } from '../icons/ChevronDown';
         background: var(--sunshine-yellow-light, #fde4ba);
       }
     }
+
+    @media screen and (min-width: 768px) {
+      .menu-item {
+        width: 128px;
+      }
+    }
+
+    @media screen and (min-width: 1024px) {
+      .menu-item {
+        width: 192px;
+      }
+    }
   `,
 })
 export class DocsMenu {
   configService = inject(ConfigService);
+  router = inject(Router);
+
   sdk = this.configService.sdk;
+
+  url = toSignal(
+    this.router.events.pipe(
+      map(() => this.router.url),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
 
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}`;
+  });
+
+  angularDocsUrl = computed(() => {
+    const currentPath = this.url();
+    const pathParts = currentPath.split('/').filter(Boolean);
+
+    if (pathParts.length >= 3 && pathParts[0] === 'docs') {
+      const folder = pathParts[2] ?? '';
+      const file = pathParts[3] ?? '';
+      if (folder && file) {
+        return `/docs/angular/${folder}/${file}`;
+      } else if (folder) {
+        return `/docs/angular/${folder}`;
+      }
+    }
+
+    return '/docs/angular/start/intro';
+  });
+
+  reactDocsUrl = computed(() => {
+    const currentPath = this.url();
+    const pathParts = currentPath.split('/').filter(Boolean);
+
+    if (pathParts.length >= 3 && pathParts[0] === 'docs') {
+      const folder = pathParts[2] ?? '';
+      const file = pathParts[3] ?? '';
+      if (folder && file) {
+        return `/docs/react/${folder}/${file}`;
+      } else if (folder) {
+        return `/docs/react/${folder}`;
+      }
+    }
+
+    return '/docs/react/start/intro';
   });
 }

@@ -1,3 +1,9 @@
+---
+title: 'Structured Output: Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Specify the JSON schema of the model response.'
+---
 # Structured Output
 
 <p class="subtitle">Specify the JSON schema of the model response.</p>

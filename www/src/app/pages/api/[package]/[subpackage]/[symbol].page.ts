@@ -7,6 +7,26 @@ import {
 import { switchMap } from 'rxjs';
 import { Symbol } from '../../../../components/Symbol';
 import { ApiService } from '../../../../services/ApiService';
+import { RouteMeta } from '@analogjs/router';
+import { ActivatedRouteSnapshot } from '@angular/router';
+
+export const routeMeta: RouteMeta = {
+  title: (route: ActivatedRouteSnapshot) => {
+    return `@hashbrownai/${route.params['package']}/${route.params['subpackage']}.${route.params['symbol']}: Hashbrown API`;
+  },
+  meta: (route: ActivatedRouteSnapshot) => {
+    return [
+      {
+        name: 'og:title',
+        content: `@hashbrownai/${route.params['package']}/${route.params['subpackage']}.${route.params['symbol']}: Hashbrown API`,
+      },
+      {
+        name: 'og:image',
+        content: `https://hashbrown.dev/image/meta/og-default.png`,
+      },
+    ];
+  },
+};
 
 @Component({
   template: `

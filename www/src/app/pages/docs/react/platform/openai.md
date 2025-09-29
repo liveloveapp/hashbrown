@@ -1,3 +1,9 @@
+---
+title: 'OpenAI (React): Hashbrown React Docs'
+meta:
+  - name: description
+    content: 'Hashbrown’s OpenAI adapter lets you stream chat completions from OpenAI’s GPT models, including support for tool calling, response schemas, and request transforms.'
+---
 # OpenAI (React)
 
 First, install the OpenAI adapter package:
@@ -61,6 +67,37 @@ app.post('/chat', async (req, res) => {
   res.end();
 });
 ```
+
+---
+
+### Transform Request Options
+
+The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to OpenAI. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
+
+```ts
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: req.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          ...options.messages,
+        ],
+        // Adjust temperature based on user preferences
+        temperature: getUserPreferences(req.user.id).creativity,
+      };
+    },
+  });
+
+  // ... rest of the code
+});
+```
+
+[Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
 
 ---
 

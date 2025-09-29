@@ -49,6 +49,9 @@ Thumbs.db
 # Nitro
 .nitro
 
+# Netlify
+.netlify
+
 # Vite
 vite.config.*.timestamp*
 vitest.config.*.timestamp*

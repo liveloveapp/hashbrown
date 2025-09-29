@@ -1,0 +1,51 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.button {
+  font-family: 'Fredoka', sans-serif;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 8px;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  color: rgba(0, 0, 0, 0.32);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease-in-out;
+}
+
+.button:hover {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.icon {
+  opacity: 0.92;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.button:hover .icon {
+  opacity: 1;
+}
+
+.button:nth-child(4n) .icon {
+  color: #9ecfd7;
+}
+
+.button:nth-child(4n + 1) .icon {
+  color: #b76060;
+}
+
+.button:nth-child(4n + 2) .icon {
+  color: #e88c4d;
+}
+
+.button:nth-child(4n + 3) .icon {
+  color: #fbbb52;
+}

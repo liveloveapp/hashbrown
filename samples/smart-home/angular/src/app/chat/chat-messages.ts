@@ -7,16 +7,28 @@ import {
   UiChatMessage,
 } from '@hashbrownai/angular';
 import { ToolChip } from './tool-chip';
+import { Squircle } from '../squircle';
 
 @Component({
   selector: 'app-chat-messages',
   standalone: true,
-  imports: [RenderMessageComponent, MatIconModule, MatButtonModule, ToolChip],
+  imports: [
+    RenderMessageComponent,
+    MatIconModule,
+    MatButtonModule,
+    ToolChip,
+    Squircle,
+  ],
   template: `
     @for (message of collapsedMessages(); track $index) {
       @switch (message.role) {
         @case ('user') {
-          <div class="chat-message user">
+          <div
+            class="chat-message user"
+            appSquircle="16"
+            [appSquircleBorderWidth]="2"
+            appSquircleBorderColor="rgba(0, 0, 0, 0.12)"
+          >
             <p>{{ message.content }}</p>
           </div>
         }
@@ -39,7 +51,9 @@ import { ToolChip } from './tool-chip';
             </div>
 
             @if (message.content) {
-              <hb-render-message [message]="message" />
+              <div class="assistant-content">
+                <hb-render-message [message]="message" />
+              </div>
             }
           </div>
         }
@@ -65,11 +79,19 @@ import { ToolChip } from './tool-chip';
 
       .chat-message.user {
         padding: 16px;
-        border-radius: 16px;
-        width: 80%;
-        background-color: var(--mat-sys-surface-container-highest);
+        max-width: 80%;
+        background: #fff;
         align-self: flex-end;
         margin-top: 16px;
+
+        > p {
+          color: var(--gray-dark, #3d3c3a);
+          font-family: Fredoka;
+          font-size: 14px;
+          font-style: normal;
+          font-weight: 400;
+          line-height: normal;
+        }
       }
 
       .chat-message.assistant {
@@ -82,6 +104,17 @@ import { ToolChip } from './tool-chip';
           'blank content';
         column-gap: 16px;
         padding: 16px 0px;
+      }
+
+      .chat-message.assistant ::ng-deep .app-markdown {
+        p {
+          color: var(--gray-dark, #3d3c3a);
+          font-family: Fredoka;
+          font-size: 14px;
+          font-style: normal;
+          font-weight: 400;
+          line-height: normal;
+        }
       }
 
       .chat-message.assistant.hasToolCalls {
@@ -110,8 +143,23 @@ import { ToolChip } from './tool-chip';
         gap: 8px;
       }
 
-      hb-render-message {
+      .assistant-content {
         grid-area: content;
+
+        > hb-render-message {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        > hb-render-message > p {
+          color: var(--gray-dark, #3d3c3a);
+          font-family: Fredoka;
+          font-size: 14px;
+          font-style: normal;
+          font-weight: 400;
+          line-height: normal;
+        }
       }
 
       .chat-message.component {

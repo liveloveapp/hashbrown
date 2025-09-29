@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useTool:function(1)",
-      "docComment": "/**\n * Creates a tool with a schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param deps - Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
+      "docComment": "/**\n * Creates a tool with a schema.\n *\n * @param input - The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n *\n * @param deps - Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @typeParam Name - The name of the tool.\n *\n * @typeParam Schema - The schema of the tool.\n *\n * @typeParam Result - The result of the tool.\n *\n * @returns The tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -19,26 +19,26 @@
         {
           "kind": "Reference",
           "text": "s.HashbrownType",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ", Result>(input: " },
         {
           "kind": "Reference",
           "text": "ToolOptionsWithInput",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithInput:interface"
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput:interface"
         },
         { "kind": "Content", "text": "<Name, Schema, Result>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         { "kind": "Content", "text": "<Name, " },
         {
           "kind": "Reference",
           "text": "s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": "<Schema>, Result>" },
         { "kind": "Content", "text": ";" }
@@ -75,7 +75,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -85,25 +85,12 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The tool.\n",
+        "returns": " The tool.\n\n\n",
         "see": [],
         "params": [
-          { "name": "input", "description": "The input for the tool.\n\n" },
           {
-            "name": "",
-            "description": "  - input.name - The name of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.description - The description of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.schema - The schema of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.handler - The handler of the tool.\n\n"
+            "name": "input",
+            "description": "The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n\n"
           },
           {
             "name": "deps",
@@ -124,25 +111,25 @@
         {
           "kind": "Reference",
           "text": " s.HashbrownType ",
-          "canonicalReference": "!s.HashbrownType:type"
+          "canonicalReference": "@hashbrownai/react!~HashbrownType:interface"
         },
         { "kind": "Content", "text": ",\n  Result,\n>(\n  input: " },
         {
           "kind": "Reference",
           "text": " ToolOptionsWithInput",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithInput:interface"
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithInput:interface"
         },
         { "kind": "Content", "text": " <Name, Schema, Result>,\n): " },
         {
           "kind": "Reference",
           "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         { "kind": "Content", "text": " <\n  Name,\n  " },
         {
           "kind": "Reference",
           "text": " s.Infer",
-          "canonicalReference": "!s.Infer:type"
+          "canonicalReference": "@hashbrownai/react!~Infer:type"
         },
         { "kind": "Content", "text": " <Schema>,\n  Result\n>;" }
       ]
@@ -150,7 +137,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useTool:function(2)",
-      "docComment": "/**\n * Creates a tool with a unknown JSON schema.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n */\n",
+      "docComment": "/**\n * Creates a tool with a unknown JSON schema.\n *\n * @param input - The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n *\n * @typeParam Name - The name of the tool.\n *\n * @typeParam Result - The result of the tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -161,14 +148,14 @@
         {
           "kind": "Reference",
           "text": "ToolOptionsWithUnknownSchema",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithUnknownSchema:interface"
         },
         { "kind": "Content", "text": "<Name, Result>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         { "kind": "Content", "text": "<Name, any, Result>" },
         { "kind": "Content", "text": ";" }
@@ -200,7 +187,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -213,22 +200,9 @@
         "returns": "",
         "see": [],
         "params": [
-          { "name": "input", "description": "The input for the tool.\n\n" },
           {
-            "name": "",
-            "description": "  - input.name - The name of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.description - The description of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.schema - The schema of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.handler - The handler of the tool.\n"
+            "name": "input",
+            "description": "The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n\n"
           }
         ],
         "examples": []
@@ -242,13 +216,13 @@
         {
           "kind": "Reference",
           "text": " ToolOptionsWithUnknownSchema",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithUnknownSchema:interface"
         },
         { "kind": "Content", "text": " <Name, Result>,\n): " },
         {
           "kind": "Reference",
           "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         { "kind": "Content", "text": " <Name, any, Result>;" }
       ]
@@ -256,7 +230,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useTool:function(3)",
-      "docComment": "/**\n * Creates a tool.\n *\n * @param input - The input for the tool.\n *\n * @param  - input.name - The name of the tool.\n *\n * @param  - input.description - The description of the tool.\n *\n * @param  - input.schema - The schema of the tool.\n *\n * @param  - input.handler - The handler of the tool.\n *\n * @param deps - Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @returns The tool.\n */\n",
+      "docComment": "/**\n * Creates a tool.\n *\n * @param input - The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n *\n * @param deps - Dependencies that should trigger tool recreation. The hook will automatically memoize the handler based on these dependencies, so you can safely pass anonymous functions.\n *\n * @param Name - The name of the tool.\n *\n * @param Schema - The schema of the tool.\n *\n * @param Result - The result of the tool.\n *\n * @typeParam Name - The name of the tool.\n *\n * @typeParam Result - The result of the tool.\n *\n * @returns The tool.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -267,14 +241,14 @@
         {
           "kind": "Reference",
           "text": "ToolOptionsWithoutInput",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithoutInput:interface"
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithoutInput:interface"
         },
         { "kind": "Content", "text": "<Name, Result>" },
         { "kind": "Content", "text": "): " },
         {
           "kind": "Reference",
           "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         { "kind": "Content", "text": "<Name, void, Result>" },
         { "kind": "Content", "text": ";" }
@@ -306,7 +280,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -316,25 +290,12 @@
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": " The tool.\n",
+        "returns": " The tool.\n\n\n",
         "see": [],
         "params": [
-          { "name": "input", "description": "The input for the tool.\n\n" },
           {
-            "name": "",
-            "description": "  - input.name - The name of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.description - The description of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.schema - The schema of the tool.\n\n"
-          },
-          {
-            "name": "",
-            "description": "  - input.handler - The handler of the tool.\n\n"
+            "name": "input",
+            "description": "The input for the tool containing: - `name`: The name of the tool - `description`: The description of the tool - `schema`: The schema of the tool - `handler`: The handler of the tool\n\n"
           },
           {
             "name": "deps",
@@ -355,103 +316,15 @@
         {
           "kind": "Reference",
           "text": " ToolOptionsWithoutInput",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithoutInput:interface"
+          "canonicalReference": "@hashbrownai/react!ToolOptionsWithoutInput:interface"
         },
         { "kind": "Content", "text": " <Name, Result>,\n): " },
         {
           "kind": "Reference",
           "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
+          "canonicalReference": "@hashbrownai/react!~Tool_3:type"
         },
         { "kind": "Content", "text": " <Name, void, Result>;" }
-      ]
-    },
-    {
-      "kind": "Function",
-      "canonicalReference": "@hashbrownai/react!useTool:function(4)",
-      "docComment": "",
-      "excerptTokens": [
-        {
-          "kind": "Content",
-          "text": "export declare function useTool<const Name extends "
-        },
-        { "kind": "Content", "text": "string" },
-        { "kind": "Content", "text": ", Result>(input: " },
-        {
-          "kind": "Reference",
-          "text": "ToolOptionsWithUnknownSchema",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
-        },
-        { "kind": "Content", "text": "<Name, Result>" },
-        { "kind": "Content", "text": "): " },
-        {
-          "kind": "Reference",
-          "text": "Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
-        },
-        { "kind": "Content", "text": "<Name, any, Result>" },
-        { "kind": "Content", "text": ";" }
-      ],
-      "fileUrlPath": "../dist/packages/react/src/hooks/use-tool.d.ts",
-      "returnTypeTokenRange": { "startIndex": 6, "endIndex": 8 },
-      "releaseTag": "Public",
-      "overloadIndex": 4,
-      "parameters": [
-        {
-          "parameterName": "input",
-          "parameterTypeTokenRange": { "startIndex": 3, "endIndex": 5 },
-          "isOptional": false
-        }
-      ],
-      "typeParameters": [
-        {
-          "typeParameterName": "Name",
-          "constraintTokenRange": { "startIndex": 1, "endIndex": 2 },
-          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
-        },
-        {
-          "typeParameterName": "Result",
-          "constraintTokenRange": { "startIndex": 0, "endIndex": 0 },
-          "defaultTypeTokenRange": { "startIndex": 0, "endIndex": 0 }
-        }
-      ],
-      "name": "useTool",
-      "docs": {
-        "modifiers": {
-          "isInternal": false,
-          "isPublic": false,
-          "isAlpha": false,
-          "isBeta": false,
-          "isOverride": false,
-          "isExperimental": false
-        },
-        "summary": "",
-        "usageNotes": "",
-        "remarks": "",
-        "deprecated": "",
-        "returns": "",
-        "see": [],
-        "params": [],
-        "examples": []
-      },
-      "formattedContent": "export declare function useTool<const Name extends string, Result>(\n  input:  ToolOptionsWithUnknownSchema <Name, Result>,\n):  Chat.Tool <Name, any, Result>;",
-      "overlayTokens": [
-        {
-          "kind": "Content",
-          "text": "export declare function useTool<const Name extends string, Result>(\n  input: "
-        },
-        {
-          "kind": "Reference",
-          "text": " ToolOptionsWithUnknownSchema",
-          "canonicalReference": "@hashbrownai/react!~ToolOptionsWithUnknownSchema:interface"
-        },
-        { "kind": "Content", "text": " <Name, Result>,\n): " },
-        {
-          "kind": "Reference",
-          "text": " Chat.Tool",
-          "canonicalReference": "!Chat.Tool:type"
-        },
-        { "kind": "Content", "text": " <Name, any, Result>;" }
       ]
     }
   ]

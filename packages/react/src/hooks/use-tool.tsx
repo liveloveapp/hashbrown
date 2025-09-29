@@ -3,6 +3,9 @@
 import { Chat, s } from '@hashbrownai/core';
 import { type DependencyList, useCallback, useMemo, useState } from 'react';
 
+/**
+ * @public
+ */
 export interface ToolOptionsWithInput<
   Name extends string,
   Schema extends s.HashbrownType,
@@ -40,6 +43,9 @@ export interface ToolOptionsWithInput<
   deps: DependencyList;
 }
 
+/**
+ * @public
+ */
 export interface ToolOptionsWithUnknownSchema<Name extends string, Result> {
   /**
    * The name of the tool.
@@ -70,6 +76,9 @@ export interface ToolOptionsWithUnknownSchema<Name extends string, Result> {
   deps: DependencyList;
 }
 
+/**
+ * @public
+ */
 export interface ToolOptionsWithoutInput<Name extends string, Result> {
   /**
    * The name of the tool.
@@ -95,6 +104,9 @@ export interface ToolOptionsWithoutInput<Name extends string, Result> {
   deps: DependencyList;
 }
 
+/**
+ * @public
+ */
 export type ToolOptions<
   Name extends string,
   Schema extends s.HashbrownType = s.HashbrownType,
@@ -107,11 +119,15 @@ export type ToolOptions<
 /**
  * Creates a tool with a schema.
  *
- * @param input - The input for the tool.
- * @param input.name - The name of the tool.
- * @param input.description - The description of the tool.
- * @param input.schema - The schema of the tool.
- * @param input.handler - The handler of the tool.
+ * @public
+ * @typeParam Name - The name of the tool.
+ * @typeParam Schema - The schema of the tool.
+ * @typeParam Result - The result of the tool.
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `schema`: The schema of the tool
+ *   - `handler`: The handler of the tool
  * @param deps - Dependencies that should trigger tool recreation.
  *               The hook will automatically memoize the handler based on these dependencies,
  *               so you can safely pass anonymous functions.
@@ -131,11 +147,14 @@ export function useTool<
 /**
  * Creates a tool with a unknown JSON schema.
  *
- * @param input - The input for the tool.
- * @param input.name - The name of the tool.
- * @param input.description - The description of the tool.
- * @param input.schema - The schema of the tool.
- * @param input.handler - The handler of the tool.
+ * @public
+ * @typeParam Name - The name of the tool.
+ * @typeParam Result - The result of the tool.
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `schema`: The schema of the tool
+ *   - `handler`: The handler of the tool
  */
 export function useTool<const Name extends string, Result>(
   input: ToolOptionsWithUnknownSchema<Name, Result>,
@@ -144,11 +163,14 @@ export function useTool<const Name extends string, Result>(
 /**
  * Creates a tool.
  *
- * @param input - The input for the tool.
- * @param input.name - The name of the tool.
- * @param input.description - The description of the tool.
- * @param input.schema - The schema of the tool.
- * @param input.handler - The handler of the tool.
+ * @public
+ * @typeParam Name - The name of the tool.
+ * @typeParam Result - The result of the tool.
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `schema`: The schema of the tool
+ *   - `handler`: The handler of the tool
  * @param deps - Dependencies that should trigger tool recreation.
  *               The hook will automatically memoize the handler based on these dependencies,
  *               so you can safely pass anonymous functions.
@@ -161,10 +183,9 @@ export function useTool<const Name extends string, Result>(
   input: ToolOptionsWithoutInput<Name, Result>,
 ): Chat.Tool<Name, void, Result>;
 
-export function useTool<const Name extends string, Result>(
-  input: ToolOptionsWithUnknownSchema<Name, Result>,
-): Chat.Tool<Name, any, Result>;
-
+/**
+ * @public
+ */
 export function useTool<const Name extends string, Result>(
   input:
     | ToolOptionsWithInput<Name, s.HashbrownType, Result>

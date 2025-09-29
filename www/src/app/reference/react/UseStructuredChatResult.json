@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!UseStructuredChatResult:interface",
-      "docComment": "/**\n * The result object-type returned by the `useStructuredChat` hook that provides functions and state for interacting with the chat.\n */\n",
+      "docComment": "/**\n * The result object-type returned by the `useStructuredChat` hook that provides functions and state for interacting with the chat.\n *\n * @typeParam Output - The type of the output from the chat.\n *\n * @typeParam Tools - The set of tool definitions available to the chat.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -17,7 +17,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": "> " }
       ],
@@ -243,7 +243,7 @@
             {
               "kind": "Reference",
               "text": "Chat.AssistantMessage",
-              "canonicalReference": "!Chat.AssistantMessage:type"
+              "canonicalReference": "@hashbrownai/react!~AssistantMessage_3:interface"
             },
             { "kind": "Content", "text": "<Output, Tools> | undefined" },
             { "kind": "Content", "text": ";" }
@@ -277,7 +277,7 @@
             {
               "kind": "Reference",
               "text": " Chat.AssistantMessage",
-              "canonicalReference": "!Chat.AssistantMessage:type"
+              "canonicalReference": "@hashbrownai/react!~AssistantMessage_3:interface"
             },
             {
               "kind": "Content",
@@ -294,7 +294,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<Output, Tools>[]" },
             { "kind": "Content", "text": ";" }
@@ -328,7 +328,7 @@
             {
               "kind": "Reference",
               "text": " (Chat.Message ",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": " < Output, Tools > []);" }
           ]
@@ -417,7 +417,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<Output, Tools>) => void" },
             { "kind": "Content", "text": ";" }
@@ -456,7 +456,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<Output, Tools>) => void;" }
           ]
@@ -471,7 +471,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<Output, Tools>[]) => void" },
             { "kind": "Content", "text": ";" }
@@ -510,7 +510,7 @@
             {
               "kind": "Reference",
               "text": "Chat.Message",
-              "canonicalReference": "!Chat.Message:type"
+              "canonicalReference": "@hashbrownai/react!~Message_3:type"
             },
             { "kind": "Content", "text": "<Output, Tools>[]) => void;" }
           ]
@@ -563,13 +563,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "The result object-type returned by the `useStructuredChat` hook that provides functions and state for interacting with the chat.\n",
+        "summary": "The result object-type returned by the `useStructuredChat` hook that provides functions and state for interacting with the chat.\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -587,7 +587,7 @@
         {
           "kind": "Reference",
           "text": "Chat.AnyTool",
-          "canonicalReference": "!Chat.AnyTool:type"
+          "canonicalReference": "@hashbrownai/react!~AnyTool:type"
         },
         { "kind": "Content", "text": ">" }
       ]

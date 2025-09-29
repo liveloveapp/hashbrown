@@ -8,6 +8,8 @@ import { installIntl } from './proxies/intl';
 
 /**
  * A reference to a JavaScript runtime.
+ *
+ * @public
  */
 export interface RuntimeRef {
   /**
@@ -50,16 +52,17 @@ export interface RuntimeRef {
 /**
  * Creates a new runtime.
  *
- * @param options - The options for creating the runtime.
- * @param options.timeout - The timeout for the runtime.
- * @param options.functions - The functions that are available in the runtime.
+ * @public
+ * @param options - The options for creating the runtime containing:
+ *   - `timeout`: The timeout for the runtime
+ *   - `functions`: The functions that are available in the runtime
  * @returns A reference to the runtime.
  */
 export function createRuntimeImpl(options: {
   /**
    * The timeout for the runtime.
    *
-   * @default 10000
+   * @defaultValue 10000
    */
   timeout?: number;
 

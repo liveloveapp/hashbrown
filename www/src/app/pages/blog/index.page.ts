@@ -1,7 +1,26 @@
-import { Component, computed, signal } from '@angular/core';
 import { injectContentFiles } from '@analogjs/content';
+import { RouteMeta } from '@analogjs/router';
+import { Component, computed, signal } from '@angular/core';
 import { PostPreview } from '../../components/PostPreview';
 import { Filter, filter, PostAttributes } from '../../models/blog.models';
+
+export const routeMeta: RouteMeta = {
+  title: 'Home: Hashbrown Blog',
+  meta: [
+    {
+      name: 'og:title',
+      content: 'Home: Hashbrown Blog',
+    },
+    {
+      name: 'og:description',
+      content: 'Hashbrown Blog.',
+    },
+    {
+      name: 'og:image',
+      content: 'https://hashbrown.dev/image/meta/og-default.png',
+    },
+  ],
+};
 
 @Component({
   imports: [PostPreview],

@@ -16,10 +16,11 @@ import { ConfigService } from '../services/ConfigService';
             <img src="/image/logo/word-mark.svg" alt="hashbrown" height="24" />
           </div>
           <small>
-            © LiveLoveApp, LLC {{ currentYear }}. <br />Based in Oregon.
-            <br /><a href="https://analogjs.org" target="_blank"
-              >Built with AnalogJS</a
-            >
+            © LiveLoveApp, LLC {{ currentYear }}. <br />
+            Based in Oregon.<br />
+            <a href="https://analogjs.org" target="_blank">
+              Built with AnalogJS
+            </a>
           </small>
         </div>
         <div class="docs">
@@ -32,7 +33,7 @@ import { ConfigService } from '../services/ConfigService';
               <a routerLink="/api" class="underline">API Reference</a>
             </li>
             <li>
-              <a [routerLink]="examplesUrl()" class="underline">Examples</a>
+              <a routerLink="/samples" class="underline">Examples</a>
             </li>
           </ul>
         </div>
@@ -40,7 +41,18 @@ import { ConfigService } from '../services/ConfigService';
           <div class="title">Learn</div>
           <ul>
             <li>
-              <a routerLink="/workshops" class="underline"> Workshops </a>
+              <a
+                routerLink="/workshops/react-generative-ui-engineering"
+                class="underline"
+                >React Workshop</a
+              >
+            </li>
+            <li>
+              <a
+                routerLink="/workshops/angular-generative-ui-engineering"
+                class="underline"
+                >Angular Workshop</a
+              >
             </li>
           </ul>
         </div>
@@ -48,7 +60,7 @@ import { ConfigService } from '../services/ConfigService';
           <div class="title">Contact</div>
           <ul>
             <li>
-              <a routerLink="/contact-us" class="underline">Contact Us</a>
+              <a routerLink="/contact-us" class="underline">Contact sales</a>
             </li>
             <li>
               <a href="mailto:hello@liveloveapp.com" class="underline">
@@ -378,17 +390,9 @@ import { ConfigService } from '../services/ConfigService';
 })
 export class Footer {
   configService = inject(ConfigService);
-  /**
-   * Retrieves the full year (4 digits) for the current date.
-   *
-   * @returns {number} The current year as a four-digit number (e.g., 2025).
-   */
   currentYear = new Date().getFullYear();
 
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/intro`;
-  });
-  examplesUrl = computed(() => {
-    return `/examples/${this.configService.sdk()}/ui-chat`;
   });
 }

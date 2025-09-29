@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!HashbrownProviderOptions:interface",
-      "docComment": "/**\n * The options for the Hashbrown provider.\n */\n",
+      "docComment": "/**\n * The options for the Hashbrown provider.\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -156,13 +156,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "The options for the Hashbrown provider.\n",
+        "summary": "The options for the Hashbrown provider.\n\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",

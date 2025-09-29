@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/core!decodeFrames:function(1)",
-      "docComment": "/**\n * Decode a ReadableStream<Uint8Array> of length-prefixed JSON frames into a stream of T.\n *\n * Frame format: [4-byte BE length][UTF-8 JSON payload]\n *\n * @param stream - ReadableStream producing Uint8Array chunks\n *\n * @param options - decoding options  @yields parsed JSON objects of type T\n */\n",
+      "docComment": "/**\n * Decode a ReadableStream\\<Uint8Array\\> of length-prefixed JSON frames into a stream of T.\n *\n * Frame format: [4-byte BE length][UTF-8 JSON payload]\n *\n * @param stream - ReadableStream producing Uint8Array chunks\n *\n * @param options - decoding options\n *\n * @typeParam T - The type of the parsed JSON objects\n *\n * @returns - A stream of parsed JSON objects of type T\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -67,27 +67,24 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "Decode a ReadableStream<Uint8Array> of length-prefixed JSON frames into a stream of T.\n\nFrame format: [4-byte BE length][UTF-8 JSON payload]\n\n",
+        "summary": "Decode a ReadableStream\\<Uint8Array\\> of length-prefixed JSON frames into a stream of T.\n\nFrame format: [4-byte BE length][UTF-8 JSON payload]\n\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
-        "returns": "",
+        "returns": " - A stream of parsed JSON objects of type T\n\n\n",
         "see": [],
         "params": [
           {
             "name": "stream",
             "description": "ReadableStream producing Uint8Array chunks\n\n"
           },
-          {
-            "name": "options",
-            "description": "decoding options  @yields parsed JSON objects of type T\n"
-          }
+          { "name": "options", "description": "decoding options\n\n" }
         ],
         "examples": []
       },

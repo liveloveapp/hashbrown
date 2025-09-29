@@ -1,7 +1,12 @@
 [build]
-  command   = "npx nx run finance-angular-client:build:netlify"
-  publish   = "dist/samples/finance/client/browser"
-  ignore    = "npx nx-ignore finance-angular-client"
-  
-[[plugins]]
-  package = "@netlify/angular-runtime"
+  command   = "npx nx run finance-angular:build"
+  publish   = "dist/samples/finance/angular/browser"
+  edge_functions = "dist/samples/finance/netlify"
+
+[[edge_functions]]
+  path = "/api/chat"
+  function = "chat"
+
+[[edge_functions]]
+  path = "/api/ingredients"
+  function = "ingredients"

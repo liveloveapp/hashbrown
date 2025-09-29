@@ -1,19 +1,16 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ChevronRight } from '../../icons/ChevronRight';
-import { Code } from '../../icons/Code';
-import { Components } from '../../icons/Components';
-import { Send } from '../../icons/Send';
 import { ConfigService } from '../../services/ConfigService';
 import { Squircle } from '../Squircle';
+import { PlayerPlay } from '../../icons/PlayerPlay';
 
 @Component({
   selector: 'www-samples',
-  imports: [ChevronRight, Code, Components, RouterLink, Send, Squircle],
+  imports: [RouterLink, Squircle, PlayerPlay],
   template: `
     <div class="bleed">
-      <a
-        [routerLink]="[docsUrl(), 'concept', 'components']"
+      <div
+        class="block"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunshine-yellow, #fbbb52)"
@@ -22,17 +19,15 @@ import { Squircle } from '../Squircle';
           <h2>Generate UI, Not Just Text</h2>
           <p>
             With Hashbrown, large language models compose real views from your
-            components and stream them into the page. Interfaces stay on-brand,
-            context-aware, and production-ready.
+            components and stream them into the page. Interfaces stay
+            on&#8209;brand, context&#8209;aware, and production&#8209;ready.
           </p>
-          <div class="button" wwwSquircle="8">
-            <www-components />
-            <div class="text">
-              <span>Expose Components</span>
-              <small>Use an LLM to generate user interfaces</small>
-            </div>
-            <www-chevron-right height="32px" width="32px" />
-          </div>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'ui-chatbot']"
+            class="docsLink"
+          >
+            Learn how to build a chatbot with Generative UI and Tool Calling
+          </a>
         </div>
         <div
           class="window"
@@ -42,8 +37,19 @@ import { Squircle } from '../Squircle';
         >
           <div class="nav">
             <div class="button">
-              <h3>Finance Sample</h3>
+              <h3>Finance App</h3>
             </div>
+            <a
+              href="https://finance.hashbrown.dev"
+              target="_blank"
+              class="runLink"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+            >
+              <www-player-play height="16px" width="16px" />
+              Run this App
+            </a>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
             <img
@@ -52,14 +58,10 @@ import { Squircle } from '../Squircle';
             />
           </div>
         </div>
-      </a>
+      </div>
 
-      <a
-        [routerLink]="[
-          docsUrl(),
-          'recipes',
-          'natural-language-to-structured-data',
-        ]"
+      <div
+        class="block"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sky-blue, #9ECFD7)"
@@ -71,14 +73,16 @@ import { Squircle } from '../Squircle';
             build friendlier apps. Streaming primitives keep interactions fast,
             responsive, and type-safe.
           </p>
-          <div class="button" wwwSquircle="8">
-            <www-code />
-            <div class="text">
-              <span>Structured Data</span>
-              <small>Turn natural language into strongly typed data</small>
-            </div>
-            <www-chevron-right height="32px" width="32px" />
-          </div>
+          <a
+            [routerLink]="[
+              docsUrl(),
+              'recipes',
+              'natural-language-to-structured-data',
+            ]"
+            class="docsLink"
+          >
+            Learn how to convert natural language into structured data
+          </a>
         </div>
         <div
           class="window"
@@ -88,8 +92,19 @@ import { Squircle } from '../Squircle';
         >
           <div class="nav">
             <div class="button">
-              <h3>Finance Sample</h3>
+              <h3>Smart Home App</h3>
             </div>
+            <a
+              href="https://smart-home.hashbrown.dev"
+              target="_blank"
+              class="runLink"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+            >
+              <www-player-play height="16px" width="16px" />
+              Run this App
+            </a>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
             <img
@@ -98,10 +113,10 @@ import { Squircle } from '../Squircle';
             />
           </div>
         </div>
-      </a>
+      </div>
 
-      <a
-        [routerLink]="[docsUrl(), 'concept', 'streaming']"
+      <div
+        class="block"
         wwwSquircle="32"
         [wwwSquircleBorderWidth]="1"
         wwwSquircleBorderColor="var(--sunset-orange, #e88c4d)"
@@ -110,17 +125,15 @@ import { Squircle } from '../Squircle';
           <h2>Instantly Predict the Next Action</h2>
           <p>
             Skip menus and dead ends. Use Hashbrown to suggest the right next
-            step from context, whether it’s navigation, filling a form, or
+            step from context, whether it's navigation, filling a form, or
             kicking off a task, so your users stay in the flow.
           </p>
-          <div class="button" wwwSquircle="8">
-            <www-send />
-            <div class="text">
-              <span>Predictive Actions</span>
-              <small>Skip menus and dead ends</small>
-            </div>
-            <www-chevron-right height="32px" width="32px" />
-          </div>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
+            class="docsLink"
+          >
+            Learn to build predictive suggestions and shortcuts
+          </a>
         </div>
         <div
           class="window"
@@ -130,8 +143,19 @@ import { Squircle } from '../Squircle';
         >
           <div class="nav">
             <div class="button">
-              <h3>Smart Home Sample</h3>
+              <h3>Smart Home App</h3>
             </div>
+            <a
+              href="https://smart-home.hashbrown.dev"
+              target="_blank"
+              class="runLink"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+            >
+              <www-player-play height="16px" width="16px" />
+              Run this App
+            </a>
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
             <img
@@ -140,7 +164,7 @@ import { Squircle } from '../Squircle';
             />
           </div>
         </div>
-      </a>
+      </div>
     </div>
   `,
   styles: `
@@ -158,31 +182,12 @@ import { Squircle } from '../Squircle';
       max-width: 1200px;
       width: 100%;
 
-      > a {
+      > .block {
         display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 32px;
         padding: 16px;
-
-        &:hover {
-          > .header {
-            > .button {
-              > .text {
-                > span {
-                }
-                > small {
-                  color: var(--gray-dark, #3d3c3a);
-                }
-              }
-
-              > www-chevron-right {
-                opacity: 1;
-                transform: translateX(8px);
-              }
-            }
-          }
-        }
 
         &:first-child {
           background: var(--sunshine-yellow-light, #fde4ba);
@@ -194,6 +199,35 @@ import { Squircle } from '../Squircle';
 
         &:nth-child(3) {
           background: var(--sunset-orange-light, #f6d1b8);
+        }
+
+        .docsLink {
+          text-decoration: underline;
+          text-decoration-color: var(--gray, #5e5c5a);
+          color: var(--gray, #5e5c5a);
+          font:
+            400 14px/24px Fredoka,
+            sans-serif;
+
+          &:hover {
+            text-decoration-color: #fbbb52;
+          }
+        }
+
+        .runLink {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background-color: #fff;
+          padding: 3px 9px 3px 6px;
+          font:
+            400 12px/24px Fredoka,
+            sans-serif;
+          transition: background-color 0.34s ease-in-out;
+
+          &:hover {
+            background-color: var(--sunshine-yellow-light, #fde4ba);
+          }
         }
 
         > .header {
@@ -217,40 +251,6 @@ import { Squircle } from '../Squircle';
               400 15px/24px Fredoka,
               sans-serif;
           }
-
-          > .button {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 16px;
-
-            > .text {
-              display: flex;
-              flex-direction: column;
-              gap: 4px;
-
-              > span {
-                color: var(--gray, #5e5c5a);
-                font:
-                  700 14px/16px Fredoka,
-                  sans-serif;
-              }
-
-              > small {
-                color: var(--gray, #);
-                font:
-                  400 12px/16px Fredoka,
-                  sans-serif;
-              }
-            }
-
-            > www-chevron-right {
-              opacity: 0;
-              transition:
-                transform 0.2s ease-in-out,
-                opacity 0.2s ease-in-out;
-            }
-          }
         }
 
         > .window {
@@ -258,14 +258,15 @@ import { Squircle } from '../Squircle';
           flex-direction: column;
           align-items: stretch;
           background: var(--vanilla-ivory, #faf9f0);
-          margin-bottom: -23px;
           height: calc(100% + 23px);
+          top: 4px;
+          position: relative;
 
           > .nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px;
+            padding: 12px 12px 8px 16px;
 
             > .button {
               position: relative;
@@ -325,13 +326,8 @@ import { Squircle } from '../Squircle';
         gap: 16px;
         padding: 64px;
 
-        > a {
+        > .block {
           padding: 40px;
-          transition: transform 0.2s ease-in-out;
-
-          &:hover {
-            transform: scale(1.02);
-          }
 
           &:first-child {
             grid-column: 1 / 3;

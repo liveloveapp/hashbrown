@@ -1,4 +1,3 @@
-import { Component, inject, input, signal } from '@angular/core';
 import {
   animate,
   keyframes,
@@ -6,17 +5,22 @@ import {
   transition,
   trigger,
 } from '@angular/animations';
+import { Component, inject, input, signal } from '@angular/core';
 import { SmartHome } from '../smart-home';
+import { Squircle } from '../squircle';
 
 @Component({
   selector: 'app-scene-button',
-  imports: [],
+  imports: [Squircle],
   template: `
     <button
       type="button"
       (click)="onSceneChange()"
       [@bounce]="animateState()"
       (@bounce.done)="resetAnimation()"
+      appSquircle="16"
+      [appSquircleBorderWidth]="2"
+      appSquircleBorderColor="var(--sky-blue, #9ecfd7)"
     >
       <span>{{ scene().name }}</span>
     </button>
@@ -25,21 +29,12 @@ import { SmartHome } from '../smart-home';
     button {
       display: inline-flex;
       flex-direction: column-reverse;
-      width: 160px;
+      align-items: flex-start;
+      justify-content: center;
       height: 48px;
       padding: 16px;
-      margin: 4px 6px;
-      cursor: pointer;
-      background-image: linear-gradient(
-        to right,
-        rgba(31, 162, 255, 0.18) 0%,
-        rgba(18, 216, 250, 0.18) 51%,
-        rgba(31, 162, 255, 0.18) 100%
-      );
+      background: var(--sky-blue-light, #d8ecef);
       transition: 0.5s;
-      background-size: 200% auto;
-      border: none;
-      border-radius: 16px;
 
       &:hover {
         background-position: right center;
@@ -47,9 +42,10 @@ import { SmartHome } from '../smart-home';
     }
 
     button span {
-      align-self: flex-start;
-      justify-self: flex-start;
-      text-align: left;
+      max-height: 48px;
+      overflow-x: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   `,
   animations: [

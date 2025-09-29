@@ -83,7 +83,8 @@ import { ApiService } from '../services/ApiService';
 
         &.section {
           display: grid;
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, 100%);
+          column-gap: 32px;
           padding: 0 16px;
         }
 

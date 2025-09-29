@@ -5,6 +5,8 @@ import { Chat } from '@hashbrownai/core';
  * Hashbrown must be configured with a base URL,
  * and may optionally include middleware and a flag
  * to emulate structured output.
+ *
+ * @public
  */
 export interface ProvideHashbrownOptions {
   /**
@@ -35,7 +37,8 @@ export const ɵHASHBROWN_CONFIG_INJECTION_TOKEN =
 /**
  * Provides the Hashbrown configuration.
  *
- * @argument options - The Hashbrown configuration.
+ * @public
+ * @param options - The Hashbrown configuration.
  * @returns The Hashbrown configuration.
  */
 export function provideHashbrown(options: ProvideHashbrownOptions): Provider {

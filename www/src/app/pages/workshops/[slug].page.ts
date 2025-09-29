@@ -1,6 +1,55 @@
-import { injectContent, MarkdownComponent } from '@analogjs/content';
+import {
+  injectContent,
+  injectContentFiles,
+  MarkdownComponent,
+} from '@analogjs/content';
+import { RouteMeta } from '@analogjs/router';
 import { Component } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRouteSnapshot } from '@angular/router';
+import { WorkshopAttributes } from '../../models/workshop.models';
+
+export const routeMeta: RouteMeta = {
+  title: (route: ActivatedRouteSnapshot) => {
+    const content = injectContentFiles<WorkshopAttributes>().find(
+      (contentFile) =>
+        contentFile.filename ===
+          `/src/content/workshops/${route.params['slug']}.md` ||
+        contentFile.slug === route.params['slug'],
+    );
+    if (!content) {
+      return 'Hashbrown Workshops';
+    }
+    return `${content.attributes.title}: Hashbrown AI Workshops`;
+  },
+  meta: (route: ActivatedRouteSnapshot) => {
+    const content = injectContentFiles<WorkshopAttributes>().find(
+      (contentFile) =>
+        contentFile.filename ===
+          `/src/content/workshops/${route.params['slug']}.md` ||
+        contentFile.slug === route.params['slug'],
+    );
+    if (!content) {
+      return [];
+    }
+    return [
+      {
+        name: 'og:title',
+        content: `${content.attributes.title}: Hashbrown AI Workshops`,
+      },
+      {
+        name: 'og:description',
+        content: content.attributes.description,
+      },
+      {
+        name: 'og:image',
+        content:
+          content.attributes.ogImage ??
+          'https://hashbrown.dev/image/meta/og-default.png',
+      },
+    ];
+  },
+};
 
 @Component({
   imports: [MarkdownComponent],

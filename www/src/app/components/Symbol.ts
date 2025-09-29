@@ -1,9 +1,5 @@
 import { Component, input } from '@angular/core';
-import {
-  ApiMember,
-  ApiMemberKind,
-  ApiMemberSummary,
-} from '../models/api-report.models';
+import { ApiMemberSummary } from '../models/api-report.models';
 import { CodeExample } from './CodeExample';
 import { SymbolApi } from './SymbolApi';
 import { SymbolChip } from './SymbolChip';
@@ -67,7 +63,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
           ) {
             <www-code-example [header]="symbol.name" [copyable]="false">
               <ng-container actions>
-                <www-symbol-return [symbol]="symbol" />
+                <www-symbol-return [member]="symbol" />
               </ng-container>
               <div class="symbol">
                 @if (symbol.parameters?.length) {
@@ -85,12 +81,8 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
               </div>
             </www-code-example>
           }
-          @if (getMethodsForSymbol(symbol).length) {
-            <www-symbol-methods [symbol]="symbol" />
-          }
-          @if (symbol.docs.examples?.length) {
-            <www-symbol-examples [symbol]="symbol" />
-          }
+          <www-symbol-methods [symbol]="symbol" />
+          <www-symbol-examples [symbol]="symbol" />
         </article>
       }
     }
@@ -166,14 +158,4 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
 })
 export class Symbol {
   summary = input.required<ApiMemberSummary>();
-
-  getMethodsForSymbol(symbol: ApiMember): ApiMember[] {
-    return (
-      symbol.members?.filter((m) =>
-        [ApiMemberKind.Method, ApiMemberKind.PropertySignature].includes(
-          m.kind,
-        ),
-      ) ?? []
-    );
-  }
 }

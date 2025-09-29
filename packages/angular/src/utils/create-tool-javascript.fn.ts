@@ -1,8 +1,10 @@
-import { RuntimeRef, s } from '@hashbrownai/core';
+import { Chat, RuntimeRef, s } from '@hashbrownai/core';
 import { createTool } from './create-tool.fn';
 
 /**
  * Options for creating a tool that can run JavaScript code.
+ *
+ * @public
  */
 export interface CreateToolJavaScriptOptions {
   /**
@@ -12,14 +14,28 @@ export interface CreateToolJavaScriptOptions {
 }
 
 /**
+ * The schema for the javascript tool.
+ */
+const schema = s.streaming.object('The result', {
+  code: s.streaming.string('The JavaScript code to run'),
+});
+
+/**
  * Creates a tool that allows the LLM to run JavaScript code. It is run
  * in a stateful JavaScript environment, with no access to the internet, the DOM,
  * or any function that you have not explicitly defined.
  *
+ * @public
  * @param options - The options for creating the tool.
  * @returns The tool.
  */
-export function createToolJavaScript({ runtime }: CreateToolJavaScriptOptions) {
+export function createToolJavaScript<Result>({
+  runtime,
+}: CreateToolJavaScriptOptions): Chat.Tool<
+  'javascript',
+  s.Infer<typeof schema>,
+  Result
+> {
   return createTool({
     name: 'javascript',
     description: [
@@ -35,9 +51,7 @@ export function createToolJavaScript({ runtime }: CreateToolJavaScriptOptions) {
       'The following functions are available to you:',
       runtime.describe(),
     ].join('\n'),
-    schema: s.streaming.object('The result', {
-      code: s.streaming.string('The JavaScript code to run'),
-    }),
+    schema,
     handler: async ({ code }, abortSignal) => {
       return runtime.run(code, abortSignal);
     },

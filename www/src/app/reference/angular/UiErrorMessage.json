@@ -8,13 +8,13 @@
     {
       "kind": "TypeAlias",
       "canonicalReference": "@hashbrownai/angular!UiErrorMessage:type",
-      "docComment": "",
+      "docComment": "/**\n * @public\n */\n",
       "excerptTokens": [
         { "kind": "Content", "text": "type UiErrorMessage = " },
         {
           "kind": "Reference",
           "text": "Chat.ErrorMessage",
-          "canonicalReference": "!Chat.ErrorMessage:type"
+          "canonicalReference": "@hashbrownai/angular!~ErrorMessage_3:type"
         },
         { "kind": "Content", "text": ";" }
       ],
@@ -25,13 +25,13 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "",
+        "summary": "\n",
         "usageNotes": "",
         "remarks": "",
         "deprecated": "",
@@ -46,7 +46,7 @@
         {
           "kind": "Reference",
           "text": " Chat.ErrorMessage ",
-          "canonicalReference": "!Chat.ErrorMessage:type"
+          "canonicalReference": "@hashbrownai/angular!~ErrorMessage_3:type"
         },
         { "kind": "Content", "text": ";" }
       ]

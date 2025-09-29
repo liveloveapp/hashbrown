@@ -8,7 +8,7 @@
     {
       "kind": "Interface",
       "canonicalReference": "@hashbrownai/react!ExposedComponent:interface",
-      "docComment": "/**\n * This type defines the configuration for a component to be exposed to the chat.\n *\n * @example\n * ```ts\n * exposeComponent(CardComponent, {\n *   name: 'CardComponent',\n *   description: 'Show a card with children components to the user',\n *   children: 'any',\n *   props: {\n *     title: s.string('The title of the card'),\n *     description: s.streaming.string('The description of the card'),\n *   },\n * });\n * ```\n *\n */\n",
+      "docComment": "/**\n * This type defines the configuration for a component to be exposed to the chat.\n *\n * @example\n * ```ts\n * exposeComponent(CardComponent, {\n *   name: 'CardComponent',\n *   description: 'Show a card with children components to the user',\n *   children: 'any',\n *   props: {\n *     title: s.string('The title of the card'),\n *     description: s.streaming.string('The description of the card'),\n *   },\n * });\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -40,7 +40,7 @@
           "docComment": "/**\n * The children of the component.\n */\n",
           "excerptTokens": [
             { "kind": "Content", "text": "children?: " },
-            { "kind": "Content", "text": "'any' | " },
+            { "kind": "Content", "text": "'any' | 'text' | " },
             {
               "kind": "Reference",
               "text": "ExposedComponent",
@@ -72,9 +72,9 @@
             "params": [],
             "examples": []
           },
-          "formattedContent": "children?: 'any' | ExposedComponent<any>[] | false;",
+          "formattedContent": "children?: 'any' | 'text' | ExposedComponent<any>[] | false;",
           "overlayTokens": [
-            { "kind": "Content", "text": "children?: 'any' | " },
+            { "kind": "Content", "text": "children?: 'any' | 'text' | " },
             {
               "kind": "Reference",
               "text": "ExposedComponent",
@@ -243,7 +243,7 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
@@ -257,7 +257,7 @@
         "see": [],
         "params": [],
         "examples": [
-          "\n```ts\nexposeComponent(CardComponent, {\n  name: 'CardComponent',\n  description: 'Show a card with children components to the user',\n  children: 'any',\n  props: {\n    title: s.string('The title of the card'),\n    description: s.streaming.string('The description of the card'),\n  },\n});\n```\n\n"
+          "\n```ts\nexposeComponent(CardComponent, {\n  name: 'CardComponent',\n  description: 'Show a card with children components to the user',\n  children: 'any',\n  props: {\n    title: s.string('The title of the card'),\n    description: s.streaming.string('The description of the card'),\n  },\n});\n```\n\n\n"
         ]
       },
       "formattedContent": "export interface ExposedComponent<T extends ComponentType<any>>",

@@ -18,7 +18,7 @@ import { Component } from '@angular/core';
       gap: 16px;
       list-style: none;
       padding: 0;
-      margin: 16px 0;
+      margin: 8px 0 16px 0;
     }
   `,
 })

@@ -1,3 +1,9 @@
+---
+title: 'Ethics: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'Hashbrown is designed to help you build AI-powered applications responsibly. Here are some best practices and considerations when using the Hashbrown Angular SDK:'
+---
 # Ethics
 
 Hashbrown is designed to help you build AI-powered applications responsibly. Here are some best practices and considerations when using the Hashbrown Angular SDK:

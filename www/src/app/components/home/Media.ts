@@ -20,27 +20,11 @@ type Video = { id: string; title: string; description?: string };
       class="bleed"
       wwwSquircle="32"
       [wwwSquircleBorderWidth]="1"
-      wwwSquircleBorderColor="var(--sky-blue)"
+      wwwSquircleBorderColor="var(--sky-blue-dark)"
     >
-      <div class="player">
-        <div class="video" wwwSquircle="16">
-          <iframe
-            [src]="embedUrl(selectedId())"
-            [attr.title]="selectedVideo()?.title ?? 'YouTube video player'"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen
-          ></iframe>
-        </div>
-        <div class="details">
-          <h3>{{ selectedVideo()?.title }}</h3>
-          <p>{{ selectedVideo()?.description }}</p>
-        </div>
-      </div>
       <div class="playlist">
         <div class="header">
-          <h2>Fresh Out of the Fryer</h2>
+          <h2>Hot Out of the Fryer</h2>
           <p>Our latest videos, podcasts, and more.</p>
         </div>
         <ul>
@@ -72,6 +56,22 @@ type Video = { id: string; title: string; description?: string };
           }
         </ul>
       </div>
+      <div class="player">
+        <div class="video" wwwSquircle="16">
+          <iframe
+            [src]="embedUrl(selectedId())"
+            [attr.title]="selectedVideo()?.title ?? 'YouTube video player'"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
+        <div class="details">
+          <h3>{{ selectedVideo()?.title }}</h3>
+          <p>{{ selectedVideo()?.description }}</p>
+        </div>
+      </div>
     </div>
   `,
   styles: `
@@ -85,9 +85,9 @@ type Video = { id: string; title: string; description?: string };
     .bleed {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 32px;
       width: 100%;
-      max-width: 1024px;
+      max-width: 1200px;
+      gap: 0;
 
       > .player {
         display: flex;
@@ -136,13 +136,14 @@ type Video = { id: string; title: string; description?: string };
         display: flex;
         flex-direction: column;
         gap: 16px;
-        padding: 16px;
+        padding: 24px;
         width: 100%;
         background: var(--sky-blue-light, #d8ecef);
 
         > .header {
           display: flex;
           flex-direction: column;
+          padding: 8px 8px 0;
 
           > h2 {
             color: rgba(0, 0, 0, 0.64);
@@ -217,8 +218,7 @@ type Video = { id: string; title: string; description?: string };
       }
 
       .bleed {
-        grid-template-columns: 1fr 368px;
-        gap: 0;
+        grid-template-columns: 400px 1fr;
       }
     }
   `,
@@ -228,9 +228,19 @@ export class Media {
 
   videos = signal<Video[]>([
     {
+      id: 'gAeLTcxF-0o',
+      title: 'Web Dev Challenge - Spotify Game',
+      description: 'September 9, 2025',
+    },
+    {
       id: 'ekQ7t6_MvOQ',
       title: 'Generative UI on Learn with Jason',
       description: 'July 23, 2025',
+    },
+    {
+      id: 'UAQe2dtBmgo',
+      title: 'Hashbrown at NG Rome 2025 Edition',
+      description: 'June 20, 2025',
     },
     {
       id: 'Vd2WLQ8vqfU',

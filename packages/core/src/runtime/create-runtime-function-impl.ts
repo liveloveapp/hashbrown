@@ -9,6 +9,7 @@ import { RuntimeTransport } from './transport';
 /**
  * A reference to a function in the runtime.
  *
+ * @public
  * @param Args - The args of the function.
  * @param Result - The result of the function.
  * @returns The function reference.
@@ -24,12 +25,13 @@ export type RuntimeFunctionRef<Args, Result> = {
 /**
  * Creates a function with an input schema.
  *
- * @param cfg - The configuration for the function.
- * @param cfg.name - The name of the function.
- * @param cfg.description - The description of the function.
- * @param cfg.args - The args schema of the function.
- * @param cfg.result - The result schema of the function.
- * @param cfg.handler - The handler of the function.
+ * @public
+ * @param cfg - The configuration for the function containing:
+ *   - `name`: The name of the function
+ *   - `description`: The description of the function
+ *   - `args`: The args schema of the function
+ *   - `result`: The result schema of the function
+ *   - `handler`: The handler of the function
  * @returns The function reference.
  */
 export function createRuntimeFunctionImpl(

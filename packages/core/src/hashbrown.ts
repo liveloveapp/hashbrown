@@ -24,8 +24,9 @@ import { KnownModelIds } from './utils';
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
  *
- * @template Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.
- * @template Tools - The set of tools available to the chat instance.
+ * @public
+ * @typeParam Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.
+ * @typeParam Tools - The set of tools available to the chat instance.
  */
 export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   messages: StateSignal<Chat.Message<Output, Tools>[]>;
@@ -73,21 +74,22 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
 /**
  * Initialize a Hashbrown chat instance with the given configuration.
  *
- * @template Output - The type of messages expected from the LLM.
- * @template Tools - The set of tools to register with the chat instance.
- * @param {Object} init - Initialization options.
- * @param {string} [init.debugName] - Optional debug name for devtools tracing.
- * @param {string} init.apiUrl - Base URL of the Hashbrown API endpoint.
- * @param {string} init.model - The LLM model identifier to use.
- * @param {string} init.system - System prompt or initial context for the chat.
- * @param {Chat.Message<Output, Tools>[]} [init.messages] - Initial message history.
- * @param {Tools[]} [init.tools] - Array of tools to enable in the instance.
- * @param {s.HashbrownType} [init.responseSchema] - JSON schema for validating structured output.
- * @param {Chat.Middleware[]} [init.middleware] - Middleware functions to run on messages.
- * @param {boolean} [init.emulateStructuredOutput] - Whether to emulate structured output behavior.
- * @param {number} [init.debounce] - Debounce interval in milliseconds for sending messages.
- * @returns {Hashbrown<Output, Tools>} A configured Hashbrown instance.
- * @throws {Error} If a reserved tool name ("output") is used.
+ * @public
+ * @typeParam Output - The type of messages expected from the LLM.
+ * @typeParam Tools - The set of tools to register with the chat instance.
+ * @param init - Initialization options containing:
+ *   - `debugName`: Optional debug name for devtools tracing
+ *   - `apiUrl`: Base URL of the Hashbrown API endpoint
+ *   - `model`: The LLM model identifier to use
+ *   - `system`: System prompt or initial context for the chat
+ *   - `messages`: Initial message history
+ *   - `tools`: Array of tools to enable in the instance
+ *   - `responseSchema`: JSON schema for validating structured output
+ *   - `middleware`: Middleware functions to run on messages
+ *   - `emulateStructuredOutput`: Whether to emulate structured output behavior
+ *   - `debounce`: Debounce interval in milliseconds for sending messages
+ * @returns A configured Hashbrown instance.
+ * @throws If a reserved tool name ("output") is used.
  */
 export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
@@ -101,6 +103,9 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debounce?: number;
   retries?: number;
 }): Hashbrown<string, Tools>;
+/**
+ * @public
+ */
 export function fryHashbrown<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
@@ -118,6 +123,9 @@ export function fryHashbrown<
   debounce?: number;
   retries?: number;
 }): Hashbrown<Output, Tools>;
+/**
+ * @public
+ */
 export function fryHashbrown(init: {
   debugName?: string;
   apiUrl: string;

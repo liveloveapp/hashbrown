@@ -8,7 +8,7 @@
     {
       "kind": "Function",
       "canonicalReference": "@hashbrownai/react!useCompletion:function(1)",
-      "docComment": "/**\n * This React hook creates a change instance used to interact with the LLM. The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.\n *\n * @description The `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs. This is useful for things like natural language autocompletions.\n *\n * @example\n * ```ts\n * const { output } = useCompletion({\n *   model: 'gpt-4o-mini',\n *   input: firstName,\n *   system: `Help the user generate a last name for the given first name.`,\n * });\n * ```\n *\n */\n",
+      "docComment": "/**\n * This React hook creates a change instance used to interact with the LLM. The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.\n *\n * @remarks\n *\n * The `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs. This is useful for things like natural language autocompletions.\n *\n * @example\n * ```ts\n * const { output } = useCompletion({\n *   model: 'gpt-4o-mini',\n *   input: firstName,\n *   system: `Help the user generate a last name for the given first name.`,\n * });\n * ```\n *\n * @public\n */\n",
       "excerptTokens": [
         {
           "kind": "Content",
@@ -50,21 +50,21 @@
       "docs": {
         "modifiers": {
           "isInternal": false,
-          "isPublic": false,
+          "isPublic": true,
           "isAlpha": false,
           "isBeta": false,
           "isOverride": false,
           "isExperimental": false
         },
-        "summary": "This React hook creates a change instance used to interact with the LLM. The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.\n\n The `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs. This is useful for things like natural language autocompletions.\n\n",
+        "summary": "This React hook creates a change instance used to interact with the LLM. The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.\n\n",
         "usageNotes": "",
-        "remarks": "",
+        "remarks": "\n\nThe `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs. This is useful for things like natural language autocompletions.\n\n",
         "deprecated": "",
         "returns": "",
         "see": [],
         "params": [],
         "examples": [
-          "\n```ts\nconst { output } = useCompletion({\n  model: 'gpt-4o-mini',\n  input: firstName,\n  system: `Help the user generate a last name for the given first name.`,\n});\n```\n\n"
+          "\n```ts\nconst { output } = useCompletion({\n  model: 'gpt-4o-mini',\n  input: firstName,\n  system: `Help the user generate a last name for the given first name.`,\n});\n```\n\n\n"
         ]
       },
       "formattedContent": "export declare function useCompletion<Input>(\n  options:  UseCompletionOptions <Input>,\n):  UseCompletionResult; ",

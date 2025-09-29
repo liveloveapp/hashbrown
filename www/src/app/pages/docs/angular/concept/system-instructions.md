@@ -1,3 +1,9 @@
+---
+title: 'System Instructions: Hashbrown Angular Docs'
+meta:
+  - name: description
+    content: 'The initial system-level guidance given to the language model'
+---
 # System Instructions
 
 <p class="subtitle">The initial system-level guidance given to the
