@@ -1,24 +1,31 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
+import { RouterLink } from '@angular/router';
 import { ArrowUpRight } from '../icons/ArrowUpRight';
 
 @Component({
   selector: 'www-the-gravy',
-  imports: [ArrowUpRight],
+  imports: [ArrowUpRight, RouterLink],
   template: `
     <div class="bleed">
       <div class="title">
         <img src="/image/thegravy/brand-and-word-mark.svg" alt="The Gravy" />
         <div>
-          <p>
+          <h2>
             Staying on top of JS + AI has never been tastier.
             <br />Served fresh on Thursdays. Free.
+          </h2>
+          <p>
+            We will never spam you. You can unsubscribe at any time.
+            <br />
+            Get 20% off
+            <a routerLink="/workshops" class="underline">our workshops</a> when
+            you subscribe.
           </p>
-          <p class="subtitle">
-            We will never spam you. You can unsubscribe at any time.<br />
-            <a href="https://thegravy.dev" target="_blank"
-              >View all issues <www-arrow-up-right height="16px" width="16px"
-            /></a>
+          <p>
+            <a href="https://thegravy.dev" target="_blank">
+              View all issues <www-arrow-up-right height="16px" width="16px" />
+            </a>
           </p>
         </div>
       </div>
@@ -64,32 +71,34 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
         > div {
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 16px;
 
-          > p {
+          > h2 {
             color: var(--grey-dark, #414042);
             text-align: center;
             font:
               500 16px/24px Fredoka,
               sans-serif;
+          }
 
-            &.subtitle {
-              font:
-                300 12px/16px Fredoka,
-                sans-serif;
+          > p {
+            text-align: center;
+            font:
+              300 12px/16px Fredoka,
+              sans-serif;
 
-              > a {
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-                text-decoration: underline;
-                text-decoration-color: #774625;
-                color: #774625;
-              }
+            > a {
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+              text-decoration: underline;
+              text-decoration-color: #774625;
+              color: #774625;
+            }
 
-              &:hover {
-                text-decoration-color: #fbbb52;
-              }
+            &:hover {
+              text-decoration-color: #fbbb52;
             }
           }
         }
@@ -105,7 +114,7 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
     @media screen and (min-width: 1024px) {
       .bleed {
         padding: 64px 32px;
-        gap: 80px;
+        gap: 64px;
 
         > .title {
           gap: 48px;
@@ -115,16 +124,16 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
           }
 
           > div {
-            > p {
+            > h2 {
               font:
                 500 24px/32px Fredoka,
                 sans-serif;
+            }
 
-              &.subtitle {
-                font:
-                  300 16px/24px Fredoka,
-                  sans-serif;
-              }
+            > p {
+              font:
+                300 16px/24px Fredoka,
+                sans-serif;
             }
           }
         }
