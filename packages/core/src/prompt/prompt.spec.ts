@@ -2,6 +2,7 @@
 import { prompt } from './prompt';
 import { s } from '../schema';
 import { createComponentSchema } from '../ui';
+import type { HashbrownType } from '../schema/base';
 
 describe('prompt helper', () => {
   describe('weaving and extraction', () => {
@@ -399,6 +400,225 @@ describe('prompt helper', () => {
       const out = sys.compile(components, toSchema(components));
 
       expect(out).toMatchSnapshot();
+    });
+  });
+
+  describe('non-UI placeholder replacement', () => {
+    it('replaces string placeholders outside <ui> blocks', () => {
+      const greeting = 'Hello';
+      const name = 'World';
+      const sys = prompt`${greeting} ${name}!`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toBe('Hello World!');
+      expect(out).not.toContain('__HBX_');
+    });
+
+    it('replaces number placeholders', () => {
+      const num = 42;
+      const sys = prompt`The answer is ${num}.`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toBe('The answer is 42.');
+    });
+
+    it('replaces boolean placeholders', () => {
+      const isTrue = true;
+      const isFalse = false;
+      const sys = prompt`True: ${isTrue}, False: ${isFalse}`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toBe('True: true, False: false');
+    });
+
+    it('replaces null and undefined with empty string', () => {
+      const nullVal = null;
+      const undefVal = undefined;
+      const sys = prompt`Null: ${nullVal}, Undefined: ${undefVal}`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toBe('Null: , Undefined: ');
+    });
+
+    it('stringifies object placeholders with formatting', () => {
+      const data = { name: 'Alice', age: 30 };
+      const sys = prompt`User data: ${data}`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toContain('User data:');
+      expect(out).toContain('"name": "Alice"');
+      expect(out).toContain('"age": 30');
+      expect(out).not.toContain('__HBX_');
+    });
+
+    it('stringifies array placeholders', () => {
+      const items = ['apple', 'banana', 'cherry'];
+      const sys = prompt`Items: ${items}`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toContain('Items:');
+      expect(out).toContain('"apple"');
+      expect(out).toContain('"banana"');
+      expect(out).toContain('"cherry"');
+    });
+
+    it('handles mixed UI blocks and non-UI placeholders', () => {
+      const title = 'Documentation';
+      const docs = [{ url: '/docs/1', title: 'Doc 1' }];
+      const sys = prompt`
+        # ${title}
+
+        ## Available Docs
+        ${docs}
+
+        <ui><Link href="/home" /></ui>
+      `;
+
+      const components = [
+        {
+          name: 'Link',
+          component: createMockComponent(),
+          description: '',
+          props: { href: s.string('href') },
+          children: false,
+        } as const,
+      ];
+
+      const out = sys.compile(components, toSchema(components));
+
+      expect(out).toContain('# Documentation');
+      expect(out).toContain('## Available Docs');
+      expect(out).toContain('"url": "/docs/1"');
+      expect(out).toContain('"title": "Doc 1"');
+      expect(out).not.toContain('__HBX_');
+    });
+
+    it('replaces placeholders appearing after lowered <ui> blocks', () => {
+      const trailing = 'outside';
+      const sys = prompt`
+        <ui>
+          <Link href="/home">Home</Link>
+        </ui>
+
+        trailing content: ${trailing}
+      `;
+
+      const components = [
+        {
+          name: 'Link',
+          component: createMockComponent(),
+          description: '',
+          props: { href: s.string('href') },
+          children: false,
+        } as const,
+      ];
+
+      const schema = {
+        toStreaming: () => 'x',
+      } as unknown as HashbrownType;
+
+      const out = sys.compile(components, schema);
+
+      expect(out).toContain('trailing content: outside');
+      expect(out).not.toContain('__HBX_');
+    });
+
+    it('replaces multiple occurrences of same placeholder', () => {
+      const keyword = 'test';
+      const sys = prompt`${keyword} is ${keyword}, ${keyword}!`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toBe('test is test, test!');
+    });
+
+    it('handles complex nested objects', () => {
+      const config = {
+        api: { url: 'https://api.example.com', timeout: 5000 },
+        features: ['auth', 'logging'],
+      };
+      const sys = prompt`Configuration: ${config}`;
+
+      const out = sys.compile([], toSchema([]));
+
+      expect(out).toContain('Configuration:');
+      expect(out).toContain('"url": "https://api.example.com"');
+      expect(out).toContain('"timeout": 5000');
+      expect(out).toContain('"auth"');
+      expect(out).toContain('"logging"');
+    });
+
+    it('preserves JSON.stringify formatting with proper indentation', () => {
+      const data = { a: 1, b: { c: 2 } };
+      const sys = prompt`Data:\n${data}`;
+
+      const out = sys.compile([], toSchema([]));
+
+      // Check for 2-space indentation (JSON.stringify default)
+      expect(out).toContain('  "a": 1');
+      expect(out).toContain('  "b": {');
+      expect(out).toContain('    "c": 2');
+    });
+
+    it('works with real-world documentation scenario', () => {
+      const docs = [
+        {
+          url: '/docs/intro',
+          title: 'Introduction',
+          description: 'Get started',
+        },
+        {
+          url: '/docs/api',
+          title: 'API Reference',
+          description: 'Full API docs',
+        },
+      ];
+
+      const sys = prompt`
+        You are a documentation assistant.
+
+        ## Available Documentation
+
+        \`\`\`json
+        ${docs}
+        \`\`\`
+
+        Use the documentation above to answer questions.
+
+        <ui><SearchResult url="/docs/intro" title="Introduction" /></ui>
+      `;
+
+      const components = [
+        {
+          name: 'SearchResult',
+          component: createMockComponent(),
+          description: '',
+          props: {
+            url: s.string('url'),
+            title: s.string('title'),
+          },
+          children: false,
+        } as const,
+      ];
+
+      const out = sys.compile(components, toSchema(components));
+
+      // Check that non-UI placeholder is replaced
+      expect(out).toContain('"url": "/docs/intro"');
+      expect(out).toContain('"title": "Introduction"');
+      expect(out).toContain('"description": "Get started"');
+
+      // Check that UI block is still processed
+      expect(out).toContain('"SearchResult"');
+
+      // No leftover placeholders
+      expect(out).not.toContain('__HBX_');
     });
   });
 });

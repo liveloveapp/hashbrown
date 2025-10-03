@@ -17,13 +17,21 @@ const PLACEHOLDER_PREFIX = '__HBX_';
  * the ordered list of placeholder tokens.
  */
 function weavePlaceholders(strings: TemplateStringsArray, exprs: unknown[]) {
-  const tokens = strings
-    .map((chunk, i) =>
-      i < exprs.length ? `${chunk}${PLACEHOLDER_PREFIX}${i}__` : chunk,
-    )
-    .join('');
-  const placeholders = exprs.map((_, i) => `${PLACEHOLDER_PREFIX}${i}__`);
-  return { text: tokens, placeholders } as const;
+  let text = '';
+  const placeholders: string[] = [];
+  const placeholderPositions: number[] = [];
+
+  strings.forEach((chunk, i) => {
+    text += chunk;
+    if (i < exprs.length) {
+      const token = `${PLACEHOLDER_PREFIX}${i}__`;
+      placeholders.push(token);
+      placeholderPositions.push(text.length);
+      text += token;
+    }
+  });
+
+  return { text, placeholders, placeholderPositions } as const;
 }
 
 /**
@@ -632,18 +640,67 @@ function injectExamples(
 }
 
 /**
+ * Helper function to replace remaining placeholder tokens with their actual values.
+ * Only replaces placeholders that appeared outside of <ui> blocks in the original
+ * author text, since placeholders inside <ui> blocks are handled by the component
+ * lowering system.
+ */
+function replacePlaceholders(
+  text: string,
+  exprsByToken: Map<string, unknown>,
+  skipTokens: ReadonlySet<string>,
+): string {
+  let result = text;
+
+  exprsByToken.forEach((value, token) => {
+    if (skipTokens.has(token)) return;
+
+    // Convert value to string - handle various types
+    let stringValue: string;
+    if (typeof value === 'string') {
+      stringValue = value;
+    } else if (value === null || value === undefined) {
+      stringValue = '';
+    } else if (typeof value === 'object') {
+      // For objects/arrays, stringify them
+      try {
+        stringValue = JSON.stringify(value, null, 2);
+      } catch (err) {
+        stringValue = String(value);
+      }
+    } else {
+      stringValue = String(value);
+    }
+
+    if (result.indexOf(token) === -1) return;
+
+    result = result.split(token).join(stringValue);
+  });
+  return result;
+}
+
+/**
  * @public
  */
 export function prompt(
   strings: TemplateStringsArray,
   ...exprs: unknown[]
 ): SystemPrompt {
-  const { text, placeholders } = weavePlaceholders(strings, exprs);
+  const { text, placeholders, placeholderPositions } = weavePlaceholders(
+    strings,
+    exprs,
+  );
   const exprsByToken = new Map<string, unknown>(
     placeholders.map((p, i) => [p, exprs[i]]),
   );
 
   const blocks = findUiBlocks(text);
+  const tokensInsideUiBlocks = new Set<string>();
+  placeholderPositions.forEach((start, idx) => {
+    if (blocks.some((block) => start >= block.start && start < block.end)) {
+      tokensInsideUiBlocks.add(placeholders[idx]);
+    }
+  });
   const parsed = blocks.map((b) => parseUi(b.source, b.innerStart));
   const astBlocks = parsed.map((p) => p.nodes);
   const parseDiagnostics = parsed
@@ -720,7 +777,15 @@ export function prompt(
     // If no components are provided, do not inline JSON fences; preserve author text.
     const mode: 'inline' | 'placeholder' | 'none' =
       components.length > 0 ? 'inline' : 'none';
-    return injectExamples(text, blocks, toInject as any, mode);
+    const withExamples = injectExamples(text, blocks, toInject as any, mode);
+
+    // Replace any remaining placeholder tokens with their actual values
+    // (but not those inside <ui> blocks, which are handled by the lowering system)
+    return replacePlaceholders(
+      withExamples,
+      exprsByToken,
+      tokensInsideUiBlocks,
+    );
   }
 
   return {
