@@ -3,6 +3,7 @@
 import analog from '@analogjs/platform';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
@@ -45,6 +46,20 @@ export default defineConfig(({ mode }) => {
         },
         nitro: {
           compatibilityDate: '2024-05-07',
+          alias: {
+            '@hashbrownai/angular': resolve(
+              __dirname,
+              '../packages/angular/src/index.ts',
+            ),
+            '@hashbrownai/core': resolve(
+              __dirname,
+              '../packages/core/src/index.ts',
+            ),
+            '@hashbrownai/openai': resolve(
+              __dirname,
+              '../packages/openai/src/index.ts',
+            ),
+          },
         },
       }),
       nxViteTsPaths(),

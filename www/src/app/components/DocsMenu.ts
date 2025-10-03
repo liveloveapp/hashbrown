@@ -1,12 +1,14 @@
 import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { map, startWith } from 'rxjs/operators';
 import { Angular } from '../icons/Angular';
 import { ChevronDown } from '../icons/ChevronDown';
+import { Command } from '../icons/Command';
 import { React } from '../icons/React';
 import { ConfigService } from '../services/ConfigService';
 import { DropdownMenu } from './DropDownMenu';
+import { SEARCH_OVERLAY_OPEN_EVENT } from './SearchOverlay';
 import { Squircle } from './Squircle';
 
 @Component({
@@ -14,6 +16,7 @@ import { Squircle } from './Squircle';
   imports: [
     Angular,
     ChevronDown,
+    Command,
     DropdownMenu,
     React,
     RouterLink,
@@ -74,6 +77,29 @@ import { Squircle } from './Squircle';
         </div>
       </www-dropdown-menu>
     </div>
+    <button
+      (click)="search()"
+      class="search"
+      wwwSquircle="8"
+      [wwwSquircleBorderWidth]="2"
+      wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+    >
+      <p>Search</p>
+      <div>
+        <span
+          wwwSquircle="4"
+          [wwwSquircleBorderWidth]="2"
+          wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+          ><www-command height="16px" width="16px"
+        /></span>
+        <span
+          wwwSquircle="4"
+          [wwwSquircleBorderWidth]="2"
+          wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+          >k</span
+        >
+      </div>
+    </button>
     <div>
       <h2>Getting Started</h2>
       <ul>
@@ -319,6 +345,41 @@ import { Squircle } from './Squircle';
           }
         }
       }
+
+      > .search {
+        display: flex;
+        flex-direction: row;
+        padding: 8px 8px 8px 12px;
+        justify-content: space-between;
+        align-items: center;
+        align-self: stretch;
+
+        > p {
+          color: var(--chocolate-brown-light, #ad907c);
+          font:
+            500 12px/140% Fredoka,
+            sans-serif;
+        }
+
+        > div {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+
+          > span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--chocolate-brown-light, #ad907c);
+            height: 24px;
+            width: 24px;
+            text-transform: uppercase;
+            font:
+              500 12px/140% Fredoka,
+              sans-serif;
+          }
+        }
+      }
     }
 
     .dropdown-content {
@@ -438,4 +499,8 @@ export class DocsMenu {
 
     return '/docs/react/start/intro';
   });
+
+  search() {
+    window.dispatchEvent(new Event(SEARCH_OVERLAY_OPEN_EVENT));
+  }
 }

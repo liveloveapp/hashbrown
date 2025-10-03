@@ -18,6 +18,7 @@ import {
   withComponentInputBinding,
   withInMemoryScrolling,
 } from '@angular/router';
+import { provideHashbrown } from '@hashbrownai/angular';
 import { provideMarkdown } from 'ngx-markdown';
 import { HighlighterService } from './services/HighlighterService';
 
@@ -43,5 +44,8 @@ export const appConfig: ApplicationConfig = {
       return highlighterService.loadHighlighter();
     }),
     provideMarkdown(),
+    provideHashbrown({
+      baseUrl: '/_/chat',
+    }),
   ],
 };

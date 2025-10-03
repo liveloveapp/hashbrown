@@ -1,5 +1,11 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, inject, Injector, PLATFORM_ID } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  inject,
+  Injector,
+  PLATFORM_ID,
+} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Alert } from './components/Alert';
 import { Announcement } from './components/Announcement';
@@ -9,6 +15,10 @@ import { Expander } from './components/Expander';
 import { MarkdownSymbolLink } from './components/MarkdownSymbolLink';
 import { NextStep } from './components/NextStep';
 import { NextSteps } from './components/NextSteps';
+import {
+  SEARCH_OVERLAY_OPEN_EVENT,
+  SearchOverlay,
+} from './components/SearchOverlay';
 import { Bolt } from './icons/Bolt';
 import { Code } from './icons/Code';
 import { Components } from './icons/Components';
@@ -19,10 +29,11 @@ import { Send } from './icons/Send';
 
 @Component({
   selector: 'www-root',
-  imports: [RouterOutlet, Announcement],
+  imports: [RouterOutlet, Announcement, SearchOverlay],
   template: `
     <router-outlet />
     <www-announcement />
+    <www-search-overlay />
   `,
   styles: `
     :host {
@@ -34,10 +45,37 @@ import { Send } from './icons/Send';
 export class AppComponent {
   injector = inject(Injector);
   platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   constructor() {
-    if (isPlatformBrowser(this.platformId)) {
+    if (this.isBrowser) {
       this.installCustomElements();
+    }
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onGlobalKeydown(event: KeyboardEvent) {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.closest('input, textarea') || target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const isKey = event.key === 'k' || event.key === 'K';
+    const hasModifier = event.metaKey || event.ctrlKey;
+    if (isKey && hasModifier) {
+      event.preventDefault();
+      window.dispatchEvent(new CustomEvent(SEARCH_OVERLAY_OPEN_EVENT));
     }
   }
 

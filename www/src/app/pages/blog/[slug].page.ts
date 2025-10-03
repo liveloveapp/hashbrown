@@ -87,7 +87,6 @@ export const routeMeta: RouteMeta = {
       flex-direction: column;
       gap: 24px;
       padding: 16px 16px 64px;
-      max-width: 767px;
       width: 100%;
 
       > .title {
@@ -287,7 +286,7 @@ export const routeMeta: RouteMeta = {
     @media screen and (min-width: 768px) {
       .bleed {
         padding: 64px 32px;
-        max-width: 1281px;
+        max-width: 768px;
         gap: 64px;
 
         > .title {
