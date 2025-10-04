@@ -46,30 +46,66 @@ interface DocAttributes {
   meta?: Array<{ name: string; content: string }>;
 }
 
+interface MarkdownColumn<T extends Record<string, unknown>> {
+  key: keyof T;
+  header: string;
+}
+
+const formatMarkdownCell = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|');
+};
+
+const formatMarkdownTable = <T extends Record<string, unknown>>(
+  rows: ReadonlyArray<T>,
+  columns: readonly MarkdownColumn<T>[],
+): string => {
+  const headerRow = `|${columns.map((column) => column.header).join('|')}|`;
+  const separatorRow = `|${columns.map(() => '---').join('|')}|`;
+  if (!rows.length) {
+    return `${headerRow}\n${separatorRow}`;
+  }
+
+  const bodyRows = rows.map(
+    (row) =>
+      `|${columns.map((column) => formatMarkdownCell(row[column.key])).join('|')}|`,
+  );
+
+  return [headerRow, separatorRow, ...bodyRows].join('\n');
+};
+
+interface SitemapEntry {
+  url: string;
+  title: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
 const DOCS_FILES = import.meta.glob('/src/app/pages/docs/**/*.md', {
   eager: true,
   as: 'raw',
 });
 
-const SITEMAP = Object.entries(DOCS_FILES).map(([path, content]) => {
-  const { attributes } = fm<DocAttributes>(content);
-  const title = attributes.title || 'Untitled';
-  const description = attributes.meta?.find(
-    (meta) => meta.name === 'description',
-  )?.content;
-  const url = path.replace('/src/app/pages', '').replace(/\.md$/, '');
-  return { url, title, description };
-});
+const SITEMAP: SitemapEntry[] = Object.entries(DOCS_FILES).map(
+  ([path, content]) => {
+    const { attributes } = fm<DocAttributes>(content);
+    const title = attributes.title || 'Untitled';
+    const description = attributes.meta?.find(
+      (meta) => meta.name === 'description',
+    )?.content;
+    const url = path.replace('/src/app/pages', '').replace(/\.md$/, '');
+    return { url, title, description };
+  },
+);
 
-// const DOCS = Object.entries(DOCS_FILES).reduce(
-//   (acc, [path, content]) => {
-//     const { body } = fm<DocAttributes>(content);
-//     const url = path.replace('/src/app/pages', '').replace(/\.md$/, '');
-//     acc[url] = body;
-//     return acc;
-//   },
-//   {} as Record<string, string>,
-// );
+const SITEMAP_MARKDOWN = formatMarkdownTable(SITEMAP, [
+  { key: 'url', header: 'url' },
+  { key: 'title', header: 'title' },
+  { key: 'description', header: 'description' },
+]);
 
 const API_REFERENCE_FILES = import.meta.glob(
   '/src/app/reference/**/!(*api-report.min).json',
@@ -85,7 +121,15 @@ interface ApiReference {
   kind: string;
 }
 
-const API_REFERENCES = Object.entries(API_REFERENCE_FILES)
+interface ApiReferenceEntry {
+  url: string;
+  symbol: string;
+  kind: string;
+  package: string;
+  [key: string]: unknown;
+}
+
+const API_REFERENCES: ApiReferenceEntry[] = Object.entries(API_REFERENCE_FILES)
   .map(([path, data]) => {
     const ref = data as ApiReference;
     // Convert path like '/src/app/reference/angular/chatResource.json' to 'angular/chatResource'
@@ -103,6 +147,13 @@ const API_REFERENCES = Object.entries(API_REFERENCE_FILES)
     };
   })
   .filter((ref) => ref.kind !== 'Namespace');
+
+const API_REFERENCES_MARKDOWN = formatMarkdownTable(API_REFERENCES, [
+  { key: 'url', header: 'url' },
+  { key: 'symbol', header: 'symbol' },
+  { key: 'kind', header: 'kind' },
+  { key: 'package', header: 'package' },
+]);
 
 @Component({
   selector: 'www-api-results',
@@ -723,16 +774,16 @@ export class SearchOverlay implements OnDestroy {
 
       Here is the sitemap of the hashbrown documentation:
 
-      \`\`\`json
-      ${JSON.stringify(SITEMAP, null, 2)}
+      \`\`\`markdown
+      ${SITEMAP_MARKDOWN}
       \`\`\`
 
       ## API REFERENCES
 
       Here are the API references for the hashbrown packages:
 
-      \`\`\`json
-      ${JSON.stringify(API_REFERENCES, null, 2)}
+      \`\`\`markdown
+      ${API_REFERENCES_MARKDOWN}
       \`\`\`
     `,
     components: [
