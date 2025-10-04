@@ -124,27 +124,19 @@ import { Squircle } from './Squircle';
                 <a routerLink="/blog" routerLinkActive="active">blog</a>
               </li>
               <li>
-                <button
-                  (click)="search()"
-                  wwwSquircle="8"
-                  [wwwSquircleBorderWidth]="2"
-                  wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
-                >
-                  <p>search</p>
-                  <div>
-                    <span
-                      wwwSquircle="4"
-                      [wwwSquircleBorderWidth]="2"
-                      wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
-                      ><www-command height="12px" width="12px"
-                    /></span>
-                    <span
-                      wwwSquircle="4"
-                      [wwwSquircleBorderWidth]="2"
-                      wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
-                      >k</span
-                    >
-                  </div>
+                <button (click)="search()">
+                  <span
+                    wwwSquircle="4"
+                    [wwwSquircleBorderWidth]="2"
+                    wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+                    ><www-command height="12px" width="12px"
+                  /></span>
+                  <span
+                    wwwSquircle="4"
+                    [wwwSquircleBorderWidth]="2"
+                    wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+                    >k</span
+                  >
                 </button>
               </li>
               <li>
@@ -292,37 +284,21 @@ import { Squircle } from './Squircle';
                   }
 
                   > button {
-                    display: none;
-                    flex-direction: row;
-                    gap: 16px;
-                    padding: 6px 12px;
-                    justify-content: space-between;
+                    display: flex;
                     align-items: center;
+                    gap: 4px;
 
-                    > p {
-                      color: var(--chocolate-brown-light, #ad907c);
-                      font:
-                        400 14px/24px Fredoka,
-                        sans-serif;
-                    }
-
-                    > div {
-                      display: flex;
+                    > span {
+                      display: inline-flex;
                       align-items: center;
-                      gap: 4px;
-
-                      > span {
-                        display: inline-flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: var(--chocolate-brown-light, #ad907c);
-                        height: 16px;
-                        width: 16px;
-                        text-transform: uppercase;
-                        font:
-                          500 12px/140% Fredoka,
-                          sans-serif;
-                      }
+                      justify-content: center;
+                      color: var(--chocolate-brown-light, #ad907c);
+                      height: 16px;
+                      width: 16px;
+                      text-transform: uppercase;
+                      font:
+                        500 12px/140% Fredoka,
+                        sans-serif;
                     }
                   }
                 }
@@ -508,11 +484,7 @@ import { Squircle } from './Squircle';
             > .right {
               > nav {
                 > ul {
-                  > li {
-                    > button {
-                      display: flex;
-                    }
-                  }
+                  gap: 24px;
                 }
               }
             }
