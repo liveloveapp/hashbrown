@@ -1,0 +1,12 @@
+[build]
+  command   = "npx nx run www:build:production"
+  publish   = "dist/www/analog/analog/public"
+  functions = "dist/www/analog/analog"
+  edge_functions = "dist/www/netlify"
+
+[build.environment]
+  NODE_OPTIONS = "--max_old_space_size=4096"
+
+[[edge_functions]]
+  path = "/_/chat"
+  function = "chat"

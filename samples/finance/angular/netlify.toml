@@ -1,5 +1,5 @@
 [build]
-  command   = "npx nx run finance-angular:build"
+  command   = "npx nx run finance-angular:build:production"
   publish   = "dist/samples/finance/angular/browser"
   edge_functions = "dist/samples/finance/netlify"
 
