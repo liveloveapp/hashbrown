@@ -19,8 +19,13 @@ declare const Buffer: {
 @Directive({
   selector: '[wwwSquircle]',
   host: {
-    '[style.clip-path]': 'clipPathPropertyValue()',
-    '[style.--www-squircle-border-image-url]': 'borderImageUrl()',
+    '[style.clip-path]':
+      'hasValidDimensions() ? clipPathPropertyValue() : null',
+    '[style.border-radius]':
+      'hasValidDimensions() ? null : fallbackBorderRadius()',
+    '[style.border]': 'hasValidDimensions() ? null : fallbackBorder()',
+    '[style.--www-squircle-border-image-url]':
+      'hasValidDimensions() ? borderImageUrl() : null',
     '[style.--www-squircle-border-color]': 'wwwSquircleBorderColor()',
     '[style.--www-squircle-border-width]': 'wwwSquircleBorderWidth() + "px"',
     '[style.--www-squircle-width]': 'wwwSquircleWidth()',
@@ -36,9 +41,25 @@ export class Squircle implements OnDestroy {
   readonly wwwSquirclePreserveSmoothing = input<boolean>(true);
   readonly wwwSquircleBorderWidth = input<number>(0);
   readonly wwwSquircleBorderColor = input<string>('transparent');
-  readonly box = signal<{ width: number; height: number }>({
+  readonly wwwSquircleWidthValue = input<number>();
+  readonly wwwSquircleHeightValue = input<number>();
+  readonly clientBox = signal<{ width: number; height: number }>({
     width: 0,
     height: 0,
+  });
+  readonly box = computed(() => {
+    const explicitWidth = this.wwwSquircleWidthValue();
+    const explicitHeight = this.wwwSquircleHeightValue();
+    const measuredBox = this.clientBox();
+
+    return {
+      width: explicitWidth ?? measuredBox.width,
+      height: explicitHeight ?? measuredBox.height,
+    };
+  });
+  readonly hasValidDimensions = computed(() => {
+    const { width, height } = this.box();
+    return width > 0 && height > 0;
   });
   readonly wwwSquircleWidth = computed(() => `${this.box().width}px`);
   readonly wwwSquircleHeight = computed(() => `${this.box().height}px`);
@@ -85,10 +106,11 @@ export class Squircle implements OnDestroy {
   });
   readonly path = computed(() => {
     const { topLeft, topRight, bottomLeft, bottomRight } = this.cornerRadius();
+    const { width, height } = this.box();
 
     return getSvgPath({
-      height: this.box().height,
-      width: this.box().width,
+      height,
+      width,
       topLeftCornerRadius: topLeft,
       topRightCornerRadius: topRight,
       bottomLeftCornerRadius: bottomLeft,
@@ -99,6 +121,36 @@ export class Squircle implements OnDestroy {
   });
   readonly clipPathPropertyValue = computed(() => {
     return `path('${this.path()}')`;
+  });
+  readonly fallbackBorderRadius = computed(() => {
+    const parts = this.wwwSquircle()
+      .split(' ')
+      .map((p) => `${p}px`);
+
+    if (parts.length === 1) {
+      return parts[0];
+    }
+
+    if (parts.length === 2) {
+      return `${parts[0]} ${parts[0]} ${parts[1]} ${parts[1]}`;
+    }
+
+    if (parts.length === 4) {
+      return `${parts[0]} ${parts[1]} ${parts[3]} ${parts[2]}`;
+    }
+
+    return '0';
+  });
+  readonly fallbackBorder = computed(() => {
+    const width = this.wwwSquircleBorderWidth();
+    const color = this.wwwSquircleBorderColor();
+
+    if (width === 0) {
+      return null;
+    }
+
+    // Multiply by 0.5 since CSS border is double the visual width of squircle border
+    return `${width * 0.5}px solid ${color}`;
   });
   readonly borderImageUrl = computed(() => {
     const path = this.path();
@@ -126,26 +178,32 @@ export class Squircle implements OnDestroy {
   private readBox() {
     if (!this.isBrowser) return;
     const rect = this.host.nativeElement.getBoundingClientRect();
-    this.box.set({ width: rect.width, height: rect.height });
+    this.clientBox.set({ width: rect.width, height: rect.height });
   }
 
   private resizeObserver?: ResizeObserver;
 
   constructor() {
-    afterRenderEffect({
-      read: () => {
-        this.readBox();
-      },
-      write: () => {
-        if (!this.isBrowser) return;
-        if (!this.resizeObserver) {
-          this.resizeObserver = new ResizeObserver(() => {
-            this.readBox();
-          });
-        }
-        this.resizeObserver.observe(this.host.nativeElement);
-      },
-    });
+    const hasExplicitDimensions =
+      this.wwwSquircleWidthValue() !== undefined &&
+      this.wwwSquircleHeightValue() !== undefined;
+
+    if (!hasExplicitDimensions) {
+      afterRenderEffect({
+        read: () => {
+          this.readBox();
+        },
+        write: () => {
+          if (!this.isBrowser) return;
+          if (!this.resizeObserver) {
+            this.resizeObserver = new ResizeObserver(() => {
+              this.readBox();
+            });
+          }
+          this.resizeObserver.observe(this.host.nativeElement);
+        },
+      });
+    }
   }
 
   ngOnDestroy(): void {
