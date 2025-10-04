@@ -6,19 +6,22 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Command } from '../icons/Command';
 import { Menu } from '../icons/Menu';
 import { ConfigService } from '../services/ConfigService';
+import { ApiMenu } from './ApiMenu';
 import { DocsMenu } from './DocsMenu';
 import { DropdownMenu } from './DropDownMenu';
 import { FullscreenMenu } from './FullscreenMenu';
-import { Squircle } from './Squircle';
-import { ApiMenu } from './ApiMenu';
 import { GitHubStarButton } from './GitHubStarButton';
+import { SEARCH_OVERLAY_OPEN_EVENT } from './SearchOverlay';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-header',
   imports: [
     ApiMenu,
+    Command,
     DocsMenu,
     GitHubStarButton,
     DropdownMenu,
@@ -119,6 +122,30 @@ import { GitHubStarButton } from './GitHubStarButton';
               </li>
               <li>
                 <a routerLink="/blog" routerLinkActive="active">blog</a>
+              </li>
+              <li>
+                <button
+                  (click)="search()"
+                  wwwSquircle="8"
+                  [wwwSquircleBorderWidth]="2"
+                  wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+                >
+                  <p>search</p>
+                  <div>
+                    <span
+                      wwwSquircle="4"
+                      [wwwSquircleBorderWidth]="2"
+                      wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+                      ><www-command height="12px" width="12px"
+                    /></span>
+                    <span
+                      wwwSquircle="4"
+                      [wwwSquircleBorderWidth]="2"
+                      wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
+                      >k</span
+                    >
+                  </div>
+                </button>
               </li>
               <li>
                 <www-github-star-button />
@@ -241,7 +268,7 @@ import { GitHubStarButton } from './GitHubStarButton';
               > ul {
                 display: flex;
                 align-items: center;
-                gap: 24px;
+                gap: 18px;
 
                 > li {
                   display: flex;
@@ -261,6 +288,41 @@ import { GitHubStarButton } from './GitHubStarButton';
                     &:hover,
                     &.active {
                       color: var(--sunset-orange, #e88c4d);
+                    }
+                  }
+
+                  > button {
+                    display: none;
+                    flex-direction: row;
+                    gap: 16px;
+                    padding: 6px 12px;
+                    justify-content: space-between;
+                    align-items: center;
+
+                    > p {
+                      color: var(--chocolate-brown-light, #ad907c);
+                      font:
+                        400 14px/24px Fredoka,
+                        sans-serif;
+                    }
+
+                    > div {
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+
+                      > span {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: var(--chocolate-brown-light, #ad907c);
+                        height: 16px;
+                        width: 16px;
+                        text-transform: uppercase;
+                        font:
+                          500 12px/140% Fredoka,
+                          sans-serif;
+                      }
                     }
                   }
                 }
@@ -439,6 +501,24 @@ import { GitHubStarButton } from './GitHubStarButton';
           }
         }
       }
+
+      @media screen and (min-width: 1024px) {
+        header {
+          > menu {
+            > .right {
+              > nav {
+                > ul {
+                  > li {
+                    > button {
+                      display: flex;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     `,
   ],
 })
@@ -451,4 +531,8 @@ export class Header {
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/intro`;
   });
+
+  search() {
+    window.dispatchEvent(new Event(SEARCH_OVERLAY_OPEN_EVENT));
+  }
 }

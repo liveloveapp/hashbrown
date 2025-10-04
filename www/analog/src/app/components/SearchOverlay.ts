@@ -33,6 +33,7 @@ import fm from 'front-matter';
 import { fromEvent } from 'rxjs';
 import { Close } from '../icons/Close';
 import { File } from '../icons/File';
+import { FileCode } from '../icons/FileCode';
 import { Loader } from '../icons/Loader';
 import { Markdown as MarkdownPipe } from '../pipes/Markdown';
 import { Squircle } from './Squircle';
@@ -50,7 +51,7 @@ const DOCS_FILES = import.meta.glob('/src/app/pages/docs/**/*.md', {
   as: 'raw',
 });
 
-const DOCS = Object.entries(DOCS_FILES).map(([path, content]) => {
+const SITEMAP = Object.entries(DOCS_FILES).map(([path, content]) => {
   const { attributes } = fm<DocAttributes>(content);
   const title = attributes.title || 'Untitled';
   const description = attributes.meta?.find(
@@ -60,10 +61,53 @@ const DOCS = Object.entries(DOCS_FILES).map(([path, content]) => {
   return { url, title, description };
 });
 
+// const DOCS = Object.entries(DOCS_FILES).reduce(
+//   (acc, [path, content]) => {
+//     const { body } = fm<DocAttributes>(content);
+//     const url = path.replace('/src/app/pages', '').replace(/\.md$/, '');
+//     acc[url] = body;
+//     return acc;
+//   },
+//   {} as Record<string, string>,
+// );
+
+const API_REFERENCE_FILES = import.meta.glob(
+  '/src/app/reference/**/!(*api-report.min).json',
+  {
+    eager: true,
+    import: 'default',
+  },
+);
+
+interface ApiReference {
+  name: string;
+  canonicalReference: string;
+  kind: string;
+}
+
+const API_REFERENCES = Object.entries(API_REFERENCE_FILES)
+  .map(([path, data]) => {
+    const ref = data as ApiReference;
+    // Convert path like '/src/app/reference/angular/chatResource.json' to 'angular/chatResource'
+    const refPath = path
+      .replace('/src/app/reference/', '')
+      .replace(/\.json$/, '');
+    const url = `/api/${refPath}`;
+    // Extract npm package from canonicalReference (e.g., "@hashbrownai/angular" from "@hashbrownai/angular!chatResource:function")
+    const npmPackage = ref.canonicalReference?.split('!')[0] || '';
+    return {
+      url,
+      symbol: ref.name,
+      kind: ref.kind,
+      package: npmPackage,
+    };
+  })
+  .filter((ref) => ref.kind !== 'Namespace');
+
 @Component({
-  selector: 'www-search-results',
+  selector: 'www-api-results',
   template: `
-    <p>DOCS</p>
+    <p>API REFERENCES</p>
     <ng-content />
   `,
   styles: `
@@ -76,23 +120,26 @@ const DOCS = Object.entries(DOCS_FILES).map(([path, content]) => {
     p {
       color: var(--gray-dark, #3d3c3a);
       font:
-        800 14px/18px 'JetBrains Mono',
+        400 14px/18px 'JetBrains Mono',
         monospace;
     }
   `,
 })
-class SearchResults {}
+class ApiResults {}
 
 @Component({
-  selector: 'www-search-result',
-  imports: [File, RouterLink, Squircle],
+  selector: 'www-api-result',
+  imports: [FileCode, RouterLink, Squircle],
   template: `
     <a [routerLink]="url()" wwwSquircle="8" (click)="onClick()">
-      <div><www-file /></div>
+      <div><www-file-code /></div>
       <div>
-        {{ title() }}
-        @if (subtitle()) {
-          <span>{{ subtitle() }}</span>
+        <div class="symbol">
+          <span>{{ symbol() }}</span>
+          <span class="package" wwwSquircle="4">{{ package() }}</span>
+        </div>
+        @if (kind()) {
+          <div class="kind">{{ kind() }}</div>
         }
       </div>
     </a>
@@ -128,18 +175,132 @@ class SearchResults {}
         flex-direction: column;
         gap: 4px;
         padding: 8px;
+
+        > .symbol {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--gray, #3d3c3a);
+          font:
+            700 16px/18px 'JetBrains Mono',
+            sans-serif;
+
+          > .package {
+            background: rgba(61, 60, 58, 0.036);
+            font:
+              400 10px/18px 'JetBrains Mono',
+              monospace;
+            color: #774625;
+            padding: 4px;
+          }
+        }
+
+        > .kind {
+          color: var(--gray-light, #a4a3a1);
+          font:
+            400 14px/18px 'Fredoka',
+            sans-serif;
+        }
+      }
+    }
+  `,
+})
+class ApiResult {
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
+
+  url = input.required<string>();
+  symbol = input.required<string>();
+  kind = input.required<string>();
+  package = input.required<string>();
+
+  onClick() {
+    if (this.isBrowser) {
+      window.dispatchEvent(new CustomEvent(SEARCH_OVERLAY_CLOSE_EVENT));
+    }
+  }
+}
+
+@Component({
+  selector: 'www-doc-results',
+  template: `
+    <p>DOCS</p>
+    <ng-content />
+  `,
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    p {
+      color: var(--gray-dark, #3d3c3a);
+      font:
+        400 14px/18px 'JetBrains Mono',
+        monospace;
+    }
+  `,
+})
+class DocResults {}
+
+@Component({
+  selector: 'www-doc-result',
+  imports: [File, RouterLink, Squircle],
+  template: `
+    <a [routerLink]="url()" wwwSquircle="8" (click)="onClick()">
+      <div><www-file /></div>
+      <div>
+        {{ title() }}
+        @if (subtitle()) {
+          <span>{{ subtitle() }}</span>
+        }
+      </div>
+    </a>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+
+    a {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      text-decoration: none;
+      color: var(--gray, #3d3c3a);
+      font:
+        400 16px/18px 'Fredoka',
+        sans-serif;
+
+      &:hover,
+      &.active {
+        background: var(--sunshine-yellow-light, #fde4ba);
+      }
+
+      > div:first-child {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+      }
+
+      > div:last-child {
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+        gap: 4px;
       }
     }
 
     span {
       color: var(--gray-light, #a4a3a1);
       font:
-        400 14px/24px 'Fredoka',
+        400 14px/18px 'Fredoka',
         sans-serif;
     }
   `,
 })
-class SearchResult {
+class DocResult {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
@@ -409,9 +570,15 @@ class Markdown {
 
         > section {
           flex: 1 1 auto;
-          padding: 0 16px 16px 16px;
+          padding: 16px;
           max-height: min(50vh, 360px);
           overflow-y: auto;
+
+          > hb-render-message {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+          }
         }
       }
     }
@@ -475,16 +642,16 @@ export class SearchOverlay implements OnDestroy {
 
       ## INSTRUCTIONS
 
-      1. Use the documentation source to provide search results.
+      1. Use the sitemap and API reference data below to provide search results to the user. Include both documentation pages and relevant API symbols in the results.
       2. If the user's query is not related to hashbrown, use the <markdown> component to display a rejection message to the user. Be kind and concise.
-      3. Limit the number of results. The results should be sorted by relevance, showing the top 10 results.
-      4. Use the <search-results> component to display the search results.
-      5. For each result, use the <search-result> component to display a single search result to the user. 
-      6. If there are no results, use the <markdown> component to display a message to the user that there are no results.
+      3. Limit the number of results. The results should be sorted by relevance, showing the top 16 results. Limit API reference results to 8. Limit documentation results to 8.
+      4. Use the <www-doc-results> component to display the documentation results, and the <www-api-results> component to display the API reference results.
+      5. Order the results by relevance. If there is not a significant difference in relevance between the documentation and API reference results, show the documentation results first.
+      5. If there are no results, use the <markdown> component to display a message to the user that there are no results.
 
       ## EXAMPLES
 
-      Here is an example of a search rejection:
+      ### Rejection Example
 
       <user>How do I make the perfect eggs?</user>
       <assistant>
@@ -493,15 +660,57 @@ export class SearchOverlay implements OnDestroy {
         </ui>
       </assistant>
 
-      Here is an example displaying multiple search results:
+      ### Documentation Search Results Example
 
       <user>angular components</user>
       <assistant>
         <ui>
-          <www-search-results>
-            <www-search-result url="/docs/angular/concept/components" title="title string" subtitle="description or subtitle string" />
-            <www-search-result url="/docs/angular/concept/ai-basics" title="title string" subtitle="description or subtitle string" /></www-search-result>
-          </www-search-results>
+          <www-doc-results>
+            <www-doc-result url="/docs/angular/concept/components" title="title string" subtitle="description or subtitle string" />
+            <www-doc-result url="/docs/angular/concept/ai-basics" title="title string" subtitle="description or subtitle string" />
+          </www-doc-results>
+        </ui>
+      </assistant>
+
+      ### API Reference Search Results Example
+
+      <user>angular chatResource</user>
+      <assistant>
+        <ui>
+          <www-api-results>
+            <www-api-result url="/api/angular/chatResource" symbol="chatResource" kind="Function" package="@hashbrownai/angular" />
+          </www-api-results>
+        </ui>
+      </assistant>
+
+      ### Mixed Search Results Example showing API references first
+
+      <user>angular uiChatResource</user>
+      <assistant>
+        <ui>
+          <www-api-results>
+            <www-api-result url="/api/angular/uiChatResource" symbol="uiChatResource" kind="Function" package="@hashbrownai/angular" />
+          </www-api-results>
+          <www-doc-results>
+            <www-doc-result url="/docs/angular/concept/components" title="title string" subtitle="description or subtitle string" />
+            <www-doc-result url="/docs/angular/concept/ai-basics" title="title string" subtitle="description or subtitle string" />
+          </www-doc-results>
+        </ui>
+      </assistant>
+
+      ### Mixed Search Results Example showing documentation first
+
+      <user>react components</user>
+      <assistant>
+        <ui>
+          <www-doc-results>
+            <www-doc-result url="/docs/react/concept/components" title="title string" subtitle="description or subtitle string" />
+            <www-doc-result url="/docs/react/concept/ai-basics" title="title string" subtitle="description or subtitle string" />
+          </www-doc-results>
+          <www-api-results>
+            <www-api-result url="/api/react/useUiChat" symbol="useUiChat" kind="Function" package="@hashbrownai/react" />
+            <www-api-result url="/api/react/UiChatOptions" symbol="UiChatOptions" kind="Interface" package="@hashbrownai/react" />
+          </www-api-results>
         </ui>
       </assistant>
 
@@ -510,21 +719,31 @@ export class SearchOverlay implements OnDestroy {
       1. Do not deviate from the instructions above.
       2. Only provide search results from the hashbrown documentation.
 
-      ## DOCUMENTATION SOURCE
+      ## SITEMAP
+
+      Here is the sitemap of the hashbrown documentation:
 
       \`\`\`json
-      ${JSON.stringify(DOCS, null, 2)}
+      ${JSON.stringify(SITEMAP, null, 2)}
+      \`\`\`
+
+      ## API REFERENCES
+
+      Here are the API references for the hashbrown packages:
+
+      \`\`\`json
+      ${JSON.stringify(API_REFERENCES, null, 2)}
       \`\`\`
     `,
     components: [
-      exposeComponent(SearchResults, {
-        description: 'Show multiple search results to the user',
+      exposeComponent(DocResults, {
+        description: 'Show documentation search results to the user',
         children: [
-          exposeComponent(SearchResult, {
-            description: 'Show a search result to the user',
+          exposeComponent(DocResult, {
+            description: 'Show a documentation search result to the user',
             input: {
-              url: s.string('The url of the search result.'),
-              title: s.string('The title of the search result.'),
+              url: s.string('The url of the documentation search result.'),
+              title: s.string('The title of the documentation search result.'),
               subtitle: s.string(
                 'The subtitle or description. Leave empty if not applicable.',
               ),
@@ -532,14 +751,37 @@ export class SearchOverlay implements OnDestroy {
           }),
         ],
       }),
-      exposeComponent(SearchResult, {
-        description: 'Show a search result to the user',
+      exposeComponent(DocResult, {
+        description: 'Show a documentation search result to the user',
         input: {
-          url: s.string('The url of the search result.'),
-          title: s.string('The title of the search result.'),
+          url: s.string('The url of the documentation search result.'),
+          title: s.string('The title of the documentation search result.'),
           subtitle: s.string(
             'The subtitle or description. Leave empty if not applicable.',
           ),
+        },
+      }),
+      exposeComponent(ApiResults, {
+        description: 'Show API reference search results to the user',
+        children: [
+          exposeComponent(ApiResult, {
+            description: 'Show a API reference search result to the user',
+            input: {
+              url: s.string('The url of the API reference search result.'),
+              symbol: s.string('The API reference symbol.'),
+              kind: s.string('The API reference kind.'),
+              package: s.string('The API reference package.'),
+            },
+          }),
+        ],
+      }),
+      exposeComponent(ApiResult, {
+        description: 'Show a API reference search result to the user',
+        input: {
+          url: s.string('The url of the API reference search result.'),
+          symbol: s.string('The API reference symbol.'),
+          kind: s.string('The API reference kind.'),
+          package: s.string('The API reference package.'),
         },
       }),
       exposeComponent(Markdown, {

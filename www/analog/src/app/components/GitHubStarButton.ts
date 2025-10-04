@@ -13,7 +13,7 @@ import { Squircle } from './Squircle';
       rel="noopener noreferrer"
       wwwSquircle="8"
       [wwwSquircleBorderWidth]="2"
-      wwwSquircleBorderColor="rgba(0, 0, 0, 0.12)"
+      wwwSquircleBorderColor="var(--chocolate-brown-light, #AD907C)"
     >
       <div class="stars">
         @if (stars() > 0) {
@@ -32,7 +32,6 @@ import { Squircle } from './Squircle';
       align-items: center;
       gap: 4px;
       padding: 6px 12px;
-      background-color: white;
     }
 
     .stars {
