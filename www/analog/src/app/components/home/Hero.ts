@@ -44,9 +44,10 @@ import { React as ReactIcon } from '../../icons/React';
               in Your Components
             </h1>
             <p>
-              TypeScript framework to use LLMs in your React or Angular app with
-              client-side tools, real-time UI streaming, and safe LLM-generated
-              code execution.
+              Hashbrown is an open-source framework for building interfaces
+              powered by language models. Create components that talk, adapt,
+              and predict what comes next. Craft apps that are multi-lingual,
+              accessible, and joyful to use.
             </p>
           </div>
           <div class="actions">
