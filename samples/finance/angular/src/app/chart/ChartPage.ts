@@ -1,4 +1,5 @@
 import {
+  afterNextRender,
   Component,
   computed,
   effect,
@@ -17,6 +18,8 @@ import { CodeModal } from './CodeModal';
 import { CodeLoader } from './CodeLoader';
 import { Ingredients } from './Ingredients';
 import { ChartExamples } from './ChartExamples';
+import { Overlay } from '@angular/cdk/overlay';
+import { openWelcomeOverlay } from './Welcome';
 
 @Component({
   selector: 'app-chart-page',
@@ -60,7 +63,9 @@ import { ChartExamples } from './ChartExamples';
         <app-chart-examples (selectExample)="sendMessage($event.prompt)" />
       }
       @if (chat.code() && !hasRenderedAChart()) {
-        <app-code-loader [code]="chat.code()!" />
+        <button (click)="openCodeModal()">
+          <app-code-loader [code]="chat.code()!" />
+        </button>
       }
       <canvas #canvasRef></canvas>
     </div>
@@ -126,9 +131,17 @@ import { ChartExamples } from './ChartExamples';
       align-items: center;
       justify-content: center;
       width: 100%;
-      height: calc(100vh - 64px);
       padding: 24px;
       position: relative;
+
+      > button {
+        border: none;
+        background: none;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+        outline: none;
+      }
     }
 
     app-code-loader {
@@ -187,6 +200,7 @@ export class ChartPage {
   chat = inject(Chat);
   dialog = inject(MatDialog);
   ingredients = inject(Ingredients);
+  overlay = inject(Overlay);
   canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvasRef');
   inputRef = viewChild.required<ElementRef<HTMLInputElement>>('input');
   disabled = computed(() => this.chat.isLoading());
@@ -199,6 +213,8 @@ export class ChartPage {
   });
   hasRenderedAChart = signal(false);
   constructor() {
+    afterNextRender(() => openWelcomeOverlay(this.overlay));
+
     effect(async (onCleanup) => {
       const canvas = this.canvasRef().nativeElement;
       const chartConfig = this.chat.chart();

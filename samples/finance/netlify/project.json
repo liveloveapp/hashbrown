@@ -4,8 +4,16 @@
   "sourceRoot": "samples/finance/netlify/src",
   "projectType": "application",
   "targets": {
+    "generate-data": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx samples/finance/netlify/tools/generate-ingredients.ts",
+        "parallel": true
+      }
+    },
     "build": {
       "executor": "@nx/esbuild:esbuild",
+      "dependsOn": ["generate-data"],
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {

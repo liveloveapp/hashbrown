@@ -156,7 +156,7 @@ export class AddLightForm {
   );
 
   readonly nameCompletion = structuredCompletionResource({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4.1',
     system: `
       You are an assistant that helps the user finish typing a name for a light.
       They are using a web app to add a new light to their home. Each time
