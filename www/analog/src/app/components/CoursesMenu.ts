@@ -12,13 +12,13 @@ import { Squircle } from './Squircle';
         Building Generative UIs with React
       </a>
       <ul>
-        <li><span>October 13</span> <span>11 am to 6 pm ET</span></li>
+        <li><span>Contact us to schedule a workshop.</span></li>
       </ul>
-      <span class="price">
+      <!-- <span class="price">
         <www-sell height="14px" width="14px" stroke="#E88C4D" fill="#E88C4D" />
         $350 per person. Group discounts available.
-      </span>
-      <div class="action">
+      </span> -->
+      <!-- <div class="action">
         <a
           href="https://ti.to/liveloveapp/hashbrown-react-sep-2025"
           target="_blank"
@@ -26,7 +26,7 @@ import { Squircle } from './Squircle';
         >
           Reserve to Attend Online</a
         >
-      </div>
+      </div> -->
     </div>
     <div class="course">
       <a routerLink="angular-generative-ui-engineering"
