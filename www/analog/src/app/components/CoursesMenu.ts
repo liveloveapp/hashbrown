@@ -33,7 +33,7 @@ import { Squircle } from './Squircle';
         >Building Generative UIs with Angular</a
       >
       <ul>
-        <li><span>October 14</span> <span>11 am to 6 pm ET</span></li>
+        <li><span>October 28</span> <span>11 am to 6 pm ET</span></li>
       </ul>
       <span class="price">
         <www-sell height="14px" width="14px" stroke="#E88C4D" fill="#E88C4D" />
