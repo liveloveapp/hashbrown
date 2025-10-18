@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebRTC VAD Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .controls {
+        margin: 20px 0;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        font-size: 16px;
+      }
+      .status {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+      }
+      #liveIndicator {
+        margin: 20px 0;
+        padding: 20px;
+        border-radius: 10px;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        transition: all 0.2s ease;
+      }
+      #liveIndicator.voice {
+        background-color: #28a745;
+        color: white;
+      }
+      #liveIndicator.no-voice {
+        background-color: #6c757d;
+        color: white;
+      }
+      #liveIndicator.idle {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        border: 2px dashed #dee2e6;
+      }
+      .build-info {
+        background-color: #e7f3ff;
+        border-left: 4px solid #2196f3;
+        padding: 10px 15px;
+        margin: 20px 0;
+        font-size: 12px;
+        font-family: monospace;
+      }
+      .build-info h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        font-family: Arial, sans-serif;
+      }
+      .build-info code {
+        background-color: #fff;
+        padding: 2px 5px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>WebRTC VAD (Voice Activity Detection) Demo</h1>
+
+    <div id="buildInfo" class="build-info">
+      <h3>Build Information</h3>
+      <div id="buildInfoContent">Loading...</div>
+    </div>
+
+    <div class="controls">
+      <button id="initBtn">Initialize VAD</button>
+      <button id="startBtn" disabled>Start Recording</button>
+      <button id="stopBtn" disabled>Stop Recording</button>
+    </div>
+
+    <div id="status" class="status info">Click "Initialize VAD" to start</div>
+
+    <div>
+      <label for="modeSelect">VAD Mode:</label>
+      <select id="modeSelect">
+        <option value="0">0 - Least Aggressive (Most Sensitive)</option>
+        <option value="1">1 - Low Bitrate</option>
+        <option value="2">2 - Aggressive</option>
+        <option value="3">3 - Most Aggressive (Least Sensitive)</option>
+      </select>
+    </div>
+
+    <div id="liveIndicator" class="idle">Not Recording</div>
+
+    <script src="output/webrtc_vad.js"></script>
+    <script src="output/vad_wrapper.js"></script>
+    <script>
+      let vad = null;
+      let audioContext = null;
+      let processor = null;
+
+      const initBtn = document.getElementById('initBtn');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const statusDiv = document.getElementById('status');
+      const modeSelect = document.getElementById('modeSelect');
+      const liveIndicator = document.getElementById('liveIndicator');
+      const buildInfoContent = document.getElementById('buildInfoContent');
+
+      // Display build information
+      function displayBuildInfo() {
+        try {
+          const buildInfo = WebRTCVAD.getBuildInfo();
+          buildInfoContent.innerHTML = `
+                    WebRTC Commit: <code>${buildInfo.webrtc_commit_sha}</code><br>
+                    Build Date: <code>${buildInfo.build_date}</code><br>
+                    Wrapper Version: <code>${buildInfo.version}</code>
+                `;
+        } catch (error) {
+          buildInfoContent.textContent = 'Build information not available';
+          console.error('Failed to load build info:', error);
+        }
+      }
+
+      // Initialize build info display
+      displayBuildInfo();
+
+      function updateStatus(message, type = 'info') {
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
+      }
+
+      function updateLiveIndicator(decision) {
+        if (decision === 1) {
+          liveIndicator.textContent = '🎤 VOICE DETECTED';
+          liveIndicator.className = 'voice';
+        } else {
+          liveIndicator.textContent = 'No Voice';
+          liveIndicator.className = 'no-voice';
+        }
+      }
+
+      async function initializeVAD() {
+        try {
+          updateStatus('Loading WebAssembly module...', 'info');
+
+          // Load the WASM module (createVADModule is the factory function exported by Emscripten)
+          const wasmModule = await createVADModule();
+
+          // Initialize VAD wrapper
+          vad = new WebRTCVAD();
+          await vad.init(wasmModule);
+
+          // Set initial mode
+          vad.setMode(parseInt(modeSelect.value));
+
+          updateStatus('VAD initialized successfully!', 'success');
+          console.log('VAD initialized with mode:', modeSelect.value);
+          initBtn.disabled = true;
+          startBtn.disabled = false;
+        } catch (error) {
+          updateStatus(`Failed to initialize VAD: ${error.message}`, 'error');
+          console.error('VAD initialization error:', error);
+        }
+      }
+
+      function startRecording() {
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then((stream) => {
+            audioContext = new (window.AudioContext ||
+              window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+
+            // Create a script processor for real-time audio processing
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+            processor.onaudioprocess = function (event) {
+              if (!vad) return;
+
+              const inputBuffer = event.inputBuffer;
+              const inputData = inputBuffer.getChannelData(0);
+
+              // Convert float32 to int16
+              const int16Data = new Int16Array(inputData.length);
+              for (let i = 0; i < inputData.length; i++) {
+                int16Data[i] = Math.max(
+                  -32768,
+                  Math.min(32767, inputData[i] * 32768),
+                );
+              }
+
+              // Process in 10ms chunks (160 samples at 16kHz)
+              const chunkSize = 160;
+              for (let i = 0; i < int16Data.length; i += chunkSize) {
+                const chunk = int16Data.slice(i, i + chunkSize);
+                if (chunk.length === chunkSize) {
+                  try {
+                    const decision = vad.process(chunk, 16000);
+                    updateLiveIndicator(decision);
+                    console.log(
+                      'VAD decision:',
+                      decision === 1 ? 'VOICE' : 'NO VOICE',
+                    );
+                  } catch (error) {
+                    console.error('VAD processing error:', error);
+                  }
+                }
+              }
+            };
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+
+            updateStatus('Recording started. Speak to test VAD!', 'success');
+            console.log('Recording started - check console for VAD decisions');
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+          })
+          .catch((error) => {
+            updateStatus(
+              `Failed to start recording: ${error.message}`,
+              'error',
+            );
+            console.error('Recording error:', error);
+          });
+      }
+
+      function stopRecording() {
+        if (processor) {
+          processor.disconnect();
+          processor = null;
+        }
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+
+        liveIndicator.textContent = 'Not Recording';
+        liveIndicator.className = 'idle';
+
+        updateStatus('Recording stopped', 'info');
+        console.log('Recording stopped');
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+
+      // Event listeners
+      initBtn.addEventListener('click', initializeVAD);
+      startBtn.addEventListener('click', startRecording);
+      stopBtn.addEventListener('click', stopRecording);
+
+      modeSelect.addEventListener('change', function () {
+        if (vad) {
+          try {
+            vad.setMode(parseInt(this.value));
+            updateStatus(`VAD mode changed to ${this.value}`, 'info');
+            console.log('VAD mode changed to:', this.value);
+          } catch (error) {
+            updateStatus(`Failed to change mode: ${error.message}`, 'error');
+            console.error('Mode change error:', error);
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
