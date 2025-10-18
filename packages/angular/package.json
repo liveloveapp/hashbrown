@@ -9,9 +9,9 @@
     "directory": "packages/angular"
   },
   "peerDependencies": {
-    "@angular/core": "^20.0.0",
+    "@angular/core": "^20.0.0 || ^21.0.0-0",
     "@hashbrownai/core": "0.3.0",
-    "@angular/common": "^20.0.0"
+    "@angular/common": "^20.0.0|| ^21.0.0-0"
   },
   "sideEffects": false,
   "publishConfig": {
