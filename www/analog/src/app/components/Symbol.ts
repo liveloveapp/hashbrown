@@ -44,45 +44,48 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
         </div>
       }
     } @else {
-      @for (symbol of summary().members; track $index) {
+      @if (summary().members.length > 0) {
         <www-symbol-header
           [name]="summary().name"
           [fileUrlPath]="summary().fileUrlPath"
-          [symbol]="symbol"
+          [symbol]="summary().members[0]"
         />
         <article>
-          @if (symbol.docs.summary) {
-            <www-symbol-summary [symbol]="symbol" />
+          @if (summary().members[0].docs.summary) {
+            <www-symbol-summary [symbol]="summary().members[0]" />
           }
-          <www-symbol-api [density]="'0'" [symbol]="symbol" />
-          @if (
-            symbol.parameters?.length ||
-            symbol.typeParameters?.length ||
-            symbol.returnTypeTokenRange ||
-            symbol.docs.usageNotes
-          ) {
-            <www-code-example [header]="symbol.name" [copyable]="false">
-              <ng-container actions>
-                <www-symbol-return [member]="symbol" />
-              </ng-container>
-              <div class="symbol">
-                @if (symbol.parameters?.length) {
-                  <www-symbol-params [symbol]="symbol" />
-                }
-                @if (symbol.typeParameters?.length) {
-                  <www-symbol-type-params [symbol]="symbol" />
-                }
-                @if (symbol.returnTypeTokenRange) {
-                  <www-symbol-returns [symbol]="symbol" />
-                }
-                @if (symbol.docs.usageNotes) {
-                  <www-symbol-usage-notes [symbol]="symbol" />
-                }
-              </div>
-            </www-code-example>
+
+          @for (symbol of summary().members; track $index) {
+            <www-symbol-api [density]="'0'" [symbol]="symbol" />
+            @if (
+              symbol.parameters?.length ||
+              symbol.typeParameters?.length ||
+              symbol.returnTypeTokenRange ||
+              symbol.docs.usageNotes
+            ) {
+              <www-code-example [header]="symbol.name" [copyable]="false">
+                <ng-container actions>
+                  <www-symbol-return [member]="symbol" />
+                </ng-container>
+                <div class="symbol">
+                  @if (symbol.parameters?.length) {
+                    <www-symbol-params [symbol]="symbol" />
+                  }
+                  @if (symbol.typeParameters?.length) {
+                    <www-symbol-type-params [symbol]="symbol" />
+                  }
+                  @if (symbol.returnTypeTokenRange) {
+                    <www-symbol-returns [symbol]="symbol" />
+                  }
+                  @if (symbol.docs.usageNotes) {
+                    <www-symbol-usage-notes [symbol]="symbol" />
+                  }
+                </div>
+              </www-code-example>
+            }
+            <www-symbol-methods [symbol]="symbol" />
+            <www-symbol-examples [symbol]="symbol" />
           }
-          <www-symbol-methods [symbol]="symbol" />
-          <www-symbol-examples [symbol]="symbol" />
         </article>
       }
     }
