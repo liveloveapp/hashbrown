@@ -1,0 +1,9 @@
+# Build output directory
+output/
+
+# Staging directory for Docker build
+.staging/
+
+# Docker build cache
+.dockerignore
+
