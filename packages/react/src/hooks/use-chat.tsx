@@ -10,6 +10,9 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
 
 /**
  * Options for the `useChat` hook.
+ *
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export interface UseChatOptions<Tools extends Chat.AnyTool> {
   /**
@@ -54,6 +57,9 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
 
 /**
  * The result object-type returned by the `useChat` hook that provides functions and state for interacting with the chat.
+ *
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export interface UseChatResult<Tools extends Chat.AnyTool> {
   /**
@@ -118,11 +124,11 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * This React hook creates a chat instance used to interact with the LLM.
  * The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.
  *
- * @description
  * The `useChat` hook provides the most basic functionality for un-structured chats.  Unstructured chats include things like general chats and natural language controls.
  *
- * @returns {UseChatResult} An object containing chat state and functions to interact with the chat.
- *
+ * @public
+ * @returns An object containing chat state and functions to interact with the chat.
+ * @typeParam Tools - The set of tool definitions available to the chat.
  * @example
  * This example demonstrates how to use the `useChat` hook to create a simple chat component.
  *
@@ -220,19 +226,21 @@ export function useChat<Tools extends Chat.AnyTool>(
     tools,
   ]);
 
-  const internalMessages = useHashbrownSignal(hashbrownRef.current.messages);
-  const isReceiving = useHashbrownSignal(hashbrownRef.current.isReceiving);
-  const isSending = useHashbrownSignal(hashbrownRef.current.isSending);
-  const isRunningToolCalls = useHashbrownSignal(
-    hashbrownRef.current.isRunningToolCalls,
+  const internalMessages = useHashbrownSignal<Chat.Message<string, Tools>[]>(
+    getHashbrown().messages,
   );
-  const exhaustedRetries = useHashbrownSignal(
-    hashbrownRef.current.exhaustedRetries,
+  const isReceiving = useHashbrownSignal<boolean>(getHashbrown().isReceiving);
+  const isSending = useHashbrownSignal<boolean>(getHashbrown().isSending);
+  const isRunningToolCalls = useHashbrownSignal<boolean>(
+    getHashbrown().isRunningToolCalls,
   );
-  const error = useHashbrownSignal(hashbrownRef.current.error);
-  const lastAssistantMessage = useHashbrownSignal(
-    hashbrownRef.current.lastAssistantMessage,
+  const exhaustedRetries = useHashbrownSignal<boolean>(
+    getHashbrown().exhaustedRetries,
   );
+  const error = useHashbrownSignal<Error | undefined>(getHashbrown().error);
+  const lastAssistantMessage = useHashbrownSignal<
+    Chat.AssistantMessage<string, Tools> | undefined
+  >(getHashbrown().lastAssistantMessage);
 
   const sendMessage = useCallback((message: Chat.Message<string, Tools>) => {
     getHashbrown().sendMessage(message);

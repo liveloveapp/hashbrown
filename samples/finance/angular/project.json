@@ -1,0 +1,67 @@
+{
+  "name": "finance-angular",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "samples/finance/angular/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "dependsOn": ["finance-netlify:build"],
+      "options": {
+        "outputPath": "dist/samples/finance/angular",
+        "browser": "samples/finance/angular/src/main.ts",
+        "tsConfig": "samples/finance/angular/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "samples/finance/angular/public"
+          }
+        ],
+        "styles": ["samples/finance/angular/src/styles.scss"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "2mb",
+              "maximumError": "4mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "options": {
+        "port": 4600,
+        "proxyConfig": "samples/finance/angular/proxy.conf.json"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "finance-angular:build:production"
+        },
+        "development": {
+          "buildTarget": "finance-angular:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "name": "smart-home-netlify",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/smart-home/netlify/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "browser",
+        "outputPath": "dist/samples/smart-home/netlify",
+        "format": ["esm"],
+        "bundle": true,
+        "thirdParty": true,
+        "main": "samples/smart-home/netlify/src/chat.ts",
+        "tsConfig": "samples/smart-home/netlify/tsconfig.app.json",
+        "generatePackageJson": false,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "mainFields": ["browser", "module", "main"],
+          "conditions": ["browser"],
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "smart-home-netlify:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "smart-home-netlify:build:development"
+        },
+        "production": {
+          "buildTarget": "smart-home-netlify:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}

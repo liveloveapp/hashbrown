@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/google",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Google provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -12,11 +12,12 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "@openapi-contrib/json-schema-to-openapi-schema": "^3.0.3"
   },
   "peerDependencies": {
     "@google/genai": "^0.8.0",
-    "@hashbrownai/core": "0.2.3"
+    "@hashbrownai/core": "0.3.0"
   },
   "sideEffects": false,
   "publishConfig": {

@@ -1,0 +1,8 @@
+[build]
+  command   = "npx nx run smart-home-angular:build"
+  publish   = "dist/samples/smart-home/angular/browser"
+  edge_functions = "dist/samples/smart-home/netlify"
+
+[[edge_functions]]
+  path = "/api/chat"
+  function = "chat"

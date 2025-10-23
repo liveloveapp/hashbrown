@@ -4,6 +4,9 @@ import { useChat } from './use-chat';
 
 /**
  * Options for the `useCompletion` hook.
+ *
+ * @public
+ * @typeParam Input - The type of the input to predict from.
  */
 export interface UseCompletionOptions<Input> {
   /**
@@ -48,8 +51,13 @@ export interface UseCompletionOptions<Input> {
 
 /**
  * The result of the `useCompletion` hook.
+ *
+ * @public
  */
 export interface UseCompletionResult {
+  /**
+   * The output from the model.
+   */
   output: string | null;
 
   /**
@@ -87,7 +95,8 @@ export interface UseCompletionResult {
  * This React hook creates a change instance used to interact with the LLM.
  * The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.
  *
- * @description
+ * @public
+ * @remarks
  * The `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs.  This is useful for things like natural language autocompletions.
  *
  * @example

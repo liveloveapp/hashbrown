@@ -11,11 +11,18 @@
  * @see https://github.com/promplate/partial-json-parser-js
  */
 
-import { Logger, NONE_LEVEL } from '../logger/logger';
+import {
+  DEBUG_LEVEL,
+  INFO_LEVEL,
+  Logger,
+  NONE_LEVEL,
+  TRACE_LEVEL,
+} from '../logger/logger';
 import * as s from '../schema/base';
 import {
   internal,
   isAnyOfType,
+  isNullType,
   isObjectType,
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
@@ -39,6 +46,63 @@ function shouldBeWrappedPrimitive(schema: s.HashbrownType): boolean {
 
   return true;
 }
+
+// Build a discriminator map for literal-based anyOfs, if possible
+type DiscriminatorEntry = {
+  schema: s.HashbrownType;
+  literalKey: string;
+  literalValue: string;
+};
+
+const buildDiscriminatorMap = (
+  options: s.HashbrownType[],
+): Record<string, DiscriminatorEntry> | null => {
+  const map: Record<string, DiscriminatorEntry> = {};
+
+  for (const opt of options) {
+    if (!s.isObjectType(opt)) {
+      return null;
+    }
+
+    const shape = (opt as any)[internal].definition.shape as Record<
+      string,
+      s.HashbrownType
+    >;
+
+    // Find literal properties on this object option
+    const literalEntries = Object.entries(shape).filter(([, v]) =>
+      s.isLiteralType(v as any),
+    ) as [string, s.HashbrownType][];
+
+    // Must have exactly one literal for unambiguous discrimination
+    if (literalEntries.length !== 1) {
+      return null;
+    }
+
+    const [literalKey, literalSchema] = literalEntries[0];
+    const literalValue = (literalSchema as any)[internal].definition.value as
+      | string
+      | number
+      | boolean;
+
+    if (typeof literalValue !== 'string') {
+      // Only support string discriminators
+      return null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
+      // Duplicate discriminator value -> ambiguous
+      return null;
+    }
+    map[literalValue] = {
+      schema: opt,
+      literalKey,
+      literalValue,
+    };
+  }
+
+  return Object.keys(map).length === options.length ? map : null;
+};
 
 function parseJSON(
   jsonString: string,
@@ -84,7 +148,11 @@ const _parseJSON = (
     currentKey: string,
     allowsIncomplete: boolean,
     insideArray: boolean,
-  ) => any = (currentKey, allowsIncomplete, insideArray) => {
+    // If this is present, its the name of an object property in an anyOf
+    // that was used as a discriminator mapping.  We'll pass it into
+    // parseObj
+    literalKey: string | undefined,
+  ) => any = (currentKey, allowsIncomplete, insideArray, literalKey) => {
     skipBlank();
 
     logger.for('parseAny').info(`Remaining string: ${jsonString.slice(index)}`);
@@ -95,7 +163,9 @@ const _parseJSON = (
     logger.for('parseAny').debug(currentLastContainer);
 
     if (index >= length) markPartialJSON('Unexpected end of input');
-    if (jsonString[index] === '"') return parseStr(allowsIncomplete);
+    if (jsonString[index] === '"') {
+      return parseStr(allowsIncomplete);
+    }
     if (jsonString[index] === '{') {
       /*
         If the top-level schema is a primitive that should be object-wrapped, we 
@@ -110,12 +180,13 @@ const _parseJSON = (
       } else if (shouldBeWrappedPrimitive(currentLastContainer)) {
         return parseWrappedPrimitive();
       } else {
-        return parseObj(currentKey, insideArray);
+        return parseObj(currentKey, insideArray, literalKey);
       }
     }
 
-    if (jsonString[index] === '[')
+    if (jsonString[index] === '[') {
       return parseArr(currentKey, allowsIncomplete);
+    }
     if (jsonString.substring(index, index + 4) === 'null') {
       index += 4;
       return null;
@@ -227,7 +298,7 @@ const _parseJSON = (
           logger.for('parseWrappedPrimitive').debug(matchingSchema);
 
           // This isn't a real object, so don't pass the key name
-          value = parseAny('', s.isStreaming(matchingSchema), false);
+          value = parseAny('', s.isStreaming(matchingSchema), false, undefined);
 
           logger.for('parseWrappedPrimitive').debug('Value:');
           logger.for('parseWrappedPrimitive').debug(value);
@@ -271,6 +342,31 @@ const _parseJSON = (
 
     let currentContainerStackIndex = containerStack.length - 1;
 
+    const optionsForMap =
+      (containerStack[currentContainerStackIndex] as any) ?? [];
+
+    const literalDiscriminatorMap = Array.isArray(optionsForMap)
+      ? buildDiscriminatorMap(optionsForMap)
+      : null;
+
+    const getMatchingSchemaForDiscriminator = (
+      key: string,
+    ):
+      | { schema: s.HashbrownType; literalKey?: string; literalValue?: string }
+      | undefined => {
+      if (literalDiscriminatorMap && key in literalDiscriminatorMap) {
+        return literalDiscriminatorMap[key];
+      }
+
+      // Fallback to numeric discriminator
+      const numericIndex = parseInt(key);
+      if (Array.isArray(optionsForMap)) {
+        const schema = optionsForMap[numericIndex];
+        return schema ? { schema } : undefined;
+      }
+      return undefined;
+    };
+
     try {
       while (jsonString[index] !== '}') {
         skipBlank();
@@ -285,37 +381,48 @@ const _parseJSON = (
         try {
           logger.for('parseAnyOf').debug(`Handling discriminator: ${key}`);
 
-          const matchingSchema = (
-            containerStack[currentContainerStackIndex] as any
-          )[parseInt(key)];
+          const matching = getMatchingSchemaForDiscriminator(key);
 
           logger
             .for('parseAnyOf')
             .debug(
-              `Found matching schema in current container for ${key}: ${!!matchingSchema}`,
+              `Found matching schema in current container for ${key}: ${!!(matching && matching.schema)}`,
             );
 
-          if (matchingSchema) {
+          if (matching?.schema) {
             logger.for('parseAnyOf').debug('Adding schema for discriminator');
-            logger.for('parseAnyOf').debug(matchingSchema);
+            logger.for('parseAnyOf').debug(matching.schema);
 
             // If the matching schema is itself an anyOf, we need to push its options array
             // to the schema stack instead of the schema
-            if (s.isAnyOfType(matchingSchema)) {
+            if (s.isAnyOfType(matching.schema)) {
               containerStack.push(
-                (matchingSchema as any)[internal].definition.options,
+                (matching.schema as any)[internal].definition.options,
               );
             } else {
               containerStack.push(
                 s.object(`AnyOf Wrapper for ${key}`, {
-                  [key]: matchingSchema,
+                  [key]: matching.schema,
                 }),
               );
             }
 
             currentContainerStackIndex = containerStack.length - 1;
 
-            value = parseAny(key, true, false);
+            value = parseAny(key, true, false, matching?.literalKey);
+            // If we matched via literal discriminator and the inner object doesn't
+            // include the literal field, inject it so the parsed result conforms
+            // to the declared schema.
+            if (
+              literalDiscriminatorMap &&
+              matching.literalKey &&
+              matching.literalValue &&
+              value != null &&
+              typeof value === 'object' &&
+              !(matching.literalKey in (value as any))
+            ) {
+              (value as any)[matching.literalKey] = matching.literalValue;
+            }
 
             logger.for('parseAnyOf').debug('Value:');
             logger.for('parseAnyOf').debug(value);
@@ -353,6 +460,7 @@ const _parseJSON = (
   const handleIncompleteObject = (
     currentContainerStackIndex: number,
     obj: any,
+    literalKey: string | undefined,
   ) => {
     const currentContainer = containerStack[currentContainerStackIndex];
 
@@ -377,6 +485,17 @@ const _parseJSON = (
           .debug(
             `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
           );
+
+        if (key === literalKey) {
+          // A literal key extracted from an anyOf to be a discriminator won't be in the
+          // object until after it is finished parsing, so skip checking for it.
+          logger
+            .for('parseObj')
+            .debug(
+              `key ${key} is an extracted discriminator, so it will not be present`,
+            );
+          return true;
+        }
 
         // if this key is streaming and not present, add an "empty" value
         if (s.isStreaming(subSchema as any)) {
@@ -404,6 +523,16 @@ const _parseJSON = (
           return true;
         }
 
+        // If the key schema is an anyOf and includes nullish, default to null
+        if (s.isAnyOfType(subSchema as any)) {
+          const options = (subSchema as any)[internal].definition
+            .options as s.HashbrownType[];
+          if (options.some((opt) => isNullType(opt))) {
+            obj[key] = null;
+            return true;
+          }
+        }
+
         return false;
       })
     ) {
@@ -415,7 +544,11 @@ const _parseJSON = (
     );
   };
 
-  const parseObj = (parentKey: string, insideArray: boolean) => {
+  const parseObj = (
+    parentKey: string,
+    insideArray: boolean,
+    literalKey: string | undefined,
+  ) => {
     logger.for('parseObj').info(`Parsing object with parent: ${parentKey}`);
     index++; // skip initial brace
     skipBlank();
@@ -454,7 +587,11 @@ const _parseJSON = (
       while (jsonString[index] !== '}') {
         skipBlank();
         if (index >= length) {
-          return handleIncompleteObject(currentContainerStackIndex, obj);
+          return handleIncompleteObject(
+            currentContainerStackIndex,
+            obj,
+            literalKey,
+          );
         }
 
         const key = parseStr(false);
@@ -480,7 +617,7 @@ const _parseJSON = (
               );
 
             // AnyOfs are never directly streaming
-            const value = parseAny(key, false, false);
+            const value = parseAny(key, false, false, undefined);
 
             inAnyOfWrapper = true;
 
@@ -506,7 +643,7 @@ const _parseJSON = (
                 );
 
               // AnyOfs are never directly streaming
-              const value = parseAny(key, false, false);
+              const value = parseAny(key, false, false, undefined);
 
               inAnyOfWrapper = true;
 
@@ -523,7 +660,12 @@ const _parseJSON = (
                   `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
                 );
 
-              const value = parseAny(key, currentKeyAllowsIncomplete, false);
+              const value = parseAny(
+                key,
+                currentKeyAllowsIncomplete,
+                false,
+                undefined,
+              );
 
               logger.for('parseObj').debug('Value:');
               logger.for('parseObj').debug(value);
@@ -532,7 +674,11 @@ const _parseJSON = (
           }
         } catch (e) {
           logger.for('parseObj').error(e);
-          return handleIncompleteObject(currentContainerStackIndex, obj);
+          return handleIncompleteObject(
+            currentContainerStackIndex,
+            obj,
+            literalKey,
+          );
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
@@ -540,7 +686,11 @@ const _parseJSON = (
     } catch (e) {
       logger.for('parseObj').error(e);
 
-      return handleIncompleteObject(currentContainerStackIndex, obj);
+      return handleIncompleteObject(
+        currentContainerStackIndex,
+        obj,
+        literalKey,
+      );
     }
     index++; // skip final brace
 
@@ -559,7 +709,7 @@ const _parseJSON = (
       logger
         .for('parseObj')
         .debug(
-          `Completed object container: ${completedContainer?.[internal].definition.description}`,
+          `Completed object container: ${completedContainer?.[internal]?.definition?.description}`,
         );
     } else {
       logger
@@ -629,7 +779,7 @@ const _parseJSON = (
         logger
           .for('parseArr')
           .debug(`Array content allows incomplete: ${contentsAllowIncomplete}`);
-        arr.push(parseAny('', contentsAllowIncomplete, true));
+        arr.push(parseAny('', contentsAllowIncomplete, true, undefined));
         skipBlank();
         if (jsonString[index] === ',') {
           index++; // skip comma
@@ -696,7 +846,7 @@ const _parseJSON = (
   };
 
   try {
-    const result = parseAny('', false, false);
+    const result = parseAny('', false, false, undefined);
 
     // We returned, but have we not consumed the whole length?
     // We only check this on finished messages so as not to spam

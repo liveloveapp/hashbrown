@@ -4,6 +4,7 @@ import { FunctionParameters } from 'openai/resources/shared';
 
 export interface OpenAITextStreamOptions {
   apiKey: string;
+  baseURL?: string;
   request: Chat.Api.CompletionCreateParams;
   transformRequestOptions?: (
     options: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
@@ -15,12 +16,13 @@ export interface OpenAITextStreamOptions {
 export async function* text(
   options: OpenAITextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, request, transformRequestOptions } = options;
+  const { apiKey, baseURL, request, transformRequestOptions } = options;
   const { messages, model, tools, responseFormat, toolChoice, system } =
     request;
 
   const openai = new OpenAI({
     apiKey,
+    baseURL: baseURL,
   });
 
   try {
@@ -42,7 +44,10 @@ export async function* text(
           if (message.role === 'assistant') {
             return {
               role: message.role,
-              content: message.content,
+              content:
+                message.content && typeof message.content !== 'string'
+                  ? JSON.stringify(message.content)
+                  : message.content,
               tool_calls:
                 message.toolCalls && message.toolCalls.length > 0
                   ? message.toolCalls.map((toolCall) => ({
@@ -98,12 +103,14 @@ export async function* text(
         ? await transformRequestOptions(baseOptions)
         : baseOptions;
 
-    const stream = openai.beta.chat.completions.stream(resolvedOptions);
+    const stream = openai.chat.completions.stream(resolvedOptions);
 
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {
         choices: chunk.choices.map(
-          (choice): Chat.Api.CompletionChunkChoice => ({
+          (
+            choice: OpenAI.Chat.Completions.ChatCompletionChunk.Choice,
+          ): Chat.Api.CompletionChunkChoice => ({
             index: choice.index,
             delta: {
               content: choice.delta.content,

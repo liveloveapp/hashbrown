@@ -12,25 +12,43 @@ import {
 import { Chat, fryHashbrown, KnownModelIds } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
+import { bindToolToInjector } from '../utils/create-tool.fn';
 
 /**
  * Represents the reactive chat resource, including current messages and control methods.
  *
- * @interface ChatResourceRef
- * @template Tools
- * @extends {Resource<Chat.Message<string, Tools>[]>}
- * @property {(message: Chat.UserMessage) => void} sendMessage - Send a new user message to the chat.
- * @property {() => boolean} reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @param sendMessage - Send a new user message to the chat.
+ * @param reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
  */
 export interface ChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<string, Tools>[]> {
+  /**
+   * Send a new user message to the chat.
+   *
+   * @param message - The user message to send.
+   */
   sendMessage: (message: Chat.UserMessage) => void;
+
   /**
    * Stops any currently-streaming message.
-   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   *
+   * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+
+  /**
+   * Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
+   *
+   * @returns Whether the resource was reloaded.
+   */
   reload: () => boolean;
+
+  /**
+   * The last assistant message for the chat.
+   *
+   */
   lastAssistantMessage: Signal<
     Chat.AssistantMessage<string, Tools> | undefined
   >;
@@ -39,43 +57,53 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
 /**
  * Configuration options for the chat resource.
  *
- * @interface ChatResourceOptions
- * @template Tools
- * @property {string | Signal<string>} system - The system (assistant) prompt.
- * @property {string | Signal<string>} model - The model identifier to use for the chat.
- * @property {Tools[]} [tools] - Optional array of bound tools available to the chat.
- * @property {Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>} [messages] - Optional initial list of chat messages.
- * @property {number} [debounce] - Optional debounce interval in milliseconds between user inputs.
- * @property {string} [debugName] - Optional name used for debugging in logs.
- * @property {string} [apiUrl] - Optional override for the API base URL.
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @param system - The system (assistant) prompt.
+ * @param model - The model identifier to use for the chat.
+ * @param tools - Optional array of bound tools available to the chat.
+ * @param messages - Optional initial list of chat messages.
+ * @param debounce - Optional debounce interval in milliseconds between user inputs.
+ * @param debugName - Optional name used for debugging in logs.
+ * @param apiUrl - Optional override for the API base URL.
  */
 export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The system prompt to use for the chat.
    */
   system: string | Signal<string>;
+
   /**
    * The model to use for the chat.
    */
   model: KnownModelIds | Signal<KnownModelIds>;
+
   /**
    * The tools to use for the chat.
+   *
+   * @typeParam Tools - The set of tool definitions available to the chat.
    */
   tools?: Tools[];
+
   /**
    * The initial messages for the chat.
+   *
+   * @typeParam Tools - The set of tool definitions available to the chat.
    */
   messages?:
     | Chat.Message<string, Tools>[]
     | Signal<Chat.Message<string, Tools>[]>;
+
   /**
    * The debounce time for the chat.
    */
   debounce?: number;
+
   /**
    * The debug name for the chat.
    */
   debugName?: string;
+
   /**
    * The API URL to use for the chat.
    */
@@ -83,11 +111,27 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
 }
 
 /**
- * Creates a chat resource for managing LLM-driven conversations.
+ * This Angular resource provides a reactive chat interface for send and receiving messages from a model.
+ * The resource-based API includes signals for the current messages, status, and control methods for sending and stopping messages.
  *
- * @template Tools
- * @param {ChatResourceOptions<Tools>} options - Configuration for the chat resource.
- * @returns {ChatResourceRef<Tools>} An object with reactive signals and methods for interacting with the chat.
+ * @public
+ * @remarks
+ * The `chatResource` function provides the most basic functionality for un-structured chats.  Unstructured chats include things like general chats and natural language controls.
+ *
+ * @param options - Configuration for the chat resource.
+ * @returns An object with reactive signals and methods for interacting with the chat.
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @example
+ * This example demonstrates how to use the `chatResource` function to create a simple chat component.
+ *
+ * ```ts
+ * const chat = chatResource({
+ *   system: 'hashbrowns should be covered and smothered',
+ *   model: 'gpt-5',
+ * });
+ *
+ * chat.sendMessage(\{ role: 'user', content: 'Write a short story about breakfast.' \});
+ * ```
  */
 export function chatResource<Tools extends Chat.AnyTool>(
   options: ChatResourceOptions<Tools>,
@@ -103,7 +147,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     }),
     system: readSignalLike(options.system),
     model: readSignalLike(options.model),
-    tools: options.tools,
+    tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     emulateStructuredOutput: config.emulateStructuredOutput,
     debugName: options.debugName,
   });

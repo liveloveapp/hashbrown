@@ -70,7 +70,10 @@ export async function* text(
           if (message.role === 'assistant') {
             return {
               role: message.role,
-              content: message.content,
+              content:
+                message.content && typeof message.content !== 'string'
+                  ? JSON.stringify(message.content)
+                  : message.content,
               tool_calls:
                 message.toolCalls && message.toolCalls.length > 0
                   ? message.toolCalls.map((toolCall) => ({
@@ -126,7 +129,7 @@ export async function* text(
         ? await transformRequestOptions(baseOptions)
         : baseOptions;
 
-    const stream = client.beta.chat.completions.stream(resolvedOptions);
+    const stream = client.chat.completions.stream(resolvedOptions);
 
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {

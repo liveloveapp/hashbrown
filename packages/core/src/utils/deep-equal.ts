@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** Deep structural comparison that “just works” on primitives too. */
+/**
+ * Deep structural comparison that "just works" on primitives too.
+ * @public
+ */
 export function deepEqual(
   a: unknown,
   b: unknown,

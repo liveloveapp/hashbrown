@@ -3,22 +3,33 @@ import { computed, effect, Resource, Signal } from '@angular/core';
 import { Chat, KnownModelIds, s } from '@hashbrownai/core';
 import { SignalLike } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
+import { toDeepSignal } from '../utils/deep-signal';
 
 /**
  * A reference to the structured completion resource.
+ *
+ * @public
  */
 export interface StructuredCompletionResourceRef<Output>
   extends Resource<Output | null> {
+  /**
+   * Reloads the resource.
+   *
+   * @returns Whether the resource was reloaded.
+   */
   reload: () => boolean;
+
   /**
    * Stops any currently-streaming message.
-   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
 }
 
 /**
  * Options for the structured completion resource.
+ *
+ * @public
  */
 export interface StructuredCompletionResourceOptions<
   Input,
@@ -57,6 +68,7 @@ export interface StructuredCompletionResourceOptions<
 /**
  * Creates a structured completion resource.
  *
+ * @public
  * @param options - The options for the structured completion resource.
  * @returns The structured completion resource.
  */
@@ -94,7 +106,7 @@ export function structuredCompletionResource<
     ]);
   });
 
-  const value = computed(
+  const valueSignal = computed(
     () => {
       const lastMessage = resource.value()[resource.value().length - 1];
       if (
@@ -109,6 +121,7 @@ export function structuredCompletionResource<
     },
     { debugName: debugName && `${debugName}.value` },
   );
+  const value = toDeepSignal(valueSignal);
 
   const status = resource.status;
   const error = resource.error;
@@ -117,7 +130,7 @@ export function structuredCompletionResource<
   const stop = resource.stop;
 
   function hasValue(this: StructuredCompletionResourceRef<Output>) {
-    return Boolean(value());
+    return Boolean(valueSignal());
   }
 
   return {

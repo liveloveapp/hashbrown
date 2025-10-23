@@ -5,7 +5,8 @@
  * to improve the readability of complex type definitions by
  * expanding them into a more human-readable form.
  *
- * @template T - The type to be prettified.
+ * @typeParam T - The type to be prettified.
+ * @public
  */
 export type Prettify<T> = {
   [K in keyof T]: T[K];
@@ -17,7 +18,8 @@ export type Prettify<T> = {
  * and simplify complex types, making them easier to read
  * and understand.
  *
- * @template T - The type to be returned as is.
+ * @typeParam T - The type to be returned as is.
+ * @public
  */
 export type Identity<T> = T;
 
@@ -27,7 +29,8 @@ export type Identity<T> = T;
  * for simplifying complex type structures, making them easier to read
  * and understand.
  *
- * @template T - The type to be flattened.
+ * @typeParam T - The type to be flattened.
+ * @public
  */
 export type Flatten<T> = Identity<{ [k in keyof T]: T[k] }>;
 
@@ -55,6 +58,8 @@ export type Flatten<T> = Identity<{ [k in keyof T]: T[k] }>;
  * the type is actually correct.
  *
  * This helper cleans the type so that it prints correctly.
+ *
+ * @public
  */
 export type CleanInterfaceShape<T extends object> = Identity<{
   [k in keyof T as k extends `${infer K}?`
@@ -69,7 +74,8 @@ export type CleanInterfaceShape<T extends object> = Identity<{
  * This type is useful for determining if a type is a union
  * and for converting a union to an intersection.
  *
- * @template T - The type to be checked.
+ * @typeParam T - The type to be checked.
+ * @public
  */
 export type IsUnion<T, U = T> = T extends any
   ? [U] extends [T]
@@ -77,6 +83,9 @@ export type IsUnion<T, U = T> = T extends any
     : true
   : never;
 
+/**
+ * @public
+ */
 export type IsStringUnion<T> =
   IsUnion<T> extends true ? (T extends string ? true : false) : false;
 
@@ -85,7 +94,8 @@ export type IsStringUnion<T> =
  * This type is useful for converting a union to an intersection,
  * which can be useful for various type operations.
  *
- * @template U - The union type to be converted.
+ * @typeParam U - The union type to be converted.
+ * @public
  */
 export type UnionToIntersection<U> = (
   U extends any ? (x: U) => any : never
@@ -98,7 +108,8 @@ export type UnionToIntersection<U> = (
  * This type is useful for extracting the last element from a union,
  * which can be useful for various type operations.
  *
- * @template T - The union type to be processed.
+ * @typeParam T - The union type to be processed.
+ * @public
  */
 export type LastOf<T> =
   UnionToIntersection<T extends any ? (x: T) => any : never> extends (
@@ -112,7 +123,8 @@ export type LastOf<T> =
  * This type is useful for converting a union to a tuple,
  * which can be useful for various type operations.
  *
- * @template T - The union type to be converted.
+ * @typeParam T - The union type to be converted.
+ * @public
  */
 export type UnionToTuple<T, L = LastOf<T>> = [T] extends [never]
   ? []
@@ -123,7 +135,8 @@ export type UnionToTuple<T, L = LastOf<T>> = [T] extends [never]
  * This type is useful for creating partial types, which can be
  * useful for various type operations.
  *
- * @template T - The type to be made partial.
+ * @typeParam T - The type to be made partial.
+ * @public
  */
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -131,6 +144,8 @@ export type DeepPartial<T> = {
 
 /**
  * A utility type that represents a JSON value.
+ *
+ * @public
  */
 export type JsonValue =
   | string

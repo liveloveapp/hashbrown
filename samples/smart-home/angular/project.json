@@ -1,0 +1,88 @@
+{
+  "name": "smart-home-angular",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "samples/smart-home/angular/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "dependsOn": ["smart-home-netlify:build"],
+      "options": {
+        "outputPath": "dist/samples/smart-home/angular",
+        "browser": "samples/smart-home/angular/src/main.ts",
+        "polyfills": ["zone.js"],
+        "tsConfig": "samples/smart-home/angular/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "samples/smart-home/angular/public"
+          }
+        ],
+        "styles": ["samples/smart-home/angular/src/styles.scss"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "options": {
+        "port": 4900,
+        "proxyConfig": "samples/smart-home/angular/proxy.conf.json"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "smart-home-angular:build:production"
+        },
+        "development": {
+          "buildTarget": "smart-home-angular:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular/build:extract-i18n",
+      "options": {
+        "buildTarget": "smart-home-angular:build"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "smart-home-angular:build",
+        "port": 4900,
+        "staticFilePath": "dist/samples/smart-home/angular/browser",
+        "spa": true
+      }
+    }
+  }
+}

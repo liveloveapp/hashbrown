@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s, ɵcomponents } from '@hashbrownai/core';
+import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import {
@@ -9,43 +9,61 @@ import {
   UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
+import { readSignalLike } from '../utils';
 
-type UiChatMessageOutput = s.ObjectType<{
-  ui: s.ArrayType<s.ObjectType<ɵcomponents.ComponentTreeSchema>>;
+/**
+ * @public
+ */
+export type UiChatMessageOutput = s.ObjectType<{
+  ui: s.ArrayType<s.ObjectType<ɵui.ComponentTreeSchema>>;
 }>;
 
 /**
  * Options for the UI chat resource.
+ *
+ * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The components to use for the UI chat resource.
    */
   components: ExposedComponent<any>[];
+
   /**
    * The model to use for the UI chat resource.
    */
   model: KnownModelIds;
+
   /**
    * The system prompt to use for the UI chat resource.
    */
-  system: string | Signal<string>;
+  system: string | Signal<string> | SystemPrompt | Signal<SystemPrompt>;
+
   /**
    * The initial messages for the UI chat resource.
+   *
+   * @typeParam Tools - The set of tool definitions available to the chat.
    */
   messages?: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[];
+
   /**
    * The tools to use for the UI chat resource.
+   *
+   * @typeParam Tools - The set of tool definitions available to the chat.
    */
   tools?: Tools[];
+
   /**
    * The debug name for the UI chat resource.
    */
   debugName?: string;
+
   /**
    * The debounce time for the UI chat resource.
    */
   debounce?: number;
+
   /**
    * The API URL to use for the UI chat resource.
    */
@@ -54,16 +72,30 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
 
 /**
  * A reference to the UI chat resource.
+ *
+ * @public
  */
 export interface UiChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<UiChatMessage<Tools>[]> {
+  /**
+   * Send a new user message to the chat.
+   *
+   * @param message - The user message to send.
+   */
   sendMessage: (message: Chat.UserMessage) => void;
+
+  /**
+   * Cause current messages to be resent.  Can be used after an error in chat.
+   */
   resendMessages: () => void;
+
   /**
    * Stops any currently-streaming message.
-   * @param clearStreamingMessage Whether the currently-streaming message should be removed from state.
+   *
+   * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+
   /**
    * The last assistant message for the UI chat resource.
    */
@@ -73,6 +105,7 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 /**
  * Creates a UI chat resource.
  *
+ * @public
  * @param args - The arguments for the UI chat resource.
  * @returns The UI chat resource.
  */
@@ -80,20 +113,33 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
   args: UiChatResourceOptions<Tools>,
 ): UiChatResourceRef<Tools> {
   const flattenedComponents = computed(() =>
-    ɵcomponents.flattenComponents(args.components),
+    ɵui.flattenComponents(args.components),
   );
   const internalSchema = s.object('UI', {
     ui: s.streaming.array(
       'List of elements',
-      ɵcomponents.createComponentSchema(args.components),
+      ɵui.createComponentSchema(args.components),
     ),
+  });
+  const systemAsString = computed(() => {
+    const system = readSignalLike(args.system);
+    if (typeof system === 'string') {
+      return system;
+    }
+    const result = system.compile(args.components, internalSchema);
+    if (system.diagnostics.length > 0) {
+      throw new Error(
+        `System prompt has ${system.diagnostics.length} errors: \n\n${system.diagnostics.map((d) => d.message).join('\n\n')}`,
+      );
+    }
+    return result;
   });
 
   const chat = structuredChatResource({
     model: args.model,
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
-    system: args.system,
+    system: systemAsString,
     messages: [...(args.messages ?? [])],
     debugName: args.debugName,
     debounce: args.debounce,

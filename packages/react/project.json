@@ -35,7 +35,13 @@
             "output": "."
           }
         ]
-      }
+      },
+      "dependsOn": [
+        {
+          "projects": ["core"],
+          "target": "build"
+        }
+      ]
     },
     "nx-release-publish": {
       "options": {

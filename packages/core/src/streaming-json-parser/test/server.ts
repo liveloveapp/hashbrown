@@ -2,38 +2,24 @@ import { createServer } from 'net';
 import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 
 const TEST_JSON = {
-  // element: {
-  //   1: {
-  //     data: 'the markdown data',
-  //   },
-  // },
-  element: false,
+  ui: [
+    {
+      'app-markdown': {
+        $props: { data: 'Hello! How can I assist you today?' },
+      },
+    },
+    // {
+    //   'app-button': {
+    //     $props: { data: 'buttony-buttony-buttony' },
+    //   },
+    // },
+    // {
+    //   'app-button': {
+    //     $props: { data: 'button 2: Electric Boogaloo' },
+    //   },
+    // },
+  ],
 };
-
-// const TEST_JSON = {
-//   ui: [
-//     {
-//       '0': {
-//         $tagName: 'app-markdown',
-//         $props: { data: 'Hello! How can I assist you today?' },
-//       },
-//     },
-//   ],
-// };
-
-// const TEST_JSON = {
-//   [PRIMITIVE_WRAPPER_FIELD_NAME]: 7,
-// };
-
-// const TEST_JSON = {
-//   booleanValue: false,
-//   value: 'Example glossary',
-//   array: ['string 1', 'string 2'],
-//   object: {
-//     a: 'make it do what it do',
-//     b: 'call the Ghost Busters',
-//   },
-// };
 
 // const TEST_JSON = [
 //   {
@@ -339,7 +325,7 @@ function sleep(ms: number) {
 }
 
 const server = createServer(async function (socket) {
-  const TEST_STRING = JSON.stringify(TEST_JSON) + 'extraextraextra';
+  const TEST_STRING = JSON.stringify(TEST_JSON);
 
   console.log(`Test string length: ${TEST_STRING.length}`);
 

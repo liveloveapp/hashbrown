@@ -6,6 +6,7 @@ import type { ComponentType } from 'react';
  * When exposing a component to the chat, you must provide a schema for the props of that component.
  * The `ComponentPropSchema` type defines the schema for those component props.
  *
+ * @public
  * @example
  * ```ts
  * // Example usage in a tool definition.
@@ -29,6 +30,7 @@ export type ComponentPropSchema<T> = ɵtypes.Prettify<
 /**
  * This type defines the configuration for a component to be exposed to the chat.
  *
+ * @public
  * @example
  * ```ts
  * exposeComponent(CardComponent, {
@@ -58,7 +60,7 @@ export interface ExposedComponent<T extends ComponentType<any>> {
   /**
    * The children of the component.
    */
-  children?: 'any' | ExposedComponent<any>[] | false;
+  children?: 'any' | 'text' | ExposedComponent<any>[] | false;
   /**
    * The schema describing the props for this component.
    */
@@ -84,7 +86,8 @@ export interface ExposedComponent<T extends ComponentType<any>> {
  * });
  * ```
  *
- * @returns {ExposedComponent<T>} - An object representing the component in order to expose it to the LLM.
+ * @returns An object representing the component in order to expose it to the LLM.
+ * @public
  */
 export function exposeComponent<T extends ComponentType<any>>(
   /**

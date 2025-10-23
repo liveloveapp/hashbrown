@@ -1,0 +1,85 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`full integration with streaming 1`] = `
+"
+    
+
+{
+  "ui": [
+    {
+      "Markdown": {
+        "$props": {
+          "data": {
+            "text": "hi"
+          }
+        }
+      }
+    },
+    {
+      "CardList": {
+        "$props": {},
+        "$children": [
+          {
+            "LightCard": {
+              "$props": {
+                "title": "Light 1",
+                "id": "uuid123"
+              }
+            }
+          },
+          {
+            "LightCard": {
+              "$props": {
+                "title": "Light 2",
+                "id": "uuid456"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+
+
+  "
+`;
+
+exports[`prompt helper example injection modes inline: replaces <ui> blocks with fenced JSON HBTree 1`] = `
+"
+        Head
+        
+
+{
+  "ui": [
+    {
+      "X": {
+        "$props": {}
+      }
+    },
+    {
+      "Y": {
+        "$props": {}
+      }
+    }
+  ]
+}
+
+
+        Middle
+        
+
+{
+  "ui": [
+    {
+      "Z": {
+        "$props": {}
+      }
+    }
+  ]
+}
+
+
+        Tail
+      "
+`;

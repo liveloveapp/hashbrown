@@ -2,6 +2,8 @@ import { createContext } from 'react';
 
 /**
  * The options for the Hashbrown provider.
+ *
+ * @public
  */
 export interface HashbrownProviderOptions {
   /**
@@ -30,6 +32,7 @@ export const HashbrownContext = createContext<
 /**
  * The context for the Hashbrown provider.  This is used to store the URL and middleware for contacting the Hashbrown endpoint.
  *
+ * @public
  * @example
  * ```ts
  * <HashbrownProvider url="https://your.api.local/chat">

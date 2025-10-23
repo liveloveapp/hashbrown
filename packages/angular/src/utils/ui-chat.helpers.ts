@@ -4,6 +4,9 @@ import { Chat, s } from '@hashbrownai/core';
 
 export const TAG_NAME_REGISTRY = Symbol('ɵtagNameRegistry');
 
+/**
+ * @public
+ */
 export type TagNameRegistry = {
   [tagName: string]: {
     props: Record<string, s.HashbrownType>;
@@ -25,24 +28,43 @@ export const getTagNameRegistry = (
   return undefined;
 };
 
+/**
+ * @public
+ */
 export interface UiChatSchemaComponent {
-  $tagName: string;
+  $tag: string;
+  $children: string | UiChatSchemaComponent[];
   $props: Record<string, any>;
-  $children: UiChatSchemaComponent[];
 }
 
+/**
+ * @public
+ */
 export interface UiChatSchema {
   ui: UiChatSchemaComponent[];
 }
 
+/**
+ * @public
+ */
 export type UiAssistantMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
   Chat.AssistantMessage<UiChatSchema, Tools> & {
     [TAG_NAME_REGISTRY]: TagNameRegistry;
   };
 
+/**
+ * @public
+ */
 export type UiUserMessage = Chat.UserMessage;
+
+/**
+ * @public
+ */
 export type UiErrorMessage = Chat.ErrorMessage;
 
+/**
+ * @public
+ */
 export type UiChatMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
   | UiAssistantMessage<Tools>
   | UiUserMessage

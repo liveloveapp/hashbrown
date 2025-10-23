@@ -1,0 +1,35 @@
+{
+  "name": "@hashbrownai/anthropic",
+  "version": "0.3.0",
+  "description": "Anthropic provider for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/anthropic"
+  },
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@hashbrownai/core": "0.3.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": "^0.24.3"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "anthropic",
+    "generative-ui",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
