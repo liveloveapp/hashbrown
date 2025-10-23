@@ -5,6 +5,7 @@ import * as cors from 'cors';
 import { getPortPromise } from 'portfinder';
 import { Chat, fryHashbrown, Hashbrown, s } from '@hashbrownai/core';
 import { HashbrownAzure } from './index';
+import { AzureCompletionCreateParams } from './stream/text.fn';
 
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
@@ -14,7 +15,7 @@ test('Azure OpenAI Text Streaming', async () => {
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      request,
+      request: request as AzureCompletionCreateParams,
     }),
   );
   const hashbrown = fryHashbrown({
@@ -52,7 +53,7 @@ test('Azure OpenAI Tool Calling', async () => {
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      request,
+      request: request as AzureCompletionCreateParams,
     }),
   );
   const hashbrown = fryHashbrown({
@@ -108,7 +109,7 @@ test('Azure OpenAI with structured output', async () => {
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      request,
+      request: request as AzureCompletionCreateParams,
     }),
   );
   const hashbrown = fryHashbrown({
@@ -148,7 +149,7 @@ test('Azure OpenAI with tool calling and structured output', async () => {
     HashbrownAzure.stream.text({
       apiKey: AZURE_API_KEY,
       endpoint: AZURE_ENDPOINT,
-      request,
+      request: request as AzureCompletionCreateParams,
     }),
   );
 
