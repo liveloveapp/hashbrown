@@ -38,7 +38,7 @@ export type Lens<Name extends string, Schema extends s.HashbrownType> = {
 /**
  * @public
  */
-export type AnyLens = Lens<string, s.HashbrownType>;
+export type AnyLens = Lens<string, any>;
 
 /**
  * @public

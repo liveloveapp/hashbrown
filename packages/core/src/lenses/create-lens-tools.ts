@@ -17,7 +17,6 @@ export function createLensTools(
           readableLenses.map((lense) => {
             return s.object(lense.description, {
               key: s.literal(lense.name),
-              value: lense.schema,
             });
           }),
         ),
