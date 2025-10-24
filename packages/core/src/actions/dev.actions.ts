@@ -35,7 +35,6 @@ export default createActionGroup('dev', {
     emulateStructuredOutput?: boolean;
     debounce?: number;
     retries?: number;
-    lenses?: Chat.AnyLens[];
   }>(),
   stopMessageGeneration: props<boolean>(),
 });

@@ -27,6 +27,7 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
 export interface UseStructuredChatOptions<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Lenses extends Chat.AnyLens,
   Output extends s.Infer<Schema> = s.Infer<Schema>,
 > {
   /**
@@ -50,11 +51,18 @@ export interface UseStructuredChatOptions<
    * default: 1.0
    */
   messages?: Chat.Message<Output, Tools>[];
+
   /**
    * The tools to make available use for the chat.
    * default: []
    */
   tools?: Tools[];
+
+  /**
+   * The lenses to make available use for the chat.
+   * default: []
+   */
+  lenses?: Lenses[];
 
   /**
    * The debounce time between sends to the endpoint.
@@ -176,9 +184,10 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
 export function useStructuredChat<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Lenses extends Chat.AnyLens,
   Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(
-  options: UseStructuredChatOptions<Schema, Tools, Output>,
+  options: UseStructuredChatOptions<Schema, Tools, Lenses, Output>,
 ): UseStructuredChatResult<Output, Tools> {
   const config = useContext(HashbrownContext);
 
@@ -191,18 +200,24 @@ export function useStructuredChat<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     options.tools ?? [],
   );
+  const lenses: Lenses[] = useMemo(
+    () => options.lenses ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    options.lenses ?? [],
+  );
 
   const [schema] = useState<Schema>(options.schema);
-  const hashbrown = useRef<Hashbrown<Output, Tools> | null>(null);
+  const hashbrown = useRef<Hashbrown<Output, Tools, Lenses> | null>(null);
 
   if (!hashbrown.current) {
-    hashbrown.current = fryHashbrown<Schema, Tools, Output>({
+    hashbrown.current = fryHashbrown<Schema, Tools, Lenses, Output>({
       apiUrl: config.url,
       middleware: config.middleware,
       model: options.model,
       system: options.system,
       responseSchema: schema,
       tools,
+      lenses,
       debugName: options.debugName,
       debounce: options.debounceTime,
       retries: options.retries,
@@ -231,6 +246,7 @@ export function useStructuredChat<
       system: options.system,
       responseSchema: schema,
       tools,
+      lenses,
       debugName: options.debugName,
       debounce: options.debounceTime,
       retries: options.retries,
@@ -243,6 +259,7 @@ export function useStructuredChat<
     options.debugName,
     schema,
     tools,
+    lenses,
     options.debounceTime,
     options.retries,
   ]);

@@ -29,7 +29,11 @@ import { createLensTools } from './lenses/create-lens-tools';
  * @typeParam Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.
  * @typeParam Tools - The set of tools available to the chat instance.
  */
-export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
+export interface Hashbrown<
+  Output,
+  Tools extends Chat.AnyTool,
+  Lenses extends Chat.AnyLens,
+> {
   messages: StateSignal<Chat.Message<Output, Tools>[]>;
   error: StateSignal<Error | undefined>;
   isReceiving: StateSignal<boolean>;
@@ -57,6 +61,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       model: KnownModelIds;
       system: string;
       tools: Tools[];
+      lenses: Lenses[];
       responseSchema: s.HashbrownType;
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
@@ -92,24 +97,29 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
  * @returns A configured Hashbrown instance.
  * @throws If a reserved tool name ("output") is used.
  */
-export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
+export function fryHashbrown<
+  Tools extends Chat.AnyTool,
+  Lenses extends Chat.AnyLens,
+>(init: {
   debugName?: string;
   apiUrl: string;
   model: KnownModelIds;
   system: string;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
+  lenses?: Lenses[];
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
-}): Hashbrown<string, Tools>;
+}): Hashbrown<string, Tools, Lenses>;
 /**
  * @public
  */
 export function fryHashbrown<
   Schema extends s.HashbrownType,
   Tools extends Chat.AnyTool,
+  Lenses extends Chat.AnyLens,
   Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(init: {
   debugName?: string;
@@ -118,13 +128,13 @@ export function fryHashbrown<
   system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
-  lenses?: Chat.AnyLens[];
+  lenses?: Lenses[];
   responseSchema: Schema;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
-}): Hashbrown<Output, Tools>;
+}): Hashbrown<Output, Tools, Lenses>;
 /**
  * @public
  */
@@ -141,7 +151,7 @@ export function fryHashbrown(init: {
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
-}): Hashbrown<any, Chat.AnyTool> {
+}): Hashbrown<any, Chat.AnyTool, Chat.AnyLens> {
   const hasIllegalOutputTool = init.tools?.some(
     (tool) => tool.name === 'output',
   );
@@ -206,6 +216,7 @@ export function fryHashbrown(init: {
       model: KnownModelIds;
       system: string;
       tools: Chat.AnyTool[];
+      lenses: Chat.AnyLens[];
       responseSchema: s.HashbrownType;
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
@@ -213,7 +224,13 @@ export function fryHashbrown(init: {
       retries: number;
     }>,
   ) {
-    state.dispatch(devActions.updateOptions(options));
+    const lensTools = createLensTools(options.lenses ?? []);
+    state.dispatch(
+      devActions.updateOptions({
+        ...options,
+        tools: lensTools.concat(options.tools ?? []),
+      }),
+    );
   }
 
   function sizzle() {
