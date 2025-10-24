@@ -20,6 +20,7 @@ import {
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
 import { KnownModelIds } from './utils';
+import { createLensTools } from './lenses/create-lense-tools';
 
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
@@ -117,6 +118,7 @@ export function fryHashbrown<
   system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
+  lenses?: Chat.AnyLens[];
   responseSchema: Schema;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
@@ -133,6 +135,7 @@ export function fryHashbrown(init: {
   system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
+  lenses?: Chat.AnyLens[];
   responseSchema?: s.HashbrownType;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
@@ -163,13 +166,15 @@ export function fryHashbrown(init: {
     }),
   });
 
+  const lensTools = createLensTools(init.lenses ?? []);
+
   state.dispatch(
     devActions.init({
       apiUrl: init.apiUrl,
       model: init.model,
       system: init.system,
       messages: init.messages as Chat.AnyMessage[],
-      tools: init.tools as Chat.AnyTool[],
+      tools: lensTools.concat(init.tools ?? []),
       responseSchema: init.responseSchema,
       middleware: init.middleware,
       emulateStructuredOutput: init.emulateStructuredOutput,

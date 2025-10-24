@@ -27,6 +27,22 @@ export type AnyTool = Tool<string, any, any>;
 /**
  * @public
  */
+export type Lens<Name extends string, Schema extends s.HashbrownType> = {
+  name: Name;
+  description: string;
+  schema: Schema;
+  read?: () => s.Infer<Schema>;
+  write?: (value: s.Infer<Schema>) => void;
+};
+
+/**
+ * @public
+ */
+export type AnyLens = Lens<string, s.HashbrownType>;
+
+/**
+ * @public
+ */
 export type UserMessage = {
   role: 'user';
   content: JsonValue;
