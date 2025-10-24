@@ -20,7 +20,7 @@ import {
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
 import { KnownModelIds } from './utils';
-import { createLensTools } from './lenses/create-lense-tools';
+import { createLensTools } from './lenses/create-lens-tools';
 
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
