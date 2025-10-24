@@ -82,7 +82,10 @@ export type UiChatMessage<Tools extends Chat.AnyTool> =
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
  */
-export interface UiChatOptions<Tools extends Chat.AnyTool> {
+export interface UiChatOptions<
+  Tools extends Chat.AnyTool,
+  Lenses extends Chat.AnyLens,
+> {
   /**
    * The LLM model to use for the chat.
    */
@@ -109,6 +112,12 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * default: []
    */
   tools?: Tools[];
+
+  /**
+   * The lenses to make available for the chat.
+   * default: []
+   */
+  lenses?: Lenses[];
 
   /**
    * The debounce time between sends to the endpoint.
@@ -156,8 +165,11 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
  * });
  * ```
  */
-export const useUiChat = <Tools extends Chat.AnyTool>(
-  options: UiChatOptions<Tools>,
+export const useUiChat = <
+  Tools extends Chat.AnyTool,
+  Lenses extends Chat.AnyLens,
+>(
+  options: UiChatOptions<Tools, Lenses>,
 ) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
@@ -184,6 +196,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
     }
     return output;
   }, [chatOptions.system, components, ui]);
+
   const chat = useStructuredChat({
     ...chatOptions,
     schema: ui as any,

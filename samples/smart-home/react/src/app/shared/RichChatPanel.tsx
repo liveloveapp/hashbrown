@@ -1,6 +1,7 @@
 import { Chat, prompt, s } from '@hashbrownai/core';
 import {
   exposeComponent,
+  useLens,
   useRuntime,
   useRuntimeFunction,
   useTool,
@@ -19,11 +20,18 @@ import { Textarea } from './textarea';
 import { Light } from '../models/light.model';
 
 export const RichChatPanel = () => {
-  const getLights = useTool({
-    name: 'getLights',
-    description: 'Get the current lights',
-    handler: () => Promise.resolve(useSmartHomeStore.getState().lights),
-    deps: [],
+  const lightsLens = useLens({
+    name: 'lights',
+    description: 'Read the state of all lights in the smart home.',
+    schema: s.array(
+      'All the lights in the smart home',
+      s.object('Light model', {
+        id: s.string('The unique identifier of the light'),
+        name: s.string('The name of the light'),
+        brightness: s.number('The brightness of the light, between 0 and 100'),
+      }),
+    ),
+    read: () => useSmartHomeStore.getState().lights,
   });
   const controlLight = useTool({
     name: 'controlLight',
@@ -106,7 +114,8 @@ export const RichChatPanel = () => {
         </ui>
       </assistant>
     `,
-    tools: [getLights, controlLight, toolJavaScript],
+    lenses: [lightsLens],
+    tools: [controlLight, toolJavaScript],
     components: [
       exposeComponent(LightChatComponent, {
         name: 'LightChat',

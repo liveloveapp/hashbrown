@@ -40,6 +40,7 @@ export {
   useToolJavaScript,
   type UseToolJavaScriptOptions,
 } from './hooks/use-tool-javascript';
+export { useLens, type LensOptions } from './hooks/use-lens';
 export {
   useUiChat,
   type UiAssistantMessage,
