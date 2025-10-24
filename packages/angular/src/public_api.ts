@@ -38,3 +38,4 @@ export {
   type UiErrorMessage,
   type UiUserMessage,
 } from './utils';
+export { createLens } from './utils/create-lens.fn';

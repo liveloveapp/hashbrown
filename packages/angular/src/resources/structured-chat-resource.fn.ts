@@ -15,6 +15,7 @@ import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
 import { bindToolToInjector } from '../utils/create-tool.fn';
 import { toDeepSignal } from '../utils/deep-signal';
+import { bindLensToInjector } from '../utils/create-lens.fn';
 
 /**
  * A reference to the structured chat resource.
@@ -93,6 +94,11 @@ export interface StructuredChatResourceOptions<
   tools?: Tools[];
 
   /**
+   * The lenses to use for the structured chat resource.
+   */
+  lenses?: Chat.AnyLens[];
+
+  /**
    * The initial messages for the structured chat resource.
    */
   messages?: Chat.Message<Output, Tools>[];
@@ -145,6 +151,7 @@ export function structuredChatResource<
     messages: [...(options.messages ?? [])],
     model: readSignalLike(options.model),
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
+    lenses: options.lenses?.map((lens) => bindLensToInjector(lens, injector)),
     responseSchema: options.schema,
     debugName: options.debugName,
     emulateStructuredOutput: config.emulateStructuredOutput,

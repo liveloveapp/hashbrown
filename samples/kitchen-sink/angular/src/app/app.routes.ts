@@ -50,4 +50,9 @@ export const routes: Routes = [
         (m) => m.PlannerComponent,
       ),
   },
+  {
+    path: 'lens',
+    loadComponent: () =>
+      import('./features/lenses/lens.component').then((m) => m.LensComponent),
+  },
 ];

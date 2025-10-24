@@ -47,6 +47,9 @@ const KNOWN_OPENAI_MODEL_NAMES: KnownModelIds[] = [
   'gpt-4.1-mini',
   'gpt-4.1-nano',
   'gpt-4.5',
+  'gpt-5',
+  'gpt-5-nano',
+  'gpt-5-mini',
 ];
 
 const KNOWN_WRITER_MODEL_NAMES: KnownModelIds[] = [
@@ -100,6 +103,15 @@ app.post('/chat', async (req, res, next) => {
     stream = HashbrownOpenAI.stream.text({
       apiKey: OPENAI_API_KEY,
       request,
+      transformRequestOptions: (options) => {
+        if (options.model === 'gpt-5') {
+          return {
+            ...options,
+            reasoning_effort: 'low',
+          };
+        }
+        return options;
+      },
     });
   } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName as KnownModelIds)) {
     stream = HashbrownWriter.stream.text({
