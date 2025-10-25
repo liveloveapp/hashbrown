@@ -1,0 +1,89 @@
+name: Netlify Preview
+
+on:
+  push:
+    tags:
+      - www/preview
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
+
+concurrency:
+  group: netlify-preview
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Deploy preview to Netlify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Determine affected base
+        uses: nrwl/nx-set-shas@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint, test, and build affected projects
+        run: npx nx affected -t lint,test,build --parallel=3
+
+      - name: Build production bundle
+        run: npx nx run www:build:production
+
+      - name: Deploy preview
+        id: deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_WWW_SITE_ID }}
+        run: |
+          npx netlify-cli deploy \
+            --auth "$NETLIFY_AUTH_TOKEN" \
+            --site "$NETLIFY_SITE_ID" \
+            --dir=dist/www/analog/analog/public \
+            --functions=dist/www/analog/analog \
+            --edge-functions=dist/www/netlify \
+            --message="Preview deploy for ${GITHUB_SHA}" \
+            --json > deploy.json
+          cat deploy.json
+          echo "preview_url=$(node -pe \"require('./deploy.json').deploy_url || ''\")" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview link on PR
+        if: steps.deploy.outputs.preview_url != ''
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner,
+              repo,
+              commit_sha: context.sha,
+            });
+
+            if (!prs.data.length) {
+              core.info('No associated pull requests found for this commit; skipping comment.');
+              return;
+            }
+
+            const body = `🚀 Netlify preview ready: ${process.env.PREVIEW_URL}`;
+            for (const pr of prs.data) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pr.number,
+                body,
+              });
+            }

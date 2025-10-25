@@ -1,49 +1,36 @@
-name: PR to main
+name: PR / Main CI
 
 on:
   workflow_dispatch:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    name: Build and Test
+  ci:
+    name: Lint, Test, Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22.x]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          node-version: 22.x
+          cache: npm
 
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Get last successful commit SHA
+      - name: Determine affected base
         uses: nrwl/nx-set-shas@v3
 
-      - name: Track main branch
-        run: git branch --track main origin/main
-
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Lint, test, and build affected.
+      - name: Lint, test, and build affected projects
         run: npx nx affected -t lint,test,build --parallel=3
-      
