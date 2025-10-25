@@ -1,7 +1,8 @@
-import { Component, ElementRef, input, viewChild } from '@angular/core';
+import { Component, ElementRef, inject, input, viewChild } from '@angular/core';
 import { Copy } from '../icons/Copy';
 import { PlayerPlay } from '../icons/PlayerPlay';
 import { Squircle } from './Squircle';
+import { ToastService } from '../services/ToastService';
 
 @Component({
   selector: 'www-code-example',
@@ -120,6 +121,7 @@ export class CodeExample {
   header = input<string>('');
   run = input<string | undefined>(undefined);
   contentRef = viewChild<ElementRef<HTMLDivElement>>('content');
+  private readonly toastService = inject(ToastService);
 
   async onCopy() {
     const el = this.contentRef()?.nativeElement;
@@ -134,6 +136,9 @@ export class CodeExample {
 
     try {
       await navigator.clipboard.writeText(text);
+      this.toastService.success('Code copied to clipboard', {
+        position: 'top-center',
+      });
     } catch (err) {
       console.error('Copy failed', err);
     }
