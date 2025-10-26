@@ -53,10 +53,18 @@ Streams an Ollama chat completion as a series of encoded frames. Handles content
 
 ---
 
-## Example Using with Express
+## Example: Node.js Server Integration
+
+<hb-backend-code-example>
+
+<div backend="express">
 
 ```ts
 import { HashbrownOllama } from '@hashbrownai/ollama';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownOllama.stream.text({
@@ -73,7 +81,287 @@ app.post('/chat', async (req, res) => {
 
   res.end();
 });
+
+app.listen(3000);
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownOllama.stream.text({
+    // Optional: use Ollama Turbo
+    // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
+    request: request.body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  }
+
+  reply.raw.end();
+});
+
+fastify.listen({ port: 3000 });
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res } from '@nestjs/common';
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import { Response } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Res() res: Response) {
+    const stream = HashbrownOllama.stream.text({
+      // Optional: use Ollama Turbo
+      // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
+      request: body, // must be Chat.Api.CompletionCreateParams
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk); // Pipe each encoded frame as it arrives
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownOllama.stream.text({
+    // Optional: use Ollama Turbo
+    // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
+    request: body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+
+export default app;
+```
+
+</div>
+
+</hb-backend-code-example>
+
+---
+
+---
+
+### Transform Request Options
+
+The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Ollama. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
+
+<hb-backend-code-example>
+
+<div backend="express">
+
+```ts
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownOllama.stream.text({
+    request: req.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          ...options.messages,
+        ],
+        // Adjust parameters based on user preferences
+        temperature: getUserPreferences(req.user.id).creativity,
+      };
+    },
+  });
+
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+
+  res.end();
+});
+```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownOllama.stream.text({
+    request: request.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          ...options.messages,
+        ],
+        // Adjust parameters based on user preferences
+        temperature: getUserPreferences(request.user.id).creativity,
+      };
+    },
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk);
+  }
+
+  reply.raw.end();
+});
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res, Req } from '@nestjs/common';
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import { Response, Request } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
+    const stream = HashbrownOllama.stream.text({
+      request: body,
+      transformRequestOptions: (options) => {
+        return {
+          ...options,
+          // Add server-side system prompt
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            ...options.messages,
+          ],
+          // Adjust parameters based on user preferences
+          temperature: getUserPreferences(req.user.id).creativity,
+        };
+      },
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk);
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownOllama.stream.text({
+    request: body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          ...options.messages,
+        ],
+        // Adjust parameters based on user preferences
+        temperature: getUserPreferences(c.req.user.id).creativity,
+      };
+    },
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+```
+
+</div>
+
+</hb-backend-code-example>
+
+[Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
 
 ---
 

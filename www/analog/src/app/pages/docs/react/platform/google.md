@@ -47,11 +47,18 @@ Streams a Gemini chat completion as a series of encoded frames. Handles content,
 - **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
 - **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
 
-### Example: Using with Express
+### Example: Node.js Server Integration
+
+<hb-backend-code-example>
+
+<div backend="express">
 
 ```ts
 import { HashbrownGoogle } from '@hashbrownai/google';
-import { decodeFrame } from '@hashbrownai/core';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownGoogle.stream.text({
@@ -60,12 +67,117 @@ app.post('/chat', async (req, res) => {
   });
 
   res.header('Content-Type', 'application/octet-stream');
+
   for await (const chunk of stream) {
     res.write(chunk); // Pipe each encoded frame as it arrives
   }
+
   res.end();
 });
+
+app.listen(3000);
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownGoogle } from '@hashbrownai/google';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    request: request.body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  }
+
+  reply.raw.end();
+});
+
+fastify.listen({ port: 3000 });
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res } from '@nestjs/common';
+import { HashbrownGoogle } from '@hashbrownai/google';
+import { Response } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Res() res: Response) {
+    const stream = HashbrownGoogle.stream.text({
+      apiKey: process.env.GOOGLE_API_KEY!,
+      request: body, // must be Chat.Api.CompletionCreateParams
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk); // Pipe each encoded frame as it arrives
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownGoogle } from '@hashbrownai/google';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    request: body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+
+export default app;
+```
+
+</div>
+
+</hb-backend-code-example>
+
+---
 
 ---
 
@@ -73,7 +185,17 @@ app.post('/chat', async (req, res) => {
 
 The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Google Gemini. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
 
+<hb-backend-code-example>
+
+<div backend="express">
+
 ```ts
+import { HashbrownGoogle } from '@hashbrownai/google';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
 app.post('/chat', async (req, res) => {
   const stream = HashbrownGoogle.stream.text({
     apiKey: process.env.GOOGLE_API_KEY!,
@@ -83,20 +205,165 @@ app.post('/chat', async (req, res) => {
         ...options,
         // Add system instructions for Gemini
         systemInstruction: {
-          parts: [{ text: 'You are a helpful AI assistant specialized in technical topics.' }]
+          parts: [{ text: 'You are a helpful AI assistant.' }]
         },
-        // Adjust generation config based on content type
+        // Adjust generation config
         generationConfig: {
           ...options.generationConfig,
-          temperature: req.body.contentType === 'creative' ? 0.8 : 0.2,
+          temperature: getUserPreferences(req.user.id).creativity,
         },
       };
     },
   });
 
-  // ... rest of the code
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+
+  res.end();
 });
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownGoogle } from '@hashbrownai/google';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    request: request.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add system instructions for Gemini
+        systemInstruction: {
+          parts: [{ text: 'You are a helpful AI assistant.' }]
+        },
+        // Adjust generation config
+        generationConfig: {
+          ...options.generationConfig,
+          temperature: getUserPreferences(request.user.id).creativity,
+        },
+      };
+    },
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk);
+  }
+
+  reply.raw.end();
+});
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res, Req } from '@nestjs/common';
+import { HashbrownGoogle } from '@hashbrownai/google';
+import { Response, Request } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
+    const stream = HashbrownGoogle.stream.text({
+      apiKey: process.env.GOOGLE_API_KEY!,
+      request: body,
+      transformRequestOptions: (options) => {
+        return {
+          ...options,
+          // Add system instructions for Gemini
+          systemInstruction: {
+            parts: [{ text: 'You are a helpful AI assistant.' }]
+          },
+          // Adjust generation config
+          generationConfig: {
+            ...options.generationConfig,
+            temperature: getUserPreferences(req.user.id).creativity,
+          },
+        };
+      },
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk);
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownGoogle } from '@hashbrownai/google';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    request: body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add system instructions for Gemini
+        systemInstruction: {
+          parts: [{ text: 'You are a helpful AI assistant.' }]
+        },
+        // Adjust generation config
+        generationConfig: {
+          ...options.generationConfig,
+          temperature: getUserPreferences(c.req.user.id).creativity,
+        },
+      };
+    },
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+```
+
+</div>
+
+</hb-backend-code-example>
+
+[Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
 
