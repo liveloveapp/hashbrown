@@ -5,21 +5,23 @@ import { FunctionParameters } from 'openai/resources/shared';
 export interface OpenAITextStreamOptions {
   turbo?: { apiKey: string };
   request: Chat.Api.CompletionCreateParams;
+  transformRequestOptions?: (
+    options: ChatRequest & { stream: true },
+  ) =>
+    | (ChatRequest & { stream: true })
+    | Promise<ChatRequest & { stream: true }>;
 }
 
 export async function* text(
   options: OpenAITextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { turbo, request } = options;
-  const { messages, model, tools, responseFormat, toolChoice, system } =
-    request;
+  const { turbo, request, transformRequestOptions } = options;
+  const { messages, model, tools, responseFormat, system } = request;
 
   try {
     const baseOptions: ChatRequest & { stream: true } = {
       stream: true,
       model: model as string,
-      think: 'high' as any,
-      // think: true,
       options: {
         // num_ctx: 32768,
       },
@@ -80,6 +82,11 @@ export async function* text(
       format: responseFormat ? responseFormat : undefined,
     };
 
+    const resolvedOptions: ChatRequest & { stream: true } =
+      transformRequestOptions
+        ? await transformRequestOptions(baseOptions)
+        : baseOptions;
+
     const client = turbo
       ? new Ollama({
           host: 'https://ollama.com',
@@ -89,7 +96,7 @@ export async function* text(
         })
       : OllamaClient;
 
-    const stream = await client.chat(baseOptions);
+    const stream = await client.chat(resolvedOptions);
 
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {
