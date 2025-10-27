@@ -24,10 +24,11 @@ Streams an Ollama chat completion as a series of encoded frames. Handles content
 
 **Options:**
 
-| Name           | Type                              | Description                                                                                        |
-| -------------- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `turbo.apiKey` | `string`                          | _(Optional)_ Use Ollama Turbo by providing an API key. Defaults to local Ollama via `OLLAMA_HOST`. |
-| `request`      | `Chat.Api.CompletionCreateParams` | The chat request: model, messages, tools, system, `responseFormat`, etc.                           |
+| Name                       | Type                              | Description                                                                                        |
+| -------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `turbo.apiKey`             | `string`                          | _(Optional)_ Use Ollama Turbo by providing an API key. Defaults to local Ollama via `OLLAMA_HOST`. |
+| `request`                  | `Chat.Api.CompletionCreateParams` | The chat request: model, messages, tools, system, `responseFormat`, etc.                           |
+| `transformRequestOptions`  | `function`                        | _(Optional)_ Async function to transform Ollama request options before sending (e.g., for `think` parameter). |
 
 **Supported Features:**
 
@@ -82,3 +83,33 @@ app.post('/chat', async (req, res) => {
 - **Tools:** Add tools using function specs (name, description, parameters as JSON Schema). The adapter forwards them to Ollama with `strict` mode enabled.
 - **Function Calling:** Ollama can return `tool_calls` which are streamed as frames; execute your tool and continue the conversation by sending a `tool` message.
 - **Response Format:** Pass a JSON schema in `responseFormat` to request validated structured output from models that support it.
+
+---
+
+## Using Extended Thinking with DeepSeek Models
+
+DeepSeek R1 and similar models support an extended thinking mode via the `think` parameter. You can enable this using `transformRequestOptions`:
+
+```ts
+import { HashbrownOllama } from '@hashbrownai/ollama';
+
+app.post('/chat', async (req, res) => {
+  const stream = HashbrownOllama.stream.text({
+    request: req.body,
+    transformRequestOptions: async (options) => ({
+      ...options,
+      think: true, // Enable extended thinking for DeepSeek R1
+    }),
+  });
+
+  res.header('Content-Type', 'application/octet-stream');
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+  res.end();
+});
+```
+
+The `think` parameter accepts:
+- `true` - Enable thinking
+- `false` - Disable thinking (default)
