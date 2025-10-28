@@ -12,6 +12,10 @@ import { Prettify } from './types';
  * @public
  */
 export type OpenAiKnownModelIds =
+  | 'gpt-5'
+  | 'gpt-5-pro'
+  | 'gpt-5-mini'
+  | 'gpt-5-nano'
   | 'o4-mini'
   | 'o4-mini-high'
   | 'o3'
