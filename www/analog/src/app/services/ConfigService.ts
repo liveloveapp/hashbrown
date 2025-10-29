@@ -11,14 +11,18 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map, startWith } from 'rxjs/operators';
 
+export type Backend = 'express' | 'fastify' | 'nestjs' | 'hono';
+
 export interface AppConfig {
   sdk: 'angular' | 'react';
   provider: 'google' | 'openai' | 'writer';
+  backend: Backend;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   sdk: 'react',
   provider: 'openai',
+  backend: 'express',
 };
 
 @Injectable({ providedIn: 'root' })
@@ -40,6 +44,7 @@ export class ConfigService {
 
   readonly sdk = computed(() => this.config().sdk);
   readonly provider = computed(() => this.config().provider);
+  readonly backend = computed(() => this.config().backend);
 
   constructor() {
     effect(() => {

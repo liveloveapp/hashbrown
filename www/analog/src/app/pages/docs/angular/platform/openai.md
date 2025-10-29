@@ -41,16 +41,24 @@ Streams an OpenAI chat completion as a series of encoded frames. Handles content
 
 ### How It Works
 
-- **Messages:** Translated to OpenAI’s message format, supporting all roles and tool calls.
+- **Messages:** Translated to OpenAI's message format, supporting all roles and tool calls.
 - **Tools/Functions:** Tools are passed as OpenAI function definitions, using your JSON schemas as `parameters`.
 - **Response Format:** Pass a JSON schema in `responseFormat` for OpenAI to validate the model output.
 - **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
 - **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
 
-### Example: Using with Express
+### Example: Node.js Server Integration
+
+<hb-backend-code-example>
+
+<div backend="express">
 
 ```ts
 import { HashbrownOpenAI } from '@hashbrownai/openai';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownOpenAI.stream.text({
@@ -66,7 +74,110 @@ app.post('/chat', async (req, res) => {
 
   res.end();
 });
+
+app.listen(3000);
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: request.body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  }
+
+  reply.raw.end();
+});
+
+fastify.listen({ port: 3000 });
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res } from '@nestjs/common';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { Response } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Res() res: Response) {
+    const stream = HashbrownOpenAI.stream.text({
+      apiKey: process.env.OPENAI_API_KEY!,
+      request: body, // must be Chat.Api.CompletionCreateParams
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk); // Pipe each encoded frame as it arrives
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+
+export default app;
+```
+
+</div>
+
+</hb-backend-code-example>
+
+
 
 ---
 
@@ -76,7 +187,17 @@ app.post('/chat', async (req, res) => {
 
 The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to OpenAI. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
 
+<hb-backend-code-example>
+
+<div backend="express">
+
 ```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
 app.post('/chat', async (req, res) => {
   const stream = HashbrownOpenAI.stream.text({
     apiKey: process.env.OPENAI_API_KEY!,
@@ -95,9 +216,146 @@ app.post('/chat', async (req, res) => {
     },
   });
 
-  // ... rest of the code
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+
+  res.end();
 });
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: request.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          ...options.messages,
+        ],
+        // Adjust temperature based on user preferences
+        temperature: getUserPreferences(request.user.id).creativity,
+      };
+    },
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk);
+  }
+
+  reply.raw.end();
+});
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res, Req } from '@nestjs/common';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { Response, Request } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
+    const stream = HashbrownOpenAI.stream.text({
+      apiKey: process.env.OPENAI_API_KEY!,
+      request: body,
+      transformRequestOptions: (options) => {
+        return {
+          ...options,
+          // Add server-side system prompt
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            ...options.messages,
+          ],
+          // Adjust temperature based on user preferences
+          temperature: getUserPreferences(req.user.id).creativity,
+        };
+      },
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk);
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    request: body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          ...options.messages,
+        ],
+        // Adjust temperature based on user preferences
+        temperature: getUserPreferences(c.req.user.id).creativity,
+      };
+    },
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+```
+
+</div>
+
+</hb-backend-code-example>
 
 [Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
 
@@ -108,3 +366,4 @@ app.post('/chat', async (req, res) => {
 - **Tools:** Add tools using OpenAI-style function specs (name, description, parameters).
 - **Function Calling:** Supported via `toolChoice` (`auto`, `required`, `none`, etc.).
 - **Response Format:** Pass a JSON schema in `responseFormat` for OpenAI to return validated structured output.
+
