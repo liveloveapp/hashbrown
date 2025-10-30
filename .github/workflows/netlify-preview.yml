@@ -1,9 +1,8 @@
 name: Netlify Preview
 
 on:
-  push:
-    tags:
-      - www/preview
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
@@ -17,6 +16,7 @@ concurrency:
 jobs:
   preview:
     name: Deploy preview to Netlify
+    if: github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'www/preview'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -42,6 +42,9 @@ jobs:
       - name: Build production bundle
         run: npx nx run www:build:production
 
+      - name: Prepare Netlify configuration
+        run: cp www/analog/netlify.toml netlify.toml
+
       - name: Deploy preview
         id: deploy
         env:
@@ -49,15 +52,16 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_WWW_SITE_ID }}
         run: |
           npx netlify-cli deploy \
+            --no-build \
             --auth "$NETLIFY_AUTH_TOKEN" \
             --site "$NETLIFY_SITE_ID" \
             --dir=dist/www/analog/analog/public \
             --functions=dist/www/analog/analog \
-            --edge-functions=dist/www/netlify \
             --message="Preview deploy for ${GITHUB_SHA}" \
             --json > deploy.json
           cat deploy.json
-          echo "preview_url=$(node -pe \"require('./deploy.json').deploy_url || ''\")" >> "$GITHUB_OUTPUT"
+          PREVIEW_URL=$(node -pe "require('./deploy.json').deploy_url || ''")
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
 
       - name: Comment preview link on PR
         if: steps.deploy.outputs.preview_url != ''
