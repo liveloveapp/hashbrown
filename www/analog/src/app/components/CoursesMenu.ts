@@ -7,18 +7,18 @@ import { Squircle } from './Squircle';
   selector: 'www-courses-menu',
   imports: [Sell, RouterLink, Squircle],
   template: `
-    <div class="course">
+    <!-- <div class="course">
       <a routerLink="react-generative-ui-engineering">
         Building Generative UIs with React
       </a>
       <ul>
         <li><span>Contact us to schedule a workshop.</span></li>
       </ul>
-      <!-- <span class="price">
+      <span class="price">
         <www-sell height="14px" width="14px" stroke="#E88C4D" fill="#E88C4D" />
         $350 per person. Group discounts available.
-      </span> -->
-      <!-- <div class="action">
+      </span>
+      <div class="action">
         <a
           href="https://ti.to/liveloveapp/hashbrown-react-sep-2025"
           target="_blank"
@@ -26,7 +26,7 @@ import { Squircle } from './Squircle';
         >
           Reserve to Attend Online</a
         >
-      </div> -->
+      </div>
     </div>
     <div class="course">
       <a routerLink="angular-generative-ui-engineering"
@@ -48,12 +48,12 @@ import { Squircle } from './Squircle';
           Reserve to Attend Online</a
         >
       </div>
-    </div>
+    </div> -->
     <div class="contact-us">
       <h2>Contact Sales</h2>
       <p>
-        Looking for a custom workshop for your team? Want us to come to your
-        location?
+        Let us train your team on the basics of building with AI, using LLMs in
+        your web apps, and building generative user interfaces.
       </p>
       <a
         routerLink="/contact-us"
