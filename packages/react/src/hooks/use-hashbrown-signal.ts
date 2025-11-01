@@ -27,6 +27,7 @@ export function useHashbrownSignal<T>(signal: HashbrownSignal<T>): T {
 
     return lastValue.current;
   }, [signal, equality]);
+  const getServerSnapshot = useCallback(() => lastValue.current, []);
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       let lastRead: T | undefined;
@@ -53,5 +54,5 @@ export function useHashbrownSignal<T>(signal: HashbrownSignal<T>): T {
     [signal, read],
   );
 
-  return useSyncExternalStore(subscribe, read);
+  return useSyncExternalStore(subscribe, read, getServerSnapshot);
 }
