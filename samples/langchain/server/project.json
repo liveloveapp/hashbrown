@@ -1,0 +1,15 @@
+{
+  "name": "langchain-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/langchain/server/src",
+  "projectType": "application",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx @langchain/langgraph-cli dev -c samples/langchain/server/langgraph.json --port 2024 --no-browser"
+      }
+    }
+  },
+  "tags": []
+}

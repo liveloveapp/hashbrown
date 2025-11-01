@@ -79,3 +79,10 @@ samples/finance/server/src/*.json
 ## LLMs
 llms.txt
 llms-full.txt
+
+# Next.js
+.next
+out
+
+# LangGraph API
+.langgraph_api
