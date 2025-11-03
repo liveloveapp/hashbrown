@@ -27,14 +27,18 @@ import { DatabaseCog } from './icons/DatabaseCog';
 import { Functions } from './icons/Functions';
 import { Message } from './icons/Message';
 import { Send } from './icons/Send';
+import { ToastContainer } from './components/ToastContainer';
 
 @Component({
   selector: 'www-root',
-  imports: [RouterOutlet, Announcement, SearchOverlay],
+  imports: [RouterOutlet, Announcement, SearchOverlay, ToastContainer],
   template: `
     <router-outlet />
     <www-announcement />
     <www-search-overlay />
+    @defer {
+      <www-toast-container />
+    }
   `,
   styles: `
     :host {
