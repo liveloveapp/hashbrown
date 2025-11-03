@@ -117,14 +117,18 @@ export async function* text(
       systemInstruction: {
         parts: [{ text: system }],
       },
-      tools: [
+      responseMimeType: responseFormat ? 'application/json' : 'text/plain',
+      responseSchema: responseSchema,
+    };
+
+    // Only include tools and toolConfig when there are actual tools
+    if (geminiTools.length > 0) {
+      config.tools = [
         {
           functionDeclarations: geminiTools,
         },
-      ],
-      responseMimeType: responseFormat ? 'application/json' : 'text/plain',
-      responseSchema: responseSchema,
-      toolConfig: {
+      ];
+      config.toolConfig = {
         functionCallingConfig: {
           mode:
             toolChoice === 'required'
@@ -133,8 +137,8 @@ export async function* text(
                 ? FunctionCallingConfigMode.NONE
                 : FunctionCallingConfigMode.AUTO,
         },
-      },
-    };
+      };
+    }
 
     const params: GenerateContentParameters = {
       model: model as string,
