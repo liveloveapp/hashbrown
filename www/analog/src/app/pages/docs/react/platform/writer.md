@@ -47,11 +47,18 @@ Streams a Writer chat completion as a series of encoded frames. Handles content,
 - **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
 - **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
 
-### Example: Using with Express
+### Example: Node.js Server Integration
+
+<hb-backend-code-example>
+
+<div backend="express">
 
 ```ts
 import { HashbrownWriter } from '@hashbrownai/writer';
-import { decodeFrame } from '@hashbrownai/core';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownWriter.stream.text({
@@ -60,12 +67,117 @@ app.post('/chat', async (req, res) => {
   });
 
   res.header('Content-Type', 'application/octet-stream');
+
   for await (const chunk of stream) {
     res.write(chunk); // Pipe each encoded frame as it arrives
   }
+
   res.end();
 });
+
+app.listen(3000);
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownWriter } from '@hashbrownai/writer';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownWriter.stream.text({
+    apiKey: process.env.WRITER_API_KEY!,
+    request: request.body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  }
+
+  reply.raw.end();
+});
+
+fastify.listen({ port: 3000 });
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res } from '@nestjs/common';
+import { HashbrownWriter } from '@hashbrownai/writer';
+import { Response } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Res() res: Response) {
+    const stream = HashbrownWriter.stream.text({
+      apiKey: process.env.WRITER_API_KEY!,
+      request: body, // must be Chat.Api.CompletionCreateParams
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk); // Pipe each encoded frame as it arrives
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownWriter } from '@hashbrownai/writer';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownWriter.stream.text({
+    apiKey: process.env.WRITER_API_KEY!,
+    request: body, // must be Chat.Api.CompletionCreateParams
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+
+export default app;
+```
+
+</div>
+
+</hb-backend-code-example>
+
+---
 
 ---
 
@@ -73,7 +185,17 @@ app.post('/chat', async (req, res) => {
 
 The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Writer. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
 
+<hb-backend-code-example>
+
+<div backend="express">
+
 ```ts
+import { HashbrownWriter } from '@hashbrownai/writer';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
 app.post('/chat', async (req, res) => {
   const stream = HashbrownWriter.stream.text({
     apiKey: process.env.WRITER_API_KEY!,
@@ -87,14 +209,151 @@ app.post('/chat', async (req, res) => {
           ...options.messages,
         ],
         // Adjust parameters based on writing task
-        temperature: req.body.taskType === 'creative' ? 0.8 : 0.3,
+        temperature: getUserPreferences(req.user.id).creativity,
       };
     },
   });
 
-  // ... rest of the code
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+
+  res.end();
 });
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import { HashbrownWriter } from '@hashbrownai/writer';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/chat', async (request, reply) => {
+  const stream = HashbrownWriter.stream.text({
+    apiKey: process.env.WRITER_API_KEY!,
+    request: request.body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful AI writing assistant.' },
+          ...options.messages,
+        ],
+        // Adjust parameters based on writing task
+        temperature: getUserPreferences(request.user.id).creativity,
+      };
+    },
+  });
+
+  reply.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    reply.raw.write(chunk);
+  }
+
+  reply.raw.end();
+});
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import { Controller, Post, Body, Res, Req } from '@nestjs/common';
+import { HashbrownWriter } from '@hashbrownai/writer';
+import { Response, Request } from 'express';
+
+@Controller()
+export class ChatController {
+  @Post('chat')
+  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
+    const stream = HashbrownWriter.stream.text({
+      apiKey: process.env.WRITER_API_KEY!,
+      request: body,
+      transformRequestOptions: (options) => {
+        return {
+          ...options,
+          // Add server-side system prompt
+          messages: [
+            { role: 'system', content: 'You are a helpful AI writing assistant.' },
+            ...options.messages,
+          ],
+          // Adjust parameters based on writing task
+          temperature: getUserPreferences(req.user.id).creativity,
+        };
+      },
+    });
+
+    res.header('Content-Type', 'application/octet-stream');
+
+    for await (const chunk of stream) {
+      res.write(chunk);
+    }
+
+    res.end();
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import { HashbrownWriter } from '@hashbrownai/writer';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  
+  const stream = HashbrownWriter.stream.text({
+    apiKey: process.env.WRITER_API_KEY!,
+    request: body,
+    transformRequestOptions: (options) => {
+      return {
+        ...options,
+        // Add server-side system prompt
+        messages: [
+          { role: 'system', content: 'You are a helpful AI writing assistant.' },
+          ...options.messages,
+        ],
+        // Adjust parameters based on writing task
+        temperature: getUserPreferences(c.req.user.id).creativity,
+      };
+    },
+  });
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+    }
+  );
+});
+```
+
+</div>
+
+</hb-backend-code-example>
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
 

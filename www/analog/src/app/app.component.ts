@@ -9,6 +9,7 @@ import {
 import { RouterOutlet } from '@angular/router';
 import { Alert } from './components/Alert';
 import { Announcement } from './components/Announcement';
+import { BackendCodeExample } from './components/BackendCodeExample';
 import { CodeExample } from './components/CodeExample';
 import { Carousel } from './components/Carousel';
 import { Expander } from './components/Expander';
@@ -86,6 +87,11 @@ export class AppComponent {
       injector: this.injector,
     });
     customElements.define('hb-alert', alertElement);
+
+    const backendCodeExampleElement = createCustomElement(BackendCodeExample, {
+      injector: this.injector,
+    });
+    customElements.define('hb-backend-code-example', backendCodeExampleElement);
 
     const boltElement = createCustomElement(Bolt, {
       injector: this.injector,
