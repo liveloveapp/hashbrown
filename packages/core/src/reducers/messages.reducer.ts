@@ -36,6 +36,20 @@ export const reducer = createReducer(
       messages: [...state.messages, ...internalMessages],
     };
   }),
+  on(apiActions.threadLoadSuccess, (state, action) => {
+    if (!action.payload.thread || action.payload.thread.length === 0) {
+      return state;
+    }
+
+    const loadedMessages = action.payload.thread.flatMap((message) =>
+      Chat.helpers.toInternalMessagesFromApi(message),
+    );
+
+    return {
+      ...state,
+      messages: loadedMessages,
+    };
+  }),
   on(apiActions.generateMessageError, (state, action) => {
     const message = action.payload;
     const errorMessage: ErrorMessage = {

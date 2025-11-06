@@ -386,7 +386,7 @@ export class ExperimentalChromeLocalTransport implements Transport {
         }
       }
 
-      yield { type: 'finish' };
+      yield { type: 'generation-finish' };
     } finally {
       if (!aborted) {
         reader.releaseLock();
@@ -473,7 +473,12 @@ export function experimentalChromeLocalModelSpec(
 
     return {
       name: 'chrome-local',
-      capabilities: { tools: false, structured: true, ui: true },
+      capabilities: {
+        tools: false,
+        structured: true,
+        ui: true,
+        threads: false,
+      },
       detect: () =>
         detectChromePromptApi(
           (mergedOptions as { sessionOptions?: LanguageModelCreateOptions })
@@ -584,7 +589,7 @@ function isSupportedResponseConstraint(constraint: unknown): boolean {
 
 function createChunkFrame(content: string): Frame {
   return {
-    type: 'chunk',
+    type: 'generation-chunk',
     chunk: {
       choices: [
         {

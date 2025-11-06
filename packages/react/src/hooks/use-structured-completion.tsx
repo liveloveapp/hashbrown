@@ -69,6 +69,11 @@ export interface UseStructuredCompletionOptions<
    * Whether this completion should be treated as UI-generating.
    */
   ui?: boolean;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: string;
 }
 
 /**
@@ -94,6 +99,11 @@ export interface UseStructuredCompletionResult<Output> {
   error: Error | undefined;
 
   /**
+   * Aggregate loading flag across transport, generation, tool-calls, and thread load/save.
+   */
+  isLoading: boolean;
+
+  /**
    * Whether the chat is receiving a response.
    */
   isReceiving: boolean;
@@ -104,14 +114,38 @@ export interface UseStructuredCompletionResult<Output> {
   isSending: boolean;
 
   /**
+   * Whether the chat is currently generating.
+   */
+  isGenerating: boolean;
+
+  /**
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
 
   /**
+   * Transport/request failure before generation frames arrive.
+   */
+  sendingError: Error | undefined;
+
+  /**
+   * Error emitted during generation frames.
+   */
+  generatingError: Error | undefined;
+
+  /**
    * Whether the current request has exhausted retries.
    */
   exhaustedRetries: boolean;
+
+  /** Whether a thread load request is in flight. */
+  isLoadingThread: boolean;
+  /** Whether a thread save request is in flight. */
+  isSavingThread: boolean;
+  /** Error encountered while loading a thread. */
+  threadLoadError: { error: string; stacktrace?: string } | undefined;
+  /** Error encountered while saving a thread. */
+  threadSaveError: { error: string; stacktrace?: string } | undefined;
 }
 
 /**
@@ -175,9 +209,17 @@ export function useStructuredCompletion<Input, Schema extends s.HashbrownType>(
     output,
     reload: chat.reload,
     error: chat.error,
+    isLoading: chat.isLoading,
     isReceiving: chat.isReceiving,
     isSending: chat.isSending,
+    isGenerating: chat.isGenerating,
     isRunningToolCalls: chat.isRunningToolCalls,
+    sendingError: chat.sendingError,
+    generatingError: chat.generatingError,
     exhaustedRetries: chat.exhaustedRetries,
+    isLoadingThread: chat.isLoadingThread,
+    isSavingThread: chat.isSavingThread,
+    threadLoadError: chat.threadLoadError,
+    threadSaveError: chat.threadSaveError,
   };
 }

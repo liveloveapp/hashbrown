@@ -5,7 +5,7 @@ import { Frame } from '../frames';
 test('appends a finish frame when generator completes', async () => {
   const frames = async function* (): AsyncGenerator<Frame> {
     yield {
-      type: 'chunk',
+      type: 'generation-chunk',
       chunk: {
         choices: [
           {
@@ -31,8 +31,9 @@ test('appends a finish frame when generator completes', async () => {
     decoded.push(frame);
   }
 
-  expect(decoded[0]?.type).toBe('chunk');
-  expect(decoded.at(-1)?.type).toBe('finish');
+  expect(decoded[0]?.type).toBe('generation-chunk');
+  // No implicit finish frame is appended; generator controls lifecycle.
+  expect(decoded).toHaveLength(1);
 });
 
 test('propagates generator errors', async () => {

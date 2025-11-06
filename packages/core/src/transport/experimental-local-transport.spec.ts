@@ -9,13 +9,14 @@ import { Transport, type TransportRequest } from './transport';
 import { createDelegatingTransport } from './experimental-local-transport';
 
 const noopFrames = async function* (): AsyncGenerator<Frame> {
-  yield { type: 'finish' };
+  yield { type: 'generation-finish' };
 };
 
 function makeRequest(
   overrides: Partial<TransportRequest> = {},
 ): TransportRequest {
   const params: Chat.Api.CompletionCreateParams = {
+    operation: 'generate',
     model: '' as Chat.Api.CompletionCreateParams['model'],
     messages: [],
     system: '',

@@ -3,6 +3,7 @@ import { TransportError } from './transport-error';
 import { Chat } from '../models';
 
 const defaultParams: Chat.Api.CompletionCreateParams = {
+  operation: 'generate',
   model: '' as Chat.Api.CompletionCreateParams['model'],
   system: '',
   messages: [],

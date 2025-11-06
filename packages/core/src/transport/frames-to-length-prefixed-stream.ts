@@ -10,15 +10,10 @@ export function framesToLengthPrefixedStream(
 ): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
-      let finished = false;
       let iteratorError: unknown;
       try {
         for await (const frame of frames) {
           controller.enqueue(encodeFrame(frame));
-          if (frame.type === 'finish') {
-            finished = true;
-            break;
-          }
         }
       } catch (err) {
         iteratorError = err;
@@ -30,10 +25,6 @@ export function framesToLengthPrefixedStream(
           await frames.return(undefined);
         }
         return;
-      }
-
-      if (!finished) {
-        controller.enqueue(encodeFrame({ type: 'finish' }));
       }
 
       controller.close();

@@ -2,13 +2,22 @@
 import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';
-import { selectPendingToolCalls, selectToolEntities } from '../reducers';
+import {
+  selectPendingToolCalls,
+  selectToolEntities,
+  selectUnifiedError,
+} from '../reducers';
 import { s } from '../schema';
 
 export const runTools = createEffect((store) => {
   const abortController = new AbortController();
 
-  store.when(apiActions.generateMessageSuccess, async () => {
+  store.when(apiActions.assistantTurnFinalized, async () => {
+    const unifiedError = store.read(selectUnifiedError);
+    if (unifiedError) {
+      return;
+    }
+
     const toolCalls = store.read(selectPendingToolCalls);
     const toolEntities = store.read(selectToolEntities);
 

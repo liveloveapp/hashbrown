@@ -8,13 +8,14 @@ import {
 } from './model-spec';
 
 const noopFrames = async function* (): AsyncGenerator<Frame> {
-  yield { type: 'finish' };
+  yield { type: 'generation-finish' };
 };
 
 const features: RequestedFeatures = {
   tools: true,
   structured: false,
   ui: false,
+  threads: false,
 };
 
 test('skips specs without required capabilities', async () => {
@@ -81,6 +82,7 @@ test('advances after PLATFORM_UNSUPPORTED errors', async () => {
 
   if (first) {
     const params: Chat.Api.CompletionCreateParams = {
+      operation: 'generate',
       model: '' as Chat.Api.CompletionCreateParams['model'],
       system: '',
       messages: [],

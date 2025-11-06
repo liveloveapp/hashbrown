@@ -22,9 +22,29 @@ export interface StructuredCompletionResourceRef<Output>
    */
   isSending: Signal<boolean>;
   /**
+   * Indicates whether the completion is generating assistant output.
+   */
+  isGenerating: Signal<boolean>;
+  /**
    * Indicates whether the underlying completion call is currently receiving tokens.
    */
   isReceiving: Signal<boolean>;
+  /** Indicates whether tool calls are running. */
+  isRunningToolCalls: Signal<boolean>;
+  /** Aggregate loading flag across transport, generation, tool calls, and thread load/save. */
+  isLoading: Signal<boolean>;
+  /** Whether a thread load request is in flight. */
+  isLoadingThread: Signal<boolean>;
+  /** Whether a thread save request is in flight. */
+  isSavingThread: Signal<boolean>;
+  /** Error encountered while loading a thread. */
+  threadLoadError: Signal<{ error: string; stacktrace?: string } | undefined>;
+  /** Error encountered while saving a thread. */
+  threadSaveError: Signal<{ error: string; stacktrace?: string } | undefined>;
+  /** Transport/request error before generation frames arrive. */
+  sendingError: Signal<Error | undefined>;
+  /** Error emitted during generation frames. */
+  generatingError: Signal<Error | undefined>;
   /**
    * Reloads the resource.
    *
@@ -93,6 +113,11 @@ export interface StructuredCompletionResourceOptions<
    * Whether this completion is UI generating.
    */
   ui?: boolean;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: SignalLike<string | undefined>;
 }
 
 /**
@@ -132,6 +157,7 @@ export function structuredCompletionResource<
     debounce,
     transport: options.transport,
     ui: options.ui ?? false,
+    threadId: options.threadId,
   });
 
   effect(() => {
@@ -182,7 +208,15 @@ export function structuredCompletionResource<
     error,
     isLoading,
     isSending: resource.isSending,
+    isGenerating: resource.isGenerating,
     isReceiving: resource.isReceiving,
+    isRunningToolCalls: resource.isRunningToolCalls,
+    isLoadingThread: resource.isLoadingThread,
+    isSavingThread: resource.isSavingThread,
+    threadLoadError: resource.threadLoadError,
+    threadSaveError: resource.threadSaveError,
+    sendingError: resource.sendingError,
+    generatingError: resource.generatingError,
     reload,
     stop,
     hasValue: hasValue as any,

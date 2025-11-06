@@ -9,6 +9,7 @@ import * as fromStatus from './status.reducer';
 import * as fromStreamingMessage from './streaming-message.reducer';
 import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
+import * as fromThread from './thread.reducer';
 
 export const reducers = {
   config: fromConfig.reducer,
@@ -17,6 +18,7 @@ export const reducers = {
   streamingMessage: fromStreamingMessage.reducer,
   toolCalls: fromToolCalls.reducer,
   tools: fromTools.reducer,
+  thread: fromThread.reducer,
 };
 
 type State = Prettify<{
@@ -44,9 +46,17 @@ export const selectIsSending = select(
   selectStatusState,
   fromStatus.selectIsSending,
 );
-export const selectIsRunningToolCalls = select(
+export const selectIsGenerating = select(
   selectStatusState,
-  fromStatus.selectIsRunningToolCalls,
+  fromStatus.selectIsGenerating,
+);
+export const selectSendingError = select(
+  selectStatusState,
+  fromStatus.selectSendingError,
+);
+export const selectGeneratingError = select(
+  selectStatusState,
+  fromStatus.selectGeneratingError,
 );
 export const selectError = select(selectStatusState, fromStatus.selectError);
 
@@ -97,6 +107,31 @@ export const selectPendingToolCalls = select(
 );
 
 /**
+ * Thread
+ */
+export const selectThreadState = (state: State) => state.thread;
+export const selectThreadIdState = select(
+  selectThreadState,
+  fromThread.selectThreadId,
+);
+export const selectIsLoadingThread = select(
+  selectThreadState,
+  fromThread.selectIsLoadingThread,
+);
+export const selectIsSavingThread = select(
+  selectThreadState,
+  fromThread.selectIsSavingThread,
+);
+export const selectThreadLoadError = select(
+  selectThreadState,
+  fromThread.selectThreadLoadError,
+);
+export const selectThreadSaveError = select(
+  selectThreadState,
+  fromThread.selectThreadSaveError,
+);
+
+/**
  * Config
  */
 export const selectConfigState = (state: State) => state.config;
@@ -114,6 +149,10 @@ export const selectDebounce = select(
 export const selectRetries = select(
   selectConfigState,
   fromConfig.selectRetries,
+);
+export const selectThreadId = select(
+  selectThreadState,
+  fromThread.selectThreadId,
 );
 export const selectResponseSchema = select(
   selectConfigState,
@@ -221,10 +260,59 @@ export const selectApiTools = select(
   },
 );
 
+export const selectUnifiedError = select(
+  selectSendingError,
+  selectGeneratingError,
+  selectThreadLoadError,
+  selectThreadSaveError,
+  selectError,
+  (
+    sendingError,
+    generatingError,
+    threadLoadError,
+    threadSaveError,
+    statusError,
+  ) =>
+    sendingError ??
+    generatingError ??
+    (threadLoadError && new Error(threadLoadError.error)) ??
+    (threadSaveError && new Error(threadSaveError.error)) ??
+    statusError,
+);
+
+export const selectIsRunningToolCalls = select(
+  selectPendingToolCalls,
+  selectIsGenerating,
+  selectIsLoadingThread,
+  selectIsSavingThread,
+  selectUnifiedError,
+  (pendingToolCalls, isGenerating, isLoadingThread, isSavingThread, error) =>
+    pendingToolCalls.length > 0 &&
+    !isGenerating &&
+    !isLoadingThread &&
+    !isSavingThread &&
+    !error,
+);
+
 export const selectIsLoading = select(
   selectIsSending,
+  selectIsGenerating,
   selectIsReceiving,
   selectIsRunningToolCalls,
-  (isSending, isReceiving, isRunningToolCalls) =>
-    isSending || isReceiving || isRunningToolCalls,
+  selectIsLoadingThread,
+  selectIsSavingThread,
+  (
+    isSending,
+    isGenerating,
+    isReceiving,
+    isRunningToolCalls,
+    isLoadingThread,
+    isSavingThread,
+  ) =>
+    isSending ||
+    isGenerating ||
+    isReceiving ||
+    isRunningToolCalls ||
+    isLoadingThread ||
+    isSavingThread,
 );

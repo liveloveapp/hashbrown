@@ -1,4 +1,5 @@
 import { Chat } from '../models';
+import { KnownModelIds } from '../utils';
 import {
   createHttpTransport,
   type HttpTransportOptions,
@@ -20,6 +21,7 @@ export interface ModelCapabilities {
   tools?: boolean;
   structured?: boolean;
   ui?: boolean;
+  threads?: boolean;
 }
 
 /**
@@ -61,10 +63,11 @@ export type ModelSpecFactory = (config?: ModelSpecConfig) => ModelSpec;
  * @public
  */
 export type ModelInput =
-  | string
+  | KnownModelIds
   | ModelSpec
   | ModelSpecFactory
-  | Array<string | ModelSpec | ModelSpecFactory>;
+  | Array<KnownModelIds | ModelSpec | ModelSpecFactory | string>
+  | string;
 
 /**
  * Configuration injected into model spec factories.
@@ -87,6 +90,7 @@ export interface RequestedFeatures {
   tools: boolean;
   structured: boolean;
   ui: boolean;
+  threads: boolean;
 }
 
 /**
@@ -240,7 +244,12 @@ export class ModelResolver {
 
       return {
         name: candidate,
-        capabilities: { tools: true, structured: true, ui: true },
+        capabilities: {
+          tools: true,
+          structured: true,
+          ui: true,
+          threads: true,
+        },
         transport,
       };
     }
@@ -284,13 +293,14 @@ function normalizeModelInput(
     return [];
   }
 
-  if (Array.isArray(model)) {
-    return model.flat().filter(Boolean) as Array<
+  const maybeArray = model as Array<string | ModelSpec | ModelSpecFactory>;
+  if (Array.isArray(maybeArray)) {
+    return maybeArray.flat().filter(Boolean) as Array<
       string | ModelSpec | ModelSpecFactory
     >;
   }
 
-  return [model];
+  return [model as string | ModelSpec | ModelSpecFactory];
 }
 
 function normalizeConfig(config: ModelSpecConfig): ModelSpecConfig {
@@ -313,6 +323,9 @@ function getCapabilityFailure(
   }
   if (features.ui && capabilities.ui === false) {
     return 'ui output requested but not supported';
+  }
+  if (features.threads && capabilities.threads === false) {
+    return 'threads requested but not supported';
   }
   return undefined;
 }

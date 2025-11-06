@@ -281,6 +281,51 @@ export function toInternalToolCallsFromApi(
 }
 
 /**
+ * Converts a list of API messages (e.g., when hydrating a thread) into
+ * internal tool call entities, stitching together assistant tool calls and
+ * their corresponding tool results.
+ */
+export function toInternalToolCallsFromApiMessages(
+  messages: Chat.Api.Message[] = [],
+): Chat.Internal.ToolCall[] {
+  const calls: Record<string, Chat.Internal.ToolCall> = {};
+
+  // First capture all tool calls declared by assistant messages
+  messages.forEach((message) => {
+    if (message.role === 'assistant' && message.toolCalls) {
+      message.toolCalls.forEach((toolCall) => {
+        if (toolCall.function.name === 'output') {
+          return;
+        }
+
+        calls[toolCall.id] = {
+          id: toolCall.id,
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+          status: 'pending',
+        };
+      });
+    }
+  });
+
+  // Then stitch in tool results
+  messages.forEach((message) => {
+    if (message.role === 'tool') {
+      const existing = calls[message.toolCallId];
+      calls[message.toolCallId] = {
+        id: message.toolCallId,
+        name: existing?.name ?? message.toolName,
+        arguments: existing?.arguments ?? '',
+        status: 'done',
+        result: message.content,
+      };
+    }
+  });
+
+  return Object.values(calls);
+}
+
+/**
  * Converts a view message to an internal tool call.
  *
  * @param message - The view message to convert.

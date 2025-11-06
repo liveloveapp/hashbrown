@@ -79,10 +79,6 @@ export async function* decodeFrames(
           const json = textDecoder.decode(payloadBytes);
           const frame = JSON.parse(json) as Frame;
           yield frame;
-
-          if (frame.type === 'finish') {
-            return;
-          }
         } catch (err: any) {
           throw new Error(`Invalid JSON payload: ${err.message}`);
         }

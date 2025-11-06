@@ -4,8 +4,8 @@ import {
   type ModelInput,
   s,
   SystemPrompt,
-  ɵui,
   type TransportOrFactory,
+  ɵui,
 } from '@hashbrownai/core';
 import {
   createElement,
@@ -132,6 +132,11 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * Optional transport override for this hook.
    */
   transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: string;
 }
 
 /**

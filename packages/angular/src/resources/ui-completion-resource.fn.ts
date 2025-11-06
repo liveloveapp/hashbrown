@@ -77,6 +77,11 @@ export interface UiCompletionResourceOptions<
    * Custom transport override for the UI completion resource.
    */
   transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: SignalLike<string | undefined>;
 }
 
 /**
@@ -166,6 +171,7 @@ export function uiCompletionResource<
     debounce: options.debounce,
     transport: options.transport,
     ui: true,
+    threadId: options.threadId,
   });
 
   const value = computed(
