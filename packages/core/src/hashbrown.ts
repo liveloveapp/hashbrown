@@ -15,11 +15,31 @@ import {
   selectIsRunningToolCalls,
   selectIsSending,
   selectLastAssistantMessage,
+  selectThreadId,
+  selectUseThreadId,
   selectViewMessages,
 } from './reducers';
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
 import { KnownModelIds } from './utils';
+
+function createThreadId(): string {
+  const cryptoObj = globalThis.crypto;
+
+  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+    return cryptoObj.randomUUID();
+  }
+
+  if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
+    const buffer = new Uint32Array(4);
+    cryptoObj.getRandomValues(buffer);
+    return Array.from(buffer, (value) => value.toString(16)).join('');
+  }
+
+  return `thread_${Date.now().toString(16)}_${Math.random()
+    .toString(16)
+    .slice(2)}`;
+}
 
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
@@ -39,6 +59,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   lastAssistantMessage: StateSignal<
     Chat.AssistantMessage<Output, Tools> | undefined
   >;
+  threadId: StateSignal<string | undefined>;
 
   /** Replace the current set of messages in the chat state. */
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
@@ -61,6 +82,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       emulateStructuredOutput: boolean;
       debounce: number;
       retries: number;
+      useThreadId: boolean;
+      threadId: string;
     }>,
   ) => void;
 
@@ -102,6 +125,8 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
+  useThreadId?: boolean;
+  threadId?: string;
 }): Hashbrown<string, Tools>;
 /**
  * @public
@@ -122,6 +147,8 @@ export function fryHashbrown<
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
+  useThreadId?: boolean;
+  threadId?: string;
 }): Hashbrown<Output, Tools>;
 /**
  * @public
@@ -138,7 +165,14 @@ export function fryHashbrown(init: {
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
+  useThreadId?: boolean;
+  threadId?: string;
 }): Hashbrown<any, Chat.AnyTool> {
+  const useThreadId = !!init.useThreadId;
+  const initialThreadId = useThreadId
+    ? init.threadId ?? createThreadId()
+    : undefined;
+
   const hasIllegalOutputTool = init.tools?.some(
     (tool) => tool.name === 'output',
   );
@@ -175,6 +209,8 @@ export function fryHashbrown(init: {
       emulateStructuredOutput: init.emulateStructuredOutput,
       debounce: init.debounce,
       retries: init.retries,
+      useThreadId,
+      threadId: initialThreadId,
     }),
   );
 
@@ -206,9 +242,31 @@ export function fryHashbrown(init: {
       emulateStructuredOutput: boolean;
       debounce: number;
       retries: number;
+      useThreadId: boolean;
+      threadId: string;
     }>,
   ) {
-    state.dispatch(devActions.updateOptions(options));
+    const currentUseThreadId = state.read(selectUseThreadId);
+    const currentThreadId = state.read(selectThreadId);
+    const nextUseThreadId = options.useThreadId ?? currentUseThreadId ?? false;
+    const hasThreadIdOption = Object.prototype.hasOwnProperty.call(
+      options,
+      'threadId',
+    );
+
+    const nextThreadId = hasThreadIdOption
+      ? options.threadId
+      : nextUseThreadId
+        ? currentThreadId ?? createThreadId()
+        : undefined;
+
+    state.dispatch(
+      devActions.updateOptions({
+        ...options,
+        useThreadId: nextUseThreadId,
+        threadId: nextThreadId,
+      }),
+    );
   }
 
   function sizzle() {
@@ -256,5 +314,6 @@ export function fryHashbrown(init: {
     isLoading: state.createSignal(selectIsLoading),
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
     lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
+    threadId: state.createSignal(selectThreadId),
   };
 }

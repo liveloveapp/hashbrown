@@ -102,4 +102,5 @@ export interface CompletionCreateParams {
   responseFormat?: object;
   toolChoice?: CompletionToolChoiceOption;
   tools?: Tool[];
+  threadId?: string;
 }

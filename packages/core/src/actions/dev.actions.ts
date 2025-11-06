@@ -15,6 +15,8 @@ export default createActionGroup('dev', {
     middleware?: Chat.Middleware[];
     emulateStructuredOutput?: boolean;
     retries?: number;
+    useThreadId?: boolean;
+    threadId?: string;
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];
@@ -34,6 +36,8 @@ export default createActionGroup('dev', {
     emulateStructuredOutput?: boolean;
     debounce?: number;
     retries?: number;
+    useThreadId?: boolean;
+    threadId?: string;
   }>(),
   stopMessageGeneration: props<boolean>(),
 });
