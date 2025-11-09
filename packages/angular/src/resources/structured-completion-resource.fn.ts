@@ -13,6 +13,10 @@ import { toDeepSignal } from '../utils/deep-signal';
 export interface StructuredCompletionResourceRef<Output>
   extends Resource<Output | null> {
   /**
+   * Indicates whether the underlying completion call is currently receiving tokens.
+   */
+  isReceiving: Signal<boolean>;
+  /**
    * Reloads the resource.
    *
    * @returns Whether the resource was reloaded.
@@ -63,6 +67,14 @@ export interface StructuredCompletionResourceOptions<
    * The API URL to use for the structured completion resource.
    */
   apiUrl?: string;
+  /**
+   * The number of retries for the structured completion resource.
+   */
+  retries?: number;
+  /**
+   * The debounce time for the structured completion resource.
+   */
+  debounce?: number;
 }
 
 /**
@@ -79,7 +91,17 @@ export function structuredCompletionResource<
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
-  const { model, input, schema, system, tools, debugName, apiUrl } = options;
+  const {
+    model,
+    input,
+    schema,
+    system,
+    tools,
+    debugName,
+    apiUrl,
+    retries,
+    debounce,
+  } = options;
 
   const resource = structuredChatResource<Schema, Chat.AnyTool, Output>({
     model,
@@ -87,8 +109,9 @@ export function structuredCompletionResource<
     schema,
     tools,
     debugName,
-    retries: 3,
     apiUrl,
+    retries,
+    debounce,
   });
 
   effect(() => {
@@ -138,6 +161,7 @@ export function structuredCompletionResource<
     status,
     error,
     isLoading,
+    isReceiving: resource.isReceiving,
     reload,
     stop,
     hasValue: hasValue as any,

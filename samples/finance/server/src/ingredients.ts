@@ -1,4 +1,4 @@
-import INGREDIENTS_JSON from './ingredients.json';
+import INGREDIENTS_JSON from './data';
 
 export type Ingredient = {
   id: string;

@@ -20,6 +20,26 @@ export function createApi() {
       const stream = HashbrownOpenAI.stream.text({
         apiKey: OPENAI_API_KEY,
         request,
+        transformRequestOptions: (options) => {
+          if (options.model === 'gpt-5-high') {
+            return {
+              ...options,
+              model: 'gpt-5',
+              // reasoning_effort: 'high',
+              reasoning_effort: 'minimal',
+            };
+          }
+
+          if (options.model === 'gpt-5' || options.model === 'gpt-5-mini') {
+            return {
+              ...options,
+              model: 'gpt-5',
+              reasoning_effort: 'minimal',
+            };
+          }
+
+          return options;
+        },
       });
 
       res.header('Content-Type', 'application/octet-stream');
