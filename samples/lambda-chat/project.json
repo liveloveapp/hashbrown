@@ -1,0 +1,31 @@
+{
+  "name": "lambda-chat",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/lambda-chat/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": { "lintFilePatterns": ["samples/lambda-chat/**/*.ts"] }
+    },
+    "package": {
+      "command": "serverless package --config samples/lambda-chat/serverless.ts",
+      "outputs": ["{projectRoot}/.serverless"],
+      "options": { "cwd": "." }
+    },
+    "deploy": {
+      "command": "serverless deploy --config samples/lambda-chat/serverless.ts",
+      "options": { "cwd": "." }
+    },
+    "remove": {
+      "command": "serverless remove --config samples/lambda-chat/serverless.ts"
+    },
+    "offline": {
+      "command": "serverless offline --config samples/lambda-chat/serverless.ts"
+    },
+    "invoke-local": {
+      "command": "serverless invoke local --function hello --config samples/lambda-chat/serverless.ts"
+    }
+  }
+}
