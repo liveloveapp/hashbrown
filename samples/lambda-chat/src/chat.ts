@@ -1,68 +1,40 @@
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
-import { z } from 'zod';
+import { Chat } from '@hashbrownai/core';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
 
-type CreateItemInput = {
-  name: string;
-  description?: string;
-};
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-const CreateItem = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-});
+if (!OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY is not set');
+}
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  // API Gateway HTTP API v2 sends JSON in event.body (string | undefined)
-  if (!event.body) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Missing request body' }),
-    };
-  }
+export const handler = awslambda.streamifyResponse(
+  async (event, responseStream) => {
+    console.log({ event: JSON.stringify(event) });
 
-  let payload: CreateItemInput;
-  try {
-    payload = JSON.parse(event.body);
-  } catch {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Body must be valid JSON' }),
-    };
-  }
+    responseStream = awslambda.HttpResponseStream.from(responseStream, {
+      statusCode: 200,
+      headers: {
+        // Prevent intermediaries from buffering.  Given the small size of each chunk,
+        // this should make streaming smoother at the network level.
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': 'text/event-stream',
+        Connection: 'keep-alive',
+      },
+    });
 
-  const parsed = CreateItem.safeParse(payload);
-  if (!parsed.success) {
-    return {
-      statusCode: 422,
-      body: JSON.stringify({ error: parsed.error.flatten() }),
-    };
-  }
+    const completionParams = JSON.parse(
+      event.body,
+    ) as Chat.Api.CompletionCreateParams;
 
-  if (!payload.name || typeof payload.name !== 'string') {
-    return {
-      statusCode: 422,
-      body: JSON.stringify({
-        error: '`name` is required and must be a string',
-      }),
-    };
-  }
+    const response = HashbrownOpenAI.stream.text({
+      apiKey: OPENAI_API_KEY,
+      request: completionParams,
+    });
 
-  // Pretend to create the item (e.g., write to DynamoDB)
-  const id = crypto.randomUUID();
+    for await (const chunk of response) {
+      responseStream.write(chunk);
+    }
 
-  // Return a 201 Created with the new resource
-  return {
-    statusCode: 201,
-    headers: {
-      'content-type': 'application/json',
-      // Optional: Location header for RESTful creation semantics
-      Location: `/items/${id}`,
-    },
-    body: JSON.stringify({
-      id,
-      name: payload.name,
-      description: payload.description ?? null,
-      createdAt: new Date().toISOString(),
-    }),
-  };
-};
+    responseStream.end(); // Always end the stream
+  },
+);

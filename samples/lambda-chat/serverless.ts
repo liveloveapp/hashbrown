@@ -1,18 +1,13 @@
 import type { AWS } from '@serverless/typescript';
 
-// Helpful when running in CI/CD
 const stage = process.env.STAGE ?? 'dev';
-const serviceName = `nx-lambdas-hello-${stage}`;
+const serviceName = `lambda-chat-${stage}`;
 
 const serverlessConfiguration: AWS = {
   service: serviceName,
-  frameworkVersion: '3',
+  frameworkVersion: '4',
   configValidationMode: 'error',
-  plugins: [
-    'serverless-esbuild',
-    'serverless-offline',
-    'serverless-prune-plugin',
-  ],
+  plugins: ['serverless-offline', 'serverless-prune-plugin'],
   provider: {
     name: 'aws',
     runtime: 'nodejs20.x',
@@ -21,32 +16,30 @@ const serverlessConfiguration: AWS = {
     logRetentionInDays: 7,
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
+      // Serverless v4 loads vars from .env files by default without
+      // additional plugins
+      OPENAI_API_KEY: '${env:OPENAI_API_KEY}',
     },
     iam: {
       role: {
-        statements: [
-          // Example IAM permission (remove if not needed)
-          // { Effect: 'Allow', Action: ['s3:ListAllMyBuckets'], Resource: '*' },
-        ],
+        statements: [],
       },
-    },
-    httpApi: {
-      // Simple CORS; customize as needed
-      cors: true,
-      // or:
-      // cors: {
-      //   allowedOrigins: ['http://localhost:3000'],
-      //   allowedHeaders: ['content-type', 'authorization'],
-      //   allowedMethods: ['POST', 'OPTIONS'],
-      // }
     },
   },
   functions: {
-    hello: {
-      handler: 'apps/lambdas-hello/src/handlers/hello.handler',
-      // Example HTTP endpoint via API Gateway v2 (HTTP API)
-      events: [{ httpApi: { method: 'GET', path: '/hello' } }],
-      // Per-function env/iam can go here if preferred
+    chat: {
+      handler: 'src/chat.handler',
+      url: {
+        invokeMode: 'RESPONSE_STREAM',
+        // Add 'authorizer' set to 'aws_iam' for SigV4-signed requests.
+        cors: {
+          allowedOrigins: ['*'], // tighten for production
+          allowedMethods: ['POST'],
+          allowedHeaders: ['Content-Type', 'Authorization'],
+          allowCredentials: false,
+          maxAge: 86400,
+        },
+      },
     },
   },
   package: {
@@ -55,17 +48,6 @@ const serverlessConfiguration: AWS = {
   },
   custom: {
     prune: { automatic: true, number: 3 },
-    esbuild: {
-      bundle: true,
-      minify: false,
-      sourcemap: true,
-      target: 'node20',
-      platform: 'node',
-      tsconfig: 'apps/lambdas-hello/tsconfig.app.json',
-      exclude: ['@aws-sdk/*'], // let esbuild bundle these unless you prefer external
-      // If your monorepo has internal libs you want to include:
-      // define: { 'process.env.STAGE': JSON.stringify(stage) },
-    },
     'serverless-offline': { httpPort: 4000 },
   },
 };
