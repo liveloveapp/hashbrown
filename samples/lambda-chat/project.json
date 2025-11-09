@@ -9,14 +9,6 @@
       "executor": "@nx/eslint:lint",
       "options": { "lintFilePatterns": ["samples/lambda-chat/**/*.ts"] }
     },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/samples/lambda-chat"],
-      "options": {
-        "jestConfig": "samples/lambda-chat/jest.config.ts",
-        "passWithNoTests": true
-      }
-    },
     "package": {
       "command": "serverless package --config samples/lambda-chat/serverless.ts",
       "outputs": ["{projectRoot}/.serverless"],
