@@ -1,6 +1,7 @@
 import * as s from './public_api';
 import { StreamSchemaParser } from '../streaming-json-parser/streaming-json-parser';
 import { PRIMITIVE_WRAPPER_FIELD_NAME } from './base';
+import { createComponentSchema, ExposedComponent } from '../ui';
 
 function parse(
   schema: s.HashbrownType,
@@ -602,6 +603,258 @@ describe('anyOf', () => {
           $tagName: 'app-markdown',
         },
       ],
+    });
+  });
+
+  test('streaming array anyOf keeps parsing after many literal discriminators', () => {
+    class Heading {}
+    class Paragraph {}
+    class Chart {}
+    class OrderedList {}
+
+    const components: ExposedComponent<any>[] = [
+      {
+        component: Heading,
+        name: 'h',
+        description: 'Heading element',
+        props: {
+          level: s.number('Heading level'),
+          text: s.streaming.string('Heading text'),
+        },
+      },
+      {
+        component: Paragraph,
+        name: 'p',
+        description: 'Paragraph element',
+        props: {
+          text: s.streaming.string('Paragraph text'),
+        },
+      },
+      {
+        component: Chart,
+        name: 'chart',
+        description: 'Chart element',
+        props: {
+          chart: s.object('Chart config', {
+            prompt: s.string('Chart prompt'),
+            categories: s.anyOf([
+              s.nullish(),
+              s.object('Category wrapper', {
+                '0': s.streaming.array(
+                  'Category list',
+                  s.string('Category label'),
+                ),
+              }),
+            ]),
+            limit: s.anyOf([s.nullish(), s.number('Limit')]),
+            sortBy: s.anyOf([
+              s.nullish(),
+              s.enumeration('Sort metric', [
+                'calories',
+                'protein',
+                'totalFat',
+                'sodium',
+                'sugar',
+              ]),
+            ]),
+            sortDirection: s.anyOf([
+              s.nullish(),
+              s.enumeration('Sort direction', ['asc', 'desc']),
+            ]),
+            restaurants: s.nullish(),
+            menuItems: s.nullish(),
+            searchTerm: s.nullish(),
+            maxCalories: s.nullish(),
+            minCalories: s.nullish(),
+            minProtein: s.nullish(),
+            maxSodium: s.nullish(),
+          }),
+        },
+      },
+      {
+        component: OrderedList,
+        name: 'ol',
+        description: 'Ordered list element',
+        props: {
+          items: s.array('Items', s.streaming.string('List item')), 
+        },
+      },
+    ];
+
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'list of elements',
+        createComponentSchema(components),
+      ),
+    });
+
+    const payload = {
+      ui: [
+        { h: { $props: { level: 2, text: 'Intro' } } },
+        { p: { $props: { text: 'Paragraph one' } } },
+        {
+          chart: {
+            $props: {
+              chart: {
+                prompt: 'Chart 1',
+                categories: { '0': ['Dessert', 'Drink'] },
+                limit: 10,
+                sortBy: 'protein',
+                sortDirection: 'desc',
+                restaurants: null,
+                menuItems: null,
+                searchTerm: null,
+                maxCalories: null,
+                minCalories: null,
+                minProtein: null,
+                maxSodium: null,
+              },
+            },
+          },
+        },
+        { p: { $props: { text: 'Paragraph two' } } },
+        {
+          chart: {
+            $props: {
+              chart: {
+                prompt: 'Chart 2',
+                categories: { '0': ['Salad'] },
+                limit: 5,
+                sortBy: 'calories',
+                sortDirection: 'asc',
+                restaurants: null,
+                menuItems: null,
+                searchTerm: null,
+                maxCalories: null,
+                minCalories: null,
+                minProtein: null,
+                maxSodium: null,
+              },
+            },
+          },
+        },
+        { p: { $props: { text: 'Paragraph three' } } },
+        { ol: { $props: { items: ['Point A', 'Point B'] } } },
+      ],
+    };
+
+    const result = parse(
+      schema,
+      JSON.stringify(payload),
+      true,
+    ) as s.Infer<typeof schema>;
+
+    expect(result.ui.map((entry) => entry.$tag)).toEqual([
+      'h',
+      'p',
+      'chart',
+      'p',
+      'chart',
+      'p',
+      'ol',
+    ]);
+    expect(result.ui[result.ui.length - 1]).toMatchObject({
+      $tag: 'ol',
+      $props: { items: ['Point A', 'Point B'] },
+    });
+  });
+
+  test('streaming ui array retains elements without helper schema', () => {
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'elements',
+        s.anyOf([
+          s.object('Heading wrapper', {
+            h: s.object('Heading node', {
+              $props: s.object('Heading props', {
+                level: s.number('lvl'),
+                text: s.streaming.string('Heading text'),
+              }),
+            }),
+          }),
+          s.object('Paragraph wrapper', {
+            p: s.object('Paragraph node', {
+              $props: s.object('Paragraph props', {
+                text: s.streaming.string('Paragraph text'),
+              }),
+            }),
+          }),
+        ]),
+      ),
+    });
+
+    const payload = {
+      ui: [
+        { h: { $props: { level: 2, text: 'First' } } },
+        { p: { $props: { text: 'Second' } } },
+      ],
+    };
+
+    const parsed = parse(
+      schema,
+      JSON.stringify(payload),
+      true,
+    ) as s.Infer<typeof schema>;
+    expect(parsed.ui.length).toBe(2);
+    expect(parsed.ui[1]).toEqual({
+      $props: { text: 'Second' },
+      $tag: 'p',
+    });
+  });
+
+  test('partial ui chunks expose placeholder props for streaming fields', () => {
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'elements',
+        s.anyOf([
+          s.object('Heading wrapper', {
+            h: s.object('Heading node', {
+              $props: s.object('Heading props', {
+                level: s.number('lvl'),
+                text: s.streaming.string('Heading text'),
+              }),
+            }),
+          }),
+          s.object('Paragraph wrapper', {
+            p: s.object('Paragraph node', {
+              $props: s.object('Paragraph props', {
+                text: s.streaming.string('Paragraph text'),
+              }),
+            }),
+          }),
+        ]),
+      ),
+    });
+
+    const payload = {
+      ui: [
+        { h: { $props: { level: 2, text: 'First heading' } } },
+        { p: { $props: { text: 'Second paragraph' } } },
+      ],
+    };
+
+    const json = JSON.stringify(payload);
+    const cutoff = json.indexOf('Second paragraph');
+    const partial = json.slice(0, cutoff + 'Second '.length);
+
+    const partialResult = parse(
+      schema,
+      partial,
+    ) as s.Infer<typeof schema>;
+    expect(partialResult.ui.length).toBe(2);
+    expect(partialResult.ui[1]).toEqual({
+      $props: { text: '' },
+      $tag: 'p',
+    });
+
+    const finalResult = parse(
+      schema,
+      json,
+      true,
+    ) as s.Infer<typeof schema>;
+    expect(finalResult.ui[1]).toEqual({
+      $props: { text: 'Second paragraph' },
+      $tag: 'p',
     });
   });
 });

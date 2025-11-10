@@ -4,7 +4,7 @@ import {
   RenderMessageComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
+import { prompt, s } from '@hashbrownai/core';
 import { FormsModule } from '@angular/forms';
 import { Squircle } from '../squircle';
 import { searchFastFoodItemsTool } from './tools/search-fast-food-items';
@@ -135,8 +135,9 @@ import { UnorderedList } from './elements/unordered-list';
 export class ChatPage {
   readonly input = model('');
   chat = uiChatResource({
-    model: 'gpt-5-chat-latest',
-    system: `
+    model: 'gpt-5-high',
+    debugName: 'finance-chat',
+    system: prompt`
       You are a culinary insights analyst helping users explore a fast-food
       nutrition dataset stored in samples/finance/angular/public/fastfood.csv.
       Each row contains the restaurant name, menu item, calories, calories from
@@ -158,6 +159,10 @@ export class ChatPage {
         when citing nutrients.
       - Highlight interesting contrasts (e.g., highest protein per 500 calories,
         sodium outliers, salad vs. non-salad items) when relevant to the prompt.
+      - Start every answer with a short overview paragraph and end with a
+        takeaway paragraph that explicitly states what the user should remember.
+      - Break the body into ordered sections (<h>, <p>, lists) so the reader can
+        skim.
       - Use the provided UI components (<p>, <h2>, <blockquote>, <ol>, <ul>,
         <chart>, etc.) to structure reports. Combine multiple components to
         build rich answers.
@@ -165,15 +170,53 @@ export class ChatPage {
         prompt plus any filters (restaurants, menu items, categories,
         searchTerm, nutrient limits, limits, sorting) that would help build the
         chart.
+      - Never stop after a single visualization when the user asks for
+        comparisons, multiple angles, or plural "charts". In ambiguous cases,
+        default to at least two distinct charts (e.g., one for each brand or
+        metric) before concluding.
+      - After inserting each <chart>, add a follow-up paragraph interpreting the
+        visualization so the user knows what changed.
+      - Before closing, confirm that every sub-question was addressed; if not,
+        continue generating additional sections/charts until the entire request
+        is satisfied.
 
       Today's date is ${new Date().toISOString()}.
 
       Example structure:
       <ui>
-        <h2 text="McDonald's chicken: protein vs. calories" />
-        <p>Call out the key takeaway grounded in the dataset.</p>
-        <chart prompt="Plot protein against calories for McDonald's chicken sandwiches" restaurants="${['Mcdonalds']}" searchTerm="chicken" limit="6" sortBy="protein" />
-        <p>Summarize what the chart shows and what trade-offs exist.</p>
+        <h level="2" text="McDonald's chicken: protein vs. calories" />
+        <p text="Call out the key takeaway grounded in the dataset." />
+        <chart chart=${{
+          prompt:
+            "Plot protein against calories for McDonald's chicken sandwiches",
+          restaurants: ['Mcdonalds'],
+          menuItems: [],
+          categories: [],
+          maxCalories: '',
+          minCalories: '',
+          minProtein: '',
+          maxSodium: '',
+          sortDirection: 'desc',
+          searchTerm: 'chicken',
+          limit: '6',
+          sortBy: 'protein',
+        }} />
+        <p text="Summarize what the chart shows and what trade-offs exist." />
+        <chart chart=${{
+          prompt:
+            'Plot protein against calories for Burger King chicken sandwiches',
+          restaurants: ['Burger King'],
+          menuItems: [],
+          categories: [],
+          maxCalories: '',
+          minCalories: '',
+          minProtein: '',
+          maxSodium: '',
+          sortDirection: 'desc',
+          searchTerm: 'chicken',
+          limit: '6',
+          sortBy: 'protein',
+        }} />
       </ui>
     `,
     tools: [searchFastFoodItemsTool],
@@ -186,7 +229,7 @@ export class ChatPage {
         },
       }),
       exposeComponent(Heading, {
-        name: 'h2',
+        name: 'h',
         description:
           'Show a heading to separate sections with configurable level',
         input: {
@@ -234,69 +277,45 @@ export class ChatPage {
         input: {
           chart: s.streaming.object('Configuration for the fast-food chart', {
             prompt: s.string('Narrative description of the chart to create'),
-            restaurants: s.anyOf([
-              s.streaming.array(
-                'Optional list of restaurant names to include',
-                s.string('Restaurant name as listed in the dataset'),
-              ),
-              s.nullish(),
-            ]),
-            menuItems: s.anyOf([
-              s.streaming.array(
-                'Specific menu item ids to focus on (from searchFastFoodItems)',
-                s.string('Menu item id'),
-              ),
-              s.nullish(),
-            ]),
-            categories: s.anyOf([
-              s.streaming.array(
-                'Menu categories to highlight (e.g., Salad, Other)',
-                s.string('Category label'),
-              ),
-              s.nullish(),
-            ]),
-            searchTerm: s.anyOf([
-              s.string('Free-text filter applied before charting'),
-              s.nullish(),
-            ]),
-            maxCalories: s.anyOf([
-              s.number('Maximum calories to include per item'),
-              s.nullish(),
-            ]),
-            minCalories: s.anyOf([
-              s.number('Minimum calories to include per item'),
-              s.nullish(),
-            ]),
-            minProtein: s.anyOf([
-              s.number('Minimum protein (grams) to include'),
-              s.nullish(),
-            ]),
-            maxSodium: s.anyOf([
-              s.number('Maximum sodium (mg) to include'),
-              s.nullish(),
-            ]),
-            limit: s.anyOf([
-              s.number('Maximum number of menu items to fetch (defaults to 25)'),
-              s.nullish(),
-            ]),
-            sortBy: s.anyOf([
-              s.enumeration('Metric used to sort results before charting', [
-                'calories',
-                'protein',
-                'totalFat',
-                'sodium',
-                'sugar',
-              ]),
-              s.nullish(),
-            ]),
-            sortDirection: s.anyOf([
-              s.enumeration('Sort direction for the selected metric', [
-                'asc',
-                'desc',
-              ]),
-              s.nullish(),
-            ]),
-          }),
+            restaurants: s.streaming.array(
+              'Optional list of restaurant names to include (leave empty for all)',
+              s.string('Restaurant name as listed in the dataset'),
+            ),
+            menuItems: s.streaming.array(
+              'Specific menu item ids to focus on (leave empty to ignore)',
+              s.string('Menu item id'),
+            ),
+            categories: s.streaming.array(
+              'Menu categories to highlight (e.g., Salad, Other); leave empty for all',
+              s.string('Category label'),
+            ),
+            searchTerm: s.string(
+              'Free-text filter applied before charting; leave blank to omit',
+            ),
+            maxCalories: s.string(
+              'Maximum calories to include per item (blank string to ignore)',
+            ),
+            minCalories: s.string(
+              'Minimum calories to include per item (blank string to ignore)',
+            ),
+            minProtein: s.string(
+              'Minimum protein (grams) to include (blank string to ignore)',
+            ),
+            maxSodium: s.string(
+              'Maximum sodium (mg) to include (blank string to ignore)',
+            ),
+            limit: s.string(
+              'Maximum number of menu items to fetch (blank string uses default)',
+            ),
+            sortBy: s.enumeration(
+              'Metric used to sort results before charting',
+              ['', 'calories', 'protein', 'totalFat', 'sodium', 'sugar'],
+            ),
+            sortDirection: s.enumeration(
+              'Sort direction for the selected metric',
+              ['', 'asc', 'desc'],
+            ),
+          }) as any,
         },
       }),
     ],

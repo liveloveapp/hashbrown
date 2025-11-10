@@ -21,17 +21,17 @@ let instanceId = 0;
 
 type ChartInputConfig = {
   prompt: string;
-  restaurants: string[] | null;
-  menuItems: string[] | null;
-  categories: string[] | null;
-  searchTerm: string | null;
-  maxCalories: number | null;
-  minCalories: number | null;
-  minProtein: number | null;
-  maxSodium: number | null;
-  limit: number | null;
-  sortBy: FastFoodSortMetric | null;
-  sortDirection: 'asc' | 'desc' | null;
+  restaurants: string[];
+  menuItems: string[];
+  categories: string[];
+  searchTerm: string;
+  maxCalories: string;
+  minCalories: string;
+  minProtein: string;
+  maxSodium: string;
+  limit: string;
+  sortBy: FastFoodSortMetric | '';
+  sortDirection: 'asc' | 'desc' | '';
 };
 
 const system = `
@@ -97,7 +97,7 @@ filters to fetch the smallest slice of data that fully answers the prompt.
   - Colors: #fbbb52, #64afb5, #e88c4d, #616f36, #b76060 (use translucent fills for
     overlapping lines/areas).
   - Axis label color #282828; grid color rgba(0,0,0,0.12); title color #774625.
-  - Fonts: Fredoka (body 400, titles 900 at 18–32pt) and Roboto Mono for any code-like
+  - Fonts: Fredoka (body 400, titles 900 at 18-32pt) and Roboto Mono for any code-like
     annotations.
 * Never register callbacks or plugins in renderChart options.
 
@@ -326,10 +326,55 @@ export class Chart {
           return null;
         }
 
-        const sanitizeArray = (value?: string[] | null) =>
-          value && value.length ? value : null;
-        const sanitizeNumber = (value?: number | null) =>
-          typeof value === 'number' && Number.isFinite(value) ? value : null;
+        const sanitizeArray = (value?: string[]) => {
+          if (!value || !value.length) {
+            return null;
+          }
+
+          const cleaned = value
+            .map((entry) => entry?.trim())
+            .filter((entry): entry is string => !!entry);
+
+          return cleaned.length ? cleaned : null;
+        };
+        const sanitizeNumber = (value?: string) => {
+          const trimmed = value?.trim();
+
+          if (!trimmed) {
+            return null;
+          }
+
+          const parsed = Number(trimmed);
+
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+        const sanitizeSortBy = (value?: string): FastFoodSortMetric | null => {
+          if (!value) {
+            return null;
+          }
+
+          const trimmed = value.trim() as FastFoodSortMetric;
+          const allowed: FastFoodSortMetric[] = [
+            'calories',
+            'protein',
+            'totalFat',
+            'sodium',
+            'sugar',
+          ];
+
+          return allowed.includes(trimmed) ? trimmed : null;
+        };
+        const sanitizeSortDirection = (
+          value?: string,
+        ): 'asc' | 'desc' | null => {
+          if (!value) {
+            return null;
+          }
+
+          const trimmed = value.trim();
+
+          return trimmed === 'asc' || trimmed === 'desc' ? trimmed : null;
+        };
         const payload = {
           prompt,
           restaurants: sanitizeArray(chart.restaurants),
@@ -341,8 +386,8 @@ export class Chart {
           minProtein: sanitizeNumber(chart.minProtein),
           maxSodium: sanitizeNumber(chart.maxSodium),
           limit: sanitizeNumber(chart.limit),
-          sortBy: chart.sortBy ?? null,
-          sortDirection: chart.sortDirection ?? null,
+          sortBy: sanitizeSortBy(chart.sortBy),
+          sortDirection: sanitizeSortDirection(chart.sortDirection),
         };
 
         console.log(`[${this.instanceId}] Input:`, payload);
