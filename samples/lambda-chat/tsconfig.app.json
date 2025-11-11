@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "module": "esnext",
+    "target": "es2022",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "types": ["node", "aws-lambda"],
+    "strict": true
+  },
+  "include": ["src/**/*.ts", "serverless.ts"]
+}
