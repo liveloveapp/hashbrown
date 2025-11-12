@@ -13,8 +13,9 @@ import {
   themeAlpine,
 } from 'ag-grid-community';
 import { AgGridAngular } from 'ag-grid-angular';
+import { AllEnterpriseModule } from 'ag-grid-enterprise';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+ModuleRegistry.registerModules([AllCommunityModule, AllEnterpriseModule]);
 
 @Component({
   selector: 'app-grid',
@@ -57,19 +58,26 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 export class Grid {
   theme = themeAlpine;
   results = input<any[] | null>([]);
+  description = input<string | null>(null);
   query = input<string | null>(null);
   sqlQuery = input<string | null | undefined>(null);
   input = computed(() => {
     const results = this.results();
+    const description = this.description();
     const query = this.query();
     const sqlQuery = this.sqlQuery();
 
-    if (!results || !query || !sqlQuery) return null;
+    if (!results || !description || !query || !sqlQuery) return null;
+
+    console.log('⭐️ colDefsGenerator input', { results, query, sqlQuery });
+
+    const resultsSnippet = JSON.stringify(results).slice(0, 1500);
 
     return {
+      description,
       query,
       sqlQuery,
-      results,
+      resultsSnippet,
     };
   });
   mappedData = signal<any>(null);
@@ -101,7 +109,7 @@ export class Grid {
       createRuntimeFunction({
         name: 'saveData',
         description: 'Save the data to the grid',
-        args: s.object('any result, treat this like any', {}),
+        args: s.array('array of results', s.object('treat this as any', {})),
         handler: async (data) => {
           this.mappedData.set(data);
         },
@@ -122,10 +130,24 @@ export class Grid {
       `),
       colDefs: s.array(
         'the column definitions',
-        s.object('the column definition', {
-          headerName: s.string('the header name'),
-          field: s.string('the field name'),
-        }),
+        s.object(
+          'the column definition. Default to "nullish" for aggFunc, unless otherwise specified.',
+          {
+            headerName: s.string('the header name'),
+            field: s.string('the field name'),
+            rowGroup: s.boolean('whether the column is a row group'),
+            aggFunc: s.anyOf([
+              s.literal('sum'),
+              s.literal('avg'),
+              s.literal('min'),
+              s.literal('max'),
+              s.literal('count'),
+              s.literal('first'),
+              s.literal('last'),
+              s.nullish(),
+            ]),
+          },
+        ),
       ),
     }),
     system: `
@@ -142,6 +164,11 @@ export class Grid {
 
   constructor() {
     effect((cleanup) => {
+      console.log(
+        '⭐️ colDefsGenerator.value()',
+        this.colDefsGenerator.value(),
+      );
+
       const sourceCode = this.colDefsGenerator.value()?.dataFormatScript;
 
       if (!sourceCode) return;

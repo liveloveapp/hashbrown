@@ -55,6 +55,7 @@
     "@stackblitz/sdk": "^1.11.0",
     "ag-grid-angular": "^34.3.1",
     "ag-grid-community": "^34.3.1",
+    "ag-grid-enterprise": "^34.3.1",
     "express": "^4.21.2",
     "firebase": "^11.6.1",
     "front-matter": "^4.0.2",

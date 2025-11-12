@@ -8,7 +8,11 @@ const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const app = express();
 
-app.use(express.json());
+app.use(
+  express.json({
+    limit: '30mb',
+  }),
+);
 app.use(cors());
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
