@@ -199,13 +199,13 @@ export class ChatPage implements LinkClickHandler {
           restaurants: ['Subway'],
           menuItems: [],
           categories: ['Turkey'],
-          maxCalories: '',
-          minCalories: '',
-          minProtein: '',
-          maxSodium: '',
+          maxCalories: null,
+          minCalories: null,
+          minProtein: null,
+          maxSodium: null,
           sortDirection: 'desc',
           searchTerm: 'turkey',
-          limit: '6',
+          limit: 6,
           sortBy: 'protein',
         }} />
         <p text="Summarize what the visualization shows about sodium trade-offs." />
@@ -215,13 +215,13 @@ export class ChatPage implements LinkClickHandler {
           restaurants: ['Subway'],
           menuItems: [],
           categories: ['Veggie'],
-          maxCalories: '',
-          minCalories: '',
-          minProtein: '',
-          maxSodium: '',
+          maxCalories: null,
+          minCalories: null,
+          minProtein: null,
+          maxSodium: null,
           sortDirection: 'asc',
           searchTerm: 'wrap',
-          limit: '6',
+          limit: 6,
           sortBy: 'calories',
         }} />
       </ui>
@@ -305,32 +305,51 @@ export class ChatPage implements LinkClickHandler {
               'Menu categories to highlight (e.g., Salad, Other); leave empty for all',
               s.string('Category label'),
             ),
-            searchTerm: s.string(
-              'Free-text filter applied before charting; leave blank to omit',
-            ),
-            maxCalories: s.string(
-              'Maximum calories to include per item (blank string to ignore)',
-            ),
-            minCalories: s.string(
-              'Minimum calories to include per item (blank string to ignore)',
-            ),
-            minProtein: s.string(
-              'Minimum protein (grams) to include (blank string to ignore)',
-            ),
-            maxSodium: s.string(
-              'Maximum sodium (mg) to include (blank string to ignore)',
-            ),
-            limit: s.string(
-              'Maximum number of menu items to fetch (blank string uses default)',
-            ),
-            sortBy: s.enumeration(
-              'Metric used to sort results before charting',
-              ['', 'calories', 'protein', 'totalFat', 'sodium', 'sugar'],
-            ),
-            sortDirection: s.enumeration(
-              'Sort direction for the selected metric',
-              ['', 'desc', 'asc'],
-            ),
+            searchTerm: s.anyOf([
+              s.string(
+                'Free-text filter applied before charting; set to null or omit to skip',
+              ),
+              s.nullish(),
+            ]),
+            maxCalories: s.anyOf([
+              s.number('Maximum calories to include per item'),
+              s.nullish(),
+            ]),
+            minCalories: s.anyOf([
+              s.number('Minimum calories to include per item'),
+              s.nullish(),
+            ]),
+            minProtein: s.anyOf([
+              s.number('Minimum protein (grams) to include'),
+              s.nullish(),
+            ]),
+            maxSodium: s.anyOf([
+              s.number('Maximum sodium (mg) to include'),
+              s.nullish(),
+            ]),
+            limit: s.anyOf([
+              s.number(
+                'Maximum number of menu items to fetch (null uses the default limit)',
+              ),
+              s.nullish(),
+            ]),
+            sortBy: s.anyOf([
+              s.enumeration('Metric used to sort results before charting', [
+                'calories',
+                'protein',
+                'totalFat',
+                'sodium',
+                'sugar',
+              ]),
+              s.nullish(),
+            ]),
+            sortDirection: s.anyOf([
+              s.enumeration('Sort direction for the selected metric', [
+                'desc',
+                'asc',
+              ]),
+              s.nullish(),
+            ]),
           }) as any,
         },
       }),

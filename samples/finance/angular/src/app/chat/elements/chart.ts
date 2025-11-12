@@ -23,14 +23,14 @@ type ChartInputConfig = {
   restaurants: string[];
   menuItems: string[];
   categories: string[];
-  searchTerm: string;
-  maxCalories: string;
-  minCalories: string;
-  minProtein: string;
-  maxSodium: string;
-  limit: string;
-  sortBy: FastFoodSortMetric | '';
-  sortDirection: 'asc' | 'desc' | '';
+  searchTerm: string | null;
+  maxCalories: number | null;
+  minCalories: number | null;
+  minProtein: number | null;
+  maxSodium: number | null;
+  limit: number | null;
+  sortBy: FastFoodSortMetric | null;
+  sortDirection: 'asc' | 'desc' | null;
 };
 
 const system = `
@@ -325,23 +325,24 @@ export class Chart {
 
           return cleaned.length ? cleaned : null;
         };
-        const sanitizeNumber = (value?: string) => {
-          const trimmed = value?.trim();
-
-          if (!trimmed) {
+        const sanitizeNumber = (value?: number | null) => {
+          if (value === null || value === undefined) {
             return null;
           }
 
-          const parsed = Number(trimmed);
-
-          return Number.isFinite(parsed) ? parsed : null;
+          return Number.isFinite(value) ? value : null;
         };
-        const sanitizeSortBy = (value?: string): FastFoodSortMetric | null => {
+        const sanitizeSortBy = (
+          value?: FastFoodSortMetric | string | null,
+        ): FastFoodSortMetric | null => {
           if (!value) {
             return null;
           }
 
-          const trimmed = value.trim() as FastFoodSortMetric;
+          const trimmed =
+            typeof value === 'string'
+              ? (value.trim() as FastFoodSortMetric)
+              : value;
           const allowed: FastFoodSortMetric[] = [
             'calories',
             'protein',
@@ -353,13 +354,13 @@ export class Chart {
           return allowed.includes(trimmed) ? trimmed : null;
         };
         const sanitizeSortDirection = (
-          value?: string,
+          value?: 'asc' | 'desc' | string | null,
         ): 'asc' | 'desc' | null => {
           if (!value) {
             return null;
           }
 
-          const trimmed = value.trim();
+          const trimmed = typeof value === 'string' ? value.trim() : value;
 
           return trimmed === 'asc' || trimmed === 'desc' ? trimmed : null;
         };
