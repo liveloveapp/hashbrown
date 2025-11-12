@@ -30,7 +30,11 @@ export function createApi() {
             };
           }
 
-          if (options.model === 'gpt-5' || options.model === 'gpt-5-mini') {
+          if (
+            options.model === 'gpt-5' ||
+            options.model === 'gpt-5-mini' ||
+            options.model === 'gpt-5-nano'
+          ) {
             return {
               ...options,
               model: 'gpt-5',

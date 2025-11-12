@@ -1,4 +1,9 @@
-export { RenderMessageComponent } from './components';
+export {
+  RenderMessageComponent,
+  ExperimentalMagicText,
+  type LinkClickEvent,
+  type CitationClickEvent,
+} from './components';
 export {
   chatResource,
   type ChatResourceOptions,

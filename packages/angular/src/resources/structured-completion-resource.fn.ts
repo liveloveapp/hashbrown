@@ -13,6 +13,10 @@ import { toDeepSignal } from '../utils/deep-signal';
 export interface StructuredCompletionResourceRef<Output>
   extends Resource<Output | null> {
   /**
+   * Indicates whether the underlying completion call is currently sending a message.
+   */
+  isSending: Signal<boolean>;
+  /**
    * Indicates whether the underlying completion call is currently receiving tokens.
    */
   isReceiving: Signal<boolean>;
@@ -161,6 +165,7 @@ export function structuredCompletionResource<
     status,
     error,
     isLoading,
+    isSending: resource.isSending,
     isReceiving: resource.isReceiving,
     reload,
     stop,

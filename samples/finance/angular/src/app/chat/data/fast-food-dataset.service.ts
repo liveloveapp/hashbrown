@@ -29,10 +29,10 @@ export class FastFoodDatasetService {
 
   private filterItems(items: FastFoodItem[], options: FastFoodQueryOptions) {
     const normalized = {
-      itemIds: options.itemIds?.filter(Boolean) ?? null,
-      restaurants: options.restaurants?.filter(Boolean) ?? null,
-      categories: options.categories?.filter(Boolean) ?? null,
-      searchTerm: options.searchTerm?.trim().toLowerCase() ?? null,
+      itemIds: this.normalizeList(options.itemIds),
+      restaurants: this.normalizeList(options.restaurants),
+      categories: this.normalizeList(options.categories),
+      searchTerm: options.searchTerm?.trim() ?? null,
       maxCalories:
         typeof options.maxCalories === 'number' ? options.maxCalories : null,
       minCalories:
@@ -51,6 +51,11 @@ export class FastFoodDatasetService {
       sortDirection: 'asc' | 'desc';
     };
 
+    this.log('Processing query', {
+      ...normalized,
+      totalItems: items.length,
+    });
+
     let filtered = items;
 
     if (normalized.itemIds?.length) {
@@ -61,20 +66,46 @@ export class FastFoodDatasetService {
     }
 
     if (normalized.restaurants?.length) {
-      const restaurants = new Set(
-        normalized.restaurants.map((value) => value.toLowerCase()),
+      const unmatched = normalized.restaurants.filter(
+        (restaurant) =>
+          !items.some((item) => this.fuzzyMatch(restaurant, item.restaurant)),
       );
+
+      if (unmatched.length) {
+        this.log(
+          'Some requested restaurants did not match directly',
+          {
+            unmatched,
+            suggestions: this.suggestValues(
+              unmatched,
+              items,
+              (item) => item.restaurant,
+            ),
+          },
+          'info',
+        );
+      }
+
       filtered = filtered.filter((item) =>
-        restaurants.has(item.restaurant.toLowerCase()),
+        normalized.restaurants!.some((restaurant) =>
+          this.fuzzyMatch(restaurant, item.restaurant),
+        ),
       );
+
+      if (!filtered.length) {
+        this.log(
+          'Restaurant filter removed all items',
+          { requested: normalized.restaurants },
+          'warn',
+        );
+      }
     }
 
     if (normalized.categories?.length) {
-      const categories = new Set(
-        normalized.categories.map((value) => value.toLowerCase()),
-      );
       filtered = filtered.filter((item) =>
-        categories.has(item.menuCategory.toLowerCase()),
+        normalized.categories!.some((category) =>
+          this.fuzzyMatch(category, item.menuCategory, 0.65),
+        ),
       );
     }
 
@@ -86,8 +117,18 @@ export class FastFoodDatasetService {
 
       if (tokens.length) {
         filtered = filtered.filter((item) => {
-          const haystack = `${item.restaurant} ${item.item}`.toLowerCase();
-          return tokens.every((token) => haystack.includes(token));
+          const haystackWords = `${item.restaurant} ${item.item}`
+            .split(/\s+/)
+            .map((word) => word.trim())
+            .filter(Boolean);
+          return tokens.every((token) =>
+            haystackWords.some((word) =>
+              this.fuzzyMatch(token, word, 0.65) ||
+              this.normalizeForMatch(word).includes(
+                this.normalizeForMatch(token),
+              ),
+            ),
+          );
         });
       }
     }
@@ -127,6 +168,12 @@ export class FastFoodDatasetService {
     if (normalized.limit) {
       result = result.slice(0, normalized.limit);
     }
+
+    this.log('Query completed', {
+      filters: normalized,
+      filteredCount: filtered.length,
+      returned: result.length,
+    });
 
     return result;
   }
@@ -265,5 +312,155 @@ export class FastFoodDatasetService {
   private toNumber(value?: string) {
     const parsed = Number(value ?? '');
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private normalizeList(
+    values?: ReadonlyArray<string | null | undefined> | null,
+  ) {
+    return values
+      ?.map((value) => value?.trim())
+      .filter((value): value is string => !!value)
+      ?? null;
+  }
+
+  private log(
+    message: string,
+    payload?: unknown,
+    level: 'log' | 'info' | 'warn' = 'log',
+  ) {
+    const prefix = `[FastFoodDataset] ${message}`;
+    if (level === 'warn') {
+      console.warn(prefix, payload);
+    } else if (level === 'info') {
+      console.info(prefix, payload);
+    } else {
+      console.log(prefix, payload);
+    }
+  }
+
+  private normalizeForMatch(value: string) {
+    return value
+      .normalize('NFKD')
+      .replace(/\p{M}/gu, '')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private fuzzyMatch(query: string, candidate: string, threshold = 0.7) {
+    const normalizedQuery = this.normalizeForMatch(query);
+    const compactQuery = normalizedQuery.replace(/\s+/g, '');
+    if (!normalizedQuery) {
+      return false;
+    }
+
+    const variants = this.candidateVariants(candidate);
+    const dynamicThreshold = normalizedQuery.length <= 4 ? 0.5 : threshold;
+
+    for (const variant of variants) {
+      if (!variant) {
+        continue;
+      }
+      const compactVariant = variant.replace(/\s+/g, '');
+      if (
+        variant === normalizedQuery ||
+        compactVariant === compactQuery ||
+        (compactQuery.length >= 2 && compactVariant.startsWith(compactQuery))
+      ) {
+        return true;
+      }
+      const score = this.fuzzyScore(normalizedQuery, variant);
+      if (score >= dynamicThreshold) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private fuzzyScore(a: string, b: string) {
+    const normalizedA = this.normalizeForMatch(a);
+    const normalizedB = this.normalizeForMatch(b);
+    if (!normalizedA || !normalizedB) {
+      return 0;
+    }
+    if (normalizedA === normalizedB) {
+      return 1;
+    }
+    if (
+      normalizedA.includes(normalizedB) || normalizedB.includes(normalizedA)
+    ) {
+      const shorter = Math.min(normalizedA.length, normalizedB.length);
+      const longer = Math.max(normalizedA.length, normalizedB.length);
+      return shorter / longer;
+    }
+    const distance = this.levenshteinDistance(normalizedA, normalizedB);
+    return 1 - distance / Math.max(normalizedA.length, normalizedB.length);
+  }
+
+  private levenshteinDistance(a: string, b: string) {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j - 1] + 1,
+          );
+        }
+      }
+    }
+
+    return matrix[b.length][a.length];
+  }
+
+  private suggestValues(
+    queries: string[],
+    items: FastFoodItem[],
+    selector: (item: FastFoodItem) => string,
+  ) {
+    if (!queries.length) {
+      return [];
+    }
+
+    const universe = Array.from(
+      new Set(items.map((item) => selector(item)).filter(Boolean)),
+    );
+
+    return queries.map((query) => {
+      let best: { value: string; score: number } | null = null;
+      for (const candidate of universe) {
+        const score = this.fuzzyScore(query, candidate);
+        if (!best || score > best.score) {
+          best = { value: candidate, score };
+        }
+      }
+      return {
+        query,
+        suggestion: best?.value ?? null,
+        score: best?.score ?? 0,
+      };
+    });
+  }
+
+  private candidateVariants(value: string) {
+    const normalized = this.normalizeForMatch(value);
+    const compact = normalized.replace(/\s+/g, '');
+    const initials = normalized
+      .split(' ')
+      .map((word) => word[0] ?? '')
+      .join('');
+    return Array.from(new Set([normalized, compact, initials]));
   }
 }

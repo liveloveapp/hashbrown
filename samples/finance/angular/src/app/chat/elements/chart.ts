@@ -5,7 +5,6 @@ import {
   ElementRef,
   inject,
   input,
-  signal,
   viewChild,
 } from '@angular/core';
 import { Chart as ChartJS } from 'chart.js/auto';
@@ -76,23 +75,28 @@ getData via "itemIds" without altering the order. Otherwise, apply the remaining
 filters to fetch the smallest slice of data that fully answers the prompt.
 
 ## Runtime Functions
-1. getData(options) → menu items from fastfood.csv. Options: itemIds, restaurants,
+1. getData(options) -> menu items from fastfood.csv. Options: itemIds, restaurants,
    categories, searchTerm, maxCalories, minCalories, minProtein, maxSodium, limit,
    sortBy, sortDirection. Call it exactly once per chart with the best filters.
-2. renderChart({ chart, options }) → renders Chart.js config. Call it exactly once.
+2. renderChart({ chart, options }) -> renders Chart.js config. Call it exactly once.
 
 ## Rules
 * Never fabricate menu items or nutrient values. If no data matches, throw a
   descriptive { code: 'NO_DATA', message: '...' } error.
 * Always include measurement units on axes/titles (grams, milligrams, % DV, kcal).
 * Prefer ≤10 menu items unless the user explicitly asks for more detail.
-* Choose chart types that fit the question (rankings → bar, correlations → scatter,
-  composition → pie, multi-metric → grouped bars/lines).
+* Choose chart types that fit the question (rankings -> bar, correlations -> scatter,
+  composition -> pie, multi-metric -> grouped bars/lines).
 * Format axes with human labels ("Protein (g)", "Sodium (mg)", etc.).
 * Derived metrics (protein per calorie, sodium-to-protein) should be clearly
   described in labels.
+* Whenever a chart spans multiple restaurants and menu items, label each data
+  series or point with both the chain and item name (e.g., "McDonald's - Big Mac")
+  so cross-brand comparisons stay unambiguous.
 * Respect sortBy/sortDirection hints when provided; otherwise sort by the metric
   emphasized in the prompt and break ties alphabetically.
+* Escape EVERY string literal in the generated JavaScript. Do not emit raw
+  apostrophes; either escape them (\\') or use template literals with backticks.
 * Theming:
   - Colors: #fbbb52, #64afb5, #e88c4d, #616f36, #b76060 (use translucent fills for
     overlapping lines/areas).
@@ -162,7 +166,7 @@ renderChart({
         font: {
           family: 'Fredoka, Arial, sans-serif',
           weight: 900,
-          size: 28,
+          size: 18,
           lineHeight: 1.1,
         },
       },
@@ -205,9 +209,9 @@ renderChart({
         <div class="chart-overlay describing">
           <app-describing-loader />
         </div>
-      } @else if (showCodeLanding()) {
+      } @else if (showCodeStreaming()) {
         <div class="chart-overlay code-loader">
-          <app-code-loader [code]="codeSample()!" />
+          <app-code-loader [code]="code() ?? ''" />
         </div>
       }
 
@@ -243,6 +247,8 @@ renderChart({
 
     .chart-overlay {
       position: absolute;
+      width: 100%;
+      height: 100%;
       inset: 0;
       display: flex;
       align-items: center;
@@ -277,44 +283,26 @@ renderChart({
 })
 export class Chart {
   readonly instanceId = instanceId++;
-
   readonly chart = input.required<ChartInputConfig>();
-
   readonly chartRuntime = inject(ChartRuntime);
   readonly canvasRef =
     viewChild.required<ElementRef<HTMLCanvasElement>>('canvasRef');
-  readonly hasRenderedChart = signal(false);
-  readonly codeSample = signal<string | null>(null);
-  readonly hasStreamingResponse = signal(false);
-  readonly isChartInputComplete = computed(() => {
-    const streamedChart = this.chart();
 
-    return !!streamedChart?.prompt?.trim();
-  });
   readonly showDescribingPhase = computed(() => {
-    if (!this.isChartInputComplete()) {
-      return true;
-    }
-
-    return !this.hasStreamingResponse();
+    return this.completion.isSending();
   });
   readonly errorMessage = computed(() => {
-    const value = this.completion.value();
+    const result = this.completion.value()?.result;
 
-    if (!value || value.result.type === 'SUCCESS') {
+    if (!result || result.type === 'SUCCESS') {
       return null;
     }
 
-    return value.result.message;
+    return result.message;
   });
-  readonly showCodeLanding = computed(
-    () =>
-      this.hasStreamingResponse() &&
-      !!this.codeSample() &&
-      !this.hasRenderedChart(),
-  );
+  readonly showCodeStreaming = computed(() => this.completion.isReceiving());
   readonly completion = structuredCompletionResource({
-    model: 'gpt-5-mini',
+    model: 'gpt-5-chat-latest',
     debugName: `chart-${this.instanceId}`,
     system,
     input: computed(
@@ -375,6 +363,7 @@ export class Chart {
 
           return trimmed === 'asc' || trimmed === 'desc' ? trimmed : null;
         };
+
         const payload = {
           prompt,
           restaurants: sanitizeArray(chart.restaurants),
@@ -396,61 +385,42 @@ export class Chart {
       },
       { equal: deepEqual },
     ),
-    schema: s.object('Result', {
+    schema: s.streaming.object('Result', {
       result: s.anyOf([
         s.object('Success', {
           type: s.literal('SUCCESS'),
-          javascript: s.string('The JavaScript code to render the chart'),
+          javascript: s.streaming.string(
+            'The JavaScript code to render the chart',
+          ),
         }),
         s.object('Error', {
           type: s.literal('ERROR'),
-          message: s.string('The error message'),
+          message: s.streaming.string('The error message'),
         }),
       ]),
     }),
   });
+  readonly code = computed(() => {
+    const result = this.completion.value()?.result;
+
+    if (!result || result.type === 'ERROR') {
+      console.error(`[${this.instanceId}] Error:`, this.completion.value());
+      return null;
+    }
+
+    return result.javascript;
+  });
 
   constructor() {
-    let wasLoading = false;
-    effect(() => {
-      const isLoading = this.completion.isLoading();
+    effect(async (onTeardown) => {
+      const result = this.completion.value()?.result;
 
-      if (isLoading && !wasLoading) {
-        this.hasRenderedChart.set(false);
-        this.codeSample.set(null);
-        this.hasStreamingResponse.set(false);
-      }
-
-      wasLoading = isLoading;
-
-      if (isLoading) {
+      if (!result || result.type === 'ERROR') {
         return;
       }
 
-      const value = this.completion.value();
-
-      if (value?.result.type === 'SUCCESS') {
-        this.codeSample.set(value.result.javascript);
-      } else {
-        this.codeSample.set(null);
-      }
-    });
-
-    effect(() => {
-      if (this.completion.isReceiving()) {
-        this.hasStreamingResponse.set(true);
-      }
-    });
-
-    effect((onTeardown) => {
-      const value = this.completion.value();
-
-      if (!value || value.result.type === 'ERROR') {
-        return;
-      }
-
-      const code = value.result.javascript;
-      const cancel = this.chartRuntime.run(code);
+      const code = result.javascript;
+      const cancel = await this.chartRuntime.run(code);
 
       onTeardown(cancel);
     });
@@ -463,36 +433,27 @@ export class Chart {
         return;
       }
 
-      this.hasRenderedChart.set(false);
-      canvas.classList.add('rendering');
-      let chart: ChartJS | null = null;
-      const timeout = setTimeout(() => {
-        chart = new ChartJS(canvas, {
-          ...chartConfig.chart,
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            borderColor: 'rgba(0, 0, 0, 0.1)',
-            ...chartConfig.options,
-            interaction: chartConfig.options.interaction
-              ? {
-                  mode: chartConfig.options.interaction.mode ?? undefined,
-                  axis: chartConfig.options.interaction.axis ?? undefined,
-                  intersect:
-                    chartConfig.options.interaction.intersect ?? undefined,
-                }
-              : undefined,
-          },
-        });
-
-        this.hasRenderedChart.set(true);
-        canvas.classList.remove('rendering');
-      }, 300);
+      const chart = new ChartJS(canvas, {
+        ...chartConfig.chart,
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          borderColor: 'rgba(0, 0, 0, 0.1)',
+          ...chartConfig.options,
+          interaction: chartConfig.options.interaction
+            ? {
+                mode: chartConfig.options.interaction.mode ?? undefined,
+                axis: chartConfig.options.interaction.axis ?? undefined,
+                intersect:
+                  chartConfig.options.interaction.intersect ?? undefined,
+              }
+            : undefined,
+        },
+      });
 
       onCleanup(() => {
-        clearTimeout(timeout);
         canvas.classList.remove('rendering');
-        chart?.destroy();
+        chart.destroy();
       });
     });
   }

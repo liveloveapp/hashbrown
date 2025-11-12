@@ -26,6 +26,10 @@ import { toDeepSignal } from '../utils/deep-signal';
 export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<Output, Tools>[]> {
   /**
+   * Indicates whether the underlying chat call is currently sending a message.
+   */
+  isSending: Signal<boolean>;
+  /**
    * Whether the resource is currently receiving a response from the model.
    */
   isReceiving: Signal<boolean>;
@@ -266,6 +270,7 @@ export function structuredChatResource<
     hasValue: hasValue as any,
     status,
     isLoading,
+    isSending,
     isReceiving,
     reload,
     sendMessage,

@@ -1,7 +1,8 @@
-import { Component, model } from '@angular/core';
+import { Component, computed, effect, model, signal } from '@angular/core';
 import {
   exposeComponent,
   RenderMessageComponent,
+  structuredCompletionResource,
   uiChatResource,
 } from '@hashbrownai/angular';
 import { prompt, s } from '@hashbrownai/core';
@@ -14,53 +15,45 @@ import { Heading } from './elements/heading';
 import { Citation } from './elements/citation';
 import { OrderedList } from './elements/ordered-list';
 import { UnorderedList } from './elements/unordered-list';
+import { LinkClickHandler } from './link-click-handler';
 
 @Component({
   selector: 'app-chat-page',
   imports: [FormsModule, RenderMessageComponent, Squircle],
+  providers: [{ provide: LinkClickHandler, useExisting: ChatPage }],
   template: `
-    <div>
-      <h1>Chat</h1>
+    @if (chat.value().length === 0) {
+      <div class="initial-chat-state">
+        <form (ngSubmit)="sendMessage($event)" appSquircle="16">
+          <div
+            appSquircle="12"
+            appSquircleBorderColor="rgba(0, 0, 0, 0.12)"
+            [appSquircleBorderWidth]="2"
+          >
+            <textarea
+              name="user-message"
+              [(ngModel)]="input"
+              rows="5"
+              cols="50"
+            ></textarea>
+          </div>
 
-      @if (chat.value().length === 0) {
-        <div class="initial-chat-state">
-          <form (ngSubmit)="sendMessage($event)" appSquircle="16">
-            <div
-              appSquircle="12"
-              appSquircleBorderColor="rgba(0, 0, 0, 0.12)"
-              [appSquircleBorderWidth]="2"
-            >
-              <textarea
-                name="user-message"
-                [(ngModel)]="input"
-                rows="5"
-                cols="50"
-              ></textarea>
-            </div>
-
-            <button type="submit">
-              <span class="material-symbols-outlined"> arrow_right_alt </span>
-            </button>
-          </form>
+          <button type="submit">
+            <span class="material-symbols-outlined"> arrow_right_alt </span>
+          </button>
+        </form>
+      </div>
+    } @else {
+      @let lastAssistantMessage = chat.lastAssistantMessage();
+      @if (lastAssistantMessage) {
+        <div class="assistant-message">
+          <hb-render-message
+            class="assistant-message-content"
+            [message]="lastAssistantMessage"
+          />
         </div>
-      } @else {
-        @for (message of chat.value(); track $index) {
-          @switch (message.role) {
-            @case ('user') {
-              <div class="user-message">{{ message.content }}</div>
-            }
-            @case ('assistant') {
-              <div class="assistant-message">
-                <hb-render-message
-                  class="assistant-message-content"
-                  [message]="message"
-                />
-              </div>
-            }
-          }
-        }
       }
-    </div>
+    }
   `,
   styles: `
     .initial-chat-state {
@@ -132,20 +125,23 @@ import { UnorderedList } from './elements/unordered-list';
     }
   `,
 })
-export class ChatPage {
+export class ChatPage implements LinkClickHandler {
   readonly input = model('');
+  readonly ephemeralLink = signal<null | string>(null);
+
   chat = uiChatResource({
-    model: 'gpt-5-high',
+    model: 'gpt-5-chat-latest',
     debugName: 'finance-chat',
     system: prompt`
-      You are a culinary insights analyst helping users explore a fast-food
-      nutrition dataset stored in samples/finance/angular/public/fastfood.csv.
-      Each row contains the restaurant name, menu item, calories, calories from
-      fat, total fat (g), saturated fat (g), trans fat (g), cholesterol (mg),
-      sodium (mg), total carbs (g), fiber (g), sugar (g), protein (g), vitamin A
-      (% daily value), vitamin C (% daily value), calcium (% daily value), and a
-      menu category flag. This dataset is the only source of truth—never invent
-      values that are not present in the file.
+      You are a culinary insights analyst helping users explore an expanded
+      fast-food nutrition dataset stored in
+      samples/finance/angular/public/fastfood_v2.csv. Each row contains the
+      chain name, the full menu_item label, a short_name alias, human-friendly
+      description, serving_size text, pipe-delimited categories, macronutrients
+      (calories, total_fat_g, saturated_fat_g, trans_fat_g, cholesterol_mg,
+      sodium_mg, carbs_g, fiber_g, sugar_g, protein_g), plus the sources (pipe of
+      URLs) and a last_audited ISO timestamp. This dataset is the only source of
+      truth—never invent values that are not present in the file.
 
       Use the "searchFastFoodItems" tool whenever you need to identify menu
       items, fetch their ids, or filter by nutrients and restaurants before
@@ -153,12 +149,23 @@ export class ChatPage {
       categories.
 
       When responding:
-      - Root every statement in the dataset and reference restaurant + item
-        names.
-      - Always include measurement units (grams, milligrams, or % daily value)
-        when citing nutrients.
+      - Root every statement in the dataset and reference chain + menu_item (or
+        short_name) names.
+      - Include the serving_size and at least one category tag the first time
+        you mention a menu item so readers understand portion context.
+      - Quote nutrients with explicit units (grams or milligrams) and weave in
+        notable description details from the CSV.
+      - Always begin the response with an <h> component (level defaults to 2)
+        that serves as a clear title for the report.
+      - Sprinkle inline markdown links throughout the article. Invent fresh,
+        descriptive URLs (e.g., /high-protein-wrap or /sodium-ladders) so the
+        piece feels like an ephemeral Wikipedia—assume the same system prompt
+        generates those pages when clicked. Aim for at least one crafted link
+        per paragraph.
+      - Use the sources column to cite at least one URL when highlighting
+        stand-out items, and mention last_audited dates when freshness matters.
       - Highlight interesting contrasts (e.g., highest protein per 500 calories,
-        sodium outliers, salad vs. non-salad items) when relevant to the prompt.
+        sodium outliers, salad vs. non-salad categories) when relevant.
       - Start every answer with a short overview paragraph and end with a
         takeaway paragraph that explicitly states what the user should remember.
       - Break the body into ordered sections (<h>, <p>, lists) so the reader can
@@ -172,7 +179,7 @@ export class ChatPage {
         chart.
       - Never stop after a single visualization when the user asks for
         comparisons, multiple angles, or plural "charts". In ambiguous cases,
-        default to at least two distinct charts (e.g., one for each brand or
+        default to at least two distinct charts (e.g., one for each chain or
         metric) before concluding.
       - After inserting each <chart>, add a follow-up paragraph interpreting the
         visualization so the user knows what changed.
@@ -184,38 +191,38 @@ export class ChatPage {
 
       Example structure:
       <ui>
-        <h level="2" text="McDonald's chicken: protein vs. calories" />
-        <p text="Call out the key takeaway grounded in the dataset." />
+        <h level="2" text="Subway turkey subs: sodium vs. protein" />
+        <p text="Call out the key takeaway grounded in the updated dataset." />
         <chart chart=${{
           prompt:
-            "Plot protein against calories for McDonald's chicken sandwiches",
-          restaurants: ['Mcdonalds'],
+            'Plot protein against sodium for Subway Market Fresh turkey sandwiches',
+          restaurants: ['Subway'],
           menuItems: [],
-          categories: [],
+          categories: ['Turkey'],
           maxCalories: '',
           minCalories: '',
           minProtein: '',
           maxSodium: '',
           sortDirection: 'desc',
-          searchTerm: 'chicken',
+          searchTerm: 'turkey',
           limit: '6',
           sortBy: 'protein',
         }} />
-        <p text="Summarize what the chart shows and what trade-offs exist." />
+        <p text="Summarize what the visualization shows about sodium trade-offs." />
         <chart chart=${{
           prompt:
-            'Plot protein against calories for Burger King chicken sandwiches',
-          restaurants: ['Burger King'],
+            'Plot calories per serving for Subway veggie sandwiches vs. wraps',
+          restaurants: ['Subway'],
           menuItems: [],
-          categories: [],
+          categories: ['Veggie'],
           maxCalories: '',
           minCalories: '',
           minProtein: '',
           maxSodium: '',
-          sortDirection: 'desc',
-          searchTerm: 'chicken',
+          sortDirection: 'asc',
+          searchTerm: 'wrap',
           limit: '6',
-          sortBy: 'protein',
+          sortBy: 'calories',
         }} />
       </ui>
     `,
@@ -223,7 +230,16 @@ export class ChatPage {
     components: [
       exposeComponent(Paragraph, {
         name: 'p',
-        description: 'Show a paragraph',
+        description: `
+          Render a rich Magic Text paragraph with animated reveal, inline markdown (bold, italic),
+          auto-numbered citations, and sanitized links. Links never navigate—clicks are intercepted
+          and logged for safety.
+
+          Examples:
+          - **Headline:** _Give the TL;DR_ in bold + italics for emphasis.
+          - Compare nutrients: 'Protein hits **42 g** while sodium stays under _720 mg_.'
+          - Cite sources inline like [Source PDF](https://example.com) and add [^doe2024] markers.
+        `,
         input: {
           text: s.streaming.string('The text to show in the paragraph'),
         },
@@ -313,13 +329,83 @@ export class ChatPage {
             ),
             sortDirection: s.enumeration(
               'Sort direction for the selected metric',
-              ['', 'asc', 'desc'],
+              ['', 'desc', 'asc'],
             ),
           }) as any,
         },
       }),
     ],
   });
+
+  readonly ephemeralLinkGenerator = structuredCompletionResource({
+    model: 'gpt-5-nano',
+    system: `
+      You route clicks on ephemeral fast-food knowledge links. Each request
+      includes:
+      - link: the URL that was clicked (string)
+      - articleContent: the original article body that contained the link
+
+      Produce a concise, first-person imperative brief that the main finance
+      chat analyst can use to generate the new article. Each brief must:
+      1. Reference the clicked link text/slug so the new page has a title hook.
+      2. Mention which chains, menu items, or nutrient angles to explore based
+         on clues in articleContent.
+      3. Remind the analyst to keep sourcing from fastfood_v2.csv.
+      4. Stay under 3 sentences.
+
+      Example 1:
+      Input link: /protein-ladders
+      Context snippet: "...compare Chick-fil-A grilled nuggets to Subway wraps in
+      our [protein ladder playbook](...) for lean bulking..."
+      Output: "Draft a 'Protein Ladder Playbook' deep dive comparing Chick-fil-A
+      grilled nuggets against Subway wraps, quantifying protein per calorie from
+      fastfood_v2.csv and recommending lean-bulk swaps."
+
+      Example 2:
+      Input link: /sodium-buffers
+      Context snippet: "...use our sodium stability hub to see how Panera soups
+      stack up against Taco Bell bowls..."
+      Output: "Create a 'Sodium Stability Hub' brief mapping Panera soups vs.
+      Taco Bell bowls, highlighting mg of sodium per serving and listing lower
+      sodium alternatives using fastfood_v2.csv."
+    `,
+    input: computed(() => {
+      const link = this.ephemeralLink();
+      const articleContent = this.chat.lastAssistantMessage()?.content;
+
+      if (!link || !articleContent) {
+        return null;
+      }
+
+      console.log('link', link, articleContent);
+
+      return {
+        link,
+        articleContent,
+      };
+    }),
+    schema: s.object('The Result', {
+      description: s.string('The description of the content of the page'),
+    }),
+  });
+
+  constructor() {
+    const ephemeralLinkDescription = computed(() => {
+      const result = this.ephemeralLinkGenerator.value();
+      if (result) {
+        return result.description;
+      }
+      return null;
+    });
+
+    effect(() => {
+      const description = ephemeralLinkDescription();
+      if (description) {
+        this.ephemeralLink.set(null);
+        this.chat.sendMessage({ role: 'user', content: description });
+      }
+    });
+  }
 
   sendMessage($formSubmitEvent: SubmitEvent) {
     $formSubmitEvent.preventDefault();
@@ -329,5 +415,16 @@ export class ChatPage {
       this.chat.sendMessage({ role: 'user', content: input });
       this.input.set('');
     }
+  }
+
+  onClickLink(url: string) {
+    this.chat.sendMessage({
+      role: 'user',
+      content: `
+      the user clicked the following link from your previous message: ${url}. 
+      
+      Generate the article content for the link  
+    `,
+    });
   }
 }
