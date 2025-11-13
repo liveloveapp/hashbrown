@@ -45,6 +45,7 @@ export function exposeComponent<T extends { new (...args: any[]): any }>(
   config: ɵtypes.Prettify<
     Omit<ExposedComponent<T>, 'component' | 'name' | 'props'> & {
       input?: ComponentPropSchema<T>;
+      name?: string;
     }
   >,
 ): ExposedComponent<T> {
@@ -54,12 +55,12 @@ export function exposeComponent<T extends { new (...args: any[]): any }>(
     throw new Error(`Could not reflect component: ${component}`);
   }
 
-  const { input, ...rest } = config;
+  const { input, name, ...rest } = config;
 
   return {
     component,
     ...rest,
     props: input,
-    name: reflected?.selector,
+    name: name ?? reflected?.selector,
   };
 }

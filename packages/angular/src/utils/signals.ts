@@ -1,17 +1,20 @@
 import {
   DestroyRef,
   inject,
+  isSignal,
   Signal,
   signal,
   WritableSignal,
 } from '@angular/core';
 import { SignalLike } from './types';
 
-export function readSignalLike<T extends object | string | number | boolean>(
-  signalLike: SignalLike<T>,
-): T {
-  if (typeof signalLike === 'function') {
+export function readSignalLike<T>(signalLike: SignalLike<T>): T {
+  if (isSignal(signalLike)) {
     return signalLike();
+  }
+
+  if (typeof signalLike === 'function') {
+    return (signalLike as () => T)();
   }
 
   return signalLike;
