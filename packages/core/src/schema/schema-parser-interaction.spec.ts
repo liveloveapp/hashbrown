@@ -1,6 +1,7 @@
 import * as s from './public_api';
 import { StreamSchemaParser } from '../streaming-json-parser/streaming-json-parser';
 import { PRIMITIVE_WRAPPER_FIELD_NAME } from './base';
+import { Component, createComponentSchema, ExposedComponent } from '../ui';
 
 function parse(
   schema: s.HashbrownType,
@@ -603,5 +604,258 @@ describe('anyOf', () => {
         },
       ],
     });
+  });
+
+  test('streaming array anyOf keeps parsing after many literal discriminators', () => {
+    class Heading {}
+    class Paragraph {}
+    class Chart {}
+    class OrderedList {}
+
+    const components: ExposedComponent<Component<unknown>>[] = [
+      {
+        component: Heading,
+        name: 'h',
+        description: 'Heading element',
+        props: {
+          level: s.number('Heading level'),
+          text: s.streaming.string('Heading text'),
+        },
+      },
+      {
+        component: Paragraph,
+        name: 'p',
+        description: 'Paragraph element',
+        props: {
+          text: s.streaming.string('Paragraph text'),
+        },
+      },
+      {
+        component: Chart,
+        name: 'chart',
+        description: 'Chart element',
+        props: {
+          chart: s.object('Chart config', {
+            categories: s.anyOf([
+              s.nullish(),
+              s.streaming.array('Category list', s.string('Category label')),
+            ]),
+          }),
+        },
+      },
+      {
+        component: OrderedList,
+        name: 'ol',
+        description: 'Ordered list element',
+        props: {
+          items: s.array('Items', s.streaming.string('List item')),
+        },
+      },
+    ];
+
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'list of elements',
+        createComponentSchema(components),
+      ),
+    });
+
+    const payload = {
+      ui: [
+        {
+          chart: {
+            $props: {
+              chart: {
+                categories: { '0': ['Dessert', 'Drink'] },
+              },
+            },
+          },
+        },
+        { ol: { $props: { items: ['Point A', 'Point B'] } } },
+      ],
+    };
+
+    const result = parse(schema, JSON.stringify(payload), true) as s.Infer<
+      typeof schema
+    >;
+
+    expect(result.ui.map((entry) => entry.$tag)).toEqual(['chart', 'ol']);
+  });
+
+  test('streaming array anyOf parses successive charts and paragraphs with nullish filters', () => {
+    class Heading {}
+    class Paragraph {}
+    class Chart {}
+
+    const components: ExposedComponent<Component<unknown>>[] = [
+      {
+        component: Heading,
+        name: 'h',
+        description: 'Heading element',
+        props: {
+          level: s.number('Heading level'),
+          text: s.streaming.string('Heading text'),
+        },
+      },
+      {
+        component: Paragraph,
+        name: 'p',
+        description: 'Paragraph element',
+        props: {
+          text: s.streaming.string('Paragraph text'),
+        },
+      },
+      {
+        component: Chart,
+        name: 'chart',
+        description: 'Chart element',
+        props: {
+          chart: s.object('Chart config', {
+            prompt: s.string('Chart narrative'),
+            searchTerm: s.anyOf([s.string('Search term'), s.nullish()]),
+            maxCalories: s.anyOf([s.number('Maximum calories'), s.nullish()]),
+            minCalories: s.anyOf([s.number('Minimum calories'), s.nullish()]),
+            minProtein: s.anyOf([s.number('Minimum protein'), s.nullish()]),
+            maxSodium: s.anyOf([s.number('Maximum sodium'), s.nullish()]),
+            limit: s.anyOf([s.number('Result limit'), s.nullish()]),
+            sortBy: s.anyOf([
+              s.enumeration('Sort metric', [
+                'calories',
+                'protein',
+                'totalFat',
+                'sodium',
+                'sugar',
+              ]),
+              s.nullish(),
+            ]),
+            sortDirection: s.anyOf([
+              s.enumeration('Sort direction', ['asc', 'desc']),
+              s.nullish(),
+            ]),
+            restaurants: s.streaming.array(
+              'Filtered restaurants',
+              s.string('Restaurant name'),
+            ),
+            menuItems: s.streaming.array(
+              'Specific menu item ids',
+              s.string('Menu item id'),
+            ),
+            categories: s.streaming.array(
+              'Category filters',
+              s.string('Category name'),
+            ),
+          }),
+        },
+      },
+    ];
+
+    const schema = s.object('root', {
+      ui: s.streaming.array(
+        'list of elements',
+        createComponentSchema(components),
+      ),
+    });
+
+    const payload = {
+      ui: [
+        {
+          h: {
+            $props: {
+              level: 2,
+              text: "Taco Bell's top 10 calorie-heavy menu choices",
+            },
+          },
+        },
+        {
+          p: {
+            $props: {
+              text: 'Taco Bell\'s menu stretches from lighter power bowls to indulgent wraps. Below are the ten highest-calorie standard servings, grounded in the dataset. Many cluster in the **"Other"** category, signifying main entrees like burritos and salads rather than sides. Use this as a starting map before exploring deeper comparisons on [/taco-bell-nutrition-profiles].',
+            },
+          },
+        },
+        {
+          chart: {
+            $props: {
+              chart: {
+                prompt: "Visualize Taco Bell's 10 highest calorie items",
+                searchTerm: 'taco bell',
+                maxCalories: null,
+                minCalories: null,
+                minProtein: null,
+                maxSodium: null,
+                limit: 10,
+                sortBy: 'calories',
+                sortDirection: 'desc',
+                restaurants: ['Taco Bell'],
+                menuItems: [],
+                categories: [],
+              },
+            },
+          },
+        },
+        {
+          p: {
+            $props: {
+              text: "The three **XXL Grilled Stuft Burritos** - beef (**880 calories**, **42 g fat**, **2020 mg sodium**), chicken (**830 calories**, **35 g fat**, **1940 mg sodium**), and steak (**820 calories**, **36 g fat**, **2020 mg sodium**) - headline Taco Bell's most energy-dense picks. Each comes in a generous handheld serving placing them atop this heat map. The [Fiesta Taco Salad - Beef](/fiesta-taco-salad-beef) and [Spicy Triple Double Crunchwrap](/crunchwrap-triple) follow close behind around 780 calories per serving.",
+            },
+          },
+        },
+        {
+          chart: {
+            $props: {
+              chart: {
+                prompt:
+                  "Compare sodium vs. protein for Taco Bell's high-calorie entrees",
+                searchTerm: 'taco bell',
+                maxCalories: null,
+                minCalories: null,
+                minProtein: null,
+                maxSodium: null,
+                limit: 10,
+                sortBy: 'protein',
+                sortDirection: 'desc',
+                restaurants: ['Taco Bell'],
+                menuItems: [],
+                categories: [],
+              },
+            },
+          },
+        },
+        {
+          p: {
+            $props: {
+              text: "Looking at sodium alongside protein reveals trade-offs: the **Cantina Power Burrito - Chicken** (760 calories, **32 g protein**) and **- Steak** (780 calories, **33 g protein**) provide the densest protein among these heavy items, but also exceed **1900 mg sodium** per wrap. In contrast, the **Nachos BellGrande** (760 calories, **18 g protein**) sits lower in protein yet manages **1100 mg sodium**, a relative drop. These differences define Taco Bell's balance between salty satisfaction and protein payoff, as shown on [/sodium-vs-protein-wraps].",
+            },
+          },
+        },
+        {
+          h: {
+            $props: { level: 3, text: 'Takeaway' },
+          },
+        },
+        {
+          p: {
+            $props: {
+              text: "Among Taco Bell's most caloric picks, burritos rule - especially the XXL Grilled Stuft line. For diners prioritizing protein density, the **Cantina Power** wraps win, though their sodium remains high. Keep these contrasts in mind when exploring moderate options or crafting a lower-sodium Taco Bell order via [/taco-bell-sodium-guide].",
+            },
+          },
+        },
+      ],
+    };
+
+    const result = parse(schema, JSON.stringify(payload), true) as s.Infer<
+      typeof schema
+    >;
+
+    expect(result.ui.map((entry) => entry.$tag)).toEqual([
+      'h',
+      'p',
+      'chart',
+      'p',
+      'chart',
+      'p',
+      'h',
+      'p',
+    ]);
   });
 });

@@ -28,3 +28,9 @@ export type {
 } from './utils/llm';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
+export {
+  prepareMagicText,
+  type MagicTextFragment,
+  type MagicTextOptions,
+  type MagicTextResult,
+} from './utils/magic-text';

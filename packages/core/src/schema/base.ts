@@ -1278,13 +1278,13 @@ export function isAnyOfType(type: HashbrownType): type is AnyOfType {
  */
 export function anyOf<const Options extends readonly HashbrownType[]>(
   options: Options,
-): AnyOfType<Options> {
+): SchemaForUnion<Options[number][internal]['result']> {
   return new AnyOfType({
     type: 'any-of',
     description: 'any-of',
     options,
     streaming: false,
-  }) as any;
+  }) as SchemaForUnion<Options[number][internal]['result']>;
 }
 
 /**

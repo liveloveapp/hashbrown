@@ -18,49 +18,49 @@ export class Logger {
 
   for(loggerName: string) {
     return {
-      trace: (args: any) => {
+      trace: (...args: unknown[]) => {
         if (
           this.allLevel <= TRACE_LEVEL ||
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= TRACE_LEVEL)
         ) {
-          console.trace(args);
+          console.trace(...args);
         }
       },
-      debug: (args: any) => {
+      debug: (...args: unknown[]) => {
         if (
           this.allLevel <= DEBUG_LEVEL ||
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= DEBUG_LEVEL)
         ) {
-          console.log(args);
+          console.log(...args);
         }
       },
-      info: (args: any) => {
+      info: (...args: unknown[]) => {
         if (
           this.allLevel <= INFO_LEVEL ||
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= INFO_LEVEL)
         ) {
-          console.info(args);
+          console.info(...args);
         }
       },
-      warn: (args: any) => {
+      warn: (...args: unknown[]) => {
         if (
           this.allLevel <= WARN_LEVEL ||
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= ERROR_LEVEL)
         ) {
-          console.warn(args);
+          console.warn(...args);
         }
       },
-      error: (args: any) => {
+      error: (...args: unknown[]) => {
         if (
           this.allLevel <= ERROR_LEVEL ||
           (this.logPathsEnabled[loggerName] &&
             this.logPathsEnabled[loggerName] <= TRACE_LEVEL)
         ) {
-          console.error(args);
+          console.error(...args);
         }
       },
     };

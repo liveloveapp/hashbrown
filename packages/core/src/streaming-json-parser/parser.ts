@@ -11,19 +11,14 @@
  * @see https://github.com/promplate/partial-json-parser-js
  */
 
-import {
-  DEBUG_LEVEL,
-  INFO_LEVEL,
-  Logger,
-  NONE_LEVEL,
-  TRACE_LEVEL,
-} from '../logger/logger';
+import { Logger, NONE_LEVEL } from '../logger/logger';
 import * as s from '../schema/base';
 import {
   internal,
   isAnyOfType,
   isNullType,
   isObjectType,
+  needsDiscriminatorWrapperInAnyOf,
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
 
@@ -349,6 +344,12 @@ const _parseJSON = (
       ? buildDiscriminatorMap(optionsForMap)
       : null;
 
+    const wrappedOptions = Array.isArray(optionsForMap)
+      ? optionsForMap.filter((option: s.HashbrownType) =>
+          needsDiscriminatorWrapperInAnyOf(option),
+        )
+      : [];
+
     const getMatchingSchemaForDiscriminator = (
       key: string,
     ):
@@ -359,11 +360,24 @@ const _parseJSON = (
       }
 
       // Fallback to numeric discriminator
-      const numericIndex = parseInt(key);
-      if (Array.isArray(optionsForMap)) {
-        const schema = optionsForMap[numericIndex];
-        return schema ? { schema } : undefined;
+      const numericIndex = Number(key);
+      if (
+        !Number.isInteger(numericIndex) ||
+        numericIndex < 0 ||
+        !Array.isArray(optionsForMap)
+      ) {
+        return undefined;
       }
+
+      if (wrappedOptions.length > 0) {
+        const schema = wrappedOptions[numericIndex];
+        if (schema) {
+          return { schema };
+        }
+      }
+
+      const schema = optionsForMap[numericIndex];
+      return schema ? { schema } : undefined;
       return undefined;
     };
 
@@ -438,7 +452,6 @@ const _parseJSON = (
       }
     } catch (e) {
       logger.for('parseAnyOf').error(e);
-
       return handleIncompleteAnyOf(value);
     }
     index++; // skip final brace
@@ -606,9 +619,9 @@ const _parseJSON = (
           // Is this an anyOf (which can happen for nested anyOfs)
           if (s.isAnyOfType(currentContainer)) {
             // Property is anyOf, so push option list to container stack
-            containerStack.push(
-              (currentContainer as any)[internal].definition.options,
-            );
+            const anyOfOptions = (currentContainer as any)[internal].definition
+              .options;
+            containerStack.push(anyOfOptions);
 
             logger
               .for('parseObj')
@@ -618,6 +631,9 @@ const _parseJSON = (
 
             // AnyOfs are never directly streaming
             const value = parseAny(key, false, false, undefined);
+            if (containerStack[containerStack.length - 1] === anyOfOptions) {
+              containerStack.pop();
+            }
 
             inAnyOfWrapper = true;
 
@@ -632,9 +648,9 @@ const _parseJSON = (
 
             if (s.isAnyOfType(schemaFragmentForKey)) {
               // Property is anyOf, so push option list to container stack
-              containerStack.push(
-                (schemaFragmentForKey as any)[internal].definition.options,
-              );
+              const anyOfOptions = (schemaFragmentForKey as any)[internal]
+                .definition.options;
+              containerStack.push(anyOfOptions);
 
               logger
                 .for('parseObj')
@@ -644,8 +660,9 @@ const _parseJSON = (
 
               // AnyOfs are never directly streaming
               const value = parseAny(key, false, false, undefined);
-
-              inAnyOfWrapper = true;
+              if (containerStack[containerStack.length - 1] === anyOfOptions) {
+                containerStack.pop();
+              }
 
               logger.for('parseObj').debug('Value:');
               logger.for('parseObj').debug(value);
@@ -729,15 +746,26 @@ const _parseJSON = (
     logger.for('parseArr').info('parseArr: Start');
     const arr = [];
 
-    let arrayContainer = (
-      containerStack[containerStack.length - 1][internal].definition as any
-    ).element;
+    const currentContainer = containerStack[containerStack.length - 1];
+    let arrayContainer: s.HashbrownType | undefined;
 
     if (currentKey) {
-      arrayContainer = (
-        containerStack[containerStack.length - 1][internal].definition as any
-      ).shape[currentKey][internal].definition.element;
+      const shapeEntry = (currentContainer as any)?.[internal]?.definition
+        ?.shape?.[currentKey];
+      if (shapeEntry) {
+        arrayContainer = (shapeEntry as any)[internal].definition.element;
+      }
+    } else {
+      arrayContainer = (currentContainer as any)?.[internal]?.definition
+        ?.element as s.HashbrownType | undefined;
     }
+
+    if (!arrayContainer) {
+      throwMalformedError(
+        `Array schema not found for key: ${currentKey || '<root array>'}`,
+      );
+    }
+    const resolvedArrayContainer = arrayContainer as s.HashbrownType;
 
     logger.for('parseArr').debug('Array container: ');
     logger.for('parseArr').debug(arrayContainer);
@@ -750,22 +778,24 @@ const _parseJSON = (
     let contentsAllowIncomplete = false;
 
     // If this array is of objects, push the container onto the stack
-    if (s.isObjectType(arrayContainer)) {
+    if (s.isObjectType(resolvedArrayContainer)) {
       logger.for('parseArr').debug('Array container is object type');
-      containerStack.push(arrayContainer);
+      containerStack.push(resolvedArrayContainer);
       containerNeedsPopping = true;
-    } else if (s.isAnyOfType(arrayContainer)) {
+    } else if (s.isAnyOfType(resolvedArrayContainer)) {
       logger
         .for('parseArr')
         .debug(
           'Array container is anyOf. Pushing anyOf array to container stack',
         );
-      containerStack.push((arrayContainer as any)[internal].definition.options);
+      containerStack.push(
+        (resolvedArrayContainer as any)[internal].definition.options,
+      );
       containerNeedsPopping = true;
     } else {
       logger.for('parseArr').debug('Array container is primitive');
       // It's not an object, so check if it is a streaming primitive
-      contentsAllowIncomplete = s.isStreaming(arrayContainer);
+      contentsAllowIncomplete = s.isStreaming(resolvedArrayContainer);
 
       logger
         .for('parseArr')
