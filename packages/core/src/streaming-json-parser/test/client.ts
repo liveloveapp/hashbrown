@@ -3,8 +3,6 @@ import { AsyncParserIterable } from '../streaming-json-parser';
 import { SocketAsyncIterable } from './socket-async-iterable';
 
 import { s } from '../../schema';
-import { toJsonSchema } from '../../schema/to-json-schema';
-import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 
 (async () => {
   console.log('Connecting...');

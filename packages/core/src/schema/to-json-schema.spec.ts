@@ -87,11 +87,21 @@ test('anyOf: single unique string-literal per object uses literal envelopes, omi
   ]);
   const json = toJsonSchema(schema);
   expect(json).toMatchSnapshot();
-  const markdownWrapper = json.anyOf.find((x: any) =>
-    Object.prototype.hasOwnProperty.call(x.properties, 'app-markdown'),
+  type SchemaWithProps = {
+    properties?: Record<
+      string,
+      {
+        properties?: Record<string, unknown>;
+      }
+    >;
+  };
+  const markdownWrapper = (json.anyOf as SchemaWithProps[] | undefined)?.find(
+    (entry) =>
+      entry.properties &&
+      Object.prototype.hasOwnProperty.call(entry.properties, 'app-markdown'),
   );
   expect(
-    markdownWrapper.properties['app-markdown'].properties['$tagName'],
+    markdownWrapper?.properties?.['app-markdown']?.properties?.['$tagName'],
   ).toBeUndefined();
 });
 

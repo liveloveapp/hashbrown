@@ -1,5 +1,4 @@
 import { createServer } from 'net';
-import { PRIMITIVE_WRAPPER_FIELD_NAME } from '../../schema/base';
 
 const TEST_JSON = {
   ui: [

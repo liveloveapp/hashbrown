@@ -665,7 +665,7 @@ function replacePlaceholders(
       // For objects/arrays, stringify them
       try {
         stringValue = JSON.stringify(value, null, 2);
-      } catch (err) {
+      } catch {
         stringValue = String(value);
       }
     } else {

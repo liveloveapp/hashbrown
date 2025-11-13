@@ -19,11 +19,8 @@ import {
   selectSystem,
 } from '../reducers';
 
-let currentAbortController: AbortController | null = null;
-
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
-  currentAbortController = effectAbortController;
   // This controller is used to cancel the current message generation
   // when a new message is sent or the user stops the generation.
   let cancelAbortController = new AbortController();
@@ -199,7 +196,6 @@ export const generateMessage = createEffect((store) => {
 
   return () => {
     effectAbortController.abort();
-    currentAbortController = null;
     cancelAbortController.abort();
   };
 });
