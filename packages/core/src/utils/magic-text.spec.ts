@@ -1,3 +1,8 @@
+import {
+  INCOMPLETE_LINK_HREF,
+  INLINE_MARKDOWN_CASES,
+  withDefaultMarks,
+} from './magic-text-inline-cases';
 import { type MagicTextFragment, prepareMagicText } from './magic-text';
 
 type TextFragment = Extract<MagicTextFragment, { type: 'text' }>;
@@ -10,6 +15,41 @@ const isTextFragment = (
 const isCitationFragment = (
   fragment: MagicTextFragment,
 ): fragment is CitationFragment => fragment.type === 'citation';
+
+type PrepareMagicTextResult = ReturnType<typeof prepareMagicText>;
+
+const textFragmentsFrom = (result: PrepareMagicTextResult) =>
+  result.fragments.filter(isTextFragment);
+
+const combinedTextFrom = (result: PrepareMagicTextResult) =>
+  textFragmentsFrom(result)
+    .map((fragment) => fragment.text)
+    .join('');
+
+type TextFragmentSummary = {
+  text: string;
+  state: 'final' | 'provisional';
+  marks: {
+    strong: boolean;
+    em: boolean;
+    code: boolean;
+    linkHref: string | undefined;
+  };
+};
+
+const summarizeTextFragments = (
+  result: PrepareMagicTextResult,
+): TextFragmentSummary[] =>
+  textFragmentsFrom(result).map((fragment) => ({
+    text: fragment.text,
+    state: fragment.state,
+    marks: {
+      strong: Boolean(fragment.marks.strong),
+      em: Boolean(fragment.marks.em),
+      code: Boolean(fragment.marks.code),
+      linkHref: fragment.marks.link?.href,
+    },
+  }));
 
 describe('prepareMagicText', () => {
   it('parses emphasis markers into text fragments with marks', () => {
@@ -34,19 +74,16 @@ describe('prepareMagicText', () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it('marks unfinished emphasis as provisional and emits a warning', () => {
+  it('soft-closes unfinished emphasis as provisional formatting', () => {
     const result = prepareMagicText('Hello **world');
 
     const provisional = result.fragments.find(
       (f): f is TextFragment => isTextFragment(f) && f.state === 'provisional',
     );
 
-    expect(provisional?.text).toBe('**world');
-    expect(result.warnings).toEqual(
-      expect.arrayContaining([
-        { code: 'unterminated_construct', kind: 'strong', at: 6 },
-      ]),
-    );
+    expect(provisional?.text).toBe('world');
+    expect(provisional?.marks.strong).toBe(true);
+    expect(result.warnings).toEqual([]);
   });
 
   it('parses links with titles and attribute lists', () => {
@@ -192,13 +229,14 @@ describe('prepareMagicText', () => {
     expect(link?.key).toBeDefined();
   });
 
-  it('keeps provisional fragments visible when rendering', () => {
+  it('keeps provisional fragments styled while awaiting completion', () => {
     const rendered = prepareMagicText('Hello **world');
     const provisional = rendered.fragments.find(
       (f): f is TextFragment => isTextFragment(f) && f.state === 'provisional',
     );
 
-    expect(provisional?.text).toContain('world');
+    expect(provisional?.text).toBe('world');
+    expect(provisional?.marks.strong).toBe(true);
   });
 
   it('emits stable fragment ids as text grows', () => {
@@ -209,5 +247,27 @@ describe('prepareMagicText', () => {
     const nextText = next.fragments.find(isTextFragment);
 
     expect(firstText?.id).toBe(nextText?.id);
+  });
+
+  describe('inline markdown recovery cases', () => {
+    it.each(INLINE_MARKDOWN_CASES)(
+      '$name',
+      ({ input, expectedText, expectedFragments }) => {
+        const result = prepareMagicText(input);
+
+        expect(combinedTextFrom(result)).toBe(expectedText);
+        expect(result.warnings).toEqual([]);
+
+        const summary = summarizeTextFragments(result);
+        expect(summary).toHaveLength(expectedFragments.length);
+
+        summary.forEach((fragment, index) => {
+          const expected = expectedFragments[index];
+          expect(fragment.text).toBe(expected.text);
+          expect(fragment.state).toBe(expected.state);
+          expect(fragment.marks).toEqual(withDefaultMarks(expected.marks));
+        });
+      },
+    );
   });
 });
