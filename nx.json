@@ -60,6 +60,7 @@
   "release": {
     "projects": [
       "angular",
+      "anthropic",
       "azure",
       "core",
       "google",
