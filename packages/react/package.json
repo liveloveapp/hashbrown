@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/react",
-  "version": "0.3.0",
+  "version": "0.4.0-rc.0",
   "description": "React components for Hashbrown AI",
   "license": "MIT",
   "sideEffects": false,
@@ -26,7 +26,7 @@
   "peerDependencies": {
     "react": ">=18 <20",
     "react-dom": ">=18 <20",
-    "@hashbrownai/core": "0.3.0"
+    "@hashbrownai/core": "0.4.0-rc.0"
   },
   "publishConfig": {
     "access": "public"
