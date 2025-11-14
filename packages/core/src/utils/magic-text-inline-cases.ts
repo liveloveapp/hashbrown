@@ -1,4 +1,4 @@
-export const INCOMPLETE_LINK_HREF = 'streamdown:incomplete-link';
+export const INCOMPLETE_LINK_HREF = 'hashbrown:incomplete-link';
 
 export type InlineMarksExpectation = {
   strong?: boolean;
@@ -149,7 +149,7 @@ export const INLINE_MARKDOWN_CASES: InlineMarkdownCase[] = [
     ],
   },
   {
-    name: 'Test 11 — unterminated backtick in middle, closed later by streamdown',
+    name: 'Test 11 — unterminated backtick in middle, closed later',
     input: 'Prefix `code snippet with no end',
     expectedText: 'Prefix code snippet with no end',
     expectedFragments: [
@@ -260,11 +260,11 @@ export const INLINE_MARKDOWN_CASES: InlineMarkdownCase[] = [
   {
     name: 'Test 42 — unterminated inline code followed by unterminated bold',
     input: '`code without end and then **bold without end',
-    expectedText: 'code without end and then **bold without end**',
+    expectedText: 'code without end and then **bold without end',
     expectedFragments: [
       {
-        text: 'code without end and then **bold without end**',
-        state: 'final',
+        text: 'code without end and then **bold without end',
+        state: 'provisional',
         marks: { code: true },
       },
     ],
