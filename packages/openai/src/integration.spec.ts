@@ -18,7 +18,7 @@ test('OpenAI Text Streaming', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4.1',
     system: `
      I am writing an integration test against OpenAI. Respond
      exactly with the text "Hello, world!"
@@ -60,7 +60,7 @@ test('OpenAI Tool Calling', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4.1',
     system: `
      I am writing an integration test against OpenAI. Call
      the "test" tool with the argument "Hello, world!"
@@ -115,7 +115,7 @@ test('OpenAI with structured output', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4.1',
     system: `
      I am writing an integration test against OpenAI. Respond
      exactly with the text "Hello, world!" in JSON format.
@@ -155,7 +155,7 @@ test('OpenAI with tool calling and structured output', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4.1',
     system: `
      I am writing an integration test against OpenAI. Call
      the "test" tool with the argument "Hello, world!"
