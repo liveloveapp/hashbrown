@@ -163,6 +163,24 @@ test('Writer with tool calling and structured output', async () => {
       The tool will respond with JSON containing a "text" field. You must
       respond with the exact text from the tool call.
 
+      Example:
+      <user>Please call the test tool and respond with the text.</user>
+      <assistant>
+        <tool-call name="test" id="123">
+          {
+            "text": "Hello, world!"
+          }
+        </tool-call>
+        <tool-call-result name="test" id="123">
+          {
+            "text": "Some other text!"
+          }
+        </tool-call-result>
+        <assistant>
+          { "text": "Some other text!" }
+        </assistant>
+      </assistant>
+
     `,
     messages: [
       {
