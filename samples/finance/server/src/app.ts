@@ -1,7 +1,7 @@
 import { Chat } from '@hashbrownai/core';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import express from 'express';
-import { INGREDIENTS } from './ingredients';
+// import { INGREDIENTS } from './ingredients';
 
 export function createApi() {
   const app = express();
@@ -38,42 +38,42 @@ export function createApi() {
     }
   });
 
-  app.get('/api/ingredients', (req, res) => {
-    const {
-      startDate: startDateString,
-      endDate: endDateString,
-      ingredientIds,
-    } = req.query;
+  // app.get('/api/ingredients', (req, res) => {
+  //   const {
+  //     startDate: startDateString,
+  //     endDate: endDateString,
+  //     ingredientIds,
+  //   } = req.query;
 
-    if (!startDateString || !endDateString) {
-      return res
-        .status(400)
-        .json({ error: 'startDate and endDate are required' });
-    }
+  //   if (!startDateString || !endDateString) {
+  //     return res
+  //       .status(400)
+  //       .json({ error: 'startDate and endDate are required' });
+  //   }
 
-    const startDate = new Date(startDateString as string);
-    const endDate = new Date(endDateString as string);
+  //   const startDate = new Date(startDateString as string);
+  //   const endDate = new Date(endDateString as string);
 
-    const ingredients = INGREDIENTS.filter((ingredient) => {
-      if (
-        ingredientIds &&
-        Array.isArray(ingredientIds) &&
-        !(ingredientIds as string[]).includes(ingredient.id)
-      ) {
-        return false;
-      }
-      return true;
-    }).map((ingredient) => ({
-      ...ingredient,
-      dailyReports: ingredient.dailyReports.filter((report) => {
-        return (
-          new Date(report.date) >= startDate && new Date(report.date) <= endDate
-        );
-      }),
-    }));
+  //   const ingredients = INGREDIENTS.filter((ingredient) => {
+  //     if (
+  //       ingredientIds &&
+  //       Array.isArray(ingredientIds) &&
+  //       !(ingredientIds as string[]).includes(ingredient.id)
+  //     ) {
+  //       return false;
+  //     }
+  //     return true;
+  //   }).map((ingredient) => ({
+  //     ...ingredient,
+  //     dailyReports: ingredient.dailyReports.filter((report) => {
+  //       return (
+  //         new Date(report.date) >= startDate && new Date(report.date) <= endDate
+  //       );
+  //     }),
+  //   }));
 
-    return res.json(ingredients);
-  });
+  //   return res.json(ingredients);
+  // });
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
