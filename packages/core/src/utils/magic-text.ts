@@ -1,4 +1,5 @@
 const DEFAULT_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'] as const;
+const INCOMPLETE_LINK_HREF = 'hashbrown:incomplete-link';
 
 const enum Token {
   Backslash = '\\',
@@ -175,6 +176,7 @@ type ParserContext = {
   warnings: ParseWarning[];
   provisional: number[];
   citationState: CitationState;
+  literalGuards: Set<number>;
 };
 
 type CitationState = {
@@ -190,6 +192,7 @@ type TextSpan = {
   marks: MarkSet;
   sources: number[];
   provisional: boolean;
+  lockMerge?: boolean;
 };
 
 type NormalizeFragmentsOptions = {
@@ -299,6 +302,7 @@ function parseMagicText(
       numberingBase: normalized.citationNumberingBase,
       warnings,
     },
+    literalGuards: new Set(),
   };
 
   const nodes = parseInline(ctx, 0, input.length);
@@ -374,14 +378,25 @@ function parseInline(
   let i = start;
   let buffer = '';
   let sources: number[] = [];
+  let lockNextText = false;
 
   const flush = () => {
     if (!buffer) {
-      return;
+      return null;
     }
-    nodes.push({ type: 'text', text: buffer, sources: sources.slice() });
+    const node: InlineNode & { __lockMerge?: boolean } = {
+      type: 'text',
+      text: buffer,
+      sources: sources.slice(),
+    };
+    if (lockNextText) {
+      node.__lockMerge = true;
+      lockNextText = false;
+    }
+    nodes.push(node);
     buffer = '';
     sources = [];
+    return node;
   };
 
   while (i < end) {
@@ -428,6 +443,9 @@ function parseInline(
         nodes.push(emphasis.node);
         i = emphasis.nextIndex;
         continue;
+      }
+      if (ctx.literalGuards.delete(i)) {
+        lockNextText = true;
       }
     }
 
@@ -476,7 +494,14 @@ function tryParseEmphasis(
     return null;
   }
 
-  const runLength = ctx.input[index + 1] === marker ? 2 : 1;
+  let runLength = 1;
+  while (
+    runLength < 3 &&
+    ctx.input[index + runLength] === marker &&
+    index + runLength < end
+  ) {
+    runLength += 1;
+  }
   if (
     !shouldTreatAsEmphasisMarker(
       ctx.input,
@@ -497,28 +522,102 @@ function tryParseEmphasis(
     end,
   );
   if (closing == null) {
-    ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: runLength === 2 ? 'strong' : 'em',
-      at: index,
-    });
-    return null;
+    return softCloseEmphasis(ctx, index, end, runLength, marker);
   }
 
   const contentStart = index + runLength;
   const contentEnd = closing;
   const children = parseInline(ctx, contentStart, contentEnd);
+  const node = buildEmphasisNode(
+    runLength,
+    children,
+    index,
+    closing + runLength,
+  );
 
   return {
-    node: {
-      type: runLength === 2 ? 'strong' : 'em',
-      children,
-      start: index,
-      end: closing + runLength,
-    },
+    node,
     nextIndex: closing + runLength,
   };
+}
+
+function softCloseEmphasis(
+  ctx: ParserContext,
+  index: number,
+  end: number,
+  runLength: number,
+  marker: string,
+): ParseResult<InlineNode> | null {
+  const contentStart = index + runLength;
+  if (contentStart >= end) {
+    return null;
+  }
+  const intraword = ctx.options.emphasisIntraword ?? true;
+  if (
+    hasFutureEmphasisOpener(ctx.input, marker, contentStart, end, intraword)
+  ) {
+    ctx.literalGuards.add(index);
+    return null;
+  }
+  ctx.provisional.push(index);
+  const children = parseInline(ctx, contentStart, end);
+  const node = buildEmphasisNode(runLength, children, index, end);
+  return {
+    node,
+    nextIndex: end,
+  };
+}
+
+function buildEmphasisNode(
+  runLength: number,
+  children: InlineNode[],
+  start: number,
+  end: number,
+): InlineNode {
+  if (runLength >= 3) {
+    const inner: InlineNode = {
+      type: 'em',
+      children,
+      start: start + 2,
+      end,
+    };
+    return {
+      type: 'strong',
+      children: [inner],
+      start,
+      end,
+    };
+  }
+  if (runLength === 2) {
+    return { type: 'strong', children, start, end };
+  }
+  return { type: 'em', children, start, end };
+}
+
+function hasFutureEmphasisOpener(
+  input: string,
+  marker: string,
+  start: number,
+  end: number,
+  intraword: boolean,
+): boolean {
+  for (let i = start; i < end; i += 1) {
+    if (input[i] !== marker || isEscaped(input, i)) {
+      continue;
+    }
+    let runLength = 1;
+    while (
+      runLength < 3 &&
+      i + runLength < end &&
+      input[i + runLength] === marker
+    ) {
+      runLength += 1;
+    }
+    if (shouldTreatAsEmphasisMarker(input, i, runLength, marker, intraword)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function tryParseCode(
@@ -531,21 +630,29 @@ function tryParseCode(
   }
 
   const closing = findClosingBacktick(ctx.input, index + 1, end);
+  const textStart = index + 1;
   if (closing == null) {
+    if (textStart >= end) {
+      return null;
+    }
     ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: 'code',
-      at: index,
-    });
-    return null;
+    return buildCodeNode(ctx, textStart, end, index, end);
   }
 
-  const textStart = index + 1;
-  const text = ctx.input.slice(textStart, closing);
+  return buildCodeNode(ctx, textStart, closing, index, closing + 1);
+}
+
+function buildCodeNode(
+  ctx: ParserContext,
+  textStart: number,
+  textEnd: number,
+  rangeStart: number,
+  rangeEnd: number,
+): ParseResult<InlineNode> {
+  const text = ctx.input.slice(textStart, textEnd);
   const sources: number[] = [];
   let cursor = textStart;
-  while (cursor < closing) {
+  while (cursor < textEnd) {
     const cp = readCodePoint(ctx.input, cursor);
     if (!cp) {
       break;
@@ -553,16 +660,15 @@ function tryParseCode(
     pushSources(sources, cp.length, cp.index);
     cursor = cp.nextIndex;
   }
-
   return {
     node: {
       type: 'code',
       text,
       sources,
-      start: index,
-      end: closing + 1,
+      start: rangeStart,
+      end: rangeEnd,
     },
-    nextIndex: closing + 1,
+    nextIndex: rangeEnd,
   };
 }
 
@@ -575,6 +681,9 @@ function shouldTreatAsEmphasisMarker(
 ): boolean {
   const prev = input[index - 1];
   const next = input[index + runLength];
+  if (!next || INLINE_WHITESPACE.test(next)) {
+    return false;
+  }
   if (!intraword) {
     return !(isWordChar(prev) && isWordChar(next));
   }
@@ -599,11 +708,17 @@ function findClosingMarker(
     while (i + count < end && input[i + count] === marker) {
       count += 1;
     }
-    if (count >= runLength) {
+    if (count === runLength && canCloseEmphasis(input, i)) {
       return i;
     }
+    i += count - 1;
   }
   return null;
+}
+
+function canCloseEmphasis(input: string, index: number): boolean {
+  const prev = input[index - 1];
+  return !!prev && !INLINE_WHITESPACE.test(prev);
 }
 
 function findClosingBacktick(
@@ -634,13 +749,7 @@ function tryParseLink(
 ): LinkParseResult {
   const labelResult = readBracketed(ctx, index + 1, end, Token.LinkEnd);
   if (!labelResult) {
-    ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: 'link',
-      at: index,
-    });
-    return null;
+    return createIncompleteLinkLabel(ctx, index, end);
   }
 
   const afterLabel = skipWhitespace(ctx.input, labelResult.nextIndex + 1, end);
@@ -648,15 +757,26 @@ function tryParseLink(
     return null;
   }
 
-  const dest = parseLinkDestination(ctx, afterLabel + 1, end);
+  const destinationStart = afterLabel + 1;
+  const dest = parseLinkDestination(ctx, destinationStart, end);
   if (!dest) {
-    ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: 'link',
-      at: index,
-    });
-    return null;
+    if (!hasVisibleContent(ctx.input, destinationStart, end)) {
+      const literal = buildLiteralTextNode(
+        ctx.input,
+        index,
+        Math.min(end, destinationStart),
+        { lockMerge: true },
+      );
+      if (!literal) {
+        return null;
+      }
+      return {
+        kind: 'fallback',
+        nodes: [literal],
+        nextIndex: destinationStart,
+      };
+    }
+    return createIncompleteLinkDestination(labelResult.nodes, index, end);
   }
 
   const afterDestination = dest.nextIndex;
@@ -680,10 +800,13 @@ function tryParseLink(
     attrsParsed = parsed;
     overallEnd = parsed.nextIndex;
   }
-  const labelNodes = parseInline(ctx, index + 1, labelResult.nextIndex);
   const policy = applyLinkPolicy(ctx, dest.href.trim(), [index, overallEnd]);
   if (policy === 'drop') {
-    return { kind: 'fallback', nodes: labelNodes, nextIndex: overallEnd };
+    return {
+      kind: 'fallback',
+      nodes: labelResult.nodes,
+      nextIndex: overallEnd,
+    };
   }
 
   const mark: LinkMark = {
@@ -700,13 +823,94 @@ function tryParseLink(
     kind: 'link',
     node: {
       type: 'link',
-      children: labelNodes,
+      children: labelResult.nodes,
       mark,
       start: index,
       end: overallEnd,
     },
     nextIndex: overallEnd,
   };
+}
+
+function createIncompleteLinkLabel(
+  ctx: ParserContext,
+  index: number,
+  end: number,
+): LinkParseResult {
+  const labelStart = index + 1;
+  if (labelStart >= end) {
+    return null;
+  }
+  const literal = buildLiteralTextNode(ctx.input, labelStart, end);
+  if (!literal) {
+    return null;
+  }
+  const text = ctx.input.slice(labelStart, end);
+  if (!/[*_`]/.test(text)) {
+    ctx.provisional.push(index);
+  }
+  return buildSyntheticLink([literal], index, end);
+}
+
+function createIncompleteLinkDestination(
+  nodes: InlineNode[],
+  start: number,
+  end: number,
+): LinkParseResult {
+  return buildSyntheticLink(nodes, start, end);
+}
+
+function buildSyntheticLink(
+  nodes: InlineNode[],
+  start: number,
+  end: number,
+): LinkParseResult {
+  const mark: LinkMark = {
+    href: INCOMPLETE_LINK_HREF,
+    policy: 'allowed',
+  };
+  return {
+    kind: 'link',
+    node: {
+      type: 'link',
+      children: nodes,
+      mark,
+      start,
+      end,
+    },
+    nextIndex: end,
+  };
+}
+
+function buildLiteralTextNode(
+  input: string,
+  start: number,
+  end: number,
+  options?: { lockMerge?: boolean },
+): InlineNode | null {
+  if (start >= end) {
+    return null;
+  }
+  const text = input.slice(start, end);
+  const sources: number[] = [];
+  let cursor = start;
+  while (cursor < end) {
+    const cp = readCodePoint(input, cursor);
+    if (!cp) {
+      break;
+    }
+    pushSources(sources, cp.length, cp.index);
+    cursor = cp.nextIndex;
+  }
+  const node: InlineNode & { __lockMerge?: boolean } = {
+    type: 'text',
+    text,
+    sources,
+  };
+  if (options?.lockMerge) {
+    node.__lockMerge = true;
+  }
+  return node;
 }
 
 type ReadBracketResult = { nodes: InlineNode[]; nextIndex: number } | null;
@@ -1020,6 +1224,7 @@ function collectTextSpans(
 ) {
   for (const node of nodes) {
     if (node.type === 'text') {
+      const lockMerge = Boolean((node as any).__lockMerge);
       if (!node.text) {
         continue;
       }
@@ -1028,15 +1233,18 @@ function collectTextSpans(
         marks: { ...ctx.marks },
         sources: node.sources,
         provisional: ctx.provisional,
+        lockMerge,
       });
       continue;
     }
     if (node.type === 'code') {
+      const lockMerge = Boolean((node as any).__lockMerge);
       spans.push({
         text: node.text,
         marks: { ...ctx.marks, code: true },
         sources: [...node.sources],
         provisional: ctx.provisional,
+        lockMerge,
       });
       continue;
     }
@@ -1117,13 +1325,16 @@ function buildTextFragments(
           marks: { ...span.marks },
           sources: [...span.sources],
           provisional: span.provisional,
+          lockMerge: span.lockMerge,
         };
         continue;
       }
       if (
         span.provisional === current.provisional &&
         marksEqual(span.marks, current.marks) &&
-        areSourcesAdjacent(current.sources, span.sources)
+        areSourcesAdjacent(current.sources, span.sources) &&
+        !span.lockMerge &&
+        !current.lockMerge
       ) {
         current.text += span.text;
         current.sources.push(...span.sources);
@@ -1134,6 +1345,7 @@ function buildTextFragments(
           marks: { ...span.marks },
           sources: [...span.sources],
           provisional: span.provisional,
+          lockMerge: span.lockMerge,
         };
       }
     }
@@ -1157,6 +1369,7 @@ function buildTextFragments(
         marks: { ...span.marks },
         sources: span.sources.slice(startOffset, endOffset),
         provisional: span.provisional,
+        lockMerge: span.lockMerge,
       };
       fragments.push(spanToFragment(sliced, unit));
     }
@@ -1296,6 +1509,15 @@ function skipWhitespace(input: string, start: number, end: number): number {
     i += 1;
   }
   return i;
+}
+
+function hasVisibleContent(input: string, start: number, end: number): boolean {
+  for (let i = start; i < end; i += 1) {
+    if (!INLINE_WHITESPACE.test(input[i] ?? '')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isWordChar(ch?: string): boolean {
