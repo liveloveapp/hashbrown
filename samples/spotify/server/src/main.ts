@@ -73,7 +73,6 @@ async function getSpotifyClient(accessToken: string): Promise<SpotifyApi> {
 const mcpServer = new McpServer({
   name: 'spotify',
   version: '1.0.0',
-  description: 'Spotify server to list devices, search songs, and queue songs',
 });
 
 /**
@@ -88,12 +87,14 @@ mcpServer.registerTool(
     title: 'List devices',
     description: 'List all devices connected to the Spotify account',
   },
-  async (context) => {
+  async (context: any) => {
     const accessToken = getAccessToken(context);
     const spotify = await getSpotifyClient(accessToken);
     const devices = await spotify.player.getAvailableDevices();
     return {
-      content: [{ type: 'text', text: JSON.stringify(devices, null, 2) }],
+      content: [
+        { type: 'text' as const, text: JSON.stringify(devices, null, 2) },
+      ],
     };
   },
 );
