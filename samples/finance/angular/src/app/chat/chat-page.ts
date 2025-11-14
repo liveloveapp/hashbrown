@@ -16,6 +16,18 @@ import { Citation } from './elements/citation';
 import { OrderedList } from './elements/ordered-list';
 import { UnorderedList } from './elements/unordered-list';
 import { LinkClickHandler } from './link-click-handler';
+import type { ChartType } from 'chart.js';
+
+const chartTypeHints: ChartType[] = [
+  'bar',
+  'bubble',
+  'doughnut',
+  'line',
+  'pie',
+  'polarArea',
+  'radar',
+  'scatter',
+];
 
 @Component({
   selector: 'app-chat-page',
@@ -118,7 +130,7 @@ import { LinkClickHandler } from './link-click-handler';
         font-family: Fredoka;
 
         --article-width: 720px;
-        --max-article-width: 1200px;
+        --max-article-width: 960px;
 
         width: var(--max-article-width);
       }
@@ -176,7 +188,8 @@ export class ChatPage implements LinkClickHandler {
       - Use the <chart> component to visualize insights. Supply a descriptive
         prompt plus any filters (restaurants, menu items, categories,
         searchTerm, nutrient limits, limits, sorting) that would help build the
-        chart.
+        chart, and set \`chartType\` to whichever Chart.js visualization
+        (bar/line/pie/etc.) best communicates the story.
       - Never stop after a single visualization when the user asks for
         comparisons, multiple angles, or plural "charts". In ambiguous cases,
         default to at least two distinct charts (e.g., one for each chain or
@@ -194,6 +207,7 @@ export class ChatPage implements LinkClickHandler {
         <h level="2" text="Subway turkey subs: sodium vs. protein" />
         <p text="Call out the key takeaway grounded in the updated dataset." />
         <chart chart=${{
+          chartType: 'scatter',
           prompt:
             'Plot protein against sodium for Subway Market Fresh turkey sandwiches',
           restaurants: ['Subway'],
@@ -210,6 +224,7 @@ export class ChatPage implements LinkClickHandler {
         }} />
         <p text="Summarize what the visualization shows about sodium trade-offs." />
         <chart chart=${{
+          chartType: 'bar',
           prompt:
             'Plot calories per serving for Subway veggie sandwiches vs. wraps',
           restaurants: ['Subway'],
@@ -231,9 +246,8 @@ export class ChatPage implements LinkClickHandler {
       exposeComponent(Paragraph, {
         name: 'p',
         description: `
-          Render a rich Magic Text paragraph with animated reveal, inline markdown (bold, italic),
-          auto-numbered citations, and sanitized links. Links never navigate—clicks are intercepted
-          and logged for safety.
+          Render a rich Magic Text paragraph with inline markdown (bold, italic), auto-numbered
+          citations, and links.
 
           Examples:
           - **Headline:** _Give the TL;DR_ in bold + italics for emphasis.
@@ -293,6 +307,13 @@ export class ChatPage implements LinkClickHandler {
         input: {
           chart: s.streaming.object('Configuration for the fast-food chart', {
             prompt: s.string('Narrative description of the chart to create'),
+            chartType: s.anyOf([
+              s.enumeration(
+                'Optional Chart.js chart type hint (bar, line, pie, etc.)',
+                chartTypeHints,
+              ),
+              s.nullish(),
+            ]),
             restaurants: s.streaming.array(
               'Optional list of restaurant names to include (leave empty for all)',
               s.string('Restaurant name as listed in the dataset'),

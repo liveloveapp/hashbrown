@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
-import { prepareMagicText, type MagicTextFragment } from '@hashbrownai/core';
+import { type MagicTextFragment, prepareMagicText } from '@hashbrownai/core';
 import { LinkClickHandler } from '../link-click-handler';
 
 @Component({
@@ -129,16 +129,16 @@ import { LinkClickHandler } from '../link-click-handler';
 
       .fragment {
         display: inline;
-        opacity: 0;
-        animation-name: fragment-reveal, fragment-flash;
-        animation-duration: var(--fragment-duration, 500ms);
-        animation-delay: var(--fragment-delay, 0ms);
-        animation-fill-mode: forwards;
-        animation-timing-function: ease;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+
+        @starting-style {
+          opacity: 0;
+        }
       }
 
       .fragment--provisional {
-        opacity: 0.65;
+        opacity: 0;
       }
 
       .fragment--static {
@@ -160,28 +160,7 @@ import { LinkClickHandler } from '../link-click-handler';
         background: var(--fragment-code-bg, rgba(0, 0, 0, 0.08));
         padding: 0 3px;
         border-radius: 4px;
-      }
-
-      @keyframes fragment-reveal {
-        0% {
-          opacity: 0;
-          transform: translateY(0.35em);
-        }
-
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @keyframes fragment-flash {
-        0% {
-          background: var(--fragment-highlight, rgba(0, 0, 0, 0.06));
-        }
-
-        100% {
-          background: transparent;
-        }
+        color: var(--gray-dark);
       }
     `,
   ],

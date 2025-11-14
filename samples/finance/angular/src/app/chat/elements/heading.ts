@@ -68,7 +68,7 @@ type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
       margin: 0;
       font-weight: 600;
       line-height: 1.2;
-      color: var(--chocolate-brown);
+      color: var(--gray);
     }
 
     h1 {
