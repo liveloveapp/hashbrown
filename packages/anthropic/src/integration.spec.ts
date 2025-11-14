@@ -7,6 +7,10 @@ import { Chat, fryHashbrown, Hashbrown, s } from '@hashbrownai/core';
 import { HashbrownAnthropic } from './index';
 
 const ANTHROPIC_API_KEY = process.env['ANTHROPIC_API_KEY'] ?? '';
+const ANTHROPIC_MODEL =
+  (process.env[
+    'ANTHROPIC_MODEL'
+  ] as Chat.Api.CompletionCreateParams['model']) ?? 'claude-haiku-4-5-20251001';
 
 test('Anthropic Text Streaming', async () => {
   const server = await createServer((request) =>
@@ -18,7 +22,7 @@ test('Anthropic Text Streaming', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'claude-3-5-sonnet-20241022',
+    model: ANTHROPIC_MODEL,
     system: `
      I am writing an integration test against Anthropic. Respond
      exactly with the text "Hello, world!"
@@ -60,7 +64,7 @@ test('Anthropic Tool Calling', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'claude-3-5-sonnet-20241022',
+    model: ANTHROPIC_MODEL,
     system: `
      I am writing an integration test against Anthropic. Call
      the "test" tool with the argument "Hello, world!"
@@ -115,7 +119,8 @@ test('Anthropic with structured output', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'claude-3-5-sonnet-20241022',
+    model: ANTHROPIC_MODEL,
+    emulateStructuredOutput: true,
     system: `
      I am writing an integration test against Anthropic. Respond
      exactly with the text "Hello, world!" in JSON format.
@@ -139,7 +144,7 @@ test('Anthropic with structured output', async () => {
     .find((message) => message.role === 'assistant');
 
   expect(assistantMessage?.content).toEqual({ text: 'Hello, world!' });
-});
+}, 10000);
 
 test('Anthropic with tool calling and structured output', async () => {
   const expectedResponse =
@@ -155,7 +160,8 @@ test('Anthropic with tool calling and structured output', async () => {
   const hashbrown = fryHashbrown({
     debounce: 0,
     apiUrl: server.url,
-    model: 'claude-3-5-sonnet-20241022',
+    model: ANTHROPIC_MODEL,
+    emulateStructuredOutput: true,
     system: `
      I am writing an integration test against Anthropic. Call
      the "test" tool with the argument "Hello, world!"
@@ -198,7 +204,7 @@ test('Anthropic with tool calling and structured output', async () => {
 
   expect(assistantMessage?.content).toEqual({ text: expectedResponse });
   expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
-});
+}, 20000);
 
 async function createServer(
   iteratorFactory: (
@@ -213,6 +219,9 @@ async function createServer(
   app.use(cors());
 
   app.post('/chat', async (req, res) => {
+    if (process.env['DEBUG_HASHBROWN_ANTHROPIC'] === '1') {
+      console.log('[anthropic:request]', JSON.stringify(req.body));
+    }
     const iterator = iteratorFactory(req.body);
     res.header('Content-Type', 'application/octet-stream');
 
