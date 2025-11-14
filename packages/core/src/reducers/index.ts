@@ -115,6 +115,14 @@ export const selectRetries = select(
   selectConfigState,
   fromConfig.selectRetries,
 );
+export const selectUseThreadId = select(
+  selectConfigState,
+  fromConfig.selectUseThreadId,
+);
+export const selectThreadId = select(
+  selectConfigState,
+  fromConfig.selectThreadId,
+);
 export const selectResponseSchema = select(
   selectConfigState,
   fromConfig.selectResponseSchema,

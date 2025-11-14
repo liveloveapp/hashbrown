@@ -1,5 +1,92 @@
 import { Chat } from '../models';
-import { _updateMessagesWithDelta } from './generate-message.effects';
+import {
+  _extractMessageDelta,
+  _updateMessagesWithDelta,
+} from './generate-message.effects';
+
+test('extractMessageDelta returns all messages when no assistant is present', () => {
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'user',
+      content: 'Hello',
+    },
+  ];
+
+  expect(_extractMessageDelta(messages)).toEqual(messages);
+});
+
+test('extractMessageDelta returns messages after the last assistant message', () => {
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'user',
+      content: 'Hi',
+    },
+    {
+      role: 'assistant',
+      content: 'Hello there!',
+    },
+    {
+      role: 'user',
+      content: 'How are you?',
+    },
+  ];
+
+  expect(_extractMessageDelta(messages)).toEqual([
+    {
+      role: 'user',
+      content: 'How are you?',
+    },
+  ]);
+});
+
+test('extractMessageDelta isolates tool messages following the assistant', () => {
+  const toolMessage: Chat.Api.ToolMessage = {
+    role: 'tool',
+    content: { status: 'fulfilled', value: '42' },
+    toolCallId: 'call-1',
+    toolName: 'answer',
+  };
+
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'user',
+      content: 'Compute?',
+    },
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'call-1',
+          index: 0,
+          type: 'function',
+          function: {
+            name: 'answer',
+            arguments: '{}',
+          },
+        },
+      ],
+    },
+    toolMessage,
+  ];
+
+  expect(_extractMessageDelta(messages)).toEqual([toolMessage]);
+});
+
+test('extractMessageDelta returns an empty array when the last message is assistant', () => {
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'user',
+      content: 'Start',
+    },
+    {
+      role: 'assistant',
+      content: 'Done',
+    },
+  ];
+
+  expect(_extractMessageDelta(messages)).toEqual([]);
+});
 
 test('updateMessagesWithDelta works without an initial message', () => {
   const delta: Chat.Api.CompletionChunk = {

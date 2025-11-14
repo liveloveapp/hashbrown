@@ -17,6 +17,8 @@ import {
   selectRetries,
   selectShouldGenerateMessage,
   selectSystem,
+  selectThreadId,
+  selectUseThreadId,
 } from '../reducers';
 
 export const generateMessage = createEffect((store) => {
@@ -43,15 +45,24 @@ export const generateMessage = createEffect((store) => {
       const tools = store.read(selectApiTools);
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
+      const useThreadId = store.read(selectUseThreadId);
+      const threadId = store.read(selectThreadId);
+      const messagePayload = useThreadId
+        ? _extractMessageDelta(messages)
+        : messages;
 
       if (!shouldGenerateMessage) {
+        return;
+      }
+
+      if (useThreadId && messagePayload.length === 0) {
         return;
       }
 
       const params: Chat.Api.CompletionCreateParams = {
         model,
         system,
-        messages,
+        messages: messagePayload,
         tools,
         toolChoice:
           emulateStructuredOutput && responseSchema ? 'required' : undefined,
@@ -59,6 +70,7 @@ export const generateMessage = createEffect((store) => {
           !emulateStructuredOutput && responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined,
+        threadId: useThreadId ? threadId : undefined,
       };
 
       await sleep(debounce, switchSignal);
@@ -238,6 +250,22 @@ function mergeToolCalls(
  * @param delta - The incoming message delta.
  * @returns The updated messages array.
  */
+export function _extractMessageDelta(
+  messages: Chat.Api.Message[],
+): Chat.Api.Message[] {
+  if (messages.length === 0) {
+    return messages;
+  }
+
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index]?.role === 'assistant') {
+      return messages.slice(index + 1);
+    }
+  }
+
+  return messages;
+}
+
 export function _updateMessagesWithDelta(
   message: Chat.Api.AssistantMessage | null,
   delta: Chat.Api.CompletionChunk,

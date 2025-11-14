@@ -13,6 +13,8 @@ export interface ConfigState {
   middleware?: Chat.Middleware[];
   emulateStructuredOutput: boolean;
   retries: number;
+  useThreadId: boolean;
+  threadId?: string;
 }
 
 const initialState: ConfigState = {
@@ -22,11 +24,13 @@ const initialState: ConfigState = {
   debounce: 150,
   emulateStructuredOutput: false,
   retries: 0,
+  useThreadId: false,
 };
 
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action): ConfigState => {
+    const useThreadId = action.payload.useThreadId ?? false;
     return {
       ...state,
       apiUrl: action.payload.apiUrl,
@@ -38,12 +42,28 @@ export const reducer = createReducer(
       emulateStructuredOutput:
         action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
       retries: action.payload.retries ?? state.retries,
+      useThreadId,
+      threadId: useThreadId ? action.payload.threadId : undefined,
     };
   }),
   on(devActions.updateOptions, (state, action): ConfigState => {
+    const useThreadId =
+      action.payload.useThreadId ?? state.useThreadId ?? false;
+    const hasThreadId = Object.prototype.hasOwnProperty.call(
+      action.payload,
+      'threadId',
+    );
+    const threadId = hasThreadId
+      ? action.payload.threadId
+      : useThreadId
+        ? state.threadId
+        : undefined;
+
     return {
       ...state,
       ...action.payload,
+      useThreadId,
+      threadId,
     };
   }),
 );
@@ -58,3 +78,5 @@ export const selectMiddleware = (state: ConfigState) => state.middleware;
 export const selectEmulateStructuredOutput = (state: ConfigState) =>
   state.emulateStructuredOutput;
 export const selectRetries = (state: ConfigState) => state.retries;
+export const selectUseThreadId = (state: ConfigState) => state.useThreadId;
+export const selectThreadId = (state: ConfigState) => state.threadId;
