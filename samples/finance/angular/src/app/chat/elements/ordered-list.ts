@@ -1,15 +1,14 @@
 import { Component, computed, input } from '@angular/core';
-import { createSegmentedTexts } from './text-fragments';
+import { MagicTextRenderer } from '../magic-text-renderer';
 
 @Component({
   selector: 'app-ordered-list',
+  imports: [MagicTextRenderer],
   template: `
     <ol>
-      @for (item of itemsWithFragments(); track item.id) {
+      @for (item of itemsWithIds(); track item.id) {
         <li>
-          @for (fragment of item.fragments; track fragment.id) {
-            <span>{{ fragment.text }}</span>
-          }
+          <app-magic-text-renderer [text]="item.text"></app-magic-text-renderer>
         </li>
       }
     </ol>
@@ -34,21 +33,12 @@ import { createSegmentedTexts } from './text-fragments';
       li {
         line-height: 1.3;
       }
-
-      span {
-        opacity: 1;
-        transition: opacity 0.5s ease;
-
-        @starting-style {
-          opacity: 0;
-        }
-      }
     `,
   ],
 })
 export class OrderedList {
   readonly items = input<string[]>([]);
-  readonly itemsWithFragments = computed(() =>
-    createSegmentedTexts(this.items()),
+  readonly itemsWithIds = computed(() =>
+    this.items().map((text, index) => ({ id: index, text })),
   );
 }

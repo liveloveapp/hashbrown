@@ -1,14 +1,13 @@
-import { Component, computed, input } from '@angular/core';
-import { createTextFragments } from './text-fragments';
+import { Component, input } from '@angular/core';
+import { MagicTextRenderer } from '../magic-text-renderer';
 
 @Component({
   selector: 'app-citation',
+  imports: [MagicTextRenderer],
   template: `
     <figure>
       <blockquote>
-        @for (fragment of fragments(); track fragment.id) {
-          <span>{{ fragment.text }}</span>
-        }
+        <app-magic-text-renderer [text]="text()"></app-magic-text-renderer>
       </blockquote>
 
       @if (source().trim().length > 0) {
@@ -43,20 +42,10 @@ import { createTextFragments } from './text-fragments';
         text-align: right;
         color: var(--gray-medium);
       }
-
-      span {
-        opacity: 1;
-        transition: opacity 0.5s ease;
-
-        @starting-style {
-          opacity: 0;
-        }
-      }
     `,
   ],
 })
 export class Citation {
   readonly text = input.required<string>();
   readonly source = input('');
-  readonly fragments = computed(() => createTextFragments(this.text()));
 }
