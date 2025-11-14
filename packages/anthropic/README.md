@@ -59,7 +59,7 @@ const stream = HashbrownAnthropic.stream.text({
   apiKey: process.env.ANTHROPIC_API_KEY!,
   baseURL: 'https://api.anthropic.com', // Optional custom base URL
   request: {
-    model: 'claude-3-5-sonnet-20241022',
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
     system: 'You are a helpful assistant.',
     messages: [
       {
@@ -134,13 +134,10 @@ An async iterable that yields `Uint8Array` chunks encoded with Hashbrown's frame
 
 ## Models
 
-The adapter supports all Anthropic Claude models:
-
-- `claude-3-5-sonnet-20241022` (recommended)
-- `claude-3-5-haiku-20241022`
-- `claude-3-opus-20240229`
-- `claude-3-sonnet-20240229`
-- `claude-3-haiku-20240307`
+The adapter supports all Anthropic Claude models. We currently recommend using
+`claude-haiku-4-5-20251001`, which is widely available for streaming and tool
+calling. Switch to newer releases by setting the `ANTHROPIC_MODEL` environment
+variable.
 
 ## Docs
 
