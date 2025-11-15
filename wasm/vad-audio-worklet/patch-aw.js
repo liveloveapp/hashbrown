@@ -4,10 +4,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const awFile = path.join(__dirname, 'output', 'audio_worklet_essentials.aw.js');
+const awFile = path.join(__dirname, 'output', 'vad_audio_worklet.aw.js');
 
 if (!fs.existsSync(awFile)) {
-  console.error('audio_worklet_essentials.aw.js not found');
+  console.error('vad_audio_worklet.aw.js not found');
   process.exit(1);
 }
 
@@ -19,9 +19,9 @@ const polyfill = `(function(){if(typeof URL==="undefined"){const parseUrl=functi
 // Only add polyfill if URL is not already defined (avoid duplicates)
 if (!originalContent.includes('if(typeof URL==="undefined")')) {
   originalContent = polyfill + originalContent;
-  console.log('Added URL polyfill to audio_worklet_essentials.aw.js');
+  console.log('Added URL polyfill to vad_audio_worklet.aw.js');
 } else {
-  console.log('URL polyfill already present in audio_worklet_essentials.aw.js');
+  console.log('URL polyfill already present in vad_audio_worklet.aw.js');
 }
 
 // Modify the message handler to forward custom integer messages
@@ -49,4 +49,4 @@ if (originalContent.includes('p.onmessage=msg=>{')) {
 }
 
 fs.writeFileSync(awFile, originalContent, 'utf8');
-console.log('Patched audio_worklet_essentials.aw.js successfully');
+console.log('Patched vad_audio_worklet.aw.js successfully');

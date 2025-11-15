@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 echo "================================================"
-echo "Audio Worklet Essentials WASM Builder (Docker)"
+echo "VAD Audio Worklet WASM Builder (Docker)"
 echo "================================================"
 echo ""
 
@@ -25,12 +25,12 @@ mkdir -p "$OUTPUT_DIR"
 
 # Build the Docker image and extract artifacts
 echo "Building Docker image..."
-docker build -t audio-worklet-essentials-builder "$SCRIPT_DIR"
+docker build -t vad-audio-worklet-builder "$SCRIPT_DIR"
 
 # Run the container and extract build artifacts
 echo ""
 echo "Running build container..."
-docker run --rm -v "$OUTPUT_DIR:/dist" audio-worklet-essentials-builder
+docker run --rm -v "$OUTPUT_DIR:/dist" vad-audio-worklet-builder
 
 # Update build info to indicate Docker build
 if [ -f "$OUTPUT_DIR/build-info.json" ]; then
@@ -44,7 +44,7 @@ if [ -f "$OUTPUT_DIR/build-info.json" ]; then
 fi
 
 # Patch the .aw.js file with URL polyfill
-if [ -f "$OUTPUT_DIR/audio_worklet_essentials.aw.js" ]; then
+if [ -f "$OUTPUT_DIR/vad_audio_worklet.aw.js" ]; then
     echo ""
     echo "Adding URL polyfill to audio worklet file..."
     node "$SCRIPT_DIR/patch-aw.js"

@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Audio Worklet Mic Input Test</title>
+    <title>Audio Worklet Voice Activity Detection</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -22,39 +22,49 @@
         background: #f0f0f0;
         border-radius: 4px;
       }
-      #magnitude {
-        font-size: 48px;
-        font-weight: bold;
-        color: #333;
+      #vadIndicator {
         margin: 20px 0;
+        padding: 40px;
+        border-radius: 10px;
+        font-size: 32px;
+        font-weight: bold;
         text-align: center;
-        min-height: 60px;
+        transition: all 0.2s ease;
+        min-height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      #magnitudeBar {
-        width: 100%;
-        height: 30px;
-        background: #e0e0e0;
-        border-radius: 15px;
-        overflow: hidden;
-        margin: 10px 0;
+      #vadIndicator.voice {
+        background-color: #28a745;
+        color: white;
       }
-      #magnitudeBarFill {
-        height: 100%;
-        background: linear-gradient(to right, #4caf50, #ff9800, #f44336);
-        width: 0%;
-        transition: width 0.1s;
+      #vadIndicator.no-voice {
+        background-color: #6c757d;
+        color: white;
+      }
+      #vadIndicator.idle {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        border: 2px dashed #dee2e6;
       }
     </style>
   </head>
   <body>
-    <h1>Audio Worklet Microphone Input</h1>
+    <h1>Audio Worklet Voice Activity Detection</h1>
     <button onclick="start()" id="startBtn">Start</button>
     <button onclick="stop()" id="stopBtn" disabled>Stop</button>
-    <div id="status">Click Start to begin microphone input processing</div>
-    <div id="magnitude">--</div>
-    <div id="magnitudeBar">
-      <div id="magnitudeBarFill"></div>
+    <div id="status">Click Start to begin voice activity detection</div>
+    <div style="margin: 20px 0">
+      <label for="modeSelect">VAD Mode:</label>
+      <select id="modeSelect">
+        <option value="0">0 - Least Aggressive (Most Sensitive)</option>
+        <option value="1">1 - Low Bitrate</option>
+        <option value="2" selected>2 - Aggressive</option>
+        <option value="3">3 - Most Aggressive (Least Sensitive)</option>
+      </select>
     </div>
+    <div id="vadIndicator" class="idle">Not Recording</div>
     <script type="module">
       let M;
       let audioContext;
@@ -62,15 +72,17 @@
       let workletNode;
       let isRunning = false;
 
-      window.logIntegerFromWorklet = (v) => {
-        const magnitudeEl = document.getElementById('magnitude');
-        const barFill = document.getElementById('magnitudeBarFill');
-        // v is magnitude scaled by 1000, so max is around 1000 (for full scale audio)
-        magnitudeEl.textContent = v;
-        // Update bar (scale to percentage, cap at 100%)
-        const percentage = Math.min((v / 1000) * 100, 100);
-        barFill.style.width = percentage + '%';
-        console.log('Magnitude:', v);
+      window.logVADDecisionFromWorklet = (decision) => {
+        const vadIndicator = document.getElementById('vadIndicator');
+        // decision: 1 = voice, 0 = no voice
+        if (decision === 1) {
+          vadIndicator.textContent = '🎤 VOICE DETECTED';
+          vadIndicator.className = 'voice';
+        } else {
+          vadIndicator.textContent = 'No Voice';
+          vadIndicator.className = 'no-voice';
+        }
+        console.log('VAD decision:', decision === 1 ? 'VOICE' : 'NO VOICE');
       };
 
       const orig = AudioWorklet.prototype.addModule;
@@ -166,12 +178,12 @@
 
       try {
         M = await (
-          await import('./output/audio_worklet_essentials.js')
+          await import('./output/vad_audio_worklet.js')
         ).default({
           locateFile: (p, pre) =>
             p.match(/\.(wasm|aw\.js|ww\.js)$/) ? './output/' + p : pre + p,
           mainScriptUrlOrBlob: new URL(
-            './output/audio_worklet_essentials.js',
+            './output/vad_audio_worklet.js',
             location,
           ).href,
           onRuntimeInitialized: () => {
@@ -196,6 +208,20 @@
               if (!window.audioWorkletReady) {
                 console.log('Waiting for audioWorkletReady...');
                 return; // Keep waiting
+              }
+
+              // Set initial VAD mode once worklet is ready
+              if (!window.vadModeInitialized) {
+                const modeSelect = document.getElementById('modeSelect');
+                const setVADMode = M.cwrap('SetVADMode', 'number', ['number']);
+                const initialMode = parseInt(modeSelect.value);
+                const result = setVADMode(initialMode);
+                if (result === 0) {
+                  console.log('Initial VAD mode set to:', initialMode);
+                  window.vadModeInitialized = true;
+                } else {
+                  console.warn('Failed to set initial VAD mode:', result);
+                }
               }
 
               console.log(
@@ -300,9 +326,39 @@
           document.getElementById('startBtn').disabled = false;
           document.getElementById('stopBtn').disabled = true;
           document.getElementById('status').textContent = 'Stopped';
-          document.getElementById('magnitude').textContent = '--';
-          document.getElementById('magnitudeBarFill').style.width = '0%';
+          const vadIndicator = document.getElementById('vadIndicator');
+          vadIndicator.textContent = 'Not Recording';
+          vadIndicator.className = 'idle';
         };
+
+        // Set up VAD mode selector
+        const modeSelect = document.getElementById('modeSelect');
+        modeSelect.addEventListener('change', function () {
+          if (M && M.cwrap) {
+            try {
+              const setVADMode = M.cwrap('SetVADMode', 'number', ['number']);
+              const mode = parseInt(this.value);
+              const result = setVADMode(mode);
+              if (result === 0) {
+                document.getElementById('status').textContent =
+                  `VAD mode changed to ${mode}`;
+                console.log('VAD mode changed to:', mode);
+              } else {
+                document.getElementById('status').textContent =
+                  `Failed to change VAD mode (error: ${result})`;
+                console.error('Failed to change VAD mode:', result);
+              }
+            } catch (error) {
+              document.getElementById('status').textContent =
+                `Error changing VAD mode: ${error.message}`;
+              console.error('Mode change error:', error);
+            }
+          } else {
+            console.warn(
+              'Module not ready yet, mode change will be applied after initialization',
+            );
+          }
+        });
       } catch (e) {
         console.error('Load error:', e);
         document.getElementById('status').textContent =
