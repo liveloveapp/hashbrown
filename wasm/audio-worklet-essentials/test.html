@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio Worklet Essentials Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      #status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        background-color: #f0f0f0;
+      }
+      #messages {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        min-height: 100px;
+        background-color: #fafafa;
+        font-family: monospace;
+        white-space: pre-wrap;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        margin: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Audio Worklet Essentials Test</h1>
+    <div id="status">Initializing...</div>
+    <button id="startBtn" onclick="startAudio()">Start Audio Context</button>
+    <div id="messages"></div>
+
+    <script type="module">
+      let Module = null;
+      let audioContext = null;
+
+      function log(message) {
+        const messagesDiv = document.getElementById('messages');
+        const timestamp = new Date().toLocaleTimeString();
+        messagesDiv.textContent += `[${timestamp}] ${message}\n`;
+        console.log(message);
+      }
+
+      // Function to receive integer from audio worklet (called via EM_ASM)
+      window.logIntegerFromWorklet = function (value) {
+        log(`Received integer from audio worklet: ${value}`);
+      };
+
+      function updateStatus(message) {
+        document.getElementById('status').textContent = message;
+      }
+
+      // Load the Emscripten module
+      async function loadModule() {
+        try {
+          updateStatus('Loading WASM module...');
+
+          // Import the module factory function (ES6 module)
+          const moduleImport = await import(
+            './output/audio_worklet_essentials.js'
+          );
+          const createAudioWorkletModule = moduleImport.default;
+
+          if (typeof createAudioWorkletModule !== 'function') {
+            throw new Error(
+              'createAudioWorkletModule is not a function. Got: ' +
+                typeof createAudioWorkletModule,
+            );
+          }
+
+          // Patch the audio worklet addModule to use correct paths BEFORE module initialization
+          // The generated code uses relative paths that need to be resolved to the output directory
+          const originalAddModule = AudioWorklet.prototype.addModule;
+          AudioWorklet.prototype.addModule = function (url) {
+            // If it's a relative path for our worklet files, resolve it to the output directory
+            if (
+              typeof url === 'string' &&
+              (url.endsWith('.aw.js') || url.endsWith('.ww.js'))
+            ) {
+              url = new URL('./output/' + url, window.location.href).href;
+            }
+            return originalAddModule.call(this, url);
+          };
+
+          // Configure module options
+          const moduleConfig = {
+            locateFile: function (path, prefix) {
+              // Resolve paths relative to the output directory
+              if (
+                path.endsWith('.wasm') ||
+                path.endsWith('.aw.js') ||
+                path.endsWith('.ww.js')
+              ) {
+                return './output/' + path;
+              }
+              return prefix + path;
+            },
+            mainScriptUrlOrBlob: new URL(
+              './output/audio_worklet_essentials.js',
+              window.location.href,
+            ).href,
+            onRuntimeInitialized: function () {
+              log('Module runtime initialized');
+              updateStatus(
+                'Module loaded. Click "Start Audio Context" to begin.',
+              );
+              document.getElementById('startBtn').disabled = false;
+            },
+            print: function (text) {
+              log(`C: ${text}`);
+            },
+            printErr: function (text) {
+              log(`C Error: ${text}`);
+            },
+          };
+
+          // Create the module instance (the function returns a Promise that resolves to the Module)
+          Module = await createAudioWorkletModule(moduleConfig);
+        } catch (error) {
+          log(`Error loading module: ${error}`);
+          updateStatus('Error loading module. Check console for details.');
+          console.error('Full error:', error);
+        }
+      }
+
+      // Start the audio context
+      window.startAudio = function () {
+        if (!Module) {
+          log('Module not loaded yet');
+          return;
+        }
+
+        try {
+          updateStatus('Starting audio context...');
+
+          // Call main() to initialize the audio worklet
+          Module._main();
+
+          log('Main function called - audio worklet should be initializing');
+
+          // No need to set up message handlers manually
+          // emscripten_audio_worklet_post_function_vi automatically handles
+          // posting the function call from the audio worklet to the main thread.
+          // The OnMessageFromAudioThread function will be called on the main thread
+          // and it uses EM_ASM to call window.logIntegerFromWorklet to log the integer.
+
+          // Wait a bit for initialization, then resume audio context
+          setTimeout(() => {
+            try {
+              // Resume the audio context to start processing
+              const resumeAudioContext = Module.cwrap(
+                'ResumeAudioContext',
+                null,
+                [],
+              );
+              if (resumeAudioContext) {
+                resumeAudioContext();
+                log('Attempted to resume audio context');
+              }
+              updateStatus(
+                'Audio context started. Check messages below for integer value.',
+              );
+            } catch (error) {
+              log(`Error resuming audio context: ${error}`);
+              updateStatus(
+                'Audio worklet initialized. Messages should appear below.',
+              );
+            }
+          }, 500);
+        } catch (error) {
+          log(`Error starting audio: ${error}`);
+          updateStatus('Error starting audio. Check console for details.');
+        }
+      };
+
+      // Load module on page load
+      loadModule();
+    </script>
+  </body>
+</html>
