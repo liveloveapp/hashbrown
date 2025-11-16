@@ -36,6 +36,7 @@ export {
   type ToolOptionsWithoutInput,
   type ToolOptionsWithUnknownSchema,
 } from './hooks/use-tool';
+export { useToolGroup } from './hooks/use-tool-group';
 export {
   useToolJavaScript,
   type UseToolJavaScriptOptions,
