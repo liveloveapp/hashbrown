@@ -7,4 +7,5 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/core',
+  testPathIgnorePatterns: ['<rootDir>/src/e2e/'],
 };
