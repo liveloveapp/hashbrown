@@ -32,6 +32,13 @@ export interface StructuredCompletionResourceRef<Output>
    * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+
+  /**
+   * Adds a message to the underlying chat.
+   * Note: When input changes, the chat will be reset to contain only the new input message.
+   * @param message - The message to add to the chat.
+   */
+  remix: (message: Chat.Message<Output, Chat.AnyTool>) => void;
 }
 
 /**
@@ -160,6 +167,10 @@ export function structuredCompletionResource<
     return Boolean(valueSignal());
   }
 
+  function remix(message: Chat.Message<Output, Chat.AnyTool>) {
+    resource.sendMessage(message);
+  }
+
   return {
     value,
     status,
@@ -169,6 +180,7 @@ export function structuredCompletionResource<
     isReceiving: resource.isReceiving,
     reload,
     stop,
+    remix,
     hasValue: hasValue as any,
   };
 }
