@@ -1,161 +1,137 @@
-import { NgComponentOutlet } from '@angular/common';
-import { Component, computed, input, Type } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
-import { AllRecipesIcon } from './all-recipes-icon';
-import { AquafinaIcon } from './aquafina-icon';
-import { ArbysIcon } from './arbys-icon';
-import { BakersPlusIcon } from './bakers-plus-icon';
-import { BurgerKingIcon } from './burger-king-icon';
-import { BurgerKingNewsIcon } from './burger-king-news-icon';
-import { BurgerKingOriginIcon } from './burger-king-origin-icon';
-import { CalorieKingIcon } from './calorie-king-icon';
-import { ChickFilAIcon } from './chick-fil-a-icon';
-import { ChipotleIcon } from './chipotle-icon';
-import { ChipotleIrIcon } from './chipotle-ir-icon';
-import { ChipotleNewsroomIcon } from './chipotle-newsroom-icon';
-import { CocaColaIcon } from './coca-cola-icon';
-import { CtfassetsIcon } from './ctfassets-icon';
-import { DairyQueenIcon } from './dairy-queen-icon';
-import { DairyQueenNewsIcon } from './dairy-queen-news-icon';
-import { DominosIcon } from './dominos-icon';
-import { DominosIrIcon } from './dominos-ir-icon';
-import { DrPepperIcon } from './dr-pepper-icon';
-import { FastFoodCaloriesIcon } from './fast-food-calories-icon';
-import { FastFoodNutritionIcon } from './fast-food-nutrition-icon';
-import { FastFoodPostIcon } from './fast-food-post-icon';
-import { FatSecretIcon } from './fat-secret-icon';
-import { FoodsFatSecretIcon } from './foods-fat-secret-icon';
-import { HealthyFastFoodIcon } from './healthy-fast-food-icon';
-import { HorizonIcon } from './horizon-icon';
-import { JackInTheBoxInvestorsIcon } from './jack-in-the-box-investors-icon';
-import { JackInTheBoxLocationsIcon } from './jack-in-the-box-locations-icon';
-import { KfcGlobalIcon } from './kfc-global-icon';
-import { KfcIcon } from './kfc-icon';
-import { KfcLocationsIcon } from './kfc-locations-icon';
-import { ManualsPlusIcon } from './manuals-plus-icon';
-import { McdonaldsIcon } from './mcdonalds-icon';
-import { McdonaldsMenuIcon } from './mcdonalds-menu-icon';
-import { McdsMenuIcon } from './mcds-menu-icon';
-import { MyFoodDiaryIcon } from './my-food-diary-icon';
-import { NutritionChartsIcon } from './nutrition-charts-icon';
-import { NutritionixIcon } from './nutritionix-icon';
-import { NutritionixMobileIcon } from './nutritionix-mobile-icon';
-import { OpenWaterIcon } from './open-water-icon';
-import { PepsiIcon } from './pepsi-icon';
-import { PepsicoProductFactsIcon } from './pepsico-product-facts-icon';
-import { PizzaHutBlogIcon } from './pizza-hut-blog-icon';
-import { PizzaHutIcon } from './pizza-hut-icon';
-import { PizzaHutLocationsIcon } from './pizza-hut-locations-icon';
-import { PopeyesIcon } from './popeyes-icon';
-import { PopeyesLoveIcon } from './popeyes-love-icon';
-import { PopeyesNewsIcon } from './popeyes-news-icon';
-import { PoppiIcon } from './poppi-icon';
-import { ScribdIcon } from './scribd-icon';
-import { SonicIcon } from './sonic-icon';
-import { SubwayIcon } from './subway-icon';
-import { SubwayNewsroomIcon } from './subway-newsroom-icon';
-import { SubwaySwcmsIcon } from './subway-swcms-icon';
-import { TacoBellIcon } from './taco-bell-icon';
-import { WebArchiveIcon } from './web-archive-icon';
-import { WendysIcon } from './wendys-icon';
-import { WendysLocationsIcon } from './wendys-locations-icon';
-import { WendysOrderIcon } from './wendys-order-icon';
-import { WikimediaUploadIcon } from './wikimedia-upload-icon';
+type FaviconConfig = Record<string, string>;
 
-type IconComponent = Type<unknown>;
+const FAVICON_BY_HOST: FaviconConfig = {
+  'allrecipes.com': '/favicons/www.allrecipes.com.ico',
+  'arbys.com': '/favicons/www.arbys.com.png',
+  'assets.ctfassets.net': '/favicons/assets.ctfassets.net.ico',
+  'bk.com': '/favicons/www.bk.com.ico',
+  'blog.pizzahut.com': '/favicons/blog.pizzahut.com.png',
+  'calorieking.com': '/favicons/www.calorieking.com.ico',
+  'chick-fil-a.com': '/favicons/www.chick-fil-a.com.png',
+  'chipotle.com': '/favicons/www.chipotle.com.png',
+  'coca-cola.com': '/favicons/www.coca-cola.com.ico',
+  'dairyqueen.com': '/favicons/www.dairyqueen.com.ico',
+  'dominos.com': '/favicons/www.dominos.com.ico',
+  'drinkopenwater.com': '/favicons/drinkopenwater.com.png',
+  'drinkpoppi.com': '/favicons/drinkpoppi.com.png',
+  'drpepper.com': '/favicons/www.drpepper.com.ico',
+  'fastfoodcalories.com': '/favicons/www.fastfoodcalories.com.png',
+  'fastfoodnutrition.org': '/favicons/fastfoodnutrition.org.ico',
+  'fastfoodpost.com': '/favicons/www.fastfoodpost.com.png',
+  'fatsecret.com': '/favicons/www.fatsecret.com.png',
+  'foods.fatsecret.com': '/favicons/foods.fatsecret.com.ico',
+  'global.kfc.com': '/favicons/global.kfc.com.ico',
+  'healthyfastfood.org': '/favicons/healthyfastfood.org.ico',
+  'horizon.com': '/favicons/horizon.com.ico',
+  'investors.jackinthebox.com': '/favicons/investors.jackinthebox.com.ico',
+  'ir.chipotle.com': '/favicons/ir.chipotle.com.ico',
+  'ir.dominos.com': '/favicons/ir.dominos.com.ico',
+  'locations.jackinthebox.com': '/favicons/locations.jackinthebox.com.ico',
+  'locations.kfc.com': '/favicons/locations.kfc.com.ico',
+  'locations.pizzahut.com': '/favicons/locations.pizzahut.com.ico',
+  'locations.wendys.com': '/favicons/locations.wendys.com.png',
+  'lovethatchickenfrom.popeyes.com':
+    '/favicons/lovethatchickenfrom.popeyes.com.png',
+  'm.nutritionix.com': '/favicons/m.nutritionix.com.ico',
+  'manuals.plus': '/favicons/manuals.plus.ico',
+  'mcdonalds.com': '/favicons/www.mcdonalds.com.ico',
+  'mcds-menu.com': '/favicons/www.mcds-menu.com.png',
+  'myfooddiary.com': '/favicons/www.myfooddiary.com.ico',
+  'news.bk.com': '/favicons/news.bk.com.png',
+  'news.dairyqueen.com': '/favicons/news.dairyqueen.com.ico',
+  'news.popeyes.com': '/favicons/news.popeyes.com.png',
+  'newsroom.chipotle.com': '/favicons/newsroom.chipotle.com.ico',
+  'newsroom.subway.com': '/favicons/newsroom.subway.com.png',
+  'nutrition-charts.com': '/favicons/www.nutrition-charts.com.jpg',
+  'nutritionix.com': '/favicons/www.nutritionix.com.ico',
+  'order.wendys.com': '/favicons/order.wendys.com.ico',
+  'popeyes.com': '/favicons/www.popeyes.com.ico',
+  'scribd.com': '/favicons/www.scribd.com.ico',
+  'sonicdrivein.com': '/favicons/www.sonicdrivein.com.png',
+  'subway.com': '/favicons/www.subway.com.ico',
+  'tacobell.com': '/favicons/www.tacobell.com.ico',
+  'upload.wikimedia.org': '/favicons/upload.wikimedia.org.ico',
+  'web.archive.org': '/favicons/web.archive.org.ico',
+  'wendys.com': '/favicons/www.wendys.com.ico',
+} as const;
 
-const ICON_BY_HOST: Record<string, IconComponent> = {
-  'fastfoodnutrition.org': FastFoodNutritionIcon,
-  'fatsecret.com': FatSecretIcon,
-  'mcdonalds.com': McdonaldsIcon,
-  'chick-fil-a.com': ChickFilAIcon,
-  'foods.fatsecret.com': FoodsFatSecretIcon,
-  'arbys.com': ArbysIcon,
-  'tacobell.com': TacoBellIcon,
-  'calorieking.com': CalorieKingIcon,
-  'sonicdrivein.com': SonicIcon,
-  'dairyqueen.com': DairyQueenIcon,
-  'lovethatchickenfrom.popeyes.com': PopeyesLoveIcon,
-  'wendys.com': WendysIcon,
-  'locations.jackinthebox.com': JackInTheBoxLocationsIcon,
-  'dominos.com': DominosIcon,
-  'pizzahut.com': PizzaHutIcon,
-  'coca-cola.com': CocaColaIcon,
-  'news.popeyes.com': PopeyesNewsIcon,
-  'origin.bk.com': BurgerKingOriginIcon,
-  'chipotle.com': ChipotleIcon,
-  'global.kfc.com': KfcGlobalIcon,
-  'subway.com': SubwayIcon,
-  'assets.ctfassets.net': CtfassetsIcon,
-  'locations.kfc.com': KfcLocationsIcon,
-  'pepsicoproductfacts.com': PepsicoProductFactsIcon,
-  'locations.pizzahut.com': PizzaHutLocationsIcon,
-  'ir.dominos.com': DominosIrIcon,
-  'investors.jackinthebox.com': JackInTheBoxInvestorsIcon,
-  'm.nutritionix.com': NutritionixMobileIcon,
-  'bk.com': BurgerKingIcon,
-  'news.bk.com': BurgerKingNewsIcon,
-  'newsroom.chipotle.com': ChipotleNewsroomIcon,
-  'drinkpoppi.com': PoppiIcon,
-  'horizon.com': HorizonIcon,
-  'kfc.com': KfcIcon,
-  'nutritionix.com': NutritionixIcon,
-  'pepsi.com': PepsiIcon,
-  'fastfoodcalories.com': FastFoodCaloriesIcon,
-  'mcdonalds-menu.org': McdonaldsMenuIcon,
-  'scribd.com': ScribdIcon,
-  'newsroom.subway.com': SubwayNewsroomIcon,
-  'manuals.plus': ManualsPlusIcon,
-  'allrecipes.com': AllRecipesIcon,
-  'upload.wikimedia.org': WikimediaUploadIcon,
-  'ir.chipotle.com': ChipotleIrIcon,
-  'drinkopenwater.com': OpenWaterIcon,
-  'bakersplus.com': BakersPlusIcon,
-  'news.dairyqueen.com': DairyQueenNewsIcon,
-  'healthyfastfood.org': HealthyFastFoodIcon,
-  'fastfoodpost.com': FastFoodPostIcon,
-  'aquafina.com': AquafinaIcon,
-  'drpepper.com': DrPepperIcon,
-  'mcds-menu.com': McdsMenuIcon,
-  'nutrition-charts.com': NutritionChartsIcon,
-  'blog.pizzahut.com': PizzaHutBlogIcon,
-  'myfooddiary.com': MyFoodDiaryIcon,
-  'popeyes.com': PopeyesIcon,
-  'swcms-w.subway.com': SubwaySwcmsIcon,
-  'web.archive.org': WebArchiveIcon,
-  'order.wendys.com': WendysOrderIcon,
-  'locations.wendys.com': WendysLocationsIcon,
+type IconDisplay = {
+  src?: string;
+  fallback: string;
 };
 
 @Component({
   selector: 'app-citation-icon',
   standalone: true,
-  imports: [NgComponentOutlet],
   template: `
-    @if (iconComponent(); as componentType) {
-      <span class="icon-wrapper">
-        <ng-container *ngComponentOutlet="componentType"></ng-container>
-      </span>
-    }
+    <span
+      class="icon-wrapper"
+      [class.icon-wrapper--image]="!!icon().src"
+      aria-hidden="true"
+    >
+      @if (icon().src; as src) {
+        <img
+          class="icon-image"
+          [src]="src"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
+      } @else {
+        <span class="icon-fallback">
+          {{ icon().fallback }}
+        </span>
+      }
+    </span>
   `,
   styles: [
     `
       :host {
         display: inline-flex;
-        opacity: 1;
-        transition: opacity 0.3s ease;
-
-        @starting-style {
-          opacity: 0;
-        }
       }
 
       .icon-wrapper {
+        --size: 16px;
+        width: var(--size);
+        height: var(--size);
+        border-radius: 4px;
+        color: #4c515d;
+        font-size: 0.65rem;
+        font-weight: 600;
+        line-height: 1;
         display: inline-flex;
-        position: relative;
-        top: -2px;
-        margin-left: 0px;
-        text-decoration: none;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        text-transform: uppercase;
+        background-color: var(--gray-dark);
+      }
+
+      .icon-image {
+        width: 75%;
+        height: 75%;
+        object-fit: cover;
+        display: block;
+        filter: grayscale(1);
+        opacity: 0.6;
+        transition:
+          filter 0.3s ease,
+          opacity 0.3s ease;
+
+        &:hover {
+          filter: grayscale(0);
+          opacity: 1;
+        }
+      }
+
+      .icon-fallback {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
       }
     `,
   ],
@@ -163,14 +139,25 @@ const ICON_BY_HOST: Record<string, IconComponent> = {
 export class CitationIcon {
   readonly url = input.required<string>();
 
-  protected readonly iconComponent = computed<IconComponent | null>(() => {
+  protected readonly icon = computed<IconDisplay>(() => {
     try {
-      const url = new URL(this.url());
-      const host = url.hostname.toLowerCase();
-      const normalized = host.startsWith('www.') ? host.slice(4) : host;
-      return ICON_BY_HOST[normalized] ?? ICON_BY_HOST[host] ?? null;
+      const parsed = new URL(this.url());
+      const host = parsed.hostname.toLowerCase();
+      const normalized = normalizeHost(host);
+      const src =
+        FAVICON_BY_HOST[normalized] ?? FAVICON_BY_HOST[host] ?? undefined;
+
+      return { src, fallback: fallbackLetter(normalized) };
     } catch {
-      return null;
+      return { src: undefined, fallback: '?' };
     }
   });
 }
+
+const normalizeHost = (hostname: string) =>
+  hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+
+const fallbackLetter = (hostname: string) => {
+  const match = hostname.replace(/^www\./, '').match(/[a-z0-9]/i);
+  return match ? match[0].toUpperCase() : '?';
+};
