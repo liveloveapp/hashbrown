@@ -123,12 +123,8 @@ describe('prepareMagicText', () => {
     ).toBe(false);
   });
 
-  it('numbers citations and flags missing definitions', () => {
-    const result = prepareMagicText('Method [^foo] and [^bar].', {
-      citations: [
-        { id: 'foo', text: 'Foo ref', href: 'https://example.com/foo' },
-      ],
-    });
+  it('numbers citations in order without requiring metadata', () => {
+    const result = prepareMagicText('Method [^foo] and [^bar].');
 
     const citations = result.fragments.filter(isCitationFragment);
 
@@ -139,11 +135,17 @@ describe('prepareMagicText', () => {
       ],
     );
     expect(result.meta.citationOrder).toEqual(['foo', 'bar']);
-    expect(result.warnings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: 'missing_citation', id: 'bar' }),
-      ]),
-    );
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('emits citation fragments even before their metadata arrives', () => {
+    const optimistic = prepareMagicText('Pending cite [^99] incoming.');
+    const optimisticCitation = optimistic.fragments.find(isCitationFragment);
+
+    expect(optimisticCitation?.citation).toMatchObject({
+      id: '99',
+    });
+    expect(optimistic.warnings).toEqual([]);
   });
 
   it('splits grapheme units when requested', () => {
