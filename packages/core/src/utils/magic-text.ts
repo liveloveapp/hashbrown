@@ -36,7 +36,6 @@ type ProvisionalPolicy = 'include' | 'whitespace-only' | 'drop';
 type ParseOptions = {
   allowedProtocols?: readonly string[];
   linkPolicy?: LinkPolicy;
-  citations?: Record<string, CitationDef> | CitationDef[];
   citationNumberingBase?: number;
   unit?: 'run' | 'grapheme' | 'word';
   segmenter?:
@@ -45,14 +44,6 @@ type ParseOptions = {
   emphasisIntraword?: boolean;
   schemaVersion?: 1;
   provisionalPolicy?: ProvisionalPolicy;
-};
-
-type CitationDef = {
-  id: string;
-  label?: string | number;
-  text?: string;
-  href?: string;
-  tooltip?: string;
 };
 
 type MagicParseResult = {
@@ -102,9 +93,6 @@ type CitationFragment = BaseFragment & {
   citation: {
     id: string;
     number: number | string;
-    missing?: boolean;
-    href?: string;
-    title?: string;
   };
 };
 
@@ -113,7 +101,6 @@ type Fragment = TextFragment | CitationFragment;
 type ParseWarning =
   | { code: 'unknown_link_attr'; key: string; range: [number, number] }
   | { code: 'disallowed_protocol'; href: string; range: [number, number] }
-  | { code: 'missing_citation'; id: string; range: [number, number] }
   | { code: 'unmatched_closer'; token: string; range: [number, number] }
   | {
       code: 'unterminated_construct';
@@ -132,7 +119,6 @@ type NormalizedOptions = Required<
   >
 > & {
   segmenter?: ParseOptions['segmenter'];
-  citations: Record<string, CitationDef>;
   provisionalPolicy: ProvisionalPolicy;
 };
 
@@ -180,11 +166,9 @@ type ParserContext = {
 };
 
 type CitationState = {
-  defs: Record<string, CitationDef>;
   order: string[];
   numbers: Map<string, number | string>;
   numberingBase: number;
-  warnings: ParseWarning[];
 };
 
 type TextSpan = {
@@ -279,7 +263,6 @@ function parseMagicText(
   const normalized: NormalizedOptions = {
     allowedProtocols: options.allowedProtocols ?? DEFAULT_PROTOCOLS,
     linkPolicy: options.linkPolicy ?? 'sanitize',
-    citations: normalizeCitationDefs(options.citations),
     citationNumberingBase: options.citationNumberingBase ?? 1,
     unit: options.unit ?? 'run',
     segmenter: options.segmenter,
@@ -296,11 +279,9 @@ function parseMagicText(
     warnings,
     provisional,
     citationState: {
-      defs: normalized.citations,
       order: [],
       numbers: new Map(),
       numberingBase: normalized.citationNumberingBase,
-      warnings,
     },
     literalGuards: new Set(),
   };
@@ -350,23 +331,6 @@ function applyProvisionalPolicy<T extends Fragment>(
     }
     return false;
   });
-}
-
-function normalizeCitationDefs(
-  defs: ParseOptions['citations'],
-): Record<string, CitationDef> {
-  if (!defs) {
-    return {};
-  }
-  if (Array.isArray(defs)) {
-    return defs.reduce<Record<string, CitationDef>>((acc, def) => {
-      if (def && def.id) {
-        acc[def.id] = def;
-      }
-      return acc;
-    }, {});
-  }
-  return defs;
 }
 
 function parseInline(
@@ -1168,7 +1132,7 @@ function tryParseCitation(
     return null;
   }
   const id = ctx.input.slice(index + 2, close).trim();
-  const citation = resolveCitation(ctx, id, index, close + 1);
+  const citation = resolveCitation(ctx, id);
 
   return {
     node: {
@@ -1182,39 +1146,19 @@ function tryParseCitation(
   };
 }
 
-function resolveCitation(
-  ctx: ParserContext,
-  id: string,
-  rangeStart: number,
-  rangeEnd: number,
-) {
+function resolveCitation(ctx: ParserContext, id: string) {
   let citationNumber = ctx.citationState.numbers.get(id);
   if (citationNumber === undefined) {
     const ordinal =
       ctx.citationState.numberingBase + ctx.citationState.order.length;
     ctx.citationState.order.push(id);
-    const def = ctx.citationState.defs[id];
-    citationNumber = def?.label ?? ordinal;
+    citationNumber = ordinal;
     ctx.citationState.numbers.set(id, citationNumber);
-    if (!def) {
-      ctx.warnings.push({
-        code: 'missing_citation',
-        id,
-        range: [rangeStart, rangeEnd],
-      });
-    }
   }
   if (citationNumber === undefined) {
     throw new Error(`Unable to resolve citation number for "${id}"`);
   }
-  const def = ctx.citationState.defs[id];
-  return {
-    id,
-    number: citationNumber,
-    missing: !def ? true : undefined,
-    href: def?.href ?? `#cite-${id}`,
-    title: def?.tooltip ?? def?.text,
-  };
+  return { id, number: citationNumber };
 }
 
 function collectTextSpans(
