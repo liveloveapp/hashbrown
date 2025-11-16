@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fryHashbrown, s, Chat, Hashbrown } from '..';
+import { fryHashbrown, s, Chat, Hashbrown, ɵui } from '..';
 import {
   createHashbrownServer,
   expectWithOpenAIEval,
@@ -156,17 +156,56 @@ describe.each(e2eProviderMatrix)('%s provider E2E', (provider) => {
   });
 
   (provider.supportsUiChat ? test : test.skip)(
-    'supports multi-turn UI chat flows',
+    'renders UI chat components via structured UI schema',
     async () => {
+      const components = [
+        {
+          name: 'Card',
+          description: 'Container with heading and body',
+          component: () => null,
+          children: [
+            {
+              name: 'Heading',
+              description: 'Title text',
+              component: () => null,
+              children: 'text',
+            },
+            {
+              name: 'Body',
+              description: 'Body content',
+              component: () => null,
+              children: 'text',
+            },
+            {
+              name: 'CTA',
+              description: 'Call-to-action button',
+              component: () => null,
+              children: false,
+              props: {
+                label: s.string('Button label'),
+              },
+            },
+          ],
+        },
+      ];
+
       const hashbrown = fryHashbrown({
         debounce: 0,
         apiUrl: server.url,
         model: provider.model,
-        system: 'You are powering a UI chat demo for Hashbrown. Keep answers concise.',
+        emulateStructuredOutput: provider.emulateStructuredOutputs,
+        responseSchema: s.object('UI chat response', {
+          ui: s.streaming.array(
+            'Renderable components',
+            ɵui.createComponentSchema(components as any),
+          ),
+        }),
+        system:
+          'Return a UI layout as JSON using the provided components. Prefer a Card with Heading, Body, and CTA.',
         messages: [
           {
             role: 'user',
-            content: 'What is Hashbrown? Keep it short.',
+            content: 'Create a UI card summarizing Hashbrown.',
           },
         ],
       });
@@ -174,26 +213,72 @@ describe.each(e2eProviderMatrix)('%s provider E2E', (provider) => {
       const teardown = hashbrown.sizzle();
       await waitUntilHashbrownIsSettled(hashbrown);
 
-      hashbrown.sendMessage({
-        role: 'user',
-        content: 'Summarize that again with a friendly tone.',
-      });
-
-      await waitUntilHashbrownIsSettled(hashbrown);
       const assistantMessage = getLastAssistantMessage(hashbrown);
       teardown();
 
+      const uiContent = assistantMessage?.content as
+        | { ui?: Array<{ $tag?: string; $props?: Record<string, unknown> }> }
+        | undefined;
+
+      expect(uiContent?.ui?.length).toBeGreaterThan(0);
       await expectWithOpenAIEval({
-        candidate: assistantMessage?.content ?? '',
-        expectation: 'A friendly short summary of Hashbrown suitable for UI chat.',
-        rubric: 'Should be concise (<=40 words) and approachable.',
+        candidate: uiContent ?? {},
+        expectation:
+          'A JSON UI tree that uses a Card with Heading and Body plus a CTA button.',
+        rubric:
+          'The UI should include a Card node with at least Heading and Body children and a CTA element.',
         fallbackAssertion: () => {
-          expect(assistantMessage?.content?.length ?? 0).toBeGreaterThan(0);
-          expect(assistantMessage?.content?.length ?? 0).toBeLessThanOrEqual(200);
+          const card = uiContent?.ui?.find((node) => node.$tag === 'Card');
+          expect(card).toBeTruthy();
         },
       });
     },
   );
+
+  test('can update options mid-session and honor the new system prompt', async () => {
+    const hashbrown = fryHashbrown({
+      debounce: 0,
+      apiUrl: server.url,
+      model: provider.model,
+      system: 'Answer concisely about Hashbrown capabilities.',
+      messages: [
+        {
+          role: 'user',
+          content: 'Give me a one-sentence fact about Hashbrown.',
+        },
+      ],
+    });
+
+    const teardown = hashbrown.sizzle();
+    await waitUntilHashbrownIsSettled(hashbrown);
+
+    hashbrown.updateOptions({
+      system: 'Respond ONLY with a 2-word slogan that mentions Hashbrown.',
+    });
+
+    hashbrown.sendMessage({
+      role: 'user',
+      content: 'Share the slogan now.',
+    });
+
+    await waitUntilHashbrownIsSettled(hashbrown);
+    const assistantMessage = getLastAssistantMessage(hashbrown);
+    teardown();
+
+    await expectWithOpenAIEval({
+      candidate: assistantMessage?.content ?? '',
+      expectation: 'A two-word slogan referencing Hashbrown.',
+      rubric: 'Must be exactly two words and include the name Hashbrown.',
+      fallbackAssertion: () => {
+        const words = (assistantMessage?.content ?? '')
+          .toString()
+          .trim()
+          .split(/\s+/);
+        expect(words.length).toBeLessThanOrEqual(4);
+        expect(words.join(' ').toLowerCase()).toContain('hashbrown');
+      },
+    });
+  });
 });
 
 function getLastAssistantMessage(hashbrown: Hashbrown<any, any>) {
