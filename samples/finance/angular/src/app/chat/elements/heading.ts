@@ -66,7 +66,7 @@ type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
     h5,
     h6 {
       margin: 0;
-      font-weight: 600;
+      font-weight: 500;
       line-height: 1.2;
       color: var(--gray);
     }

@@ -2,10 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { type MagicTextFragment, prepareMagicText } from '@hashbrownai/core';
 import { LinkClickHandler } from './link-click-handler';
+import { CitationIcon } from './icons/citation-icon';
 
 @Component({
   selector: 'app-magic-text-renderer',
-  imports: [CommonModule],
+  imports: [CommonModule, CitationIcon],
   template: `
     @for (
       fragment of visibleFragments();
@@ -68,17 +69,37 @@ import { LinkClickHandler } from './link-click-handler';
           [style.--fragment-delay.ms]="0"
           [style.--fragment-duration.ms]="fragmentDuration"
         >
-          @if (fragment.citation.href) {
+          @if (
+            citationLookup().get(fragment.citation.id);
+            as resolvedCitation
+          ) {
             <a
-              [href]="fragment.citation.href"
+              class="citation-link"
+              data-allow-navigation="true"
+              [href]="resolvedCitation.url"
               rel="noopener noreferrer"
               target="_blank"
-              (click)="handleAnchorClick($event, fragment.citation.href)"
+              [attr.title]="fragment.text"
+              [attr.aria-label]="fragment.text"
             >
-              {{ fragment.text }}
+              <app-citation-icon
+                [url]="resolvedCitation.url"
+              ></app-citation-icon>
+              <span class="sr-only">{{ fragment.text }}</span>
             </a>
           } @else {
-            {{ fragment.text }}
+            <span
+              class="citation-placeholder"
+              [attr.aria-label]="fragment.text"
+            >
+              <span class="citation-placeholder-wrapper">
+                <span
+                  class="citation-placeholder-icon"
+                  aria-hidden="true"
+                ></span>
+              </span>
+              <span class="sr-only">{{ fragment.text }}</span>
+            </span>
           }
         </sup>
         <ng-container
@@ -166,9 +187,15 @@ import { LinkClickHandler } from './link-click-handler';
 
       .fragment {
         display: inline;
-        opacity: 1;
-        transition: opacity 1.5s ease;
+      }
 
+      span,
+      em,
+      strong,
+      sup,
+      code {
+        opacity: 1;
+        transition: opacity 1.2s ease;
         @starting-style {
           opacity: 0;
         }
@@ -186,6 +213,42 @@ import { LinkClickHandler } from './link-click-handler';
       .citation {
         font-size: 0.85em;
         margin-left: 2px;
+      }
+
+      .citation-link {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .citation-placeholder {
+        display: inline-flex;
+        align-items: center;
+        color: var(--sunshine-yellow-dark);
+      }
+
+      .citation-placeholder-wrapper {
+        display: inline-flex;
+        margin-right: 4px;
+      }
+
+      .citation-placeholder-icon {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background-color: transparent;
+        opacity: 0.5;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
       }
 
       .fragment-text {
@@ -213,11 +276,39 @@ export class MagicTextRenderer {
   private readonly linkClickHandler = inject(LinkClickHandler);
 
   readonly text = input.required<string>();
+  readonly citations = input<MagicTextRendererCitation[]>([]);
   protected readonly fragmentDuration = 220;
   protected readonly defaultLinkTarget = '_blank';
   protected readonly defaultLinkRel = 'noopener noreferrer';
+  private readonly normalizedCitations = computed<NormalizedCitation[]>(() => {
+    const entries = this.citations() ?? [];
+    const normalized: NormalizedCitation[] = [];
+    for (const citation of entries) {
+      if (
+        citation == null ||
+        (typeof citation.id !== 'number' && typeof citation.id !== 'string')
+      ) {
+        continue;
+      }
+      const id = String(citation.id).trim();
+      const url =
+        typeof citation.url === 'string' ? citation.url.trim() : undefined;
+      if (!id || !url) {
+        continue;
+      }
+      normalized.push({ id, url });
+    }
+    return normalized;
+  });
+  protected readonly citationLookup = computed(() => {
+    const lookup = new Map<string, NormalizedCitation>();
+    for (const citation of this.normalizedCitations()) {
+      lookup.set(citation.id, citation);
+    }
+    return lookup;
+  });
   protected readonly prepared = computed(() =>
-    prepareMagicText(this.text() ?? '', { unit: 'run' }),
+    prepareMagicText(this.text() ?? ''),
   );
   protected readonly visibleFragments = computed(
     () => this.prepared().fragments,
@@ -265,9 +356,19 @@ export class MagicTextRenderer {
       return;
     }
     const anchor = target.closest('a');
-    if (!anchor) {
+    if (!anchor || anchor.hasAttribute('data-allow-navigation')) {
       return;
     }
     event.preventDefault();
   }
 }
+
+type NormalizedCitation = {
+  id: string;
+  url: string;
+};
+
+export type MagicTextRendererCitation = {
+  id: number;
+  url: string;
+};
