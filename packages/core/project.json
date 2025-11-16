@@ -47,6 +47,14 @@
         "lintFilePatterns": ["packages/core/**/*.ts"]
       }
     },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/core/jest.e2e.config.ts",
+        "passWithNoTests": true
+      }
+    },
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],

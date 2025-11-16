@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [main]
+  pull_request_target:
+    types: [labeled]
   push:
     branches: [main]
 
@@ -34,3 +36,47 @@ jobs:
 
       - name: Lint, test, and build affected projects
         run: npx nx affected -t lint,test,build --parallel=3
+
+  e2e:
+    name: Core E2E (labeled)
+    needs: ci
+    if: ${{
+      (
+        github.event_name == 'pull_request' &&
+        contains(github.event.pull_request.labels.*.name, 'PR: Run E2E Tests')
+      ) || (
+        github.event_name == 'pull_request_target' &&
+        github.event.action == 'labeled' &&
+        github.event.label.name == 'PR: Run E2E Tests'
+      )
+    }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Hashbrown E2E matrix
+        run: npx nx run core:e2e
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
+          AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+          AZURE_OPENAI_MODEL: ${{ secrets.AZURE_OPENAI_MODEL }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_MODEL: ${{ secrets.GOOGLE_MODEL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
+          WRITER_API_KEY: ${{ secrets.WRITER_API_KEY }}
+          WRITER_MODEL: ${{ secrets.WRITER_MODEL }}

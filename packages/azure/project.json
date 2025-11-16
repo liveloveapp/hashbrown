@@ -39,14 +39,6 @@
         "passWithNoTests": true
       }
     },
-    "e2e": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/packages/azure"],
-      "options": {
-        "jestConfig": "packages/azure/jest.e2e.config.ts",
-        "passWithNoTests": true
-      }
-    },
     "nx-release-publish": {
       "options": {
         "packageRoot": "dist/{projectRoot}"
