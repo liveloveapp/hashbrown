@@ -156,7 +156,7 @@ filters to fetch the smallest slice of data that fully answers the prompt.
   - Colors: #fbbb52, #64afb5, #e88c4d, #616f36, #b76060 (use translucent fills for
     overlapping lines/areas).
   - Axis label color #282828; grid color rgba(0,0,0,0.12); title color
-    #3d3c3a.
+    rgba(94, 92, 90, 1).
   - Fonts: Fredoka (body 400, titles 900 at 18-32pt) and Roboto Mono for any code-like
     annotations.
 
@@ -223,11 +223,11 @@ renderChart({
         display: true,
         text: "McDonald's chicken sandwiches: protein vs calories",
         position: 'top',
-        color: '#3d3c3a',
+        color: 'rgba(94, 92, 90, 1)',
         align: 'center',
         font: {
           family: 'Fredoka, Arial, sans-serif',
-          weight: 900,
+          weight: 600,
           size: 18,
           lineHeight: 1.1,
         },
@@ -243,6 +243,12 @@ renderChart({
     scales: {
       x: {
         grid: { color: 'rgba(0,0,0,0.12)' },
+        title: {
+          display: true,
+          text: 'Menu items',
+          color: '#282828',
+          font: { family: 'Fredoka, Arial, sans-serif', size: 12, weight: 400 },
+        },
         ticks: {
           color: '#282828',
           font: { family: 'Fredoka, Arial, sans-serif', size: 16 },
@@ -251,6 +257,12 @@ renderChart({
       },
       y: {
         grid: { color: 'rgba(0,0,0,0.12)' },
+        title: {
+          display: true,
+          text: 'Amount (g / kcal)',
+          color: '#282828',
+          font: { family: 'Fredoka, Arial, sans-serif', size: 12, weight: 400 },
+        },
         ticks: {
           color: '#282828',
           font: { family: 'Fredoka, Arial, sans-serif', size: 16 },
@@ -278,7 +290,9 @@ renderChart({
       } @else if (completion.isSending()) {
         <div class="chart-overlay sending">Generating chart...</div>
       } @else if (completion.isReceiving()) {
-        <div class="chart-overlay code-loader"></div>
+        <div class="chart-overlay code-loader">
+          <app-code-loader [code]="code() ?? ''" />
+        </div>
       }
 
       @if (errorMessage()) {

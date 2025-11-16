@@ -7,7 +7,10 @@ import { MagicTextRenderer } from '../magic-text-renderer';
   preserveWhitespaces: false,
   template: `
     <p class="paragraph">
-      <app-magic-text-renderer [text]="text()"></app-magic-text-renderer>
+      <app-magic-text-renderer
+        [text]="text()"
+        [citations]="citations()"
+      ></app-magic-text-renderer>
     </p>
   `,
   host: {
@@ -22,11 +25,17 @@ import { MagicTextRenderer } from '../magic-text-renderer';
       }
 
       .paragraph {
-        line-height: 1.3;
+        line-height: 1.6;
       }
     `,
   ],
 })
 export class Paragraph {
   readonly text = input.required<string>();
+  readonly citations = input<ParagraphCitation[]>([]);
 }
+
+type ParagraphCitation = {
+  id: number;
+  url: string;
+};

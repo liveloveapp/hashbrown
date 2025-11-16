@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { Squircle } from '../squircle';
 import { searchFastFoodItemsTool } from './tools/search-fast-food-items';
 import { Chart } from './elements/chart';
+import { ExecutiveSummary } from './elements/executive-summary';
 import { Paragraph } from './elements/paragraph';
 import { Heading } from './elements/heading';
 import { Citation } from './elements/citation';
@@ -17,6 +18,7 @@ import { OrderedList } from './elements/ordered-list';
 import { UnorderedList } from './elements/unordered-list';
 import { LinkClickHandler } from './link-click-handler';
 import type { ChartType } from 'chart.js';
+import { HorizontalRule } from './elements/hr';
 
 const chartTypeHints: ChartType[] = [
   'bar',
@@ -119,7 +121,7 @@ const chartTypeHints: ChartType[] = [
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 48px 0 16px;
 
       .assistant-message-content {
         display: flex;
@@ -167,19 +169,28 @@ export class ChatPage implements LinkClickHandler {
         you mention a menu item so readers understand portion context.
       - Quote nutrients with explicit units (grams or milligrams) and weave in
         notable description details from the CSV.
-      - Always begin the response with an <h> component (level defaults to 2)
-        that serves as a clear title for the report.
-      - Sprinkle inline markdown links throughout the article. Invent fresh,
-        descriptive URLs (e.g., /high-protein-wrap or /sodium-ladders) so the
-        piece feels like an ephemeral Wikipedia—assume the same system prompt
-        generates those pages when clicked. Aim for at least one crafted link
-        per paragraph.
+      - Open every response with an <h> component configured with level="1" so
+        the report always begins with a strong title.
+      - Follow the heading immediately with an <executive-summary> component
+        that surfaces the top insights in 1-2 sentences rooted in the dataset,
+        followed by an <hr> component to separate the summary from the rest of 
+        the article.
+      - Sprinkle inline markdown links throughout the article, always using the
+        "[anchor text](/custom-slug)" format so links render with parentheses.
+        Invent fresh, descriptive URLs (e.g., /high-protein-wrap or
+        /sodium-ladders) so the piece feels like an ephemeral
+        Wikipedia—assume the same system prompt generates those pages when
+        clicked. Aim for at least one crafted link per paragraph.
       - Use the sources column to cite at least one URL when highlighting
         stand-out items, and mention last_audited dates when freshness matters.
+      - Inline citations as [^1] markers in each paragraph (multiple when insights draw from more than one source) and immediately push
+        { id: 1, url: 'https://example.com/source' } into that paragraph's
+        \`citations\` array so references stay in sync while streaming.
       - Highlight interesting contrasts (e.g., highest protein per 500 calories,
         sodium outliers, salad vs. non-salad categories) when relevant.
-      - Start every answer with a short overview paragraph and end with a
-        takeaway paragraph that explicitly states what the user should remember.
+      - After the summary, include a short overview paragraph via <p> and end
+        with a takeaway paragraph that explicitly states what the user should
+        remember.
       - Break the body into ordered sections (<h>, <p>, lists) so the reader can
         skim.
       - Use the provided UI components (<p>, <h2>, <blockquote>, <ol>, <ul>,
@@ -204,8 +215,18 @@ export class ChatPage implements LinkClickHandler {
 
       Example structure:
       <ui>
-        <h level="2" text="Subway turkey subs: sodium vs. protein" />
-        <p text="Call out the key takeaway grounded in the updated dataset." />
+        <h level="1" text="Subway turkey subs: sodium vs. protein" />
+        <executive-summary
+          text="Highlight the biggest surprise from the latest fastfood_v2.csv refresh and why it matters for diners."
+        />
+        <hr />
+        <p
+          text="Call out how Subway's turkey sub keeps protein high while sodium stays moderate, referencing the fastfoodnutrition.org breakout in [^1] and validating availability on Subway's own menu page in [^2]."
+          citations=${[
+            { id: 1, url: 'https://fastfoodnutrition.org/subway/turkey-sub' },
+            { id: 2, url: 'https://www.subway.com/en-us/menu' },
+          ]}
+        />
         <chart chart=${{
           chartType: 'scatter',
           prompt:
@@ -222,7 +243,7 @@ export class ChatPage implements LinkClickHandler {
           limit: 6,
           sortBy: 'protein',
         }} />
-        <p text="Summarize what the visualization shows about sodium trade-offs." />
+        <p text="Summarize what the visualization shows about sodium trade-offs." citations=${[]} />
         <chart chart=${{
           chartType: 'bar',
           prompt:
@@ -243,6 +264,21 @@ export class ChatPage implements LinkClickHandler {
     `,
     tools: [searchFastFoodItemsTool],
     components: [
+      exposeComponent(ExecutiveSummary, {
+        name: 'executive-summary',
+        description: `
+          Present a concise executive summary at the top of the article. Keep it
+          to one or two sentences that pull forward the sharpest dataset-backed
+          takeaways before the detailed analysis begins.
+        `,
+        input: {
+          text: s.streaming.string('The summary text stitched from the data'),
+        },
+      }),
+      exposeComponent(HorizontalRule, {
+        name: 'hr',
+        description: 'Show a horizontal rule to separate sections',
+      }),
       exposeComponent(Paragraph, {
         name: 'p',
         description: `
@@ -252,10 +288,17 @@ export class ChatPage implements LinkClickHandler {
           Examples:
           - **Headline:** _Give the TL;DR_ in bold + italics for emphasis.
           - Compare nutrients: 'Protein hits **42 g** while sodium stays under _720 mg_.'
-          - Cite sources inline like [Source PDF](https://example.com) and add [^doe2024] markers.
+          - Cite sources inline like [^1] and put the URL in the citations array.
         `,
         input: {
           text: s.streaming.string('The text to show in the paragraph'),
+          citations: s.streaming.array(
+            'The citations to show in the paragraph',
+            s.object('The citation', {
+              id: s.number('The number of the citation'),
+              url: s.string('The URL of the citation'),
+            }),
+          ),
         },
       }),
       exposeComponent(Heading, {
@@ -279,21 +322,37 @@ export class ChatPage implements LinkClickHandler {
       }),
       exposeComponent(OrderedList, {
         name: 'ol',
-        description: 'Display a numbered list',
+        description:
+          'Display a numbered list. Provide the shared citations array just like paragraphs so inline markers render consistently.',
         input: {
           items: s.streaming.array(
             'The ordered list entries',
             s.streaming.string('The content of a single list entry'),
           ),
+          citations: s.streaming.array(
+            'The citations to show in the list (reused for each entry)',
+            s.object('The citation', {
+              id: s.number('The number of the citation'),
+              url: s.string('The URL of the citation'),
+            }),
+          ),
         },
       }),
       exposeComponent(UnorderedList, {
         name: 'ul',
-        description: 'Display a bulleted list',
+        description:
+          'Display a bulleted list. Supply a shared citations array to keep numbering in sync with paragraphs.',
         input: {
           items: s.streaming.array(
             'The unordered list entries',
             s.streaming.string('The content of a single list entry'),
+          ),
+          citations: s.streaming.array(
+            'The citations to show in the list (reused for each entry)',
+            s.object('The citation', {
+              id: s.number('The number of the citation'),
+              url: s.string('The URL of the citation'),
+            }),
           ),
         },
       }),
