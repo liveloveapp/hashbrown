@@ -16,6 +16,9 @@ export {
   type UiChatMessageOutput,
   type UiChatResourceOptions,
   type UiChatResourceRef,
+  uiCompletionResource,
+  type UiCompletionResourceOptions,
+  type UiCompletionResourceRef,
 } from './resources';
 export { provideHashbrown, type ProvideHashbrownOptions } from './providers';
 export {
