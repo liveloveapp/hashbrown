@@ -38,5 +38,17 @@
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/liveloveapp"
+  },
+  "module": "./index.esm.js",
+  "main": "./index.cjs.js",
+  "types": "./index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.esm.js",
+      "require": "./index.cjs.js",
+      "default": "./index.cjs.js"
+    }
   }
 }

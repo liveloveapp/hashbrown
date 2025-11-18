@@ -22,7 +22,6 @@
         "tsConfig": "packages/core/tsconfig.lib.json",
         "outputPath": "dist/packages/core",
         "format": ["esm", "cjs"],
-        "generateExportsField": true,
         "outputFileName": "index",
         "outputFileExtensionForEsm": ".mjs",
         "outputFileExtensionForCjs": ".cjs",
