@@ -179,6 +179,7 @@ import { CitationIcon } from './icons/citation-icon';
     `
       :host {
         display: contents;
+        color: var(--gray);
       }
 
       a {

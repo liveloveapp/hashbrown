@@ -3,7 +3,7 @@ import {
   exposeComponent,
   RenderMessageComponent,
   structuredCompletionResource,
-  uiChatResource,
+  uiCompletionResource,
 } from '@hashbrownai/angular';
 import { prompt, s } from '@hashbrownai/core';
 import { FormsModule } from '@angular/forms';
@@ -36,7 +36,8 @@ const chartTypeHints: ChartType[] = [
   imports: [FormsModule, RenderMessageComponent, Squircle],
   providers: [{ provide: LinkClickHandler, useExisting: ChatPage }],
   template: `
-    @if (chat.value().length === 0) {
+    @let article = chat.value();
+    @if (!article) {
       <div class="initial-chat-state">
         <form (ngSubmit)="sendMessage($event)" appSquircle="16">
           <div
@@ -58,15 +59,12 @@ const chartTypeHints: ChartType[] = [
         </form>
       </div>
     } @else {
-      @let lastAssistantMessage = chat.lastAssistantMessage();
-      @if (lastAssistantMessage) {
-        <div class="assistant-message">
-          <hb-render-message
-            class="assistant-message-content"
-            [message]="lastAssistantMessage"
-          />
-        </div>
-      }
+      <div class="assistant-message">
+        <hb-render-message
+          class="assistant-message-content"
+          [message]="article"
+        />
+      </div>
     }
   `,
   styles: `
@@ -142,8 +140,9 @@ const chartTypeHints: ChartType[] = [
 export class ChatPage implements LinkClickHandler {
   readonly input = model('');
   readonly ephemeralLink = signal<null | string>(null);
+  private readonly completionPrompt = signal<string | null>(null);
 
-  chat = uiChatResource({
+  chat = uiCompletionResource({
     model: 'gpt-5-chat-latest',
     debugName: 'finance-chat',
     system: prompt`
@@ -177,13 +176,14 @@ export class ChatPage implements LinkClickHandler {
         the article.
       - Sprinkle inline markdown links throughout the article, always using the
         "[anchor text](/custom-slug)" format so links render with parentheses.
-        Invent fresh, descriptive URLs (e.g., /high-protein-wrap or
-        /sodium-ladders) so the piece feels like an ephemeral
+        Invent fresh, descriptive URLs (e.g., /?prompt=high-protein-wraps-at-subway or
+        /?prompt=sodium-ladders) so the piece feels like an ephemeral
         Wikipedia—assume the same system prompt generates those pages when
         clicked. Aim for at least one crafted link per paragraph.
       - Use the sources column to cite at least one URL when highlighting
         stand-out items, and mention last_audited dates when freshness matters.
-      - Inline citations as [^1] markers in each paragraph (multiple when insights draw from more than one source) and immediately push
+      - Inline citations as [^1] markers in each paragraph (multiple when insights 
+        draw from more than one source) and immediately push the following object
         { id: 1, url: 'https://example.com/source' } into that paragraph's
         \`citations\` array so references stay in sync while streaming.
       - Highlight interesting contrasts (e.g., highest protein per 500 calories,
@@ -221,7 +221,7 @@ export class ChatPage implements LinkClickHandler {
         />
         <hr />
         <p
-          text="Call out how Subway's turkey sub keeps protein high while sodium stays moderate, referencing the fastfoodnutrition.org breakout in [^1] and validating availability on Subway's own menu page in [^2]."
+          text="Call out how Subway's turkey sub keeps protein high while sodium stays moderate, referencing the fastfoodnutrition.org breakout in [^1] and validating availability on Subway's own menu page. [^2]"
           citations=${[
             { id: 1, url: 'https://fastfoodnutrition.org/subway/turkey-sub' },
             { id: 2, url: 'https://www.subway.com/en-us/menu' },
@@ -262,6 +262,7 @@ export class ChatPage implements LinkClickHandler {
         }} />
       </ui>
     `,
+    input: this.completionPrompt,
     tools: [searchFastFoodItemsTool],
     components: [
       exposeComponent(ExecutiveSummary, {
@@ -470,7 +471,7 @@ export class ChatPage implements LinkClickHandler {
     `,
     input: computed(() => {
       const link = this.ephemeralLink();
-      const articleContent = this.chat.lastAssistantMessage()?.content;
+      const articleContent = this.chat.value()?.content;
 
       if (!link || !articleContent) {
         return null;
@@ -501,7 +502,7 @@ export class ChatPage implements LinkClickHandler {
       const description = ephemeralLinkDescription();
       if (description) {
         this.ephemeralLink.set(null);
-        this.chat.sendMessage({ role: 'user', content: description });
+        this.requestArticle(description);
       }
     });
   }
@@ -510,20 +511,30 @@ export class ChatPage implements LinkClickHandler {
     $formSubmitEvent.preventDefault();
     const input = this.input();
 
-    if (input.trim()) {
-      this.chat.sendMessage({ role: 'user', content: input });
+    const trimmed = input.trim();
+    if (trimmed) {
+      this.requestArticle(trimmed);
       this.input.set('');
     }
   }
 
   onClickLink(url: string) {
-    this.chat.sendMessage({
-      role: 'user',
-      content: `
+    this.requestArticle(
+      `
       the user clicked the following link from your previous message: ${url}. 
       
       Generate the article content for the link  
-    `,
-    });
+    `.trim(),
+    );
+  }
+
+  private requestArticle(promptText: string) {
+    const normalized = promptText.trim();
+    if (!normalized) {
+      return;
+    }
+
+    this.completionPrompt.set(null);
+    this.completionPrompt.set(normalized);
   }
 }
