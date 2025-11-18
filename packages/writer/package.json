@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/writer",
-  "version": "0.4.0-rc.0",
+  "version": "0.4.0-rc.1",
   "description": "Writer provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -12,7 +12,7 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "peerDependencies": {
-    "@hashbrownai/core": "0.4.0-rc.0"
+    "@hashbrownai/core": "0.4.0-rc.1"
   },
   "dependencies": {
     "tslib": "^2.3.0",
