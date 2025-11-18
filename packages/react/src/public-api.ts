@@ -50,3 +50,8 @@ export {
   type UiErrorMessage,
   type UiUserMessage,
 } from './hooks/use-ui-chat';
+export {
+  useUiCompletion,
+  type UiCompletionOptions,
+  type UseUiCompletionResult,
+} from './hooks/use-ui-completion';
