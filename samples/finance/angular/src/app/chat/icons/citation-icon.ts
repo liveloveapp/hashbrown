@@ -64,7 +64,6 @@ type IconDisplay = {
 
 @Component({
   selector: 'app-citation-icon',
-  standalone: true,
   template: `
     <span
       class="icon-wrapper"
@@ -106,12 +105,18 @@ type IconDisplay = {
         justify-content: center;
         overflow: hidden;
         text-transform: uppercase;
-        background-color: var(--gray-dark);
+        background-color: white;
+        border: 1px solid var(--gray-light);
+
+        &:hover .icon-image {
+          filter: grayscale(0);
+          opacity: 1;
+        }
       }
 
       .icon-image {
-        width: 75%;
-        height: 75%;
+        width: 60%;
+        height: 60%;
         object-fit: cover;
         display: block;
         filter: grayscale(1);
@@ -119,11 +124,6 @@ type IconDisplay = {
         transition:
           filter 0.3s ease,
           opacity 0.3s ease;
-
-        &:hover {
-          filter: grayscale(0);
-          opacity: 1;
-        }
       }
 
       .icon-fallback {
