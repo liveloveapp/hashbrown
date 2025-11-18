@@ -34,6 +34,13 @@ export interface CompletionResourceRef extends Resource<string | null> {
    * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+
+  /**
+   * Adds a message to the underlying chat.
+   * Note: When input changes, the chat will be reset to contain only the new input message.
+   * @param message - The message to add to the chat.
+   */
+  remix: (message: Chat.Message<string, Chat.AnyTool>) => void;
 }
 
 /**
@@ -170,6 +177,10 @@ export function completionResource<Input>(
     hashbrown.stop(clearStreamingMessage);
   }
 
+  function remix(message: Chat.Message<string, Chat.AnyTool>) {
+    hashbrown.sendMessage(message);
+  }
+
   return {
     value,
     status,
@@ -177,6 +188,7 @@ export function completionResource<Input>(
     isLoading,
     reload,
     stop,
+    remix,
     hasValue: hasValue as any,
   };
 }

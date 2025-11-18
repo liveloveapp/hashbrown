@@ -89,6 +89,13 @@ export interface UseCompletionResult {
    * Whether the current request has exhausted retries.
    */
   exhaustedRetries: boolean;
+
+  /**
+   * Adds a message to the underlying chat.
+   * Note: When input changes, the chat will be reset to contain only the new input message.
+   * @param message - The message to add to the chat.
+   */
+  remix: (message: Chat.Message<string, Chat.AnyTool>) => void;
 }
 
 /**
@@ -146,5 +153,6 @@ export function useCompletion<Input>(
     isSending: chat.isSending,
     isRunningToolCalls: chat.isRunningToolCalls,
     exhaustedRetries: chat.exhaustedRetries,
+    remix: chat.sendMessage,
   };
 }
