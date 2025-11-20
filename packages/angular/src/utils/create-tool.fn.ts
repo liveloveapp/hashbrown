@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat, s } from '@hashbrownai/core';
-import {
-  inject,
-  Injector,
-  runInInjectionContext,
-  untracked,
-} from '@angular/core';
+import { Injector, runInInjectionContext, untracked } from '@angular/core';
 
 /**
  * Creates a tool with a schema.

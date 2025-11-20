@@ -19,31 +19,10 @@ const enum Token {
 const INLINE_WHITESPACE = /[\s\n\r\t]/;
 const ATTR_NAME = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
 
-type Segment = { segment: string; index: number; isWordLike?: boolean };
-
-type LinkPolicyFnResult =
-  | 'allow'
-  | 'drop'
-  | { href: string; rel?: string; target?: string };
-
-type LinkPolicy =
-  | 'sanitize'
-  | 'passthrough'
-  | ((href: string) => LinkPolicyFnResult);
-
-type ProvisionalPolicy = 'include' | 'whitespace-only' | 'drop';
-
-type ParseOptions = {
-  allowedProtocols?: readonly string[];
-  linkPolicy?: LinkPolicy;
-  citationNumberingBase?: number;
-  unit?: 'run' | 'grapheme' | 'word';
-  segmenter?:
-    | Intl.Segmenter
-    | ((text: string, unit: 'grapheme' | 'word') => Iterable<Segment>);
-  emphasisIntraword?: boolean;
-  schemaVersion?: 1;
-  provisionalPolicy?: ProvisionalPolicy;
+type ParserOptions = {
+  allowedProtocols: readonly string[];
+  citationNumberingBase: number;
+  emphasisIntraword: boolean;
 };
 
 type MagicParseResult = {
@@ -70,7 +49,7 @@ type LinkMark = {
   target?: string;
   rel?: string;
   unknownAttrs?: Record<string, string>;
-  policy: 'allowed' | 'rewritten';
+  policy: 'allowed';
 };
 
 type MarkSet = {
@@ -108,19 +87,7 @@ type ParseWarning =
       at: number;
     };
 
-type NormalizedOptions = Required<
-  Pick<
-    ParseOptions,
-    | 'allowedProtocols'
-    | 'linkPolicy'
-    | 'citationNumberingBase'
-    | 'unit'
-    | 'emphasisIntraword'
-  >
-> & {
-  segmenter?: ParseOptions['segmenter'];
-  provisionalPolicy: ProvisionalPolicy;
-};
+type NormalizedOptions = ParserOptions;
 
 type InlineNode =
   | {
@@ -179,25 +146,36 @@ type TextSpan = {
   lockMerge?: boolean;
 };
 
-type NormalizeFragmentsOptions = {
-  provisionalPolicy?: ProvisionalPolicy;
-  splitWhitespace?: boolean;
-  insertBoundaryWhitespace?: boolean;
+export type MagicTextTag = 'strong' | 'em';
+
+export type MagicTextHasWhitespace = {
+  before: boolean;
+  after: boolean;
+};
+
+export type MagicTextFragmentText = TextFragment & {
+  type: 'text';
+  key: string;
+  tags: MagicTextTag[];
+  wrappers: MagicTextTag[];
+  whitespace: FragmentWhitespace;
+  renderWhitespace: MagicTextHasWhitespace;
+  isCode: boolean;
+  isStatic: boolean;
+};
+
+export type MagicTextFragmentCitation = CitationFragment & {
+  type: 'citation';
+  key: string;
+  wrappers?: undefined;
+  whitespace: FragmentWhitespace;
+  renderWhitespace: MagicTextHasWhitespace;
+  isStatic: boolean;
 };
 
 export type MagicTextFragment =
-  | (TextFragment & {
-      type: 'text';
-      key: string;
-      wrappers: ('strong' | 'em')[];
-      whitespace: FragmentWhitespace;
-    })
-  | (CitationFragment & {
-      type: 'citation';
-      key: string;
-      wrappers?: undefined;
-      whitespace: FragmentWhitespace;
-    });
+  | MagicTextFragmentText
+  | MagicTextFragmentCitation;
 
 export type MagicTextResult = {
   fragments: MagicTextFragment[];
@@ -205,42 +183,24 @@ export type MagicTextResult = {
   meta: MagicParseResult['meta'];
 };
 
-export type MagicTextOptions = ParseOptions;
-
 type FragmentWhitespace = {
   before: boolean;
   after: boolean;
 };
 
-function normalizeFragments(
-  result: MagicParseResult,
-  options: NormalizeFragmentsOptions = {},
-): Fragment[] {
-  const policy = options.provisionalPolicy ?? 'include';
-  const splitWhitespace = options.splitWhitespace ?? false;
-  const insertBoundaryWhitespace =
-    options.insertBoundaryWhitespace ?? splitWhitespace;
-  let fragments = applyProvisionalPolicy([...result.fragments], policy);
-  if (splitWhitespace) {
-    fragments = splitWhitespaceFragments(fragments);
-  }
-  if (insertBoundaryWhitespace) {
-    fragments = insertBoundaryWhitespaceFragments(fragments);
-  }
-  return fragments;
-}
-
-export function prepareMagicText(
-  input: string,
-  options: MagicTextOptions = {},
-): MagicTextResult {
-  const parseResult = parseMagicText(input, options);
-  const normalized = normalizeFragments(parseResult, {
-    provisionalPolicy: 'include',
-  });
-  const whitespaceHints = computeWhitespaceHints(normalized);
-  const fragments = normalized.map((fragment, index) =>
-    toRenderFragment(fragment, whitespaceHints[index]),
+export function prepareMagicText(input: string): MagicTextResult {
+  const parseResult = parseMagicText(input);
+  const whitespaceHints = computeWhitespaceHints(parseResult.fragments);
+  const renderWhitespaceHints = computeRenderWhitespaceHints(
+    parseResult.fragments,
+    whitespaceHints,
+  );
+  const fragments = parseResult.fragments.map((fragment, index) =>
+    toRenderFragment(
+      fragment,
+      whitespaceHints[index],
+      renderWhitespaceHints[index],
+    ),
   );
 
   return {
@@ -250,24 +210,11 @@ export function prepareMagicText(
   };
 }
 
-function parseMagicText(
-  input: string,
-  options: ParseOptions = {},
-): MagicParseResult {
-  if (options.schemaVersion && options.schemaVersion !== 1) {
-    throw new Error(
-      `Unsupported MAGIC_TEXT schema version: ${options.schemaVersion}`,
-    );
-  }
-
+function parseMagicText(input: string): MagicParseResult {
   const normalized: NormalizedOptions = {
-    allowedProtocols: options.allowedProtocols ?? DEFAULT_PROTOCOLS,
-    linkPolicy: options.linkPolicy ?? 'sanitize',
-    citationNumberingBase: options.citationNumberingBase ?? 1,
-    unit: options.unit ?? 'run',
-    segmenter: options.segmenter,
-    emphasisIntraword: options.emphasisIntraword ?? true,
-    provisionalPolicy: options.provisionalPolicy ?? 'include',
+    allowedProtocols: DEFAULT_PROTOCOLS,
+    citationNumberingBase: 1,
+    emphasisIntraword: true,
   };
 
   const warnings: ParseWarning[] = [];
@@ -292,13 +239,12 @@ function parseMagicText(
   collectTextSpans(nodes, spans, { marks: {}, provisional: false });
   markProvisionalSpans(spans, ctx.provisional);
 
-  const textFragments = buildTextFragments(spans, ctx, normalized.unit);
-  const citationFragments = collectCitations(nodes, ctx, normalized.unit);
+  const textFragments = buildTextFragments(spans);
+  const citationFragments = collectCitations(nodes, ctx);
 
-  let fragments: Fragment[] = [];
-  fragments.push(...textFragments, ...citationFragments);
-  fragments.sort((a, b) => a.range.start - b.range.start);
-  fragments = applyProvisionalPolicy(fragments, normalized.provisionalPolicy);
+  const fragments = [...textFragments, ...citationFragments].sort(
+    (a, b) => a.range.start - b.range.start,
+  );
 
   return {
     fragments,
@@ -313,24 +259,6 @@ function parseMagicText(
       },
     },
   };
-}
-
-function applyProvisionalPolicy<T extends Fragment>(
-  fragments: T[],
-  policy: ProvisionalPolicy,
-): T[] {
-  if (policy === 'include') {
-    return fragments;
-  }
-  return fragments.filter((fragment) => {
-    if (fragment.state === 'final') {
-      return true;
-    }
-    if (policy === 'whitespace-only' && fragment.kind === 'text') {
-      return fragment.text.trim().length === 0;
-    }
-    return false;
-  });
 }
 
 function parseInline(
@@ -652,7 +580,12 @@ function shouldTreatAsEmphasisMarker(
     return !(isWordChar(prev) && isWordChar(next));
   }
   if (marker === '_') {
-    return !(isWordChar(prev) && isWordChar(next));
+    const prevIsWord = isWordChar(prev);
+    const nextIsWord = isWordChar(next);
+    if (prevIsWord && !nextIsWord) {
+      return false;
+    }
+    return !(prevIsWord && nextIsWord);
   }
   return true;
 }
@@ -1081,29 +1014,7 @@ function applyLinkPolicy(
   ctx: ParserContext,
   href: string,
   range: [number, number],
-): (LinkMark & { policy: 'allowed' | 'rewritten' }) | 'drop' {
-  const policy = ctx.options.linkPolicy;
-  if (typeof policy === 'function') {
-    const decision = policy(href);
-    if (decision === 'drop') {
-      ctx.warnings.push({ code: 'disallowed_protocol', href, range });
-      return 'drop';
-    }
-    if (decision === 'allow') {
-      return { href, policy: 'allowed' };
-    }
-    return {
-      href: decision.href,
-      rel: decision.rel,
-      target: decision.target,
-      policy: 'rewritten',
-    };
-  }
-
-  if (policy === 'passthrough') {
-    return { href, policy: 'allowed' };
-  }
-
+): LinkMark | 'drop' {
   const protocolMatch = href.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)/);
   if (protocolMatch) {
     const protocol = protocolMatch[1].toLowerCase();
@@ -1168,7 +1079,9 @@ function collectTextSpans(
 ) {
   for (const node of nodes) {
     if (node.type === 'text') {
-      const lockMerge = Boolean((node as any).__lockMerge);
+      const lockMerge = Boolean(
+        (node as { __lockMerge?: boolean })?.__lockMerge,
+      );
       if (!node.text) {
         continue;
       }
@@ -1182,7 +1095,9 @@ function collectTextSpans(
       continue;
     }
     if (node.type === 'code') {
-      const lockMerge = Boolean((node as any).__lockMerge);
+      const lockMerge = Boolean(
+        (node as { __lockMerge?: boolean })?.__lockMerge,
+      );
       spans.push({
         text: node.text,
         marks: { ...ctx.marks, code: true },
@@ -1228,7 +1143,6 @@ function markProvisionalSpans(spans: TextSpan[], starts: number[]) {
 function collectCitations(
   nodes: InlineNode[],
   ctx: ParserContext,
-  unit: 'run' | 'grapheme' | 'word',
 ): CitationFragment[] {
   const fragments: CitationFragment[] = [];
   for (const node of nodes) {
@@ -1245,78 +1159,51 @@ function collectCitations(
       });
     }
     if (node.type === 'em' || node.type === 'strong' || node.type === 'link') {
-      fragments.push(...collectCitations(node.children, ctx, unit));
+      fragments.push(...collectCitations(node.children, ctx));
     }
   }
   return fragments;
 }
 
-function buildTextFragments(
-  spans: TextSpan[],
-  ctx: ParserContext,
-  unit: 'run' | 'grapheme' | 'word',
-): TextFragment[] {
+function buildTextFragments(spans: TextSpan[]): TextFragment[] {
   const fragments: TextFragment[] = [];
-  if (unit === 'run') {
-    let current: TextSpan | null = null;
-    for (const span of spans) {
-      if (!span.text) {
-        continue;
-      }
-      if (!current) {
-        current = {
-          text: span.text,
-          marks: { ...span.marks },
-          sources: [...span.sources],
-          provisional: span.provisional,
-          lockMerge: span.lockMerge,
-        };
-        continue;
-      }
-      if (
-        span.provisional === current.provisional &&
-        marksEqual(span.marks, current.marks) &&
-        areSourcesAdjacent(current.sources, span.sources) &&
-        !span.lockMerge &&
-        !current.lockMerge
-      ) {
-        current.text += span.text;
-        current.sources.push(...span.sources);
-      } else {
-        fragments.push(spanToFragment(current, unit));
-        current = {
-          text: span.text,
-          marks: { ...span.marks },
-          sources: [...span.sources],
-          provisional: span.provisional,
-          lockMerge: span.lockMerge,
-        };
-      }
-    }
-    if (current) {
-      fragments.push(spanToFragment(current, unit));
-    }
-    return fragments;
-  }
-
-  const segmenter = createSegmentIterator(unit, ctx.options.segmenter);
+  let current: TextSpan | null = null;
   for (const span of spans) {
-    const segments = segmenter(span.text);
-    for (const seg of segments) {
-      if (!seg.segment) {
-        continue;
-      }
-      const startOffset = seg.index;
-      const endOffset = seg.index + seg.segment.length;
-      const sliced: TextSpan = {
-        text: seg.segment,
+    if (!span.text) {
+      continue;
+    }
+    if (!current) {
+      current = {
+        text: span.text,
         marks: { ...span.marks },
-        sources: span.sources.slice(startOffset, endOffset),
+        sources: [...span.sources],
         provisional: span.provisional,
         lockMerge: span.lockMerge,
       };
-      fragments.push(spanToFragment(sliced, unit));
+      continue;
     }
+    if (
+      span.provisional === current.provisional &&
+      marksEqual(span.marks, current.marks) &&
+      areSourcesAdjacent(current.sources, span.sources) &&
+      !span.lockMerge &&
+      !current.lockMerge
+    ) {
+      current.text += span.text;
+      current.sources.push(...span.sources);
+    } else {
+      fragments.push(spanToFragment(current));
+      current = {
+        text: span.text,
+        marks: { ...span.marks },
+        sources: [...span.sources],
+        provisional: span.provisional,
+        lockMerge: span.lockMerge,
+      };
+    }
+  }
+  if (current) {
+    fragments.push(spanToFragment(current));
   }
   return fragments;
 }
@@ -1328,10 +1215,7 @@ function areSourcesAdjacent(a: number[], b: number[]): boolean {
   return a[a.length - 1] + 1 === b[0];
 }
 
-function spanToFragment(
-  span: TextSpan,
-  unit: 'run' | 'grapheme' | 'word',
-): TextFragment {
+function spanToFragment(span: TextSpan): TextFragment {
   const start = span.sources.length ? span.sources[0] : 0;
   const endSource = span.sources.length
     ? span.sources[span.sources.length - 1]
@@ -1343,20 +1227,13 @@ function spanToFragment(
     range: { start, end: endSource + 1 },
     state: span.provisional ? 'provisional' : 'final',
     rev: 0,
-    id: buildFragmentId(unit, start),
+    id: buildFragmentId(start),
   };
   return fragment;
 }
 
-function buildFragmentId(
-  unit: 'run' | 'grapheme' | 'word',
-  start: number,
-): string {
-  if (unit === 'run') {
-    return `r:${start}`;
-  }
-  const prefix = unit === 'grapheme' ? 'g' : 'w';
-  return `${prefix}:${start}`;
+function buildFragmentId(start: number): string {
+  return `r:${start}`;
 }
 
 function marksEqual(a: MarkSet, b: MarkSet): boolean {
@@ -1383,68 +1260,6 @@ function linkEqual(a?: LinkMark, b?: LinkMark): boolean {
     a.rel === b.rel &&
     a.policy === b.policy
   );
-}
-
-type SegmentIterator = (text: string) => Segment[];
-
-function createSegmentIterator(
-  unit: 'grapheme' | 'word',
-  provided?: ParseOptions['segmenter'],
-): SegmentIterator {
-  if (provided instanceof Intl.Segmenter) {
-    return (text) => Array.from(provided.segment(text));
-  }
-  if (typeof provided === 'function') {
-    return (text) => Array.from(provided(text, unit));
-  }
-  try {
-    const intl = new Intl.Segmenter(undefined, { granularity: unit });
-    return (text) => Array.from(intl.segment(text));
-  } catch {
-    if (unit === 'grapheme') {
-      return fallbackGraphemeSegments;
-    }
-    return fallbackWordSegments;
-  }
-}
-
-function fallbackGraphemeSegments(text: string): Segment[] {
-  const segments: Segment[] = [];
-  let index = 0;
-  for (const char of Array.from(text)) {
-    segments.push({ segment: char, index });
-    index += char.length;
-  }
-  return segments;
-}
-
-function fallbackWordSegments(text: string): Segment[] {
-  const segments: Segment[] = [];
-  let index = 0;
-  while (index < text.length) {
-    const cp = readCodePoint(text, index);
-    if (!cp) {
-      break;
-    }
-    if (isWordChar(cp.value)) {
-      let word = cp.value;
-      let nextIndex = cp.nextIndex;
-      while (nextIndex < text.length) {
-        const inner = readCodePoint(text, nextIndex);
-        if (!inner || !isWordChar(inner.value)) {
-          break;
-        }
-        word += inner.value;
-        nextIndex = inner.nextIndex;
-      }
-      segments.push({ segment: word, index, isWordLike: true });
-      index = nextIndex;
-    } else {
-      segments.push({ segment: cp.value, index });
-      index = cp.nextIndex;
-    }
-  }
-  return segments;
 }
 
 function skipWhitespace(input: string, start: number, end: number): number {
@@ -1485,82 +1300,23 @@ function readCodePoint(text: string, index: number) {
   };
 }
 
-function splitWhitespaceFragments(fragments: Fragment[]): Fragment[] {
-  const result: Fragment[] = [];
-  for (const fragment of fragments) {
-    if (fragment.kind !== 'text' || !fragment.text) {
-      result.push(fragment);
-      continue;
-    }
-    const pieces = fragment.text.match(/\s+|\S+/g);
-    if (!pieces || pieces.length === 1) {
-      result.push(fragment);
-      continue;
-    }
-    let offset = fragment.range.start;
-    for (const piece of pieces) {
-      const length = piece.length;
-      result.push({
-        ...fragment,
-        id: `${fragment.id}:${offset}`,
-        text: piece,
-        range: { start: offset, end: offset + length },
-      });
-      offset += length;
-    }
-  }
-  return result;
-}
-
-function insertBoundaryWhitespaceFragments(fragments: Fragment[]): Fragment[] {
-  const result: Fragment[] = [];
-  for (let i = 0; i < fragments.length; i += 1) {
-    const current = fragments[i];
-    result.push(current);
-    const next = fragments[i + 1];
-    if (needsBoundaryGap(current, next)) {
-      result.push(createGapFragment(current as TextFragment));
-    }
-  }
-  return result;
-}
-
-function needsBoundaryGap(a?: Fragment, b?: Fragment): boolean {
-  return (
-    isRenderableText(a) &&
-    isRenderableText(b) &&
-    !a.text.endsWith(' ') &&
-    !b.text.startsWith(' ')
-  );
-}
-
-function isRenderableText(fragment?: Fragment): fragment is TextFragment {
-  return !!fragment && fragment.kind === 'text' && Boolean(fragment.text);
-}
-
-function createGapFragment(fragment: TextFragment): TextFragment {
-  return {
-    kind: 'text',
-    text: ' ',
-    marks: {},
-    range: { start: fragment.range.end, end: fragment.range.end + 1 },
-    state: 'final',
-    rev: fragment.rev,
-    id: `${fragment.id}/gap-${fragment.range.end}`,
-  };
-}
-
 function toRenderFragment(
   fragment: Fragment,
   whitespace: FragmentWhitespace,
+  renderWhitespace: MagicTextHasWhitespace,
 ): MagicTextFragment {
   if (fragment.kind === 'text') {
+    const tags = buildTags(fragment.marks);
     return {
       ...fragment,
       type: 'text',
       key: fragment.id,
-      wrappers: buildWrappers(fragment.marks),
+      tags,
+      wrappers: tags,
       whitespace,
+      renderWhitespace,
+      isCode: Boolean(fragment.marks.code),
+      isStatic: computeIsStatic(fragment),
     };
   }
   return {
@@ -1568,18 +1324,20 @@ function toRenderFragment(
     type: 'citation',
     key: fragment.id,
     whitespace,
+    renderWhitespace,
+    isStatic: computeIsStatic(fragment),
   };
 }
 
-function buildWrappers(marks: MarkSet): ('strong' | 'em')[] {
-  const wrappers: ('strong' | 'em')[] = [];
+function buildTags(marks: MarkSet): MagicTextTag[] {
+  const tags: MagicTextTag[] = [];
   if (marks.strong) {
-    wrappers.push('strong');
+    tags.push('strong');
   }
   if (marks.em) {
-    wrappers.push('em');
+    tags.push('em');
   }
-  return wrappers;
+  return tags;
 }
 
 function computeWhitespaceHints(fragments: Fragment[]): FragmentWhitespace[] {
@@ -1589,6 +1347,19 @@ function computeWhitespaceHints(fragments: Fragment[]): FragmentWhitespace[] {
     return {
       before: fragmentHasTrailingWhitespace(previous),
       after: fragmentHasLeadingWhitespace(next),
+    };
+  });
+}
+
+function computeRenderWhitespaceHints(
+  fragments: Fragment[],
+  whitespaceHints: FragmentWhitespace[],
+): MagicTextHasWhitespace[] {
+  return fragments.map((_, index) => {
+    const hint = whitespaceHints[index];
+    return {
+      before: Boolean(hint?.before),
+      after: Boolean(hint?.after),
     };
   });
 }
@@ -1607,4 +1378,14 @@ function fragmentHasTrailingWhitespace(fragment?: Fragment): boolean {
     fragment.text.length > 0 &&
     /\s$/.test(fragment.text[fragment.text.length - 1])
   );
+}
+
+function computeIsStatic(fragment: Fragment): boolean {
+  if (fragment.state === 'provisional') {
+    return true;
+  }
+  if (fragment.kind === 'text') {
+    return fragment.text.trim().length === 0;
+  }
+  return false;
 }
