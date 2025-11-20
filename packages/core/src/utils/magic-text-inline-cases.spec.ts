@@ -1,10 +1,51 @@
 /* eslint-disable no-useless-escape */
-import { type MagicTextFragment, prepareMagicText } from './magic-text';
+import {
+  INLINE_MARKDOWN_CASES,
+  withDefaultMarks,
+} from './magic-text-inline-cases';
+import {
+  type MagicTextFragment,
+  type MagicTextFragmentText,
+  prepareMagicText,
+} from './magic-text';
 
 type Position = 'before' | 'after';
 
-// Mirrors the Angular renderer's whitespace and normalization logic to produce
-// the final plain text seen by users.
+const BALANCED_QSR_CASE = INLINE_MARKDOWN_CASES.find((testCase) =>
+  testCase.name.includes('balanced quesadilla stats'),
+);
+
+describe('prepareMagicText inline cases', () => {
+  if (BALANCED_QSR_CASE) {
+    it('renders menu breakdown with expected whitespace', () => {
+      expect(renderMagicText(BALANCED_QSR_CASE.input)).toBe(
+        BALANCED_QSR_CASE.expectedText,
+      );
+    });
+  }
+
+  it.each(INLINE_MARKDOWN_CASES)(
+    '$name maps fragments and marks',
+    (testCase) => {
+      const fragments = prepareMagicText(testCase.input).fragments.filter(
+        (fragment): fragment is MagicTextFragmentText =>
+          fragment.type === 'text',
+      );
+
+      expect(fragments).toHaveLength(testCase.expectedFragments.length);
+
+      fragments.forEach((fragment, index) => {
+        const expected = testCase.expectedFragments[index];
+        expect(fragment.text).toBe(expected.text);
+        expect(fragment.state).toBe(expected.state);
+        expect(normalizeMarks(fragment)).toEqual(
+          withDefaultMarks(expected.marks),
+        );
+      });
+    },
+  );
+});
+
 function renderMagicText(input: string): string {
   const fragments = prepareMagicText(input).fragments;
 
@@ -40,10 +81,10 @@ function whitespaceContext(
   const next = fragments[index + 1];
 
   const startsTight = (frag: MagicTextFragment | undefined): boolean =>
-    frag?.type === 'text' && /^[,.;:!?|\)\]]/.test(frag.text.trim());
+    frag?.type === 'text' && /^[,.;:!?|)\]]/.test(frag.text.trim());
 
   const endsWithNoGap = (frag: MagicTextFragment | undefined): boolean =>
-    frag?.type === 'text' && /([\(\|])$/.test(frag.text.trim());
+    frag?.type === 'text' && /([(|])$/.test(frag.text.trim());
 
   if (position === 'before' && startsTight(fragment)) {
     render = false;
@@ -79,7 +120,7 @@ function normalizeFragmentText(
   }
 
   return text
-    .replace(/\s+([,.;:!?\\)])/g, '$1')
+    .replace(/\s+([,.;:!?\)])/g, '$1')
     .replace(/([\(])\s+/g, '$1')
     .replace(/\s+\)/g, ')')
     .replace(/\s*\|\s*/g, ' | ')
@@ -88,31 +129,11 @@ function normalizeFragmentText(
     .replace(/\s+/g, ' ');
 }
 
-describe('prepareMagicText whitespace', () => {
-  it('keeps space before citations and tight punctuation around links', () => {
-    const input =
-      'Among the current Taco Bell favorites, the [Cinnabon Delights 12 Pack](/items/cinnabon-delights) reaches 930 calories, 53 g fat, and 59 g sugar, yet only 9 g protein. [^1]';
-
-    expect(renderMagicText(input)).toBe(
-      'Among the current Taco Bell favorites, the Cinnabon Delights 12 Pack reaches 930 calories, 53 g fat, and 59 g sugar, yet only 9 g protein. [1]',
-    );
-  });
-
-  it('retains spaces before citations after italic text', () => {
-    const input = 'Finish with *italic* note [^2].';
-
-    expect(renderMagicText(input)).toBe('Finish with italic note [1].');
-  });
-
-  it('retains spaces before citations after bold text', () => {
-    const input = 'Finish with **bold** statement [^3].';
-
-    expect(renderMagicText(input)).toBe('Finish with bold statement [1].');
-  });
-
-  it('retains spaces before citations after linked text', () => {
-    const input = 'Link first [anchor](/a) then cite [^4].';
-
-    expect(renderMagicText(input)).toBe('Link first anchor then cite [1].');
-  });
-});
+function normalizeMarks(fragment: MagicTextFragmentText) {
+  return {
+    strong: Boolean(fragment.marks.strong),
+    em: Boolean(fragment.marks.em),
+    code: Boolean(fragment.marks.code),
+    linkHref: fragment.marks.link?.href,
+  };
+}

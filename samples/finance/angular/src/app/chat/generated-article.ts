@@ -1,4 +1,4 @@
-import { Component, computed, effect, model, signal } from '@angular/core';
+import { Component, input } from '@angular/core';
 import {
   exposeComponent,
   RenderMessageComponent,
@@ -6,8 +6,6 @@ import {
   uiCompletionResource,
 } from '@hashbrownai/angular';
 import { prompt, s } from '@hashbrownai/core';
-import { FormsModule } from '@angular/forms';
-import { Squircle } from '../squircle';
 import { searchFastFoodItemsTool } from './tools/search-fast-food-items';
 import { Chart } from './elements/chart';
 import { ExecutiveSummary } from './elements/executive-summary';
@@ -19,6 +17,7 @@ import { UnorderedList } from './elements/unordered-list';
 import { LinkClickHandler } from './link-click-handler';
 import type { ChartType } from 'chart.js';
 import { HorizontalRule } from './elements/hr';
+import { Article } from './agents/article-agent';
 
 const chartTypeHints: ChartType[] = [
   'bar',
@@ -32,32 +31,13 @@ const chartTypeHints: ChartType[] = [
 ];
 
 @Component({
-  selector: 'app-chat-page',
-  imports: [FormsModule, RenderMessageComponent, Squircle],
-  providers: [{ provide: LinkClickHandler, useExisting: ChatPage }],
+  selector: 'app-generated-article',
+  imports: [RenderMessageComponent],
+  providers: [{ provide: LinkClickHandler, useExisting: GeneratedArticle }],
   template: `
     @let article = chat.value();
     @if (!article) {
-      <div class="initial-chat-state">
-        <form (ngSubmit)="sendMessage($event)" appSquircle="16">
-          <div
-            appSquircle="12"
-            appSquircleBorderColor="rgba(0, 0, 0, 0.12)"
-            [appSquircleBorderWidth]="2"
-          >
-            <textarea
-              name="user-message"
-              [(ngModel)]="input"
-              rows="5"
-              cols="50"
-            ></textarea>
-          </div>
-
-          <button type="submit">
-            <span class="material-symbols-outlined"> arrow_right_alt </span>
-          </button>
-        </form>
-      </div>
+      Generating article...
     } @else {
       <div class="assistant-message">
         <hb-render-message
@@ -137,10 +117,8 @@ const chartTypeHints: ChartType[] = [
     }
   `,
 })
-export class ChatPage implements LinkClickHandler {
-  readonly input = model('');
-  readonly ephemeralLink = signal<null | string>(null);
-  private readonly completionPrompt = signal<string | null>(null);
+export class GeneratedArticle {
+  readonly article = input.required<Article>();
 
   chat = uiCompletionResource({
     model: 'gpt-5-chat-latest',
@@ -168,6 +146,8 @@ export class ChatPage implements LinkClickHandler {
         you mention a menu item so readers understand portion context.
       - Quote nutrients with explicit units (grams or milligrams) and weave in
         notable description details from the CSV.
+      - The dataset does not include pricing or marketing information. You cannot
+        make any claims about pricing or marketing.
       - Open every response with an <h> component configured with level="1" so
         the report always begins with a strong title.
       - Follow the heading immediately with an <executive-summary> component
@@ -176,8 +156,8 @@ export class ChatPage implements LinkClickHandler {
         the article.
       - Sprinkle inline markdown links throughout the article, always using the
         "[anchor text](/custom-slug)" format so links render with parentheses.
-        Invent fresh, descriptive URLs (e.g., /?prompt=high-protein-wraps-at-subway or
-        /?prompt=sodium-ladders) so the piece feels like an ephemeral
+        Invent fresh, descriptive URLs (e.g., /article/high-protein-wraps-at-subway or
+        /article/sodium-ladders) so the piece feels like an ephemeral
         Wikipedia—assume the same system prompt generates those pages when
         clicked. Aim for at least one crafted link per paragraph.
       - Use the sources column to cite at least one URL when highlighting
@@ -262,7 +242,7 @@ export class ChatPage implements LinkClickHandler {
         }} />
       </ui>
     `,
-    input: this.completionPrompt,
+    input: this.article,
     tools: [searchFastFoodItemsTool],
     components: [
       exposeComponent(ExecutiveSummary, {
@@ -469,72 +449,9 @@ export class ChatPage implements LinkClickHandler {
       Taco Bell bowls, highlighting mg of sodium per serving and listing lower
       sodium alternatives using fastfood_v2.csv."
     `,
-    input: computed(() => {
-      const link = this.ephemeralLink();
-      const articleContent = this.chat.value()?.content;
-
-      if (!link || !articleContent) {
-        return null;
-      }
-
-      console.log('link', link, articleContent);
-
-      return {
-        link,
-        articleContent,
-      };
-    }),
+    input: this.article,
     schema: s.object('The Result', {
       description: s.string('The description of the content of the page'),
     }),
   });
-
-  constructor() {
-    const ephemeralLinkDescription = computed(() => {
-      const result = this.ephemeralLinkGenerator.value();
-      if (result) {
-        return result.description;
-      }
-      return null;
-    });
-
-    effect(() => {
-      const description = ephemeralLinkDescription();
-      if (description) {
-        this.ephemeralLink.set(null);
-        this.requestArticle(description);
-      }
-    });
-  }
-
-  sendMessage($formSubmitEvent: SubmitEvent) {
-    $formSubmitEvent.preventDefault();
-    const input = this.input();
-
-    const trimmed = input.trim();
-    if (trimmed) {
-      this.requestArticle(trimmed);
-      this.input.set('');
-    }
-  }
-
-  onClickLink(url: string) {
-    this.requestArticle(
-      `
-      the user clicked the following link from your previous message: ${url}. 
-      
-      Generate the article content for the link  
-    `.trim(),
-    );
-  }
-
-  private requestArticle(promptText: string) {
-    const normalized = promptText.trim();
-    if (!normalized) {
-      return;
-    }
-
-    this.completionPrompt.set(null);
-    this.completionPrompt.set(normalized);
-  }
 }
