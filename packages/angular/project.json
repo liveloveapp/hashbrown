@@ -39,6 +39,9 @@
     "lint": {
       "executor": "@nx/eslint:lint"
     },
+    "test": {
+      "executor": "@analogjs/vitest-angular:test"
+    },
     "build-api-report": {
       "executor": "nx:run-commands",
       "options": {
