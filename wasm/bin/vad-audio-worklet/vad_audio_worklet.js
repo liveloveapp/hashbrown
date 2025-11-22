@@ -379,7 +379,7 @@ var createAudioWorkletModule = (() => {
       var info = { a: wasmImports };
       function receiveInstance(instance, module) {
         wasmExports = instance.exports;
-        wasmTable = wasmExports['A'];
+        wasmTable = wasmExports['y'];
         Module['wasmTable'] = wasmTable;
         addOnInit(wasmExports['l']);
         wasmModule = module;
@@ -952,40 +952,40 @@ var createAudioWorkletModule = (() => {
         a5,
         a6,
       ));
-    var _malloc = (Module['_malloc'] = (a0) =>
-      (_malloc = Module['_malloc'] = wasmExports['o'])(a0));
     var _WebRtcVad_Process = (Module['_WebRtcVad_Process'] = (a0, a1, a2, a3) =>
-      (_WebRtcVad_Process = Module['_WebRtcVad_Process'] = wasmExports['p'])(
+      (_WebRtcVad_Process = Module['_WebRtcVad_Process'] = wasmExports['o'])(
         a0,
         a1,
         a2,
         a3,
       ));
-    var _free = (Module['_free'] = (a0) =>
-      (_free = Module['_free'] = wasmExports['q'])(a0));
     var _ResumeAudioContext = (Module['_ResumeAudioContext'] = () =>
       (_ResumeAudioContext = Module['_ResumeAudioContext'] =
-        wasmExports['r'])());
+        wasmExports['p'])());
     var _GetAudioContextHandle = (Module['_GetAudioContextHandle'] = () =>
       (_GetAudioContextHandle = Module['_GetAudioContextHandle'] =
-        wasmExports['s'])());
+        wasmExports['q'])());
     var _SetVADMode = (Module['_SetVADMode'] = (a0) =>
-      (_SetVADMode = Module['_SetVADMode'] = wasmExports['t'])(a0));
+      (_SetVADMode = Module['_SetVADMode'] = wasmExports['r'])(a0));
     var _WebRtcVad_set_mode = (Module['_WebRtcVad_set_mode'] = (a0, a1) =>
-      (_WebRtcVad_set_mode = Module['_WebRtcVad_set_mode'] = wasmExports['u'])(
+      (_WebRtcVad_set_mode = Module['_WebRtcVad_set_mode'] = wasmExports['s'])(
         a0,
         a1,
       ));
     var _CleanupVAD = (Module['_CleanupVAD'] = () =>
-      (_CleanupVAD = Module['_CleanupVAD'] = wasmExports['v'])());
+      (_CleanupVAD = Module['_CleanupVAD'] = wasmExports['t'])());
     var _WebRtcVad_Free = (Module['_WebRtcVad_Free'] = (a0) =>
-      (_WebRtcVad_Free = Module['_WebRtcVad_Free'] = wasmExports['w'])(a0));
+      (_WebRtcVad_Free = Module['_WebRtcVad_Free'] = wasmExports['u'])(a0));
     var _WebRtcVad_Create = (Module['_WebRtcVad_Create'] = () =>
-      (_WebRtcVad_Create = Module['_WebRtcVad_Create'] = wasmExports['x'])());
+      (_WebRtcVad_Create = Module['_WebRtcVad_Create'] = wasmExports['v'])());
     var _WebRtcVad_Init = (Module['_WebRtcVad_Init'] = (a0) =>
-      (_WebRtcVad_Init = Module['_WebRtcVad_Init'] = wasmExports['y'])(a0));
+      (_WebRtcVad_Init = Module['_WebRtcVad_Init'] = wasmExports['w'])(a0));
     var _main = (Module['_main'] = (a0, a1) =>
-      (_main = Module['_main'] = wasmExports['z'])(a0, a1));
+      (_main = Module['_main'] = wasmExports['x'])(a0, a1));
+    var _malloc = (Module['_malloc'] = (a0) =>
+      (_malloc = Module['_malloc'] = wasmExports['z'])(a0));
+    var _free = (Module['_free'] = (a0) =>
+      (_free = Module['_free'] = wasmExports['A'])(a0));
     var _WebRtcVad_ValidRateAndFrameLength = (Module[
       '_WebRtcVad_ValidRateAndFrameLength'
     ] = (a0, a1) =>

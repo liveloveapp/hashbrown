@@ -144,14 +144,11 @@ int AudioProcess(int numInputs, const AudioSampleFrame *inputs,
     audioBufferCount += samplesToAdd;
     
     while (audioBufferCount >= VAD_FRAME_LENGTH) {
-      int16_t* vadFrame = (int16_t*)malloc(VAD_FRAME_LENGTH * sizeof(int16_t));
-      if (vadFrame) {
-        memcpy(vadFrame, audioBuffer, VAD_FRAME_LENGTH * sizeof(int16_t));
-        int vadDecision = WebRtcVad_Process(vadInstance, VAD_SAMPLE_RATE, vadFrame, VAD_FRAME_LENGTH);
-        if (vadDecision >= 0) {
-          emscripten_audio_worklet_post_function_vi(0, OnMessageFromAudioThread, vadDecision);
-        }
-        free(vadFrame);
+      int16_t vadFrame[VAD_FRAME_LENGTH];
+      memcpy(vadFrame, audioBuffer, VAD_FRAME_LENGTH * sizeof(int16_t));
+      int vadDecision = WebRtcVad_Process(vadInstance, VAD_SAMPLE_RATE, vadFrame, VAD_FRAME_LENGTH);
+      if (vadDecision >= 0) {
+        emscripten_audio_worklet_post_function_vi(0, OnMessageFromAudioThread, vadDecision);
       }
       memmove(audioBuffer, &audioBuffer[VAD_FRAME_LENGTH], 
               (audioBufferCount - VAD_FRAME_LENGTH) * sizeof(int16_t));
