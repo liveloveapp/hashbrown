@@ -20,6 +20,17 @@ export {
 export { useRuntime, type UseRuntimeOptions } from './hooks/use-runtime';
 export { useRuntimeFunction } from './hooks/use-runtime-function';
 export {
+  useRemoteAgent,
+  type RemoteAgentSendMessageInput,
+  type UseRemoteAgentOptions,
+  type UseRemoteAgentResult,
+} from './hooks/use-remote-agent';
+export {
+  RemoteToolsProvider,
+  useRemoteAgentTool,
+  type RemoteToolRegistration,
+} from './hooks/use-remote-agent-tool';
+export {
   useStructuredChat,
   type UseStructuredChatOptions,
   type UseStructuredChatResult,

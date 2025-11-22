@@ -1,0 +1,15 @@
+.agentSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.agentSelector select {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background-color: #fff;
+  font-size: 14px;
+  color: #333;
+}
