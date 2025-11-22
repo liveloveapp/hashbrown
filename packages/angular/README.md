@@ -43,6 +43,25 @@ Hashbrown supports multiple providers:
 - [Writer](https://hashbrown.dev/docs/angular/platform/writer)
 - [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
 
+## Magic Text Renderer
+
+Render streaming magic text from `@hashbrownai/core` with defaults or per-node overrides:
+
+```html
+<hb-magic-text-renderer [text]="text" [citations]="citations">
+  <ng-template hbMagicTextLink let-node="node">
+    <a [href]="node.href" (click)="onLink(node, $event)">{{ node.text }}</a>
+  </ng-template>
+
+  <ng-template hbMagicTextText let-node="node">
+    <span [class.code]="node.isCode">{{ node.text }}</span>
+  </ng-template>
+</hb-magic-text-renderer>
+```
+
+Inputs: `text` (string) and optional `citations` (`{ id: string; url: string }[]`).
+Outputs: `(linkClick)` and `(citationClick)` fire before navigation; the default handler prevents navigation unless the target opts in via `data-allow-navigation="true"`.
+
 ## Contributing
 
 hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.

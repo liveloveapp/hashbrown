@@ -223,8 +223,8 @@ export class ChatPage implements LinkClickHandler {
         <p
           text="Call out how Subway's turkey sub keeps protein high while sodium stays moderate, referencing the fastfoodnutrition.org breakout in [^1] and validating availability on Subway's own menu page. [^2]"
           citations=${[
-            { id: 1, url: 'https://fastfoodnutrition.org/subway/turkey-sub' },
-            { id: 2, url: 'https://www.subway.com/en-us/menu' },
+            { id: '1', url: 'https://fastfoodnutrition.org/subway/turkey-sub' },
+            { id: '2', url: 'https://www.subway.com/en-us/menu' },
           ]}
         />
         <chart chart=${{
@@ -296,7 +296,7 @@ export class ChatPage implements LinkClickHandler {
           citations: s.streaming.array(
             'The citations to show in the paragraph',
             s.object('The citation', {
-              id: s.number('The number of the citation'),
+              id: s.string('The number of the citation'),
               url: s.string('The URL of the citation'),
             }),
           ),
@@ -333,7 +333,7 @@ export class ChatPage implements LinkClickHandler {
           citations: s.streaming.array(
             'The citations to show in the list (reused for each entry)',
             s.object('The citation', {
-              id: s.number('The number of the citation'),
+              id: s.string('The number of the citation'),
               url: s.string('The URL of the citation'),
             }),
           ),
@@ -351,7 +351,7 @@ export class ChatPage implements LinkClickHandler {
           citations: s.streaming.array(
             'The citations to show in the list (reused for each entry)',
             s.object('The citation', {
-              id: s.number('The number of the citation'),
+              id: s.string('The number of the citation'),
               url: s.string('The URL of the citation'),
             }),
           ),

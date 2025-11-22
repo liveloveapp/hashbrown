@@ -36,6 +36,6 @@ export class Paragraph {
 }
 
 type ParagraphCitation = {
-  id: number;
+  id: string;
   url: string;
 };
