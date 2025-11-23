@@ -1,4 +1,18 @@
-export { RenderMessageComponent } from './components';
+export { RenderMessageComponent, MagicText } from './components';
+export {
+  MagicTextRenderCitation,
+  MagicTextRenderLink,
+  MagicTextRenderText,
+  MagicTextRenderWhitespace,
+  type MagicTextCitation,
+  type MagicTextCitationClickEvent,
+  type MagicTextRenderCitationContext,
+  type MagicTextLinkClickEvent,
+  type MagicTextRenderLinkContext,
+  type MagicTextRenderTextContext,
+  type MagicTextWhitespaceContext,
+  type MagicTextWhitespacePosition,
+} from './components';
 export {
   chatResource,
   type ChatResourceOptions,

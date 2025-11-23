@@ -1,8 +1,6 @@
 import { Component, computed, input } from '@angular/core';
-import {
-  MagicTextRenderer,
-  type MagicTextRendererCitation,
-} from '../magic-text-renderer';
+import { MagicTextCitation } from '@hashbrownai/angular';
+import { MagicTextRenderer } from '../magic-text-renderer';
 
 @Component({
   selector: 'app-unordered-list',
@@ -44,7 +42,7 @@ import {
 })
 export class UnorderedList {
   readonly items = input<string[]>([]);
-  readonly citations = input<MagicTextRendererCitation[]>([]);
+  readonly citations = input<MagicTextCitation[]>([]);
   readonly itemsWithIds = computed(() =>
     this.items().map((text, index) => ({
       id: index,
