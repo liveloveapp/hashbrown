@@ -1,22 +1,35 @@
 name: Netlify Preview
 
 on:
-  push:
-    tags:
-      - www/preview
+  pull_request:
+    types: [labeled, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 permissions:
   contents: read
   deployments: write
   pull-requests: write
 
+defaults:
+  run:
+    shell: bash -euo pipefail
+
 concurrency:
-  group: netlify-preview
+  group: netlify-preview-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   preview:
     name: Deploy preview to Netlify
+    # Run when:
+    # - a PR is labeled with www/preview, OR
+    # - new commits/PR state changes occur *and* the PR already has the label, OR
+    # - workflow_dispatch is triggered.
+    if: >
+      (github.event_name == 'pull_request' && (
+        (github.event.action == 'labeled' && github.event.label.name == 'www/preview') ||
+        (github.event.action != 'labeled' && contains(join(github.event.pull_request.labels.*.name, ','), 'www/preview'))
+      )) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -24,40 +37,81 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check secrets availability and fork status
+        id: secrets_check
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_WWW_SITE_ID }}
+        run: |
+          # workflow_dispatch always has access to secrets
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${NETLIFY_AUTH_TOKEN:-}" ] && [ -n "${NETLIFY_SITE_ID:-}" ]; then
+              echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Secrets not configured for workflow_dispatch"
+            fi
+          # Check if this is a forked PR
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::Forked PR detected. Secrets are not available for security reasons. Skipping deploy step gracefully."
+            elif [ -n "${NETLIFY_AUTH_TOKEN:-}" ] && [ -n "${NETLIFY_SITE_ID:-}" ]; then
+              echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Secrets not available. Skipping deploy step gracefully."
+            fi
+          else
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        if: steps.secrets_check.outputs.has_secrets == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Determine affected base
+        if: steps.secrets_check.outputs.has_secrets == 'true'
         uses: nrwl/nx-set-shas@v3
 
       - name: Install dependencies
+        if: steps.secrets_check.outputs.has_secrets == 'true'
         run: npm ci
 
       - name: Lint, test, and build affected projects
+        if: steps.secrets_check.outputs.has_secrets == 'true'
         run: npx nx affected -t lint,test,build --parallel=3
 
       - name: Build production bundle
+        if: steps.secrets_check.outputs.has_secrets == 'true'
         run: npx nx run www:build:production
+
+      - name: Prepare Netlify configuration
+        if: steps.secrets_check.outputs.has_secrets == 'true'
+        run: cp www/analog/netlify.toml netlify.toml
 
       - name: Deploy preview
         id: deploy
+        if: steps.secrets_check.outputs.has_secrets == 'true'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_WWW_SITE_ID }}
         run: |
           npx netlify-cli deploy \
+            --no-build \
             --auth "$NETLIFY_AUTH_TOKEN" \
             --site "$NETLIFY_SITE_ID" \
             --dir=dist/www/analog/analog/public \
             --functions=dist/www/analog/analog \
-            --edge-functions=dist/www/netlify \
             --message="Preview deploy for ${GITHUB_SHA}" \
             --json > deploy.json
           cat deploy.json
-          echo "preview_url=$(node -pe \"require('./deploy.json').deploy_url || ''\")" >> "$GITHUB_OUTPUT"
+          PREVIEW_URL=$(node -e "const d=require('./deploy.json');const u=d.deploy_url||d.url||'';if(!u){process.exit(1)};console.log(u)")
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
 
       - name: Comment preview link on PR
         if: steps.deploy.outputs.preview_url != ''
@@ -67,23 +121,12 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
-            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner,
-              repo,
-              commit_sha: context.sha,
-            });
-
-            if (!prs.data.length) {
-              core.info('No associated pull requests found for this commit; skipping comment.');
-              return;
-            }
-
-            const body = `🚀 Netlify preview ready: ${process.env.PREVIEW_URL}`;
-            for (const pr of prs.data) {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: pr.number,
-                body,
-              });
-            }
+            const prNumber = context.payload.pull_request?.number;
+            if (!prNumber) { return; }
+            const body = [
+              `🚀 **Netlify Preview Ready**`,
+              ``,
+              `**URL:** ${process.env.PREVIEW_URL}`,
+              `**Commit:** ${context.sha}`,
+            ].join('\n');
+            await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
