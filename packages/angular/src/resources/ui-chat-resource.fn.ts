@@ -150,8 +150,6 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     () => {
       const messages = chat.value();
 
-      console.log(messages);
-
       return messages.map((message): UiChatMessage<Tools> => {
         if (message.role === 'assistant') {
           const content = message.content as

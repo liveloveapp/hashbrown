@@ -166,7 +166,6 @@ export const selectViewMessages = select(
   selectNonStreamingViewMessages,
   selectStreamingViewMessages,
   (nonStreamingMessages, streamingMessages) => {
-    console.log(streamingMessages);
     return [...nonStreamingMessages, ...streamingMessages];
   },
 );

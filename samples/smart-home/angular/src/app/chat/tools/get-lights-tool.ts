@@ -8,8 +8,6 @@ export const getLightsTools = createTool({
   handler: () => {
     const smartHome = inject(SmartHome);
 
-    console.log('in getLights');
-
     return smartHome.fetchLights();
   },
 });

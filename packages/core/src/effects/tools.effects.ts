@@ -32,21 +32,12 @@ export const runTools = createEffect((store) => {
 
         return Promise.resolve(tool.handler(args, abortController.signal));
       } catch (error) {
-        console.log('tools.effects error handling');
-        console.log(error);
         // We may have received unnecessarily escaped input, so try
         // again with JSON.parse
         if (
           error instanceof Error &&
           error.message.includes('Expected an object at')
         ) {
-          console.log(tool.schema);
-          console.log(
-            s.isHashbrownType(tool.schema)
-              ? tool.schema.toJsonSchema()
-              : 'not hb type',
-          );
-          console.log(toolCall.arguments);
           try {
             const args = s.isHashbrownType(tool.schema)
               ? tool.schema.parseJsonSchema(
