@@ -42,6 +42,23 @@ app.post('/chat', async (req, res) => {
 });
 ```
 
+In the UI package for your chosen framework, set the emulateStructuredOutput flag to true.
+
+In Angular:
+
+```
+import { provideHashbrown } from '@hashbrownai/angular';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHashbrown({
+      baseUrl: '/api/chat',
+      emulateStructuredOutput: true,
+    }),
+  ],
+};
+```
+
 ## Docs
 
 [Read the docs for the Hashbrown Amazon Bedrock adapter](https://hashbrown.dev/docs/react/platform/bedrock).
