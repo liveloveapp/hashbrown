@@ -53,7 +53,6 @@ test('Amazon Bedrock Tool Calling', async () => {
   const server = await createServer((request) =>
     HashbrownBedrock.stream.text({
       region: BEDROCK_REGION,
-      endpoint: BEDROCK_ENDPOINT || undefined,
       request: request as Chat.Api.CompletionCreateParams,
     }),
   );
@@ -107,7 +106,6 @@ test('Amazon Bedrock with structured output', async () => {
   const server = await createServer((request) =>
     HashbrownBedrock.stream.text({
       region: BEDROCK_REGION,
-      endpoint: BEDROCK_ENDPOINT || undefined,
       request: request as Chat.Api.CompletionCreateParams,
     }),
   );
@@ -147,7 +145,6 @@ test('Amazon Bedrock with tool calling and structured output', async () => {
   const server = await createServer((request) =>
     HashbrownBedrock.stream.text({
       region: BEDROCK_REGION,
-      endpoint: BEDROCK_ENDPOINT || undefined,
       request: request as Chat.Api.CompletionCreateParams,
     }),
   );

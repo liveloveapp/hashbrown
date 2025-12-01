@@ -33,8 +33,6 @@ export async function* text(
   const { request } = options;
   const client = getBedrockClient(options);
 
-  // console.log(options.request);
-
   try {
     const baseOptions: ConverseStreamCommandInput = {
       modelId: request.model as string,
@@ -42,12 +40,6 @@ export async function* text(
       messages: toBedrockMessages(request.messages),
       toolConfig: toToolConfiguration(request.tools, request.toolChoice),
     };
-
-    console.log(JSON.stringify(request.tools, null, 4));
-
-    // TODO: used for logging
-    const parsedMessages = JSON.stringify(baseOptions.messages, null, 4);
-    console.log(parsedMessages);
 
     const response = await client.send(new ConverseStreamCommand(baseOptions));
 
@@ -64,14 +56,11 @@ export async function* text(
     let finishReason: string | null = null;
 
     for await (const event of stream) {
-      console.log(event);
       if (event.contentBlockStart?.start?.toolUse) {
         const blockIndex =
           event.contentBlockStart.contentBlockIndex ?? toolCallBlocks.size;
         const { toolUseId, name } = event.contentBlockStart.start.toolUse;
         const toolIndex = nextToolCallIndex++;
-
-        console.log(event.contentBlockStart?.start?.toolUse);
 
         if (!toolUseId || !name) {
           continue;
@@ -84,6 +73,30 @@ export async function* text(
           buffer: '',
         });
 
+        /*
+          When a tool call has no arguments and has a schema, we must send '{}' 
+          for the arguments, as the schema would be an empty object. 
+
+          So, for this initial tool call, we need to set arguments to '{}', but
+          streaming tool calls (i.e. 'output') will get subsequent calls starting 
+          with '' and then appending streaming input.
+
+          On the UI side, the 'output' tool call's streamed arguments will start
+          with {}.
+
+          If we don't set the initial arguments to '{}' to prevent the extra brackets,
+          we end up back at the original problem.
+          
+          To resolve this, we recognize that there are two sorts of tool calls:
+          * those with empty arguments that, based on the schema, will always be empty
+          * those with empty arguments _now_ that will get filled in later
+          
+          For a given tool call, we find the tool definition in the request object and
+          check if it is an object type with no child properties.  If so, we assume 
+          it to be an "empty" argument object and set arguments to '{}'.  
+
+          Otherwise, we set arguments to ''.
+        */
         let shouldProvideEmptyArgumentsObject = false;
 
         request.tools?.forEach((tool) => {
@@ -98,24 +111,6 @@ export async function* text(
             }
           }
         });
-
-        // TODO: add comment about why shouldProvide... is needed
-
-        /*
-  {                                                             ║
-  ┃          "description": "Get the current scenes",                  ║
-  ┃          "name": "getScenes",                                      ║
-  ┃          "parameters": {                                           ║
-  ┃              "$schema": "http://json-schema.org/draft-07/schema#   ║
-  ┃  ",                                                                ║
-  ┃              "type": "object",                                     ║
-  ┃              "properties": {},                                     ║
-  ┃              "required": [],                                       ║
-  ┃              "additionalProperties": false,                        ║
-  ┃              "description": "Empty Object"                         ║
-  ┃          }                                                         ║
-  ┃      },
-        */
 
         yield encodeFrame({
           type: 'chunk',
@@ -152,15 +147,8 @@ export async function* text(
         if (delta && isToolUseDelta(delta) && contentBlockIndex !== undefined) {
           const block = toolCallBlocks.get(contentBlockIndex);
           if (block) {
-            // block.buffer += delta.toolUse.input ?? '';
             block.buffer = delta.toolUse.input ?? '';
             toolCallBlocks.set(contentBlockIndex, block);
-
-            console.log({
-              log: 'toolUseDelta',
-              buffer: block.buffer,
-              finishReason,
-            });
 
             yield encodeFrame({
               type: 'chunk',
@@ -269,8 +257,6 @@ function toBedrockMessages(messages: Chat.Api.Message[]): BedrockMessage[] {
       const contentBlocks: ContentBlock[] = [];
 
       if (message.content !== undefined) {
-        console.log('adding text in content block');
-        console.log(message);
         contentBlocks.push({ text: coerceText(message.content) });
       }
 
@@ -280,8 +266,7 @@ function toBedrockMessages(messages: Chat.Api.Message[]): BedrockMessage[] {
             toolUse: {
               toolUseId: toolCall.id,
               name: toolCall.function.name,
-              // TODO: do better typing resolution
-              input: safeJsonParse(toolCall.function.arguments) as any,
+              input: safeJsonParse(toolCall.function.arguments),
             },
           });
         }
@@ -304,9 +289,6 @@ function toBedrockMessages(messages: Chat.Api.Message[]): BedrockMessage[] {
           {
             toolResult: {
               toolUseId: message.toolCallId,
-              // type: message.toolName,
-              // status:
-              //   message.content.status === 'fulfilled' ? 'success' : 'error',
               content: toToolResultContent(message.content),
             },
           },
@@ -378,21 +360,14 @@ function toToolResultContent(
     return [{ text: payload }];
   }
 
-  console.log({
-    log: 'toToolResultContent',
-    payload,
-    typeOf: typeof payload,
-  });
-
   if (payload !== null && typeof payload === 'object') {
-    // return [{ json: payload as DocumentType }];
     return [{ json: { result: payload } as DocumentType }];
   }
 
   return [{ text: String(payload) }];
 }
 
-function safeJsonParse(value: string | undefined): unknown {
+function safeJsonParse(value: string | undefined): DocumentType {
   if (!value) {
     // Bedrock requires an empty JSON object if there are no args
     return {};
@@ -406,19 +381,17 @@ function safeJsonParse(value: string | undefined): unknown {
 }
 
 function coerceText(value: unknown): string {
-  console.log(value);
-
   if (typeof value === 'string') {
     if (value === '') {
       // NB: Bedrock doesn't allow empty text if the text field is present
-      return 'probably a tool call';
+      return 'tool call';
     }
     return value;
   }
 
   if (value === null || value === undefined) {
     // NB: Bedrock doesn't allow empty text if the text field is present
-    return 'probably a tool call';
+    return 'tool call';
   }
 
   try {
