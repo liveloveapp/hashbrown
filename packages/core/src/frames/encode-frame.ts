@@ -8,6 +8,7 @@ import { Frame } from './frame-types';
  * @returns The encoded frame.
  */
 export function encodeFrame(frame: Frame): Uint8Array {
+  console.log(JSON.stringify(frame));
   const encoder = new TextEncoder();
   const jsonBytes = encoder.encode(JSON.stringify(frame));
   const len = jsonBytes.length;

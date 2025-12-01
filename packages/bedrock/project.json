@@ -1,0 +1,69 @@
+{
+  "name": "bedrock",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/bedrock/src",
+  "projectType": "library",
+  "release": {
+    "version": {
+      "generatorOptions": {
+        "packageRoot": "dist/{projectRoot}",
+        "currentVersionResolver": "git-tag",
+        "fallbackCurrentVersionResolver": "disk"
+      }
+    }
+  },
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/bedrock",
+        "tsConfig": "packages/bedrock/tsconfig.lib.json",
+        "packageJson": "packages/bedrock/package.json",
+        "main": "packages/bedrock/src/index.ts",
+        "assets": ["packages/bedrock/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/bedrock/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/packages/bedrock"],
+      "options": {
+        "jestConfig": "packages/bedrock/jest.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/packages/bedrock"],
+      "options": {
+        "jestConfig": "packages/bedrock/jest.e2e.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    },
+    "build-api-report": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx api-extractor run --local --config packages/bedrock/api-extractor.json",
+        "parallel": true
+      },
+      "dependsOn": [
+        {
+          "projects": ["bedrock"],
+          "target": "build"
+        }
+      ]
+    }
+  }
+}

@@ -1,15 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import { Chat } from '@hashbrownai/core';
-import { HashbrownOpenAI } from '@hashbrownai/openai';
+import { HashbrownBedrock } from '@hashbrownai/bedrock';
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-if (!OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY is not set');
-}
+// const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// if (!OPENAI_API_KEY) {
+//   throw new Error('OPENAI_API_KEY is not set');
+// }
 
 const app = express();
 
@@ -19,10 +19,16 @@ app.use(express.json());
 app.post('/api/chat', async (req, res) => {
   const completionParams = req.body as Chat.Api.CompletionCreateParams;
 
-  const response = HashbrownOpenAI.stream.text({
-    apiKey: OPENAI_API_KEY,
+  // const response = HashbrownOpenAI.stream.text({
+  //   apiKey: OPENAI_API_KEY,
+  //   request: completionParams,
+  // });
+
+  console.log('calling bedrock stream');
+  const response = HashbrownBedrock.stream.text({
     request: completionParams,
   });
+
   res.header('Content-Type', 'application/octet-stream');
 
   for await (const chunk of response) {
