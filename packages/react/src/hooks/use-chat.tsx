@@ -181,6 +181,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     hashbrownRef.current = fryHashbrown<Tools>({
       apiUrl: config.url,
       middleware: config.middleware,
+      emulateStructuredOutput: config.emulateStructuredOutput,
       debugName: options.debugName,
       model: options.model,
       system: options.system,
@@ -208,6 +209,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     getHashbrown().updateOptions({
       apiUrl: config.url,
       middleware: config.middleware,
+      emulateStructuredOutput: config.emulateStructuredOutput,
       debugName: options.debugName,
       model: options.model,
       system: options.system,
@@ -218,6 +220,7 @@ export function useChat<Tools extends Chat.AnyTool>(
   }, [
     config.url,
     config.middleware,
+    config.emulateStructuredOutput,
     options.debounceTime,
     options.debugName,
     options.model,

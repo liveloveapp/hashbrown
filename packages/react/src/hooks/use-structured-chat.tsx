@@ -199,6 +199,7 @@ export function useStructuredChat<
     hashbrown.current = fryHashbrown<Schema, Tools, Output>({
       apiUrl: config.url,
       middleware: config.middleware,
+      emulateStructuredOutput: config.emulateStructuredOutput,
       model: options.model,
       system: options.system,
       responseSchema: schema,
@@ -227,6 +228,7 @@ export function useStructuredChat<
     getHashbrown().updateOptions({
       apiUrl: config.url,
       middleware: config.middleware,
+      emulateStructuredOutput: config.emulateStructuredOutput,
       model: options.model,
       system: options.system,
       responseSchema: schema,
@@ -238,6 +240,7 @@ export function useStructuredChat<
   }, [
     config.url,
     config.middleware,
+    config.emulateStructuredOutput,
     options.model,
     options.system,
     options.debugName,
