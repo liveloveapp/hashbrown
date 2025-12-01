@@ -12,7 +12,7 @@ const BEDROCK_REGION =
 
 // TODO: how can CI get AWS credentials?
 
-test('Amazon Bedrock Text Streaming', async () => {
+test.skip('Amazon Bedrock Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownBedrock.stream.text({
       region: BEDROCK_REGION,
