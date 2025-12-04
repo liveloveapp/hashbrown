@@ -1,9 +1,8 @@
 name: Netlify Finance Sample
 
 on:
-  push:
-    tags:
-      - samples/finance
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
@@ -16,6 +15,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy finance sample to Netlify
+    if: github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'samples/finance'
     runs-on: ubuntu-latest
     environment:
       name: finance-sample
@@ -34,14 +34,6 @@ jobs:
 
       - name: Determine affected base
         uses: nrwl/nx-set-shas@v3
-
-      - name: Verify tag commit exists on main
-        run: |
-          git fetch origin main
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "Tagged commit is not on main. Aborting deploy." >&2
-            exit 1
-          fi
 
       - name: Install dependencies
         run: npm ci
@@ -67,8 +59,5 @@ jobs:
             --json \
             --no-build > deploy.json
           cat deploy.json
-          echo "production_url=$(node -pe \"require('./deploy.json').url || ''\")" >> "$GITHUB_OUTPUT"
-
-      - name: Cleanup Netlify config
-        if: always()
-        run: rm -f netlify.toml
+          PRODUCTION_URL=$(node -pe "require('./deploy.json').url || ''")
+          echo "production_url=$PRODUCTION_URL" >> "$GITHUB_OUTPUT"

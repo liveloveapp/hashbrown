@@ -1,9 +1,8 @@
 name: Netlify Production
 
 on:
-  push:
-    tags:
-      - www/deploy
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
@@ -16,6 +15,7 @@ concurrency:
 jobs:
   production:
     name: Deploy production to Netlify
+    if: github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'www/deploy'
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -35,14 +35,6 @@ jobs:
       - name: Determine affected base
         uses: nrwl/nx-set-shas@v3
 
-      - name: Verify tag commit exists on main
-        run: |
-          git fetch origin main
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "Tagged commit is not on main. Aborting deploy." >&2
-            exit 1
-          fi
-
       - name: Install dependencies
         run: npm ci
 
@@ -52,6 +44,9 @@ jobs:
       - name: Build production bundle
         run: npx nx run www:build:production
 
+      - name: Prepare Netlify configuration
+        run: cp www/analog/netlify.toml netlify.toml
+
       - name: Deploy production
         id: deploy
         env:
@@ -59,13 +54,14 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_WWW_SITE_ID }}
         run: |
           npx netlify-cli deploy \
+            --no-build \
             --auth "$NETLIFY_AUTH_TOKEN" \
             --site "$NETLIFY_SITE_ID" \
             --prod \
             --dir=dist/www/analog/analog/public \
             --functions=dist/www/analog/analog \
-            --edge-functions=dist/www/netlify \
             --message="Production deploy for hashbrown@${GITHUB_SHA}" \
             --json > deploy.json
           cat deploy.json
-          echo "production_url=$(node -pe \"require('./deploy.json').url || ''\")" >> "$GITHUB_OUTPUT"
+          PRODUCTION_URL=$(node -pe "require('./deploy.json').url || ''")
+          echo "production_url=$PRODUCTION_URL" >> "$GITHUB_OUTPUT"

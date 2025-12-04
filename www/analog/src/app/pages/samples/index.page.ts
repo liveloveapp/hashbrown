@@ -56,9 +56,6 @@ export const routeMeta: RouteMeta = {
             <img
               src="/image/samples/finance.png"
               alt="Finance App screenshot"
-              wwwSquircle="8"
-              [wwwSquircleBorderWidth]="4"
-              wwwSquircleBorderColor="red"
             />
             <div class="actions">
               <div class="action" wwwSquircle="8">
@@ -200,7 +197,6 @@ export const routeMeta: RouteMeta = {
           transform: translateZ(0) scale(1);
           transition:
             transform 800ms cubic-bezier(0.16, 1, 0.3, 1),
-            box-shadow 800ms cubic-bezier(0.16, 1, 0.3, 1),
             filter 800ms cubic-bezier(0.16, 1, 0.3, 1);
           transform-origin: center;
           will-change: transform;
@@ -208,7 +204,6 @@ export const routeMeta: RouteMeta = {
 
           &:hover {
             transform: translateY(-1px) scale(1.006);
-            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.1);
             filter: saturate(1.04) contrast(1.02);
           }
 
