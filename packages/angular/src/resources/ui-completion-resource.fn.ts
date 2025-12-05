@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  SystemPrompt,
+  type TransportOrFactory,
+  ɵui,
+} from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
 import { readSignalLike } from '../utils';
@@ -34,7 +41,7 @@ export interface UiCompletionResourceOptions<
   /**
    * The model to use for the UI completion resource.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system prompt to use for the UI completion resource.
@@ -65,6 +72,11 @@ export interface UiCompletionResourceOptions<
    * The debounce time for the UI completion resource.
    */
   debounce?: number;
+
+  /**
+   * Custom transport override for the UI completion resource.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**
@@ -152,6 +164,8 @@ export function uiCompletionResource<
     apiUrl: options.apiUrl,
     retries: options.retries,
     debounce: options.debounce,
+    transport: options.transport,
+    ui: true,
   });
 
   const value = computed(

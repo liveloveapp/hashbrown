@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  SystemPrompt,
+  type TransportOrFactory,
+  ɵui,
+} from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import {
@@ -33,7 +40,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The model to use for the UI chat resource.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system prompt to use for the UI chat resource.
@@ -68,6 +75,11 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
    * The API URL to use for the UI chat resource.
    */
   apiUrl?: string;
+
+  /**
+   * Custom transport override for the UI chat resource.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**
@@ -144,6 +156,8 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     debugName: args.debugName,
     debounce: args.debounce,
     apiUrl: args.apiUrl,
+    transport: args.transport,
+    ui: true,
   });
 
   const value = computed(

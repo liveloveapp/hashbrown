@@ -7,7 +7,11 @@ import {
 } from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { exposeComponent, uiChatResource } from '@hashbrownai/angular';
-import { prompt, s } from '@hashbrownai/core';
+import {
+  createExperimentalChromeLocalTransport,
+  prompt,
+  s,
+} from '@hashbrownai/core';
 import { LightCard } from '../lights/light-card';
 import { LightList } from '../lights/light-list';
 import { SceneButton } from '../scenes/scene-button';
@@ -120,8 +124,12 @@ export class ChatPanelComponent {
     });
   }
 
+  private readonly chromeTransportFactory =
+    createExperimentalChromeLocalTransport({});
+
   chat = uiChatResource({
-    model: 'gpt-4.1',
+    model: 'local',
+    transport: this.chromeTransportFactory,
     debugName: 'ui-chat',
     system: prompt`
       ### ROLE & TONE
@@ -208,7 +216,7 @@ export class ChatPanelComponent {
         },
       }),
     ],
-    tools: [getLightsTools, getScenesTool, controlLightTool, applySceneTool],
+    // tools: [getLightsTools, getScenesTool, controlLightTool, applySceneTool],
   });
 
   sendMessage(message: string) {

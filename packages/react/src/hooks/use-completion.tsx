@@ -1,4 +1,8 @@
-import { Chat, KnownModelIds } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useChat } from './use-chat';
 
@@ -18,7 +22,7 @@ export interface UseCompletionOptions<Input> {
    * The LLM model to use for the chat.
    *
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the completion.
@@ -47,6 +51,11 @@ export interface UseCompletionOptions<Input> {
    * default: 0
    */
   retries?: number;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**

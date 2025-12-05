@@ -1,5 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  SystemPrompt,
+  ɵui,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import {
   createElement,
   Dispatch,
@@ -38,7 +45,7 @@ export interface UiCompletionOptions<
   /**
    * The model to use for the completion.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system prompt to use for the completion.
@@ -69,6 +76,11 @@ export interface UiCompletionOptions<
    * Number of retries if an error is received.
    */
   retries?: number;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**
@@ -148,6 +160,7 @@ export const useUiCompletion = <
     schema: uiSchema as any,
     system: systemAsString,
     tools,
+    ui: true,
   });
 
   const buildContent = useCallback(

@@ -1,5 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  SystemPrompt,
+  ɵui,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import {
   createElement,
   ReactElement,
@@ -86,7 +93,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * The LLM model to use for the chat.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -120,6 +127,11 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**
@@ -188,6 +200,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
     ...chatOptions,
     schema: ui as any,
     system: systemAsString,
+    ui: true,
   });
 
   const buildContent = useCallback(
