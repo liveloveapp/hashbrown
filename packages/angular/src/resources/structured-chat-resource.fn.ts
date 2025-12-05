@@ -10,7 +10,13 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import { Chat, fryHashbrown, KnownModelIds, s } from '@hashbrownai/core';
+import {
+  Chat,
+  fryHashbrown,
+  type ModelInput,
+  s,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
 import { bindToolToInjector } from '../utils/create-tool.fn';
@@ -83,7 +89,7 @@ export interface StructuredChatResourceOptions<
   /**
    * The model to use for the structured chat resource.
    */
-  model: KnownModelIds | Signal<KnownModelIds>;
+  model: ModelInput;
 
   /**
    * The system prompt to use for the structured chat resource.
@@ -124,6 +130,15 @@ export interface StructuredChatResourceOptions<
    * The API URL to use for the structured chat resource.
    */
   apiUrl?: string;
+
+  /**
+   * Custom transport override for the structured chat resource.
+   */
+  transport?: TransportOrFactory;
+  /**
+   * Whether this structured chat is generating UI content.
+   */
+  ui?: boolean;
 }
 
 /**
@@ -151,22 +166,25 @@ export function structuredChatResource<
     }),
     system: readSignalLike(options.system),
     messages: [...(options.messages ?? [])],
-    model: readSignalLike(options.model),
+    model: options.model,
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     responseSchema: options.schema,
     debugName: options.debugName,
     emulateStructuredOutput: config.emulateStructuredOutput,
     debounce: options.debounce,
     retries: options.retries,
+    transport: options.transport ?? config.transport,
+    ui: options.ui ?? false,
   });
 
   const optionsEffect = effect(() => {
-    const model = readSignalLike(options.model);
+    const model = options.model;
     const system = readSignalLike(options.system);
 
     hashbrown.updateOptions({
       model,
       system,
+      ui: options.ui ?? false,
     });
   });
 

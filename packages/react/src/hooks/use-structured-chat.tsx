@@ -2,8 +2,9 @@ import {
   Chat,
   fryHashbrown,
   Hashbrown,
-  KnownModelIds,
+  type ModelInput,
   s,
+  type TransportOrFactory,
 } from '@hashbrownai/core';
 import {
   useCallback,
@@ -33,7 +34,7 @@ export interface UseStructuredChatOptions<
    * The LLM model to use for the chat.
    *
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -72,6 +73,15 @@ export interface UseStructuredChatOptions<
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
+  /**
+   * Whether this structured chat is expected to produce UI elements.
+   */
+  ui?: boolean;
 }
 
 /**
@@ -207,6 +217,8 @@ export function useStructuredChat<
       debugName: options.debugName,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: options.ui ?? false,
     });
   }
 
@@ -236,11 +248,14 @@ export function useStructuredChat<
       debugName: options.debugName,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: options.ui ?? false,
     });
   }, [
     config.url,
     config.middleware,
     config.emulateStructuredOutput,
+    config.transport,
     options.model,
     options.system,
     options.debugName,
@@ -248,6 +263,8 @@ export function useStructuredChat<
     tools,
     options.debounceTime,
     options.retries,
+    options.transport,
+    options.ui,
   ]);
 
   const internalMessages = useHashbrownSignal(hashbrown.current.messages);

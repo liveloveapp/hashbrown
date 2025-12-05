@@ -47,6 +47,11 @@ const KNOWN_OPENAI_MODEL_NAMES: KnownModelIds[] = [
   'gpt-4.1-mini',
   'gpt-4.1-nano',
   'gpt-4.5',
+  'gpt-5-mini',
+  'gpt-5-nano',
+  'gpt-5-pro',
+  'gpt-5',
+  'gpt-5.1',
 ];
 
 const KNOWN_WRITER_MODEL_NAMES: KnownModelIds[] = [

@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, effect, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { SignalLike } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { toDeepSignal } from '../utils/deep-signal';
@@ -46,7 +51,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * The model to use for the structured completion resource.
    */
-  model: KnownModelIds;
+  model: ModelInput;
   /**
    * The input to the structured completion resource.
    */
@@ -79,6 +84,15 @@ export interface StructuredCompletionResourceOptions<
    * The debounce time for the structured completion resource.
    */
   debounce?: number;
+
+  /**
+   * Optional transport override for this structured completion resource.
+   */
+  transport?: TransportOrFactory;
+  /**
+   * Whether this completion is UI generating.
+   */
+  ui?: boolean;
 }
 
 /**
@@ -116,6 +130,8 @@ export function structuredCompletionResource<
     apiUrl,
     retries,
     debounce,
+    transport: options.transport,
+    ui: options.ui ?? false,
   });
 
   effect(() => {

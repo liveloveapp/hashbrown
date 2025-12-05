@@ -9,7 +9,12 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import { Chat, fryHashbrown, KnownModelIds } from '@hashbrownai/core';
+import {
+  Chat,
+  fryHashbrown,
+  type ModelInput,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
 import { bindToolToInjector } from '../utils/create-tool.fn';
@@ -24,6 +29,12 @@ import { bindToolToInjector } from '../utils/create-tool.fn';
  */
 export interface ChatResourceRef<Tools extends Chat.AnyTool>
   extends Resource<Chat.Message<string, Tools>[]> {
+  /** Indicates whether the chat is currently receiving tokens. */
+  isReceiving: Signal<boolean>;
+  /** Indicates whether the chat is currently sending a user message. */
+  isSending: Signal<boolean>;
+  /** Indicates whether the chat is running tool calls. */
+  isRunningToolCalls: Signal<boolean>;
   /**
    * Send a new user message to the chat.
    *
@@ -76,7 +87,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The model to use for the chat.
    */
-  model: KnownModelIds | Signal<KnownModelIds>;
+  model: ModelInput | Signal<ModelInput>;
 
   /**
    * The tools to use for the chat.
@@ -108,6 +119,11 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
    * The API URL to use for the chat.
    */
   apiUrl?: string;
+
+  /**
+   * Custom transport to use for this chat resource.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**
@@ -150,6 +166,8 @@ export function chatResource<Tools extends Chat.AnyTool>(
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     emulateStructuredOutput: config.emulateStructuredOutput,
     debugName: options.debugName,
+    transport: options.transport ?? config.transport,
+    ui: false,
   });
 
   const teardown = hashbrown.sizzle();
@@ -239,6 +257,9 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hasValue: hasValue as any,
     status,
     isLoading,
+    isReceiving,
+    isSending,
+    isRunningToolCalls,
     reload,
     sendMessage,
     stop,
