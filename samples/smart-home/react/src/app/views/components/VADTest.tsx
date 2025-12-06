@@ -1,5 +1,5 @@
 import { createVAD } from '@hashbrownai/vox';
-import createModule from '@hashbrownai/vox/loader';
+import createModule from '@hashbrownai/vox/loader-single';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../shared/button';
 
@@ -17,9 +17,12 @@ export const VADTest = () => {
 
     vadRef.current = vad;
 
-    vad.initialize(createModule).catch(() => {
-      setStatus('error');
-    });
+    vad
+      .initialize(createModule)
+      .catch((err) => {
+        console.error('VAD initialize failed', err);
+        setStatus('error');
+      });
 
     return () => {
       vad.dispose();
@@ -32,7 +35,8 @@ export const VADTest = () => {
     try {
       await vadRef.current.start();
       setStatus('running');
-    } catch {
+    } catch (err) {
+      console.error('VAD start failed', err);
       setStatus('error');
     }
   };

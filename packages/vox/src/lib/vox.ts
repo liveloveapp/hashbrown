@@ -127,15 +127,13 @@ export class VAD {
     }
 
     const moduleOptions: VADModuleOptions = {
-      locateFile: (path: string) => {
-        if (this.options.locateFile) {
-          return this.options.locateFile(path);
-        }
-        return this.resolveAsset(path);
-      },
+      // Allow caller override; otherwise let the loader's defaults handle embedded assets.
+      locateFile: this.options.locateFile
+        ? (path: string) => this.options.locateFile?.(path) ?? path
+        : undefined,
       mainScriptUrlOrBlob:
         this.options.mainScriptUrlOrBlob ??
-        this.resolveAsset('vad_audio_worklet.js'),
+        this.resolveAsset('vad_audio_worklet.single.js'),
     };
 
     this.module = await moduleLoader(moduleOptions);
