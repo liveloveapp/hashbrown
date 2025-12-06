@@ -87,9 +87,10 @@ These notes summarize everything needed to make the package build, ship assets, 
   - Emits `index.{cjs,mjs}` + types and copies `packages/vox/src/assets/**/*` to `dist/packages/vox/assets/`.
   - `tsconfig` uses `module: esnext` so rollup can emit both CJS/ESM.
   - Asset sources live in `packages/vox/src/assets/`; keep them in sync with `wasm/vad-audio-worklet/output/`.
+- Bundlers (e.g., Vite/webpack) will copy the assets when referenced via `new URL('../assets/...', import.meta.url)`, so consumers don’t need extra copy steps beyond installing the package (as long as `assets/` ships in the tarball).
 
 ### Runtime asset resolution
-- Default runtime expects assets at the packaged path (workspace dev: `/dist/packages/vox/assets/`; published: alongside the package).
+- Default runtime resolves assets relative to the packaged path (workspace dev fallback: `/dist/packages/vox/assets/`; published: alongside the package). Assets are shipped separately; ensure your host serves them with the right MIME.
 - `basePath` option lets consumers host assets elsewhere (CDN/custom public path).
 - In Nx/Vite dev, make sure the dev server can read `dist/packages/vox/assets/` (fs.allow) and serves them with correct MIME.
 
@@ -102,6 +103,7 @@ These notes summarize everything needed to make the package build, ship assets, 
   - `.wasm` → `application/wasm`
   - `.js` (loaders) → `application/javascript`
 - Ensure the built assets are actually hosted (e.g., `/dist/packages/vox/assets/`) and not falling back to HTML/404; use middleware if needed.
+  - AudioWorklet builds require separate asset files (single-file builds are not supported by Emscripten for AUDIO_WORKLET/pthreads).
 
 Example (nginx):
 ```
