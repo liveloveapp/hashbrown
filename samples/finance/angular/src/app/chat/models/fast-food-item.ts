@@ -2,8 +2,11 @@ export interface FastFoodItem {
   id: string;
   restaurant: string;
   item: string;
+  shortName: string;
+  description: string;
+  servingSize: string;
+  categories: string[];
   calories: number;
-  caloriesFromFat: number;
   totalFat: number;
   saturatedFat: number;
   transFat: number;
@@ -13,10 +16,8 @@ export interface FastFoodItem {
   fiber: number;
   sugar: number;
   protein: number;
-  vitaminA: number;
-  vitaminC: number;
-  calcium: number;
-  menuCategory: string;
+  sources: string[];
+  lastAudited: string | null;
 }
 
 export type FastFoodSortMetric =

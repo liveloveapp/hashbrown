@@ -8,15 +8,26 @@ import {
   viewChild,
 } from '@angular/core';
 import { Chart as ChartJS } from 'chart.js/auto';
+import type { ChartType } from 'chart.js';
 import { ChartRuntime } from '../tools/chart-runtime';
 import { structuredCompletionResource } from '@hashbrownai/angular';
 import { ɵdeepEqual as deepEqual, s } from '@hashbrownai/core';
-import { Squircle } from '../../squircle';
 import { CodeLoader } from '../../chart/CodeLoader';
-import { DescribingLoader } from './describing-loader';
 import type { FastFoodSortMetric } from '../models/fast-food-item';
+import { buildChartOptions } from '../tools/chart-options';
 
 let instanceId = 0;
+
+const allowedChartTypes: ChartType[] = [
+  'bar',
+  'bubble',
+  'doughnut',
+  'line',
+  'pie',
+  'polarArea',
+  'radar',
+  'scatter',
+];
 
 type ChartInputConfig = {
   prompt: string;
@@ -31,6 +42,7 @@ type ChartInputConfig = {
   limit: number | null;
   sortBy: FastFoodSortMetric | null;
   sortDirection: 'asc' | 'desc' | null;
+  chartType: ChartType | null;
 };
 
 const system = `
@@ -44,25 +56,50 @@ receive, return either Chart.js-ready JavaScript or an error payload, never pros
 Today's date is ${new Date().toISOString()}.
 
 ## Dataset
-Work exclusively with fastfood.csv. Each row contains:
-* restaurant — chain name (e.g., Mcdonalds, Burger King).
-* item — menu item label.
-* calories — total calories (kcal).
-* cal_fat — calories from fat.
-* total_fat, sat_fat, trans_fat — grams of fat.
-* cholesterol — milligrams.
-* sodium — milligrams.
-* total_carb, fiber, sugar — grams.
-* protein — grams.
-* vit_a, vit_c, calcium — % daily value.
-* salad — categorical flag (treat as menuCategory).
+Work exclusively with fastfood_v2.csv. Each row contains:
+* chain — restaurant/brand name (e.g., McDonald's, Chick-fil-A).
+* menu_item — full menu item label.
+* short_name — compact alias for concise labeling.
+* description — item summary or marketing copy.
+* serving_size — human-readable portion description.
+* categories — pipe-delimited taxonomy tags (split on "|").
+* calories — total calories (kcal) per serving.
+* total_fat_g, saturated_fat_g, trans_fat_g — grams of fat.
+* cholesterol_mg — milligrams per serving.
+* sodium_mg — milligrams per serving.
+* carbs_g, fiber_g, sugar_g — grams.
+* protein_g — grams.
+* sources — pipe-delimited URLs backing the nutrition data.
+* last_audited — ISO timestamp indicating data freshness.
+
+Runtime note: the \`getData\` function returns normalized objects with camelCase keys—use
+properties like \`restaurant\`, \`item\`, \`shortName\`, \`description\`, \`servingSize\`,
+\`categories\`, macronutrients (\`calories\`, \`totalFat\`, \`protein\`, etc.), \`sources\`, and
+\`lastAudited\` when building charts. The original snake_case column names (for
+example, \`chain\`, \`menu_item\`, \`short_name\`) only exist inside the CSV; they are not
+present on the JavaScript objects returned by \`getData\`, so referencing them will
+produce \`undefined\` output.
+
+## Normalized API (what getData returns)
+Each item emitted by \`getData(...)\` exposes the following camelCase fields—only use these in charts:
+* \`restaurant\` — chain name (CSV \`chain\`).
+* \`item\` — full menu label (CSV \`menu_item\`).
+* \`shortName\` — compact alias for labels (CSV \`short_name\`).
+* \`description\` — marketing copy.
+* \`servingSize\` — portion descriptor (CSV \`serving_size\`).
+* \`categories\` — array of category tags (parsed from the pipe-delimited column).
+* \`calories\`, \`totalFat\`, \`saturatedFat\`, \`transFat\`, \`cholesterol\`, \`sodium\`, \`totalCarbs\`, \`fiber\`, \`sugar\`, \`protein\` — numeric nutrients.
+* \`sources\` — array of source URLs (split from the CSV).
+* \`lastAudited\` — ISO timestamp (or null).
 
 ## Inputs
 You are invoked with a JSON object containing:
 * prompt — the natural-language chart request.
+* chartType — optional Chart.js chart type hint
+  (${allowedChartTypes.map((type) => `'${type}'`).join(', ')}).
 * restaurants — optional array of restaurant names to prioritize.
 * menuItems — optional array of menu item ids selected upstream.
-* categories — optional list of menuCategory labels (e.g., "Salad", "Other").
+* categories — optional list of category labels that match the dataset taxonomy.
 * searchTerm — optional free-text filter.
 * maxCalories / minCalories — numeric calorie bounds.
 * minProtein — minimum protein in grams.
@@ -75,7 +112,7 @@ getData via "itemIds" without altering the order. Otherwise, apply the remaining
 filters to fetch the smallest slice of data that fully answers the prompt.
 
 ## Runtime Functions
-1. getData(options) -> menu items from fastfood.csv. Options: itemIds, restaurants,
+1. getData(options) -> menu items from fastfood_v2.csv. Options: itemIds, restaurants,
    categories, searchTerm, maxCalories, minCalories, minProtein, maxSodium, limit,
    sortBy, sortDirection. Call it exactly once per chart with the best filters.
 2. renderChart({ chart, options }) -> renders Chart.js config. Call it exactly once.
@@ -85,6 +122,11 @@ filters to fetch the smallest slice of data that fully answers the prompt.
   descriptive { code: 'NO_DATA', message: '...' } error.
 * Always include measurement units on axes/titles (grams, milligrams, % DV, kcal).
 * Prefer ≤10 menu items unless the user explicitly asks for more detail.
+* Default the legend placement to the bottom unless the user specifies otherwise.
+* Use short names (\`item.shortName ?? item.item\`) for axis labels and reserve the
+  full \`Restaurant - Item\` text for tooltip titles so long labels do not crowd the chart.
+* Respect the \`chartType\` hint when provided. If it would misrepresent the data,
+  choose the most appropriate Chart.js type instead.
 * Choose chart types that fit the question (rankings -> bar, correlations -> scatter,
   composition -> pie, multi-metric -> grouped bars/lines).
 * Format axes with human labels ("Protein (g)", "Sodium (mg)", etc.).
@@ -92,23 +134,37 @@ filters to fetch the smallest slice of data that fully answers the prompt.
   described in labels.
 * Whenever a chart spans multiple restaurants and menu items, label each data
   series or point with both the chain and item name (e.g., "McDonald's - Big Mac")
-  so cross-brand comparisons stay unambiguous.
+  using the normalized fields (
+  \`item.restaurant\`, \`item.shortName || item.item\`).
 * Respect sortBy/sortDirection hints when provided; otherwise sort by the metric
   emphasized in the prompt and break ties alphabetically.
 * Escape EVERY string literal in the generated JavaScript. Do not emit raw
   apostrophes; either escape them (\\') or use template literals with backticks.
+* Tooltips must be described using Mustache-style templates on
+  \`options.plugins.tooltip\`. Templates support dot + bracket notation
+  (e.g., \`{{ datum.dataset.meta[datum.dataIndex].label }}\`) but never arbitrary
+  JavaScript. Available variables include:
+  - \`datum\`: the Chart.js tooltip item (with \`label\`, \`dataIndex\`,
+    \`dataset\`, \`parsed\`, \`formattedValue\`, etc.).
+  - \`chart\`: the active Chart.js instance for advanced lookups.
+  Attach any extra metadata you need (e.g., full labels, serving sizes) to your
+  dataset objects so the template can read them (for example,
+  \`dataset.tooltipMeta[datum.dataIndex]\`).
+* Never register callbacks or plugins in renderChart options—the runtime compiles
+  your templates into callbacks automatically.
 * Theming:
   - Colors: #fbbb52, #64afb5, #e88c4d, #616f36, #b76060 (use translucent fills for
     overlapping lines/areas).
-  - Axis label color #282828; grid color rgba(0,0,0,0.12); title color #774625.
+  - Axis label color #282828; grid color rgba(0,0,0,0.12); title color
+    rgba(94, 92, 90, 1).
   - Fonts: Fredoka (body 400, titles 900 at 18-32pt) and Roboto Mono for any code-like
     annotations.
-* Never register callbacks or plugins in renderChart options.
 
 ## Example
 \`\`\`js
 const data = getData({
-  restaurants: ['Mcdonalds'],
+  restaurants: ["McDonald's"],
+  categories: ['Entree', 'Sandwich'],
   searchTerm: 'chicken',
   maxCalories: 800,
   sortBy: 'protein',
@@ -117,25 +173,31 @@ const data = getData({
 });
 if (!data.length) throw { code: 'NO_DATA', message: 'No qualifying items.' };
 
-const labels = data.map((item) => item.item);
+const shortLabels = data.map((item) => item.shortName ?? item.item);
 const protein = data.map((item) => item.protein);
 const calories = data.map((item) => item.calories);
+const tooltipMeta = data.map((item) => ({
+  fullLabel: \`\${item.restaurant} - \${item.item}\`,
+  servingSize: item.servingSize,
+}));
 
 renderChart({
   chart: {
     type: 'bar',
     data: {
-      labels,
+      labels: shortLabels,
       datasets: [
         {
           label: 'Protein (g)',
           data: protein,
           backgroundColor: '#64afb5',
+          tooltipMeta,
         },
         {
           label: 'Calories (kcal)',
           data: calories,
           backgroundColor: '#fbbb52',
+          tooltipMeta,
         },
       ],
     },
@@ -144,7 +206,7 @@ renderChart({
     plugins: {
       legend: {
         display: true,
-        position: 'top',
+        position: 'bottom',
         align: 'center',
         labels: {
           color: '#282828',
@@ -161,26 +223,46 @@ renderChart({
         display: true,
         text: "McDonald's chicken sandwiches: protein vs calories",
         position: 'top',
-        color: '#774625',
+        color: 'rgba(94, 92, 90, 1)',
         align: 'center',
         font: {
           family: 'Fredoka, Arial, sans-serif',
-          weight: 900,
+          weight: 600,
           size: 18,
           lineHeight: 1.1,
         },
+      },
+      tooltip: {
+        titleTemplate:
+          '{{ datum.dataset.tooltipMeta[datum.dataIndex].fullLabel }}',
+        afterTitleTemplate:
+          'Serving size: {{ datum.dataset.tooltipMeta[datum.dataIndex].servingSize }}',
+        labelTemplate: '{{ datum.dataset.label }}: {{ datum.formattedValue }}',
       },
     },
     scales: {
       x: {
         grid: { color: 'rgba(0,0,0,0.12)' },
+        title: {
+          display: true,
+          text: 'Menu items',
+          color: '#282828',
+          font: { family: 'Fredoka, Arial, sans-serif', size: 12, weight: 400 },
+        },
         ticks: {
           color: '#282828',
           font: { family: 'Fredoka, Arial, sans-serif', size: 16 },
+          callback: (_, index) => shortLabels[index],
         },
       },
       y: {
         grid: { color: 'rgba(0,0,0,0.12)' },
+        title: {
+          display: true,
+          text: 'Amount (g / kcal)',
+          color: '#282828',
+          font: { family: 'Fredoka, Arial, sans-serif', size: 12, weight: 400 },
+        },
         ticks: {
           color: '#282828',
           font: { family: 'Fredoka, Arial, sans-serif', size: 16 },
@@ -196,20 +278,18 @@ renderChart({
 @Component({
   selector: 'app-chart',
   providers: [ChartRuntime],
-  imports: [Squircle, CodeLoader, DescribingLoader],
+  imports: [CodeLoader],
   template: `
-    <section
-      class="chart-wrapper"
-      appSquircle="16"
-      [appSquircleBorderWidth]="1"
-      appSquircleBorderColor="#EEC7AD"
-    >
+    <section class="chart-wrapper">
       <canvas #canvasRef></canvas>
+
       @if (showDescribingPhase()) {
         <div class="chart-overlay describing">
-          <app-describing-loader />
+          <app-code-loader [code]="description()" />
         </div>
-      } @else if (showCodeStreaming()) {
+      } @else if (completion.isSending()) {
+        <div class="chart-overlay sending">Generating chart...</div>
+      } @else if (completion.isReceiving()) {
         <div class="chart-overlay code-loader">
           <app-code-loader [code]="code() ?? ''" />
         </div>
@@ -224,7 +304,7 @@ renderChart({
     :host {
       display: block;
       width: var(--max-article-width);
-      margin: 8px auto 16px;
+      margin: 16px auto 24px;
     }
 
     .chart-wrapper {
@@ -232,7 +312,6 @@ renderChart({
       width: 100%;
       min-height: 320px;
       padding: 16px;
-      background: #fff;
     }
 
     canvas {
@@ -253,21 +332,12 @@ renderChart({
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(250, 249, 240, 0.92);
       color: #774625;
       font-family: 'Fredoka', sans-serif;
       font-size: 16px;
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: lowercase;
-    }
-
-    .chart-overlay.code-loader {
-      background: rgba(250, 249, 240, 0.96);
-    }
-
-    .chart-overlay.describing {
-      background: rgba(250, 249, 240, 0.92);
     }
 
     .chart-error {
@@ -291,6 +361,9 @@ export class Chart {
   readonly showDescribingPhase = computed(() => {
     return this.completion.isSending();
   });
+  readonly description = computed(() => {
+    return JSON.stringify(this.chart(), null, 2);
+  });
   readonly errorMessage = computed(() => {
     const result = this.completion.value()?.result;
 
@@ -300,7 +373,6 @@ export class Chart {
 
     return result.message;
   });
-  readonly showCodeStreaming = computed(() => this.completion.isReceiving());
   readonly completion = structuredCompletionResource({
     model: 'gpt-5-chat-latest',
     debugName: `chart-${this.instanceId}`,
@@ -364,6 +436,18 @@ export class Chart {
 
           return trimmed === 'asc' || trimmed === 'desc' ? trimmed : null;
         };
+        const sanitizeChartType = (
+          value?: ChartType | string | null,
+        ): ChartType | null => {
+          if (!value) {
+            return null;
+          }
+
+          const candidate =
+            typeof value === 'string' ? (value.trim() as ChartType) : value;
+
+          return allowedChartTypes.includes(candidate) ? candidate : null;
+        };
 
         const payload = {
           prompt,
@@ -378,6 +462,7 @@ export class Chart {
           limit: sanitizeNumber(chart.limit),
           sortBy: sanitizeSortBy(chart.sortBy),
           sortDirection: sanitizeSortDirection(chart.sortDirection),
+          chartType: sanitizeChartType(chart.chartType),
         };
 
         console.log(`[${this.instanceId}] Input:`, payload);
@@ -434,22 +519,10 @@ export class Chart {
         return;
       }
 
+      const chartOptions = buildChartOptions(chartConfig.options);
       const chart = new ChartJS(canvas, {
         ...chartConfig.chart,
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          borderColor: 'rgba(0, 0, 0, 0.1)',
-          ...chartConfig.options,
-          interaction: chartConfig.options.interaction
-            ? {
-                mode: chartConfig.options.interaction.mode ?? undefined,
-                axis: chartConfig.options.interaction.axis ?? undefined,
-                intersect:
-                  chartConfig.options.interaction.intersect ?? undefined,
-              }
-            : undefined,
-        },
+        options: chartOptions,
       });
 
       onCleanup(() => {

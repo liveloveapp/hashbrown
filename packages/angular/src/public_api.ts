@@ -1,4 +1,18 @@
-export { RenderMessageComponent } from './components';
+export { RenderMessageComponent, MagicText } from './components';
+export {
+  MagicTextRenderCitation,
+  MagicTextRenderLink,
+  MagicTextRenderText,
+  MagicTextRenderWhitespace,
+  type MagicTextCitation,
+  type MagicTextCitationClickEvent,
+  type MagicTextRenderCitationContext,
+  type MagicTextLinkClickEvent,
+  type MagicTextRenderLinkContext,
+  type MagicTextRenderTextContext,
+  type MagicTextWhitespaceContext,
+  type MagicTextWhitespacePosition,
+} from './components';
 export {
   chatResource,
   type ChatResourceOptions,
@@ -16,6 +30,9 @@ export {
   type UiChatMessageOutput,
   type UiChatResourceOptions,
   type UiChatResourceRef,
+  uiCompletionResource,
+  type UiCompletionResourceOptions,
+  type UiCompletionResourceRef,
 } from './resources';
 export { provideHashbrown, type ProvideHashbrownOptions } from './providers';
 export {

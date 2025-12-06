@@ -31,6 +31,9 @@ export * as ɵtypes from './utils/types';
 export {
   prepareMagicText,
   type MagicTextFragment,
-  type MagicTextOptions,
+  type MagicTextFragmentText,
+  type MagicTextFragmentCitation,
   type MagicTextResult,
+  type MagicTextHasWhitespace,
+  type MagicTextTag,
 } from './utils/magic-text';

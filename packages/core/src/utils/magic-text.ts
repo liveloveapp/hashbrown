@@ -1,4 +1,5 @@
 const DEFAULT_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'] as const;
+const INCOMPLETE_LINK_HREF = 'hashbrown:incomplete-link';
 
 const enum Token {
   Backslash = '\\',
@@ -18,40 +19,10 @@ const enum Token {
 const INLINE_WHITESPACE = /[\s\n\r\t]/;
 const ATTR_NAME = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
 
-type Segment = { segment: string; index: number; isWordLike?: boolean };
-
-type LinkPolicyFnResult =
-  | 'allow'
-  | 'drop'
-  | { href: string; rel?: string; target?: string };
-
-type LinkPolicy =
-  | 'sanitize'
-  | 'passthrough'
-  | ((href: string) => LinkPolicyFnResult);
-
-type ProvisionalPolicy = 'include' | 'whitespace-only' | 'drop';
-
-type ParseOptions = {
-  allowedProtocols?: readonly string[];
-  linkPolicy?: LinkPolicy;
-  citations?: Record<string, CitationDef> | CitationDef[];
-  citationNumberingBase?: number;
-  unit?: 'run' | 'grapheme' | 'word';
-  segmenter?:
-    | Intl.Segmenter
-    | ((text: string, unit: 'grapheme' | 'word') => Iterable<Segment>);
-  emphasisIntraword?: boolean;
-  schemaVersion?: 1;
-  provisionalPolicy?: ProvisionalPolicy;
-};
-
-type CitationDef = {
-  id: string;
-  label?: string | number;
-  text?: string;
-  href?: string;
-  tooltip?: string;
+type ParserOptions = {
+  allowedProtocols: readonly string[];
+  citationNumberingBase: number;
+  emphasisIntraword: boolean;
 };
 
 type MagicParseResult = {
@@ -78,7 +49,7 @@ type LinkMark = {
   target?: string;
   rel?: string;
   unknownAttrs?: Record<string, string>;
-  policy: 'allowed' | 'rewritten';
+  policy: 'allowed';
 };
 
 type MarkSet = {
@@ -101,9 +72,6 @@ type CitationFragment = BaseFragment & {
   citation: {
     id: string;
     number: number | string;
-    missing?: boolean;
-    href?: string;
-    title?: string;
   };
 };
 
@@ -112,7 +80,6 @@ type Fragment = TextFragment | CitationFragment;
 type ParseWarning =
   | { code: 'unknown_link_attr'; key: string; range: [number, number] }
   | { code: 'disallowed_protocol'; href: string; range: [number, number] }
-  | { code: 'missing_citation'; id: string; range: [number, number] }
   | { code: 'unmatched_closer'; token: string; range: [number, number] }
   | {
       code: 'unterminated_construct';
@@ -120,20 +87,7 @@ type ParseWarning =
       at: number;
     };
 
-type NormalizedOptions = Required<
-  Pick<
-    ParseOptions,
-    | 'allowedProtocols'
-    | 'linkPolicy'
-    | 'citationNumberingBase'
-    | 'unit'
-    | 'emphasisIntraword'
-  >
-> & {
-  segmenter?: ParseOptions['segmenter'];
-  citations: Record<string, CitationDef>;
-  provisionalPolicy: ProvisionalPolicy;
-};
+type NormalizedOptions = ParserOptions;
 
 type InlineNode =
   | {
@@ -175,14 +129,13 @@ type ParserContext = {
   warnings: ParseWarning[];
   provisional: number[];
   citationState: CitationState;
+  literalGuards: Set<number>;
 };
 
 type CitationState = {
-  defs: Record<string, CitationDef>;
   order: string[];
   numbers: Map<string, number | string>;
   numberingBase: number;
-  warnings: ParseWarning[];
 };
 
 type TextSpan = {
@@ -190,27 +143,39 @@ type TextSpan = {
   marks: MarkSet;
   sources: number[];
   provisional: boolean;
+  lockMerge?: boolean;
 };
 
-type NormalizeFragmentsOptions = {
-  provisionalPolicy?: ProvisionalPolicy;
-  splitWhitespace?: boolean;
-  insertBoundaryWhitespace?: boolean;
+export type MagicTextTag = 'strong' | 'em';
+
+export type MagicTextHasWhitespace = {
+  before: boolean;
+  after: boolean;
+};
+
+export type MagicTextFragmentText = TextFragment & {
+  type: 'text';
+  key: string;
+  tags: MagicTextTag[];
+  wrappers: MagicTextTag[];
+  whitespace: FragmentWhitespace;
+  renderWhitespace: MagicTextHasWhitespace;
+  isCode: boolean;
+  isStatic: boolean;
+};
+
+export type MagicTextFragmentCitation = CitationFragment & {
+  type: 'citation';
+  key: string;
+  wrappers?: undefined;
+  whitespace: FragmentWhitespace;
+  renderWhitespace: MagicTextHasWhitespace;
+  isStatic: boolean;
 };
 
 export type MagicTextFragment =
-  | (TextFragment & {
-      type: 'text';
-      key: string;
-      wrappers: ('strong' | 'em')[];
-      whitespace: FragmentWhitespace;
-    })
-  | (CitationFragment & {
-      type: 'citation';
-      key: string;
-      wrappers?: undefined;
-      whitespace: FragmentWhitespace;
-    });
+  | MagicTextFragmentText
+  | MagicTextFragmentCitation;
 
 export type MagicTextResult = {
   fragments: MagicTextFragment[];
@@ -218,42 +183,24 @@ export type MagicTextResult = {
   meta: MagicParseResult['meta'];
 };
 
-export type MagicTextOptions = ParseOptions;
-
 type FragmentWhitespace = {
   before: boolean;
   after: boolean;
 };
 
-function normalizeFragments(
-  result: MagicParseResult,
-  options: NormalizeFragmentsOptions = {},
-): Fragment[] {
-  const policy = options.provisionalPolicy ?? 'include';
-  const splitWhitespace = options.splitWhitespace ?? false;
-  const insertBoundaryWhitespace =
-    options.insertBoundaryWhitespace ?? splitWhitespace;
-  let fragments = applyProvisionalPolicy([...result.fragments], policy);
-  if (splitWhitespace) {
-    fragments = splitWhitespaceFragments(fragments);
-  }
-  if (insertBoundaryWhitespace) {
-    fragments = insertBoundaryWhitespaceFragments(fragments);
-  }
-  return fragments;
-}
-
-export function prepareMagicText(
-  input: string,
-  options: MagicTextOptions = {},
-): MagicTextResult {
-  const parseResult = parseMagicText(input, options);
-  const normalized = normalizeFragments(parseResult, {
-    provisionalPolicy: 'include',
-  });
-  const whitespaceHints = computeWhitespaceHints(normalized);
-  const fragments = normalized.map((fragment, index) =>
-    toRenderFragment(fragment, whitespaceHints[index]),
+export function prepareMagicText(input: string): MagicTextResult {
+  const parseResult = parseMagicText(input);
+  const whitespaceHints = computeWhitespaceHints(parseResult.fragments);
+  const renderWhitespaceHints = computeRenderWhitespaceHints(
+    parseResult.fragments,
+    whitespaceHints,
+  );
+  const fragments = parseResult.fragments.map((fragment, index) =>
+    toRenderFragment(
+      fragment,
+      whitespaceHints[index],
+      renderWhitespaceHints[index],
+    ),
   );
 
   return {
@@ -263,25 +210,11 @@ export function prepareMagicText(
   };
 }
 
-function parseMagicText(
-  input: string,
-  options: ParseOptions = {},
-): MagicParseResult {
-  if (options.schemaVersion && options.schemaVersion !== 1) {
-    throw new Error(
-      `Unsupported MAGIC_TEXT schema version: ${options.schemaVersion}`,
-    );
-  }
-
+function parseMagicText(input: string): MagicParseResult {
   const normalized: NormalizedOptions = {
-    allowedProtocols: options.allowedProtocols ?? DEFAULT_PROTOCOLS,
-    linkPolicy: options.linkPolicy ?? 'sanitize',
-    citations: normalizeCitationDefs(options.citations),
-    citationNumberingBase: options.citationNumberingBase ?? 1,
-    unit: options.unit ?? 'run',
-    segmenter: options.segmenter,
-    emphasisIntraword: options.emphasisIntraword ?? true,
-    provisionalPolicy: options.provisionalPolicy ?? 'include',
+    allowedProtocols: DEFAULT_PROTOCOLS,
+    citationNumberingBase: 1,
+    emphasisIntraword: true,
   };
 
   const warnings: ParseWarning[] = [];
@@ -293,12 +226,11 @@ function parseMagicText(
     warnings,
     provisional,
     citationState: {
-      defs: normalized.citations,
       order: [],
       numbers: new Map(),
       numberingBase: normalized.citationNumberingBase,
-      warnings,
     },
+    literalGuards: new Set(),
   };
 
   const nodes = parseInline(ctx, 0, input.length);
@@ -307,13 +239,12 @@ function parseMagicText(
   collectTextSpans(nodes, spans, { marks: {}, provisional: false });
   markProvisionalSpans(spans, ctx.provisional);
 
-  const textFragments = buildTextFragments(spans, ctx, normalized.unit);
-  const citationFragments = collectCitations(nodes, ctx, normalized.unit);
+  const textFragments = buildTextFragments(spans);
+  const citationFragments = collectCitations(nodes, ctx);
 
-  let fragments: Fragment[] = [];
-  fragments.push(...textFragments, ...citationFragments);
-  fragments.sort((a, b) => a.range.start - b.range.start);
-  fragments = applyProvisionalPolicy(fragments, normalized.provisionalPolicy);
+  const fragments = [...textFragments, ...citationFragments].sort(
+    (a, b) => a.range.start - b.range.start,
+  );
 
   return {
     fragments,
@@ -330,41 +261,6 @@ function parseMagicText(
   };
 }
 
-function applyProvisionalPolicy<T extends Fragment>(
-  fragments: T[],
-  policy: ProvisionalPolicy,
-): T[] {
-  if (policy === 'include') {
-    return fragments;
-  }
-  return fragments.filter((fragment) => {
-    if (fragment.state === 'final') {
-      return true;
-    }
-    if (policy === 'whitespace-only' && fragment.kind === 'text') {
-      return fragment.text.trim().length === 0;
-    }
-    return false;
-  });
-}
-
-function normalizeCitationDefs(
-  defs: ParseOptions['citations'],
-): Record<string, CitationDef> {
-  if (!defs) {
-    return {};
-  }
-  if (Array.isArray(defs)) {
-    return defs.reduce<Record<string, CitationDef>>((acc, def) => {
-      if (def && def.id) {
-        acc[def.id] = def;
-      }
-      return acc;
-    }, {});
-  }
-  return defs;
-}
-
 function parseInline(
   ctx: ParserContext,
   start: number,
@@ -374,14 +270,25 @@ function parseInline(
   let i = start;
   let buffer = '';
   let sources: number[] = [];
+  let lockNextText = false;
 
   const flush = () => {
     if (!buffer) {
-      return;
+      return null;
     }
-    nodes.push({ type: 'text', text: buffer, sources: sources.slice() });
+    const node: InlineNode & { __lockMerge?: boolean } = {
+      type: 'text',
+      text: buffer,
+      sources: sources.slice(),
+    };
+    if (lockNextText) {
+      node.__lockMerge = true;
+      lockNextText = false;
+    }
+    nodes.push(node);
     buffer = '';
     sources = [];
+    return node;
   };
 
   while (i < end) {
@@ -428,6 +335,9 @@ function parseInline(
         nodes.push(emphasis.node);
         i = emphasis.nextIndex;
         continue;
+      }
+      if (ctx.literalGuards.delete(i)) {
+        lockNextText = true;
       }
     }
 
@@ -476,7 +386,14 @@ function tryParseEmphasis(
     return null;
   }
 
-  const runLength = ctx.input[index + 1] === marker ? 2 : 1;
+  let runLength = 1;
+  while (
+    runLength < 3 &&
+    ctx.input[index + runLength] === marker &&
+    index + runLength < end
+  ) {
+    runLength += 1;
+  }
   if (
     !shouldTreatAsEmphasisMarker(
       ctx.input,
@@ -497,28 +414,102 @@ function tryParseEmphasis(
     end,
   );
   if (closing == null) {
-    ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: runLength === 2 ? 'strong' : 'em',
-      at: index,
-    });
-    return null;
+    return softCloseEmphasis(ctx, index, end, runLength, marker);
   }
 
   const contentStart = index + runLength;
   const contentEnd = closing;
   const children = parseInline(ctx, contentStart, contentEnd);
+  const node = buildEmphasisNode(
+    runLength,
+    children,
+    index,
+    closing + runLength,
+  );
 
   return {
-    node: {
-      type: runLength === 2 ? 'strong' : 'em',
-      children,
-      start: index,
-      end: closing + runLength,
-    },
+    node,
     nextIndex: closing + runLength,
   };
+}
+
+function softCloseEmphasis(
+  ctx: ParserContext,
+  index: number,
+  end: number,
+  runLength: number,
+  marker: string,
+): ParseResult<InlineNode> | null {
+  const contentStart = index + runLength;
+  if (contentStart >= end) {
+    return null;
+  }
+  const intraword = ctx.options.emphasisIntraword ?? true;
+  if (
+    hasFutureEmphasisOpener(ctx.input, marker, contentStart, end, intraword)
+  ) {
+    ctx.literalGuards.add(index);
+    return null;
+  }
+  ctx.provisional.push(index);
+  const children = parseInline(ctx, contentStart, end);
+  const node = buildEmphasisNode(runLength, children, index, end);
+  return {
+    node,
+    nextIndex: end,
+  };
+}
+
+function buildEmphasisNode(
+  runLength: number,
+  children: InlineNode[],
+  start: number,
+  end: number,
+): InlineNode {
+  if (runLength >= 3) {
+    const inner: InlineNode = {
+      type: 'em',
+      children,
+      start: start + 2,
+      end,
+    };
+    return {
+      type: 'strong',
+      children: [inner],
+      start,
+      end,
+    };
+  }
+  if (runLength === 2) {
+    return { type: 'strong', children, start, end };
+  }
+  return { type: 'em', children, start, end };
+}
+
+function hasFutureEmphasisOpener(
+  input: string,
+  marker: string,
+  start: number,
+  end: number,
+  intraword: boolean,
+): boolean {
+  for (let i = start; i < end; i += 1) {
+    if (input[i] !== marker || isEscaped(input, i)) {
+      continue;
+    }
+    let runLength = 1;
+    while (
+      runLength < 3 &&
+      i + runLength < end &&
+      input[i + runLength] === marker
+    ) {
+      runLength += 1;
+    }
+    if (shouldTreatAsEmphasisMarker(input, i, runLength, marker, intraword)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function tryParseCode(
@@ -531,21 +522,29 @@ function tryParseCode(
   }
 
   const closing = findClosingBacktick(ctx.input, index + 1, end);
+  const textStart = index + 1;
   if (closing == null) {
+    if (textStart >= end) {
+      return null;
+    }
     ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: 'code',
-      at: index,
-    });
-    return null;
+    return buildCodeNode(ctx, textStart, end, index, end);
   }
 
-  const textStart = index + 1;
-  const text = ctx.input.slice(textStart, closing);
+  return buildCodeNode(ctx, textStart, closing, index, closing + 1);
+}
+
+function buildCodeNode(
+  ctx: ParserContext,
+  textStart: number,
+  textEnd: number,
+  rangeStart: number,
+  rangeEnd: number,
+): ParseResult<InlineNode> {
+  const text = ctx.input.slice(textStart, textEnd);
   const sources: number[] = [];
   let cursor = textStart;
-  while (cursor < closing) {
+  while (cursor < textEnd) {
     const cp = readCodePoint(ctx.input, cursor);
     if (!cp) {
       break;
@@ -553,16 +552,15 @@ function tryParseCode(
     pushSources(sources, cp.length, cp.index);
     cursor = cp.nextIndex;
   }
-
   return {
     node: {
       type: 'code',
       text,
       sources,
-      start: index,
-      end: closing + 1,
+      start: rangeStart,
+      end: rangeEnd,
     },
-    nextIndex: closing + 1,
+    nextIndex: rangeEnd,
   };
 }
 
@@ -575,11 +573,19 @@ function shouldTreatAsEmphasisMarker(
 ): boolean {
   const prev = input[index - 1];
   const next = input[index + runLength];
+  if (!next || INLINE_WHITESPACE.test(next)) {
+    return false;
+  }
   if (!intraword) {
     return !(isWordChar(prev) && isWordChar(next));
   }
   if (marker === '_') {
-    return !(isWordChar(prev) && isWordChar(next));
+    const prevIsWord = isWordChar(prev);
+    const nextIsWord = isWordChar(next);
+    if (prevIsWord && !nextIsWord) {
+      return false;
+    }
+    return !(prevIsWord && nextIsWord);
   }
   return true;
 }
@@ -599,11 +605,17 @@ function findClosingMarker(
     while (i + count < end && input[i + count] === marker) {
       count += 1;
     }
-    if (count >= runLength) {
+    if (count === runLength && canCloseEmphasis(input, i)) {
       return i;
     }
+    i += count - 1;
   }
   return null;
+}
+
+function canCloseEmphasis(input: string, index: number): boolean {
+  const prev = input[index - 1];
+  return !!prev && !INLINE_WHITESPACE.test(prev);
 }
 
 function findClosingBacktick(
@@ -634,13 +646,7 @@ function tryParseLink(
 ): LinkParseResult {
   const labelResult = readBracketed(ctx, index + 1, end, Token.LinkEnd);
   if (!labelResult) {
-    ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: 'link',
-      at: index,
-    });
-    return null;
+    return createIncompleteLinkLabel(ctx, index, end);
   }
 
   const afterLabel = skipWhitespace(ctx.input, labelResult.nextIndex + 1, end);
@@ -648,15 +654,26 @@ function tryParseLink(
     return null;
   }
 
-  const dest = parseLinkDestination(ctx, afterLabel + 1, end);
+  const destinationStart = afterLabel + 1;
+  const dest = parseLinkDestination(ctx, destinationStart, end);
   if (!dest) {
-    ctx.provisional.push(index);
-    ctx.warnings.push({
-      code: 'unterminated_construct',
-      kind: 'link',
-      at: index,
-    });
-    return null;
+    if (!hasVisibleContent(ctx.input, destinationStart, end)) {
+      const literal = buildLiteralTextNode(
+        ctx.input,
+        index,
+        Math.min(end, destinationStart),
+        { lockMerge: true },
+      );
+      if (!literal) {
+        return null;
+      }
+      return {
+        kind: 'fallback',
+        nodes: [literal],
+        nextIndex: destinationStart,
+      };
+    }
+    return createIncompleteLinkDestination(labelResult.nodes, index, end);
   }
 
   const afterDestination = dest.nextIndex;
@@ -680,10 +697,13 @@ function tryParseLink(
     attrsParsed = parsed;
     overallEnd = parsed.nextIndex;
   }
-  const labelNodes = parseInline(ctx, index + 1, labelResult.nextIndex);
   const policy = applyLinkPolicy(ctx, dest.href.trim(), [index, overallEnd]);
   if (policy === 'drop') {
-    return { kind: 'fallback', nodes: labelNodes, nextIndex: overallEnd };
+    return {
+      kind: 'fallback',
+      nodes: labelResult.nodes,
+      nextIndex: overallEnd,
+    };
   }
 
   const mark: LinkMark = {
@@ -700,13 +720,94 @@ function tryParseLink(
     kind: 'link',
     node: {
       type: 'link',
-      children: labelNodes,
+      children: labelResult.nodes,
       mark,
       start: index,
       end: overallEnd,
     },
     nextIndex: overallEnd,
   };
+}
+
+function createIncompleteLinkLabel(
+  ctx: ParserContext,
+  index: number,
+  end: number,
+): LinkParseResult {
+  const labelStart = index + 1;
+  if (labelStart >= end) {
+    return null;
+  }
+  const literal = buildLiteralTextNode(ctx.input, labelStart, end);
+  if (!literal) {
+    return null;
+  }
+  const text = ctx.input.slice(labelStart, end);
+  if (!/[*_`]/.test(text)) {
+    ctx.provisional.push(index);
+  }
+  return buildSyntheticLink([literal], index, end);
+}
+
+function createIncompleteLinkDestination(
+  nodes: InlineNode[],
+  start: number,
+  end: number,
+): LinkParseResult {
+  return buildSyntheticLink(nodes, start, end);
+}
+
+function buildSyntheticLink(
+  nodes: InlineNode[],
+  start: number,
+  end: number,
+): LinkParseResult {
+  const mark: LinkMark = {
+    href: INCOMPLETE_LINK_HREF,
+    policy: 'allowed',
+  };
+  return {
+    kind: 'link',
+    node: {
+      type: 'link',
+      children: nodes,
+      mark,
+      start,
+      end,
+    },
+    nextIndex: end,
+  };
+}
+
+function buildLiteralTextNode(
+  input: string,
+  start: number,
+  end: number,
+  options?: { lockMerge?: boolean },
+): InlineNode | null {
+  if (start >= end) {
+    return null;
+  }
+  const text = input.slice(start, end);
+  const sources: number[] = [];
+  let cursor = start;
+  while (cursor < end) {
+    const cp = readCodePoint(input, cursor);
+    if (!cp) {
+      break;
+    }
+    pushSources(sources, cp.length, cp.index);
+    cursor = cp.nextIndex;
+  }
+  const node: InlineNode & { __lockMerge?: boolean } = {
+    type: 'text',
+    text,
+    sources,
+  };
+  if (options?.lockMerge) {
+    node.__lockMerge = true;
+  }
+  return node;
 }
 
 type ReadBracketResult = { nodes: InlineNode[]; nextIndex: number } | null;
@@ -913,29 +1014,7 @@ function applyLinkPolicy(
   ctx: ParserContext,
   href: string,
   range: [number, number],
-): (LinkMark & { policy: 'allowed' | 'rewritten' }) | 'drop' {
-  const policy = ctx.options.linkPolicy;
-  if (typeof policy === 'function') {
-    const decision = policy(href);
-    if (decision === 'drop') {
-      ctx.warnings.push({ code: 'disallowed_protocol', href, range });
-      return 'drop';
-    }
-    if (decision === 'allow') {
-      return { href, policy: 'allowed' };
-    }
-    return {
-      href: decision.href,
-      rel: decision.rel,
-      target: decision.target,
-      policy: 'rewritten',
-    };
-  }
-
-  if (policy === 'passthrough') {
-    return { href, policy: 'allowed' };
-  }
-
+): LinkMark | 'drop' {
   const protocolMatch = href.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)/);
   if (protocolMatch) {
     const protocol = protocolMatch[1].toLowerCase();
@@ -964,7 +1043,7 @@ function tryParseCitation(
     return null;
   }
   const id = ctx.input.slice(index + 2, close).trim();
-  const citation = resolveCitation(ctx, id, index, close + 1);
+  const citation = resolveCitation(ctx, id);
 
   return {
     node: {
@@ -978,39 +1057,19 @@ function tryParseCitation(
   };
 }
 
-function resolveCitation(
-  ctx: ParserContext,
-  id: string,
-  rangeStart: number,
-  rangeEnd: number,
-) {
+function resolveCitation(ctx: ParserContext, id: string) {
   let citationNumber = ctx.citationState.numbers.get(id);
   if (citationNumber === undefined) {
     const ordinal =
       ctx.citationState.numberingBase + ctx.citationState.order.length;
     ctx.citationState.order.push(id);
-    const def = ctx.citationState.defs[id];
-    citationNumber = def?.label ?? ordinal;
+    citationNumber = ordinal;
     ctx.citationState.numbers.set(id, citationNumber);
-    if (!def) {
-      ctx.warnings.push({
-        code: 'missing_citation',
-        id,
-        range: [rangeStart, rangeEnd],
-      });
-    }
   }
   if (citationNumber === undefined) {
     throw new Error(`Unable to resolve citation number for "${id}"`);
   }
-  const def = ctx.citationState.defs[id];
-  return {
-    id,
-    number: citationNumber,
-    missing: !def ? true : undefined,
-    href: def?.href ?? `#cite-${id}`,
-    title: def?.tooltip ?? def?.text,
-  };
+  return { id, number: citationNumber };
 }
 
 function collectTextSpans(
@@ -1020,6 +1079,9 @@ function collectTextSpans(
 ) {
   for (const node of nodes) {
     if (node.type === 'text') {
+      const lockMerge = Boolean(
+        (node as { __lockMerge?: boolean })?.__lockMerge,
+      );
       if (!node.text) {
         continue;
       }
@@ -1028,15 +1090,20 @@ function collectTextSpans(
         marks: { ...ctx.marks },
         sources: node.sources,
         provisional: ctx.provisional,
+        lockMerge,
       });
       continue;
     }
     if (node.type === 'code') {
+      const lockMerge = Boolean(
+        (node as { __lockMerge?: boolean })?.__lockMerge,
+      );
       spans.push({
         text: node.text,
         marks: { ...ctx.marks, code: true },
         sources: [...node.sources],
         provisional: ctx.provisional,
+        lockMerge,
       });
       continue;
     }
@@ -1076,7 +1143,6 @@ function markProvisionalSpans(spans: TextSpan[], starts: number[]) {
 function collectCitations(
   nodes: InlineNode[],
   ctx: ParserContext,
-  unit: 'run' | 'grapheme' | 'word',
 ): CitationFragment[] {
   const fragments: CitationFragment[] = [];
   for (const node of nodes) {
@@ -1093,73 +1159,51 @@ function collectCitations(
       });
     }
     if (node.type === 'em' || node.type === 'strong' || node.type === 'link') {
-      fragments.push(...collectCitations(node.children, ctx, unit));
+      fragments.push(...collectCitations(node.children, ctx));
     }
   }
   return fragments;
 }
 
-function buildTextFragments(
-  spans: TextSpan[],
-  ctx: ParserContext,
-  unit: 'run' | 'grapheme' | 'word',
-): TextFragment[] {
+function buildTextFragments(spans: TextSpan[]): TextFragment[] {
   const fragments: TextFragment[] = [];
-  if (unit === 'run') {
-    let current: TextSpan | null = null;
-    for (const span of spans) {
-      if (!span.text) {
-        continue;
-      }
-      if (!current) {
-        current = {
-          text: span.text,
-          marks: { ...span.marks },
-          sources: [...span.sources],
-          provisional: span.provisional,
-        };
-        continue;
-      }
-      if (
-        span.provisional === current.provisional &&
-        marksEqual(span.marks, current.marks) &&
-        areSourcesAdjacent(current.sources, span.sources)
-      ) {
-        current.text += span.text;
-        current.sources.push(...span.sources);
-      } else {
-        fragments.push(spanToFragment(current, unit));
-        current = {
-          text: span.text,
-          marks: { ...span.marks },
-          sources: [...span.sources],
-          provisional: span.provisional,
-        };
-      }
-    }
-    if (current) {
-      fragments.push(spanToFragment(current, unit));
-    }
-    return fragments;
-  }
-
-  const segmenter = createSegmentIterator(unit, ctx.options.segmenter);
+  let current: TextSpan | null = null;
   for (const span of spans) {
-    const segments = segmenter(span.text);
-    for (const seg of segments) {
-      if (!seg.segment) {
-        continue;
-      }
-      const startOffset = seg.index;
-      const endOffset = seg.index + seg.segment.length;
-      const sliced: TextSpan = {
-        text: seg.segment,
-        marks: { ...span.marks },
-        sources: span.sources.slice(startOffset, endOffset),
-        provisional: span.provisional,
-      };
-      fragments.push(spanToFragment(sliced, unit));
+    if (!span.text) {
+      continue;
     }
+    if (!current) {
+      current = {
+        text: span.text,
+        marks: { ...span.marks },
+        sources: [...span.sources],
+        provisional: span.provisional,
+        lockMerge: span.lockMerge,
+      };
+      continue;
+    }
+    if (
+      span.provisional === current.provisional &&
+      marksEqual(span.marks, current.marks) &&
+      areSourcesAdjacent(current.sources, span.sources) &&
+      !span.lockMerge &&
+      !current.lockMerge
+    ) {
+      current.text += span.text;
+      current.sources.push(...span.sources);
+    } else {
+      fragments.push(spanToFragment(current));
+      current = {
+        text: span.text,
+        marks: { ...span.marks },
+        sources: [...span.sources],
+        provisional: span.provisional,
+        lockMerge: span.lockMerge,
+      };
+    }
+  }
+  if (current) {
+    fragments.push(spanToFragment(current));
   }
   return fragments;
 }
@@ -1171,10 +1215,7 @@ function areSourcesAdjacent(a: number[], b: number[]): boolean {
   return a[a.length - 1] + 1 === b[0];
 }
 
-function spanToFragment(
-  span: TextSpan,
-  unit: 'run' | 'grapheme' | 'word',
-): TextFragment {
+function spanToFragment(span: TextSpan): TextFragment {
   const start = span.sources.length ? span.sources[0] : 0;
   const endSource = span.sources.length
     ? span.sources[span.sources.length - 1]
@@ -1186,20 +1227,13 @@ function spanToFragment(
     range: { start, end: endSource + 1 },
     state: span.provisional ? 'provisional' : 'final',
     rev: 0,
-    id: buildFragmentId(unit, start),
+    id: buildFragmentId(start),
   };
   return fragment;
 }
 
-function buildFragmentId(
-  unit: 'run' | 'grapheme' | 'word',
-  start: number,
-): string {
-  if (unit === 'run') {
-    return `r:${start}`;
-  }
-  const prefix = unit === 'grapheme' ? 'g' : 'w';
-  return `${prefix}:${start}`;
+function buildFragmentId(start: number): string {
+  return `r:${start}`;
 }
 
 function marksEqual(a: MarkSet, b: MarkSet): boolean {
@@ -1228,74 +1262,21 @@ function linkEqual(a?: LinkMark, b?: LinkMark): boolean {
   );
 }
 
-type SegmentIterator = (text: string) => Segment[];
-
-function createSegmentIterator(
-  unit: 'grapheme' | 'word',
-  provided?: ParseOptions['segmenter'],
-): SegmentIterator {
-  if (provided instanceof Intl.Segmenter) {
-    return (text) => Array.from(provided.segment(text));
-  }
-  if (typeof provided === 'function') {
-    return (text) => Array.from(provided(text, unit));
-  }
-  try {
-    const intl = new Intl.Segmenter(undefined, { granularity: unit });
-    return (text) => Array.from(intl.segment(text));
-  } catch {
-    if (unit === 'grapheme') {
-      return fallbackGraphemeSegments;
-    }
-    return fallbackWordSegments;
-  }
-}
-
-function fallbackGraphemeSegments(text: string): Segment[] {
-  const segments: Segment[] = [];
-  let index = 0;
-  for (const char of Array.from(text)) {
-    segments.push({ segment: char, index });
-    index += char.length;
-  }
-  return segments;
-}
-
-function fallbackWordSegments(text: string): Segment[] {
-  const segments: Segment[] = [];
-  let index = 0;
-  while (index < text.length) {
-    const cp = readCodePoint(text, index);
-    if (!cp) {
-      break;
-    }
-    if (isWordChar(cp.value)) {
-      let word = cp.value;
-      let nextIndex = cp.nextIndex;
-      while (nextIndex < text.length) {
-        const inner = readCodePoint(text, nextIndex);
-        if (!inner || !isWordChar(inner.value)) {
-          break;
-        }
-        word += inner.value;
-        nextIndex = inner.nextIndex;
-      }
-      segments.push({ segment: word, index, isWordLike: true });
-      index = nextIndex;
-    } else {
-      segments.push({ segment: cp.value, index });
-      index = cp.nextIndex;
-    }
-  }
-  return segments;
-}
-
 function skipWhitespace(input: string, start: number, end: number): number {
   let i = start;
   while (i < end && INLINE_WHITESPACE.test(input[i])) {
     i += 1;
   }
   return i;
+}
+
+function hasVisibleContent(input: string, start: number, end: number): boolean {
+  for (let i = start; i < end; i += 1) {
+    if (!INLINE_WHITESPACE.test(input[i] ?? '')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isWordChar(ch?: string): boolean {
@@ -1319,82 +1300,23 @@ function readCodePoint(text: string, index: number) {
   };
 }
 
-function splitWhitespaceFragments(fragments: Fragment[]): Fragment[] {
-  const result: Fragment[] = [];
-  for (const fragment of fragments) {
-    if (fragment.kind !== 'text' || !fragment.text) {
-      result.push(fragment);
-      continue;
-    }
-    const pieces = fragment.text.match(/\s+|\S+/g);
-    if (!pieces || pieces.length === 1) {
-      result.push(fragment);
-      continue;
-    }
-    let offset = fragment.range.start;
-    for (const piece of pieces) {
-      const length = piece.length;
-      result.push({
-        ...fragment,
-        id: `${fragment.id}:${offset}`,
-        text: piece,
-        range: { start: offset, end: offset + length },
-      });
-      offset += length;
-    }
-  }
-  return result;
-}
-
-function insertBoundaryWhitespaceFragments(fragments: Fragment[]): Fragment[] {
-  const result: Fragment[] = [];
-  for (let i = 0; i < fragments.length; i += 1) {
-    const current = fragments[i];
-    result.push(current);
-    const next = fragments[i + 1];
-    if (needsBoundaryGap(current, next)) {
-      result.push(createGapFragment(current as TextFragment));
-    }
-  }
-  return result;
-}
-
-function needsBoundaryGap(a?: Fragment, b?: Fragment): boolean {
-  return (
-    isRenderableText(a) &&
-    isRenderableText(b) &&
-    !a.text.endsWith(' ') &&
-    !b.text.startsWith(' ')
-  );
-}
-
-function isRenderableText(fragment?: Fragment): fragment is TextFragment {
-  return !!fragment && fragment.kind === 'text' && Boolean(fragment.text);
-}
-
-function createGapFragment(fragment: TextFragment): TextFragment {
-  return {
-    kind: 'text',
-    text: ' ',
-    marks: {},
-    range: { start: fragment.range.end, end: fragment.range.end + 1 },
-    state: 'final',
-    rev: fragment.rev,
-    id: `${fragment.id}/gap-${fragment.range.end}`,
-  };
-}
-
 function toRenderFragment(
   fragment: Fragment,
   whitespace: FragmentWhitespace,
+  renderWhitespace: MagicTextHasWhitespace,
 ): MagicTextFragment {
   if (fragment.kind === 'text') {
+    const tags = buildTags(fragment.marks);
     return {
       ...fragment,
       type: 'text',
       key: fragment.id,
-      wrappers: buildWrappers(fragment.marks),
+      tags,
+      wrappers: tags,
       whitespace,
+      renderWhitespace,
+      isCode: Boolean(fragment.marks.code),
+      isStatic: computeIsStatic(fragment),
     };
   }
   return {
@@ -1402,18 +1324,20 @@ function toRenderFragment(
     type: 'citation',
     key: fragment.id,
     whitespace,
+    renderWhitespace,
+    isStatic: computeIsStatic(fragment),
   };
 }
 
-function buildWrappers(marks: MarkSet): ('strong' | 'em')[] {
-  const wrappers: ('strong' | 'em')[] = [];
+function buildTags(marks: MarkSet): MagicTextTag[] {
+  const tags: MagicTextTag[] = [];
   if (marks.strong) {
-    wrappers.push('strong');
+    tags.push('strong');
   }
   if (marks.em) {
-    wrappers.push('em');
+    tags.push('em');
   }
-  return wrappers;
+  return tags;
 }
 
 function computeWhitespaceHints(fragments: Fragment[]): FragmentWhitespace[] {
@@ -1423,6 +1347,19 @@ function computeWhitespaceHints(fragments: Fragment[]): FragmentWhitespace[] {
     return {
       before: fragmentHasTrailingWhitespace(previous),
       after: fragmentHasLeadingWhitespace(next),
+    };
+  });
+}
+
+function computeRenderWhitespaceHints(
+  fragments: Fragment[],
+  whitespaceHints: FragmentWhitespace[],
+): MagicTextHasWhitespace[] {
+  return fragments.map((_, index) => {
+    const hint = whitespaceHints[index];
+    return {
+      before: Boolean(hint?.before),
+      after: Boolean(hint?.after),
     };
   });
 }
@@ -1441,4 +1378,14 @@ function fragmentHasTrailingWhitespace(fragment?: Fragment): boolean {
     fragment.text.length > 0 &&
     /\s$/.test(fragment.text[fragment.text.length - 1])
   );
+}
+
+function computeIsStatic(fragment: Fragment): boolean {
+  if (fragment.state === 'provisional') {
+    return true;
+  }
+  if (fragment.kind === 'text') {
+    return fragment.text.trim().length === 0;
+  }
+  return false;
 }

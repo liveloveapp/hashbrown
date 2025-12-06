@@ -11,7 +11,7 @@ import {
 export class FastFoodDatasetService {
   private readonly http = inject(HttpClient);
   private readonly items$ = this.http
-    .get('fastfood.csv', { responseType: 'text' })
+    .get('fastfood_v2.csv', { responseType: 'text' })
     .pipe(
       map((csv) => this.parseCsv(csv)),
       shareReplay({ bufferSize: 1, refCount: false }),
@@ -101,8 +101,10 @@ export class FastFoodDatasetService {
 
     if (normalized.categories?.length) {
       filtered = filtered.filter((item) =>
-        normalized.categories!.some((category) =>
-          this.fuzzyMatch(category, item.menuCategory, 0.65),
+        item.categories.some((itemCategory) =>
+          normalized.categories!.some((category) =>
+            this.fuzzyMatch(category, itemCategory, 0.65),
+          ),
         ),
       );
     }
@@ -115,10 +117,11 @@ export class FastFoodDatasetService {
 
       if (tokens.length) {
         filtered = filtered.filter((item) => {
-          const haystackWords = `${item.restaurant} ${item.item}`
-            .split(/\s+/)
-            .map((word) => word.trim())
-            .filter(Boolean);
+          const haystackWords =
+            `${item.restaurant} ${item.item} ${item.shortName} ${item.description} ${item.servingSize} ${item.categories.join(' ')}`
+              .split(/\s+/)
+              .map((word) => word.trim())
+              .filter(Boolean);
           return tokens.every((token) =>
             haystackWords.some(
               (word) =>
@@ -276,28 +279,37 @@ export class FastFoodDatasetService {
   }
 
   private mapRecordToItem(record: Record<string, string>, index: number) {
-    const restaurant = record['restaurant']?.trim() || 'Unknown restaurant';
-    const itemName = record['item']?.trim() || `Menu item ${index + 1}`;
+    const restaurant = record['chain']?.trim() || 'Unknown chain';
+    const itemName =
+      record['menu_item']?.trim() ||
+      record['short_name']?.trim() ||
+      `Menu item ${index + 1}`;
+    const shortName = record['short_name']?.trim() || itemName;
+    const description =
+      record['description']?.trim() || 'No description provided.';
+    const servingSize = record['serving_size']?.trim() || '1 serving';
+    const categories = this.parseCategoryList(record['categories']);
 
     return {
       id: this.createId(restaurant, itemName, index),
       restaurant,
       item: itemName,
+      shortName,
+      description,
+      servingSize,
+      categories,
       calories: this.toNumber(record['calories']),
-      caloriesFromFat: this.toNumber(record['cal_fat']),
-      totalFat: this.toNumber(record['total_fat']),
-      saturatedFat: this.toNumber(record['sat_fat']),
-      transFat: this.toNumber(record['trans_fat']),
-      cholesterol: this.toNumber(record['cholesterol']),
-      sodium: this.toNumber(record['sodium']),
-      totalCarbs: this.toNumber(record['total_carb']),
-      fiber: this.toNumber(record['fiber']),
-      sugar: this.toNumber(record['sugar']),
-      protein: this.toNumber(record['protein']),
-      vitaminA: this.toNumber(record['vit_a']),
-      vitaminC: this.toNumber(record['vit_c']),
-      calcium: this.toNumber(record['calcium']),
-      menuCategory: record['salad']?.trim() || 'Other',
+      totalFat: this.toNumber(record['total_fat_g']),
+      saturatedFat: this.toNumber(record['saturated_fat_g']),
+      transFat: this.toNumber(record['trans_fat_g']),
+      cholesterol: this.toNumber(record['cholesterol_mg']),
+      sodium: this.toNumber(record['sodium_mg']),
+      totalCarbs: this.toNumber(record['carbs_g']),
+      fiber: this.toNumber(record['fiber_g']),
+      sugar: this.toNumber(record['sugar_g']),
+      protein: this.toNumber(record['protein_g']),
+      sources: this.parseSourceList(record['sources']),
+      lastAudited: this.normalizeIsoDate(record['last_audited']),
     } satisfies FastFoodItem;
   }
 
@@ -327,6 +339,40 @@ export class FastFoodDatasetService {
         ?.map((value) => value?.trim())
         .filter((value): value is string => !!value) ?? null
     );
+  }
+
+  private parseCategoryList(raw?: string) {
+    const values = this.splitPipeDelimited(raw);
+    return values.length ? values : ['Other'];
+  }
+
+  private parseSourceList(raw?: string) {
+    return this.splitPipeDelimited(raw).filter((value) =>
+      /https?:\/\//i.test(value),
+    );
+  }
+
+  private splitPipeDelimited(raw?: string) {
+    return (
+      raw
+        ?.split('|')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0) ?? []
+    );
+  }
+
+  private normalizeIsoDate(raw?: string) {
+    const trimmed = raw?.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const timestamp = Date.parse(trimmed);
+    if (Number.isNaN(timestamp)) {
+      return null;
+    }
+
+    return new Date(timestamp).toISOString();
   }
 
   private log(

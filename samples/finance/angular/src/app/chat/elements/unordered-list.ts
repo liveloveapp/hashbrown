@@ -1,15 +1,18 @@
 import { Component, computed, input } from '@angular/core';
-import { createSegmentedTexts } from './text-fragments';
+import { MagicTextCitation } from '@hashbrownai/angular';
+import { MagicTextRenderer } from '../magic-text-renderer';
 
 @Component({
   selector: 'app-unordered-list',
+  imports: [MagicTextRenderer],
   template: `
     <ul>
-      @for (item of itemsWithFragments(); track item.id) {
+      @for (item of itemsWithIds(); track item.id) {
         <li>
-          @for (fragment of item.fragments; track fragment.id) {
-            <span>{{ fragment.text }}</span>
-          }
+          <app-magic-text-renderer
+            [text]="item.text"
+            [citations]="citations()"
+          ></app-magic-text-renderer>
         </li>
       }
     </ul>
@@ -34,21 +37,16 @@ import { createSegmentedTexts } from './text-fragments';
       li {
         line-height: 1.3;
       }
-
-      span {
-        opacity: 1;
-        transition: opacity 0.5s ease;
-
-        @starting-style {
-          opacity: 0;
-        }
-      }
     `,
   ],
 })
 export class UnorderedList {
   readonly items = input<string[]>([]);
-  readonly itemsWithFragments = computed(() =>
-    createSegmentedTexts(this.items()),
+  readonly citations = input<MagicTextCitation[]>([]);
+  readonly itemsWithIds = computed(() =>
+    this.items().map((text, index) => ({
+      id: index,
+      text,
+    })),
   );
 }
