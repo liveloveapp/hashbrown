@@ -1,0 +1,9 @@
+{
+  "name": "vox",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/vox/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project vox --web",
+  "targets": {}
+}
