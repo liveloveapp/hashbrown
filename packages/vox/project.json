@@ -5,5 +5,28 @@
   "projectType": "library",
   "tags": [],
   "// targets": "to see all targets run: nx show project vox --web",
-  "targets": {}
+  "targets": {
+    "build": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/vox/src/index.ts",
+        "tsConfig": "packages/vox/tsconfig.lib.json",
+        "outputPath": "dist/packages/vox",
+        "format": ["esm", "cjs"],
+        "outputFileName": "index",
+        "outputFileExtensionForEsm": ".mjs",
+        "outputFileExtensionForCjs": ".cjs",
+        "assets": [
+          { "input": "packages/vox", "glob": "*.md", "output": "." },
+          {
+            "input": "packages/vox/src/assets",
+            "glob": "**/*",
+            "output": "assets"
+          }
+        ],
+        "generateExportsField": true
+      }
+    }
+  }
 }
