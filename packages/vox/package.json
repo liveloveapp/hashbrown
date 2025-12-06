@@ -21,11 +21,12 @@
       "require": "./index.cjs",
       "default": "./index.cjs"
     },
-    "./wasm": "./assets/vad_audio_worklet.wasm",
     "./loader": {
       "import": "./assets/vad_audio_worklet.js",
-      "require": "./assets/vad_audio_worklet.js"
+      "require": "./assets/vad_audio_worklet.js",
+      "default": "./assets/vad_audio_worklet.js"
     },
+    "./wasm": "./assets/vad_audio_worklet.wasm",
     "./worker": "./assets/vad_audio_worklet.ww.js",
     "./async": "./assets/vad_audio_worklet.aw.js",
     "./package.json": "./package.json"

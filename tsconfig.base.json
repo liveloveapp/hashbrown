@@ -25,6 +25,18 @@
       "@hashbrownai/openai": ["packages/openai/src/index.ts"],
       "@hashbrownai/react": ["packages/react/src/index.ts"],
       "@hashbrownai/vox": ["packages/vox/src/index.ts"],
+      "@hashbrownai/vox/loader": [
+        "packages/vox/src/assets/vad_audio_worklet.js"
+      ],
+      "@hashbrownai/vox/wasm": [
+        "packages/vox/src/assets/vad_audio_worklet.wasm"
+      ],
+      "@hashbrownai/vox/worker": [
+        "packages/vox/src/assets/vad_audio_worklet.ww.js"
+      ],
+      "@hashbrownai/vox/async": [
+        "packages/vox/src/assets/vad_audio_worklet.aw.js"
+      ],
       "@hashbrownai/writer": ["packages/writer/src/index.ts"],
       "tater-js": ["packages/streaming-json-parser/index.ts"]
     }
