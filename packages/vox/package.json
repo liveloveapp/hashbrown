@@ -22,13 +22,15 @@
       "default": "./index.cjs"
     },
     "./loader": {
-      "import": "./assets/vad_audio_worklet.js",
-      "require": "./assets/vad_audio_worklet.js",
-      "default": "./assets/vad_audio_worklet.js"
+      "import": "./assets/vad_audio_worklet.single.js",
+      "require": "./assets/vad_audio_worklet.single.js",
+      "default": "./assets/vad_audio_worklet.single.js"
     },
-    "./wasm": "./assets/vad_audio_worklet.wasm",
-    "./worker": "./assets/vad_audio_worklet.ww.js",
-    "./async": "./assets/vad_audio_worklet.aw.js",
+    "./loader-single": {
+      "import": "./assets/vad_audio_worklet.single.js",
+      "require": "./assets/vad_audio_worklet.single.js",
+      "default": "./assets/vad_audio_worklet.single.js"
+    },
     "./package.json": "./package.json"
   },
   "dependencies": {}
