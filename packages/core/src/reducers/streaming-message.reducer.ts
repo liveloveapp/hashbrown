@@ -19,7 +19,6 @@ export const reducer = createReducer(
     apiActions.generateMessageChunk,
     (state, action): StreamingMessageState => {
       const apiMessage = action.payload;
-      console.log(apiMessage);
       const [internalMessage] = Chat.helpers.toInternalMessagesFromApi({
         role: apiMessage.role ?? 'assistant',
         content: apiMessage.content ?? '',
