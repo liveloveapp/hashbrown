@@ -65,6 +65,7 @@ They include:
 
 - [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
 - [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
+- [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
 - [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
 - [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
 - [Writer](https://hashbrown.dev/docs/angular/platform/writer)
