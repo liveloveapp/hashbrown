@@ -60,13 +60,13 @@ export function App() {
             <div className="col-span-3">
               <div className="p-2">
                 <Routes>
-                  <Route path="/" element={<LightsView />} />
                   <Route path="/lights" element={<LightsView />} />
                   <Route path="/scenes" element={<ScenesView />} />
                   <Route
                     path="/scheduled-scenes"
                     element={<ScheduledScenesView />}
                   />
+                  <Route path="/" element={<p>Home</p>} />
                 </Routes>
               </div>
             </div>
