@@ -1,7 +1,6 @@
 import { createVAD } from '@hashbrownai/vox';
 import createModule from '@hashbrownai/vox/loader-single';
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '../../shared/button';
 
 export const VADTest = () => {
   const [status, setStatus] = useState<'idle' | 'starting' | 'running' | 'error'>('idle');
@@ -54,22 +53,35 @@ export const VADTest = () => {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="text-lg font-bold">VAD Test</div>
-      <div className="space-y-2">
-        <Button
+    <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>VAD Test</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <button
           onClick={status === 'running' ? handleStop : handleStart}
           disabled={status === 'starting'}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: status === 'running' ? '#ef4444' : '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            cursor: status === 'starting' ? 'not-allowed' : 'pointer',
+            opacity: status === 'starting' ? 0.5 : 1,
+          }}
         >
           {status === 'running' ? 'Stop' : 'Start'}
-        </Button>
-        <div className="flex items-center gap-2 text-sm">
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
           <label htmlFor="mode">Mode:</label>
           <select
             id="mode"
             value={mode}
             onChange={handleModeChange}
-            className="border rounded px-2 py-1"
+            style={{
+              border: '1px solid #ccc',
+              borderRadius: '0.25rem',
+              padding: '0.25rem 0.5rem',
+            }}
             disabled={status === 'starting'}
           >
             <option value={0}>0</option>
@@ -78,11 +90,15 @@ export const VADTest = () => {
             <option value={3}>3</option>
           </select>
         </div>
-        <div className="text-sm">
+        <div style={{ fontSize: '0.875rem' }}>
           Status: {status}
         </div>
         {decision && (
-          <div className={`text-2xl font-bold ${decision === 'VOICE' ? 'text-green-600' : 'text-gray-500'}`}>
+          <div style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            color: decision === 'VOICE' ? '#16a34a' : '#6b7280',
+          }}>
             {decision}
           </div>
         )}
@@ -90,3 +106,4 @@ export const VADTest = () => {
     </div>
   );
 };
+

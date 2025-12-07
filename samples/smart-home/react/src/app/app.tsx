@@ -16,7 +16,6 @@ import { Toaster } from './shared/toaster';
 import { LightsView } from './views/LightsView';
 import { ScenesView } from './views/ScenesView';
 import { ScheduledScenesView } from './views/ScheduledScenesView';
-import { VADTest } from './views/components/VADTest';
 
 export function App() {
   const url = 'http://localhost:3000/api/chat';
@@ -54,13 +53,6 @@ export function App() {
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link to="/vad-test" className={navigationMenuTriggerStyle()}>
-                      VAD Test
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
           </div>
@@ -75,7 +67,6 @@ export function App() {
                     path="/scheduled-scenes"
                     element={<ScheduledScenesView />}
                   />
-                  <Route path="/vad-test" element={<VADTest />} />
                 </Routes>
               </div>
             </div>
