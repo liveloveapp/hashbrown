@@ -9,6 +9,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 OUTPUT_DIR="$SCRIPT_DIR/output"
 BIN_DIR="$SCRIPT_DIR/../bin/vad-audio-worklet"
+VOX_ASSETS_DIR="$SCRIPT_DIR/../../packages/vox/src/assets"
 
 echo "================================================"
 echo "WASM Module Promotion"
@@ -97,6 +98,35 @@ if [ -f "$OUTPUT_DIR/webrtc_commit_sha.txt" ]; then
 fi
 
 echo "Done!"
+echo ""
+
+# Copy .js files to vox assets folder
+echo "Copying .js files to packages/vox/src/assets/..."
+mkdir -p "$VOX_ASSETS_DIR"
+
+# Copy all .js files from bin to assets
+for js_file in "$BIN_DIR"/*.js; do
+    if [ -f "$js_file" ]; then
+        filename=$(basename "$js_file")
+        cp "$js_file" "$VOX_ASSETS_DIR/"
+        echo "  Copied $filename"
+    fi
+done
+
+echo "Done copying .js files to assets!"
+echo ""
+
+# Run embed-singlefile.mjs to generate embedded loader
+echo "Generating embedded single-file loader..."
+if [ -f "$SCRIPT_DIR/embed-singlefile.mjs" ]; then
+    node "$SCRIPT_DIR/embed-singlefile.mjs"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to generate embedded single-file loader"
+        exit 1
+    fi
+else
+    echo "Warning: embed-singlefile.mjs not found at $SCRIPT_DIR/embed-singlefile.mjs"
+fi
 echo ""
 
 # Extract commit SHA for commit message if available

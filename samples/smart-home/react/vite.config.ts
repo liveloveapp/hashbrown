@@ -2,8 +2,8 @@
 import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
 import { join } from 'path';
+import { defineConfig } from 'vite';
 
 export default defineConfig(() => ({
   root: __dirname,
@@ -31,55 +31,7 @@ export default defineConfig(() => ({
       allow: [join(__dirname, '../../..'), join(__dirname, '../../../dist')],
     },
   },
-  plugins: [
-    react(),
-    nxViteTsPaths(),
-    nxCopyAssetsPlugin(['*.md']),
-    // Serve built vox assets with correct MIME types
-    {
-      name: 'serve-vox-assets',
-      configureServer(server) {
-        server.middlewares.use(
-          '/dist/packages/vox/assets',
-          (req, res, next) => {
-            const filename =
-              req.url?.replace('/dist/packages/vox/assets/', '') || '';
-            if (!filename) {
-              next();
-              return;
-            }
-
-            const workspaceRoot = join(__dirname, '../../..');
-            const filePath = join(
-              workspaceRoot,
-              'dist/packages/vox/assets',
-              filename,
-            );
-
-            import('fs')
-              .then(({ readFileSync, existsSync }) => {
-                if (!existsSync(filePath)) {
-                  next();
-                  return;
-                }
-                const content = readFileSync(filePath);
-                const ext = filePath.split('.').pop();
-                const contentType =
-                  ext === 'js'
-                    ? 'application/javascript'
-                    : ext === 'wasm'
-                      ? 'application/wasm'
-                      : 'application/octet-stream';
-
-                res.setHeader('Content-Type', contentType);
-                res.end(content);
-              })
-              .catch(() => next());
-          },
-        );
-      },
-    },
-  ],
+  plugins: [react(), nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
   // Uncomment this if you are using workers.
   // worker: {
   //  plugins: [ nxViteTsPaths() ],
