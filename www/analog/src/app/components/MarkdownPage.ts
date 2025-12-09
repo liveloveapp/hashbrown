@@ -268,7 +268,7 @@ type Heading = { level: number; text: string; id: string; url: string };
           > thead {
             padding: 8px 16px;
             color: rgba(250, 249, 240, 0.8);
-            background: #3a3d3aff;
+            background: #3d3c3a;
             border-bottom: 1px solid #000;
             font-size: 12px;
             font-weight: 500;
