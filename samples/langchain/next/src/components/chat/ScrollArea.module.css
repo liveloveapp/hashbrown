@@ -1,0 +1,39 @@
+.root {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+}
+
+.viewport {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+}
+
+.scrollbar {
+  display: flex;
+  touch-action: none;
+  user-select: none;
+  transition: color 200ms;
+}
+
+.scrollbarVertical {
+  height: 100%;
+  width: 10px;
+  border-left: 1px solid transparent;
+  padding: 1px;
+}
+
+.scrollbarHorizontal {
+  height: 10px;
+  flex-direction: column;
+  border-top: 1px solid transparent;
+  padding: 1px;
+}
+
+.thumb {
+  position: relative;
+  flex: 1;
+  border-radius: 9999px;
+  background-color: var(--gray-light, rgba(164, 163, 161, 1));
+}

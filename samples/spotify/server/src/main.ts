@@ -7,6 +7,7 @@ import { IResponseDeserializer, SpotifyApi } from '@spotify/web-api-ts-sdk';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
 import z from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { Client as GeniusClient } from 'genius-lyrics';
 
 const host = process.env.HOST ?? 'localhost';
@@ -75,6 +76,25 @@ const mcpServer = new McpServer({
   version: '1.0.0',
 });
 
+const searchInputSchema = zodToJsonSchema(
+  z.object({
+    query: z.string().describe('Search keywords'),
+    type: z.enum(['track', 'artist', 'album']).optional(),
+  }),
+) as Record<string, unknown>;
+
+const queueTrackInputSchema = zodToJsonSchema(
+  z.object({
+    uri: z
+      .string()
+      .describe('spotify:track:<id> or https://open.spotify.com/track/<id>'),
+    deviceId: z
+      .string()
+      .optional()
+      .describe('The ID of the device to queue the track on'),
+  }),
+) as Record<string, unknown>;
+
 /**
  * Register tool
  *
@@ -115,10 +135,7 @@ mcpServer.registerTool(
   {
     title: 'search',
     description: 'Search tracks, artists or albums on Spotify',
-    inputSchema: {
-      query: z.string().describe('Search keywords'),
-      type: z.enum(['track', 'artist', 'album']).optional(),
-    },
+    inputSchema: searchInputSchema,
   },
   async ({ query, type = 'track' }, context) => {
     try {
@@ -165,15 +182,7 @@ mcpServer.registerTool(
   {
     title: 'Queue Track',
     description: "Add a track URI to the user's playback queue",
-    inputSchema: {
-      uri: z
-        .string()
-        .describe('spotify:track:<id> or https://open.spotify.com/track/<id>'),
-      deviceId: z
-        .string()
-        .optional()
-        .describe('The ID of the device to queue the track on'),
-    },
+    inputSchema: queueTrackInputSchema,
   },
   async ({ uri, deviceId }, context) => {
     try {

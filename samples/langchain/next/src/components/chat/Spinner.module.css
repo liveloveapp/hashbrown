@@ -1,0 +1,33 @@
+.spinner {
+  display: inline-block;
+  animation: rotate 1s linear infinite;
+  color: currentColor;
+}
+
+.circle {
+  animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dash {
+  0% {
+    stroke-dasharray: 1, 32;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 12, 32;
+    stroke-dashoffset: -8;
+  }
+  100% {
+    stroke-dasharray: 1, 32;
+    stroke-dashoffset: -32;
+  }
+}
