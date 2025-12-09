@@ -258,16 +258,17 @@ type Heading = { level: number; text: string; id: string; url: string };
         }
 
         table {
+          display: block;
+          overflow-x: auto;
           border-collapse: collapse;
           border-radius: 12px;
           margin: 0 0 24px;
-          overflow: hidden;
           box-shadow: inset 0 0 0 1px #000;
 
           > thead {
             padding: 8px 16px;
             color: rgba(250, 249, 240, 0.8);
-            background: #3d3c3a;
+            background: #3a3d3aff;
             border-bottom: 1px solid #000;
             font-size: 12px;
             font-weight: 500;
