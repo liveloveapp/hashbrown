@@ -7,7 +7,6 @@ import { Hero } from '../components/home/Hero';
 import { Media } from '../components/home/Media';
 import { OpenSource } from '../components/home/OpenSource';
 import { Samples } from '../components/home/Samples';
-import { TheVisual } from '../components/home/TheVisual';
 import { TheGravy } from '../components/TheGravy';
 
 export const routeMeta: RouteMeta = {
@@ -39,7 +38,6 @@ export const routeMeta: RouteMeta = {
     OpenSource,
     Samples,
     TheGravy,
-    TheVisual,
   ],
   template: `
     <www-header />
@@ -48,7 +46,6 @@ export const routeMeta: RouteMeta = {
       <www-samples />
       <www-open-source />
       <www-features />
-      <www-the-visual />
       <www-media />
       <www-the-gravy />
     </main>
