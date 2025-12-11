@@ -18,6 +18,14 @@ import { Squircle } from '../Squircle';
       />
     }
 
+    @if (isNew()) {
+      <img
+        src="/image/landing-page/features/new-in-v04.svg"
+        alt="New in v0.4!"
+        class="is-new"
+      />
+    }
+
     <div class="content">
       <div class="icon">
         <img [src]="imageUrl()" alt="Feature Icon" />
@@ -101,7 +109,8 @@ import { Squircle } from '../Squircle';
       line-height: 140%; /* 18.2px */
     }
 
-    .coming-soon {
+    .coming-soon,
+    .is-new {
       position: absolute;
       top: 0;
       right: 0;
@@ -138,6 +147,7 @@ export class Feature {
   imageUrl = input.required<string>();
   videoUrl = input<SafeResourceUrl>();
   docsPath = input<string[]>();
+  isNew = input<boolean>();
   preview = input<boolean>(false);
   configService = inject(ConfigService);
   docsUrl = computed(() => {

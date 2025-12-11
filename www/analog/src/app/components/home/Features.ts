@@ -10,6 +10,7 @@ type FeatureListItem = {
   videoUrl?: SafeResourceUrl;
   docsPath?: string[];
   preview?: true;
+  isNew?: true;
   imageUrl: string;
 };
 
@@ -47,6 +48,7 @@ type FeatureListItem = {
             [videoUrl]="feature.videoUrl"
             [docsPath]="feature.docsPath"
             [preview]="feature.preview ?? false"
+            [isNew]="feature.isNew ?? false"
             (watchDemo)="onWatchDemo($event)"
           />
         }
@@ -205,7 +207,7 @@ export class Features {
       ),
     },
     {
-      title: 'Tool Calling',
+      title: 'Client-side Tool Calling',
       description:
         'Hashbrown lets you define custom tools the LLM can use to fetch data or perform actions. While other AI SDKs stop at the server, Hashbrown runs tool calling in the browser so developers can expose app services and state directly.',
       docsPath: ['concept', 'functions'],
@@ -229,9 +231,9 @@ export class Features {
       imageUrl: '/image/landing-page/features/streaming-responses.svg',
     },
     {
-      title: 'Vendor Agnostic',
+      title: 'Bring Your Own Model',
       description:
-        'Hashbrown works with the LLM vendor of your choice, with built-in support for OpenAI, Azure, Google Gemini, Writer, and Ollama, with adapters for AWS Bedrock and Anthropic coming to Hashbrown soon.',
+        'Hashbrown works with the LLM vendor of your choice, with built-in support for OpenAI, Azure, Google Gemini, Writer, Anthropic, and AWS Bedrock. Use open weight models via Ollama.',
       docsPath: ['platform', 'openai'],
       imageUrl: '/image/landing-page/features/vendor-agnostic.svg',
     },
@@ -251,6 +253,30 @@ export class Features {
         'Hashbrown integrates with the MCP Client SDK to call remote tools on an MCP server. This lets you connect your app to shared services, enterprise systems, and custom workflows through a standardized protocol.',
       docsPath: ['recipes', 'remote-mcp'],
       imageUrl: '/image/landing-page/features/mcp.svg',
+    },
+    {
+      title: 'Threads',
+      description:
+        "Keep network calls small and lightweight while managing token consumption using Hashbrown's built-in threads support. Cache and recall LLM messages with minimal loading code.",
+      docsPath: ['recipes', 'threads'],
+      imageUrl: '/image/landing-page/features/threads.svg',
+      isNew: true,
+    },
+    {
+      title: 'Markdown Streaming',
+      description:
+        "Stream and animate inline markdown with Magic Text, Hashbrown's headless markdown parser. Let LLMs cite their sources with full citation support.",
+      docsPath: ['recipes', 'magic-text'],
+      imageUrl: '/image/landing-page/features/magic-text.svg',
+      isNew: true,
+    },
+    {
+      title: 'Local Models',
+      description:
+        'Hashbrown can connect with experimental local small language models in Chrome and Edge to generate completions and power lightweight chat experiences, with no roundtrip to the server.',
+      docsPath: ['recipes', 'local-models'],
+      imageUrl: '/image/landing-page/features/local-models.svg',
+      isNew: true,
     },
     {
       title: 'Listen To & Generate Speech',
