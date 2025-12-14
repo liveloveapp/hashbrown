@@ -1,0 +1,52 @@
+name: Deploy Cloudflare Production
+
+on:
+  push:
+    branches:
+      - cloudflare-production
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build apps for Pages
+        run: npx nx run-many -t build --configuration=production -p finance-angular smart-home-angular www
+
+      - name: Deploy Finance (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/samples/finance/angular/browser --config=samples/finance/wrangler.toml --branch=main --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+
+      - name: Deploy Smart Home (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/samples/smart-home/angular/browser --config=samples/smart-home/wrangler.toml --branch=main --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+
+      - name: Deploy Docs (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/www/analog/analog/public --config=wrangler.toml --branch=main --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
