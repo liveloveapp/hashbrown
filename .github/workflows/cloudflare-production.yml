@@ -2,8 +2,8 @@ name: Deploy Cloudflare Production
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - cloudflare-production
 
 concurrency:
   group: cloudflare-production
