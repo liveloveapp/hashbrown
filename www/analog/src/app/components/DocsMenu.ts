@@ -284,6 +284,14 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'platform', 'bedrock']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Amazon Bedrock</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'platform', 'writer']"
             routerLinkActive="active"
             wwwSquircle="8"

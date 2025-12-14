@@ -13,56 +13,55 @@
   <br>
 </p>
 
-## Getting Started with React
-
-Install:
+## Getting Started
 
 ```sh
-npm install @hashbrownai/{core,react,openai} --save
+npm install @hashbrownai/bedrock --save
 ```
 
-Configure the provider:
+Deploy an express server with a single /chat endpoint to use Hashbrown with Amazon Bedrock.
 
 ```ts
-export function Providers() {
-  return (
-    <HashbrownProvider url={url}>
-      {children}
-    </HashbrownProvider>
-  )
-}
+import { Chat } from '@hashbrownai/core';
+import { HashbrownBedrock } from '@hashbrownai/bedrock';
+
+app.post('/chat', async (req, res) => {
+  const request = req.body as Chat.Api.CompletionCreateParams;
+  const stream = HashbrownBedrock.stream.text({
+    region: process.env.AWS_REGION!,
+    request,
+  });
+
+  res.header('Content-Type', 'application/octet-stream');
+
+  for await (const chunk of stream) {
+    res.write(chunk);
+  }
+
+  res.end();
+});
 ```
 
-## Getting Started with Angular
+In the UI package for your chosen framework, set the emulateStructuredOutput flag to true.
 
-Install:
+In Angular:
 
-```sh
-npm install @hashbrownai/{core,angular,openai} --save
 ```
+import { provideHashbrown } from '@hashbrownai/angular';
 
-Configure the provider:
-
-```ts
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHashbrown({
       baseUrl: '/api/chat',
+      emulateStructuredOutput: true,
     }),
   ],
 };
 ```
 
-## Adapters
+## Docs
 
-Hashbrown supports multiple providers:
-
-- [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
-- [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
-- [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
-- [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
-- [Writer](https://hashbrown.dev/docs/angular/platform/writer)
-- [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
+[Read the docs for the Hashbrown Amazon Bedrock adapter](https://hashbrown.dev/docs/react/platform/bedrock).
 
 ## Contributing
 
@@ -70,7 +69,7 @@ hashbrown is a community-driven project. Read our [contributing guidelines](http
 
 ## Workshops and Consulting
 
-Want to learn how to build Angular apps with AI? [Learn more about our workshops](https://hashbrown.dev/workshops).
+Want to learn how to build web apps with AI? [Learn more about our workshops](https://hashbrown.dev/workshops).
 
 LiveLoveApp provides hands-on engagement with our AI engineers for architecture reviews, custom integrations, proof-of-concept builds, performance tuning, and expert guidance on best practices. [Learn more about LiveLoveApp](https://liveloveapp.com).
 

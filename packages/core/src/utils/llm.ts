@@ -65,6 +65,27 @@ export type WriterKnownModelIds =
   | 'palmyra-creative';
 
 /**
+ * This is a list of known Models for Amazon Bedrock that are suitable for
+ * conversational, coding, and structured output use-cases.
+ * Refer to: https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html
+ *
+ * @public
+ */
+export const enum BedrockModelId {
+  AnthropicClaude35Sonnet = 'anthropic.claude-3-5-sonnet-20240620-v1:0',
+  AnthropicClaude3Opus = 'anthropic.claude-3-opus-20240229-v1:0',
+  AnthropicClaude3Sonnet = 'anthropic.claude-3-sonnet-20240229-v1:0',
+  AnthropicClaude3Haiku = 'anthropic.claude-3-haiku-20240307-v1:0',
+}
+
+/**
+ * Derived Bedrock model id type from the strongly typed enum above.
+ *
+ * @public
+ */
+export type BedrockKnownModelIds = `${BedrockModelId}`;
+
+/**
  * This is a list of known Models for Azure.
  * Refer to: https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference#models
  *
@@ -81,6 +102,7 @@ export type KnownModelIds = Prettify<
   | OpenAiKnownModelIds
   | GoogleKnownModelIds
   | WriterKnownModelIds
+  | BedrockKnownModelIds
   | AzureKnownModelIds
   | (string & {})
 >;

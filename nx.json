@@ -62,6 +62,7 @@
       "angular",
       "anthropic",
       "azure",
+      "bedrock",
       "core",
       "google",
       "openai",

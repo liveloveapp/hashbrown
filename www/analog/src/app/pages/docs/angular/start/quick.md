@@ -79,6 +79,7 @@ To get started, we recommend running a local express server following the Hashbr
 
 - [OpenAI](/docs/angular/platform/openai)
 - [Azure OpenAI](/docs/angular/platform/azure)
+- [Amazon Bedrock](/docs/angular/platform/bedrock)
 - [Google Gemini](/docs/angular/platform/google)
 - [Writer](/docs/angular/platform/writer)
 - [Ollama](/docs/angular/platform/ollama)

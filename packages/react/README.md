@@ -48,6 +48,7 @@ Hashbrown supports multiple providers:
 
 - [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
 - [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
+- [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
 - [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
 - [Writer](https://hashbrown.dev/docs/angular/platform/writer)
 - [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
