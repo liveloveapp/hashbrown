@@ -32,6 +32,7 @@ import { Squircle } from './Squircle';
       align-items: center;
       gap: 4px;
       padding: 6px 12px;
+      width: 144px;
     }
 
     .stars {

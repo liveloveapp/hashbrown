@@ -2,10 +2,11 @@ import { Component, computed, inject, input } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { ArrowUpRight } from '../icons/ArrowUpRight';
+import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-the-gravy',
-  imports: [ArrowUpRight, RouterLink],
+  imports: [ArrowUpRight, RouterLink, Squircle],
   template: `
     <div class="bleed">
       <div class="title">
@@ -16,13 +17,6 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
             <br />Served fresh on Thursdays. Free.
           </h2>
           <p>
-            We will never spam you. You can unsubscribe at any time.
-            <br />
-            Get 20% off
-            <a routerLink="/workshops" class="underline">our workshops</a> when
-            you subscribe.
-          </p>
-          <p>
             <a href="https://thegravy.dev" target="_blank">
               View all issues <www-arrow-up-right height="16px" width="16px" />
             </a>
@@ -30,13 +24,25 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
         </div>
       </div>
       <script async src="https://subscribe-forms.beehiiv.com/embed.js"></script>
-      <iframe
-        [src]="sanitizedUrl()"
-        class="beehiiv-embed"
-        data-test-id="beehiiv-embed"
-        frameborder="0"
-        scrolling="no"
-      ></iframe>
+      <div
+        class="embed-wrapper"
+        wwwSquircle="16"
+        [wwwSquircleBorderWidth]="2"
+        wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+      >
+        <script
+          async
+          src="https://subscribe-forms.beehiiv.com/embed.js"
+        ></script>
+        <iframe
+          src="https://subscribe-forms.beehiiv.com/72f18478-8f18-4324-ae1f-084d71f0c093"
+          class="beehiiv-embed"
+          data-test-id="beehiiv-embed"
+          frameborder="0"
+          scrolling="no"
+          style="width: 400px; height: 40px; margin: 0; border-radius: 0px 0px 0px 0px !important; background-color: transparent; box-shadow: 0 0 #0000; max-width: 100%;"
+        ></iframe>
+      </div>
     </div>
   `,
   styles: `
@@ -104,10 +110,15 @@ import { ArrowUpRight } from '../icons/ArrowUpRight';
         }
       }
 
-      > iframe {
-        width: 100%;
-        height: 50px;
-        background: transparent;
+      .embed-wrapper {
+        display: flex;
+        padding: 8px;
+        background-color: white;
+
+        > iframe {
+          width: 100%;
+          background: transparent;
+        }
       }
     }
 
