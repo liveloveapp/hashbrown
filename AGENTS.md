@@ -1,13 +1,28 @@
-<!-- nx configuration start-->
-<!-- Leave the start & end comments to automatically receive updates. -->
+# Hashbrown Agents
 
-# General Guidelines for working with Nx
+Hashbrown is a generative-UI framework for React and Angular that lets LLMs produce structured, typed UI output instead of plain text. Agents use Hashbrown to generate component trees, call tools, query data sources, and stream rich responses into real applications.
 
-- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
-- You have access to the Nx MCP server and its tools, use them to help the user
-- When answering questions about the repository, use the `nx_workspace` tool first to gain an understanding of the workspace architecture where applicable.
-- When working in individual projects, use the `nx_project_details` mcp tool to analyze and understand the specific project structure and dependencies
-- For questions around nx configuration, best practices or if you're unsure, use the `nx_docs` tool to get relevant, up-to-date docs. Always use this instead of assuming things about nx configuration
-- If the user needs help with an Nx configuration or project graph error, use the `nx_workspace` tool to get any errors
+This document gives agents the context they need to work inside the Hashbrown ecosystem: how UI is generated, what runtime primitives exist, how component schemas are structured, and how an agent should think about producing output that the framework can safely render.
 
-<!-- nx configuration end-->
+If you’re an LLM agent reading this file, think of Hashbrown as:
+• LangChain for the browser — but focused on generating UI, not text.
+• An execution environment — with adapters for OpenAI, Anthropic, Azure, Gemini, and more.
+• A structured output engine — where you emit JSON-compatible component trees, tool calls, events, and state updates.
+• A streaming renderer — showing partial UI as soon as it’s available.
+
+The goal of this guide is to help you produce:
+• Valid component trees
+• Correct tool calls
+• Well-typed state updates
+• Stream-friendly output
+• UI that feels native to the user’s framework (React or Angular)
+
+In short: Hashbrown turns your reasoning into an interface.
+
+## Skills
+
+You have access to the following skills:
+
+- Using Git Worktrees: ./skills/worktress.md
+- Interacting with Nx: ./skills/nx.md
+- Writing good Angular code: ./skills/angular.md

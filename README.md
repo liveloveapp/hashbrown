@@ -220,6 +220,26 @@ npm install
 npx nx serve kitchen-sink-server && npx nx serve kitchen-sink-angular
 ```
 
+### Cloudflare Pages Deployments
+
+- Finance sample: Functions live in `samples/finance/angular/functions` (auto-detected by Wrangler). Deploy the Angular app plus functions with `npx nx run finance-angular:deploy`, which uses `samples/finance/angular/wrangler.toml`. Set `OPENAI_API_KEY` in the `hashbrown-finance` Pages project; run `npx nx run finance-cloudflare:generate-data` if you want fresh mock ingredient data.
+- Smart Home sample: Functions live in `samples/smart-home/angular/functions` (auto-detected by Wrangler). Deploy the Angular app plus functions with `npx nx run smart-home-angular:deploy`, which uses `samples/smart-home/angular/wrangler.toml`. Set `OPENAI_API_KEY` in the `hashbrown-smart-home` Pages project.
+- Docs site (`www/analog`): `npx nx run www:deploy` builds the site and deploys to Cloudflare Pages using the root `wrangler.toml` (project `hashbrown-www`). Ensure any required secrets like `OPENAI_API_KEY` are configured in the Pages environment.
+
+Setting secrets with Wrangler CLI (Cloudflare Pages):
+
+```shell
+# authenticate once
+npx wrangler login
+# add the OpenAI key to a Pages project (repeat per project)
+npx wrangler pages secret put OPENAI_API_KEY --project-name hashbrown-finance --environment production
+# set it for preview deploys too
+npx wrangler pages secret put OPENAI_API_KEY --project-name hashbrown-finance --environment preview
+```
+
+Use the appropriate `--project-name` (`hashbrown-smart-home`, `hashbrown-www`, etc.) for the app you are deploying. The command prompts for the secret value and stores it for that Pages project.
+Repeat the `--environment production`/`--environment preview` commands for each project so both production and preview builds can access the secret.
+
 ## Hashbrown.dev
 
 Run the documentation website locally:

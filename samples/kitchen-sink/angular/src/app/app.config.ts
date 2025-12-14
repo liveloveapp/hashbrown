@@ -1,6 +1,5 @@
 import {
   ApplicationConfig,
-  inject,
   provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideNativeDateAdapter } from '@angular/material/core';
@@ -8,7 +7,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHashbrown } from '@hashbrownai/angular';
 import { provideEffects } from '@ngrx/effects';
-import { provideStore, Store } from '@ngrx/store';
+import { provideStore } from '@ngrx/store';
 import { provideMarkdown } from 'ngx-markdown';
 // import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { routes } from './app.routes';

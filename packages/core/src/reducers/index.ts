@@ -123,6 +123,14 @@ export const selectEmulateStructuredOutput = select(
   selectConfigState,
   fromConfig.selectEmulateStructuredOutput,
 );
+export const selectTransport = select(
+  selectConfigState,
+  fromConfig.selectTransport,
+);
+export const selectUiRequested = select(
+  selectConfigState,
+  fromConfig.selectUiRequested,
+);
 
 /**
  * Top-level selectors

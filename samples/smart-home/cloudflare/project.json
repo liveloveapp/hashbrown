@@ -1,0 +1,64 @@
+{
+  "name": "smart-home-cloudflare",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/smart-home/angular/functions",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "browser",
+        "outputPath": "dist/samples/smart-home/cloudflare",
+        "format": ["esm"],
+        "bundle": true,
+        "thirdParty": true,
+        "main": "samples/smart-home/angular/functions/api/chat.ts",
+        "mainOutputFilename": "api/chat.js",
+        "additionalEntryPoints": [],
+        "tsConfig": "samples/smart-home/cloudflare/tsconfig.app.json",
+        "generatePackageJson": false,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "mainFields": ["browser", "module", "main"],
+          "conditions": ["browser"],
+          "outbase": "samples/smart-home/angular/functions",
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "smart-home-cloudflare:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "smart-home-cloudflare:build:development"
+        },
+        "production": {
+          "buildTarget": "smart-home-cloudflare:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}

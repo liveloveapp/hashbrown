@@ -2,7 +2,8 @@ import {
   type Chat,
   fryHashbrown,
   Hashbrown,
-  type KnownModelIds,
+  type ModelInput,
+  type TransportOrFactory,
 } from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { HashbrownContext } from '../hashbrown-provider';
@@ -19,7 +20,7 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
    * The LLM model to use for the chat.
    *
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -53,6 +54,11 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**
@@ -181,12 +187,15 @@ export function useChat<Tools extends Chat.AnyTool>(
     hashbrownRef.current = fryHashbrown<Tools>({
       apiUrl: config.url,
       middleware: config.middleware,
+      emulateStructuredOutput: config.emulateStructuredOutput,
       debugName: options.debugName,
       model: options.model,
       system: options.system,
       tools,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: false,
     });
   }
 
@@ -208,21 +217,27 @@ export function useChat<Tools extends Chat.AnyTool>(
     getHashbrown().updateOptions({
       apiUrl: config.url,
       middleware: config.middleware,
+      emulateStructuredOutput: config.emulateStructuredOutput,
       debugName: options.debugName,
       model: options.model,
       system: options.system,
       tools,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: false,
     });
   }, [
     config.url,
     config.middleware,
+    config.emulateStructuredOutput,
+    config.transport,
     options.debounceTime,
     options.debugName,
     options.model,
     options.retries,
     options.system,
+    options.transport,
     tools,
   ]);
 

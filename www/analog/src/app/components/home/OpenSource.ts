@@ -1,13 +1,11 @@
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { ChevronRight } from '../../icons/ChevronRight';
 import { Squircle } from '../Squircle';
-import { Code } from '../../icons/Code';
-import { Sell } from '../../icons/Sell';
+import { LLA } from '../../icons/LLA';
 
 @Component({
   selector: 'www-open-source',
-  imports: [RouterLink, ChevronRight, Code, Squircle, Sell],
+  imports: [ChevronRight, Squircle, LLA],
   template: `
     <div class="bleed">
       <div class="open-source" role="img" aria-label="Open source">
@@ -161,22 +159,21 @@ import { Sell } from '../../icons/Sell';
         </svg>
       </div>
       <p>
-        Hashbrown is free and MIT-licensed. If you'd like to support the
-        project, join a workshop or sponsor us on GitHub.
+        Built in the open by the team at LiveLoveApp, a consultancy that
+        specializes in designing and engineering joyful products for the web.
       </p>
       <div class="actions">
-        <a routerLink="/workshops" wwwSquircle="8">
-          <www-sell width="16" height="16" fill="transparent" />
-          <div class="text">Attend a Workshop</div>
-          <www-chevron-right width="16" height="16" />
-        </a>
         <a
-          href="https://github.com/liveloveapp/hashbrown"
+          href="https://www.liveloveapp.com"
           target="_blank"
+          rel="noopener noreferrer"
+          referrerpolicy="origin-when-cross-origin"
+          referrer="hashbrown.dev"
+          class="lla"
           wwwSquircle="8"
         >
-          <www-code width="16" height="16" />
-          <div class="text">Sponsor on GitHub</div>
+          <www-lla width="16" height="16" />
+          <div class="text">View LiveLoveApp</div>
           <www-chevron-right width="16" height="16" />
         </a>
       </div>
@@ -209,7 +206,7 @@ import { Sell } from '../../icons/Sell';
       width: 100%;
 
       > p {
-        max-width: 488px;
+        max-width: 560px;
         color: var(--gray-dark, #3d3c3a);
         text-align: center;
         font-family: Fredoka;
@@ -240,16 +237,17 @@ import { Sell } from '../../icons/Sell';
       gap: 6px;
       padding: 12px 16px;
       align-items: center;
-      color: rgba(0, 0, 0, 0.64);
       font:
         700 14px/16px 'Fredoka',
         sans-serif;
-      background: var(--sunshine-yellow-light);
       width: fit-content;
-      transition: background-color 300ms ease-in-out;
+      transition: opacity 300ms ease-in-out;
+      background-color: #ef7b89;
+      color: white;
+      opacity: 0.88;
 
       &:hover {
-        background: var(--sunshine-yellow);
+        opacity: 1;
       }
     }
 

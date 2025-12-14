@@ -1,4 +1,9 @@
-import { Chat, KnownModelIds, s } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useStructuredChat } from './use-structured-chat';
 
@@ -21,7 +26,7 @@ export interface UseStructuredCompletionOptions<
   /**
    * The LLM model to use for the chat.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -55,6 +60,15 @@ export interface UseStructuredCompletionOptions<
    * default: 0
    */
   retries?: number;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
+  /**
+   * Whether this completion should be treated as UI-generating.
+   */
+  ui?: boolean;
 }
 
 /**
@@ -138,6 +152,7 @@ export function useStructuredCompletion<Input, Schema extends s.HashbrownType>(
 ): UseStructuredCompletionResult<s.Infer<Schema>> {
   const { setMessages, ...chat } = useStructuredChat({
     ...options,
+    ui: options.ui ?? false,
   });
 
   useEffect(() => {

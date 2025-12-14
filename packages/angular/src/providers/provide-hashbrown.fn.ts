@@ -1,5 +1,5 @@
 import { inject, InjectionToken, Provider } from '@angular/core';
-import { Chat } from '@hashbrownai/core';
+import { Chat, type TransportOrFactory } from '@hashbrownai/core';
 
 /**
  * Hashbrown must be configured with a base URL,
@@ -12,7 +12,7 @@ export interface ProvideHashbrownOptions {
   /**
    * The base URL of the Hashbrown API.
    */
-  baseUrl: string;
+  baseUrl?: string;
   /**
    * Middleware to apply to all requests.
    */
@@ -26,6 +26,10 @@ export interface ProvideHashbrownOptions {
    * as if the model has produced it via structured outputs.
    */
   emulateStructuredOutput?: boolean;
+  /**
+   * Optional transport to use instead of the default HTTP transport.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**

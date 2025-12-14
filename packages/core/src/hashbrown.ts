@@ -19,7 +19,7 @@ import {
 } from './reducers';
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
-import { KnownModelIds } from './utils';
+import { type ModelInput, TransportOrFactory } from './transport';
 
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
@@ -52,8 +52,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   updateOptions: (
     options: Partial<{
       debugName?: string;
-      apiUrl: string;
-      model: KnownModelIds;
+      apiUrl?: string;
+      model: ModelInput;
       system: string;
       tools: Tools[];
       responseSchema: s.HashbrownType;
@@ -61,6 +61,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       emulateStructuredOutput: boolean;
       debounce: number;
       retries: number;
+      transport: TransportOrFactory;
+      ui?: boolean;
     }>,
   ) => void;
 
@@ -93,8 +95,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
  */
 export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
-  apiUrl: string;
-  model: KnownModelIds;
+  apiUrl?: string;
+  model: ModelInput;
   system: string;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
@@ -102,6 +104,8 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
+  transport?: TransportOrFactory;
+  ui?: boolean;
 }): Hashbrown<string, Tools>;
 /**
  * @public
@@ -112,8 +116,8 @@ export function fryHashbrown<
   Output extends s.Infer<Schema> = s.Infer<Schema>,
 >(init: {
   debugName?: string;
-  apiUrl: string;
-  model: KnownModelIds;
+  apiUrl?: string;
+  model: ModelInput;
   system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
@@ -122,14 +126,16 @@ export function fryHashbrown<
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
+  transport?: TransportOrFactory;
+  ui?: boolean;
 }): Hashbrown<Output, Tools>;
 /**
  * @public
  */
 export function fryHashbrown(init: {
   debugName?: string;
-  apiUrl: string;
-  model: KnownModelIds;
+  apiUrl?: string;
+  model: ModelInput;
   system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
@@ -138,6 +144,8 @@ export function fryHashbrown(init: {
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
+  transport?: TransportOrFactory;
+  ui?: boolean;
 }): Hashbrown<any, Chat.AnyTool> {
   const hasIllegalOutputTool = init.tools?.some(
     (tool) => tool.name === 'output',
@@ -175,6 +183,8 @@ export function fryHashbrown(init: {
       emulateStructuredOutput: init.emulateStructuredOutput,
       debounce: init.debounce,
       retries: init.retries,
+      transport: init.transport,
+      ui: init.ui,
     }),
   );
 
@@ -198,7 +208,7 @@ export function fryHashbrown(init: {
     options: Partial<{
       debugName?: string;
       apiUrl: string;
-      model: KnownModelIds;
+      model: ModelInput;
       system: string;
       tools: Chat.AnyTool[];
       responseSchema: s.HashbrownType;
@@ -206,6 +216,8 @@ export function fryHashbrown(init: {
       emulateStructuredOutput: boolean;
       debounce: number;
       retries: number;
+      transport: TransportOrFactory;
+      ui?: boolean;
     }>,
   ) {
     state.dispatch(devActions.updateOptions(options));

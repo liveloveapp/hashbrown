@@ -1,6 +1,7 @@
 export * from './frames';
 export { fryHashbrown, type Hashbrown } from './hashbrown';
 export * from './models';
+export * from './transport';
 export { prompt } from './prompt/prompt';
 export type {
   HBTree,
@@ -26,11 +27,15 @@ export type {
   OpenAiKnownModelIds,
   WriterKnownModelIds,
 } from './utils/llm';
+export type { ModelInput } from './transport/model-spec';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
 export {
   prepareMagicText,
   type MagicTextFragment,
-  type MagicTextOptions,
+  type MagicTextFragmentText,
+  type MagicTextFragmentCitation,
   type MagicTextResult,
+  type MagicTextHasWhitespace,
+  type MagicTextTag,
 } from './utils/magic-text';

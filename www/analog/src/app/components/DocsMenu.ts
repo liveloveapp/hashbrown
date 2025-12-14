@@ -245,6 +245,14 @@ import { Squircle } from './Squircle';
             >Remote MCP</a
           >
         </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'local-models']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Local Models</a
+          >
+        </li>
       </ol>
     </div>
     <div>

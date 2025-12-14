@@ -1,0 +1,54 @@
+name: Deploy Cloudflare Previews
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: cloudflare-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      PREVIEW_BRANCH: preview-${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build apps for Pages
+        run: npx nx run-many -t build --configuration=production -p finance-angular smart-home-angular www
+
+      - name: Deploy Finance (preview)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/samples/finance/angular/browser --config=samples/finance/wrangler.toml --branch=${{ env.PREVIEW_BRANCH }} --commit-hash=${{ github.sha }} --commit-message="preview ${GITHUB_SHA}"
+
+      - name: Deploy Smart Home (preview)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/samples/smart-home/angular/browser --config=samples/smart-home/wrangler.toml --branch=${{ env.PREVIEW_BRANCH }} --commit-hash=${{ github.sha }} --commit-message="preview ${GITHUB_SHA}"
+
+      - name: Deploy Docs (preview)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/www/analog/analog/public --config=wrangler.toml --branch=${{ env.PREVIEW_BRANCH }} --commit-hash=${{ github.sha }} --commit-message="preview ${GITHUB_SHA}"

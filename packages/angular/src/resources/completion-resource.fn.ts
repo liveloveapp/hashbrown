@@ -11,7 +11,7 @@ import {
   Signal,
   signal,
 } from '@angular/core';
-import { Chat, fryHashbrown } from '@hashbrownai/core';
+import { Chat, fryHashbrown, type TransportOrFactory } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { SignalLike } from '../utils/types';
 import { readSignalLike, toNgSignal } from '../utils/signals';
@@ -66,6 +66,11 @@ export interface CompletionResourceOptions<Input> {
    * The debug name for the completion resource.
    */
   debugName?: string;
+
+  /**
+   * Custom transport override for this completion resource.
+   */
+  transport?: TransportOrFactory;
 }
 
 /**
@@ -95,6 +100,7 @@ export function completionResource<Input>(
     messages: [],
     tools: [],
     retries: 3,
+    transport: options.transport ?? config.transport,
   });
 
   const teardown = hashbrown.sizzle();

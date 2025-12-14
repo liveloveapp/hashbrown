@@ -26,12 +26,21 @@ Configure the provider:
 ```ts
 export function Providers() {
   return (
-    <HashbrownProvider url={url}>
+    <HashbrownProvider
+      url={url}
+      emulateStructuredOutput
+    >
       {children}
     </HashbrownProvider>
   )
 }
 ```
+
+`HashbrownProvider` accepts:
+
+- `url` (required): Base URL of your Hashbrown API endpoint.
+- `middleware` (optional): Functions to transform requests before they are sent.
+- `emulateStructuredOutput` (optional): Enables structured output emulation for models that lack native tool-calling support while still letting you work with structured schemas.
 
 ## Adapters
 

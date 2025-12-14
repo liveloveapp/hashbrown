@@ -1,54 +1,8 @@
 {
   "name": "@hashbrownai/core",
-  "version": "0.4.0-rc.1",
-  "description": "Runtime helpers for Hashbrown AI",
-  "license": "MIT",
-  "sideEffects": false,
-  "files": [
-    "src/**/*",
-    "index.*",
-    "LICENSE",
-    "package.json",
-    "README.md",
-    "emscripten-module.*",
-    "ffi.*"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "keywords": [
-    "hashbrown",
-    "generative-ui",
-    "llm",
-    "ai",
-    "typescript"
-  ],
-  "homepage": "https://hashbrown.dev",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/liveloveapp/hashbrown.git",
-    "directory": "packages/core"
-  },
-  "bugs": {
-    "url": "https://github.com/liveloveapp/hashbrown/issues"
-  },
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/liveloveapp"
-  },
-  "module": "./index.esm.js",
-  "main": "./index.cjs.js",
-  "types": "./index.d.ts",
+  "type": "module",
+  "private": true,
   "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "types": "./index.d.ts",
-      "import": "./index.esm.js",
-      "require": "./index.cjs.js",
-      "default": "./index.cjs.js"
-    }
+    ".": "./src/index.ts"
   }
 }

@@ -18,15 +18,15 @@ import { PlayerPlay } from '../../icons/PlayerPlay';
         <div class="header">
           <h2>Generate UI, Not Just Text</h2>
           <p>
-            With Hashbrown, large language models compose real views from your
-            components and stream them into the page. Interfaces stay
-            on&#8209;brand, context&#8209;aware, and production&#8209;ready.
+            With Hashbrown, LLMs compose real views from your components and
+            stream them into the page. Interfaces stay on&#8209;brand,
+            context&#8209;aware, and production&#8209;ready.
           </p>
           <a
             [routerLink]="[docsUrl(), 'recipes', 'ui-chatbot']"
             class="docsLink"
           >
-            Learn how to build a chatbot with Generative UI and Tool Calling
+            Learn how to build Generative UI with tool calling
           </a>
         </div>
         <div
@@ -124,9 +124,9 @@ import { PlayerPlay } from '../../icons/PlayerPlay';
         <div class="header">
           <h2>Instantly Predict the Next Action</h2>
           <p>
-            Skip menus and dead ends. Use Hashbrown to suggest the right next
-            step from context, whether it's navigation, filling a form, or
-            kicking off a task, so your users stay in the flow.
+            Use Hashbrown to suggest the right next step from
+            context—navigation, filling a form, or kicking off a task—so your
+            users stay in the flow.
           </p>
           <a
             [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"

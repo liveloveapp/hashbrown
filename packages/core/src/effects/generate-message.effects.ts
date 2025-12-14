@@ -17,7 +17,16 @@ import {
   selectRetries,
   selectShouldGenerateMessage,
   selectSystem,
+  selectTransport,
+  selectUiRequested,
 } from '../reducers';
+import {
+  framesToLengthPrefixedStream,
+  ModelResolver,
+  type RequestedFeatures,
+  TransportError,
+  TransportResponse,
+} from '../transport';
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
@@ -49,7 +58,7 @@ export const generateMessage = createEffect((store) => {
       }
 
       const params: Chat.Api.CompletionCreateParams = {
-        model,
+        model: typeof model === 'string' ? model : '',
         system,
         messages,
         tools,
@@ -61,13 +70,36 @@ export const generateMessage = createEffect((store) => {
             : undefined,
       };
 
+      const requestedFeatures: RequestedFeatures = {
+        tools:
+          Boolean(params.tools?.length) || params.toolChoice === 'required',
+        structured: Boolean(params.responseFormat),
+        ui: store.read(selectUiRequested),
+      };
+
       await sleep(debounce, switchSignal);
 
       let attempt = 0;
+      const transportProvider = store.read(selectTransport);
+      const resolver = new ModelResolver(model, {
+        url: apiUrl,
+        middleware: middleware ?? undefined,
+        transport: transportProvider,
+      });
+
+      let selection = await resolver.select(requestedFeatures);
+      if (!selection) {
+        store.dispatch(
+          apiActions.generateMessageError(
+            new Error(
+              'No compatible model spec found for the requested features.',
+            ),
+          ),
+        );
+        return;
+      }
 
       do {
-        attempt++;
-
         if (
           effectAbortController.signal.aborted ||
           switchSignal.aborted ||
@@ -80,56 +112,59 @@ export const generateMessage = createEffect((store) => {
           return;
         }
 
-        let requestInit: RequestInit = {
-          method: 'POST',
-          body: JSON.stringify(params),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          signal: switchSignal,
-        };
-
-        if (middleware && middleware.length) {
-          for (const m of middleware) {
-            requestInit = await m(requestInit);
-          }
-        }
+        let transportResponse: TransportResponse | undefined;
 
         try {
-          const response = await fetch(apiUrl, requestInit);
+          attempt++;
 
-          if (!response.ok) {
-            store.dispatch(
-              apiActions.generateMessageError(
-                new Error(`HTTP error! Status: ${response.status}`),
-              ),
-            );
-            continue;
-          }
+          const requestAbortSignal = AbortSignal.any([
+            switchSignal,
+            effectAbortController.signal,
+            cancelAbortController.signal,
+          ]);
 
-          if (!response.body) {
-            store.dispatch(
-              apiActions.generateMessageError(
-                new Error(`Response body is null`),
-              ),
-            );
-            continue;
-          }
+          const paramsWithModel: Chat.Api.CompletionCreateParams = {
+            ...params,
+            model: selection.spec.name,
+          };
 
-          // This catches an edge case where a cancellation was requested
-          // after we had already kicked off the initial request, but
-          // before we started decoding frames.
+          transportResponse = await selection.transport.send({
+            params: paramsWithModel,
+            signal: requestAbortSignal,
+            attempt,
+            maxAttempts: retries + 1,
+            requestId: _createRequestId(),
+          });
+
           if (cancelAbortController.signal.aborted) {
-            // If the cancelAbortController is aborted, we need to reset it for the next message
             cancelAbortController = new AbortController();
             return;
           }
+
+          const frameStream = transportResponse.frames
+            ? framesToLengthPrefixedStream(transportResponse.frames)
+            : transportResponse.stream;
+
+          if (!frameStream) {
+            throw new TransportError(
+              'Transport returned neither frames nor stream',
+              { retryable: false },
+            );
+          }
+
+          transportResponse = {
+            ...transportResponse,
+            metadata: {
+              ...(transportResponse.metadata ?? {}),
+              selection: selection.metadata,
+            },
+          };
 
           store.dispatch(apiActions.generateMessageStart());
 
           let message: Chat.Api.AssistantMessage | null = null;
 
-          for await (const frame of decodeFrames(response.body, {
+          for await (const frame of decodeFrames(frameStream, {
             signal: AbortSignal.any([
               cancelAbortController.signal,
               effectAbortController.signal,
@@ -144,11 +179,7 @@ export const generateMessage = createEffect((store) => {
                 break;
               }
               case 'error': {
-                // Assumption: a 'finish' will follow the 'error', but we know we need to retry
-                // as soon as we see the error.  Therefore, throw an exception to break out
-                // of the for loop.
                 throw new Error(frame.error);
-                break;
               }
               case 'finish': {
                 if (message) {
@@ -169,12 +200,33 @@ export const generateMessage = createEffect((store) => {
             }
           }
         } catch (e) {
-          if (e instanceof Error) {
-            store.dispatch(apiActions.generateMessageError(e));
+          const error =
+            e instanceof Error ? e : new Error('Unknown transport error');
+          store.dispatch(apiActions.generateMessageError(error));
+
+          const retryable =
+            !(e instanceof TransportError) || e.retryable !== false;
+
+          if (
+            e instanceof TransportError &&
+            (e.code === 'FEATURE_UNSUPPORTED' ||
+              e.code === 'PLATFORM_UNSUPPORTED')
+          ) {
+            resolver.skipFromError(selection.spec, e);
+            selection = await resolver.select(requestedFeatures);
+            if (!selection) {
+              break;
+            }
+            continue;
           }
+
+          if (!retryable) {
+            break;
+          }
+
           continue;
         } finally {
-          // Reset the cancelAbortController for the next message
+          await transportResponse?.dispose?.();
           if (cancelAbortController.signal.aborted) {
             cancelAbortController = new AbortController();
           }
@@ -182,6 +234,17 @@ export const generateMessage = createEffect((store) => {
 
         break;
       } while (retries > 0 && attempt < retries + 1);
+
+      if (!selection) {
+        store.dispatch(
+          apiActions.generateMessageError(
+            new Error(
+              'No compatible model spec found for the requested features.',
+            ),
+          ),
+        );
+        return;
+      }
 
       // Did we exhaust our retries?
       if (retries > 0 && attempt > retries) {
@@ -199,6 +262,17 @@ export const generateMessage = createEffect((store) => {
     cancelAbortController.abort();
   };
 });
+
+function _createRequestId() {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return Math.random().toString(36).slice(2);
+}
 
 /**
  * Merges existing and new tool calls.
