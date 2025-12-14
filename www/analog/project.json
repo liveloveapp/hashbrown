@@ -30,7 +30,7 @@
         "tsConfig": "www/analog/tsconfig.app.json",
         "styles": ["@angular/cdk/overlay-prebuilt.css"]
       },
-      "dependsOn": ["collect-docs", "generate-llms", "www-netlify:build"]
+      "dependsOn": ["collect-docs", "generate-llms"]
     },
     "serve": {
       "executor": "@analogjs/platform:vite-dev-server",
@@ -115,6 +115,13 @@
           "target": "build-api-report"
         }
       ]
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build:production"],
+      "options": {
+        "command": "cd www/analog && npx wrangler pages deploy ../../dist/www/analog/analog/public"
+      }
     }
   }
 }
