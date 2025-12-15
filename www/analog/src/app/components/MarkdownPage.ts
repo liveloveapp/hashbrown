@@ -258,10 +258,11 @@ type Heading = { level: number; text: string; id: string; url: string };
         }
 
         table {
+          display: block;
+          overflow-x: auto;
           border-collapse: collapse;
           border-radius: 12px;
           margin: 0 0 24px;
-          overflow: hidden;
           box-shadow: inset 0 0 0 1px #000;
 
           > thead {
