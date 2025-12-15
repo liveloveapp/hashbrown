@@ -28,7 +28,7 @@ jobs:
         run: npm ci
 
       - name: Build apps for Pages
-        run: npx nx run-many -t build --configuration=production -p finance-angular smart-home-angular www
+        run: npx nx run-many -t build --configuration=production -p finance-angular fast-food-angular fast-food-cloudflare smart-home-angular www
 
       - name: Deploy Finance (production)
         uses: cloudflare/wrangler-action@v3
@@ -43,6 +43,13 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist/samples/smart-home/angular/browser --project-name="hashbrown-smart-home"
+
+      - name: Deploy Fast Food (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/samples/fast-food/angular/browser --project-name="hashbrown-fast-food" --functions="dist/samples/fast-food/cloudflare"
 
       - name: Deploy Docs (production)
         uses: cloudflare/wrangler-action@v3

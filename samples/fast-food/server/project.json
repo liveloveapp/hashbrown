@@ -1,0 +1,72 @@
+{
+  "name": "fast-food-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/fast-food/server/src",
+  "projectType": "application",
+  "targets": {
+    "generate-data": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx samples/fast-food/server/tools/generate-ingredients.ts"
+      }
+    },
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "dependsOn": ["generate-data"],
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/samples/fast-food/server",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "samples/fast-food/server/src/main.ts",
+        "tsConfig": "samples/fast-food/server/tsconfig.app.json",
+        "generatePackageJson": true,
+        "assets": [
+          {
+            "input": "samples/fast-food/server/src",
+            "glob": "ingredients.json",
+            "output": "samples/fast-food/server/src"
+          }
+        ],
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "fast-food-server:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "fast-food-server:build:development"
+        },
+        "production": {
+          "buildTarget": "fast-food-server:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}
