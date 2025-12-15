@@ -20,7 +20,6 @@ import { Ingredients } from './Ingredients';
 import { ChartExamples } from './ChartExamples';
 import { Overlay } from '@angular/cdk/overlay';
 import { openWelcomeOverlay } from './Welcome';
-import { buildChartOptions } from '../chat/tools/chart-options';
 
 @Component({
   selector: 'app-chart-page',
@@ -231,10 +230,20 @@ export class ChartPage {
       });
 
       if (chartConfig) {
-        const chartOptions = buildChartOptions(chartConfig.options);
         const chart = new ChartJS(canvas, {
           ...chartConfig.chart,
-          options: chartOptions,
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            borderColor: 'rgba(0, 0, 0, 0.1)',
+            ...chartConfig.options,
+            interaction: {
+              mode: chartConfig.options.interaction?.mode ?? undefined,
+              axis: chartConfig.options.interaction?.axis ?? undefined,
+              intersect:
+                chartConfig.options.interaction?.intersect ?? undefined,
+            },
+          },
         });
 
         this.hasRenderedAChart.set(true);
