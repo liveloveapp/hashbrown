@@ -38,18 +38,18 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/samples/finance/angular/browser --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+          command: pages deploy dist/samples/finance/angular/browser --project-name="hashbrown-finance"
 
       - name: Deploy Smart Home (production)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/samples/smart-home/angular/browser --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+          command: pages deploy dist/samples/smart-home/angular/browser --project-name="hashbrown-smart-home"
 
       - name: Deploy Docs (production)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/www/analog/analog/public --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+          command: pages deploy dist/www/analog/analog/public --project-name="hashbrown-www"
