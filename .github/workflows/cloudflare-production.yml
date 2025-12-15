@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - cloudflare-production
+  # tODO: remove after testing
+  on: workflow_dispatch
 
 concurrency:
   group: cloudflare-production
