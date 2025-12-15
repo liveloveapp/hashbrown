@@ -5,7 +5,8 @@ on:
     branches:
       - cloudflare-production
   # tODO: remove after testing
-  on: workflow_dispatch
+  workflow_dispatch
+  pull_request
 
 concurrency:
   group: cloudflare-production
@@ -37,18 +38,18 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/samples/finance/angular/browser --config=samples/finance/wrangler.toml --branch=main --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+          command: pages deploy dist/samples/finance/angular/browser --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
 
       - name: Deploy Smart Home (production)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/samples/smart-home/angular/browser --config=samples/smart-home/wrangler.toml --branch=main --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+          command: pages deploy dist/samples/smart-home/angular/browser --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
 
       - name: Deploy Docs (production)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/www/analog/analog/public --config=wrangler.toml --branch=main --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
+          command: pages deploy dist/www/analog/analog/public --commit-hash=${{ github.sha }} --commit-message="release ${GITHUB_REF}"
