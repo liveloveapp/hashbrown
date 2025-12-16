@@ -292,9 +292,10 @@ export const routeMeta: RouteMeta = {
         > .title {
           > h1 {
             font:
-              800 32px/40px 'KefirVariable',
+              800 32px/44px 'KefirVariable',
               sans-serif;
-            font-variation-settings: 'wght' 800;
+            font-variation-settings: 'wght' 700;
+            color: var(--gray-dark);
           }
 
           > p {
