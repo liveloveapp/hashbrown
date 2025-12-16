@@ -268,6 +268,14 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'platform', 'anthropic']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Anthropic</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'platform', 'google']"
             routerLinkActive="active"
             wwwSquircle="8"

@@ -81,6 +81,7 @@ To get started, we recommend running a local express server following the Hashbr
 
 - [OpenAI](/docs/react/platform/openai)
 - [Azure OpenAI](/docs/react/platform/azure)
+- [Anthropic](/docs/react/platform/anthropic)
 - [Amazon Bedrock](/docs/react/platform/bedrock)
 - [Google Gemini](/docs/react/platform/google)
 - [Writer](/docs/react/platform/writer)
