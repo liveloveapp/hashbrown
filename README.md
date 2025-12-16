@@ -1,10 +1,10 @@
 <h1 align="center">Hashbrown - Build Joyful, AI-Powered User Interfaces</h1>
 
 <p align="center">
-  <img src="www/public/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
+  <img src="www/analog/public/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
-  <em>Hashbrown is an open-source framework for building AI-powered user interfaces
-    <br />that converse with users, dynamically reorganize, and even code themselves.</em>
+  <em>Hashbrown is an open-source framework for 
+    <br />building agents that run in the browser.</em>
   <br>
 </p>
 
@@ -27,7 +27,7 @@
   </a>
 </p>
 
-[What is Hashbrown](#what-is-hashbrown) | [Installation](#installation) | [Getting Started](#getting-started) | [Supported LLM Providers](#supported-llm-providers) | [Features](#features) | [Walkthroughs](#walkthroughs) | [Core Team](#core-team) | [Workshops and Consulting](#workshops-and-consulting)
+[What is Hashbrown](#what-is-hashbrown) | [Installation](#installation) | [Getting Started](#getting-started) | [Supported LLM Providers](#supported-llm-providers) | [Features](#features) | [Walkthroughs](#walkthroughs) | [Core Team](#core-team) | [Consulting](#consulting)
 
 <!-- TODO: embed "marketing" video here when finished-->
 
@@ -35,7 +35,7 @@
 
 ## What Is Hashbrown
 
-Hashbrown is a set of core and framework-specific packages for the UI along with LLM SDK wrappers for Node backends. Hashbrown makes it easy to embed intelligence in individual features and to orchestrate and dynamically update whole applications based on real-time, natural language inputs.
+Hashbrown is a set of core and framework-specific packages for the UI along with LLM SDK wrappers for Node backends. Hashbrown makes it easy to embed intelligence in your React or Angular components. Use Hashbrown to generate user interfaces, turn natural language into structured data, and predict your user's next action.
 
 ## Installation
 
@@ -65,15 +65,11 @@ They include:
 
 - [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
 - [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
+- [Anthropic](https://hashbrown.dev/docs/angular/platform/anthropic)
 - [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
 - [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
 - [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
 - [Writer](https://hashbrown.dev/docs/angular/platform/writer)
-
-Coming soon:
-
-- Anthropic
-- Vercel
 
 Note that any model supported by a vendor's SDK will generally be usable via Hashbrown. That said, not all models (especially some older, smaller ones) will be able to handle the full feature set of Hashbrown.
 
@@ -220,39 +216,6 @@ npm install
 npx nx serve kitchen-sink-server && npx nx serve kitchen-sink-angular
 ```
 
-### Cloudflare Pages Deployments
-
-- Finance sample: Functions live in `samples/finance/angular/functions` (auto-detected by Wrangler). Deploy the Angular app plus functions with `npx nx run finance-angular:deploy`, which uses `samples/finance/angular/wrangler.toml`. Set `OPENAI_API_KEY` in the `hashbrown-finance` Pages project; run `npx nx run finance-cloudflare:generate-data` if you want fresh mock ingredient data.
-- Smart Home sample: Functions live in `samples/smart-home/angular/functions` (auto-detected by Wrangler). Deploy the Angular app plus functions with `npx nx run smart-home-angular:deploy`, which uses `samples/smart-home/angular/wrangler.toml`. Set `OPENAI_API_KEY` in the `hashbrown-smart-home` Pages project.
-- Docs site (`www/analog`): `npx nx run www:deploy` builds the site and deploys to Cloudflare Pages using the root `wrangler.toml` (project `hashbrown-www`). Ensure any required secrets like `OPENAI_API_KEY` are configured in the Pages environment.
-
-Setting secrets with Wrangler CLI (Cloudflare Pages):
-
-```shell
-# authenticate once
-npx wrangler login
-# add the OpenAI key to a Pages project (repeat per project)
-npx wrangler pages secret put OPENAI_API_KEY --project-name hashbrown-finance --environment production
-# set it for preview deploys too
-npx wrangler pages secret put OPENAI_API_KEY --project-name hashbrown-finance --environment preview
-```
-
-Use the appropriate `--project-name` (`hashbrown-smart-home`, `hashbrown-www`, etc.) for the app you are deploying. The command prompts for the secret value and stores it for that Pages project.
-Repeat the `--environment production`/`--environment preview` commands for each project so both production and preview builds can access the secret.
-
-## Hashbrown.dev
-
-Run the documentation website locally:
-
-```shell
-nvm use
-npm install
-# If needed, generate build dependencies (i.e. docs from code)
-npx nx run www:collect-docs
-# Run the server
-npx nx serve www
-```
-
 ## Core Team
 
 `hashbrown` is a community effort led by Mike Ryan, Brian Love and Ben Taylor.
@@ -261,11 +224,9 @@ npx nx serve www
 
 hashbrown is a community-driven project. Read our [contributing guidelines](./CONTRIBUTING.md) on how to get involved.
 
-## Workshops and Consulting
+## Consulting
 
-Want to learn how to build Angular and React apps with AI? [Learn more about our workshops](https://hashbrown.dev/workshops).
-
-LiveLoveApp provides hands-on engagement with our AI engineers for architecture reviews, custom integrations, proof-of-concept builds, performance tuning, and expert guidance on best practices. [Learn more about LiveLoveApp](https://liveloveapp.com).
+Hashbrown is built in the open by [LiveLoveApp](https://www.liveloveapp.com). We love building products for the web, and have helped engineering teams across startups, banking, and finance.
 
 ## License
 
