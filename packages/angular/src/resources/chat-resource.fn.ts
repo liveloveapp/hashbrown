@@ -17,6 +17,7 @@ import {
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readSignalLike, toNgSignal } from '../utils/signals';
+import { SignalLike } from '../utils/types';
 import { bindToolToInjector } from '../utils/create-tool.fn';
 
 /**
@@ -33,8 +34,24 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
   isReceiving: Signal<boolean>;
   /** Indicates whether the chat is currently sending a user message. */
   isSending: Signal<boolean>;
+  /** Indicates whether the chat is currently generating assistant output. */
+  isGenerating: Signal<boolean>;
   /** Indicates whether the chat is running tool calls. */
   isRunningToolCalls: Signal<boolean>;
+  /** Aggregate loading flag across transport, generation, tool calls, and thread load/save. */
+  isLoading: Signal<boolean>;
+  /** Indicates whether a thread load request is in flight. */
+  isLoadingThread: Signal<boolean>;
+  /** Indicates whether a thread save request is in flight. */
+  isSavingThread: Signal<boolean>;
+  /** Transport/request error before generation frames arrive. */
+  sendingError: Signal<Error | undefined>;
+  /** Error emitted during generation frames. */
+  generatingError: Signal<Error | undefined>;
+  /** Thread loading error, if present. */
+  threadLoadError: Signal<{ error: string; stacktrace?: string } | undefined>;
+  /** Thread saving error, if present. */
+  threadSaveError: Signal<{ error: string; stacktrace?: string } | undefined>;
   /**
    * Send a new user message to the chat.
    *
@@ -124,6 +141,11 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
    * Custom transport to use for this chat resource.
    */
   transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: SignalLike<string | undefined>;
 }
 
 /**
@@ -168,6 +190,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     debugName: options.debugName,
     transport: options.transport ?? config.transport,
     ui: false,
+    threadId: readSignalLike(options.threadId),
   });
 
   const teardown = hashbrown.sizzle();
@@ -186,22 +209,54 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hashbrown.isSending,
     options.debugName && `${options.debugName}.isSending`,
   );
+  const isGenerating = toNgSignal(
+    hashbrown.isGenerating,
+    options.debugName && `${options.debugName}.isGenerating`,
+  );
   const isRunningToolCalls = toNgSignal(
     hashbrown.isRunningToolCalls,
     options.debugName && `${options.debugName}.isRunningToolCalls`,
+  );
+  const isLoading = toNgSignal(
+    hashbrown.isLoading,
+    options.debugName && `${options.debugName}.isLoading`,
   );
   const error = toNgSignal(
     hashbrown.error,
     options.debugName && `${options.debugName}.error`,
   );
+  const sendingError = toNgSignal(
+    hashbrown.sendingError,
+    options.debugName && `${options.debugName}.sendingError`,
+  );
+  const generatingError = toNgSignal(
+    hashbrown.generatingError,
+    options.debugName && `${options.debugName}.generatingError`,
+  );
   const lastAssistantMessage = toNgSignal(
     hashbrown.lastAssistantMessage,
     options.debugName && `${options.debugName}.lastAssistantMessage`,
   );
+  const isLoadingThread = toNgSignal(
+    hashbrown.isLoadingThread,
+    options.debugName && `${options.debugName}.isLoadingThread`,
+  );
+  const isSavingThread = toNgSignal(
+    hashbrown.isSavingThread,
+    options.debugName && `${options.debugName}.isSavingThread`,
+  );
+  const threadLoadError = toNgSignal(
+    hashbrown.threadLoadError,
+    options.debugName && `${options.debugName}.threadLoadError`,
+  );
+  const threadSaveError = toNgSignal(
+    hashbrown.threadSaveError,
+    options.debugName && `${options.debugName}.threadSaveError`,
+  );
 
   const status = computed(
     (): ResourceStatus => {
-      if (isReceiving() || isSending() || isRunningToolCalls()) {
+      if (isLoading()) {
         return 'loading';
       }
 
@@ -220,13 +275,6 @@ export function chatResource<Tools extends Chat.AnyTool>(
       return 'idle';
     },
     { debugName: options.debugName && `${options.debugName}.status` },
-  );
-
-  const isLoading = computed(
-    () => {
-      return isReceiving() || isSending() || isRunningToolCalls();
-    },
-    { debugName: options.debugName && `${options.debugName}.isLoading` },
   );
 
   function reload() {
@@ -256,10 +304,17 @@ export function chatResource<Tools extends Chat.AnyTool>(
   return {
     hasValue: hasValue as any,
     status,
-    isLoading,
     isReceiving,
     isSending,
+    isGenerating,
     isRunningToolCalls,
+    isLoading,
+    isLoadingThread,
+    isSavingThread,
+    sendingError,
+    generatingError,
+    threadLoadError,
+    threadSaveError,
     reload,
     sendMessage,
     stop,

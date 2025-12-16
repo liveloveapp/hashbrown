@@ -3,6 +3,7 @@ import { Chat } from '../models';
 import { Frame } from '../frames';
 
 const params: Chat.Api.CompletionCreateParams = {
+  operation: 'generate',
   model: '' as Chat.Api.CompletionCreateParams['model'],
   system: 'system',
   messages: [
@@ -75,8 +76,10 @@ test('streams frames from the Prompt API', async () => {
   }
 
   expect(session.promptStreaming).toHaveBeenCalledTimes(1);
-  expect(collected.filter((frame) => frame.type === 'chunk')).toHaveLength(2);
-  expect(collected.at(-1)?.type).toBe('finish');
+  expect(
+    collected.filter((frame) => frame.type === 'generation-chunk'),
+  ).toHaveLength(2);
+  expect(collected.at(-1)?.type).toBe('generation-finish');
   expect(response.metadata?.['status']).toBe('available');
 });
 
@@ -272,7 +275,7 @@ test('cancels reader and destroys session on abort', async () => {
   }
 
   const first = await frames.next();
-  expect(first.value?.type).toBe('chunk');
+  expect(first.value?.type).toBe('generation-chunk');
 
   aborter.abort('stop');
 

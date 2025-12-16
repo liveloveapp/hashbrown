@@ -293,7 +293,7 @@ export class ExperimentalEdgeLocalTransport implements Transport {
         }
       }
 
-      yield { type: 'finish' };
+      yield { type: 'generation-finish' };
     } finally {
       reader.releaseLock();
     }
@@ -351,7 +351,12 @@ export function experimentalEdgeLocalModelSpec(
 
     return {
       name: 'edge-local',
-      capabilities: { tools: false, structured: true, ui: true },
+      capabilities: {
+        tools: false,
+        structured: true,
+        ui: true,
+        threads: false,
+      },
       detect: () =>
         detectEdgePromptApi(undefined, {
           onAvailabilityChange: mergedOptions.events?.availability,
@@ -461,7 +466,7 @@ function isSupportedResponseConstraint(constraint: unknown): boolean {
 
 function createChunkFrame(content: string): Frame {
   return {
-    type: 'chunk',
+    type: 'generation-chunk',
     chunk: {
       choices: [
         {

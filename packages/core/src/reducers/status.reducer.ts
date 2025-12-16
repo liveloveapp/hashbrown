@@ -4,7 +4,9 @@ import { apiActions, devActions, internalActions } from '../actions';
 export interface StatusState {
   isReceiving: boolean;
   isSending: boolean;
-  isRunningToolCalls: boolean;
+  isGenerating: boolean;
+  sendingError: Error | undefined;
+  generatingError: Error | undefined;
   error: Error | undefined;
   exhaustedRetries: boolean;
 }
@@ -12,7 +14,9 @@ export interface StatusState {
 export const initialStatusState: StatusState = {
   isReceiving: false,
   isSending: false,
-  isRunningToolCalls: false,
+  isGenerating: false,
+  sendingError: undefined,
+  generatingError: undefined,
   error: undefined,
   exhaustedRetries: false,
 };
@@ -40,6 +44,7 @@ export const reducer = createReducer(
       return {
         ...state,
         isSending: true,
+        sendingError: undefined,
       };
     },
   ),
@@ -48,42 +53,51 @@ export const reducer = createReducer(
       ...state,
       isSending: false,
       isReceiving: true,
+      isGenerating: true,
+      generatingError: undefined,
     };
   }),
   on(apiActions.generateMessageChunk, (state) => {
     return {
       ...state,
       isReceiving: true,
+      isGenerating: true,
     };
   }),
   on(apiActions.generateMessageSuccess, (state) => {
     return {
       ...state,
       isReceiving: false,
-      isRunningToolCalls: true,
+      isGenerating: false,
       error: undefined,
+      generatingError: undefined,
       exhaustedRetries: false,
     };
   }),
   on(apiActions.generateMessageError, (state, action) => {
+    const isGenerationPhase = state.isReceiving || state.isGenerating;
+
     return {
       ...state,
       isReceiving: false,
       isSending: false,
+      isGenerating: false,
       error: action.payload,
+      sendingError: isGenerationPhase ? state.sendingError : action.payload,
+      generatingError: isGenerationPhase
+        ? action.payload
+        : state.generatingError,
     };
   }),
   on(internalActions.runToolCallsSuccess, (state) => {
     return {
       ...state,
-      isRunningToolCalls: false,
       isSending: true,
     };
   }),
   on(internalActions.runToolCallsError, (state, action) => {
     return {
       ...state,
-      isRunningToolCalls: false,
       error: action.payload,
     };
   }),
@@ -97,26 +111,25 @@ export const reducer = createReducer(
     return {
       ...state,
       isReceiving: false,
+      isGenerating: false,
       isSending: false,
-      isRunningToolCalls: false,
+      sendingError: undefined,
+      generatingError: undefined,
       error: undefined,
       exhaustedRetries: false,
     };
   }),
   on(internalActions.skippedToolCalls, (state) => {
-    return {
-      ...state,
-      isRunningToolCalls: false,
-      isSending: false,
-      isReceiving: false,
-    };
+    return state;
   }),
 );
 
 export const selectIsReceiving = (state: StatusState) => state.isReceiving;
 export const selectIsSending = (state: StatusState) => state.isSending;
-export const selectIsRunningToolCalls = (state: StatusState) =>
-  state.isRunningToolCalls;
+export const selectIsGenerating = (state: StatusState) => state.isGenerating;
+export const selectSendingError = (state: StatusState) => state.sendingError;
+export const selectGeneratingError = (state: StatusState) =>
+  state.generatingError;
 export const selectError = (state: StatusState) => state.error;
 export const selectExhaustedRetries = (state: StatusState) =>
   state.exhaustedRetries;

@@ -16,7 +16,7 @@ import {
   UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
-import { readSignalLike } from '../utils';
+import { readSignalLike, SignalLike } from '../utils';
 
 /**
  * @public
@@ -80,6 +80,11 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
    * Custom transport override for the UI chat resource.
    */
   transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: SignalLike<string | undefined>;
 }
 
 /**
@@ -158,6 +163,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     apiUrl: args.apiUrl,
     transport: args.transport,
     ui: true,
+    threadId: args.threadId,
   });
 
   const value = computed(

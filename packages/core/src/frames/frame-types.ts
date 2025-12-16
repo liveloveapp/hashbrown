@@ -3,8 +3,15 @@ import { Chat } from '../models';
 /**
  * @public
  */
-export interface ErrorFrame {
-  type: 'error';
+export interface GenerationStartFrame {
+  type: 'generation-start';
+}
+
+/**
+ * @public
+ */
+export interface GenerationErrorFrame {
+  type: 'generation-error';
   error: string;
   stacktrace?: string;
 }
@@ -12,19 +19,77 @@ export interface ErrorFrame {
 /**
  * @public
  */
-export interface ChunkFrame {
-  type: 'chunk';
+export interface GenerationChunkFrame {
+  type: 'generation-chunk';
   chunk: Chat.Api.CompletionChunk;
 }
 
 /**
  * @public
  */
-export interface FinishFrame {
-  type: 'finish';
+export interface GenerationFinishFrame {
+  type: 'generation-finish';
 }
 
 /**
  * @public
  */
-export type Frame = ErrorFrame | ChunkFrame | FinishFrame;
+export interface ThreadLoadStartFrame {
+  type: 'thread-load-start';
+}
+
+/**
+ * @public
+ */
+export interface ThreadLoadSuccessFrame {
+  type: 'thread-load-success';
+  thread?: Chat.Api.Message[];
+}
+
+/**
+ * @public
+ */
+export interface ThreadLoadFailureFrame {
+  type: 'thread-load-failure';
+  error: string;
+  stacktrace?: string;
+}
+
+/**
+ * @public
+ */
+export interface ThreadSaveStartFrame {
+  type: 'thread-save-start';
+}
+
+/**
+ * @public
+ */
+export interface ThreadSaveSuccessFrame {
+  type: 'thread-save-success';
+  threadId: string;
+}
+
+/**
+ * @public
+ */
+export interface ThreadSaveFailureFrame {
+  type: 'thread-save-failure';
+  error: string;
+  stacktrace?: string;
+}
+
+/**
+ * @public
+ */
+export type Frame =
+  | GenerationStartFrame
+  | ThreadLoadStartFrame
+  | ThreadLoadSuccessFrame
+  | ThreadLoadFailureFrame
+  | ThreadSaveStartFrame
+  | ThreadSaveSuccessFrame
+  | ThreadSaveFailureFrame
+  | GenerationErrorFrame
+  | GenerationChunkFrame
+  | GenerationFinishFrame;

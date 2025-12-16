@@ -1,7 +1,13 @@
-import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
+import {
+  Chat,
+  encodeFrame,
+  Frame,
+  mergeMessagesForThread,
+  updateAssistantMessage,
+} from '@hashbrownai/core';
 import Anthropic from '@anthropic-ai/sdk';
 
-export interface AnthropicTextStreamOptions {
+type BaseAnthropicTextStreamOptions = {
   apiKey: string;
   baseURL?: string;
   request: Chat.Api.CompletionCreateParams;
@@ -10,20 +16,98 @@ export interface AnthropicTextStreamOptions {
   ) =>
     | Anthropic.Messages.MessageCreateParamsStreaming
     | Promise<Anthropic.Messages.MessageCreateParamsStreaming>;
-}
+};
+
+type ThreadPersistenceOptions = {
+  loadThread: (threadId: string) => Promise<Chat.Api.Message[]>;
+  saveThread: (
+    thread: Chat.Api.Message[],
+    threadId?: string,
+  ) => Promise<string>;
+};
+
+type ThreadlessOptions = BaseAnthropicTextStreamOptions & {
+  loadThread?: undefined;
+  saveThread?: undefined;
+};
+
+type ThreadfulOptions = BaseAnthropicTextStreamOptions &
+  ThreadPersistenceOptions;
+
+export type AnthropicTextStreamOptions = ThreadlessOptions | ThreadfulOptions;
 
 const DEFAULT_MAX_TOKENS = 4096;
+
+export function text(options: ThreadfulOptions): AsyncIterable<Uint8Array>;
+export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
 
 export async function* text(
   options: AnthropicTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, baseURL, request, transformRequestOptions } = options;
-  const { messages, model, tools, toolChoice, system } = request;
+  const {
+    apiKey,
+    baseURL,
+    request,
+    transformRequestOptions,
+    loadThread,
+    saveThread,
+  } = options;
+  const { model, tools, toolChoice, system } = request;
+  const threadId = request.threadId;
+  let loadedThread: Chat.Api.Message[] = [];
+  let effectiveThreadId = threadId;
 
   const anthropic = new Anthropic({
     apiKey,
     baseURL,
   });
+
+  const shouldLoadThread = Boolean(request.threadId);
+  const shouldHydrateThreadOnTheClient = Boolean(
+    request.operation === 'load-thread',
+  );
+
+  if (shouldLoadThread) {
+    yield encodeFrame({ type: 'thread-load-start' });
+
+    if (!loadThread) {
+      yield encodeFrame({
+        type: 'thread-load-failure',
+        error: 'Thread loading is not available for this transport.',
+      });
+      return;
+    }
+
+    try {
+      loadedThread = await loadThread(request.threadId as string);
+      if (shouldHydrateThreadOnTheClient) {
+        yield encodeFrame({
+          type: 'thread-load-success',
+          thread: loadedThread,
+        });
+      } else {
+        yield encodeFrame({ type: 'thread-load-success' });
+      }
+    } catch (error: unknown) {
+      const { message, stack } = normalizeError(error);
+      yield encodeFrame({
+        type: 'thread-load-failure',
+        error: message,
+        stacktrace: stack,
+      });
+      return;
+    }
+  }
+
+  if (request.operation === 'load-thread') {
+    return;
+  }
+
+  const mergedMessages =
+    request.threadId && shouldLoadThread
+      ? mergeMessagesForThread(loadedThread, request.messages ?? [])
+      : (request.messages ?? []);
+  let assistantMessage: Chat.Api.AssistantMessage | null = null;
 
   try {
     const baseOptions: Anthropic.Messages.MessageCreateParamsStreaming = {
@@ -31,7 +115,7 @@ export async function* text(
       model: model as string,
       max_tokens: DEFAULT_MAX_TOKENS,
       system,
-      messages: toAnthropicMessages(messages),
+      messages: toAnthropicMessages(mergedMessages),
       tools: tools && tools.length > 0 ? tools.map(toAnthropicTool) : undefined,
       tool_choice: mapToolChoice(toolChoice),
     };
@@ -56,6 +140,8 @@ export async function* text(
       }
     >();
     let toolCallCount = 0;
+
+    yield encodeFrame({ type: 'generation-start' });
 
     for await (const event of stream) {
       let contentDelta: string | undefined;
@@ -154,32 +240,54 @@ export async function* text(
           console.log('[anthropic:tool-delta]', JSON.stringify(toolCallDeltas));
         }
 
-        yield encodeFrame({ type: 'chunk', chunk: chunkMessage });
+        assistantMessage = updateAssistantMessage(
+          assistantMessage,
+          chunkMessage,
+        );
+
+        yield encodeFrame({ type: 'generation-chunk', chunk: chunkMessage });
       }
     }
+
+    yield encodeFrame({ type: 'generation-finish' });
   } catch (error: unknown) {
-    if (error instanceof Error) {
-      const frame: Frame = {
-        type: 'error',
-        error: error.toString(),
-        stacktrace: error.stack,
-      };
-
-      yield encodeFrame(frame);
-    } else {
-      const frame: Frame = {
-        type: 'error',
-        error: String(error),
-      };
-
-      yield encodeFrame(frame);
-    }
-  } finally {
+    const { message, stack } = normalizeError(error);
     const frame: Frame = {
-      type: 'finish',
+      type: 'generation-error',
+      error: message,
+      stacktrace: stack,
     };
 
     yield encodeFrame(frame);
+    return;
+  }
+
+  if (saveThread) {
+    const threadToSave = mergeMessagesForThread(mergedMessages, [
+      ...(assistantMessage ? [assistantMessage] : []),
+    ]);
+    yield encodeFrame({ type: 'thread-save-start' });
+    try {
+      const savedThreadId = await saveThread(threadToSave, effectiveThreadId);
+      if (effectiveThreadId && savedThreadId !== effectiveThreadId) {
+        throw new Error(
+          'Save returned a different threadId than the existing thread',
+        );
+      }
+      effectiveThreadId = savedThreadId;
+      yield encodeFrame({
+        type: 'thread-save-success',
+        threadId: savedThreadId,
+      });
+    } catch (error: unknown) {
+      const { message, stack } = normalizeError(error);
+      yield encodeFrame({
+        type: 'thread-save-failure',
+        error: message,
+        stacktrace: stack,
+      });
+      return;
+    }
   }
 }
 
@@ -368,4 +476,11 @@ function looksLikeJson(value: string): boolean {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeError(error: unknown): { message: string; stack?: string } {
+  if (error instanceof Error) {
+    return { message: error.message, stack: error.stack };
+  }
+  return { message: String(error) };
 }

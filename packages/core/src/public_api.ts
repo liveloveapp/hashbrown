@@ -20,6 +20,7 @@ export * from './schema';
 export * as ɵui from './ui';
 export type { Component, ComponentPropSchema } from './ui/expose-component';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
+export { mergeMessagesForThread } from './utils/threading';
 export type {
   AzureKnownModelIds,
   GoogleKnownModelIds,
@@ -39,3 +40,7 @@ export {
   type MagicTextHasWhitespace,
   type MagicTextTag,
 } from './utils/magic-text';
+export {
+  mergeToolCalls,
+  updateAssistantMessage,
+} from './utils/assistant-message';

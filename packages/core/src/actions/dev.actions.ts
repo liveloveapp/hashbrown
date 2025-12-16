@@ -17,6 +17,7 @@ export default createActionGroup('dev', {
     retries?: number;
     transport?: TransportOrFactory;
     ui?: boolean;
+    threadId?: string;
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];
@@ -37,6 +38,7 @@ export default createActionGroup('dev', {
     debounce?: number;
     retries?: number;
     transport?: TransportOrFactory;
+    threadId?: string;
     ui?: boolean;
   }>(),
   stopMessageGeneration: props<boolean>(),

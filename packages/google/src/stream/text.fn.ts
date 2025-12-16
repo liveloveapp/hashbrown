@@ -9,30 +9,106 @@ import {
   Part,
   Schema,
 } from '@google/genai';
-import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
+import {
+  Chat,
+  encodeFrame,
+  Frame,
+  mergeMessagesForThread,
+  updateAssistantMessage,
+} from '@hashbrownai/core';
 import convertToOpenApiSchema from '@openapi-contrib/json-schema-to-openapi-schema';
 
-export interface GoogleTextStreamOptions {
+type BaseGoogleTextStreamOptions = {
   apiKey: string;
   request: Chat.Api.CompletionCreateParams;
   transformRequestOptions?: (
     options: GenerateContentParameters,
   ) => GenerateContentParameters | Promise<GenerateContentParameters>;
-}
+};
+
+type ThreadPersistenceOptions = {
+  loadThread: (threadId: string) => Promise<Chat.Api.Message[]>;
+  saveThread: (
+    thread: Chat.Api.Message[],
+    threadId?: string,
+  ) => Promise<string>;
+};
+
+type ThreadlessOptions = BaseGoogleTextStreamOptions & {
+  loadThread?: undefined;
+  saveThread?: undefined;
+};
+
+type ThreadfulOptions = BaseGoogleTextStreamOptions & ThreadPersistenceOptions;
+
+export type GoogleTextStreamOptions = ThreadlessOptions | ThreadfulOptions;
+
+export function text(options: ThreadfulOptions): AsyncIterable<Uint8Array>;
+export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
 
 export async function* text(
   options: GoogleTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, request, transformRequestOptions } = options;
-  const { messages, model, tools, responseFormat, toolChoice, system } =
-    request;
+  const { apiKey, request, transformRequestOptions, loadThread, saveThread } =
+    options;
+  const { model, tools, responseFormat, toolChoice, system } = request;
+  const threadId = request.threadId;
+  let loadedThread: Chat.Api.Message[] = [];
+  let effectiveThreadId = threadId;
 
   const ai = new GoogleGenAI({
     apiKey,
   });
 
+  const shouldLoadThread = Boolean(request.threadId);
+  const shouldHydrateThreadOnTheClient = Boolean(
+    request.operation === 'load-thread',
+  );
+
+  if (shouldLoadThread) {
+    yield encodeFrame({ type: 'thread-load-start' });
+
+    if (!loadThread) {
+      yield encodeFrame({
+        type: 'thread-load-failure',
+        error: 'Thread loading is not available for this transport.',
+      });
+      return;
+    }
+
+    try {
+      loadedThread = await loadThread(request.threadId as string);
+      if (shouldHydrateThreadOnTheClient) {
+        yield encodeFrame({
+          type: 'thread-load-success',
+          thread: loadedThread,
+        });
+      } else {
+        yield encodeFrame({ type: 'thread-load-success' });
+      }
+    } catch (error: unknown) {
+      const { message, stack } = normalizeError(error);
+      yield encodeFrame({
+        type: 'thread-load-failure',
+        error: message,
+        stacktrace: stack,
+      });
+      return;
+    }
+  }
+
+  if (request.operation === 'load-thread') {
+    return;
+  }
+
+  const mergedMessages =
+    request.threadId && shouldLoadThread
+      ? mergeMessagesForThread(loadedThread, request.messages ?? [])
+      : (request.messages ?? []);
+  let assistantMessage: Chat.Api.AssistantMessage | null = null;
+
   try {
-    const contents = messages.map((message): Content => {
+    const contents = mergedMessages.map((message): Content => {
       switch (message.role) {
         case 'user':
           return {
@@ -160,6 +236,8 @@ export async function* text(
       return toolCallIndicesToStringId[index];
     };
 
+    yield encodeFrame({ type: 'generation-start' });
+
     for await (const chunk of await response) {
       const firstPart = chunk.candidates?.[0]?.content?.parts?.[0];
       if (firstPart && firstPart.functionCall) {
@@ -188,9 +266,14 @@ export async function* text(
         };
 
         const frame: Frame = {
-          type: 'chunk',
+          type: 'generation-chunk',
           chunk: chunkMessage,
         };
+
+        assistantMessage = updateAssistantMessage(
+          assistantMessage,
+          chunkMessage,
+        );
 
         yield encodeFrame(frame);
       }
@@ -216,32 +299,50 @@ export async function* text(
           })) ?? [],
       };
       const frame: Frame = {
-        type: 'chunk',
+        type: 'generation-chunk',
         chunk: chunkMessage,
       };
+      assistantMessage = updateAssistantMessage(assistantMessage, chunkMessage);
       yield encodeFrame(frame);
     }
+    yield encodeFrame({ type: 'generation-finish' });
   } catch (error) {
-    if (error instanceof Error) {
-      const frame: Frame = {
-        type: 'error',
-        error: error.toString(),
-        stacktrace: error.stack,
-      };
-      yield encodeFrame(frame);
-    } else {
-      const frame: Frame = {
-        type: 'error',
-        error: String(error),
-      };
-
-      yield encodeFrame(frame);
-    }
-  } finally {
+    const { message, stack } = normalizeError(error);
     const frame: Frame = {
-      type: 'finish',
+      type: 'generation-error',
+      error: message,
+      stacktrace: stack,
     };
     yield encodeFrame(frame);
+    return;
+  }
+
+  if (saveThread) {
+    const threadToSave = mergeMessagesForThread(mergedMessages, [
+      ...(assistantMessage ? [assistantMessage] : []),
+    ]);
+    yield encodeFrame({ type: 'thread-save-start' });
+    try {
+      const savedThreadId = await saveThread(threadToSave, effectiveThreadId);
+      if (effectiveThreadId && savedThreadId !== effectiveThreadId) {
+        throw new Error(
+          'Save returned a different threadId than the existing thread',
+        );
+      }
+      effectiveThreadId = savedThreadId;
+      yield encodeFrame({
+        type: 'thread-save-success',
+        threadId: savedThreadId,
+      });
+    } catch (error: unknown) {
+      const { message, stack } = normalizeError(error);
+      yield encodeFrame({
+        type: 'thread-save-failure',
+        error: message,
+        stacktrace: stack,
+      });
+      return;
+    }
   }
 }
 
@@ -327,4 +428,11 @@ async function toGeminiSchema(jsonSchema: object): Promise<Schema> {
   }
 
   return pruneSchema(openApiSchema);
+}
+
+function normalizeError(error: unknown): { message: string; stack?: string } {
+  if (error instanceof Error) {
+    return { message: error.message, stack: error.stack };
+  }
+  return { message: String(error) };
 }

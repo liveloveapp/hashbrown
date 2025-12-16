@@ -8,13 +8,21 @@ import effects from './effects';
 import { Chat } from './models';
 import {
   reducers,
-  selectError,
   selectExhaustedRetries,
+  selectGeneratingError,
+  selectIsGenerating,
   selectIsLoading,
+  selectIsLoadingThread,
   selectIsReceiving,
   selectIsRunningToolCalls,
+  selectIsSavingThread,
   selectIsSending,
   selectLastAssistantMessage,
+  selectSendingError,
+  selectThreadId,
+  selectThreadLoadError,
+  selectThreadSaveError,
+  selectUnifiedError,
   selectViewMessages,
 } from './reducers';
 import { s } from './schema';
@@ -33,11 +41,23 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   error: StateSignal<Error | undefined>;
   isReceiving: StateSignal<boolean>;
   isSending: StateSignal<boolean>;
+  isGenerating: StateSignal<boolean>;
   isRunningToolCalls: StateSignal<boolean>;
   isLoading: StateSignal<boolean>;
   exhaustedRetries: StateSignal<boolean>;
+  sendingError: StateSignal<Error | undefined>;
+  generatingError: StateSignal<Error | undefined>;
   lastAssistantMessage: StateSignal<
     Chat.AssistantMessage<Output, Tools> | undefined
+  >;
+  threadId: StateSignal<string | undefined>;
+  isLoadingThread: StateSignal<boolean>;
+  isSavingThread: StateSignal<boolean>;
+  threadLoadError: StateSignal<
+    { error: string; stacktrace?: string } | undefined
+  >;
+  threadSaveError: StateSignal<
+    { error: string; stacktrace?: string } | undefined
   >;
 
   /** Replace the current set of messages in the chat state. */
@@ -63,6 +83,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       retries: number;
       transport: TransportOrFactory;
       ui?: boolean;
+      threadId: string;
     }>,
   ) => void;
 
@@ -106,6 +127,7 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   retries?: number;
   transport?: TransportOrFactory;
   ui?: boolean;
+  threadId?: string;
 }): Hashbrown<string, Tools>;
 /**
  * @public
@@ -128,6 +150,7 @@ export function fryHashbrown<
   retries?: number;
   transport?: TransportOrFactory;
   ui?: boolean;
+  threadId?: string;
 }): Hashbrown<Output, Tools>;
 /**
  * @public
@@ -146,7 +169,10 @@ export function fryHashbrown(init: {
   retries?: number;
   transport?: TransportOrFactory;
   ui?: boolean;
+  threadId?: string;
 }): Hashbrown<any, Chat.AnyTool> {
+  const initialThreadId = init.threadId;
+
   const hasIllegalOutputTool = init.tools?.some(
     (tool) => tool.name === 'output',
   );
@@ -165,8 +191,14 @@ export function fryHashbrown(init: {
       messages: selectViewMessages(state),
       isReceiving: selectIsReceiving(state),
       isSending: selectIsSending(state),
+      isGenerating: selectIsGenerating(state),
       isRunningToolCalls: selectIsRunningToolCalls(state),
-      error: selectError(state),
+      isLoading: selectIsLoading(state),
+      isLoadingThread: selectIsLoadingThread(state),
+      isSavingThread: selectIsSavingThread(state),
+      sendingError: selectSendingError(state),
+      generatingError: selectGeneratingError(state),
+      error: selectUnifiedError(state),
       ɵɵinternal: state,
     }),
   });
@@ -185,6 +217,7 @@ export function fryHashbrown(init: {
       retries: init.retries,
       transport: init.transport,
       ui: init.ui,
+      threadId: initialThreadId,
     }),
   );
 
@@ -218,9 +251,23 @@ export function fryHashbrown(init: {
       retries: number;
       transport: TransportOrFactory;
       ui?: boolean;
+      threadId: string;
     }>,
   ) {
-    state.dispatch(devActions.updateOptions(options));
+    const currentThreadId = state.read(selectThreadId);
+    const hasThreadIdOption = Object.prototype.hasOwnProperty.call(
+      options,
+      'threadId',
+    );
+
+    const nextThreadId = hasThreadIdOption ? options.threadId : currentThreadId;
+
+    state.dispatch(
+      devActions.updateOptions({
+        ...options,
+        threadId: nextThreadId,
+      }),
+    );
   }
 
   function sizzle() {
@@ -261,12 +308,20 @@ export function fryHashbrown(init: {
     stop,
     sizzle,
     messages: state.createSignal(selectViewMessages),
-    error: state.createSignal(selectError),
+    error: state.createSignal(selectUnifiedError),
     isReceiving: state.createSignal(selectIsReceiving),
     isSending: state.createSignal(selectIsSending),
+    isGenerating: state.createSignal(selectIsGenerating),
     isRunningToolCalls: state.createSignal(selectIsRunningToolCalls),
     isLoading: state.createSignal(selectIsLoading),
+    sendingError: state.createSignal(selectSendingError),
+    generatingError: state.createSignal(selectGeneratingError),
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
     lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
+    threadId: state.createSignal(selectThreadId),
+    isLoadingThread: state.createSignal(selectIsLoadingThread),
+    isSavingThread: state.createSignal(selectIsSavingThread),
+    threadLoadError: state.createSignal(selectThreadLoadError),
+    threadSaveError: state.createSignal(selectThreadSaveError),
   };
 }

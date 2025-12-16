@@ -129,7 +129,12 @@ export function experimentalLocalModelSpec(
 
     return {
       name: 'local-prompt-api',
-      capabilities: { tools: false, structured: true, ui: true },
+      capabilities: {
+        tools: false,
+        structured: true,
+        ui: true,
+        threads: false,
+      },
       detect: () => detectAny(adapters),
       transport: () => new DelegatingLocalTransport(adapters),
     };

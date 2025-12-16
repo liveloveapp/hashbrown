@@ -30,10 +30,18 @@ describe('useUiCompletion', () => {
       output: structuredOutput,
       reload: vi.fn(),
       error: undefined,
+      isLoading: false,
       isReceiving: false,
       isSending: false,
+      isGenerating: false,
       isRunningToolCalls: false,
+      sendingError: undefined,
+      generatingError: undefined,
       exhaustedRetries: false,
+      isLoadingThread: false,
+      isSavingThread: false,
+      threadLoadError: undefined,
+      threadSaveError: undefined,
     });
 
     const TestButton = ({ label }: { label: string }) =>
@@ -68,10 +76,18 @@ describe('useUiCompletion', () => {
       output: null,
       reload: vi.fn(),
       error: undefined,
+      isLoading: false,
       isReceiving: false,
       isSending: false,
+      isGenerating: false,
       isRunningToolCalls: false,
+      sendingError: undefined,
+      generatingError: undefined,
       exhaustedRetries: false,
+      isLoadingThread: false,
+      isSavingThread: false,
+      threadLoadError: undefined,
+      threadSaveError: undefined,
     });
 
     const TestComponent = () => createElement('div', null, 'noop');
