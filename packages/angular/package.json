@@ -1,5 +1,6 @@
 {
   "name": "@hashbrownai/angular",
   "type": "module",
-  "private": true
+  "private": true,
+  "version": "0.4.0"
 }
