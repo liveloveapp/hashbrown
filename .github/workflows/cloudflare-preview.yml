@@ -51,7 +51,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/samples/fast-food/angular/browser --project-name="hashbrown-fast-food" 
+          command: pages deploy dist/samples/fast-food/angular/browser --project-name="hashbrown-fast-food" --functions="dist/samples/fast-food/cloudflare"
 
       - name: Deploy Docs (preview)
         uses: cloudflare/wrangler-action@v3
