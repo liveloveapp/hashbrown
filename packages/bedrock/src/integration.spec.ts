@@ -5,15 +5,27 @@ import * as cors from 'cors';
 import { Chat, fryHashbrown, Hashbrown, s } from '@hashbrownai/core';
 import { HashbrownBedrock } from './index';
 
-const BEDROCK_MODEL_ID = process.env['BEDROCK_MODEL_ID'] ?? '';
+const BEDROCK_MODEL_ID =
+  process.env['BEDROCK_MODEL_ID'] ??
+  'anthropic.claude-3-5-sonnet-20240620-v1:0';
 const BEDROCK_REGION =
-  process.env['BEDROCK_REGION'] ?? process.env['AWS_REGION'] ?? '';
+  process.env['BEDROCK_REGION'] ?? process.env['AWS_REGION'] ?? 'us-east-1';
 
 jest.setTimeout(60_000);
 
-// TODO: how can CI get AWS credentials?
+const shouldSkip =
+  !!process.env['CI'] &&
+  !process.env['AWS_ACCESS_KEY_ID'] &&
+  !process.env['AWS_PROFILE'];
+const maybeTest = shouldSkip ? test.skip : test;
 
-test.skip('Amazon Bedrock Text Streaming', async () => {
+if (shouldSkip) {
+  console.warn(
+    'Skipping Bedrock integration tests: AWS credentials not configured for CI',
+  );
+}
+
+maybeTest('Amazon Bedrock Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownBedrock.stream.text({
       region: BEDROCK_REGION,
@@ -51,7 +63,7 @@ test.skip('Amazon Bedrock Text Streaming', async () => {
   }
 });
 
-test('Amazon Bedrock Tool Calling', async () => {
+maybeTest('Amazon Bedrock Tool Calling', async () => {
   const expectedResponse =
     'Recall the wind chime voice you heard when you were young.';
   let toolCallArgs: any;
@@ -113,7 +125,7 @@ test('Amazon Bedrock Tool Calling', async () => {
   }
 });
 
-test('Amazon Bedrock with structured output', async () => {
+maybeTest('Amazon Bedrock with structured output', async () => {
   const server = await createServer((request) =>
     HashbrownBedrock.stream.text({
       region: BEDROCK_REGION,
@@ -125,6 +137,7 @@ test('Amazon Bedrock with structured output', async () => {
       debounce: 0,
       apiUrl: server.url,
       model: BEDROCK_MODEL_ID,
+      emulateStructuredOutput: true,
       system: `
      I am writing an integration test against Amazon Bedrock. Respond
      exactly with the text "Hello, world!" in JSON format.
@@ -147,75 +160,81 @@ test('Amazon Bedrock with structured output', async () => {
       .reverse()
       .find((message) => message.role === 'assistant');
 
+    console.log(hashbrown.messages());
+
     expect(assistantMessage?.content).toEqual({ text: 'Hello, world!' });
   } finally {
     server.close();
   }
 });
 
-test('Amazon Bedrock with tool calling and structured output', async () => {
-  const expectedResponse =
-    'I bend down and listen to the moss humming near the roots.';
-  let toolCallArgs: any;
-  const server = await createServer((request) =>
-    HashbrownBedrock.stream.text({
-      region: BEDROCK_REGION,
-      request: request as Chat.Api.CompletionCreateParams,
-    }),
-  );
+maybeTest(
+  'Amazon Bedrock with tool calling and structured output',
+  async () => {
+    const expectedResponse =
+      'I bend down and listen to the moss humming near the roots.';
+    let toolCallArgs: any;
+    const server = await createServer((request) =>
+      HashbrownBedrock.stream.text({
+        region: BEDROCK_REGION,
+        request: request as Chat.Api.CompletionCreateParams,
+      }),
+    );
 
-  try {
-    const hashbrown = fryHashbrown({
-      debounce: 0,
-      apiUrl: server.url,
-      model: BEDROCK_MODEL_ID,
-      system: `
+    try {
+      const hashbrown = fryHashbrown({
+        debounce: 0,
+        apiUrl: server.url,
+        model: BEDROCK_MODEL_ID,
+        emulateStructuredOutput: true,
+        system: `
      I am writing an integration test against Amazon Bedrock. Call
      the "test" tool with the argument "Hello, world!"
 
      DO NOT respond with any other text.
     `,
-      messages: [
-        {
-          role: 'user',
-          content: 'Please call the test tool and respond with the text.',
-        },
-      ],
-      tools: [
-        {
-          name: 'test',
-          description: 'Test tool',
-          schema: s.object('args', {
-            text: s.string(''),
-          }),
-          handler: async (args: {
-            text: string;
-          }): Promise<{ text: string }> => {
-            toolCallArgs = args;
-            return { text: expectedResponse };
+        messages: [
+          {
+            role: 'user',
+            content: 'Please call the test tool and respond with the text.',
           },
-        },
-      ],
-      responseSchema: s.object('response', {
-        text: s.string(''),
-      }),
-    });
+        ],
+        tools: [
+          {
+            name: 'test',
+            description: 'Test tool',
+            schema: s.object('args', {
+              text: s.string(''),
+            }),
+            handler: async (args: {
+              text: string;
+            }): Promise<{ text: string }> => {
+              toolCallArgs = args;
+              return { text: expectedResponse };
+            },
+          },
+        ],
+        responseSchema: s.object('response', {
+          text: s.string(''),
+        }),
+      });
 
-    await waitUntilHashbrownIsSettled(hashbrown);
+      await waitUntilHashbrownIsSettled(hashbrown);
 
-    const assistantMessage = hashbrown
-      .messages()
-      .reverse()
-      .find((message) => message.role === 'assistant');
+      const assistantMessage = hashbrown
+        .messages()
+        .reverse()
+        .find((message) => message.role === 'assistant');
 
-    expect(assistantMessage?.content).toEqual({ text: expectedResponse });
-    expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
-  } finally {
-    server.close();
-  }
-});
+      expect(assistantMessage?.content).toEqual({ text: expectedResponse });
+      expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
+    } finally {
+      server.close();
+    }
+  },
+);
 
-test('Amazon Bedrock supports thread IDs across turns', async () => {
+maybeTest('Amazon Bedrock supports thread IDs across turns', async () => {
   const requests: Chat.Api.CompletionCreateParams[] = [];
   const threadMessages = new Map<string, Chat.Api.Message[]>();
   const server = await createServer((incomingRequest) => {
