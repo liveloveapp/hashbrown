@@ -50,9 +50,6 @@ Thumbs.db
 # Nitro
 .nitro
 
-# Netlify
-.netlify
-
 # Vite
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
@@ -74,7 +71,6 @@ packages/*/*.api.md
 www/analog/src/app/reference/*
 
 # Samples
-samples/finance/netlify/src/*.json
 samples/finance/server/src/*.json
 
 ## LLMs
