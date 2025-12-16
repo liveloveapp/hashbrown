@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="880" viewBox="0 0 1400 880" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#FFF7EA" />
+      <stop offset="100%" stop-color="#F4E8FF" />
+    </linearGradient>
+    <linearGradient id="pill" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#FBBB52" />
+      <stop offset="50%" stop-color="#E88C4D" />
+      <stop offset="100%" stop-color="#9ECFD7" />
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="880" rx="48" fill="url(#bg)" />
+  <rect x="72" y="72" width="1256" height="736" rx="32" fill="#ffffff" stroke="#F5D9B7" stroke-width="2" />
+
+  <rect x="116" y="116" width="118" height="24" rx="12" fill="#FBBB52" opacity="0.24" />
+  <text x="128" y="134" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="14" font-weight="600">Fast Food Copilot</text>
+
+  <g transform="translate(116 170)">
+    <rect width="380" height="200" rx="20" fill="#FFF4E1" stroke="#F4C56A" />
+    <text x="20" y="34" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="16" font-weight="600">Conversation</text>
+    <text x="20" y="64" fill="#6A655E" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="14">"Find high protein breakfast wraps"</text>
+    <rect x="20" y="88" width="340" height="88" rx="12" fill="#FFFFFF" stroke="#F0DFD0" />
+    <text x="34" y="120" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">• Filtering 5,400 items across 55 menus</text>
+    <text x="34" y="146" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">• Protein &gt; 25g, Calories &lt; 650, Sodium &lt; 1400mg</text>
+    <text x="34" y="172" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">• Summarizing 4 standout options</text>
+  </g>
+
+  <g transform="translate(116 400)">
+    <rect width="380" height="340" rx="20" fill="#F5F7FA" stroke="#D6E4F5" />
+    <text x="20" y="34" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="16" font-weight="600">Menu Explorer</text>
+    <g transform="translate(20 64)">
+      <rect width="340" height="44" rx="12" fill="#FFFFFF" stroke="#E5E6EB" />
+      <text x="16" y="30" fill="#6A655E" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">Restaurant • Category • Max calories</text>
+      <rect x="250" y="14" width="76" height="16" rx="8" fill="url(#pill)" opacity="0.9" />
+      <text x="262" y="26" fill="#3D3C3A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="11" font-weight="700">Search</text>
+    </g>
+    <g transform="translate(20 126)">
+      <rect width="340" height="180" rx="12" fill="#FFFFFF" stroke="#E5E6EB" />
+      <text x="16" y="34" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="14" font-weight="600">Top Picks</text>
+      <text x="16" y="64" fill="#6A655E" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">1. Cantina Chicken Quesadilla</text>
+      <text x="16" y="90" fill="#6A655E" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">2. Chipotle Lifestyle Bowl</text>
+      <text x="16" y="116" fill="#6A655E" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">3. Wendy's Grilled Chicken Wrap</text>
+      <text x="16" y="142" fill="#6A655E" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">4. Subway Protein Bowl</text>
+      <rect x="16" y="156" width="64" height="6" rx="3" fill="#FBBB52" />
+      <rect x="84" y="156" width="48" height="6" rx="3" fill="#9ECFD7" />
+    </g>
+  </g>
+
+  <g transform="translate(540 170)">
+    <rect width="744" height="570" rx="24" fill="#F8F6FD" stroke="#E4DBFF" />
+    <g transform="translate(32 32)">
+      <text x="0" y="18" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="16" font-weight="600">Nutrition Breakdown</text>
+      <text x="0" y="46" fill="#6A655E" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">Generated Chart.js config + dataset slice</text>
+    </g>
+
+    <g transform="translate(52 96)">
+      <rect width="640" height="360" rx="20" fill="#FFFFFF" stroke="#DFD5FF" />
+      <g transform="translate(32 40)">
+        <rect x="0" y="220" width="72" height="120" rx="10" fill="#FBBB52" />
+        <rect x="92" y="180" width="72" height="160" rx="10" fill="#E88C4D" />
+        <rect x="184" y="124" width="72" height="216" rx="10" fill="#9ECFD7" />
+        <rect x="276" y="70" width="72" height="270" rx="10" fill="#7EC7A4" />
+        <rect x="368" y="40" width="72" height="300" rx="10" fill="#F2C1D1" />
+        <rect x="460" y="96" width="72" height="244" rx="10" fill="#9F8CF4" />
+        <rect x="552" y="52" width="72" height="288" rx="10" fill="#F0A6A6" />
+        <text x="8" y="360" fill="#5E5C5A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="12">Sugar</text>
+        <text x="104" y="360" fill="#5E5C5A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="12">Sodium</text>
+        <text x="198" y="360" fill="#5E5C5A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="12">Protein</text>
+        <text x="292" y="360" fill="#5E5C5A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="12">Calories</text>
+        <text x="380" y="360" fill="#5E5C5A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="12">Fiber</text>
+        <text x="476" y="360" fill="#5E5C5A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="12">Carbs</text>
+        <text x="568" y="360" fill="#5E5C5A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="12">Protein%</text>
+      </g>
+    </g>
+
+    <g transform="translate(64 500)">
+      <rect width="240" height="64" rx="12" fill="#FFFFFF" stroke="#E4DBFF" />
+      <text x="20" y="40" fill="#4A453F" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13">LLM selects chart + dataset slice</text>
+      <rect x="276" y="0" width="140" height="64" rx="12" fill="#FBBB52" />
+      <text x="296" y="38" fill="#3D3C3A" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13" font-weight="600">Streaming UI</text>
+      <rect x="440" y="0" width="120" height="64" rx="12" fill="#7EC7A4" />
+      <text x="456" y="38" fill="#234" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13" font-weight="600">Tool calls</text>
+      <rect x="584" y="0" width="96" height="64" rx="12" fill="#9ECFD7" />
+      <text x="602" y="38" fill="#2F3133" font-family="Fredoka, 'DM Sans', Arial, sans-serif" font-size="13" font-weight="600">CSV API</text>
+    </g>
+  </g>
+</svg>

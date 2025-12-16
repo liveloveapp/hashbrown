@@ -64,43 +64,36 @@ const interactionSchema = s.object('the interaction for the chart', {
 const nullableStringTemplate = (description: string) =>
   s.anyOf([s.string(description), s.nullish()]);
 
-const tooltipSchema = s.anyOf([
-  s.object('templated tooltip configuration', {
-    enabled: s.anyOf([
-      s.boolean('whether the tooltip is enabled'),
-      s.nullish(),
-    ]),
-    displayColors: s.anyOf([
-      s.boolean('whether to display dataset colors in the tooltip'),
-      s.nullish(),
-    ]),
-    titleTemplate: nullableStringTemplate(
-      'Mustache template for the tooltip title (context: {{ datum }})',
-    ),
-    beforeTitleTemplate: nullableStringTemplate(
-      'Template rendered before the title block',
-    ),
-    afterTitleTemplate: nullableStringTemplate(
-      'Template rendered after the title block',
-    ),
-    labelTemplate: nullableStringTemplate(
-      'Template for the main label per datum inside the body',
-    ),
-    afterLabelTemplate: nullableStringTemplate(
-      'Template rendered immediately after the label block',
-    ),
-    beforeBodyTemplate: nullableStringTemplate(
-      'Template rendered before the tooltip body',
-    ),
-    afterBodyTemplate: nullableStringTemplate(
-      'Template rendered after the tooltip body',
-    ),
-    footerTemplate: nullableStringTemplate(
-      'Template rendered in the tooltip footer',
-    ),
-  }),
-  s.nullish(),
-]);
+const tooltipSchema = s.object('templated tooltip configuration', {
+  enabled: s.boolean('whether the tooltip is enabled'),
+
+  displayColors: s.boolean('whether to display dataset colors in the tooltip'),
+
+  titleTemplate: nullableStringTemplate(
+    'Mustache template for the tooltip title (context: {{ datum }})',
+  ),
+  beforeTitleTemplate: nullableStringTemplate(
+    'Template rendered before the title block',
+  ),
+  afterTitleTemplate: nullableStringTemplate(
+    'Template rendered after the title block',
+  ),
+  labelTemplate: nullableStringTemplate(
+    'Template for the main label per datum inside the body',
+  ),
+  afterLabelTemplate: nullableStringTemplate(
+    'Template rendered immediately after the label block',
+  ),
+  beforeBodyTemplate: nullableStringTemplate(
+    'Template rendered before the tooltip body',
+  ),
+  afterBodyTemplate: nullableStringTemplate(
+    'Template rendered after the tooltip body',
+  ),
+  footerTemplate: nullableStringTemplate(
+    'Template rendered in the tooltip footer',
+  ),
+});
 
 const optionsSchema = s.object('the options for the chart', {
   plugins: s.object('the plugins for the chart', {

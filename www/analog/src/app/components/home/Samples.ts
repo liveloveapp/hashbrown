@@ -92,10 +92,10 @@ import { PlayerPlay } from '../../icons/PlayerPlay';
         >
           <div class="nav">
             <div class="button">
-              <h3>Smart Home App</h3>
+              <h3>Fast Food App</h3>
             </div>
             <a
-              href="https://smart-home.hashbrown.dev"
+              href="https://fast-food.hashbrown.dev"
               target="_blank"
               class="runLink"
               wwwSquircle="8"
@@ -122,17 +122,16 @@ import { PlayerPlay } from '../../icons/PlayerPlay';
         wwwSquircleBorderColor="var(--sunset-orange, #e88c4d)"
       >
         <div class="header">
-          <h2>Instantly Predict the Next Action</h2>
+          <h2>Script Smart Home Scenes</h2>
           <p>
-            Use Hashbrown to suggest the right next step from
-            context—navigation, filling a form, or kicking off a task—so your
-            users stay in the flow.
+            Describe the ambience you want, then let Hashbrown orchestrate
+            lights, colors, and rooms in real time with tool calling.
           </p>
           <a
             [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
             class="docsLink"
           >
-            Learn to build predictive suggestions and shortcuts
+            Learn to orchestrate ambient actions with tools
           </a>
         </div>
         <div
@@ -159,8 +158,55 @@ import { PlayerPlay } from '../../icons/PlayerPlay';
           </div>
           <div class="content" wwwSquircle="16 16 0 0">
             <img
-              src="/image/landing-page/red-box-demo.svg"
-              alt="Instantly predict the next action"
+              src="/image/samples/smart-home.png"
+              alt="Set smart home scenes with a natural language copilot"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="block"
+        wwwSquircle="32"
+        [wwwSquircleBorderWidth]="1"
+        wwwSquircleBorderColor="var(--olive-green, #616f36)"
+      >
+        <div class="header">
+          <h2>Guide Nutrition Decisions in Real Time</h2>
+          <p>
+            Mix structured menu data, tool calls, and live charting to help
+            users pick better meals without leaving the flow.
+          </p>
+          <a [routerLink]="['/samples', 'fast-food']" class="docsLink">
+            Explore the Fast Food App sample
+          </a>
+        </div>
+        <div
+          class="window"
+          wwwSquircle="16 16 0 0"
+          [wwwSquircleBorderWidth]="8"
+          wwwSquircleBorderColor="rgba(97, 111, 54, 0.48)"
+        >
+          <div class="nav">
+            <div class="button">
+              <h3>Fast Food App</h3>
+            </div>
+            <a
+              href="https://fast-food.hashbrown.dev"
+              target="_blank"
+              class="runLink"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="1"
+              wwwSquircleBorderColor="rgba(0,0,0,0.12)"
+            >
+              <www-player-play height="16px" width="16px" />
+              Run this App
+            </a>
+          </div>
+          <div class="content" wwwSquircle="16 16 0 0">
+            <img
+              src="/image/samples/fast-food.svg"
+              alt="Guide nutrition choices with fast food copilot"
             />
           </div>
         </div>
@@ -199,6 +245,10 @@ import { PlayerPlay } from '../../icons/PlayerPlay';
 
         &:nth-child(3) {
           background: var(--sunset-orange-light, #f6d1b8);
+        }
+
+        &:nth-child(4) {
+          background: var(--olive-green-light, #a0a985);
         }
 
         .docsLink {
@@ -334,6 +384,10 @@ import { PlayerPlay } from '../../icons/PlayerPlay';
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 48px;
+          }
+
+          &:nth-child(4) {
+            grid-column: 1 / 3;
           }
 
           > .header {

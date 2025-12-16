@@ -1,0 +1,73 @@
+{
+  "name": "fast-food-cloudflare",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/fast-food/angular/functions",
+  "projectType": "application",
+  "targets": {
+    "generate-data": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx samples/fast-food/cloudflare/tools/generate-ingredients.ts",
+        "parallel": true
+      }
+    },
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "dependsOn": ["generate-data"],
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "platform": "browser",
+        "outputPath": "dist/samples/fast-food/cloudflare",
+        "format": ["esm"],
+        "bundle": true,
+        "thirdParty": true,
+        "main": "samples/fast-food/angular/functions/api/chat.ts",
+        "additionalEntryPoints": [
+          "samples/fast-food/angular/functions/api/ingredients.ts"
+        ],
+        "tsConfig": "samples/fast-food/cloudflare/tsconfig.app.json",
+        "generatePackageJson": false,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "mainFields": ["browser", "module", "main"],
+          "conditions": ["browser"],
+          "outbase": "samples/fast-food/angular/functions",
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {},
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "fast-food-cloudflare:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "fast-food-cloudflare:build:development"
+        },
+        "production": {
+          "buildTarget": "fast-food-cloudflare:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}
