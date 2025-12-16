@@ -34,7 +34,6 @@ export {
 } from './experimental-edge-local-transport';
 export {
   createDelegatingTransport,
-  experimentalLocalModelSpec,
   experimental_local,
   type LocalPromptAdapter,
   type LocalPromptAdapterName,

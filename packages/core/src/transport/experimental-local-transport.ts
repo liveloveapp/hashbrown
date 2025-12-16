@@ -118,7 +118,7 @@ class DelegatingLocalTransport implements Transport {
   }
 }
 
-export function experimentalLocalModelSpec(
+export function experimental_local(
   userOptions: ExperimentalLocalTransportOptions = {},
 ): ModelSpecFactory {
   return (inject) => {
@@ -140,11 +140,6 @@ export function experimentalLocalModelSpec(
     };
   };
 }
-
-/**
- * Preferred snake_case helper name for consistency with other transport helpers.
- */
-export const experimental_local = experimentalLocalModelSpec;
 
 export function createDelegatingTransport(
   adaptersOrOptions:

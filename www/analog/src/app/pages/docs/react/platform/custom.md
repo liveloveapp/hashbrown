@@ -1,10 +1,11 @@
 ---
-title: 'Custom Adapter (React): Hashbrown React Docs'
+title: 'Custom Adapter: Hashbrown React Docs'
 meta:
   - name: description
     content: 'Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.'
 ---
-# Custom Adapter (React)
+
+# Custom Adapter
 
 Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.
 
@@ -77,9 +78,12 @@ export interface CustomAdapterOptions {
   transformRequestOptions?: (options: any) => any | Promise<any>;
 }
 
-export async function* text(options: CustomAdapterOptions): AsyncIterable<Uint8Array> {
+export async function* text(
+  options: CustomAdapterOptions,
+): AsyncIterable<Uint8Array> {
   const { apiKey, baseURL, request, transformRequestOptions } = options;
-  const { messages, model, tools, responseFormat, toolChoice, system } = request;
+  const { messages, model, tools, responseFormat, toolChoice, system } =
+    request;
 
   const client = new YourProviderSDK({ apiKey, baseURL });
 
@@ -111,7 +115,7 @@ export async function* text(options: CustomAdapterOptions): AsyncIterable<Uint8A
     // Process streaming response
     for await (const chunk of stream) {
       const chunkMessage: Chat.Api.CompletionChunk = {
-        choices: chunk.choices.map(choice => ({
+        choices: chunk.choices.map((choice) => ({
           index: choice.index,
           delta: {
             content: choice.delta.content,
@@ -147,12 +151,15 @@ export async function* text(options: CustomAdapterOptions): AsyncIterable<Uint8A
 }
 
 // Helper functions
-function transformMessages(messages: Chat.Api.Message[], system: string): any[] {
+function transformMessages(
+  messages: Chat.Api.Message[],
+  system: string,
+): any[] {
   const systemMessage = system ? [{ role: 'system', content: system }] : [];
 
   return [
     ...systemMessage,
-    ...messages.map(message => {
+    ...messages.map((message) => {
       switch (message.role) {
         case 'user':
           return { role: message.role, content: message.content };
@@ -176,7 +183,7 @@ function transformMessages(messages: Chat.Api.Message[], system: string): any[] 
 }
 
 function transformTools(tools: Chat.Api.Tool[]): any[] {
-  return tools.map(tool => ({
+  return tools.map((tool) => ({
     type: 'function',
     function: {
       name: tool.name,
@@ -274,7 +281,9 @@ Allow users to modify requests before sending:
 
 ```ts
 export interface CustomAdapterOptions {
-  transformRequestOptions?: (options: ProviderRequest) => ProviderRequest | Promise<ProviderRequest>;
+  transformRequestOptions?: (
+    options: ProviderRequest,
+  ) => ProviderRequest | Promise<ProviderRequest>;
 }
 ```
 

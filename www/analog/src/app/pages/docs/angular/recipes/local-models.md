@@ -7,7 +7,7 @@ meta:
 
 # Local Models (Chrome + Edge)
 
-<p class="subtitle">Ship AI features that stay on the user's device, fall back to the network when needed, and keep Hashbrown's structured UI flows intact.</p>
+<p class="subtitle">Ship AI features that stay on the user's device and fall back to the network when needed.</p>
 
 What you'll learn:
 

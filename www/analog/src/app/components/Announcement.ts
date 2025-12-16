@@ -8,10 +8,9 @@ import { RouterLink } from '@angular/router';
   template: `
     @if (showAnnouncement) {
       <div class="alert" wwwSquircle="0 0 8 8">
-        <a routerLink="/workshops/react-generative-ui-engineering">
-          <strong>New!</strong> Workshop tickets for
-          <em>Build Generative UIs in React</em>
-          are on sale now.
+        <a routerLink="/blog/2025-12-16-hashbrown-v-0-4-0">
+          <strong>New!</strong> Hashbrown v0.4 brings Magic Text, local models,
+          and new adapters
         </a>
         <button
           class="close"
@@ -136,7 +135,7 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class Announcement {
-  currentAnnouncementDate = new Date('2025-09-30');
+  currentAnnouncementDate = new Date('2025-12-15');
   showAnnouncement = false;
 
   constructor() {
