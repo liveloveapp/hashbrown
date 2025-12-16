@@ -58,19 +58,7 @@
     }
   },
   "release": {
-    "projects": [
-      "angular",
-      "anthropic",
-      "azure",
-      "bedrock",
-      "core",
-      "google",
-      "openai",
-      "react",
-      "tool-javascript",
-      "writer",
-      "ollama"
-    ],
+    "projects": ["packages/*"],
     "version": {
       "preVersionCommand": "npx nx run-many -t build"
     }

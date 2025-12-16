@@ -75,12 +75,12 @@ import { Squircle } from './Squircle';
                       wwwSquircle="8"
                       >finance app
                     </a>
-                    <a
+                    <!-- <a
                       routerLink="/samples/fast-food"
                       class="menu-item"
                       wwwSquircle="8"
                       >fast food app
-                    </a>
+                    </a> -->
                     <a
                       routerLink="/samples/smart-home"
                       class="menu-item"

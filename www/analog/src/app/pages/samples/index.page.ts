@@ -67,7 +67,7 @@ export const routeMeta: RouteMeta = {
               </div>
             </div>
           </a>
-          <a routerLink="/samples/fast-food" wwwSquircle="16">
+          <!-- <a routerLink="/samples/fast-food" wwwSquircle="16">
             <div>
               <h2>Fast Food App</h2>
               <p>
@@ -94,7 +94,7 @@ export const routeMeta: RouteMeta = {
                 <www-player-play height="16px" width="16px" />
               </div>
             </div>
-          </a>
+          </a> -->
           <a routerLink="/samples/smart-home" wwwSquircle="16">
             <div>
               <h2>Smart Home App</h2>

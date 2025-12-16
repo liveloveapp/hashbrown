@@ -46,6 +46,8 @@
       }
     },
     "nx-release-publish": {
+      "executor": "@nx/js:release-publish",
+      "dependsOn": ["^nx-release-publish"],
       "options": {
         "packageRoot": "dist/{projectRoot}"
       }

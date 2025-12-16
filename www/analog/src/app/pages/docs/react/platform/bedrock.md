@@ -1,10 +1,11 @@
 ---
-title: 'Amazon Bedrock (React): Hashbrown React Docs'
+title: 'Amazon Bedrock: Hashbrown React Docs'
 meta:
   - name: description
     content: 'Hashbrown’s Amazon Bedrock adapter lets you stream chat completions from AWS Bedrock models with built-in tool calling and streaming support.'
 ---
-# Amazon Bedrock (React)
+
+# Amazon Bedrock
 
 First, install the Amazon Bedrock adapter package:
 
@@ -24,12 +25,12 @@ Streams an Amazon Bedrock chat completion as a series of encoded frames. Handles
 
 **Options:**
 
-| Name          | Type                                                      | Description                                                                                     |
-| ------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `request`     | `Chat.Api.CompletionCreateParams`                         | The chat request: model (e.g. `anthropic.claude-3-5-sonnet-20241022-v1:0`), messages, tools, etc. |
-| `region`      | `string`                                                  | _(Optional)_ AWS region for Bedrock (falls back to the AWS SDK default chain if omitted).       |
-| `credentials` | `AwsCredentialIdentity \| Provider<AwsCredentialIdentity>` | _(Optional)_ Explicit AWS credentials if not using the default credential chain.               |
-| `client`      | `BedrockRuntimeClient`                                    | _(Optional)_ Pre-configured Bedrock client to reuse connections, retries, or custom middleware. |
+| Name          | Type                                                       | Description                                                                                       |
+| ------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `request`     | `Chat.Api.CompletionCreateParams`                          | The chat request: model (e.g. `anthropic.claude-3-5-sonnet-20241022-v1:0`), messages, tools, etc. |
+| `region`      | `string`                                                   | _(Optional)_ AWS region for Bedrock (falls back to the AWS SDK default chain if omitted).         |
+| `credentials` | `AwsCredentialIdentity \| Provider<AwsCredentialIdentity>` | _(Optional)_ Explicit AWS credentials if not using the default credential chain.                  |
+| `client`      | `BedrockRuntimeClient`                                     | _(Optional)_ Pre-configured Bedrock client to reuse connections, retries, or custom middleware.   |
 
 **Supported Features:**
 

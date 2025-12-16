@@ -1,10 +1,11 @@
 ---
-title: 'OpenAI (React): Hashbrown React Docs'
+title: 'OpenAI: Hashbrown React Docs'
 meta:
   - name: description
     content: 'Hashbrown’s OpenAI adapter lets you stream chat completions from OpenAI’s GPT models, including support for tool calling, response schemas, and request transforms.'
 ---
-# OpenAI (React)
+
+# OpenAI
 
 First, install the OpenAI adapter package:
 
@@ -147,7 +148,7 @@ const app = new Hono();
 
 app.post('/chat', async (c) => {
   const body = await c.req.json();
-  
+
   const stream = HashbrownOpenAI.stream.text({
     apiKey: process.env.OPENAI_API_KEY!,
     request: body, // must be Chat.Api.CompletionCreateParams
@@ -166,7 +167,7 @@ app.post('/chat', async (c) => {
       headers: {
         'Content-Type': 'application/octet-stream',
       },
-    }
+    },
   );
 });
 
@@ -176,8 +177,6 @@ export default app;
 </div>
 
 </hb-backend-code-example>
-
-
 
 ---
 
@@ -317,7 +316,7 @@ const app = new Hono();
 
 app.post('/chat', async (c) => {
   const body = await c.req.json();
-  
+
   const stream = HashbrownOpenAI.stream.text({
     apiKey: process.env.OPENAI_API_KEY!,
     request: body,
@@ -348,7 +347,7 @@ app.post('/chat', async (c) => {
       headers: {
         'Content-Type': 'application/octet-stream',
       },
-    }
+    },
   );
 });
 ```

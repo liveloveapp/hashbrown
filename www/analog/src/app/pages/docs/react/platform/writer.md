@@ -1,10 +1,11 @@
 ---
-title: 'Writer (React): Hashbrown React Docs'
+title: 'Writer: Hashbrown React Docs'
 meta:
   - name: description
     content: 'Hashbrown’s Writer adapter lets you stream chat completions from Writer models, including support for tool calling, response schemas, and request transforms.'
 ---
-# Writer (React)
+
+# Writer
 
 First, install the Writer adapter package:
 
@@ -147,7 +148,7 @@ const app = new Hono();
 
 app.post('/chat', async (c) => {
   const body = await c.req.json();
-  
+
   const stream = HashbrownWriter.stream.text({
     apiKey: process.env.WRITER_API_KEY!,
     request: body, // must be Chat.Api.CompletionCreateParams
@@ -166,7 +167,7 @@ app.post('/chat', async (c) => {
       headers: {
         'Content-Type': 'application/octet-stream',
       },
-    }
+    },
   );
 });
 
@@ -205,7 +206,10 @@ app.post('/chat', async (req, res) => {
         ...options,
         // Add server-side system prompt
         messages: [
-          { role: 'system', content: 'You are a helpful AI writing assistant.' },
+          {
+            role: 'system',
+            content: 'You are a helpful AI writing assistant.',
+          },
           ...options.messages,
         ],
         // Adjust parameters based on writing task
@@ -243,7 +247,10 @@ fastify.post('/chat', async (request, reply) => {
         ...options,
         // Add server-side system prompt
         messages: [
-          { role: 'system', content: 'You are a helpful AI writing assistant.' },
+          {
+            role: 'system',
+            content: 'You are a helpful AI writing assistant.',
+          },
           ...options.messages,
         ],
         // Adjust parameters based on writing task
@@ -283,7 +290,10 @@ export class ChatController {
           ...options,
           // Add server-side system prompt
           messages: [
-            { role: 'system', content: 'You are a helpful AI writing assistant.' },
+            {
+              role: 'system',
+              content: 'You are a helpful AI writing assistant.',
+            },
             ...options.messages,
           ],
           // Adjust parameters based on writing task
@@ -315,7 +325,7 @@ const app = new Hono();
 
 app.post('/chat', async (c) => {
   const body = await c.req.json();
-  
+
   const stream = HashbrownWriter.stream.text({
     apiKey: process.env.WRITER_API_KEY!,
     request: body,
@@ -324,7 +334,10 @@ app.post('/chat', async (c) => {
         ...options,
         // Add server-side system prompt
         messages: [
-          { role: 'system', content: 'You are a helpful AI writing assistant.' },
+          {
+            role: 'system',
+            content: 'You are a helpful AI writing assistant.',
+          },
           ...options.messages,
         ],
         // Adjust parameters based on writing task
@@ -346,7 +359,7 @@ app.post('/chat', async (c) => {
       headers: {
         'Content-Type': 'application/octet-stream',
       },
-    }
+    },
   );
 });
 ```

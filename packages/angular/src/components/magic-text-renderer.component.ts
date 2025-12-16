@@ -274,7 +274,7 @@ export class MagicTextRenderWhitespace {
     }
 
     .hb-text--enter {
-      animation: enter 1s ease-in-out;
+      animation: enter 350ms ease-in-out;
     }
 
     @keyframes enter {
@@ -477,12 +477,6 @@ export class MagicText {
   ) {
     const href = fragment.marks.link?.href ?? '';
     this.linkClick.emit({ mouseEvent: event, href, fragment });
-    const target = event.currentTarget as HTMLElement | null;
-    const allowNavigation =
-      event.defaultPrevented || target?.dataset['allowNavigation'] === 'true';
-    if (!allowNavigation) {
-      event.preventDefault();
-    }
   }
 
   protected handleCitationClick(
@@ -494,11 +488,5 @@ export class MagicText {
       citation: { id: context.citation.id, url: context.citation.url },
       fragment: context.fragment,
     });
-    const target = event.currentTarget as HTMLElement | null;
-    const allowNavigation =
-      event.defaultPrevented || target?.dataset['allowNavigation'] === 'true';
-    if (!allowNavigation) {
-      event.preventDefault();
-    }
   }
 }

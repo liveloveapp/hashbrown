@@ -7,7 +7,7 @@ meta:
 
 # Local Models (Chrome + Edge)
 
-<p class="subtitle">Keep prompts on-device when available, fall back to the network when not, and keep structured outputs intact.</p>
+<p class="subtitle">Ship AI features that stay on the user's device and fall back to the network when needed.</p>
 
 What you'll learn:
 
@@ -37,7 +37,7 @@ After toggling flags, restart the browser and run `await LanguageModel.availabil
 
 ---
 
-## 2. Hashbrown building blocks (React)
+## 2. Hashbrown building blocks
 
 - `useStructuredCompletion` from `@hashbrownai/react` to stream typed outputs.
 - `experimental_local()` from `@hashbrownai/core/transport` tries Chrome first, then Edge.
@@ -46,7 +46,7 @@ After toggling flags, restart the browser and run `await LanguageModel.availabil
 
 ---
 
-## 3. Quickstart: local-first structured completion (React)
+## 3. Quickstart: local-first structured completion
 
 This component streams a two-day itinerary schema. It prefers the on-device model and falls back to `gpt-5-mini` if local is unavailable or unsupported.
 
