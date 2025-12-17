@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/bedrock",
-  "version": "0.4.0-rc.1",
+  "version": "0.4.1-alpha.1",
   "description": "Amazon Bedrock provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -16,7 +16,7 @@
     "@aws-sdk/types": "3.922.0"
   },
   "peerDependencies": {
-    "@hashbrownai/core": "0.4.0-rc.1",
+    "@hashbrownai/core": "0.4.1-alpha.1",
     "@aws-sdk/client-bedrock-runtime": "^3.936.0"
   },
   "sideEffects": false,

@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/openai",
-  "version": "0.4.0-rc.1",
+  "version": "0.4.1-alpha.1",
   "description": "OpenAI provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -13,7 +13,7 @@
   "types": "./src/index.d.ts",
   "dependencies": {
     "tslib": "^2.3.0",
-    "@hashbrownai/core": "0.4.0-rc.1"
+    "@hashbrownai/core": "0.4.1-alpha.1"
   },
   "peerDependencies": {
     "openai": "^6.9.0"
