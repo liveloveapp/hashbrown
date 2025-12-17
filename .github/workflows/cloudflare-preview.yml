@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      ß
+      
 concurrency:
   group: cloudflare-preview
   cancel-in-progress: true
