@@ -1,6 +1,10 @@
 import { Chat } from '../models';
 import { DeepPartial } from './types';
 
+/**
+ * Merges partial tool call deltas into a stable list.
+ * @public
+ */
 export function mergeToolCalls(
   existingCalls: Chat.Api.ToolCall[] = [],
   newCalls: DeepPartial<Chat.Api.ToolCall>[] = [],
@@ -25,6 +29,10 @@ export function mergeToolCalls(
   return merged;
 }
 
+/**
+ * Applies a streaming completion delta to an assistant message.
+ * @public
+ */
 export function updateAssistantMessage(
   message: Chat.Api.AssistantMessage | null,
   delta: Chat.Api.CompletionChunk,

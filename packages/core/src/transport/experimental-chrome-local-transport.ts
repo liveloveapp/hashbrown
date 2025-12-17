@@ -16,11 +16,19 @@ const SUPPORTED_OUTPUT_LANGUAGES: SupportedOutputLanguage[] = [
   'es',
   'ja',
 ];
+/**
+ * Message format accepted by the Chrome Prompt API.
+ * @alpha
+ */
 export interface PromptMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
+/**
+ * Prompt options for the Chrome Prompt API.
+ * @alpha
+ */
 export interface PromptOptions {
   responseConstraint?: unknown;
   temperature?: number;
@@ -30,12 +38,20 @@ export interface PromptOptions {
   tools?: never;
 }
 
+/**
+ * Request shape passed to the Chrome Prompt API.
+ * @alpha
+ */
 export interface PromptRequest {
   messages: PromptMessage[] | string;
   options?: PromptOptions;
   sessionOptions?: LanguageModelCreateOptions;
 }
 
+/**
+ * Configuration for the experimental Chrome local transport.
+ * @alpha
+ */
 export interface ExperimentalChromeLocalTransportOptions {
   transformRequest?: (request: TransportRequest) => PromptRequest;
   events?: {
@@ -92,6 +108,10 @@ interface LanguageModelGlobal {
   create(options?: LanguageModelCreateOptions): Promise<LanguageModelSession>;
 }
 
+/**
+ * Experimental transport that targets the Chrome Prompt API.
+ * @alpha
+ */
 export class ExperimentalChromeLocalTransport implements Transport {
   readonly name = 'ExperimentalChromeLocalTransport';
   private sessionPromise?: Promise<LanguageModelSession>;
@@ -395,12 +415,20 @@ export class ExperimentalChromeLocalTransport implements Transport {
   }
 }
 
+/**
+ * Factory for the experimental Chrome local transport.
+ * @alpha
+ */
 export function createExperimentalChromeLocalTransport(
   options: ExperimentalChromeLocalTransportOptions = {},
 ): TransportFactory {
   return () => new ExperimentalChromeLocalTransport(options);
 }
 
+/**
+ * Detects whether the Chrome Prompt API is available.
+ * @alpha
+ */
 export async function detectChromePromptApi(
   sessionOptions?: LanguageModelCreateOptions,
   opts?: {
@@ -462,6 +490,10 @@ export async function detectChromePromptApi(
   return { ok: true };
 }
 
+/**
+ * Model spec factory for Chrome Prompt API transport.
+ * @alpha
+ */
 export function experimentalChromeLocalModelSpec(
   userOptions: ExperimentalChromeLocalTransportOptions = {},
 ): ModelSpecFactory {
@@ -496,6 +528,7 @@ export function experimentalChromeLocalModelSpec(
 /**
  * Preferred snake_case helper name for consistency with other transport helpers.
  * Kept alongside the legacy `experimentalChromeLocalModelSpec`.
+ * @alpha
  */
 export const experimental_chrome = experimentalChromeLocalModelSpec;
 

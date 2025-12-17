@@ -2,6 +2,10 @@ import { Chat } from '../models';
 import { Transport, TransportRequest, TransportResponse } from './transport';
 import { TransportError } from './transport-error';
 
+/**
+ * Options for the default HTTP transport.
+ * @public
+ */
 export interface HttpTransportOptions {
   baseUrl: string;
   middleware?: Chat.Middleware[];

@@ -114,6 +114,10 @@ export interface ModelSelectionMetadata {
   skippedSpecs: SkippedSpec[];
 }
 
+/**
+ * Resolved model spec paired with the chosen transport.
+ * @public
+ */
 export interface ResolvedModelSpec {
   spec: ModelSpec;
   transport: Transport;
@@ -140,7 +144,7 @@ export class ModelResolver {
    * Attempts to select the next compatible spec. Specs that previously failed
    * capability checks or platform detection are skipped. A TransportError
    * with FEATURE_UNSUPPORTED or PLATFORM_UNSUPPORTED can be fed back into
-   * {@link skipFromError} to advance the resolver.
+   * {@link ModelResolver.skipFromError} to advance the resolver.
    */
   async select(
     features: RequestedFeatures,
