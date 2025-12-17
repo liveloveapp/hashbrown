@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - main
-  # TODO: remove after testing
-  pull_request:
-
+      ß
 concurrency:
   group: cloudflare-preview
   cancel-in-progress: true
