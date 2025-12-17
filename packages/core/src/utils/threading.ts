@@ -5,6 +5,7 @@ import { deepEqual } from './deep-equal';
  * Merge previously persisted thread messages with an incoming delta-only
  * payload by finding the longest overlap and appending only the new tail.
  * This is effectively the inverse of `_extractMessageDelta`.
+ * @public
  */
 export function mergeMessagesForThread(
   saved: Chat.Api.Message[] = [],

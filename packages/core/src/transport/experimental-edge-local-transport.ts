@@ -48,6 +48,10 @@ type LanguageModelAvailability =
       message?: string;
     };
 
+/**
+ * Configuration for the experimental Edge local transport.
+ * @alpha
+ */
 export interface ExperimentalEdgeLocalTransportOptions {
   transformRequest?: (request: TransportRequest) => PromptRequest;
   events?: {
@@ -61,6 +65,10 @@ export interface ExperimentalEdgeLocalTransportOptions {
   createSession?: () => Promise<LanguageModelSession>;
 }
 
+/**
+ * Experimental transport that targets the Edge Prompt API.
+ * @alpha
+ */
 export class ExperimentalEdgeLocalTransport implements Transport {
   readonly name = 'ExperimentalEdgeLocalTransport';
   private sessionPromise?: Promise<LanguageModelSession>;
@@ -300,6 +308,10 @@ export class ExperimentalEdgeLocalTransport implements Transport {
   }
 }
 
+/**
+ * Detects whether the Edge Prompt API is available.
+ * @alpha
+ */
 export function detectEdgePromptApi(
   sessionOptions?: EdgeLanguageModelCreateOptions,
   opts?: {
@@ -340,6 +352,10 @@ export function detectEdgePromptApi(
   });
 }
 
+/**
+ * Model spec factory for Edge Prompt API transport.
+ * @alpha
+ */
 export function experimentalEdgeLocalModelSpec(
   userOptions: ExperimentalEdgeLocalTransportOptions = {},
 ): ModelSpecFactory {
@@ -369,6 +385,7 @@ export function experimentalEdgeLocalModelSpec(
 /**
  * Preferred snake_case helper name for consistency with other transport helpers.
  * Kept alongside the legacy `experimentalEdgeLocalModelSpec`.
+ * @alpha
  */
 export const experimental_edge = experimentalEdgeLocalModelSpec;
 

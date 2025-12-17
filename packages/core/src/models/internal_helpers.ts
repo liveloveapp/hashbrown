@@ -284,6 +284,7 @@ export function toInternalToolCallsFromApi(
  * Converts a list of API messages (e.g., when hydrating a thread) into
  * internal tool call entities, stitching together assistant tool calls and
  * their corresponding tool results.
+ * @internal
  */
 export function toInternalToolCallsFromApiMessages(
   messages: Chat.Api.Message[] = [],

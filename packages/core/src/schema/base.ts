@@ -216,6 +216,9 @@ export interface HashbrownTypeInternals<out Result = unknown>
   result: Result;
 }
 
+/**
+ * @public
+ */
 export const HashbrownType: HashbrownTypeCtor<HashbrownType> =
   HashbrownTypeCtor({
     name: 'HashbrownType',
@@ -266,6 +269,9 @@ export interface StringType extends HashbrownType<string> {
   [internal]: StringTypeInternals;
 }
 
+/**
+ * @public
+ */
 export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
   name: 'String',
   initializer: (inst, def) => {
@@ -360,6 +366,9 @@ export interface LiteralType<
   [internal]: LiteralTypeInternals<T>;
 }
 
+/**
+ * @public
+ */
 export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor({
   name: 'Literal',
   initializer: (inst, def) => {
@@ -461,6 +470,9 @@ export interface NumberType extends HashbrownType<number> {
   [internal]: NumberTypeInternals;
 }
 
+/**
+ * @public
+ */
 export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
   name: 'Number',
   initializer: (inst, def) => {
@@ -545,6 +557,9 @@ export interface BooleanType extends HashbrownType<boolean> {
   [internal]: BooleanTypeInternals;
 }
 
+/**
+ * @public
+ */
 export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor({
   name: 'Boolean',
   initializer: (inst, def) => {
@@ -628,6 +643,9 @@ export interface IntegerType extends HashbrownType<number> {
   [internal]: IntegerTypeInternals;
 }
 
+/**
+ * @public
+ */
 export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
   name: 'Integer',
   initializer: (inst, def) => {
@@ -730,6 +748,9 @@ export interface ObjectType<
   [internal]: ObjectTypeInternals<Result>;
 }
 
+/**
+ * @public
+ */
 export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor({
   name: 'Object',
   initializer: (inst, def) => {
@@ -866,6 +887,9 @@ export interface ArrayType<Item extends HashbrownType = HashbrownType>
   [internal]: ArrayTypeInternals<Item>;
 }
 
+/**
+ * @public
+ */
 export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
   name: 'Array',
   initializer: (inst, def) => {
@@ -986,6 +1010,9 @@ export interface AnyOfType<
   [internal]: AnyOfTypeInternals<Options>;
 }
 
+/**
+ * @public
+ */
 export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
   name: 'AnyOfType',
   initializer: (inst, def) => {
@@ -1323,6 +1350,9 @@ export interface EnumType<Entries extends readonly string[] = readonly string[]>
   [internal]: EnumTypeInternals<Entries>;
 }
 
+/**
+ * @public
+ */
 export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
   name: 'Enum',
   initializer: (inst, def) => {
@@ -1421,6 +1451,9 @@ export interface NullType extends HashbrownType<null> {
   [internal]: NullTypeInternals;
 }
 
+/**
+ * @public
+ */
 export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor({
   name: 'Null',
   initializer: (inst, def) => {

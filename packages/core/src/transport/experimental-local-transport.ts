@@ -17,11 +17,19 @@ import {
 } from './transport';
 import { TransportError } from './transport-error';
 
+/**
+ * Supported local prompt adapters.
+ * @alpha
+ */
 export type LocalPromptAdapterName = 'chrome-local' | 'edge-local';
 
 type ExperimentalLocalTransportEvents =
   ExperimentalChromeLocalTransportOptions['events'];
 
+/**
+ * Configuration for the experimental local transport delegator.
+ * @alpha
+ */
 export interface ExperimentalLocalTransportOptions {
   chrome?: ExperimentalChromeLocalTransportOptions;
   edge?: ExperimentalEdgeLocalTransportOptions;
@@ -29,6 +37,10 @@ export interface ExperimentalLocalTransportOptions {
   order?: LocalPromptAdapterName[];
 }
 
+/**
+ * Adapter contract for local prompt transports.
+ * @alpha
+ */
 export interface LocalPromptAdapter {
   readonly name: LocalPromptAdapterName;
   detect(request?: TransportRequest): Promise<DetectionResult>;
@@ -118,6 +130,10 @@ class DelegatingLocalTransport implements Transport {
   }
 }
 
+/**
+ * Model spec factory that delegates to available local prompt adapters.
+ * @alpha
+ */
 export function experimental_local(
   userOptions: ExperimentalLocalTransportOptions = {},
 ): ModelSpecFactory {
@@ -141,6 +157,10 @@ export function experimental_local(
   };
 }
 
+/**
+ * Builds a TransportFactory that delegates to local prompt adapters.
+ * @alpha
+ */
 export function createDelegatingTransport(
   adaptersOrOptions:
     | LocalPromptAdapter[]
