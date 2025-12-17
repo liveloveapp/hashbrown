@@ -5,11 +5,10 @@
   "projectType": "library",
   "release": {
     "version": {
-      "generatorOptions": {
-        "packageRoot": "dist/{projectRoot}",
-        "currentVersionResolver": "git-tag",
-        "fallbackCurrentVersionResolver": "disk"
-      }
+      "manifestRootsToUpdate": ["dist/packages/writer"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk",
+      "preserveLocalDependencyProtocols": false
     }
   },
   "tags": [],
@@ -22,7 +21,14 @@
         "tsConfig": "packages/writer/tsconfig.lib.json",
         "packageJson": "packages/writer/package.json",
         "main": "packages/writer/src/index.ts",
-        "assets": ["packages/writer/*.md"]
+        "assets": [
+          "packages/writer/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "test": {
@@ -45,7 +51,7 @@
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/writer"
       }
     },
     "build-api-report": {

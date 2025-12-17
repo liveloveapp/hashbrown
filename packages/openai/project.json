@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/{projectRoot}"]
+      "manifestRootsToUpdate": ["dist/packages/openai"]
     }
   },
   "tags": [],
@@ -21,7 +21,14 @@
         "tsConfig": "packages/openai/tsconfig.lib.json",
         "packageJson": "packages/openai/package.json",
         "main": "packages/openai/src/index.ts",
-        "assets": ["packages/openai/*.md"]
+        "assets": [
+          "packages/openai/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
@@ -48,7 +55,7 @@
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/openai"
       }
     },
     "build-api-report": {

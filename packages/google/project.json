@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/{projectRoot}"]
+      "manifestRootsToUpdate": ["dist/packages/google"]
     }
   },
   "tags": [],
@@ -21,7 +21,14 @@
         "tsConfig": "packages/google/tsconfig.lib.json",
         "packageJson": "packages/google/package.json",
         "main": "packages/google/src/index.ts",
-        "assets": ["packages/google/*.md"]
+        "assets": [
+          "packages/google/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
@@ -50,7 +57,7 @@
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/google"
       }
     },
     "build-api-report": {
