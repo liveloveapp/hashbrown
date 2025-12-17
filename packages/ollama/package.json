@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/ollama",
-  "version": "0.2.3",
+  "version": "0.4.1-alpha.1",
   "description": "Ollama provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -16,7 +16,7 @@
   },
   "peerDependencies": {
     "ollama": "^0.5.16",
-    "@hashbrownai/core": "0.2.3"
+    "@hashbrownai/core": "0.4.1-alpha.1"
   },
   "sideEffects": false,
   "publishConfig": {

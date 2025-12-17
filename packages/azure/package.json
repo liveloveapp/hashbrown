@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/azure",
-  "version": "0.4.0-rc.1",
+  "version": "0.4.1-alpha.1",
   "description": "Azure provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -15,8 +15,8 @@
     "tslib": "^2.3.0"
   },
   "peerDependencies": {
-    "@hashbrownai/core": "0.4.0-rc.1",
-    "openai": "^6.6.0"
+    "@hashbrownai/core": "0.4.1-alpha.1",
+    "openai": "^6.9.0"
   },
   "sideEffects": false,
   "publishConfig": {
