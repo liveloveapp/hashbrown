@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/{projectRoot}"]
+      "manifestRootsToUpdate": ["dist/packages/bedrock"]
     }
   },
   "tags": [],
@@ -21,7 +21,14 @@
         "tsConfig": "packages/bedrock/tsconfig.lib.json",
         "packageJson": "packages/bedrock/package.json",
         "main": "packages/bedrock/src/index.ts",
-        "assets": ["packages/bedrock/*.md"]
+        "assets": [
+          "packages/bedrock/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
@@ -50,7 +57,7 @@
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/bedrock"
       }
     },
     "build-api-report": {

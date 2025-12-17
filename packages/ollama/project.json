@@ -5,7 +5,7 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "manifestRootsToUpdate": ["dist/packages/ollama"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     }
@@ -20,7 +20,14 @@
         "tsConfig": "packages/ollama/tsconfig.lib.json",
         "packageJson": "packages/ollama/package.json",
         "main": "packages/ollama/src/index.ts",
-        "assets": ["packages/ollama/*.md"]
+        "assets": [
+          "packages/ollama/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
@@ -49,7 +56,7 @@
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/ollama"
       }
     },
     "build-api-report": {

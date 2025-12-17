@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/{projectRoot}"]
+      "manifestRootsToUpdate": ["dist/packages/core"]
     }
   },
   "tags": ["shared"],
@@ -57,7 +57,7 @@
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/core"
       }
     },
     "parser-test-server": {
