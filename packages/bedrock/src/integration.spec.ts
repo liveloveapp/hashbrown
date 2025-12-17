@@ -160,8 +160,6 @@ maybeTest('Amazon Bedrock with structured output', async () => {
       .reverse()
       .find((message) => message.role === 'assistant');
 
-    console.log(hashbrown.messages());
-
     expect(assistantMessage?.content).toEqual({ text: 'Hello, world!' });
   } finally {
     server.close();
