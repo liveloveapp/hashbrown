@@ -1,3 +1,7 @@
+## 0.4.1 (2025-12-17)
+
+This was a version bump only, there were no code changes.
+
 ## 0.4.1-alpha.2 (2025-12-17)
 
 ### 🚀 Features
