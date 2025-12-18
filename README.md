@@ -6,7 +6,7 @@
   <em>Hashbrown is an open-source framework for 
     <br />building agents that run in the browser.</em>
   <br>
-    [Read Angular Docs](https://hashbrown.dev/docs/angular/start/intro) | [Read React Docs](https://hashbrown.dev/docs/react/start/intro)
+    <a href="https://hashbrown.dev/docs/angular/start/intro">Read Angular Docs</a> | <a href="https://hashbrown.dev/docs/react/start/intro">Read React Docs</a>
   <br>
 </p>
 
