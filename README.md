@@ -1,10 +1,12 @@
-<h1 align="center">Hashbrown - Build Joyful, AI-Powered User Interfaces</h1>
+<h1 align="center">Hashbrown - Build Agents for the Browser</h1>
 
 <p align="center">
   <img src="www/analog/public/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
   <em>Hashbrown is an open-source framework for 
     <br />building agents that run in the browser.</em>
+  <br>
+    <a href="https://hashbrown.dev/docs/angular/start/intro">Read Angular Docs</a> | <a href="https://hashbrown.dev/docs/react/start/intro">Read React Docs</a>
   <br>
 </p>
 
