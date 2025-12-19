@@ -1,0 +1,9 @@
+{
+  "name": "react-vox-demo",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/react-vox-demo/src",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project react-vox-demo --web",
+  "targets": {}
+}
