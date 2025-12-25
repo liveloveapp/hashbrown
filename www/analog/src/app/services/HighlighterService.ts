@@ -1,37 +1,24 @@
 import { Injectable } from '@angular/core';
-import { HighlighterGeneric } from 'shiki';
+import { createHighlighter, HighlighterGeneric } from 'shiki';
+import shikiHashbrown from '../themes/shiki-hashbrown';
 
 @Injectable({
   providedIn: 'root',
 })
 export class HighlighterService {
-  highlighter: HighlighterGeneric<any, any> | undefined =
-    this.createPlainHighlighter();
+  highlighter: HighlighterGeneric<any, any> | undefined;
 
-  loadHighlighter(): void {
-    this.highlighter = this.createPlainHighlighter();
+  async loadHighlighter() {
+    this.highlighter = await createHighlighter({
+      themes: [shikiHashbrown as any],
+      langs: ['css', 'html', 'shell', 'typescript', 'markdown'],
+    });
   }
 
   getHighlighter() {
-    this.highlighter ??= this.createPlainHighlighter();
+    if (!this.highlighter) {
+      throw new Error('Highlighter not loaded. Call loadHighlighter() first.');
+    }
     return this.highlighter;
-  }
-
-  private createPlainHighlighter(): HighlighterGeneric<any, any> {
-    const escape = (value: string) =>
-      value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-
-    return {
-      codeToHtml: (code: string, options?: { lang?: string }) => {
-        const lang = options?.lang ?? 'text';
-        const langClass = `language-${lang}`;
-        return `<pre class="${langClass}"><code class="${langClass}">${escape(code)}</code></pre>`;
-      },
-    } as unknown as HighlighterGeneric<any, any>;
   }
 }

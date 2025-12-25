@@ -45,7 +45,6 @@ export default defineConfig(({ mode }) => {
           },
         },
         nitro: {
-          preset: 'cloudflare-pages',
           compatibilityDate: '2024-05-07',
           alias: {
             '@hashbrownai/angular': resolve(
@@ -61,6 +60,10 @@ export default defineConfig(({ mode }) => {
               '../../packages/openai/src/index.ts',
             ),
           },
+          ignore:
+            process.env.NODE_ENV === 'production'
+              ? ['./src/server/routes/_/chat.post.ts']
+              : [],
         },
       }),
       nxViteTsPaths(),

@@ -120,7 +120,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build:production"],
       "options": {
-        "command": "npx wrangler pages deploy dist/www/analog/analog/public"
+        "command": "cd www/analog && npx wrangler pages deploy ../../dist/www/analog/analog/public"
       }
     }
   }

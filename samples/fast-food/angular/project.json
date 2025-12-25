@@ -73,7 +73,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build:production"],
       "options": {
-        "command": "npx wrangler pages deploy dist/samples/fast-food/angular/browser"
+        "command": "cd samples/fast-food/angular && npx wrangler pages deploy ../../../dist/samples/fast-food/angular/browser"
       }
     }
   }

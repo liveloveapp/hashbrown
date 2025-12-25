@@ -87,7 +87,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build:production"],
       "options": {
-        "command": "npx wrangler pages deploy dist/samples/smart-home/angular/browser"
+        "command": "cd samples/smart-home/angular && npx wrangler pages deploy ../../../dist/samples/smart-home/angular/browser"
       }
     }
   }
