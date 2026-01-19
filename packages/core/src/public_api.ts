@@ -44,3 +44,14 @@ export {
   mergeToolCalls,
   updateAssistantMessage,
 } from './utils/assistant-message';
+export {
+  createParserState,
+  finalizeJsonParse,
+  getResolvedValue,
+  parseChunk,
+  type JsonAstNode,
+  type JsonAstType,
+  type JsonValue,
+  type ParserError,
+  type ParserState,
+} from './skillet/parser/json-parser';
