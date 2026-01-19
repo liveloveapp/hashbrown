@@ -15,10 +15,15 @@ import { Logger, NONE_LEVEL } from '../logger/logger';
 import * as s from '../schema/base';
 import {
   internal,
+  isArrayType,
   isAnyOfType,
+  isBooleanType,
+  isEnumType,
+  isLiteralType,
   isNullType,
+  isNumberType,
   isObjectType,
-  needsDiscriminatorWrapperInAnyOf,
+  isStringType,
   PRIMITIVE_WRAPPER_FIELD_NAME,
 } from '../schema/base';
 
@@ -41,63 +46,6 @@ function shouldBeWrappedPrimitive(schema: s.HashbrownType): boolean {
 
   return true;
 }
-
-// Build a discriminator map for literal-based anyOfs, if possible
-type DiscriminatorEntry = {
-  schema: s.HashbrownType;
-  literalKey: string;
-  literalValue: string;
-};
-
-const buildDiscriminatorMap = (
-  options: s.HashbrownType[],
-): Record<string, DiscriminatorEntry> | null => {
-  const map: Record<string, DiscriminatorEntry> = {};
-
-  for (const opt of options) {
-    if (!s.isObjectType(opt)) {
-      return null;
-    }
-
-    const shape = (opt as any)[internal].definition.shape as Record<
-      string,
-      s.HashbrownType
-    >;
-
-    // Find literal properties on this object option
-    const literalEntries = Object.entries(shape).filter(([, v]) =>
-      s.isLiteralType(v as any),
-    ) as [string, s.HashbrownType][];
-
-    // Must have exactly one literal for unambiguous discrimination
-    if (literalEntries.length !== 1) {
-      return null;
-    }
-
-    const [literalKey, literalSchema] = literalEntries[0];
-    const literalValue = (literalSchema as any)[internal].definition.value as
-      | string
-      | number
-      | boolean;
-
-    if (typeof literalValue !== 'string') {
-      // Only support string discriminators
-      return null;
-    }
-
-    if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
-      // Duplicate discriminator value -> ambiguous
-      return null;
-    }
-    map[literalValue] = {
-      schema: opt,
-      literalKey,
-      literalValue,
-    };
-  }
-
-  return Object.keys(map).length === options.length ? map : null;
-};
 
 function parseJSON(
   jsonString: string,
@@ -139,15 +87,48 @@ const _parseJSON = (
     throw new MalformedJSON(`${msg} at position ${index}`);
   };
 
+  const pickAnyOfOption = (
+    anyOfSchema: s.HashbrownType,
+  ): s.HashbrownType | undefined => {
+    const options = (anyOfSchema as any)[internal].definition
+      .options as s.HashbrownType[];
+    const token = jsonString[index];
+
+    const matchesToken = (option: s.HashbrownType) => {
+      if (token === '{') {
+        return isObjectType(option);
+      }
+      if (token === '[') {
+        return isArrayType(option);
+      }
+      if (token === '"') {
+        return (
+          isStringType(option) || isLiteralType(option) || isEnumType(option)
+        );
+      }
+      if (token === 'n') {
+        return isNullType(option);
+      }
+      if (token === 't' || token === 'f') {
+        return isBooleanType(option);
+      }
+      return isNumberType(option);
+    };
+
+    const directMatches = options.filter(matchesToken);
+    if (directMatches.length > 0) {
+      return directMatches[0];
+    }
+
+    const nestedAnyOf = options.find((opt) => isAnyOfType(opt));
+    return nestedAnyOf ?? options[0];
+  };
+
   const parseAny: (
     currentKey: string,
     allowsIncomplete: boolean,
     insideArray: boolean,
-    // If this is present, its the name of an object property in an anyOf
-    // that was used as a discriminator mapping.  We'll pass it into
-    // parseObj
-    literalKey: string | undefined,
-  ) => any = (currentKey, allowsIncomplete, insideArray, literalKey) => {
+  ) => any = (currentKey, allowsIncomplete, insideArray) => {
     skipBlank();
 
     logger.for('parseAny').info(`Remaining string: ${jsonString.slice(index)}`);
@@ -161,21 +142,37 @@ const _parseJSON = (
     if (jsonString[index] === '"') {
       return parseStr(allowsIncomplete);
     }
+    if (s.isAnyOfType(currentLastContainer)) {
+      const matchingOption = pickAnyOfOption(currentLastContainer);
+      if (!matchingOption) {
+        throwMalformedError('No matching option found in anyOf');
+        return '';
+      }
+
+      const resolvedOption = matchingOption as s.HashbrownType;
+      containerStack.push(resolvedOption);
+      const value = parseAny(
+        currentKey,
+        s.isStreaming(resolvedOption),
+        insideArray,
+      );
+      if (containerStack[containerStack.length - 1] === resolvedOption) {
+        containerStack.pop();
+      }
+      return value;
+    }
+
     if (jsonString[index] === '{') {
       /*
         If the top-level schema is a primitive that should be object-wrapped, we 
         assume a wrapped primitive is starting
 
-        If the current container is an array, we assume an anyOf wrapper is starting.  
-        
         Else, we parse as a regular object.
       */
-      if (Array.isArray(currentLastContainer)) {
-        return parseAnyOf(currentKey);
-      } else if (shouldBeWrappedPrimitive(currentLastContainer)) {
+      if (shouldBeWrappedPrimitive(currentLastContainer)) {
         return parseWrappedPrimitive();
       } else {
-        return parseObj(currentKey, insideArray, literalKey);
+        return parseObj(currentKey, insideArray);
       }
     }
 
@@ -293,7 +290,7 @@ const _parseJSON = (
           logger.for('parseWrappedPrimitive').debug(matchingSchema);
 
           // This isn't a real object, so don't pass the key name
-          value = parseAny('', s.isStreaming(matchingSchema), false, undefined);
+          value = parseAny('', s.isStreaming(matchingSchema), false);
 
           logger.for('parseWrappedPrimitive').debug('Value:');
           logger.for('parseWrappedPrimitive').debug(value);
@@ -321,159 +318,9 @@ const _parseJSON = (
     return value;
   };
 
-  const handleIncompleteAnyOf = (val: any) => {
-    if (val == null) {
-      throw new IncompleteNonStreamingObject('Incomplete anyOf object found');
-    }
-
-    return val;
-  };
-
-  const parseAnyOf = (parentKey: string) => {
-    logger.for('parseAnyOf').info(`Parsing anyOf with parent: ${parentKey}`);
-    index++; // skip initial brace
-    skipBlank();
-    let value: any = undefined;
-
-    let currentContainerStackIndex = containerStack.length - 1;
-
-    const optionsForMap =
-      (containerStack[currentContainerStackIndex] as any) ?? [];
-
-    const literalDiscriminatorMap = Array.isArray(optionsForMap)
-      ? buildDiscriminatorMap(optionsForMap)
-      : null;
-
-    const wrappedOptions = Array.isArray(optionsForMap)
-      ? optionsForMap.filter((option: s.HashbrownType) =>
-          needsDiscriminatorWrapperInAnyOf(option),
-        )
-      : [];
-
-    const getMatchingSchemaForDiscriminator = (
-      key: string,
-    ):
-      | { schema: s.HashbrownType; literalKey?: string; literalValue?: string }
-      | undefined => {
-      if (literalDiscriminatorMap && key in literalDiscriminatorMap) {
-        return literalDiscriminatorMap[key];
-      }
-
-      // Fallback to numeric discriminator
-      const numericIndex = Number(key);
-      if (
-        !Number.isInteger(numericIndex) ||
-        numericIndex < 0 ||
-        !Array.isArray(optionsForMap)
-      ) {
-        return undefined;
-      }
-
-      if (wrappedOptions.length > 0) {
-        const schema = wrappedOptions[numericIndex];
-        if (schema) {
-          return { schema };
-        }
-      }
-
-      const schema = optionsForMap[numericIndex];
-      return schema ? { schema } : undefined;
-      return undefined;
-    };
-
-    try {
-      while (jsonString[index] !== '}') {
-        skipBlank();
-        if (index >= length) {
-          return handleIncompleteAnyOf(value);
-        }
-
-        const key = parseStr(false);
-
-        skipBlank();
-        index++; // skip colon
-        try {
-          logger.for('parseAnyOf').debug(`Handling discriminator: ${key}`);
-
-          const matching = getMatchingSchemaForDiscriminator(key);
-
-          logger
-            .for('parseAnyOf')
-            .debug(
-              `Found matching schema in current container for ${key}: ${!!(matching && matching.schema)}`,
-            );
-
-          if (matching?.schema) {
-            logger.for('parseAnyOf').debug('Adding schema for discriminator');
-            logger.for('parseAnyOf').debug(matching.schema);
-
-            // If the matching schema is itself an anyOf, we need to push its options array
-            // to the schema stack instead of the schema
-            if (s.isAnyOfType(matching.schema)) {
-              containerStack.push(
-                (matching.schema as any)[internal].definition.options,
-              );
-            } else {
-              containerStack.push(
-                s.object(`AnyOf Wrapper for ${key}`, {
-                  [key]: matching.schema,
-                }),
-              );
-            }
-
-            currentContainerStackIndex = containerStack.length - 1;
-
-            value = parseAny(key, true, false, matching?.literalKey);
-            // If we matched via literal discriminator and the inner object doesn't
-            // include the literal field, inject it so the parsed result conforms
-            // to the declared schema.
-            if (
-              literalDiscriminatorMap &&
-              matching.literalKey &&
-              matching.literalValue &&
-              value != null &&
-              typeof value === 'object' &&
-              !(matching.literalKey in (value as any))
-            ) {
-              (value as any)[matching.literalKey] = matching.literalValue;
-            }
-
-            logger.for('parseAnyOf').debug('Value:');
-            logger.for('parseAnyOf').debug(value);
-          } else {
-            throwMalformedError(`No schema found for discriminator: ${key}`);
-          }
-        } catch (e) {
-          logger.for('parseAnyOf').error(e);
-          return handleIncompleteAnyOf(value);
-        }
-        skipBlank();
-        if (jsonString[index] === ',') index++; // skip comma
-      }
-    } catch (e) {
-      logger.for('parseAnyOf').error(e);
-      return handleIncompleteAnyOf(value);
-    }
-    index++; // skip final brace
-
-    const completedContainer = containerStack.pop();
-    if (Array.isArray(completedContainer)) {
-      logger.for('parseAnyOf').debug(`Completed nested anyOf container`);
-    } else {
-      logger
-        .for('parseAnyOf')
-        .debug(
-          `Completed anyOf container: ${completedContainer?.[internal].definition.description}`,
-        );
-    }
-
-    return value;
-  };
-
   const handleIncompleteObject = (
     currentContainerStackIndex: number,
     obj: any,
-    literalKey: string | undefined,
   ) => {
     const currentContainer = containerStack[currentContainerStackIndex];
 
@@ -498,17 +345,6 @@ const _parseJSON = (
           .debug(
             `key ${key} is streaming: ${s.isStreaming(subSchema as any)} and present: ${key in obj}`,
           );
-
-        if (key === literalKey) {
-          // A literal key extracted from an anyOf to be a discriminator won't be in the
-          // object until after it is finished parsing, so skip checking for it.
-          logger
-            .for('parseObj')
-            .debug(
-              `key ${key} is an extracted discriminator, so it will not be present`,
-            );
-          return true;
-        }
 
         // if this key is streaming and not present, add an "empty" value
         if (s.isStreaming(subSchema as any)) {
@@ -557,41 +393,31 @@ const _parseJSON = (
     );
   };
 
-  const parseObj = (
-    parentKey: string,
-    insideArray: boolean,
-    literalKey: string | undefined,
-  ) => {
+  const parseObj = (parentKey: string, insideArray: boolean) => {
     logger.for('parseObj').info(`Parsing object with parent: ${parentKey}`);
     index++; // skip initial brace
     skipBlank();
     const obj: Record<string, any> = {};
 
-    let inAnyOfWrapper = false;
-
     // If we are not in an array, find key in current level of document stock, and add to stack
     if (parentKey !== '') {
-      // Are we in any anyOf?
       const currentContainer = containerStack[containerStack.length - 1];
 
-      // Not an anyOf, so move down a level
-      if (!Array.isArray(currentContainer)) {
-        // If parentKey is set, we are not in an array, so get the next stack container
-        // (arrays handle it differently, so they can do clean up when the array is complete)
-        const nextContainer = (currentContainer[internal].definition as any)
-          .shape[parentKey];
+      // If parentKey is set, we are not in an array, so get the next stack container
+      // (arrays handle it differently, so they can do clean up when the array is complete)
+      const nextContainer = (currentContainer[internal].definition as any)
+        .shape[parentKey];
 
-        logger
-          .for('parseObj')
-          .debug(`Starting new object with key: ${parentKey}`);
-        logger.for('parseObj').debug(nextContainer);
+      logger
+        .for('parseObj')
+        .debug(`Starting new object with key: ${parentKey}`);
+      logger.for('parseObj').debug(nextContainer);
 
-        if (nextContainer == null) {
-          throwMalformedError(`Key: ${parentKey} not expected in container`);
-        }
-
-        containerStack.push(nextContainer);
+      if (nextContainer == null) {
+        throwMalformedError(`Key: ${parentKey} not expected in container`);
       }
+
+      containerStack.push(nextContainer);
     }
 
     const currentContainerStackIndex = containerStack.length - 1;
@@ -600,11 +426,7 @@ const _parseJSON = (
       while (jsonString[index] !== '}') {
         skipBlank();
         if (index >= length) {
-          return handleIncompleteObject(
-            currentContainerStackIndex,
-            obj,
-            literalKey,
-          );
+          return handleIncompleteObject(currentContainerStackIndex, obj);
         }
 
         const key = parseStr(false);
@@ -616,12 +438,13 @@ const _parseJSON = (
 
           const currentContainer = containerStack[currentContainerStackIndex];
 
-          // Is this an anyOf (which can happen for nested anyOfs)
-          if (s.isAnyOfType(currentContainer)) {
-            // Property is anyOf, so push option list to container stack
-            const anyOfOptions = (currentContainer as any)[internal].definition
-              .options;
-            containerStack.push(anyOfOptions);
+          // This is a regular object, so find the schema for the key
+          const schemaFragmentForKey = (
+            currentContainer[internal].definition as any
+          ).shape[key];
+
+          if (s.isAnyOfType(schemaFragmentForKey)) {
+            containerStack.push(schemaFragmentForKey);
 
             logger
               .for('parseObj')
@@ -630,72 +453,34 @@ const _parseJSON = (
               );
 
             // AnyOfs are never directly streaming
-            const value = parseAny(key, false, false, undefined);
-            if (containerStack[containerStack.length - 1] === anyOfOptions) {
+            const value = parseAny(key, false, false);
+            if (containerStack[containerStack.length - 1] === schemaFragmentForKey) {
               containerStack.pop();
             }
-
-            inAnyOfWrapper = true;
 
             logger.for('parseObj').debug('Value:');
             logger.for('parseObj').debug(value);
             obj[key] = value;
           } else {
-            // This is a regular object, so find the schema for the key
-            const schemaFragmentForKey = (
-              currentContainer[internal].definition as any
-            ).shape[key];
+            const currentKeyAllowsIncomplete = s.isStreaming(
+              schemaFragmentForKey,
+            );
 
-            if (s.isAnyOfType(schemaFragmentForKey)) {
-              // Property is anyOf, so push option list to container stack
-              const anyOfOptions = (schemaFragmentForKey as any)[internal]
-                .definition.options;
-              containerStack.push(anyOfOptions);
-
-              logger
-                .for('parseObj')
-                .debug(
-                  `Object key ${key} in container ${currentContainerStackIndex} is anyOf`,
-                );
-
-              // AnyOfs are never directly streaming
-              const value = parseAny(key, false, false, undefined);
-              if (containerStack[containerStack.length - 1] === anyOfOptions) {
-                containerStack.pop();
-              }
-
-              logger.for('parseObj').debug('Value:');
-              logger.for('parseObj').debug(value);
-              obj[key] = value;
-            } else {
-              const currentKeyAllowsIncomplete =
-                s.isStreaming(schemaFragmentForKey);
-
-              logger
-                .for('parseObj')
-                .debug(
-                  `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
-                );
-
-              const value = parseAny(
-                key,
-                currentKeyAllowsIncomplete,
-                false,
-                undefined,
+            logger
+              .for('parseObj')
+              .debug(
+                `Object key ${key} in container ${currentContainerStackIndex} allows incomplete: ${currentKeyAllowsIncomplete}`,
               );
 
-              logger.for('parseObj').debug('Value:');
-              logger.for('parseObj').debug(value);
-              obj[key] = value;
-            }
+            const value = parseAny(key, currentKeyAllowsIncomplete, false);
+
+            logger.for('parseObj').debug('Value:');
+            logger.for('parseObj').debug(value);
+            obj[key] = value;
           }
         } catch (e) {
           logger.for('parseObj').error(e);
-          return handleIncompleteObject(
-            currentContainerStackIndex,
-            obj,
-            literalKey,
-          );
+          return handleIncompleteObject(currentContainerStackIndex, obj);
         }
         skipBlank();
         if (jsonString[index] === ',') index++; // skip comma
@@ -703,24 +488,12 @@ const _parseJSON = (
     } catch (e) {
       logger.for('parseObj').error(e);
 
-      return handleIncompleteObject(
-        currentContainerStackIndex,
-        obj,
-        literalKey,
-      );
+      return handleIncompleteObject(currentContainerStackIndex, obj);
     }
     index++; // skip final brace
 
     // Are we inside an array?  They handle adding/removing stack containers for themselves
-    if (!insideArray || inAnyOfWrapper) {
-      // If we just completed an anyOf wrapper, we need to pop the options array off the stack
-      if (!insideArray && inAnyOfWrapper) {
-        const completedContainer = containerStack.pop();
-        logger
-          .for('parseObj')
-          .debug(`Also completed anyOf container: ${completedContainer}`);
-      }
-
+    if (!insideArray) {
       // Done with this container, so pop off stack
       const completedContainer = containerStack.pop();
       logger
@@ -785,12 +558,8 @@ const _parseJSON = (
     } else if (s.isAnyOfType(resolvedArrayContainer)) {
       logger
         .for('parseArr')
-        .debug(
-          'Array container is anyOf. Pushing anyOf array to container stack',
-        );
-      containerStack.push(
-        (resolvedArrayContainer as any)[internal].definition.options,
-      );
+        .debug('Array container is anyOf. Pushing anyOf to container stack');
+      containerStack.push(resolvedArrayContainer);
       containerNeedsPopping = true;
     } else {
       logger.for('parseArr').debug('Array container is primitive');
@@ -809,7 +578,7 @@ const _parseJSON = (
         logger
           .for('parseArr')
           .debug(`Array content allows incomplete: ${contentsAllowIncomplete}`);
-        arr.push(parseAny('', contentsAllowIncomplete, true, undefined));
+        arr.push(parseAny('', contentsAllowIncomplete, true));
         skipBlank();
         if (jsonString[index] === ',') {
           index++; // skip comma
@@ -876,7 +645,7 @@ const _parseJSON = (
   };
 
   try {
-    const result = parseAny('', false, false, undefined);
+    const result = parseAny('', false, false);
 
     // We returned, but have we not consumed the whole length?
     // We only check this on finished messages so as not to spam

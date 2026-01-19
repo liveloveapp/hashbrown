@@ -171,11 +171,10 @@ describe('prompt helper', () => {
 
       const obj = JSON.parse(json);
       // Streaming shape injects an object with a top-level `ui` array where
-      // entries are objects keyed by component name. For text-children
-      // components, the value is the string content.
+      // entries contain $tag/$props/$children fields.
       expect(Array.isArray(obj.ui)).toBe(true);
-      expect(typeof obj.ui[0].Note).toBe('object');
-      expect(obj.ui[0].Note.$children).toBe('Hello world!');
+      expect(obj.ui[0].$tag).toBe('Note');
+      expect(obj.ui[0].$children).toBe('Hello world!');
     });
 
     it('children: only listed child passes validation', () => {

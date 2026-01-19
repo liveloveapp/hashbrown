@@ -83,13 +83,7 @@ test('it handles unkeyed objects in anyOf definitions', () => {
   const result = schema.toStreaming(input);
   const parsed = parseStreaming(schema, result);
 
-  expect(result).toEqual([
-    {
-      '0': {
-        personName: 'test',
-      },
-    },
-  ]);
+  expect(result).toEqual(input);
   expect(parsed).toEqual(input);
 });
 
@@ -112,13 +106,7 @@ test('it handles keyed objects in anyOf definitions', () => {
   const result = schema.toStreaming(input);
   const parsed = parseStreaming(schema, result);
 
-  expect(result).toEqual([
-    {
-      person: {
-        personName: 'test',
-      },
-    },
-  ]);
+  expect(result).toEqual(input);
   expect(parsed).toEqual(input);
 });
 
@@ -160,20 +148,7 @@ test('it handles nested anyOf definitions', () => {
   const result = schema.toStreaming(input);
   const parsed = parseStreaming(schema, result);
 
-  expect(result).toEqual([
-    {
-      person: {
-        personName: 'test',
-        children: [
-          {
-            person: {
-              personName: 'test',
-            },
-          },
-        ],
-      },
-    },
-  ]);
+  expect(result).toEqual(input);
   expect(parsed).toEqual(input);
 });
 
