@@ -1,235 +1,34 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`anyOf: duplicate literal values fall back to index wrappers 1`] = `
+exports[`anyOf: object options are direct 1`] = `
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "anyOf": [
     {
       "additionalProperties": false,
+      "description": "A",
       "properties": {
-        "0": {
-          "additionalProperties": false,
-          "description": "A",
-          "properties": {
-            "a": {
-              "description": "a",
-              "type": "number",
-            },
-            "type": {
-              "const": "dup",
-              "description": "dup",
-              "type": "string",
-            },
-          },
-          "required": [
-            "type",
-            "a",
-          ],
-          "type": "object",
+        "a": {
+          "description": "a",
+          "type": "number",
         },
       },
       "required": [
-        "0",
+        "a",
       ],
       "type": "object",
     },
     {
       "additionalProperties": false,
+      "description": "B",
       "properties": {
-        "1": {
-          "additionalProperties": false,
-          "description": "B",
-          "properties": {
-            "b": {
-              "description": "b",
-              "type": "string",
-            },
-            "type": {
-              "const": "dup",
-              "description": "dup",
-              "type": "string",
-            },
-          },
-          "required": [
-            "type",
-            "b",
-          ],
-          "type": "object",
+        "b": {
+          "description": "b",
+          "type": "string",
         },
       },
       "required": [
-        "1",
-      ],
-      "type": "object",
-    },
-  ],
-}
-`;
-
-exports[`anyOf: mixed options use wrappers only for complex ones 1`] = `
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "anyOf": [
-    {
-      "description": "S",
-      "type": "string",
-    },
-    {
-      "additionalProperties": false,
-      "properties": {
-        "1": {
-          "additionalProperties": false,
-          "description": "A",
-          "properties": {
-            "a": {
-              "description": "a",
-              "type": "number",
-            },
-          },
-          "required": [
-            "a",
-          ],
-          "type": "object",
-        },
-      },
-      "required": [
-        "1",
-      ],
-      "type": "object",
-    },
-    {
-      "description": "N",
-      "type": "number",
-    },
-  ],
-}
-`;
-
-exports[`anyOf: multiple literals per object fall back to index wrappers 1`] = `
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "anyOf": [
-    {
-      "additionalProperties": false,
-      "properties": {
-        "0": {
-          "additionalProperties": false,
-          "description": "A",
-          "properties": {
-            "a": {
-              "description": "a",
-              "type": "number",
-            },
-            "t1": {
-              "const": "x",
-              "description": "x",
-              "type": "string",
-            },
-            "t2": {
-              "const": "y",
-              "description": "y",
-              "type": "string",
-            },
-          },
-          "required": [
-            "t1",
-            "t2",
-            "a",
-          ],
-          "type": "object",
-        },
-      },
-      "required": [
-        "0",
-      ],
-      "type": "object",
-    },
-    {
-      "additionalProperties": false,
-      "properties": {
-        "1": {
-          "additionalProperties": false,
-          "description": "B",
-          "properties": {
-            "b": {
-              "description": "b",
-              "type": "string",
-            },
-            "t1": {
-              "const": "p",
-              "description": "p",
-              "type": "string",
-            },
-            "t2": {
-              "const": "q",
-              "description": "q",
-              "type": "string",
-            },
-          },
-          "required": [
-            "t1",
-            "t2",
-            "b",
-          ],
-          "type": "object",
-        },
-      },
-      "required": [
-        "1",
-      ],
-      "type": "object",
-    },
-  ],
-}
-`;
-
-exports[`anyOf: object options default to index wrappers 1`] = `
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "anyOf": [
-    {
-      "additionalProperties": false,
-      "properties": {
-        "0": {
-          "additionalProperties": false,
-          "description": "A",
-          "properties": {
-            "a": {
-              "description": "a",
-              "type": "number",
-            },
-          },
-          "required": [
-            "a",
-          ],
-          "type": "object",
-        },
-      },
-      "required": [
-        "0",
-      ],
-      "type": "object",
-    },
-    {
-      "additionalProperties": false,
-      "properties": {
-        "1": {
-          "additionalProperties": false,
-          "description": "B",
-          "properties": {
-            "b": {
-              "description": "b",
-              "type": "string",
-            },
-          },
-          "required": [
-            "b",
-          ],
-          "type": "object",
-        },
-      },
-      "required": [
-        "1",
+        "b",
       ],
       "type": "object",
     },
@@ -253,73 +52,205 @@ exports[`anyOf: primitives are direct without wrappers 1`] = `
 }
 `;
 
-exports[`anyOf: single unique string-literal per object uses literal envelopes, omitting discriminator inside 1`] = `
+exports[`anyOf: mixed options are direct 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "description": "S",
+      "type": "string",
+    },
+    {
+      "additionalProperties": false,
+      "description": "A",
+      "properties": {
+        "a": {
+          "description": "a",
+          "type": "number",
+        },
+      },
+      "required": [
+        "a",
+      ],
+      "type": "object",
+    },
+    {
+      "description": "N",
+      "type": "number",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: literal properties remain inside option objects 1`] = `
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "anyOf": [
     {
       "additionalProperties": false,
+      "description": "Show markdown",
       "properties": {
-        "app-markdown": {
+        "$props": {
           "additionalProperties": false,
-          "description": "Show markdown",
+          "description": "Props",
           "properties": {
-            "$props": {
-              "additionalProperties": false,
-              "description": "Props",
-              "properties": {
-                "data": {
-                  "description": "data",
-                  "type": "string",
-                },
-              },
-              "required": [
-                "data",
-              ],
-              "type": "object",
+            "data": {
+              "description": "data",
+              "type": "string",
             },
           },
           "required": [
-            "$props",
+            "data",
           ],
           "type": "object",
         },
+        "$tagName": {
+          "const": "app-markdown",
+          "description": "app-markdown",
+          "type": "string",
+        },
       },
       "required": [
-        "app-markdown",
+        "$tagName",
+        "$props",
       ],
       "type": "object",
     },
     {
       "additionalProperties": false,
+      "description": "Show button",
       "properties": {
-        "app-button": {
+        "$props": {
           "additionalProperties": false,
-          "description": "Show button",
+          "description": "Props",
           "properties": {
-            "$props": {
-              "additionalProperties": false,
-              "description": "Props",
-              "properties": {
-                "data": {
-                  "description": "data",
-                  "type": "string",
-                },
-              },
-              "required": [
-                "data",
-              ],
-              "type": "object",
+            "data": {
+              "description": "data",
+              "type": "string",
             },
           },
           "required": [
-            "$props",
+            "data",
           ],
           "type": "object",
         },
+        "$tagName": {
+          "const": "app-button",
+          "description": "app-button",
+          "type": "string",
+        },
       },
       "required": [
-        "app-button",
+        "$tagName",
+        "$props",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: duplicate literal values are direct 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "description": "A",
+      "properties": {
+        "a": {
+          "description": "a",
+          "type": "number",
+        },
+        "type": {
+          "const": "dup",
+          "description": "dup",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "a",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "description": "B",
+      "properties": {
+        "b": {
+          "description": "b",
+          "type": "string",
+        },
+        "type": {
+          "const": "dup",
+          "description": "dup",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "b",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: multiple literals per object are direct 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "description": "A",
+      "properties": {
+        "a": {
+          "description": "a",
+          "type": "number",
+        },
+        "t1": {
+          "const": "x",
+          "description": "x",
+          "type": "string",
+        },
+        "t2": {
+          "const": "y",
+          "description": "y",
+          "type": "string",
+        },
+      },
+      "required": [
+        "t1",
+        "t2",
+        "a",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "description": "B",
+      "properties": {
+        "b": {
+          "description": "b",
+          "type": "string",
+        },
+        "t1": {
+          "const": "p",
+          "description": "p",
+          "type": "string",
+        },
+        "t2": {
+          "const": "q",
+          "description": "q",
+          "type": "string",
+        },
+      },
+      "required": [
+        "t1",
+        "t2",
+        "b",
       ],
       "type": "object",
     },

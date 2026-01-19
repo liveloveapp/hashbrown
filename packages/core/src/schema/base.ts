@@ -1028,105 +1028,9 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
 
     let parsedObject = undefined;
 
-    type DiscriminatorEntry = {
-      schema: HashbrownType;
-      literalKey: string;
-      literalValue: string;
-    };
-
-    const buildDiscriminatorMap = (
-      options: readonly HashbrownType[],
-    ): Record<string, DiscriminatorEntry> | null => {
-      const map: Record<string, DiscriminatorEntry> = {};
-
-      for (const opt of options) {
-        if (!isObjectType(opt)) {
-          return null;
-        }
-
-        const shape = (opt as any)[internal].definition.shape as Record<
-          string,
-          HashbrownType
-        >;
-
-        const literalEntries = Object.entries(shape).filter(([, v]) =>
-          isLiteralType(v as any),
-        ) as [string, HashbrownType][];
-
-        // Require exactly one literal for clear discrimination
-        if (literalEntries.length !== 1) {
-          return null;
-        }
-
-        const [literalKey, litSchema] = literalEntries[0];
-        const literalValue = (litSchema as any)[internal].definition.value as
-          | string
-          | number
-          | boolean;
-
-        if (typeof literalValue !== 'string') {
-          // Only support string-based discriminators for wrapper keys
-          return null;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
-          // Ambiguous (duplicate) discriminator value
-          return null;
-        }
-
-        map[literalValue] = { schema: opt, literalKey, literalValue };
-      }
-
-      return Object.keys(map).length === options.length ? map : null;
-    };
-
-    const discriminatorMap = buildDiscriminatorMap(options);
-
     for (let i = 0; i < options.length; i++) {
       try {
-        if (needsDiscriminatorWrapperInAnyOf(options[i]) && discriminatorMap) {
-          const discriminatorEntry = Object.entries(discriminatorMap).find(
-            ([, v]) => v.schema === options[i],
-          );
-
-          if (!discriminatorEntry) {
-            throw new Error(
-              `No discriminator key found for option ${options[i]}`,
-            );
-          }
-
-          const { literalKey, literalValue, schema } = discriminatorEntry[1];
-
-          const extractedObject = (object as any)[literalValue];
-
-          extractedObject[literalKey] = literalValue;
-
-          parsedObject = schema.parseJsonSchema(extractedObject);
-        } else if (needsDiscriminatorWrapperInAnyOf(options[i])) {
-          if (typeof object !== 'object' || object === null) {
-            throw new Error(`Expected an object at: ${path.join('.')}`);
-          }
-
-          const anyOfKeys = Object.keys(object);
-
-          if (anyOfKeys.length !== 1) {
-            throw new Error(`Malformed anyOf wrapper at ${path.join('.')}`);
-          }
-
-          const anyOfIndex = anyOfKeys[0];
-
-          if (anyOfIndex !== i.toString()) {
-            throw new Error(
-              `Unexpected discriminator value ${anyOfIndex} for option ${i}`,
-            );
-          }
-
-          parsedObject = options[i].parseJsonSchema(
-            (object as any)[anyOfIndex],
-          );
-        } else {
-          parsedObject = options[i].parseJsonSchema(object);
-        }
+        parsedObject = options[i].parseJsonSchema(object);
         break;
       } catch (e) {
         // console.log(e);
@@ -1198,95 +1102,10 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
       }
     });
 
-    type DiscriminatorEntry = {
-      schema: HashbrownType;
-      literalKey: string;
-      literalValue: string;
-    };
-
-    const buildDiscriminatorMap = (
-      options: readonly HashbrownType[],
-    ): Record<string, DiscriminatorEntry> | null => {
-      const map: Record<string, DiscriminatorEntry> = {};
-
-      for (const opt of options) {
-        if (!isObjectType(opt)) {
-          return null;
-        }
-
-        const shape = (opt as any)[internal].definition.shape as Record<
-          string,
-          HashbrownType
-        >;
-
-        const literalEntries = Object.entries(shape).filter(([, v]) =>
-          isLiteralType(v as any),
-        ) as [string, HashbrownType][];
-
-        // Require exactly one literal for clear discrimination
-        if (literalEntries.length !== 1) {
-          return null;
-        }
-
-        const [literalKey, litSchema] = literalEntries[0];
-        const literalValue = (litSchema as any)[internal].definition.value as
-          | string
-          | number
-          | boolean;
-
-        if (typeof literalValue !== 'string') {
-          // Only support string-based discriminators for wrapper keys
-          return null;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
-          // Ambiguous (duplicate) discriminator value
-          return null;
-        }
-
-        map[literalValue] = { schema: opt, literalKey, literalValue };
-      }
-
-      return Object.keys(map).length === options.length ? map : null;
-    };
-
-    const discriminatorMap = buildDiscriminatorMap(definition.options);
-
     if (!matchingOption) {
       throw new Error(
         `No matching option found in anyOf at: ${path.join('.')}`,
       );
-    }
-
-    if (needsDiscriminatorWrapperInAnyOf(matchingOption) && discriminatorMap) {
-      const discriminatorEntry = Object.entries(discriminatorMap).find(
-        ([, v]) => v.schema === matchingOption,
-      );
-
-      if (!discriminatorEntry) {
-        throw new Error(
-          `No discriminator key found for option ${matchingOption}`,
-        );
-      }
-
-      const { literalKey, literalValue, schema } = discriminatorEntry[1];
-      const streamingObject = schema.toStreaming(object, path);
-
-      delete (streamingObject as any)[literalKey];
-
-      return { [literalValue]: streamingObject };
-    } else if (
-      needsDiscriminatorWrapperInAnyOf(matchingOption) &&
-      !discriminatorMap
-    ) {
-      const indexOfMatchingOption = definition.options.indexOf(matchingOption);
-
-      return {
-        [indexOfMatchingOption.toString()]: matchingOption.toStreaming(
-          object,
-          path,
-        ),
-      };
     }
 
     return matchingOption.toStreaming(object, path);
@@ -1518,21 +1337,6 @@ export function nullish(): NullType {
  * --------------------------------------
  * --------------------------------------
  */
-export function needsDiscriminatorWrapperInAnyOf(
-  schema: HashbrownType,
-): boolean {
-  if (
-    isAnyOfType(schema) ||
-    isArrayType(schema) ||
-    isObjectType(schema) ||
-    (isStringType(schema) && isStreaming(schema))
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
 export function isStreaming(schema: HashbrownType): boolean {
   return schema[internal].definition.streaming;
 }
