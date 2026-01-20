@@ -720,7 +720,10 @@ export function prompt(
   let diagnostics: PromptDiagnostic[] =
     parseDiagnostics.concat(lowerDiagnostics);
 
-  function compile(components: readonly any[], schema: HashbrownType): string {
+  function compile(
+    components: readonly any[],
+    _schema: HashbrownType,
+  ): string {
     // Build component lookup by name and selector for policy-aware lowering
     const byName = new Map<string, ExposedComponent<any>>();
     components.forEach((c) => {
@@ -764,15 +767,7 @@ export function prompt(
       cleanForInjection(tree),
     );
 
-    // If an explicit UI schema is provided, downlevel examples for streaming
-    // just before emitting them inside JSON fences.
-    const toInject = cleaned.map((tree: any[]) => {
-      try {
-        return schema.toStreaming({ ui: tree });
-      } catch {
-        return '';
-      }
-    });
+    const toInject = cleaned;
 
     // If no components are provided, do not inline JSON fences; preserve author text.
     const mode: 'inline' | 'placeholder' | 'none' =
