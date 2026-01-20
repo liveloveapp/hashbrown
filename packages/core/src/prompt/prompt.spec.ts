@@ -2,7 +2,6 @@
 import { prompt } from './prompt';
 import { s } from '../schema';
 import { createComponentSchema } from '../ui';
-import type { HashbrownType } from '../schema/base';
 
 describe('prompt helper', () => {
   describe('weaving and extraction', () => {
@@ -167,14 +166,12 @@ describe('prompt helper', () => {
       expect(example.diagnostics.length).toBe(0);
 
       // Extract the injected JSON and verify $children is a string
-      const json = (out.match(/\{[\s\S]*\}/) || [])[0] || '';
+      const json = (out.match(/\[[\s\S]*\]/) || [])[0] || '';
 
       const obj = JSON.parse(json);
-      // Streaming shape injects an object with a top-level `ui` array where
-      // entries contain $tag/$props/$children fields.
-      expect(Array.isArray(obj.ui)).toBe(true);
-      expect(obj.ui[0].$tag).toBe('Note');
-      expect(obj.ui[0].$children).toBe('Hello world!');
+      expect(Array.isArray(obj)).toBe(true);
+      expect(obj[0].$tag).toBe('Note');
+      expect(obj[0].$children).toBe('Hello world!');
     });
 
     it('children: only listed child passes validation', () => {
@@ -518,11 +515,7 @@ describe('prompt helper', () => {
         } as const,
       ];
 
-      const schema = {
-        toStreaming: () => 'x',
-      } as unknown as HashbrownType;
-
-      const out = sys.compile(components, schema);
+      const out = sys.compile(components, toSchema(components));
 
       expect(out).toContain('trailing content: outside');
       expect(out).not.toContain('__HBX_');

@@ -40,7 +40,6 @@ type TypeInternals = {
 type TypeBox = {
   [internal]: TypeInternals;
   toJsonSchema: () => object;
-  parseJsonSchema: (object: unknown, path: string[]) => any;
   toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
 };
 
@@ -54,7 +53,6 @@ export interface HashbrownTypeCtor<
   new (def: D): T;
   init(inst: T, def: D): asserts inst is T;
   toJsonSchema(schema: any): any;
-  parseJsonSchema(object: unknown, path: string[]): any;
   toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
 }
 
@@ -68,19 +66,12 @@ export const HashbrownTypeCtor = <
   name,
   initializer,
   toJsonSchemaImpl,
-  parseJsonSchemaImpl,
   toTypeScriptImpl,
   validateImpl,
-  toStreamingImpl,
 }: {
   name: string;
   initializer: (instance: T, definition: D) => void;
   toJsonSchemaImpl: (schema: HashbrownTypeCtor<T, D>) => any;
-  parseJsonSchemaImpl: (
-    schema: HashbrownTypeCtor<T, D>,
-    object: unknown,
-    path: string[],
-  ) => any;
   toTypeScriptImpl: (
     schema: HashbrownTypeCtor<T, D>,
     pathSeen: Set<HashbrownType>,
@@ -91,20 +82,9 @@ export const HashbrownTypeCtor = <
     object: unknown,
     path: string[],
   ) => void;
-  toStreamingImpl: (
-    schema: HashbrownTypeCtor<T, D>,
-    definition: D,
-    object: unknown,
-    path: string[],
-  ) => unknown;
 }): HashbrownTypeCtor<T, D> => {
   class Class implements Omit<HashbrownType, internal> {
     private toJsonSchemaImpl: (schema: HashbrownTypeCtor<T, D>) => any;
-    private parseJsonSchemaImpl: (
-      schema: HashbrownTypeCtor<T, D>,
-      object: unknown,
-      path: string[],
-    ) => any;
     private toTypeScriptImpl: (
       schema: HashbrownTypeCtor<T, D>,
       pathSeen: Set<HashbrownType>,
@@ -115,20 +95,12 @@ export const HashbrownTypeCtor = <
       object: unknown,
       path: string[],
     ) => void;
-    private toStreamingImpl: (
-      schema: HashbrownTypeCtor<T, D>,
-      definition: D,
-      object: unknown,
-      path: string[],
-    ) => unknown;
 
     constructor(definition: D) {
       Class.init(this as any, definition);
       this.toJsonSchemaImpl = toJsonSchemaImpl;
-      this.parseJsonSchemaImpl = parseJsonSchemaImpl;
       this.toTypeScriptImpl = toTypeScriptImpl;
       this.validateImpl = validateImpl;
-      this.toStreamingImpl = toStreamingImpl;
     }
 
     static init(instance: T, definition: D) {
@@ -148,25 +120,12 @@ export const HashbrownTypeCtor = <
       return this.toJsonSchemaImpl(this as any);
     }
 
-    parseJsonSchema(object: unknown, path: string[] = []) {
-      return this.parseJsonSchemaImpl(this as any, object, path);
-    }
-
     toTypeScript(pathSeen: Set<HashbrownType> = new Set()) {
       return this.toTypeScriptImpl(this as any, pathSeen);
     }
 
     validate(object: unknown, path: string[] = []) {
       return this.validateImpl(
-        this as any,
-        (this as any)[internal].definition,
-        object,
-        path,
-      );
-    }
-
-    toStreaming(object: unknown, path: string[] = []) {
-      return this.toStreamingImpl(
         this as any,
         (this as any)[internal].definition,
         object,
@@ -201,10 +160,8 @@ interface HashbrownTypeDefinition {
 export interface HashbrownType<out Result = unknown> {
   [internal]: HashbrownTypeInternals<Result>;
   toJsonSchema: () => any;
-  parseJsonSchema: (object: unknown, path?: string[]) => any;
   validate: (object: unknown, path?: string[]) => void;
   toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
-  toStreaming: (object: unknown, path?: string[]) => unknown;
 }
 
 /**
@@ -229,16 +186,10 @@ export const HashbrownType: HashbrownTypeCtor<HashbrownType> =
     toJsonSchemaImpl: () => {
       return;
     },
-    parseJsonSchemaImpl: () => {
-      return;
-    },
     toTypeScriptImpl: () => {
       return '';
     },
     validateImpl: () => {
-      return;
-    },
-    toStreamingImpl: () => {
       return;
     },
   });
@@ -283,21 +234,6 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    if (typeof object !== 'string')
-      throw new Error(`Expected a string at: ${path.join('.')}, got ${object}`);
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ string`;
   },
@@ -308,14 +244,6 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
       );
     }
     return;
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return object;
   },
 });
 
@@ -385,27 +313,6 @@ export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    const isString = typeof object === 'string';
-    const isNumber = typeof object === 'number';
-    const isBoolean = typeof object === 'boolean';
-
-    if (!isString && !isNumber && !isBoolean)
-      throw new Error(
-        `Expected a string, number, or boolean at: ${path.join('.')}, got ${object}, received ${schema[internal].definition.value}`,
-      );
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any) => {
     return JSON.stringify(schema[internal].definition.value);
   },
@@ -415,14 +322,6 @@ export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor({
         `Expected the literal value ${JSON.stringify(definition.value)} at: ${path.join('.')}, but got ${JSON.stringify(object)}`,
       );
     }
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return object;
   },
 });
 
@@ -484,21 +383,6 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    if (typeof object !== 'number')
-      throw new Error(`Expected a number at: ${path.join('.')}`);
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ number`;
   },
@@ -506,14 +390,6 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
     if (typeof object !== 'number') {
       throw new Error(`Expected a number at: ${path.join('.')}`);
     }
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return object;
   },
 });
 
@@ -571,35 +447,12 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    if (typeof object !== 'boolean')
-      throw new Error(`Expected a boolean at: ${path.join('.')}`);
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ boolean`;
   },
   validateImpl: (schema, definition, object, path) => {
     if (typeof object !== 'boolean')
       throw new Error(`Expected a boolean at: ${path.join('.')}`);
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return object;
   },
 });
 
@@ -657,23 +510,6 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    if (typeof object !== 'number')
-      throw new Error(`Expected a number at: ${path.join('.')}`);
-    if (!Number.isInteger(object))
-      throw new Error(`Expected an integer at: ${path.join('.')}`);
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ integer`;
   },
@@ -682,14 +518,6 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
       throw new Error(`Expected a number at: ${path.join('.')}`);
     if (!Number.isInteger(object))
       throw new Error(`Expected an integer at: ${path.join('.')}`);
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return object;
   },
 });
 
@@ -766,22 +594,6 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    if (typeof object !== 'object' || object === null)
-      throw new Error(`Expected an object at: ${path.join('.')}`);
-
-    const { shape } = schema[internal].definition;
-
-    Object.entries(shape).forEach(([key, child]) => {
-      // AnyOf unwrapping can change the desired form of the result object, so
-      // update the object as we parse
-      (object as any)[key as keyof typeof object] = (
-        child as any
-      ).parseJsonSchema(object[key as keyof typeof object], [...path, key]);
-    });
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any, pathSeen: Set<HashbrownType>) => {
     if (pathSeen.has(schema)) {
       const desc = schema[internal].definition.description || '<anonymous>';
@@ -812,26 +624,6 @@ ${' '.repeat(depth)}}`;
     });
 
     return object;
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    const { shape } = definition;
-    const entries = Object.entries<HashbrownType>(shape);
-    return Object.fromEntries(
-      entries.map(([key, value]) => {
-        return [
-          key,
-          value.toStreaming((object as object)[key as keyof typeof object], [
-            ...path,
-            key,
-          ]),
-        ];
-      }),
-    );
   },
 });
 
@@ -904,27 +696,6 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    if (!Array.isArray(object))
-      throw new Error(`Expected an array at: ${path.join('.')}`);
-
-    // AnyOf unwrapping can change the desired form of the result object, so
-    // update the object as we parse
-    object.forEach((item) => {
-      item = schema[internal].definition.element.parseJsonSchema(item, path);
-    });
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any, pathSeen: Set<HashbrownType>) => {
     if (pathSeen.has(schema)) {
       const desc = schema[internal].definition.description || '<anonymous>';
@@ -942,16 +713,6 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
 
     object.forEach((item) => {
       definition.element.validate(item, path);
-    });
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return (object as any[]).map((item) => {
-      return definition.element.toStreaming(item, path);
     });
   },
 });
@@ -1023,31 +784,6 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
       anyOf: [],
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    const options = schema[internal].definition.options;
-
-    let parsedObject = undefined;
-
-    for (let i = 0; i < options.length; i++) {
-      try {
-        parsedObject = options[i].parseJsonSchema(object);
-        break;
-      } catch (e) {
-        // console.log(e);
-        // Parsing failed, but that is not unexpected due to the looping.
-        // Just try the next option.
-        continue;
-      }
-    }
-
-    if (parsedObject == null) {
-      throw new Error(
-        `All options in anyOf failed parsing at: ${path.join('.')}`,
-      );
-    }
-
-    return parsedObject;
-  },
   toTypeScriptImpl: (schema: any, pathSeen: Set<HashbrownType>) => {
     if (pathSeen.has(schema)) {
       const desc = schema[internal].definition.description || '<anonymous>';
@@ -1086,29 +822,6 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
         `All options in anyOf failed parsing at: ${path.join('.')}`,
       );
     }
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    const matchingOption = definition.options.find((opt: any) => {
-      try {
-        opt.validate(object);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    });
-
-    if (!matchingOption) {
-      throw new Error(
-        `No matching option found in anyOf at: ${path.join('.')}`,
-      );
-    }
-
-    return matchingOption.toStreaming(object, path);
   },
 });
 
@@ -1184,23 +897,6 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    if (typeof object !== 'string')
-      throw new Error(`Expected a string at: ${path.join('.')}`);
-    if (!schema[internal].definition.entries.includes(object))
-      throw new Error(`Expected an enum value at: ${path.join('.')}`);
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any) => {
     return schema[internal].definition.entries
       .map((e: any) => `"${e}"`)
@@ -1211,14 +907,6 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
       throw new Error(`Expected a string at: ${path.join('.')}`);
     if (!definition.entries.includes(object))
       throw new Error(`Expected an enum value at: ${path.join('.')}`);
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return object;
   },
 });
 
@@ -1285,35 +973,12 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor({
       description: schema[internal].definition.description,
     };
   },
-  parseJsonSchemaImpl: (schema: any, object: unknown, path: string[]) => {
-    // Is this a wrapped primitive?
-    if (
-      object != null &&
-      typeof object === 'object' &&
-      Object.keys(object).includes(PRIMITIVE_WRAPPER_FIELD_NAME)
-    ) {
-      object = (object as any)[PRIMITIVE_WRAPPER_FIELD_NAME];
-    }
-
-    if (object !== null)
-      throw new Error(`Expected a null at: ${path.join('.')}`);
-
-    return object;
-  },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ null`;
   },
   validateImpl: (schema, definition, object, path) => {
     if (object !== null)
       throw new Error(`Expected a null at: ${path.join('.')}`);
-  },
-  toStreamingImpl: (
-    schema: any,
-    definition,
-    object: unknown,
-    path: string[],
-  ) => {
-    return object;
   },
 });
 
