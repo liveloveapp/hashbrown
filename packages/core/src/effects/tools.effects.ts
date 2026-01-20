@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';

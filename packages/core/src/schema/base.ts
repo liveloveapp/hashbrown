@@ -14,6 +14,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import type {
+  JsonAstNode,
+  JsonResolvedValue,
+  ParserError,
+} from '../skillet/parser/json-parser';
+import { internal } from './constants';
+import {
+  emptyCache,
+  ensureCache,
+  getNode,
+  getSchemaId,
+  readCacheValue,
+  resolveSchemaAtNode,
+  reuseCachedArray,
+  reuseCachedObject,
+  writeCacheValue,
+} from './from-json-ast';
 import {
   CleanInterfaceShape,
   Flatten,
@@ -25,48 +42,38 @@ import {
 /**
  * @internal
  */
-export const internal = '~schema';
-export type internal = typeof internal;
-
-export const PRIMITIVE_WRAPPER_FIELD_NAME = '__wrappedPrimitive';
+export { internal, PRIMITIVE_WRAPPER_FIELD_NAME } from './constants';
 
 type TypeInternals = {
-  definition: {
-    description: string;
-    streaming: boolean;
-  };
-};
-
-type TypeBox = {
-  [internal]: TypeInternals;
-  toJsonSchema: () => object;
-  toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
+  definition: HashbrownTypeDefinition;
 };
 
 /**
  * @internal
  */
 export interface HashbrownTypeCtor<
-  T extends TypeBox,
+  T extends HashbrownType,
   D = T[internal]['definition'],
 > {
   new (def: D): T;
   init(inst: T, def: D): asserts inst is T;
   toJsonSchema(schema: any): any;
   toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
+  fromJsonAstImpl: (schema: HashbrownTypeCtor<T, D>) => FromJsonAstImpl<T>;
 }
 
 /**
  * @internal
  */
 export const HashbrownTypeCtor = <
-  T extends TypeBox,
+  T extends HashbrownType,
   D extends TypeInternals['definition'] = T[internal]['definition'],
 >({
   name,
   initializer,
   toJsonSchemaImpl,
   toTypeScriptImpl,
+  fromJsonAstImpl,
   validateImpl,
 }: {
   name: string;
@@ -76,6 +83,7 @@ export const HashbrownTypeCtor = <
     schema: HashbrownTypeCtor<T, D>,
     pathSeen: Set<HashbrownType>,
   ) => string;
+  fromJsonAstImpl: (schema: HashbrownTypeCtor<T, D>) => FromJsonAstImpl<T>;
   validateImpl: (
     schema: HashbrownTypeCtor<T, D>,
     definition: D,
@@ -89,6 +97,9 @@ export const HashbrownTypeCtor = <
       schema: HashbrownTypeCtor<T, D>,
       pathSeen: Set<HashbrownType>,
     ) => string;
+    private fromJsonAstImpl: (
+      input: FromJsonAstInput,
+    ) => FromJsonAstOutput<any>;
     private validateImpl: (
       schema: HashbrownTypeCtor<T, D>,
       definition: D,
@@ -100,6 +111,9 @@ export const HashbrownTypeCtor = <
       Class.init(this as any, definition);
       this.toJsonSchemaImpl = toJsonSchemaImpl;
       this.toTypeScriptImpl = toTypeScriptImpl;
+      this.fromJsonAstImpl = fromJsonAstImpl(this as any) as (
+        input: FromJsonAstInput,
+      ) => FromJsonAstOutput<any>;
       this.validateImpl = validateImpl;
     }
 
@@ -122,6 +136,10 @@ export const HashbrownTypeCtor = <
 
     toTypeScript(pathSeen: Set<HashbrownType> = new Set()) {
       return this.toTypeScriptImpl(this as any, pathSeen);
+    }
+
+    fromJsonAst(input: FromJsonAstInput) {
+      return this.fromJsonAstImpl(input);
     }
 
     validate(object: unknown, path: string[] = []) {
@@ -150,7 +168,8 @@ interface HashbrownTypeDefinition {
     | 'array'
     | 'enum'
     | 'any-of'
-    | 'null';
+    | 'null'
+    | 'node';
   description: string;
   streaming: boolean;
 }
@@ -162,6 +181,7 @@ export interface HashbrownType<out Result = unknown> {
   toJsonSchema: () => any;
   validate: (object: unknown, path?: string[]) => void;
   toTypeScript: (pathSeen?: Set<HashbrownType>) => string;
+  fromJsonAst: (input: FromJsonAstInput) => FromJsonAstOutput<Result>;
 }
 
 /**
@@ -189,10 +209,54 @@ export const HashbrownType: HashbrownTypeCtor<HashbrownType> =
     toTypeScriptImpl: () => {
       return '';
     },
+    fromJsonAstImpl: () => {
+      return (input: FromJsonAstInput) => ({
+        result: { state: 'invalid' },
+        cache: input.cache ?? emptyCache,
+      });
+    },
     validateImpl: () => {
       return;
     },
   });
+
+export type FromJsonAstInput = {
+  nodes: JsonAstNode[];
+  rootId: number | null;
+  error: ParserError | null;
+  cache?: FromJsonAstCache;
+  schemaId: number;
+  schema: HashbrownType;
+};
+
+export type FromJsonAstResult<T> =
+  | { state: 'match'; value: T }
+  | { state: 'no-match' }
+  | { state: 'invalid' };
+
+export type FromJsonAstCache = {
+  byNodeId: Record<number, JsonResolvedValue>;
+  byNodeIdAndSchemaId: Record<string, JsonResolvedValue>;
+};
+
+export type FromJsonAstOutput<T> = {
+  result: FromJsonAstResult<T>;
+  cache: FromJsonAstCache;
+};
+
+type FromJsonAstImpl<T extends HashbrownType> = (
+  input: FromJsonAstInput,
+) => FromJsonAstOutput<T[internal]['result']>;
+
+const FORBIDDEN_OBJECT_KEYS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
+
+function isForbiddenObjectKey(key: string) {
+  return FORBIDDEN_OBJECT_KEYS.has(key);
+}
 
 /**
  * --------------------------------------
@@ -236,6 +300,34 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
   },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ string`;
+  },
+  fromJsonAstImpl: (schema: any) => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'string') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      const stringNode = node as Extract<JsonAstNode, { type: 'string' }>;
+      if (schema[internal].definition.streaming) {
+        const value = node.closed ? node.resolvedValue : stringNode.buffer;
+        if (value === undefined) {
+          return { result: { state: 'no-match' }, cache };
+        }
+        return { result: { state: 'match', value }, cache };
+      }
+
+      if (!node.closed || node.resolvedValue === undefined) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      return { result: { state: 'match', value: node.resolvedValue }, cache };
+    };
   },
   validateImpl: (schema: any, definition, object: unknown, path: string[]) => {
     if (typeof object !== 'string') {
@@ -316,6 +408,38 @@ export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor({
   toTypeScriptImpl: (schema: any) => {
     return JSON.stringify(schema[internal].definition.value);
   },
+  fromJsonAstImpl: (schema: any) => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || !node.closed || node.resolvedValue === undefined) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      const expected = schema[internal].definition.value;
+      if (node.resolvedValue !== expected) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (typeof expected === 'string' && node.type !== 'string') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (typeof expected === 'number' && node.type !== 'number') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (typeof expected === 'boolean' && node.type !== 'boolean') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      return { result: { state: 'match', value: expected }, cache };
+    };
+  },
   validateImpl: (schema, definition, object, path) => {
     if (definition.value !== object) {
       throw new Error(
@@ -386,6 +510,25 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ number`;
   },
+  fromJsonAstImpl: () => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'number') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (!node.closed || node.resolvedValue === undefined) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      return { result: { state: 'match', value: node.resolvedValue }, cache };
+    };
+  },
   validateImpl: (schema, definition, object, path) => {
     if (typeof object !== 'number') {
       throw new Error(`Expected a number at: ${path.join('.')}`);
@@ -450,6 +593,25 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor({
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ boolean`;
   },
+  fromJsonAstImpl: () => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'boolean') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (!node.closed || node.resolvedValue === undefined) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      return { result: { state: 'match', value: node.resolvedValue }, cache };
+    };
+  },
   validateImpl: (schema, definition, object, path) => {
     if (typeof object !== 'boolean')
       throw new Error(`Expected a boolean at: ${path.join('.')}`);
@@ -512,6 +674,29 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
   },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ integer`;
+  },
+  fromJsonAstImpl: () => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'number') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (!node.closed || node.resolvedValue === undefined) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (!Number.isInteger(node.resolvedValue)) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      return { result: { state: 'match', value: node.resolvedValue }, cache };
+    };
   },
   validateImpl: (schema, definition, object, path) => {
     if (typeof object !== 'number')
@@ -613,6 +798,95 @@ export const ObjectType: HashbrownTypeCtor<ObjectType> = HashbrownTypeCtor({
 ${lines.join('\n')}
 ${' '.repeat(depth)}}`;
   },
+  fromJsonAstImpl: (schema: any) => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'object') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      const isStreamingSchema = schema[internal].definition.streaming;
+      const shape = schema[internal].definition.shape as Record<
+        string,
+        HashbrownType
+      >;
+      const shapeKeys = new Set(Object.keys(shape));
+      const childMap: Record<string, number> = Object.create(null);
+
+      for (let i = 0; i < node.keys.length; i += 1) {
+        const key = node.keys[i];
+        if (isForbiddenObjectKey(key)) {
+          return { result: { state: 'no-match' }, cache };
+        }
+
+        if (!shapeKeys.has(key)) {
+          return { result: { state: 'no-match' }, cache };
+        }
+
+        childMap[key] = node.children[i];
+      }
+
+      const resultValue: Record<string, JsonResolvedValue> = {};
+      let nextCache = cache;
+
+      for (const [key, childSchema] of Object.entries(shape)) {
+        const childId = childMap[key];
+        if (childId === undefined) {
+          if (!isStreamingSchema) {
+            return { result: { state: 'no-match' }, cache: nextCache };
+          }
+          continue;
+        }
+
+        const childOutput = resolveSchemaAtNode(
+          childSchema,
+          input,
+          nextCache,
+          childId,
+        );
+
+        if (childOutput.result.state === 'invalid') {
+          return { result: { state: 'invalid' }, cache: childOutput.cache };
+        }
+
+        if (childOutput.result.state === 'no-match') {
+          if (!isStreamingSchema) {
+            return { result: { state: 'no-match' }, cache: childOutput.cache };
+          }
+          continue;
+        }
+
+        resultValue[key] = childOutput.result.value as JsonResolvedValue;
+        nextCache = childOutput.cache;
+      }
+
+      let candidate = resultValue;
+      if (node.resolvedValue) {
+        const reused = reuseCachedObject(node.resolvedValue, resultValue);
+        if (reused) {
+          candidate = reused;
+        }
+      }
+
+      const cached = readCacheValue(nextCache, node.id, input.schemaId, true);
+      const reusedCached = reuseCachedObject(cached, candidate);
+      const value = reusedCached ?? candidate;
+      const updatedCache = writeCacheValue(
+        nextCache,
+        node.id,
+        input.schemaId,
+        true,
+        value,
+      );
+
+      return { result: { state: 'match', value }, cache: updatedCache };
+    };
+  },
   validateImpl: (schema, definition, object, path) => {
     if (typeof object !== 'object' || object === null)
       throw new Error(`Expected an object at: ${path.join('.')}`);
@@ -707,6 +981,72 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
       internal
     ].definition.element.toTypeScript(new Set(pathSeen))}>`;
   },
+  fromJsonAstImpl: (schema: any) => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'array') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      const isStreamingSchema = schema[internal].definition.streaming;
+      if (!isStreamingSchema && !node.closed) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      const elementSchema = schema[internal].definition.element;
+      const values: JsonResolvedValue[] = [];
+      let nextCache = cache;
+
+      for (const childId of node.children) {
+        const childOutput = resolveSchemaAtNode(
+          elementSchema,
+          input,
+          nextCache,
+          childId,
+        );
+
+        if (childOutput.result.state === 'invalid') {
+          return { result: { state: 'invalid' }, cache: childOutput.cache };
+        }
+
+        if (childOutput.result.state === 'no-match') {
+          if (!isStreamingSchema) {
+            return { result: { state: 'no-match' }, cache: childOutput.cache };
+          }
+          continue;
+        }
+
+        values.push(childOutput.result.value as JsonResolvedValue);
+        nextCache = childOutput.cache;
+      }
+
+      let candidate = values;
+      if (Array.isArray(node.resolvedValue)) {
+        const reused = reuseCachedArray(node.resolvedValue, values);
+        if (reused) {
+          candidate = reused;
+        }
+      }
+
+      const cached = readCacheValue(nextCache, node.id, input.schemaId, true);
+      const reusedCached = reuseCachedArray(cached, candidate);
+      const value = reusedCached ?? candidate;
+      const updatedCache = writeCacheValue(
+        nextCache,
+        node.id,
+        input.schemaId,
+        true,
+        value,
+      );
+
+      return { result: { state: 'match', value }, cache: updatedCache };
+    };
+  },
   validateImpl: (schema, definition, object, path) => {
     if (!Array.isArray(object))
       throw new Error(`Expected an array at: ${path.join('.')}`);
@@ -797,6 +1137,42 @@ export const AnyOfType: HashbrownTypeCtor<AnyOfType> = HashbrownTypeCtor({
       .map((opt: any) => opt.toTypeScript(new Set(pathSeen)))
       .join(' | ')})`;
   },
+  fromJsonAstImpl: (schema: any) => {
+    return (input) => {
+      let nextCache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache: nextCache };
+      }
+
+      let invalidCount = 0;
+      const options = schema[internal].definition.options;
+
+      for (const option of options) {
+        const output = resolveSchemaAtNode(
+          option,
+          input,
+          nextCache,
+          input.rootId,
+        );
+
+        nextCache = output.cache;
+
+        if (output.result.state === 'match') {
+          return output;
+        }
+
+        if (output.result.state === 'invalid') {
+          invalidCount += 1;
+        }
+      }
+
+      if (invalidCount === options.length) {
+        return { result: { state: 'invalid' }, cache: nextCache };
+      }
+
+      return { result: { state: 'no-match' }, cache: nextCache };
+    };
+  },
   validateImpl: (schema, definition, object, path) => {
     const { options } = definition;
 
@@ -835,6 +1211,13 @@ export function isAnyOfType(type: HashbrownType): type is AnyOfType {
 /**
  * @public
  */
+export function isNodeType(type: HashbrownType): type is NodeType {
+  return type[internal].definition.type === 'node';
+}
+
+/**
+ * @public
+ */
 export function anyOf<const Options extends readonly HashbrownType[]>(
   options: Options,
 ): SchemaForUnion<Options[number][internal]['result']> {
@@ -844,6 +1227,117 @@ export function anyOf<const Options extends readonly HashbrownType[]>(
     options,
     streaming: false,
   }) as SchemaForUnion<Options[number][internal]['result']>;
+}
+
+/**
+ * --------------------------------------
+ * --------------------------------------
+ *             Node Type
+ * --------------------------------------
+ * --------------------------------------
+ */
+
+type NodeResult<Inner extends HashbrownType> = {
+  complete: boolean;
+  partialValue: JsonResolvedValue;
+  value?: Inner[internal]['result'];
+};
+
+interface NodeTypeDefinition<Inner extends HashbrownType = HashbrownType>
+  extends HashbrownTypeDefinition {
+  type: 'node';
+  inner: Inner;
+}
+
+/**
+ * @internal
+ */
+export interface NodeTypeInternals<Inner extends HashbrownType = HashbrownType>
+  extends HashbrownTypeInternals<NodeResult<Inner>> {
+  definition: NodeTypeDefinition<Inner>;
+}
+
+/**
+ * @public
+ */
+export interface NodeType<Inner extends HashbrownType = HashbrownType>
+  extends HashbrownType<NodeResult<Inner>> {
+  [internal]: NodeTypeInternals<Inner>;
+}
+
+/**
+ * @public
+ */
+export const NodeType: HashbrownTypeCtor<NodeType> = HashbrownTypeCtor({
+  name: 'Node',
+  initializer: (inst, def) => {
+    HashbrownType.init(inst, def);
+  },
+  toJsonSchemaImpl: (schema: any) => {
+    return schema[internal].definition.inner.toJsonSchema();
+  },
+  toTypeScriptImpl: (schema: any, pathSeen: Set<HashbrownType>) => {
+    return schema[internal].definition.inner.toTypeScript(pathSeen);
+  },
+  fromJsonAstImpl: (schema: any) => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      const innerSchema = schema[internal].definition.inner;
+      const innerOutput = resolveSchemaAtNode(
+        innerSchema,
+        input,
+        cache,
+        node.id,
+      );
+
+      if (innerOutput.result.state === 'invalid') {
+        return { result: { state: 'invalid' }, cache: innerOutput.cache };
+      }
+
+      const value =
+        innerOutput.result.state === 'match'
+          ? innerOutput.result.value
+          : undefined;
+
+      return {
+        result: {
+          state: 'match',
+          value: {
+            complete: node.closed,
+            partialValue: node.resolvedValue,
+            value,
+          },
+        },
+        cache: innerOutput.cache,
+      };
+    };
+  },
+  validateImpl: (schema, definition, object, path) => {
+    definition.inner.validate(object, path);
+  },
+});
+
+/**
+ * @public
+ */
+export function node<Inner extends HashbrownType>(
+  inner: Inner,
+): NodeType<Inner> {
+  return new NodeType({
+    type: 'node',
+    description: inner[internal].definition.description,
+    streaming: true,
+    inner,
+  }) as any;
 }
 
 /**
@@ -901,6 +1395,29 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
     return schema[internal].definition.entries
       .map((e: any) => `"${e}"`)
       .join(' | ');
+  },
+  fromJsonAstImpl: (schema: any) => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'string') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (!node.closed || node.resolvedValue === undefined) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (!schema[internal].definition.entries.includes(node.resolvedValue)) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      return { result: { state: 'match', value: node.resolvedValue }, cache };
+    };
   },
   validateImpl: (schema, definition, object, path) => {
     if (typeof object !== 'string')
@@ -976,6 +1493,25 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor({
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ null`;
   },
+  fromJsonAstImpl: () => {
+    return (input) => {
+      const cache = ensureCache(input.cache);
+      if (input.error) {
+        return { result: { state: 'invalid' }, cache };
+      }
+
+      const node = getNode(input.nodes, input.rootId);
+      if (!node || node.type !== 'null') {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      if (!node.closed || node.resolvedValue === undefined) {
+        return { result: { state: 'no-match' }, cache };
+      }
+
+      return { result: { state: 'match', value: null }, cache };
+    };
+  },
   validateImpl: (schema, definition, object, path) => {
     if (object !== null)
       throw new Error(`Expected a null at: ${path.join('.')}`);
@@ -995,6 +1531,7 @@ export function isNullType(type: HashbrownType): type is NullType {
 export function nullish(): NullType {
   return new NullType({ type: 'null', description: '', streaming: false });
 }
+
 /**
  * --------------------------------------
  * --------------------------------------
