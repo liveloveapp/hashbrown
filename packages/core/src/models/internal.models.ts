@@ -19,6 +19,7 @@ export interface ToolCall {
   id: string;
   name: string;
   arguments: string;
+  argumentsResolved?: JsonValue;
   result?: PromiseSettledResult<any>;
   progress?: number;
   status: 'pending' | 'done';
@@ -30,6 +31,7 @@ export interface ToolCall {
 export interface AssistantMessage {
   role: 'assistant';
   content?: string;
+  contentResolved?: JsonValue;
   toolCallIds: string[];
 }
 

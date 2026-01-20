@@ -21,6 +21,8 @@ export default createActionGroup('dev', {
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];
+    responseSchema?: s.HashbrownType;
+    toolsByName?: Record<string, Chat.Internal.Tool>;
   }>(),
   sendMessage: props<{
     message: Chat.AnyMessage;

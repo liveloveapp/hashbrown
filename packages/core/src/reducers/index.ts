@@ -70,6 +70,18 @@ export const selectExhaustedRetries = select(
  */
 export const selectStreamingMessageState = (state: State) =>
   state.streamingMessage;
+export const selectRawStreamingMessage = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectRawStreamingMessage,
+);
+export const selectRawStreamingToolCalls = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectRawStreamingToolCalls,
+);
+export const selectStreamingMessageError = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectStreamingMessageError,
+);
 export const selectStreamingMessage = select(
   selectStreamingMessageState,
   fromStreamingMessage.selectStreamingMessage,

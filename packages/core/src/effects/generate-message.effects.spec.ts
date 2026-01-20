@@ -8,11 +8,15 @@ import {
   selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectRawStreamingMessage,
+  selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
+  selectStreamingMessageError,
   selectSystem,
   selectThreadId,
+  selectToolEntities,
   selectTransport,
   selectUiRequested,
 } from '../reducers';
@@ -67,11 +71,15 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectDebounce, 0],
     [selectRetries, 0],
     [selectApiTools, []],
+    [selectToolEntities, {}],
     [selectSystem, 'You are a test bot'],
     [selectEmulateStructuredOutput, false],
     [selectThreadId, undefined],
     [selectTransport, { kind: 'test-transport' }],
     [selectUiRequested, false],
+    [selectRawStreamingMessage, null],
+    [selectRawStreamingToolCalls, []],
+    [selectStreamingMessageError, undefined],
   ]);
 
   const values = new Map<SelectorKey, unknown>([
@@ -557,7 +565,18 @@ describe('generateMessage effect', () => {
       dispose,
     }));
 
-    const store = createTestStore();
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [
+          selectRawStreamingMessage,
+          {
+            role: 'assistant',
+            content: 'Hello',
+            toolCallIds: [],
+          },
+        ],
+      ]),
+    );
     const teardown = generateMessage(store);
 
     await store.trigger(
@@ -569,12 +588,26 @@ describe('generateMessage effect', () => {
     expect(store.actions.map((a) => a.type)).toEqual([
       apiActions.generateMessageStart.type,
       apiActions.generateMessageChunk.type,
+      apiActions.generateMessageFinish.type,
       apiActions.generateMessageSuccess.type,
       apiActions.assistantTurnFinalized.type,
     ]);
     expect(store.actions[1].payload).toMatchObject({
-      content: 'Hello',
-      role: 'assistant',
+      choices: [
+        {
+          delta: expect.objectContaining({
+            content: 'Hello',
+            role: 'assistant',
+          }),
+        },
+      ],
+    });
+    expect(store.actions[3].payload).toMatchObject({
+      message: {
+        role: 'assistant',
+        content: 'Hello',
+      },
+      toolCalls: [],
     });
     expect(dispose).toHaveBeenCalledTimes(1);
 
@@ -611,7 +644,17 @@ describe('generateMessage effect', () => {
     });
 
     const store = createTestStore(
-      new Map<SelectorKey, unknown>([[selectRetries, retries]]),
+      new Map<SelectorKey, unknown>([
+        [selectRetries, retries],
+        [
+          selectRawStreamingMessage,
+          {
+            role: 'assistant',
+            content: 'Hi after retry',
+            toolCallIds: [],
+          },
+        ],
+      ]),
     );
     const teardown = generateMessage(store);
 
@@ -626,14 +669,14 @@ describe('generateMessage effect', () => {
       apiActions.generateMessageError.type,
       apiActions.generateMessageStart.type,
       apiActions.generateMessageChunk.type,
+      apiActions.generateMessageFinish.type,
       apiActions.generateMessageSuccess.type,
       apiActions.assistantTurnFinalized.type,
       apiActions.generateMessageExhaustedRetries.type,
     ]);
-    const chunkPayload = (store.actions[2].payload ?? {}) as {
-      content?: string;
-    };
-    expect(chunkPayload.content).toBe('Hi after retry');
+    const chunkPayload = (store.actions[2].payload ??
+      {}) as Chat.Api.CompletionChunk;
+    expect(chunkPayload.choices[0]?.delta?.content).toBe('Hi after retry');
 
     teardown?.();
   });

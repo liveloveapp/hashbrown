@@ -9,7 +9,6 @@ import {
 import { Chat } from '../models';
 import { apiActions, devActions, internalActions } from '../actions';
 import {
-  toInternalToolCallsFromApi,
   toInternalToolCallsFromApiMessages,
   toInternalToolCallsFromView,
 } from '../models/internal_helpers';
@@ -37,16 +36,7 @@ export const reducer = createReducer(
     return adapter.addMany(initialState, toInternalToolCallsFromView(messages));
   }),
   on(apiActions.generateMessageSuccess, (state, action) => {
-    const message = action.payload;
-
-    if (!message.toolCalls) {
-      return state;
-    }
-
-    return adapter.addMany(
-      state,
-      message.toolCalls.flatMap(toInternalToolCallsFromApi),
-    );
+    return adapter.addMany(state, action.payload.toolCalls);
   }),
   on(apiActions.threadLoadSuccess, (state, action) => {
     const thread = action.payload.thread;
@@ -55,7 +45,10 @@ export const reducer = createReducer(
       return state;
     }
 
-    const toolCalls = toInternalToolCallsFromApiMessages(thread);
+    const toolCalls = toInternalToolCallsFromApiMessages(
+      thread,
+      action.payload.toolsByName ?? {},
+    );
 
     return adapter.addMany(initialState, toolCalls);
   }),
