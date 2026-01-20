@@ -15,8 +15,8 @@ import { Logger, NONE_LEVEL } from '../logger/logger';
 import * as s from '../schema/base';
 import {
   internal,
-  isArrayType,
   isAnyOfType,
+  isArrayType,
   isBooleanType,
   isEnumType,
   isLiteralType,
@@ -454,7 +454,9 @@ const _parseJSON = (
 
             // AnyOfs are never directly streaming
             const value = parseAny(key, false, false);
-            if (containerStack[containerStack.length - 1] === schemaFragmentForKey) {
+            if (
+              containerStack[containerStack.length - 1] === schemaFragmentForKey
+            ) {
               containerStack.pop();
             }
 
@@ -462,9 +464,8 @@ const _parseJSON = (
             logger.for('parseObj').debug(value);
             obj[key] = value;
           } else {
-            const currentKeyAllowsIncomplete = s.isStreaming(
-              schemaFragmentForKey,
-            );
+            const currentKeyAllowsIncomplete =
+              s.isStreaming(schemaFragmentForKey);
 
             logger
               .for('parseObj')

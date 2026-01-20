@@ -41,7 +41,9 @@ export function toJsonSchema(schema: HashbrownType) {
     }
     seen.add(n);
 
-    if (s.isObjectType(n)) {
+    if (s.isNodeType(n)) {
+      visit(n[internal].definition.inner, [...path, n]);
+    } else if (s.isObjectType(n)) {
       Object.values(n[internal].definition.shape).forEach((child) =>
         visit(child, [...path, n]),
       );
@@ -112,20 +114,22 @@ export function toJsonSchema(schema: HashbrownType) {
 
     let result: any;
 
-    if (s.isObjectType(n)) {
+    if (s.isNodeType(n)) {
+      result = printNode(n[internal].definition.inner, isRoot, inDef, pathSeen);
+    } else if (s.isObjectType(n)) {
       // Sort props so that streaming ones are at the end
       const shapeWithStreamingAtEnd = Object.entries(
         n[internal].definition.shape,
       ).sort((a, b) => {
-          if (!s.isStreaming(a[1]) && s.isStreaming(b[1])) {
-            return -1;
-          }
-          if (s.isStreaming(a[1]) && !s.isStreaming(b[1])) {
-            return 1;
-          }
+        if (!s.isStreaming(a[1]) && s.isStreaming(b[1])) {
+          return -1;
+        }
+        if (s.isStreaming(a[1]) && !s.isStreaming(b[1])) {
+          return 1;
+        }
 
-          return 0;
-        });
+        return 0;
+      });
 
       const props: Record<string, any> = {};
       for (const [k, child] of shapeWithStreamingAtEnd) {
