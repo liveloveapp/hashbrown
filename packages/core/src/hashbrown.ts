@@ -18,10 +18,12 @@ import {
   selectIsSavingThread,
   selectIsSending,
   selectLastAssistantMessage,
+  selectResponseSchema,
   selectSendingError,
   selectThreadId,
   selectThreadLoadError,
   selectThreadSaveError,
+  selectToolEntities,
   selectUnifiedError,
   selectViewMessages,
 } from './reducers';
@@ -222,8 +224,14 @@ export function fryHashbrown(init: {
   );
 
   function setMessages(messages: Chat.Message<any, Chat.AnyTool>[]) {
+    const responseSchema = state.read(selectResponseSchema);
+    const toolsByName = state.read(selectToolEntities);
     state.dispatch(
-      devActions.setMessages({ messages: messages as Chat.AnyMessage[] }),
+      devActions.setMessages({
+        messages: messages as Chat.AnyMessage[],
+        responseSchema,
+        toolsByName,
+      }),
     );
   }
 

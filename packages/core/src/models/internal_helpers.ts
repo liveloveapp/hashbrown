@@ -1,6 +1,29 @@
 import * as Chat from './public_api';
 import { s } from '../schema';
-import { StreamSchemaParser } from '../streaming-json-parser/streaming-json-parser';
+import { JsonValue, resolveWithSchema } from '../utils';
+
+function normalizeAssistantContent(
+  resolved: JsonValue | undefined,
+  fallback: string | undefined,
+): string | object | undefined {
+  if (resolved === undefined) {
+    return fallback;
+  }
+
+  if (resolved === null) {
+    return 'null';
+  }
+
+  if (typeof resolved === 'string') {
+    return resolved;
+  }
+
+  if (typeof resolved === 'number' || typeof resolved === 'boolean') {
+    return JSON.stringify(resolved);
+  }
+
+  return resolved;
+}
 
 /**
  * Converts a view message to an internal message.
@@ -23,10 +46,19 @@ export function toInternalMessagesFromView(
     }
 
     case 'assistant': {
+      const contentResolved =
+        message.content && typeof message.content === 'object'
+          ? (message.content as JsonValue)
+          : undefined;
+      const content =
+        typeof message.content === 'string'
+          ? (message.content as string | undefined)
+          : JSON.stringify(message.content);
       return [
         {
           role: 'assistant',
-          content: message.content as string | undefined,
+          content,
+          contentResolved,
           toolCallIds: message.toolCalls.map((toolCall) => toolCall.toolCallId),
         },
       ];
@@ -70,17 +102,10 @@ export function toViewMessagesFromInternal(
       ];
     }
     case 'assistant': {
-      const tater = outputSchema
-        ? new StreamSchemaParser(outputSchema)
-        : undefined;
-
-      let content = message.content;
-
-      if (typeof message.content === 'string' && tater) {
-        content = tater.parse(message.content, !streaming);
-      } else if (message.content && typeof message.content === 'object') {
-        content = message.content;
-      }
+      const content = normalizeAssistantContent(
+        message.contentResolved,
+        message.content ?? '',
+      );
 
       return [
         {
@@ -95,12 +120,16 @@ export function toViewMessagesFromInternal(
                 return [];
               }
 
-              let toolArgs = toolCall.arguments;
+              const resolvedArgs =
+                toolCall.argumentsResolved ??
+                (typeof toolCall.arguments === 'object'
+                  ? toolCall.arguments
+                  : undefined);
 
-              // Ollama will return POJOs
-              if (typeof toolCall.arguments === 'object') {
-                toolArgs = JSON.stringify(toolCall.arguments);
-              }
+              const toolArgsString =
+                typeof toolCall.arguments === 'string'
+                  ? toolCall.arguments
+                  : JSON.stringify(toolCall.arguments);
 
               switch (toolCall.status) {
                 case 'done': {
@@ -111,11 +140,8 @@ export function toViewMessagesFromInternal(
                       name: toolCall.name,
                       toolCallId,
                       args: s.isHashbrownType(tool.schema)
-                        ? new StreamSchemaParser(tool.schema).parse(
-                            toolArgs,
-                            !streaming,
-                          )
-                        : JSON.parse(toolArgs),
+                        ? (resolvedArgs ?? null)
+                        : (resolvedArgs ?? JSON.parse(toolArgsString)),
 
                       // The internal models don't use a union, since that tends to
                       // complicate reducer logic. This is necessary to uplift our
@@ -134,11 +160,8 @@ export function toViewMessagesFromInternal(
                       toolCallId,
                       progress: toolCall.progress,
                       args: s.isHashbrownType(tool.schema)
-                        ? new StreamSchemaParser(tool.schema).parse(
-                            toolArgs,
-                            !streaming,
-                          )
-                        : null,
+                        ? (resolvedArgs ?? null)
+                        : (resolvedArgs ?? null),
                     },
                   ];
                 }
@@ -181,6 +204,12 @@ export function toApiMessagesFromInternal(
     }
 
     case 'assistant': {
+      const content =
+        typeof message.content === 'string'
+          ? message.content
+          : message.contentResolved
+            ? JSON.stringify(message.contentResolved)
+            : '';
       const toolCallsForMessage = toolCalls.filter((toolCall) =>
         message.toolCallIds.includes(toolCall.id),
       );
@@ -203,14 +232,17 @@ export function toApiMessagesFromInternal(
       return [
         {
           role: 'assistant',
-          content: message.content,
+          content,
           toolCalls: toolCallsForMessage.map((toolCall, index) => ({
             id: toolCall.id,
             index,
             type: 'function',
             function: {
               name: toolCall.name,
-              arguments: toolCall.arguments,
+              arguments:
+                typeof toolCall.arguments === 'string'
+                  ? toolCall.arguments
+                  : JSON.stringify(toolCall.arguments),
             },
           })),
         },
@@ -270,11 +302,20 @@ export function toInternalToolCallsFromApi(
     return [];
   }
 
+  const rawArguments =
+    typeof toolCall.function.arguments === 'string'
+      ? toolCall.function.arguments
+      : JSON.stringify(toolCall.function.arguments);
+
   return [
     {
       id: toolCall.id,
       name: toolCall.function.name,
-      arguments: toolCall.function.arguments,
+      arguments: rawArguments,
+      argumentsResolved:
+        typeof toolCall.function.arguments === 'object'
+          ? toolCall.function.arguments
+          : undefined,
       status: 'pending',
     },
   ];
@@ -288,6 +329,7 @@ export function toInternalToolCallsFromApi(
  */
 export function toInternalToolCallsFromApiMessages(
   messages: Chat.Api.Message[] = [],
+  toolsByName: Record<string, Chat.Internal.Tool> = {},
 ): Chat.Internal.ToolCall[] {
   const calls: Record<string, Chat.Internal.ToolCall> = {};
 
@@ -299,10 +341,25 @@ export function toInternalToolCallsFromApiMessages(
           return;
         }
 
+        const rawArguments =
+          typeof toolCall.function.arguments === 'string'
+            ? toolCall.function.arguments
+            : JSON.stringify(toolCall.function.arguments);
+        const tool = toolsByName[toolCall.function.name];
+        const argumentsResolved =
+          tool && s.isHashbrownType(tool.schema)
+            ? resolveWithSchema(tool.schema, rawArguments)
+            : undefined;
+
         calls[toolCall.id] = {
           id: toolCall.id,
           name: toolCall.function.name,
-          arguments: toolCall.function.arguments,
+          arguments: rawArguments,
+          argumentsResolved:
+            argumentsResolved ??
+            (typeof toolCall.function.arguments === 'object'
+              ? toolCall.function.arguments
+              : undefined),
           status: 'pending',
         };
       });
@@ -348,6 +405,7 @@ export function toInternalToolCallsFromView(
             id: toolCall.toolCallId,
             name: toolCall.name,
             arguments: JSON.stringify(toolCall.args),
+            argumentsResolved: toolCall.args,
             status: 'done',
             result: toolCall.result,
           };
@@ -358,6 +416,7 @@ export function toInternalToolCallsFromView(
             name: toolCall.name,
             status: 'pending',
             arguments: JSON.stringify(toolCall.args),
+            argumentsResolved: toolCall.args,
           };
         }
       }
@@ -401,12 +460,15 @@ export function toInternalMessagesFromApi(
     (toolCall) => toolCall.function.name === 'output',
   );
 
-  const content = output ? output.function.arguments : message.content;
+  const rawContent = output ? output.function.arguments : message.content;
+  const content =
+    typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
 
   return [
     {
       role: 'assistant',
       content,
+      contentResolved: typeof rawContent === 'object' ? rawContent : undefined,
       toolCallIds:
         message.toolCalls
           ?.filter((toolCall) => toolCall.function.name !== 'output')
