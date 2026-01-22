@@ -244,6 +244,7 @@ export function toApiMessagesFromInternal(
                   ? toolCall.arguments
                   : JSON.stringify(toolCall.arguments),
             },
+            metadata: toolCall.metadata,
           })),
         },
         ...toolMessages,
@@ -317,6 +318,7 @@ export function toInternalToolCallsFromApi(
           ? toolCall.function.arguments
           : undefined,
       status: 'pending',
+      metadata: toolCall.metadata,
     },
   ];
 }
@@ -361,6 +363,7 @@ export function toInternalToolCallsFromApiMessages(
               ? toolCall.function.arguments
               : undefined),
           status: 'pending',
+          metadata: toolCall.metadata,
         };
       });
     }
@@ -376,6 +379,7 @@ export function toInternalToolCallsFromApiMessages(
         arguments: existing?.arguments ?? '',
         status: 'done',
         result: message.content,
+        metadata: existing?.metadata,
       };
     }
   });

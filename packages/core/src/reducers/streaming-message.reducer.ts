@@ -476,6 +476,7 @@ export const reducer = createReducer(
         name,
         arguments: '',
         status: 'pending',
+        metadata: toolCall.metadata,
       };
 
       const rawArguments = toolCall.function?.arguments;
@@ -524,6 +525,7 @@ export const reducer = createReducer(
           name,
           arguments: argumentsString,
           argumentsResolved,
+          metadata: toolCall.metadata ?? base.metadata,
         },
       ];
     });

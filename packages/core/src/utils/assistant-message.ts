@@ -14,6 +14,14 @@ export function mergeToolCalls(
     const index = merged.findIndex((call) => call.index === newCall.index);
     if (index !== -1) {
       const existing = merged[index];
+      const existingMetadata =
+        existing.metadata && typeof existing.metadata === 'object'
+          ? existing.metadata
+          : undefined;
+      const newMetadata =
+        newCall.metadata && typeof newCall.metadata === 'object'
+          ? newCall.metadata
+          : undefined;
       merged[index] = {
         ...existing,
         function: {
@@ -21,6 +29,9 @@ export function mergeToolCalls(
           arguments:
             existing.function.arguments + (newCall.function?.arguments ?? ''),
         },
+        metadata: newMetadata
+          ? { ...(existingMetadata ?? {}), ...newMetadata }
+          : existing.metadata,
       };
     } else {
       merged.push(newCall as Chat.Api.ToolCall);

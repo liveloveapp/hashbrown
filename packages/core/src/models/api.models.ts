@@ -22,6 +22,7 @@ export interface ToolCall {
     name: string;
     arguments: string;
   };
+  metadata?: Record<string, unknown>;
 }
 
 /**

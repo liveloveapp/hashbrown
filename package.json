@@ -46,7 +46,7 @@
     "@angular/platform-browser-dynamic": "^20.0.0",
     "@angular/platform-server": "^20.0.0",
     "@angular/router": "^20.0.0",
-    "@google/genai": "^1.29.1",
+    "@google/genai": "^1.38.0",
     "@jitl/quickjs-singlefile-browser-debug-asyncify": "0.31.0",
     "@ngrx/effects": "^20.0.0",
     "@ngrx/entity": "^20.0.0",
