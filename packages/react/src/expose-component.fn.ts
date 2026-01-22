@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { s, ɵtypes } from '@hashbrownai/core';
+import { s, ɵtypes, ɵui } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 
 /**
@@ -49,6 +49,10 @@ export interface ExposedComponent<T extends ComponentType<any>> {
    * The component to be exposed.
    */
   component: T;
+  /**
+   * Optional fallback component rendered while props are streaming.
+   */
+  fallback?: ComponentType<ɵui.ComponentFallbackProps>;
   /**
    * The name of the component.
    */

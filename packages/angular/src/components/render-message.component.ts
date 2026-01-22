@@ -35,9 +35,9 @@ import {
     <ng-template #nodeTemplateRef let-node="node">
       <ng-template #childrenTemplateRef>
         @if (isTextNode(node)) {
-          {{ node.$children }}
+          {{ getTextChildren(node) }}
         } @else {
-          @for (child of node.$children; track $index) {
+          @for (child of getChildrenArray(node); track $index) {
             <ng-container
               *ngTemplateOutlet="nodeTemplateRef; context: { node: child }"
             />
@@ -48,9 +48,9 @@ import {
       @if (node) {
         <ng-container
           *ngComponentOutlet="
-            getTagComponent(node.$tag);
-            inputs: node.$props;
-            content: getRootNodes(childrenTemplateRef)
+            getRenderableComponent(node);
+            inputs: getRenderableInputs(node);
+            content: getRenderableContent(node, childrenTemplateRef)
           "
         ></ng-container>
       }
@@ -105,8 +105,193 @@ export class RenderMessageComponent {
   /**
    * @internal
    */
+  nodeEntryWeakMap = new WeakMap<object, { tag: string; value: any } | null>();
+
+  /**
+   * @internal
+   */
+  renderableComponentWeakMap = new WeakMap<object, any>();
+
+  /**
+   * @internal
+   */
+  renderableInputsWeakMap = new WeakMap<object, any>();
+
+  /**
+   * @internal
+   */
+  renderableContentWeakMap = new WeakMap<
+    object,
+    WeakMap<TemplateRef<any>, any[][] | undefined>
+  >();
+
+  /**
+   * @internal
+   */
+  static readonly EMPTY_CHILDREN: UiChatSchemaComponent[] = [];
+
+  /**
+   * @internal
+   */
   getTagComponent(tagName: string) {
     return this.tagNameRegistry()?.[tagName]?.component ?? null;
+  }
+
+  /**
+   * @internal
+   */
+  getFallbackComponent(tagName: string) {
+    return this.tagNameRegistry()?.[tagName]?.fallback ?? null;
+  }
+
+  /**
+   * @internal
+   */
+  getNodeEntry(node: UiChatSchemaComponent) {
+    if (!node || typeof node !== 'object') {
+      return null;
+    }
+    if (this.nodeEntryWeakMap.has(node as object)) {
+      return this.nodeEntryWeakMap.get(node as object)!;
+    }
+    const entries = Object.entries(node ?? {});
+    if (entries.length === 0) {
+      this.nodeEntryWeakMap.set(node as object, null);
+      return null;
+    }
+    const [tag, value] = entries[0] as [string, any];
+    const entry = { tag, value };
+    this.nodeEntryWeakMap.set(node as object, entry);
+    return entry;
+  }
+
+  /**
+   * @internal
+   */
+  getNodeChildren(node: UiChatSchemaComponent) {
+    return this.getNodeEntry(node)?.value?.children;
+  }
+
+  /**
+   * @internal
+   */
+  getChildrenArray(node: UiChatSchemaComponent) {
+    const children = this.getNodeChildren(node);
+    return Array.isArray(children)
+      ? children
+      : RenderMessageComponent.EMPTY_CHILDREN;
+  }
+
+  /**
+   * @internal
+   */
+  getTextChildren(node: UiChatSchemaComponent) {
+    const children = this.getNodeChildren(node);
+    return typeof children === 'string' ? children : '';
+  }
+
+  /**
+   * @internal
+   */
+  getRenderableComponent(node: UiChatSchemaComponent) {
+    if (node && typeof node === 'object') {
+      if (this.renderableComponentWeakMap.has(node as object)) {
+        return this.renderableComponentWeakMap.get(node as object)!;
+      }
+    }
+    const entry = this.getNodeEntry(node);
+    if (!entry) {
+      return null;
+    }
+    const propsNode = entry.value?.props;
+    if (!propsNode) {
+      return null;
+    }
+    if (!propsNode.value) {
+      const fallback = this.getFallbackComponent(entry.tag);
+      if (node && typeof node === 'object') {
+        this.renderableComponentWeakMap.set(node as object, fallback);
+      }
+      return fallback;
+    }
+    const component = this.getTagComponent(entry.tag);
+    if (node && typeof node === 'object') {
+      this.renderableComponentWeakMap.set(node as object, component);
+    }
+    return component;
+  }
+
+  /**
+   * @internal
+   */
+  getRenderableInputs(node: UiChatSchemaComponent) {
+    if (node && typeof node === 'object') {
+      if (this.renderableInputsWeakMap.has(node as object)) {
+        return this.renderableInputsWeakMap.get(node as object)!;
+      }
+    }
+    const entry = this.getNodeEntry(node);
+    if (!entry) {
+      return null;
+    }
+    const propsNode = entry.value?.props;
+    if (!propsNode) {
+      return null;
+    }
+    if (!propsNode.value) {
+      const fallback = this.getFallbackComponent(entry.tag);
+      if (!fallback) {
+        return null;
+      }
+      const inputs = {
+        tag: entry.tag,
+        partialProps: propsNode.partialValue as Record<string, any>,
+      };
+      if (node && typeof node === 'object') {
+        this.renderableInputsWeakMap.set(node as object, inputs);
+      }
+      return inputs;
+    }
+    if (node && typeof node === 'object') {
+      this.renderableInputsWeakMap.set(node as object, propsNode.value);
+    }
+    return propsNode.value;
+  }
+
+  /**
+   * @internal
+   */
+  getRenderableContent(
+    node: UiChatSchemaComponent,
+    tpl: TemplateRef<any>,
+  ): any[][] | undefined {
+    if (node && typeof node === 'object') {
+      const existing = this.renderableContentWeakMap.get(node as object);
+      if (existing && existing.has(tpl)) {
+        return existing.get(tpl);
+      }
+    }
+    const entry = this.getNodeEntry(node);
+    if (!entry) {
+      return undefined;
+    }
+    const propsNode = entry.value?.props;
+    if (!propsNode?.value) {
+      return undefined;
+    }
+    if (!('children' in (entry.value ?? {}))) {
+      return undefined;
+    }
+    const content = this.getRootNodes(tpl);
+    if (node && typeof node === 'object') {
+      let cache = this.renderableContentWeakMap.get(node as object);
+      if (!cache) {
+        cache = new WeakMap<TemplateRef<any>, any[][] | undefined>();
+        this.renderableContentWeakMap.set(node as object, cache);
+      }
+      cache.set(tpl, content);
+    }
+    return content;
   }
 
   /**
@@ -140,6 +325,6 @@ export class RenderMessageComponent {
    * @internal
    */
   isTextNode(node: UiChatSchemaComponent) {
-    return typeof node.$children === 'string';
+    return typeof this.getNodeChildren(node) === 'string';
   }
 }

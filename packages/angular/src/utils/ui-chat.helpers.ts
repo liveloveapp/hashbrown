@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Type } from '@angular/core';
-import { Chat, s } from '@hashbrownai/core';
+import { Chat, s, ɵui } from '@hashbrownai/core';
 
 export const TAG_NAME_REGISTRY = Symbol('ɵtagNameRegistry');
 
@@ -11,6 +10,7 @@ export type TagNameRegistry = {
   [tagName: string]: {
     props: Record<string, s.HashbrownType>;
     component: Type<object>;
+    fallback?: Type<ɵui.ComponentFallbackProps>;
   };
 };
 
@@ -31,11 +31,7 @@ export const getTagNameRegistry = (
 /**
  * @public
  */
-export interface UiChatSchemaComponent {
-  $tag: string;
-  $children: string | UiChatSchemaComponent[];
-  $props: Record<string, any>;
-}
+export type UiChatSchemaComponent = ɵui.ComponentNode;
 
 /**
  * @public

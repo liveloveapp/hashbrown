@@ -60,9 +60,14 @@ describe('uiCompletionResource', () => {
     completionValue.set({
       ui: [
         {
-          $tag: 'TestComponent',
-          $props: { label: 'Hello' },
-          $children: [],
+          TestComponent: {
+            props: {
+              complete: true,
+              partialValue: { label: 'Hello' },
+              value: { label: 'Hello' },
+            },
+            children: [],
+          },
         },
       ],
     });
@@ -73,9 +78,14 @@ describe('uiCompletionResource', () => {
     expect(message?.content).toEqual({
       ui: [
         {
-          $tag: 'TestComponent',
-          $props: { label: 'Hello' },
-          $children: [],
+          TestComponent: {
+            props: {
+              complete: true,
+              partialValue: { label: 'Hello' },
+              value: { label: 'Hello' },
+            },
+            children: [],
+          },
         },
       ],
     });

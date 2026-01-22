@@ -926,16 +926,18 @@ describe('anyOf', () => {
     const payload = {
       ui: [
         {
-          $tag: 'chart',
-          $props: {
-            chart: {
-              categories: ['Dessert', 'Drink'],
+          chart: {
+            props: {
+              chart: {
+                categories: ['Dessert', 'Drink'],
+              },
             },
           },
         },
         {
-          $tag: 'ol',
-          $props: { items: ['Point A', 'Point B'] },
+          ol: {
+            props: { items: ['Point A', 'Point B'] },
+          },
         },
       ],
     };
@@ -944,7 +946,11 @@ describe('anyOf', () => {
       parseCompleteResult(schema, JSON.stringify(payload)),
     ) as s.Infer<typeof schema>;
 
-    expect(result.ui.map((entry) => entry.$tag)).toEqual(['chart', 'ol']);
+    expect(
+      result.ui.map(
+        (entry) => Object.keys(entry as Record<string, unknown>)[0],
+      ),
+    ).toEqual(['chart', 'ol']);
   });
 
   test('streaming array anyOf parses successive charts and paragraphs with nullish filters', () => {
@@ -1024,77 +1030,85 @@ describe('anyOf', () => {
     const payload = {
       ui: [
         {
-          $tag: 'h',
-          $props: {
-            level: 2,
-            text: "Taco Bell's top 10 calorie-heavy menu choices",
-          },
-        },
-        {
-          $tag: 'p',
-          $props: {
-            text: 'Taco Bell\'s menu stretches from lighter power bowls to indulgent wraps. Below are the ten highest-calorie standard servings, grounded in the dataset. Many cluster in the **"Other"** category, signifying main entrees like burritos and salads rather than sides. Use this as a starting map before exploring deeper comparisons on [/taco-bell-nutrition-profiles].',
-          },
-        },
-        {
-          $tag: 'chart',
-          $props: {
-            chart: {
-              prompt: "Visualize Taco Bell's 10 highest calorie items",
-              searchTerm: 'taco bell',
-              maxCalories: null,
-              minCalories: null,
-              minProtein: null,
-              maxSodium: null,
-              limit: 10,
-              sortBy: 'calories',
-              sortDirection: 'desc',
-              restaurants: ['Taco Bell'],
-              menuItems: [],
-              categories: [],
+          h: {
+            props: {
+              level: 2,
+              text: "Taco Bell's top 10 calorie-heavy menu choices",
             },
           },
         },
         {
-          $tag: 'p',
-          $props: {
-            text: "The three **XXL Grilled Stuft Burritos** - beef (**880 calories**, **42 g fat**, **2020 mg sodium**), chicken (**830 calories**, **35 g fat**, **1940 mg sodium**), and steak (**820 calories**, **36 g fat**, **2020 mg sodium**) - headline Taco Bell's most energy-dense picks. Each comes in a generous handheld serving placing them atop this heat map. The [Fiesta Taco Salad - Beef](/fiesta-taco-salad-beef) and [Spicy Triple Double Crunchwrap](/crunchwrap-triple) follow close behind around 780 calories per serving.",
-          },
-        },
-        {
-          $tag: 'chart',
-          $props: {
-            chart: {
-              prompt:
-                "Compare sodium vs. protein for Taco Bell's high-calorie entrees",
-              searchTerm: 'taco bell',
-              maxCalories: null,
-              minCalories: null,
-              minProtein: null,
-              maxSodium: null,
-              limit: 10,
-              sortBy: 'protein',
-              sortDirection: 'desc',
-              restaurants: ['Taco Bell'],
-              menuItems: [],
-              categories: [],
+          p: {
+            props: {
+              text: 'Taco Bell\'s menu stretches from lighter power bowls to indulgent wraps. Below are the ten highest-calorie standard servings, grounded in the dataset. Many cluster in the **"Other"** category, signifying main entrees like burritos and salads rather than sides. Use this as a starting map before exploring deeper comparisons on [/taco-bell-nutrition-profiles].',
             },
           },
         },
         {
-          $tag: 'p',
-          $props: {
-            text: "Looking at sodium alongside protein reveals trade-offs: the **Cantina Power Burrito - Chicken** (760 calories, **32 g protein**) and **- Steak** (780 calories, **33 g protein**) provide the densest protein among these heavy items, but also exceed **1900 mg sodium** per wrap. In contrast, the **Nachos BellGrande** (760 calories, **18 g protein**) sits lower in protein yet manages **1100 mg sodium**, a relative drop. These differences define Taco Bell's balance between salty satisfaction and protein payoff, as shown on [/sodium-vs-protein-wraps].",
+          chart: {
+            props: {
+              chart: {
+                prompt: "Visualize Taco Bell's 10 highest calorie items",
+                searchTerm: 'taco bell',
+                maxCalories: null,
+                minCalories: null,
+                minProtein: null,
+                maxSodium: null,
+                limit: 10,
+                sortBy: 'calories',
+                sortDirection: 'desc',
+                restaurants: ['Taco Bell'],
+                menuItems: [],
+                categories: [],
+              },
+            },
           },
         },
         {
-          $tag: 'h',
-          $props: { level: 3, text: 'Takeaway' },
+          p: {
+            props: {
+              text: "The three **XXL Grilled Stuft Burritos** - beef (**880 calories**, **42 g fat**, **2020 mg sodium**), chicken (**830 calories**, **35 g fat**, **1940 mg sodium**), and steak (**820 calories**, **36 g fat**, **2020 mg sodium**) - headline Taco Bell's most energy-dense picks. Each comes in a generous handheld serving placing them atop this heat map. The [Fiesta Taco Salad - Beef](/fiesta-taco-salad-beef) and [Spicy Triple Double Crunchwrap](/crunchwrap-triple) follow close behind around 780 calories per serving.",
+            },
+          },
         },
         {
-          $tag: 'p',
-          $props: {
-            text: "Among Taco Bell's most caloric picks, burritos rule - especially the XXL Grilled Stuft line. For diners prioritizing protein density, the **Cantina Power** wraps win, though their sodium remains high. Keep these contrasts in mind when exploring moderate options or crafting a lower-sodium Taco Bell order via [/taco-bell-sodium-guide].",
+          chart: {
+            props: {
+              chart: {
+                prompt:
+                  "Compare sodium vs. protein for Taco Bell's high-calorie entrees",
+                searchTerm: 'taco bell',
+                maxCalories: null,
+                minCalories: null,
+                minProtein: null,
+                maxSodium: null,
+                limit: 10,
+                sortBy: 'protein',
+                sortDirection: 'desc',
+                restaurants: ['Taco Bell'],
+                menuItems: [],
+                categories: [],
+              },
+            },
+          },
+        },
+        {
+          p: {
+            props: {
+              text: "Looking at sodium alongside protein reveals trade-offs: the **Cantina Power Burrito - Chicken** (760 calories, **32 g protein**) and **- Steak** (780 calories, **33 g protein**) provide the densest protein among these heavy items, but also exceed **1900 mg sodium** per wrap. In contrast, the **Nachos BellGrande** (760 calories, **18 g protein**) sits lower in protein yet manages **1100 mg sodium**, a relative drop. These differences define Taco Bell's balance between salty satisfaction and protein payoff, as shown on [/sodium-vs-protein-wraps].",
+            },
+          },
+        },
+        {
+          h: {
+            props: { level: 3, text: 'Takeaway' },
+          },
+        },
+        {
+          p: {
+            props: {
+              text: "Among Taco Bell's most caloric picks, burritos rule - especially the XXL Grilled Stuft line. For diners prioritizing protein density, the **Cantina Power** wraps win, though their sodium remains high. Keep these contrasts in mind when exploring moderate options or crafting a lower-sodium Taco Bell order via [/taco-bell-sodium-guide].",
+            },
           },
         },
       ],
@@ -1104,15 +1118,10 @@ describe('anyOf', () => {
       parseCompleteResult(schema, JSON.stringify(payload)),
     ) as s.Infer<typeof schema>;
 
-    expect(result.ui.map((entry) => entry.$tag)).toEqual([
-      'h',
-      'p',
-      'chart',
-      'p',
-      'chart',
-      'p',
-      'h',
-      'p',
-    ]);
+    expect(
+      result.ui.map(
+        (entry) => Object.keys(entry as Record<string, unknown>)[0],
+      ),
+    ).toEqual(['h', 'p', 'chart', 'p', 'chart', 'p', 'h', 'p']);
   });
 });

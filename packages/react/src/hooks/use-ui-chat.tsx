@@ -23,14 +23,7 @@ import { useStructuredChat } from './use-structured-chat';
  *
  * @public
  */
-export interface UiChatSchemaComponent {
-  /** The name of the component to render */
-  $tag: string;
-  /** Child components to render inside this component */
-  $children: string | UiChatSchemaComponent[];
-  /** Properties of the component */
-  $props: Record<string, any>;
-}
+export type UiChatSchemaComponent = ɵui.ComponentNode;
 
 /**
  * The schema for UI components in the chat.
@@ -178,14 +171,20 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 ) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  const [flattenedComponents] = useState(
-    ɵui.flattenComponents(initialComponents),
+  const flattenedComponents = useMemo(
+    () =>
+      ɵui.flattenComponents(
+        components as unknown as ɵui.ExposedComponentDescriptor[],
+      ) as Map<string, ExposedComponent<any>>,
+    [components],
   );
   const ui = useMemo(() => {
     return s.object('UI', {
       ui: s.streaming.array(
         'List of elements',
-        ɵui.createComponentSchema(components),
+        ɵui.createComponentSchema(
+          components as unknown as ɵui.ExposedComponentDescriptor[],
+        ),
       ),
     });
   }, [components]);
@@ -217,26 +216,62 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
         return nodes;
       }
 
-      const elements = nodes.map((element, index) => {
+      const elements = nodes.reduce<ReactElement[]>((acc, element, index) => {
         const key = `${parentKey}_${index}`;
+        const entries = Object.entries(element ?? {});
+        if (entries.length === 0) {
+          return acc;
+        }
+        const [tagName, node] = entries[0] as [
+          string,
+          {
+              props?: {
+                complete: boolean;
+                partialValue: any;
+                value?: Record<string, any>;
+              };
+              children?: UiChatSchemaComponent[] | string;
+            },
+          ];
 
-        const { $tag, $children, $props } = element;
-        const componentType = flattenedComponents.get($tag)?.component;
-
-        if ($tag && componentType) {
-          const children: ReactNode[] | string | null = element.$children
-            ? buildContent($children, key)
-            : null;
-
-          return createElement(componentType, {
-            ...$props,
-            children,
-            key,
-          });
+        const component = flattenedComponents.get(tagName);
+        if (!component) {
+          throw new Error(`Unknown element type. ${tagName}`);
         }
 
-        throw new Error(`Unknown element type. ${$tag}`);
-      });
+        const propsNode = node?.props;
+        if (!propsNode) {
+          return acc;
+        }
+
+        if (!propsNode.value) {
+          if (!component.fallback) {
+            return acc;
+          }
+
+          acc.push(
+            createElement(component.fallback, {
+              tag: tagName,
+              partialProps: propsNode.partialValue as Record<string, any>,
+              key,
+            }),
+          );
+          return acc;
+        }
+
+        const children: ReactNode[] | string | null = node?.children
+          ? buildContent(node.children, key)
+          : null;
+
+        acc.push(
+          createElement(component.component, {
+            ...propsNode.value,
+            children,
+            key,
+          }),
+        );
+        return acc;
+      }, []);
 
       return elements;
     },

@@ -18,7 +18,13 @@ export {
 } from './runtime';
 export * from './schema';
 export * as ɵui from './ui';
-export type { Component, ComponentPropSchema } from './ui/expose-component';
+export type {
+  Component,
+  ComponentFallbackProps,
+  ComponentNode,
+  ComponentPropSchema,
+  ComponentTree,
+} from './ui/expose-component';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { mergeMessagesForThread } from './utils/threading';
 export type {

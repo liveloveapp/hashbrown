@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { HashbrownType } from '../schema/base';
+import { JsonValue } from '../skillet/parser/json-parser';
 import { ExposedComponent } from '../ui';
 import type {
   HBTree,
@@ -273,11 +274,12 @@ function ensureSerializable(value: unknown): true | string {
   return 'class-instance';
 }
 
-// Minimal local representation to keep legacy lowering typings intact
+// Minimal local representation for prompt example injection.
 type ComponentTree = {
-  $tag: string;
-  $children: ComponentTree[];
-  $props: Record<string, unknown>;
+  [tagName: string]: {
+    props: Record<string, JsonValue>;
+    children?: ComponentTree[] | string;
+  };
 };
 
 /** Lower a UiAst element into an HBNode, collecting diagnostics functionally. */
@@ -290,14 +292,14 @@ function lowerToHB(
   const foldAttrs = (
     entries: Array<[string, { value: string; start: number; end: number }]>,
   ): {
-    props: Record<string, unknown>;
+    props: Record<string, JsonValue>;
     diagnostics: PromptDiagnostic[];
   } => {
     return entries.reduce(
       (acc, [k, span]) => {
         const raw = span.value;
         if (raw.startsWith(PLACEHOLDER_PREFIX)) {
-          const val = exprsByToken.get(raw);
+          const val = exprsByToken.get(raw) as JsonValue;
           const ser = ensureSerializable(val);
           return ser !== true
             ? {
@@ -329,12 +331,12 @@ function lowerToHB(
                   ? Number(raw)
                   : raw;
         return {
-          props: { ...acc.props, [k]: value },
+          props: { ...acc.props, [k]: value as JsonValue },
           diagnostics: acc.diagnostics,
         };
       },
       {
-        props: {} as Record<string, unknown>,
+        props: {} as Record<string, JsonValue>,
         diagnostics: [] as PromptDiagnostic[],
       },
     );
@@ -348,17 +350,22 @@ function lowerToHB(
   const children = childrenLowered
     .map((r) => r.hb)
     .filter((h): h is ComponentTree => h != null);
-  const hb: ComponentTree = children.length
-    ? { $tag: node.tag, $children: children, $props: props }
-    : { $tag: node.tag, $children: [], $props: props };
+  const hb: ComponentTree = {
+    [node.tag]: {
+      props,
+      ...(children.length ? { children } : {}),
+    },
+  };
   return { hb, diagnostics: attrDiags.concat(childDiags) };
 }
 
 // Internal flexible HB node to support string children for 'text' components
 type FlexHBNode = {
-  $tag: string;
-  $children: FlexHBNode[] | string;
-  $props: Record<string, unknown>;
+  [tagName: string]: {
+    props: Record<string, JsonValue>;
+    children?: FlexHBNode[] | string;
+    $elementChildren?: FlexHBNode[];
+  };
 };
 
 /**
@@ -375,13 +382,17 @@ function lowerWithPolicy(
 
   const foldAttrs = (
     entries: Array<[string, { value: string; start: number; end: number }]>,
-  ): Record<string, unknown> => {
+  ): Record<string, JsonValue> => {
     return entries.reduce(
       (acc, [k, span]) => {
         const raw = span.value;
         if (raw.startsWith(PLACEHOLDER_PREFIX)) {
-          const val = exprsByToken.get(raw);
-          return { ...acc, [k]: val };
+          const val = exprsByToken.get(raw) as JsonValue;
+          const ser = ensureSerializable(val);
+          return {
+            ...acc,
+            [k]: ser === true ? val : null,
+          };
         }
         const value =
           raw === 'true'
@@ -393,9 +404,9 @@ function lowerWithPolicy(
                 : /^-?\d+(?:\.\d+)?$/.test(raw)
                   ? Number(raw)
                   : raw;
-        return { ...acc, [k]: value };
+        return { ...acc, [k]: value as JsonValue };
       },
-      {} as Record<string, unknown>,
+      {} as Record<string, JsonValue>,
     );
   };
 
@@ -415,10 +426,11 @@ function lowerWithPolicy(
       .filter((h): h is FlexHBNode => h != null);
     // Include a meta property for validation; stripped out for injection later
     return {
-      $tag: node.tag,
-      $children: content,
-      $elementChildren: elementChildren,
-      $props: props,
+      [node.tag]: {
+        props,
+        children: content,
+        $elementChildren: elementChildren,
+      },
     } as unknown as FlexHBNode;
   }
 
@@ -430,9 +442,10 @@ function lowerWithPolicy(
     .filter((h): h is FlexHBNode => h != null);
 
   return {
-    $tag: node.tag,
-    $children: loweredChildren,
-    $props: props,
+    [node.tag]: {
+      props,
+      ...(loweredChildren.length ? { children: loweredChildren } : {}),
+    },
   } as FlexHBNode;
 }
 
@@ -478,14 +491,22 @@ function validateExamples(
     }
   });
 
+  const getNodeEntry = (node: any) => {
+    if (!node || typeof node !== 'object') return null;
+    const entries = Object.entries(node);
+    if (entries.length === 0) return null;
+    const [tag, value] = entries[0];
+    return { tag, value: value as any };
+  };
+
   const visit = (node: any, blk: UiBlock): PromptDiagnostic[] => {
-    const comp = byName.get(node.$tag);
+    const entry = getNodeEntry(node);
+    if (!entry) return [];
+    const { tag, value } = entry;
+    const comp = byName.get(tag);
     if (!comp) {
       const suggestions = allNames
-        .map((n) => ({
-          n,
-          d: levenshtein(n.toLowerCase(), node.$tag.toLowerCase()),
-        }))
+        .map((n) => ({ n, d: levenshtein(n.toLowerCase(), tag.toLowerCase()) }))
         .sort((a, b) => a.d - b.d)
         .slice(0, 1)
         .map((x) => x.n);
@@ -494,7 +515,7 @@ function validateExamples(
           code: 'E1001',
           severity: 'error',
           message:
-            `<${node.$tag}> not found.` +
+            `<${tag}> not found.` +
             (suggestions.length ? ` Did you mean <${suggestions[0]}>?` : ''),
           start: blk.innerStart,
           end: blk.innerEnd,
@@ -508,14 +529,14 @@ function validateExamples(
     if (comp.props && typeof comp.props === 'object') {
       const definedProps = new Set(Object.keys(comp.props));
 
-      const nodeProps: Record<string, unknown> = (node as any).$props || {};
+      const nodeProps: Record<string, unknown> = value?.props || {};
 
       definedProps.forEach((key) => {
         if (!(key in nodeProps)) {
           diags.push({
             code: 'E1102',
             severity: 'error',
-            message: `<${node.$tag}> missing required prop "${key}".`,
+            message: `<${tag}> missing required prop "${key}".`,
             start: blk.innerStart,
             end: blk.innerEnd,
             ...toLineCol(blk.innerStart),
@@ -529,7 +550,7 @@ function validateExamples(
           diags.push({
             code: 'W2001',
             severity: 'warning',
-            message: `Prop "${k}" is not defined on <${node.$tag}>.`,
+            message: `Prop "${k}" is not defined on <${tag}>.`,
             start: blk.innerStart,
             end: blk.innerEnd,
             ...toLineCol(blk.innerStart),
@@ -545,7 +566,7 @@ function validateExamples(
             diags.push({
               code: 'E1203',
               severity: 'error',
-              message: `Prop "${k}" on <${node.$tag}> failed schema validation: \n\n${(e as Error).message}`,
+              message: `Prop "${k}" on <${tag}> failed schema validation: \n\n${(e as Error).message}`,
               start: blk.innerStart,
               end: blk.innerEnd,
               ...toLineCol(blk.innerStart),
@@ -557,18 +578,21 @@ function validateExamples(
     }
 
     const policy = comp.children;
-    const arrayChildren = Array.isArray(node.$children) ? node.$children : [];
+    const arrayChildren = Array.isArray(value?.children)
+      ? (value?.children as any[])
+      : [];
 
     if (policy === 'text') {
       // Text-only components: any element child is not allowed
-      const hasElementChildren = Array.isArray((node as any).$elementChildren)
-        ? ((node as any).$elementChildren as any[]).length > 0
-        : arrayChildren.length > 0;
+      const elementChildren = Array.isArray(value?.$elementChildren)
+        ? (value?.$elementChildren as any[])
+        : arrayChildren;
+      const hasElementChildren = elementChildren.length > 0;
       if (hasElementChildren) {
         diags.push({
           code: 'W2101',
           severity: 'warning',
-          message: `<${node.$tag}> expects text children, element found.`,
+          message: `<${tag}> expects text children, element found.`,
           start: blk.innerStart,
           end: blk.innerEnd,
           ...toLineCol(blk.innerStart),
@@ -583,7 +607,7 @@ function validateExamples(
       diags.push({
         code: 'W2101',
         severity: 'warning',
-        message: `<${node.$tag}> does not accept children.`,
+        message: `<${tag}> does not accept children.`,
         start: blk.innerStart,
         end: blk.innerEnd,
         ...toLineCol(blk.innerStart),
@@ -592,11 +616,13 @@ function validateExamples(
     } else if (Array.isArray(policy) && arrayChildren.length) {
       const allowed = new Set(policy.map((p: any) => p.name));
       arrayChildren.forEach((ch: any) => {
-        if (!allowed.has(ch.$tag)) {
+        const childEntry = getNodeEntry(ch);
+        const childTag = childEntry?.tag ?? '';
+        if (!allowed.has(childTag)) {
           diags.push({
             code: 'W2101',
             severity: 'warning',
-            message: `<${node.$tag}> children restricted; "${ch.$tag}" not allowed.`,
+            message: `<${tag}> children restricted; "${childTag}" not allowed.`,
             start: blk.innerStart,
             end: blk.innerEnd,
             ...toLineCol(blk.innerStart),
@@ -720,10 +746,7 @@ export function prompt(
   let diagnostics: PromptDiagnostic[] =
     parseDiagnostics.concat(lowerDiagnostics);
 
-  function compile(
-    components: readonly any[],
-    _schema: HashbrownType,
-  ): string {
+  function compile(components: readonly any[], _schema: HashbrownType): string {
     // Build component lookup by name and selector for policy-aware lowering
     const byName = new Map<string, ExposedComponent<any>>();
     components.forEach((c) => {
@@ -742,18 +765,21 @@ export function prompt(
     // Prepare a cleaned version for injection without meta helper properties
     const cleanForInjection = (nodes: FlexHBNode[]): FlexHBNode[] =>
       nodes.map((n) => {
-        const { $tag, $children, ...rest } = n as any;
-        const cleaned: any = { $tag };
-        if (Array.isArray($children)) {
-          cleaned.$children = cleanForInjection($children as FlexHBNode[]);
-        } else {
-          cleaned.$children = $children;
+        const entries = Object.entries(n as Record<string, any>);
+        if (entries.length === 0) {
+          return n;
         }
-        // Copy non-internal props (ignore $elementChildren)
-        Object.entries(rest).forEach(([k, v]) => {
-          if (k !== '$elementChildren') cleaned[k] = v;
-        });
-        return cleaned as FlexHBNode;
+        const [tag, value] = entries[0];
+        const cleanedValue: any = { ...(value ?? {}) };
+        if (Array.isArray(cleanedValue.children)) {
+          cleanedValue.children = cleanForInjection(
+            cleanedValue.children as FlexHBNode[],
+          );
+        }
+        if ('$elementChildren' in cleanedValue) {
+          delete cleanedValue.$elementChildren;
+        }
+        return { [tag]: cleanedValue } as FlexHBNode;
       });
 
     const validation = validateExamples(

@@ -6,35 +6,36 @@ exports[`full integration with streaming 1`] = `
 
 [
   {
-    "$tag": "Markdown",
-    "$children": [],
-    "$props": {
-      "data": {
-        "text": "hi"
+    "Markdown": {
+      "props": {
+        "data": {
+          "text": "hi"
+        }
       }
     }
   },
   {
-    "$tag": "CardList",
-    "$children": [
-      {
-        "$tag": "LightCard",
-        "$children": [],
-        "$props": {
-          "title": "Light 1",
-          "id": "uuid123"
+    "CardList": {
+      "props": {},
+      "children": [
+        {
+          "LightCard": {
+            "props": {
+              "title": "Light 1",
+              "id": "uuid123"
+            }
+          }
+        },
+        {
+          "LightCard": {
+            "props": {
+              "title": "Light 2",
+              "id": "uuid456"
+            }
+          }
         }
-      },
-      {
-        "$tag": "LightCard",
-        "$children": [],
-        "$props": {
-          "title": "Light 2",
-          "id": "uuid456"
-        }
-      }
-    ],
-    "$props": {}
+      ]
+    }
   }
 ]
 
@@ -49,14 +50,14 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
 
 [
   {
-    "$tag": "X",
-    "$children": [],
-    "$props": {}
+    "X": {
+      "props": {}
+    }
   },
   {
-    "$tag": "Y",
-    "$children": [],
-    "$props": {}
+    "Y": {
+      "props": {}
+    }
   }
 ]
 
@@ -66,9 +67,9 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
 
 [
   {
-    "$tag": "Z",
-    "$children": [],
-    "$props": {}
+    "Z": {
+      "props": {}
+    }
   }
 ]
 
