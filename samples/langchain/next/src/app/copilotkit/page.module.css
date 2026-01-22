@@ -1,0 +1,34 @@
+.main {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ui {
+  height: 100%;
+  flex: 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.chat {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+@media (min-width: 768px) {
+  .main {
+    flex-direction: row;
+  }
+
+  .chat {
+    width: 420px;
+    flex-shrink: 0;
+  }
+}

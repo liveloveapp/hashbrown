@@ -1,0 +1,85 @@
+{
+  "name": "langchain-angular",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "samples/langchain/angular/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/samples/langchain/angular",
+        "browser": "samples/langchain/angular/src/main.ts",
+        "polyfills": ["zone.js"],
+        "tsConfig": "samples/langchain/angular/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "samples/langchain/angular/public"
+          }
+        ],
+        "styles": ["samples/langchain/angular/src/styles.scss"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "options": {
+        "proxyConfig": "samples/langchain/angular/proxy.conf.json"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "langchain-angular:build:production"
+        },
+        "development": {
+          "buildTarget": "langchain-angular:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular/build:extract-i18n",
+      "options": {
+        "buildTarget": "langchain-angular:build"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "langchain-angular:build",
+        "staticFilePath": "dist/samples/langchain/angular/browser",
+        "spa": true
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "node_version": "22",
+  "graphs": {
+    "plan": "./src/graphs/plan-graph.ts:graph"
+  },
+  "env": "../../../.env",
+  "dependencies": ["."],
+  "image_distro": "wolfi"
+}
