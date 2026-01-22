@@ -34,6 +34,8 @@ export {
   ObjectType,
   string,
   StringType,
+  type StringFormat,
+  type StringConstraintsInput,
   type FromJsonAstCache,
   type FromJsonAstOutput,
   type FromJsonAstResult,

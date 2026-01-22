@@ -42,6 +42,32 @@ test('object: properties, required, additionalProperties=false', () => {
   expect(json).toMatchSnapshot();
 });
 
+test('string: pattern and format serialize', () => {
+  const schema = s.string('Handle', {
+    pattern: /^@[a-z0-9_]+$/,
+    format: 'email',
+  });
+  const json = toJsonSchema(schema);
+  expect(json).toMatchSnapshot();
+});
+
+test('number: numeric constraints serialize', () => {
+  const schema = s.number('Score', {
+    minimum: 0,
+    maximum: 10,
+    exclusiveMaximum: 9.5,
+    multipleOf: 0.5,
+  });
+  const json = toJsonSchema(schema);
+  expect(json).toMatchSnapshot();
+});
+
+test('array: minItems and maxItems serialize', () => {
+  const schema = s.array('Tags', s.string('Tag'), { minItems: 1, maxItems: 3 });
+  const json = toJsonSchema(schema);
+  expect(json).toMatchSnapshot();
+});
+
 test('defs: repeated sub-schema is extracted into $defs and referenced', () => {
   const shared = s.object('Shared Item', { x: s.number('x') });
   const schema = s.object('Root', { a: shared, b: shared });
