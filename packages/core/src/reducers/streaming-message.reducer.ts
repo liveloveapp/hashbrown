@@ -193,31 +193,43 @@ export const reducer = createReducer(
           index,
           toolCallDelta.function?.name,
         );
-        const deltaArgs = toolCallDelta.function?.arguments ?? '';
+        const deltaArgs = toolCallDelta.function?.arguments;
+        const isStringArgs = typeof deltaArgs === 'string';
+        const hasArgs =
+          deltaArgs !== undefined &&
+          deltaArgs !== null &&
+          (!isStringArgs || deltaArgs.length > 0);
 
-        if (!deltaArgs) {
+        if (!hasArgs) {
           continue;
         }
 
         if (emulateStructuredOutput && responseSchema && name === 'output') {
-          const nextOutputState = parseChunk(
-            ensureParserState(outputParserState),
-            deltaArgs,
-          );
-          outputParserState = nextOutputState;
-          const output = resolveSchemaValue(
-            responseSchema,
-            nextOutputState,
-            outputCache,
-          );
-          outputCache = output.cache;
-          if (output.hasError && !error) {
-            error = new Error('Invalid structured output');
-          }
-          if (output.value !== undefined) {
+          if (isStringArgs) {
+            const nextOutputState = parseChunk(
+              ensureParserState(outputParserState),
+              deltaArgs,
+            );
+            outputParserState = nextOutputState;
+            const output = resolveSchemaValue(
+              responseSchema,
+              nextOutputState,
+              outputCache,
+            );
+            outputCache = output.cache;
+            if (output.hasError && !error) {
+              error = new Error('Invalid structured output');
+            }
+            if (output.value !== undefined) {
+              message = {
+                ...message,
+                contentResolved: output.value,
+              };
+            }
+          } else {
             message = {
               ...message,
-              contentResolved: output.value,
+              contentResolved: deltaArgs as JsonValue,
             };
           }
           continue;
@@ -232,42 +244,46 @@ export const reducer = createReducer(
           continue;
         }
 
-        toolParserStateByIndex = updateToolParserState(
-          toolParserStateByIndex,
-          index,
-          deltaArgs,
-        );
-
-        const toolState = toolParserStateByIndex[index];
-        if (!toolState) {
-          continue;
-        }
-
-        if (s.isHashbrownType(tool.schema)) {
-          const resolved = resolveSchemaValue(
-            tool.schema,
-            toolState,
-            toolCacheByIndex[index],
-          );
-          toolCacheByIndex = updateCache(
-            toolCacheByIndex,
+        if (isStringArgs) {
+          toolParserStateByIndex = updateToolParserState(
+            toolParserStateByIndex,
             index,
-            resolved.cache,
+            deltaArgs,
           );
-          if (resolved.value !== undefined) {
-            resolvedArgsByIndex.set(index, resolved.value);
+
+          const toolState = toolParserStateByIndex[index];
+          if (!toolState) {
+            continue;
           }
 
-          if (resolved.hasError && !error) {
+          if (s.isHashbrownType(tool.schema)) {
+            const resolved = resolveSchemaValue(
+              tool.schema,
+              toolState,
+              toolCacheByIndex[index],
+            );
+            toolCacheByIndex = updateCache(
+              toolCacheByIndex,
+              index,
+              resolved.cache,
+            );
+            if (resolved.value !== undefined) {
+              resolvedArgsByIndex.set(index, resolved.value);
+            }
+
+            if (resolved.hasError && !error) {
+              error = new Error(`Invalid tool arguments for ${name}`);
+            }
+          } else if (toolState.error && !error) {
             error = new Error(`Invalid tool arguments for ${name}`);
+          } else {
+            const resolvedValue = resolveJsonValue(toolState);
+            if (resolvedValue !== undefined) {
+              resolvedArgsByIndex.set(index, resolvedValue);
+            }
           }
-        } else if (toolState.error && !error) {
-          error = new Error(`Invalid tool arguments for ${name}`);
         } else {
-          const resolvedValue = resolveJsonValue(toolState);
-          if (resolvedValue !== undefined) {
-            resolvedArgsByIndex.set(index, resolvedValue);
-          }
+          resolvedArgsByIndex.set(index, deltaArgs as JsonValue);
         }
 
         if (toolCallDelta.id) {

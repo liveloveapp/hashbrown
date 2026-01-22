@@ -4,40 +4,42 @@ exports[`full integration with streaming 1`] = `
 "
     
 
-[
-  {
-    "Markdown": {
-      "props": {
-        "data": {
-          "text": "hi"
+{
+  "ui": [
+    {
+      "Markdown": {
+        "props": {
+          "data": {
+            "text": "hi"
+          }
         }
       }
-    }
-  },
-  {
-    "CardList": {
-      "props": {},
-      "children": [
-        {
-          "LightCard": {
-            "props": {
-              "title": "Light 1",
-              "id": "uuid123"
+    },
+    {
+      "CardList": {
+        "props": {},
+        "children": [
+          {
+            "LightCard": {
+              "props": {
+                "title": "Light 1",
+                "id": "uuid123"
+              }
+            }
+          },
+          {
+            "LightCard": {
+              "props": {
+                "title": "Light 2",
+                "id": "uuid456"
+              }
             }
           }
-        },
-        {
-          "LightCard": {
-            "props": {
-              "title": "Light 2",
-              "id": "uuid456"
-            }
-          }
-        }
-      ]
+        ]
+      }
     }
-  }
-]
+  ]
+}
 
 
   "
@@ -48,30 +50,34 @@ exports[`prompt helper example injection modes inline: replaces <ui> blocks with
         Head
         
 
-[
-  {
-    "X": {
-      "props": {}
+{
+  "ui": [
+    {
+      "X": {
+        "props": {}
+      }
+    },
+    {
+      "Y": {
+        "props": {}
+      }
     }
-  },
-  {
-    "Y": {
-      "props": {}
-    }
-  }
-]
+  ]
+}
 
 
         Middle
         
 
-[
-  {
-    "Z": {
-      "props": {}
+{
+  "ui": [
+    {
+      "Z": {
+        "props": {}
+      }
     }
-  }
-]
+  ]
+}
 
 
         Tail
