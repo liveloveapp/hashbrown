@@ -167,12 +167,12 @@ describe('prompt helper', () => {
       expect(example.diagnostics.length).toBe(0);
 
       // Extract the injected JSON and verify $children is a string
-      const json = (out.match(/\[[\s\S]*\]/) || [])[0] || '';
+      const json = (out.match(/{[\s\S]*}/) || [])[0] || '';
 
       const obj = JSON.parse(json);
-      expect(Array.isArray(obj)).toBe(true);
-      expect(obj[0].Note).toBeDefined();
-      expect(obj[0].Note.children).toBe('Hello world!');
+      expect(Array.isArray(obj.ui)).toBe(true);
+      expect(obj.ui[0].Note).toBeDefined();
+      expect(obj.ui[0].Note.children).toBe('Hello world!');
     });
 
     it('children: only listed child passes validation', () => {

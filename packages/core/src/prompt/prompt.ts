@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { HashbrownType } from '../schema/base';
+import { HashbrownType, internal, isObjectType } from '../schema/base';
 import { JsonValue } from '../skillet/parser/json-parser';
 import { ExposedComponent } from '../ui';
 import type {
@@ -746,7 +746,7 @@ export function prompt(
   let diagnostics: PromptDiagnostic[] =
     parseDiagnostics.concat(lowerDiagnostics);
 
-  function compile(components: readonly any[], _schema: HashbrownType): string {
+  function compile(components: readonly any[], schema: HashbrownType): string {
     // Build component lookup by name and selector for policy-aware lowering
     const byName = new Map<string, ExposedComponent<any>>();
     components.forEach((c) => {
@@ -793,7 +793,15 @@ export function prompt(
       cleanForInjection(tree),
     );
 
-    const toInject = cleaned;
+    const shouldWrapUi =
+      isObjectType(schema) &&
+      Object.prototype.hasOwnProperty.call(
+        schema[internal].definition.shape,
+        'ui',
+      );
+    const toInject = shouldWrapUi
+      ? (cleaned as any).map((tree: FlexHBNode[]) => ({ ui: tree }))
+      : cleaned;
 
     // If no components are provided, do not inline JSON fences; preserve author text.
     const mode: 'inline' | 'placeholder' | 'none' =
