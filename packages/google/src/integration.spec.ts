@@ -180,6 +180,136 @@ test('Google with tool calling and structured output', async () => {
      I am writing an integration test against Google. Call
      the "test" tool with the argument "Hello, world!"
 
+     Respond with JSON that matches {"text": string} using the tool's response.
+     DO NOT respond with any other text.
+    `,
+      messages: [
+        {
+          role: 'user',
+          content: 'Please call the test tool and respond with the text.',
+        },
+      ],
+      tools: [
+        {
+          name: 'test',
+          description: 'Test tool',
+          schema: s.object('args', {
+            text: s.string(''),
+          }),
+          handler: async (args: {
+            text: string;
+          }): Promise<{ text: string }> => {
+            toolCallArgs = args;
+
+            return {
+              text: expectedResponse,
+            };
+          },
+        },
+      ],
+      responseSchema: s.object('response', {
+        text: s.string(''),
+      }),
+    });
+
+    await waitUntilHashbrownIsSettled(hashbrown);
+
+    const assistantMessage = hashbrown
+      .messages()
+      .reverse()
+      .find((message) => message.role === 'assistant');
+
+    expect(assistantMessage?.content).toEqual({ text: expectedResponse });
+    expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
+  } finally {
+    server.close();
+  }
+});
+
+test('Google with tool calling and structured output (gemini-3-flash-preview)', async () => {
+  const expectedResponse = 'The proof is in the pudding';
+  let toolCallArgs: any;
+  const server = await createServer((request) =>
+    HashbrownGoogle.stream.text({
+      apiKey: GOOGLE_API_KEY,
+      request,
+    }),
+  );
+
+  try {
+    const hashbrown = fryHashbrown({
+      debounce: 0,
+      apiUrl: server.url,
+      model: 'gemini-3-flash-preview',
+      system: `
+     I am writing an integration test against Google. Call
+     the "test" tool with the argument "Hello, world!"
+
+     Respond with JSON that matches {"text": string} using the tool's response.
+     DO NOT respond with any other text.
+    `,
+      messages: [
+        {
+          role: 'user',
+          content: 'Please call the test tool and respond with the text.',
+        },
+      ],
+      tools: [
+        {
+          name: 'test',
+          description: 'Test tool',
+          schema: s.object('args', {
+            text: s.string(''),
+          }),
+          handler: async (args: {
+            text: string;
+          }): Promise<{ text: string }> => {
+            toolCallArgs = args;
+
+            return {
+              text: expectedResponse,
+            };
+          },
+        },
+      ],
+      responseSchema: s.object('response', {
+        text: s.string(''),
+      }),
+    });
+
+    await waitUntilHashbrownIsSettled(hashbrown);
+
+    const assistantMessage = hashbrown
+      .messages()
+      .reverse()
+      .find((message) => message.role === 'assistant');
+
+    expect(assistantMessage?.content).toEqual({ text: expectedResponse });
+    expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
+  } finally {
+    server.close();
+  }
+});
+
+test('Google with tool calling and structured output (gemini-3-pro-preview)', async () => {
+  const expectedResponse = 'Measure twice, cut once';
+  let toolCallArgs: any;
+  const server = await createServer((request) =>
+    HashbrownGoogle.stream.text({
+      apiKey: GOOGLE_API_KEY,
+      request,
+    }),
+  );
+
+  try {
+    const hashbrown = fryHashbrown({
+      debounce: 0,
+      apiUrl: server.url,
+      model: 'gemini-3-pro-preview',
+      system: `
+     I am writing an integration test against Google. Call
+     the "test" tool with the argument "Hello, world!"
+
      DO NOT respond with any other text.
     `,
       messages: [

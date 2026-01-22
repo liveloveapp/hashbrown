@@ -16,7 +16,7 @@
     "@openapi-contrib/json-schema-to-openapi-schema": "^3.0.3"
   },
   "peerDependencies": {
-    "@google/genai": "^1.29.1",
+    "@google/genai": "^1.38.0",
     "@hashbrownai/core": "0.4.1-alpha.1"
   },
   "sideEffects": false,

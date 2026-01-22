@@ -23,6 +23,7 @@ export interface ToolCall {
   result?: PromiseSettledResult<any>;
   progress?: number;
   status: 'pending' | 'done';
+  metadata?: Record<string, unknown>;
 }
 
 /**
