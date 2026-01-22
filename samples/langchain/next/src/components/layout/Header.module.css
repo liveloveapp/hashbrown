@@ -1,0 +1,14 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #fff;
+  padding: 16px;
+
+  > .brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+}

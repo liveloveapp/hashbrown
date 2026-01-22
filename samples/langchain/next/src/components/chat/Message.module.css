@@ -1,0 +1,50 @@
+.container {
+  display: flex;
+  width: 100%;
+}
+
+.containerLeft {
+  justify-content: flex-start;
+}
+
+.containerRight {
+  justify-content: flex-end;
+}
+
+.message {
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.messageAssistant {
+  color: var(--gray-dark, rgba(61, 60, 58, 1));
+}
+
+.messageError {
+  background-color: rgba(184, 96, 96, 0.8);
+  color: rgba(250, 249, 240, 1);
+}
+
+.messageUser {
+  background-color: rgba(251, 187, 82, 0.8);
+  color: rgba(61, 60, 58, 1);
+}
+
+.errorContent {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.retryButton {
+  padding-top: 0;
+  padding-bottom: 0;
+  height: auto;
+}
