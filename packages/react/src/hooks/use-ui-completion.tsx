@@ -131,15 +131,21 @@ export const useUiCompletion = <
     ...completionOptions
   } = options;
   const [components, setComponents] = useState(initialComponents);
-  const [flattenedComponents] = useState(
-    ɵui.flattenComponents(initialComponents),
+  const flattenedComponents = useMemo(
+    () =>
+      ɵui.flattenComponents(
+        components as unknown as ɵui.ExposedComponentDescriptor[],
+      ) as Map<string, ExposedComponent<any>>,
+    [components],
   );
 
   const uiSchema = useMemo(() => {
     return s.object('UI', {
       ui: s.streaming.array(
         'List of elements',
-        ɵui.createComponentSchema(components),
+        ɵui.createComponentSchema(
+          components as unknown as ɵui.ExposedComponentDescriptor[],
+        ),
       ),
     });
   }, [components]);
@@ -177,32 +183,68 @@ export const useUiCompletion = <
         return nodes;
       }
 
-      const elements = nodes.map((node, index) => {
+      const elements = nodes.reduce<ReactElement[]>((acc, node, index) => {
         const key = `${parentKey}_${index}`;
-        const { $tag, $props, $children } = node;
-        const componentType = flattenedComponents.get($tag)?.component;
+        const entries = Object.entries(node ?? {});
+        if (entries.length === 0) {
+            return acc;
+        }
+        const [tagName, value] = entries[0] as [
+          string,
+          {
+              props?: {
+                complete: boolean;
+                partialValue: any;
+                value?: Record<string, any>;
+              };
+              children?: UiChatSchemaComponent[] | string;
+            },
+          ];
+          const component = flattenedComponents.get(tagName);
+          if (!component) {
+            throw new Error(`Unknown element type. ${tagName}`);
+          }
 
-        if ($tag && componentType) {
-          const children: ReactNode[] | string | null = node.$children
-            ? buildContent($children, key)
+          const propsNode = value?.props;
+          if (!propsNode) {
+            return acc;
+          }
+
+          if (!propsNode.value) {
+            if (!component.fallback) {
+              return acc;
+            }
+
+            acc.push(
+              createElement(component.fallback, {
+                tag: tagName,
+                partialProps: propsNode.partialValue as Record<string, any>,
+                key,
+              }),
+            );
+            return acc;
+          }
+
+          const children: ReactNode[] | string | null = value?.children
+            ? buildContent(value.children, key)
             : null;
 
-          return createElement(componentType, {
-            ...$props,
-            children,
-            key,
-          });
-        }
-
-        throw new Error(`Unknown element type. ${$tag}`);
-      });
+          acc.push(
+            createElement(component.component, {
+              ...propsNode.value,
+              children,
+              key,
+            }),
+          );
+          return acc;
+        }, []);
 
       return elements;
     },
     [flattenedComponents],
   );
 
-  const rawOutput = structured.output;
+  const rawOutput = structured.output as UiChatSchema | null;
 
   const message = useMemo(() => {
     if (!rawOutput) {

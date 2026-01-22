@@ -187,6 +187,7 @@ export function uiCompletionResource<
           acc[component.name] = {
             props: component.props ?? {},
             component: component.component,
+            fallback: component.fallback,
           };
           return acc;
         }, {} as TagNameRegistry) ?? {};

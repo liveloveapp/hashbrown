@@ -20,10 +20,9 @@ describe('prompt helper', () => {
       const tree = sys.examples[0];
       expect(Array.isArray(tree)).toBe(true);
       const first = tree && tree[0];
-      expect(first && first.$tag).toBe('Markdown');
-      expect(
-        first && (first as any).$props && (first as any).$props.data,
-      ).toEqual(rich);
+      const entry = first && Object.entries(first)[0];
+      expect(entry && entry[0]).toBe('Markdown');
+      expect(entry && (entry[1] as any)?.props?.data).toEqual(rich);
     });
 
     it('extracts multiple <ui> blocks', () => {
@@ -53,11 +52,13 @@ describe('prompt helper', () => {
       const sys = prompt`<ui><Comp a="true" b="false" c="3.14" d="null" /></ui>`;
 
       const n: any = sys.examples[0] && sys.examples[0][0];
+      const entry = n && Object.entries(n)[0];
+      const props = entry?.[1]?.props;
 
-      expect(n && n.$props && n.$props.a).toBe(true);
-      expect(n && n.$props && n.$props.b).toBe(false);
-      expect(n && n.$props && n.$props.c).toBeCloseTo(3.14);
-      expect(n && n.$props && n.$props.d).toBeNull();
+      expect(props && props.a).toBe(true);
+      expect(props && props.b).toBe(false);
+      expect(props && props.c).toBeCloseTo(3.14);
+      expect(props && props.d).toBeNull();
     });
 
     it('duplicate attributes are flagged', () => {
@@ -170,8 +171,8 @@ describe('prompt helper', () => {
 
       const obj = JSON.parse(json);
       expect(Array.isArray(obj)).toBe(true);
-      expect(obj[0].$tag).toBe('Note');
-      expect(obj[0].$children).toBe('Hello world!');
+      expect(obj[0].Note).toBeDefined();
+      expect(obj[0].Note.children).toBe('Hello world!');
     });
 
     it('children: only listed child passes validation', () => {

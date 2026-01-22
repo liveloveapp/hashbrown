@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { reflectComponentType } from '@angular/core';
-import { s, ɵtypes } from '@hashbrownai/core';
+import { s, ɵtypes, ɵui } from '@hashbrownai/core';
 
 /**
  * @public
@@ -25,6 +25,7 @@ export type ComponentPropSchema<T> = ɵtypes.Prettify<
  */
 export interface ExposedComponent<T extends { new (...args: any[]): any }> {
   component: T;
+  fallback?: { new (...args: any[]): ɵui.ComponentFallbackProps };
   name: string;
   description: string;
   children?: 'any' | 'text' | ExposedComponent<any>[] | false;

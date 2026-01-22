@@ -22,7 +22,7 @@ import { readSignalLike, SignalLike } from '../utils';
  * @public
  */
 export type UiChatMessageOutput = s.ObjectType<{
-  ui: s.ArrayType<s.ObjectType<ɵui.ComponentTreeSchema>>;
+  ui: s.ArrayType<ɵui.ComponentTreeSchema>;
 }>;
 
 /**
@@ -192,6 +192,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
                   acc[component.name] = {
                     props: component.props ?? {},
                     component: component.component,
+                    fallback: component.fallback,
                   };
                   return acc;
                 },
