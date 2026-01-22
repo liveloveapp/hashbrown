@@ -48,6 +48,17 @@ type TypeInternals = {
   definition: HashbrownTypeDefinition;
 };
 
+export type StringFormat =
+  | 'date-time'
+  | 'time'
+  | 'date'
+  | 'duration'
+  | 'email'
+  | 'hostname'
+  | 'ipv4'
+  | 'ipv6'
+  | 'uuid';
+
 /**
  * @internal
  */
@@ -258,6 +269,84 @@ function isForbiddenObjectKey(key: string) {
   return FORBIDDEN_OBJECT_KEYS.has(key);
 }
 
+function formatPath(path: string[]) {
+  return path.length === 0 ? '<root>' : path.join('.');
+}
+
+const stringPatternCache = new WeakMap<StringTypeDefinition, RegExp>();
+
+function getPatternRegex(definition: StringTypeDefinition) {
+  if (!definition.pattern) {
+    return undefined;
+  }
+
+  const cached = stringPatternCache.get(definition);
+  if (cached && cached.source === definition.pattern) {
+    return cached;
+  }
+
+  let regex: RegExp;
+  try {
+    regex = new RegExp(definition.pattern);
+  } catch (error) {
+    throw new Error(
+      `Invalid string pattern "${definition.pattern}": ${(error as Error).message}`,
+    );
+  }
+  stringPatternCache.set(definition, regex);
+  return regex;
+}
+
+function validateNumberConstraints(
+  definition: NumberConstraints,
+  value: number,
+  path: string[],
+) {
+  const formattedPath = formatPath(path);
+
+  if (!Number.isFinite(value)) {
+    throw new Error(`Expected a finite number at: ${formattedPath}`);
+  }
+
+  if (definition.multipleOf !== undefined) {
+    if (definition.multipleOf <= 0 || !Number.isFinite(definition.multipleOf)) {
+      throw new Error(`multipleOf must be > 0 at: ${formattedPath}`);
+    }
+
+    const ratio = value / definition.multipleOf;
+    const rounded = Math.round(ratio);
+    const epsilon = Number.EPSILON * Math.max(1, Math.abs(ratio));
+    if (Math.abs(ratio - rounded) > epsilon) {
+      throw new Error(
+        `Expected a multipleOf ${definition.multipleOf} at: ${formattedPath}`,
+      );
+    }
+  }
+
+  if (definition.maximum !== undefined && value > definition.maximum) {
+    throw new Error(`Expected <= ${definition.maximum} at: ${formattedPath}`);
+  }
+  if (
+    definition.exclusiveMaximum !== undefined &&
+    value >= definition.exclusiveMaximum
+  ) {
+    throw new Error(
+      `Expected < ${definition.exclusiveMaximum} at: ${formattedPath}`,
+    );
+  }
+  if (definition.minimum !== undefined && value < definition.minimum) {
+    throw new Error(`Expected >= ${definition.minimum} at: ${formattedPath}`);
+  }
+  if (
+    definition.exclusiveMinimum !== undefined &&
+    value <= definition.exclusiveMinimum
+  ) {
+    throw new Error(
+      `Expected > ${definition.exclusiveMinimum} at: ${formattedPath}`,
+    );
+  }
+}
+
 /**
  * --------------------------------------
  * --------------------------------------
@@ -268,6 +357,8 @@ function isForbiddenObjectKey(key: string) {
 
 interface StringTypeDefinition extends HashbrownTypeDefinition {
   type: 'string';
+  pattern?: string;
+  format?: StringFormat;
 }
 
 /**
@@ -284,6 +375,24 @@ export interface StringType extends HashbrownType<string> {
   [internal]: StringTypeInternals;
 }
 
+export type StringConstraintsInput = {
+  pattern?: string | RegExp;
+  format?: StringFormat;
+};
+
+type StringConstraints = {
+  pattern?: string;
+  format?: StringFormat;
+};
+
+type NumberConstraints = {
+  multipleOf?: number;
+  maximum?: number;
+  exclusiveMaximum?: number;
+  minimum?: number;
+  exclusiveMinimum?: number;
+};
+
 /**
  * @public
  */
@@ -293,10 +402,18 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
     HashbrownType.init(inst, def);
   },
   toJsonSchemaImpl: (schema: any) => {
-    return {
+    const definition = schema[internal].definition as StringTypeDefinition;
+    const result: Record<string, unknown> = {
       type: 'string',
-      description: schema[internal].definition.description,
+      description: definition.description,
     };
+    if (definition.pattern !== undefined) {
+      result['pattern'] = definition.pattern;
+    }
+    if (definition.format !== undefined) {
+      result['format'] = definition.format;
+    }
+    return result;
   },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ string`;
@@ -330,10 +447,22 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
     };
   },
   validateImpl: (schema: any, definition, object: unknown, path: string[]) => {
+    const formattedPath = formatPath(path);
     if (typeof object !== 'string') {
       throw new Error(
-        `Expected a string at: ${path.join('.')}, got ${typeof object}`,
+        `Expected a string at: ${formattedPath}, got ${typeof object}`,
       );
+    }
+    if (definition.pattern !== undefined) {
+      const regex = getPatternRegex(definition);
+      if (!regex) {
+        throw new Error(`Invalid string pattern at: ${formattedPath}`);
+      }
+      if (!regex.test(object)) {
+        throw new Error(
+          `Expected a string matching pattern at: ${formattedPath}`,
+        );
+      }
     }
     return;
   },
@@ -349,8 +478,17 @@ export function isStringType(type: HashbrownType): type is StringType {
 /**
  * @public
  */
-export function string(description: string): StringType {
-  return new StringType({ type: 'string', description, streaming: false });
+export function string(
+  description: string,
+  constraints?: StringConstraintsInput,
+): StringType {
+  const normalized: StringConstraints = normalizeStringConstraints(constraints);
+  return new StringType({
+    type: 'string',
+    description,
+    streaming: false,
+    ...normalized,
+  });
 }
 
 /**
@@ -477,6 +615,11 @@ export function literal<T extends string>(value: T): LiteralType<T> {
 
 interface NumberTypeDefinition extends HashbrownTypeDefinition {
   type: 'number';
+  multipleOf?: number;
+  maximum?: number;
+  exclusiveMaximum?: number;
+  minimum?: number;
+  exclusiveMinimum?: number;
 }
 
 /**
@@ -502,10 +645,27 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
     HashbrownType.init(inst, def);
   },
   toJsonSchemaImpl: (schema: any) => {
-    return {
+    const definition = schema[internal].definition as NumberTypeDefinition;
+    const result: Record<string, unknown> = {
       type: 'number',
-      description: schema[internal].definition.description,
+      description: definition.description,
     };
+    if (definition.multipleOf !== undefined) {
+      result['multipleOf'] = definition.multipleOf;
+    }
+    if (definition.maximum !== undefined) {
+      result['maximum'] = definition.maximum;
+    }
+    if (definition.exclusiveMaximum !== undefined) {
+      result['exclusiveMaximum'] = definition.exclusiveMaximum;
+    }
+    if (definition.minimum !== undefined) {
+      result['minimum'] = definition.minimum;
+    }
+    if (definition.exclusiveMinimum !== undefined) {
+      result['exclusiveMinimum'] = definition.exclusiveMinimum;
+    }
+    return result;
   },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ number`;
@@ -533,6 +693,7 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
     if (typeof object !== 'number') {
       throw new Error(`Expected a number at: ${path.join('.')}`);
     }
+    validateNumberConstraints(definition, object, path);
   },
 });
 
@@ -546,8 +707,13 @@ export function isNumberType(type: HashbrownType): type is NumberType {
 /**
  * @public
  */
-export function number(description: string) {
-  return new NumberType({ type: 'number', description, streaming: false });
+export function number(description: string, constraints?: NumberConstraints) {
+  return new NumberType({
+    type: 'number',
+    description,
+    streaming: false,
+    ...constraints,
+  });
 }
 
 /**
@@ -642,6 +808,11 @@ export function boolean(description: string) {
 
 interface IntegerTypeDefinition extends HashbrownTypeDefinition {
   type: 'integer';
+  multipleOf?: number;
+  maximum?: number;
+  exclusiveMaximum?: number;
+  minimum?: number;
+  exclusiveMinimum?: number;
 }
 
 /**
@@ -667,10 +838,27 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
     HashbrownType.init(inst, def);
   },
   toJsonSchemaImpl: (schema: any) => {
-    return {
+    const definition = schema[internal].definition as IntegerTypeDefinition;
+    const result: Record<string, unknown> = {
       type: 'integer',
-      description: schema[internal].definition.description,
+      description: definition.description,
     };
+    if (definition.multipleOf !== undefined) {
+      result['multipleOf'] = definition.multipleOf;
+    }
+    if (definition.maximum !== undefined) {
+      result['maximum'] = definition.maximum;
+    }
+    if (definition.exclusiveMaximum !== undefined) {
+      result['exclusiveMaximum'] = definition.exclusiveMaximum;
+    }
+    if (definition.minimum !== undefined) {
+      result['minimum'] = definition.minimum;
+    }
+    if (definition.exclusiveMinimum !== undefined) {
+      result['exclusiveMinimum'] = definition.exclusiveMinimum;
+    }
+    return result;
   },
   toTypeScriptImpl: (schema: any) => {
     return `/* ${schema[internal].definition.description} */ integer`;
@@ -703,6 +891,7 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
       throw new Error(`Expected a number at: ${path.join('.')}`);
     if (!Number.isInteger(object))
       throw new Error(`Expected an integer at: ${path.join('.')}`);
+    validateNumberConstraints(definition, object, path);
   },
 });
 
@@ -716,8 +905,31 @@ export function isIntegerType(type: HashbrownType): type is IntegerType {
 /**
  * @public
  */
-export function integer(description: string) {
-  return new IntegerType({ type: 'integer', description, streaming: false });
+export function integer(description: string, constraints?: NumberConstraints) {
+  return new IntegerType({
+    type: 'integer',
+    description,
+    streaming: false,
+    ...constraints,
+  });
+}
+
+function normalizeStringConstraints(
+  constraints?: StringConstraintsInput,
+): StringConstraints {
+  if (!constraints) {
+    return {};
+  }
+
+  const pattern =
+    constraints.pattern instanceof RegExp
+      ? constraints.pattern.source
+      : constraints.pattern;
+
+  return {
+    pattern,
+    format: constraints.format,
+  };
 }
 
 /**
@@ -935,6 +1147,8 @@ interface ArrayTypeDefinition<out Item extends HashbrownType = HashbrownType>
   extends HashbrownTypeDefinition {
   type: 'array';
   element: Item;
+  minItems?: number;
+  maxItems?: number;
 }
 
 /**
@@ -962,13 +1176,21 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
     HashbrownType.init(inst, def);
   },
   toJsonSchemaImpl: (schema: any) => {
-    return {
+    const definition = schema[internal].definition as ArrayTypeDefinition;
+    const result: Record<string, unknown> = {
       type: 'array',
       // items is populated externally since we find loops and duplicated sections
       // through the whole schema
       items: [],
-      description: schema[internal].definition.description,
+      description: definition.description,
     };
+    if (definition.minItems !== undefined) {
+      result['minItems'] = definition.minItems;
+    }
+    if (definition.maxItems !== undefined) {
+      result['maxItems'] = definition.maxItems;
+    }
+    return result;
   },
   toTypeScriptImpl: (schema: any, pathSeen: Set<HashbrownType>) => {
     if (pathSeen.has(schema)) {
@@ -1049,7 +1271,25 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
   },
   validateImpl: (schema, definition, object, path) => {
     if (!Array.isArray(object))
-      throw new Error(`Expected an array at: ${path.join('.')}`);
+      throw new Error(`Expected an array at: ${formatPath(path)}`);
+
+    if (
+      definition.minItems !== undefined &&
+      object.length < definition.minItems
+    ) {
+      throw new Error(
+        `Expected at least ${definition.minItems} items at: ${formatPath(path)}`,
+      );
+    }
+
+    if (
+      definition.maxItems !== undefined &&
+      object.length > definition.maxItems
+    ) {
+      throw new Error(
+        `Expected at most ${definition.maxItems} items at: ${formatPath(path)}`,
+      );
+    }
 
     object.forEach((item) => {
       definition.element.validate(item, path);
@@ -1070,12 +1310,14 @@ export function isArrayType(type: HashbrownType): type is ArrayType {
 export function array<Item extends HashbrownType>(
   description: string,
   item: Item,
+  constraints?: { minItems?: number; maxItems?: number },
 ): ArrayType<Item> {
   return new ArrayType({
     type: 'array',
     description,
     streaming: false,
     element: item,
+    ...constraints,
   }) as any;
 }
 

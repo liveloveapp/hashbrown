@@ -368,3 +368,66 @@ exports[`root: wraps primitive string under __wrappedPrimitive 1`] = `
   "type": "object",
 }
 `;
+
+exports[`string: pattern and format serialize 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "__wrappedPrimitive": {
+      "description": "Handle",
+      "format": "email",
+      "pattern": "^@[a-z0-9_]+$",
+      "type": "string",
+    },
+  },
+  "required": [
+    "__wrappedPrimitive",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`number: numeric constraints serialize 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "__wrappedPrimitive": {
+      "description": "Score",
+      "exclusiveMaximum": 9.5,
+      "maximum": 10,
+      "minimum": 0,
+      "multipleOf": 0.5,
+      "type": "number",
+    },
+  },
+  "required": [
+    "__wrappedPrimitive",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`array: minItems and maxItems serialize 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "__wrappedPrimitive": {
+      "description": "Tags",
+      "items": {
+        "description": "Tag",
+        "type": "string",
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "type": "array",
+    },
+  },
+  "required": [
+    "__wrappedPrimitive",
+  ],
+  "type": "object",
+}
+`;
