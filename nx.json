@@ -68,7 +68,8 @@
       "packages/ollama",
       "packages/openai",
       "packages/react",
-      "packages/writer"
+      "packages/writer",
+      "responses"
     ],
     "version": {
       "preVersionCommand": "npx nx run-many -t build"
