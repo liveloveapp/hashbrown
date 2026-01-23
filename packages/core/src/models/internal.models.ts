@@ -8,7 +8,7 @@ import { JsonValue } from '../utils';
 export interface Tool {
   name: string;
   description: string;
-  schema: s.HashbrownType | object;
+  schema: s.SchemaInput;
   handler: (input: any, abortSignal: AbortSignal) => Promise<any>;
 }
 

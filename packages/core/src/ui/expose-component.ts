@@ -22,12 +22,12 @@ export type ComponentPropSchema<T> = Prettify<
   T extends Component<infer P>
     ? {
         [K in keyof P]?: P[K] extends AngularSignalLike<infer U>
-          ? s.Schema<U>
+          ? s.Schema<U> | s.StandardJSONSchemaV1<U, U>
           : never;
       }
     : T extends Component<infer P>
       ? {
-          [K in keyof P]?: s.Schema<P[K]>;
+          [K in keyof P]?: s.Schema<P[K]> | s.StandardJSONSchemaV1<P[K], P[K]>;
         }
       : never
 >;
@@ -54,7 +54,7 @@ export interface ExposedComponentDescriptor {
   name: string;
   description: string;
   children?: 'any' | 'text' | false | unknown[];
-  props?: Record<string, s.HashbrownType>;
+  props?: Record<string, s.HashbrownType | s.StandardJSONSchemaV1>;
   fallback?: unknown;
 }
 
@@ -140,8 +140,9 @@ export function createComponentSchema(
     }
 
     const children = component.children;
+    const normalizedProps = normalizeComponentProps(component.props);
     const nodeShape: Record<string, s.HashbrownType> = {
-      props: s.node(s.object('Component Props', component.props ?? {})),
+      props: s.node(s.object('Component Props', normalizedProps)),
     };
 
     if (children === 'any') {
@@ -176,4 +177,33 @@ export function createComponentSchema(
   }
 
   return elements as any;
+}
+
+function normalizeComponentProps(
+  props?: Record<string, s.HashbrownType | s.StandardJSONSchemaV1>,
+): Record<string, s.HashbrownType> {
+  if (!props) {
+    return {};
+  }
+
+  const normalized: Record<string, s.HashbrownType> = {};
+  for (const [key, schema] of Object.entries(props)) {
+    let next: s.HashbrownType | object;
+    try {
+      next = s.normalizeSchemaInput(schema);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Component prop "${key}" schema normalization failed (mode: input). ${message}`,
+      );
+    }
+    if (!s.isHashbrownType(next)) {
+      throw new Error(
+        `Component prop "${key}" must be a Skillet schema or Standard JSON Schema.`,
+      );
+    }
+    normalized[key] = next;
+  }
+
+  return normalized;
 }

@@ -32,13 +32,16 @@ const initialState: ConfigState = {
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action): ConfigState => {
+    const responseSchema = action.payload.responseSchema
+      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+      : undefined;
     return {
       ...state,
       apiUrl: action.payload.apiUrl,
       model: action.payload.model,
       system: action.payload.system,
       debounce: action.payload.debounce ?? state.debounce,
-      responseSchema: action.payload.responseSchema,
+      responseSchema,
       middleware: action.payload.middleware,
       emulateStructuredOutput:
         action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
@@ -54,10 +57,14 @@ export const reducer = createReducer(
       'threadId',
     );
     const threadId = hasThreadId ? action.payload.threadId : state.threadId;
+    const responseSchema = action.payload.responseSchema
+      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+      : state.responseSchema;
 
     return {
       ...state,
       ...action.payload,
+      responseSchema,
       threadId,
     };
   }),

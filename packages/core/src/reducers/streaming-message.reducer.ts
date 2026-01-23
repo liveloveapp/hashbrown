@@ -122,10 +122,13 @@ export const reducer = createReducer(
   on(
     apiActions.generateMessageStart,
     (state, action): StreamingMessageState => {
+      const responseSchema = action.payload.responseSchema
+        ? s.normalizeSchemaOutput(action.payload.responseSchema)
+        : undefined;
       return {
         ...initialState,
         configSnapshot: {
-          responseSchema: action.payload.responseSchema,
+          responseSchema,
           emulateStructuredOutput: action.payload.emulateStructuredOutput,
           toolsByName: action.payload.toolsByName,
         },

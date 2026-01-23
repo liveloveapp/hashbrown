@@ -4,7 +4,7 @@ import { s } from '../schema';
 
 export default createActionGroup('api', {
   generateMessageStart: props<{
-    responseSchema?: s.HashbrownType;
+    responseSchema?: s.SchemaOutput;
     emulateStructuredOutput: boolean;
     toolsByName: Record<string, Chat.Internal.Tool>;
   }>(),
@@ -19,7 +19,7 @@ export default createActionGroup('api', {
   threadLoadStart: emptyProps(),
   threadLoadSuccess: props<{
     thread?: Chat.Api.Message[];
-    responseSchema?: s.HashbrownType;
+    responseSchema?: s.SchemaOutput;
     toolsByName?: Record<string, Chat.Internal.Tool>;
   }>(),
   threadLoadFailure: props<{ error: string; stacktrace?: string }>(),

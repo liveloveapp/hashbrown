@@ -4,7 +4,7 @@ import { s } from '../schema';
 import { initialState, reducer } from './streaming-message.reducer';
 
 function startState(
-  responseSchema?: s.HashbrownType,
+  responseSchema?: s.SchemaOutput,
   emulateStructuredOutput = false,
   toolsByName: Record<string, Chat.Internal.Tool> = {},
 ) {
@@ -64,6 +64,35 @@ test('parses structured output from content stream', () => {
   );
 
   expect(state.message?.contentResolved).toBe(firstResolved);
+});
+
+test('parses Standard JSON Schema structured output when complete', () => {
+  const responseSchema = {
+    '~standard': {
+      version: 1,
+      vendor: 'test',
+      jsonSchema: {
+        input: () => ({ type: 'string' }),
+        output: () => ({
+          type: 'object',
+          properties: {
+            message: { type: 'string' },
+          },
+          required: ['message'],
+          additionalProperties: false,
+        }),
+      },
+    },
+  } as const satisfies s.StandardJSONSchemaV1<unknown, { message: string }>;
+
+  let state = startState(responseSchema, false);
+
+  state = reducer(
+    state,
+    chunkAction({ role: 'assistant', content: '{"message":"hello"}' }),
+  );
+
+  expect(state.message?.contentResolved).toEqual({ message: 'hello' });
 });
 
 test('uses output tool call for emulated structured output', () => {
