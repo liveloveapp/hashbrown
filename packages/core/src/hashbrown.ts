@@ -78,7 +78,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       model: ModelInput;
       system: string;
       tools: Tools[];
-      responseSchema: s.HashbrownType;
+      responseSchema: s.SchemaOutput;
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
       debounce: number;
@@ -135,9 +135,9 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
  * @public
  */
 export function fryHashbrown<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(init: {
   debugName?: string;
   apiUrl?: string;
@@ -164,7 +164,7 @@ export function fryHashbrown(init: {
   system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
-  responseSchema?: s.HashbrownType;
+  responseSchema?: s.SchemaOutput;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
@@ -252,7 +252,7 @@ export function fryHashbrown(init: {
       model: ModelInput;
       system: string;
       tools: Chat.AnyTool[];
-      responseSchema: s.HashbrownType;
+      responseSchema: s.SchemaOutput;
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
       debounce: number;

@@ -1,5 +1,6 @@
 import { devActions } from '../actions';
 import { Chat } from '../models';
+import { s } from '../schema';
 import { createReducer, on, select } from '../utils/micro-ngrx';
 
 export type ToolState = {
@@ -26,7 +27,21 @@ export const reducer = createReducer(
       names: tools.map((tool) => tool.name),
       entities: tools.reduce(
         (acc, tool) => {
-          acc[tool.name] = tool;
+          let schema = tool.schema;
+          try {
+            schema = s.normalizeSchemaInput(tool.schema);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            throw new Error(
+              `Tool "${tool.name}" schema normalization failed (mode: input). ${message}`,
+            );
+          }
+
+          acc[tool.name] = {
+            ...tool,
+            schema,
+          };
           return acc;
         },
         {} as Record<string, Chat.Internal.Tool>,

@@ -22,7 +22,9 @@ export const reducer = createReducer(
       return state;
     }
 
-    const responseSchema = action.payload.responseSchema;
+    const responseSchema = action.payload.responseSchema
+      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+      : undefined;
     return {
       ...state,
       messages: messages.flatMap((message) =>
@@ -44,7 +46,9 @@ export const reducer = createReducer(
       return state;
     }
 
-    const responseSchema = action.payload.responseSchema;
+    const responseSchema = action.payload.responseSchema
+      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+      : undefined;
     const loadedMessages = action.payload.thread.flatMap((message) =>
       hydrateResolvedContent(
         Chat.helpers.toInternalMessagesFromApi(message),
@@ -71,7 +75,9 @@ export const reducer = createReducer(
   }),
   on(devActions.setMessages, (state, action) => {
     const messages = action.payload.messages;
-    const responseSchema = action.payload.responseSchema;
+    const responseSchema = action.payload.responseSchema
+      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+      : undefined;
     const internalMessages = messages.flatMap((message) =>
       hydrateResolvedContent(
         Chat.helpers.toInternalMessagesFromView(message),
