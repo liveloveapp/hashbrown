@@ -107,9 +107,9 @@ export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
  * @public
  */
 export interface StructuredChatResourceOptions<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 > {
   /**
    * The model to use for the structured chat resource.
@@ -179,9 +179,9 @@ export interface StructuredChatResourceOptions<
  * @returns The structured chat resource.
  */
 export function structuredChatResource<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: StructuredChatResourceOptions<Schema, Tools, Output>,
 ): StructuredChatResourceRef<Output, Tools> {

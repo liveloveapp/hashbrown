@@ -66,7 +66,7 @@ export interface StructuredCompletionResourceRef<Output>
  */
 export interface StructuredCompletionResourceOptions<
   Input,
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
 > {
   /**
    * The model to use for the structured completion resource.
@@ -129,8 +129,8 @@ export interface StructuredCompletionResourceOptions<
  */
 export function structuredCompletionResource<
   Input,
-  Schema extends s.HashbrownType,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Schema extends s.SchemaOutput,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
