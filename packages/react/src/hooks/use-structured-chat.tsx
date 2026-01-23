@@ -26,9 +26,9 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
  * @typeParam Output - The type of the output from the chat.
  */
 export interface UseStructuredChatOptions<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 > {
   /**
    * The LLM model to use for the chat.
@@ -218,9 +218,9 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
  * ```
  */
 export function useStructuredChat<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: UseStructuredChatOptions<Schema, Tools, Output>,
 ): UseStructuredChatResult<Output, Tools> {
