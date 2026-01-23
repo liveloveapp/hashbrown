@@ -16,7 +16,7 @@ import { useStructuredChat } from './use-structured-chat';
  */
 export interface UseStructuredCompletionOptions<
   Input,
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
 > {
   /**
    * The input string to predict from.
@@ -181,9 +181,9 @@ export interface UseStructuredCompletionResult<Output> {
  * });
  * ```
  */
-export function useStructuredCompletion<Input, Schema extends s.HashbrownType>(
+export function useStructuredCompletion<Input, Schema extends s.SchemaOutput>(
   options: UseStructuredCompletionOptions<Input, Schema>,
-): UseStructuredCompletionResult<s.Infer<Schema>> {
+): UseStructuredCompletionResult<s.InferSchemaOutput<Schema>> {
   const { setMessages, ...chat } = useStructuredChat({
     ...options,
     ui: options.ui ?? false,
@@ -195,14 +195,18 @@ export function useStructuredCompletion<Input, Schema extends s.HashbrownType>(
     setMessages([{ role: 'user', content: options.input }]);
   }, [setMessages, options.input]);
 
-  const output: s.Infer<Schema> | null = useMemo(() => {
+  const output: s.InferSchemaOutput<Schema> | null = useMemo(() => {
     const message = chat.messages.find(
-      (message) => message.role === 'assistant' && message.content,
+      (message) =>
+        message.role === 'assistant' &&
+        message.content !== null &&
+        message.content !== undefined,
     );
 
-    if (!message) return null;
-
-    return message.content;
+    const content = message?.content;
+    return content === undefined || content === null
+      ? null
+      : (content as s.InferSchemaOutput<Schema>);
   }, [chat.messages]);
 
   return {

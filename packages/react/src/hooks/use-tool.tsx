@@ -46,6 +46,46 @@ export interface ToolOptionsWithInput<
 /**
  * @public
  */
+export interface ToolOptionsWithStandardSchema<
+  Name extends string,
+  Schema extends s.StandardJSONSchemaV1,
+  Result,
+> {
+  /**
+   * The name of the tool.
+   */
+  name: Name;
+
+  /**
+   * The description of the tool. This helps the LLM understand its purpose.
+   */
+  description: string;
+
+  /**
+   * The schema that describes the input for the tool.
+   */
+  schema: Schema;
+
+  /**
+   * The handler of the tool. This is what the LLM agent will call
+   * to execute the tool, passing in an input that adheres to the schema.
+   */
+  handler: (
+    input: s.StandardJSONSchemaV1.InferInput<Schema>,
+    abortSignal: AbortSignal,
+  ) => Promise<Result>;
+
+  /**
+   * Dependencies that should trigger tool recreation.
+   * The hook will automatically memoize the handler based on these dependencies,
+   * so you can safely pass anonymous functions.
+   */
+  deps: DependencyList;
+}
+
+/**
+ * @public
+ */
 export interface ToolOptionsWithUnknownSchema<Name extends string, Result> {
   /**
    * The name of the tool.
@@ -113,6 +153,7 @@ export type ToolOptions<
   Result = unknown,
 > =
   | ToolOptionsWithInput<Name, Schema, Result>
+  | ToolOptionsWithStandardSchema<Name, s.StandardJSONSchemaV1, Result>
   | ToolOptionsWithUnknownSchema<Name, Result>
   | ToolOptionsWithoutInput<Name, Result>;
 
@@ -143,6 +184,27 @@ export function useTool<
 >(
   input: ToolOptionsWithInput<Name, Schema, Result>,
 ): Chat.Tool<Name, s.Infer<Schema>, Result>;
+
+/**
+ * Creates a tool with a Standard JSON Schema.
+ *
+ * @public
+ * @typeParam Name - The name of the tool.
+ * @typeParam Schema - The schema of the tool.
+ * @typeParam Result - The result of the tool.
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `schema`: The schema of the tool
+ *   - `handler`: The handler of the tool
+ */
+export function useTool<
+  const Name extends string,
+  Schema extends s.StandardJSONSchemaV1,
+  Result,
+>(
+  input: ToolOptionsWithStandardSchema<Name, Schema, Result>,
+): Chat.Tool<Name, s.StandardJSONSchemaV1.InferInput<Schema>, Result>;
 
 /**
  * Creates a tool with a unknown JSON schema.
@@ -189,6 +251,7 @@ export function useTool<const Name extends string, Result>(
 export function useTool<const Name extends string, Result>(
   input:
     | ToolOptionsWithInput<Name, s.HashbrownType, Result>
+    | ToolOptionsWithStandardSchema<Name, s.StandardJSONSchemaV1, Result>
     | ToolOptionsWithUnknownSchema<Name, Result>
     | ToolOptionsWithoutInput<Name, Result>,
 ): Chat.Tool<Name, any, Result> {

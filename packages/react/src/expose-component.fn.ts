@@ -22,7 +22,7 @@ import type { ComponentType } from 'react';
 export type ComponentPropSchema<T> = ɵtypes.Prettify<
   T extends ComponentType<infer P>
     ? {
-        [K in keyof P]?: s.Schema<P[K]>;
+        [K in keyof P]?: s.Schema<P[K]> | s.StandardJSONSchemaV1<P[K], P[K]>;
       }
     : never
 >;
