@@ -14,8 +14,8 @@ export type ComponentPropSchema<T> = ɵtypes.Prettify<
   T extends { new (...args: any[]): infer P }
     ? {
         [K in keyof P]?: P[K] extends AngularSignalLike<infer U>
-          ? s.Schema<U>
-          : s.Schema<P[K]>;
+          ? s.Schema<U> | s.StandardJSONSchemaV1<U, U>
+          : s.Schema<P[K]> | s.StandardJSONSchemaV1<P[K], P[K]>;
       }
     : never
 >;
