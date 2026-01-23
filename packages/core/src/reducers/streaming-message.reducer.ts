@@ -14,6 +14,7 @@ import {
 
 type ParserMap = Record<number, ParserState>;
 type CacheMap = Record<number, s.FromJsonAstCache>;
+type ToolCallIndexMap = Record<string, number>;
 
 export interface StreamingMessageState {
   message: Chat.Internal.AssistantMessage | null;
@@ -23,6 +24,7 @@ export interface StreamingMessageState {
   outputCache?: s.FromJsonAstCache;
   toolParserStateByIndex: ParserMap;
   toolCacheByIndex: CacheMap;
+  toolCallIndexById: ToolCallIndexMap;
   configSnapshot?: {
     responseSchema?: s.HashbrownType;
     emulateStructuredOutput: boolean;
@@ -39,6 +41,7 @@ export const initialState: StreamingMessageState = {
   outputCache: undefined,
   toolParserStateByIndex: {},
   toolCacheByIndex: {},
+  toolCallIndexById: {},
   configSnapshot: undefined,
   error: undefined,
 };
@@ -179,13 +182,30 @@ export const reducer = createReducer(
       let outputCache = state.outputCache;
       let toolParserStateByIndex = state.toolParserStateByIndex;
       let toolCacheByIndex = state.toolCacheByIndex;
+      let toolCallIndexById = state.toolCallIndexById;
       let error = state.error;
       const updatedToolIds = new Set<string>();
       const updatedToolIndices = new Set<number>();
       const resolvedArgsByIndex = new Map<number, JsonValue | undefined>();
 
       for (const toolCallDelta of deltaToolCalls) {
-        const index = toolCallDelta.index;
+        const index =
+          toolCallDelta.index ??
+          (toolCallDelta.id ? toolCallIndexById[toolCallDelta.id] : undefined);
+        const deltaArgs = toolCallDelta.function?.arguments;
+        const isStringArgs = typeof deltaArgs === 'string';
+        const hasArgs =
+          deltaArgs !== undefined &&
+          deltaArgs !== null &&
+          (!isStringArgs || deltaArgs.length > 0);
+
+        if (toolCallDelta.id && toolCallDelta.index !== undefined) {
+          toolCallIndexById = {
+            ...toolCallIndexById,
+            [toolCallDelta.id]: toolCallDelta.index,
+          };
+        }
+
         if (index === undefined) {
           continue;
         }
@@ -196,45 +216,8 @@ export const reducer = createReducer(
           index,
           toolCallDelta.function?.name,
         );
-        const deltaArgs = toolCallDelta.function?.arguments;
-        const isStringArgs = typeof deltaArgs === 'string';
-        const hasArgs =
-          deltaArgs !== undefined &&
-          deltaArgs !== null &&
-          (!isStringArgs || deltaArgs.length > 0);
 
         if (!hasArgs) {
-          continue;
-        }
-
-        if (emulateStructuredOutput && responseSchema && name === 'output') {
-          if (isStringArgs) {
-            const nextOutputState = parseChunk(
-              ensureParserState(outputParserState),
-              deltaArgs,
-            );
-            outputParserState = nextOutputState;
-            const output = resolveSchemaValue(
-              responseSchema,
-              nextOutputState,
-              outputCache,
-            );
-            outputCache = output.cache;
-            if (output.hasError && !error) {
-              error = new Error('Invalid structured output');
-            }
-            if (output.value !== undefined) {
-              message = {
-                ...message,
-                contentResolved: output.value,
-              };
-            }
-          } else {
-            message = {
-              ...message,
-              contentResolved: deltaArgs as JsonValue,
-            };
-          }
           continue;
         }
 
@@ -295,47 +278,28 @@ export const reducer = createReducer(
       }
 
       let nextContent = message.content ?? '';
-      if (!emulateStructuredOutput) {
-        nextContent += deltaContent;
-      }
+      nextContent += deltaContent;
 
-      if (emulateStructuredOutput && responseSchema) {
-        const outputTool = mergedRawToolCalls.find(
-          (call) => call.function?.name === 'output',
+      if (responseSchema && deltaContent) {
+        const nextOutputState = parseChunk(
+          ensureParserState(outputParserState),
+          deltaContent,
         );
-        if (outputTool) {
-          const rawArguments = outputTool.function.arguments;
-          nextContent =
-            typeof rawArguments === 'string'
-              ? rawArguments
-              : rawArguments != null
-                ? JSON.stringify(rawArguments)
-                : nextContent;
+        outputParserState = nextOutputState;
+        const output = resolveSchemaValue(
+          responseSchema,
+          nextOutputState,
+          outputCache,
+        );
+        outputCache = output.cache;
+        if (output.hasError && !error) {
+          error = new Error('Invalid structured output');
         }
-      }
-
-      if (!emulateStructuredOutput && responseSchema) {
-        if (deltaContent) {
-          const nextOutputState = parseChunk(
-            ensureParserState(outputParserState),
-            deltaContent,
-          );
-          outputParserState = nextOutputState;
-          const output = resolveSchemaValue(
-            responseSchema,
-            nextOutputState,
-            outputCache,
-          );
-          outputCache = output.cache;
-          if (output.hasError && !error) {
-            error = new Error('Invalid structured output');
-          }
-          if (output.value !== undefined) {
-            message = {
-              ...message,
-              contentResolved: output.value,
-            };
-          }
+        if (output.value !== undefined) {
+          message = {
+            ...message,
+            contentResolved: output.value,
+          };
         }
       }
 
@@ -350,25 +314,30 @@ export const reducer = createReducer(
 
       const nextToolCalls = mergedRawToolCalls.flatMap((toolCall) => {
         const name = toolCall.function?.name;
-        if (!name || name === 'output') {
+        if (!name) {
           return [];
         }
 
-        if (!toolCall.id) {
+        const toolCallId =
+          toolCall.id ??
+          (toolCall.index !== undefined
+            ? `tool-call-${toolCall.index}`
+            : undefined);
+        if (!toolCallId) {
           return [];
         }
 
-        const existing = existingById[toolCall.id];
+        const existing = existingById[toolCallId];
         if (
           existing &&
-          !updatedToolIds.has(toolCall.id) &&
+          !updatedToolIds.has(toolCallId) &&
           !updatedToolIndices.has(toolCall.index ?? -1)
         ) {
           return [existing];
         }
 
         const base: Chat.Internal.ToolCall = existing ?? {
-          id: toolCall.id,
+          id: toolCallId,
           name,
           arguments: '',
           status: 'pending',
@@ -383,13 +352,17 @@ export const reducer = createReducer(
               : '';
 
         const tool = toolsByName[name];
-        const parserState = tool
-          ? toolParserStateByIndex[toolCall.index]
-          : undefined;
+        const toolIndex =
+          toolCall.index ??
+          (toolCall.id ? toolCallIndexById[toolCall.id] : undefined);
+        const parserState =
+          tool && toolIndex !== undefined
+            ? toolParserStateByIndex[toolIndex]
+            : undefined;
         let argumentsResolved = base.argumentsResolved;
 
-        if (tool && parserState && toolCall.index !== undefined) {
-          const resolved = resolvedArgsByIndex.get(toolCall.index);
+        if (tool && parserState && toolIndex !== undefined) {
+          const resolved = resolvedArgsByIndex.get(toolIndex);
           if (resolved !== undefined) {
             argumentsResolved = resolved;
           }
@@ -420,6 +393,7 @@ export const reducer = createReducer(
         outputCache,
         toolParserStateByIndex,
         toolCacheByIndex,
+        toolCallIndexById,
         error,
       };
     },
@@ -427,13 +401,13 @@ export const reducer = createReducer(
   on(apiActions.generateMessageFinish, (state): StreamingMessageState => {
     const config = state.configSnapshot;
     const responseSchema = config?.responseSchema;
-    const emulateStructuredOutput = config?.emulateStructuredOutput ?? false;
     const toolsByName = config?.toolsByName ?? {};
 
     let outputParserState = state.outputParserState;
     let outputCache = state.outputCache;
     let toolParserStateByIndex = state.toolParserStateByIndex;
     let toolCacheByIndex = state.toolCacheByIndex;
+    const toolCallIndexById = state.toolCallIndexById;
     let error = state.error;
     let message = state.message;
 
@@ -481,17 +455,22 @@ export const reducer = createReducer(
 
     const nextToolCalls = state.rawToolCalls.flatMap((toolCall) => {
       const name = toolCall.function?.name;
-      if (!name || name === 'output') {
+      if (!name) {
         return [];
       }
 
-      if (!toolCall.id) {
+      const toolCallId =
+        toolCall.id ??
+        (toolCall.index !== undefined
+          ? `tool-call-${toolCall.index}`
+          : undefined);
+      if (!toolCallId) {
         return [];
       }
 
-      const existing = existingById[toolCall.id];
+      const existing = existingById[toolCallId];
       const base: Chat.Internal.ToolCall = existing ?? {
-        id: toolCall.id,
+        id: toolCallId,
         name,
         arguments: '',
         status: 'pending',
@@ -507,21 +486,22 @@ export const reducer = createReducer(
             : '';
 
       const tool = toolsByName[name];
-      const parserState = tool
-        ? toolParserStateByIndex[toolCall.index]
-        : undefined;
+      const toolIndex =
+        toolCall.index ??
+        (toolCall.id ? toolCallIndexById[toolCall.id] : undefined);
+      const parserState = tool ? toolParserStateByIndex[toolIndex] : undefined;
       let argumentsResolved = base.argumentsResolved;
 
-      if (tool && parserState) {
+      if (tool && parserState && toolIndex !== undefined) {
         if (s.isHashbrownType(tool.schema)) {
           const resolved = resolveSchemaValue(
             tool.schema,
             parserState,
-            toolCacheByIndex[toolCall.index],
+            toolCacheByIndex[toolIndex],
           );
           toolCacheByIndex = updateCache(
             toolCacheByIndex,
-            toolCall.index,
+            toolIndex,
             resolved.cache,
           );
           if (resolved.value !== undefined) {
@@ -548,23 +528,6 @@ export const reducer = createReducer(
         },
       ];
     });
-
-    if (emulateStructuredOutput && responseSchema && message) {
-      const outputTool = state.rawToolCalls.find(
-        (call) => call.function?.name === 'output',
-      );
-      if (outputTool) {
-        message = {
-          ...message,
-          content:
-            typeof outputTool.function.arguments === 'string'
-              ? outputTool.function.arguments
-              : outputTool.function.arguments != null
-                ? JSON.stringify(outputTool.function.arguments)
-                : '',
-        };
-      }
-    }
 
     if (message) {
       message = {

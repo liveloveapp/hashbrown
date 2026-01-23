@@ -95,10 +95,20 @@ test('parses Standard JSON Schema structured output when complete', () => {
   expect(state.message?.contentResolved).toEqual({ message: 'hello' });
 });
 
-test('uses output tool call for emulated structured output', () => {
-  const responseSchema = s.object('output', { answer: s.string('answer') });
+test('streams output tool arguments like a normal tool in emulated mode', () => {
+  const responseSchema = s.object('output', {
+    answer: s.streaming.string('answer'),
+  });
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    output: {
+      name: 'output',
+      description: '',
+      schema: responseSchema,
+      handler: async () => undefined,
+    },
+  };
 
-  let state = startState(responseSchema, true);
+  let state = startState(responseSchema, true, toolsByName);
 
   state = reducer(
     state,
@@ -109,15 +119,31 @@ test('uses output tool call for emulated structured output', () => {
           index: 0,
           id: 'call-output',
           type: 'function',
-          function: { name: 'output', arguments: '{"answer":"ok"}' },
+          function: { name: 'output', arguments: '{"answer":"o' },
         },
       ],
     }),
   );
 
-  expect(state.toolCalls).toHaveLength(0);
-  expect(state.message?.content).toBe('{"answer":"ok"}');
-  expect(state.message?.contentResolved).toEqual({ answer: 'ok' });
+  expect(state.toolCalls).toHaveLength(1);
+  expect(state.toolCalls[0]?.name).toBe('output');
+  expect(state.toolCalls[0]?.argumentsResolved).toEqual({ answer: 'o' });
+  expect(state.message?.contentResolved).toBeUndefined();
+
+  state = reducer(
+    state,
+    chunkAction({
+      toolCalls: [
+        {
+          index: 0,
+          function: { arguments: 'k"}' },
+        },
+      ],
+    }),
+  );
+
+  expect(state.toolCalls[0]?.argumentsResolved).toEqual({ answer: 'ok' });
+  expect(state.message?.contentResolved).toBeUndefined();
 });
 
 test('streams hashbrown tool arguments and preserves identity when unchanged', () => {

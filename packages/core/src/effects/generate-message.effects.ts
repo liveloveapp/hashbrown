@@ -218,7 +218,19 @@ export const generateMessage = createEffect((store) => {
                     apiActions.generateMessageStart({
                       responseSchema,
                       emulateStructuredOutput,
-                      toolsByName,
+                      toolsByName:
+                        emulateStructuredOutput && responseSchema
+                          ? {
+                              ...toolsByName,
+                              output: {
+                                name: 'output',
+                                description:
+                                  'Reserved tool for emulated structured output.',
+                                schema: s.normalizeSchemaOutput(responseSchema),
+                                handler: async () => undefined,
+                              },
+                            }
+                          : toolsByName,
                     }),
                   );
                   break;

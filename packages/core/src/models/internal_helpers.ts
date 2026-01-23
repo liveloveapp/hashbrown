@@ -210,8 +210,10 @@ export function toApiMessagesFromInternal(
           : message.contentResolved
             ? JSON.stringify(message.contentResolved)
             : '';
-      const toolCallsForMessage = toolCalls.filter((toolCall) =>
-        message.toolCallIds.includes(toolCall.id),
+      const toolCallsForMessage = toolCalls.filter(
+        (toolCall) =>
+          message.toolCallIds.includes(toolCall.id) &&
+          toolCall.name !== 'output',
       );
       const toolMessages = toolCallsForMessage.flatMap(
         (toolCall): Chat.Api.ToolMessage[] => {
