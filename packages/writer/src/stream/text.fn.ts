@@ -206,7 +206,12 @@ export async function* text(
             index: choice.index,
             delta: {
               ...choice.delta,
-              toolCalls: choice.delta.tool_calls ?? undefined,
+              toolCalls: choice.delta.tool_calls
+                ? choice.delta.tool_calls.map((toolCall, toolCallIndex) => ({
+                    ...toolCall,
+                    index: toolCall.index ?? toolCallIndex,
+                  }))
+                : undefined,
             },
             finishReason: choice.finish_reason,
           }),
