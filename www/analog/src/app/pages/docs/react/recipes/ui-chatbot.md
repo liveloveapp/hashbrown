@@ -180,7 +180,7 @@ Let's break down `useTool`:
 3.  `handler` - An async function that can access your app's state and perform actions. All of the returned data will be in the context, and you pay for context both in terms of _token cost_ and _compute_. Be intentional with the data you return from tool calls.
 4.  `deps` - React dependency array for the hook.
 
-Tools can accept arguments, which the LLM will generate as part of its tool call. In Hashbrown, tool call arguments are defined using Skillet for the schema:
+Tools can accept arguments, which the LLM will generate as part of its tool call. In Hashbrown, tool call arguments are defined using Skillet (or a Standard JSON Schema object with the `~standard` spec, which Hashbrown normalizes to Skillet) for the schema:
 
 <hb-code-example header="tools.ts">
 

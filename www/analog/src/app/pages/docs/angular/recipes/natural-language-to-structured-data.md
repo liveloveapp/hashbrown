@@ -155,7 +155,7 @@ We will get there with @hashbrownai/angular!structuredCompletionResource:functio
 
 ## 3. Describe the result schema (success **or** error)
 
-@hashbrownai/angular!structuredCompletionResource:function needs a Skillet schema. We want two possible outcomes:
+@hashbrownai/angular!structuredCompletionResource:function needs a Skillet schema (or a Standard JSON Schema object with the `~standard` spec). We want two possible outcomes:
 
 1. A parsed expense: When the LLM can infer everything, it should emit an expense with `type = "Expense"`.
 2. An error: If the LLM cannot infer something, it should emit a `type = "ParseError"` with a helpful message.

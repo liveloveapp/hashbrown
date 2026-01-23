@@ -157,6 +157,25 @@ const mockResult: Result = {
 
 ---
 
+## Standard JSON Schema
+
+Hashbrown can ingest Standard JSON Schema objects (the `~standard` spec) alongside Skillet when defining tools, structured outputs, and component props. Internally, Hashbrown normalizes Standard JSON Schema to draft-07 JSON Schema and then converts it to Skillet for streaming and validation.
+
+If you need explicit conversion, use `s.fromStandardJsonSchema(schema, { mode: 'input' | 'output' })`. To type a schema regardless of whether it is Skillet or Standard JSON Schema, use `s.InferSchemaInput<T>` and `s.InferSchemaOutput<T>`. For Standard JSON Schema types specifically, use `s.StandardJSONSchemaV1.InferInput<T>` and `s.StandardJSONSchemaV1.InferOutput<T>`.
+
+Standard JSON Schema support is limited to the Skillet-compatible subset and throws on unsupported keywords:
+
+- `string` with `pattern` and `format` (date-time, time, date, duration, email, hostname, ipv4, ipv6, uuid)
+- `number` / `integer` with `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`
+- `boolean`, `null`
+- `const` for string/number/boolean only
+- `enum` for string values only
+- `object` with `properties` (all required) and `additionalProperties: false`
+- `array` with a single `items` schema and optional `minItems`/`maxItems`
+- `anyOf` unions
+
+---
+
 ## Numeric Types
 
 Skillet supports numeric types using either the `number()` or `integer()` function.
