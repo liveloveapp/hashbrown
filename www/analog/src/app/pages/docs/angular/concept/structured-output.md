@@ -56,7 +56,7 @@ export class App {
 </hb-code-example>
 
 1. The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource that can parse user input and return structured data.
-2. The `schema` option defines the expected structure of the response using Hashbrown's Skillet schema language.
+2. The `schema` option defines the expected structure of the response using Skillet (or a Standard JSON Schema object that Hashbrown normalizes to Skillet).
 3. The resource `value()` contains the structured output, which can be used directly in your application.
 
 Here is the expected `content` value:
@@ -70,13 +70,19 @@ Here is the expected `content` value:
 
 ---
 
+### Schema Inputs
+
+The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType), or raw JSON Schema objects. Standard JSON Schema inputs are normalized to Skillet (draft-07) before streaming and validation. Unsupported keywords throw at runtime.
+
+---
+
 ### `StructuredChatResourceOptions`
 
 | Option      | Type                                     | Required | Description                                               |
 | ----------- | ---------------------------------------- | -------- | --------------------------------------------------------- |
 | `model`     | `KnownModelIds \| Signal<KnownModelIds>` | Yes      | The model to use for the structured chat resource         |
 | `system`    | `string \| Signal<string>`               | Yes      | The system prompt to use for the structured chat resource |
-| `schema`    | `Schema`                                 | Yes      | The schema to use for the structured chat resource        |
+| `schema`    | `s.SchemaOutput`                         | Yes      | The schema to use for the structured chat resource        |
 | `tools`     | `Tools[]`                                | No       | The tools to use for the structured chat resource         |
 | `messages`  | `Chat.Message<Output, Tools>[]`          | No       | The initial messages for the structured chat resource     |
 | `debugName` | `string`                                 | No       | The debug name for the structured chat resource           |
@@ -171,7 +177,7 @@ When the user types a scene name, the LLM will predict which lights should be ad
 | ----------- | ------------------------------------ | -------- | --------------------------------------------------------------- |
 | `model`     | `KnownModelIds`                      | Yes      | The model to use for the structured completion resource         |
 | `input`     | `Signal<null \| undefined \| Input>` | Yes      | The input to the structured completion resource                 |
-| `schema`    | `Schema`                             | Yes      | The schema to use for the structured completion resource        |
+| `schema`    | `s.SchemaOutput`                     | Yes      | The schema to use for the structured completion resource        |
 | `system`    | `SignalLike<string>`                 | Yes      | The system prompt to use for the structured completion resource |
 | `tools`     | `Chat.AnyTool[]`                     | No       | The tools to use for the structured completion resource         |
 | `debugName` | `string`                             | No       | The debug name for the structured completion resource           |

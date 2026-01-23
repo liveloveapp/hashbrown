@@ -61,7 +61,7 @@ function App() {
 </hb-code-example>
 
 1. The @hashbrownai/react!useStructuredChat:function hook is used to create a chat instance that can parse user input and return structured data.
-2. The `schema` option defines the expected structure of the response using Hashbrown's Skillet schema language.
+2. The `schema` option defines the expected structure of the response using Skillet (or a Standard JSON Schema object that Hashbrown normalizes to Skillet).
 3. The assistant message `content` contains the structured output, which can be used directly in your application.
 
 Here is the expected `content` value:
@@ -75,13 +75,19 @@ Here is the expected `content` value:
 
 ---
 
+### Schema Inputs
+
+The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType), or raw JSON Schema objects. Standard JSON Schema inputs are normalized to Skillet (draft-07) before streaming and validation. Unsupported keywords throw at runtime.
+
+---
+
 ### `UseStructuredChatOptions`
 
 | Option         | Type                            | Required | Description                                         |
 | -------------- | ------------------------------- | -------- | --------------------------------------------------- |
 | `model`        | `KnownModelIds`                 | Yes      | The model to use for the structured chat            |
 | `system`       | `string`                        | Yes      | The system prompt to use for the structured chat    |
-| `schema`       | `Schema`                        | Yes      | The schema to use for the structured chat           |
+| `schema`       | `s.SchemaOutput`                | Yes      | The schema to use for the structured chat           |
 | `tools`        | `Tools[]`                       | No       | The tools to make available for the structured chat |
 | `messages`     | `Chat.Message<Output, Tools>[]` | No       | The initial messages for the structured chat        |
 | `debugName`    | `string`                        | No       | The debug name for the structured chat              |
@@ -183,7 +189,7 @@ Let's review the code above.
 | -------------- | ---------------------------- | -------- | --------------------------------------------------------- |
 | `model`        | `KnownModelIds`              | Yes      | The model to use for the structured completion            |
 | `input`        | `Input \| null \| undefined` | Yes      | The input to the structured completion                    |
-| `schema`       | `Schema`                     | Yes      | The schema to use for the structured completion           |
+| `schema`       | `s.SchemaOutput`             | Yes      | The schema to use for the structured completion           |
 | `system`       | `string`                     | Yes      | The system prompt to use for the structured completion    |
 | `tools`        | `Chat.AnyTool[]`             | No       | The tools to make available for the structured completion |
 | `debugName`    | `string`                     | No       | The debug name for the structured completion              |

@@ -43,6 +43,8 @@ We should mention here that Skillet, our LLM-optimized schema language, is **typ
 - The schema specified is a `string()`.
 - If the schema does not match the Angular component's input type, you'll see an error in both your editor and when you attempt to build the application.
 
+You can also describe component inputs with Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType). Hashbrown normalizes these to Skillet (draft-07) for streaming and validation. Unsupported keywords throw at runtime.
+
 ---
 
 ## Streaming with Skillet

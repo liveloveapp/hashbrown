@@ -151,7 +151,7 @@ Let's break down @hashbrownai/angular!createTool:function:
 2.  `description` - A clear, natural-language description of what purpose the tool serves. The LLM will use this description to determine when the tool should be called.
 3.  `handler` - An async function that runs in Angular's dependency injection context. We use it to inject the services we want to call, returning any data that we want to feed into the LLM's context. It is important to note that all of the returned data will be in the context, and you pay for context both in terms of _token cost_ and _compute_. Be intentional with the data you return from tool calls.
 
-Tools can accept arguments, which the LLM will generate as part of its tool call. In Hashbrown, tool call arguments are defined using Skillet for the schema:
+Tools can accept arguments, which the LLM will generate as part of its tool call. In Hashbrown, tool call arguments are defined using Skillet (or a Standard JSON Schema object with the `~standard` spec, which Hashbrown normalizes to Skillet) for the schema:
 
 <hb-code-example header="tools.ts">
 

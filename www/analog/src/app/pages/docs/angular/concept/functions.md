@@ -65,8 +65,20 @@ createTool({
 | ------------- | --------------------------- | -------- | ----------------------------------------------- |
 | `name`        | `string`                    | Yes      | The name of the function that the LLM will call |
 | `description` | `string`                    | Yes      | Description of what the function does           |
-| `schema`      | `s.HashbrownType \| object` | No       | Schema defining the function arguments          |
+| `schema`      | `s.SchemaInput`             | No       | Schema defining the function arguments          |
 | `handler`     | `Function`                  | Yes      | The function to execute when called             |
+
+---
+
+### Schema Inputs
+
+The `schema` option accepts:
+
+- Skillet schemas (`s.string`, `s.object`, etc.)
+- Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType)
+- Raw JSON Schema objects
+
+Standard JSON Schema inputs are normalized to Skillet (draft-07) before streaming and validation. Unsupported keywords throw at runtime.
 
 ---
 
@@ -93,7 +105,10 @@ createTool({
 <hb-code-example header="handler">
 
 ```ts
-handler: (input: s.Infer<Schema>, abortSignal: AbortSignal) => Promise<Result>;
+handler: (
+  input: s.InferSchemaInput<Schema>,
+  abortSignal: AbortSignal
+) => Promise<Result>;
 ```
 
 </hb-code-example>
