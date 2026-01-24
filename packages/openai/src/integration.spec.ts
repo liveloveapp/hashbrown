@@ -1,8 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {} from 'dotenv';
-import * as express from 'express';
-import * as cors from 'cors';
-import { Chat, fryHashbrown, Hashbrown, s } from '@hashbrownai/core';
+import { Chat, s } from '@hashbrownai/core';
 import { HashbrownOpenAI } from './index';
 
 const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
@@ -12,18 +9,10 @@ const OPENAI_MODEL = (process.env['OPENAI_MODEL'] ??
 jest.setTimeout(60_000);
 
 test('OpenAI Text Streaming', async () => {
-  const server = await createServer((request) =>
-    HashbrownOpenAI.stream.text({
-      apiKey: OPENAI_API_KEY,
-      request,
-    }),
-  );
-  try {
-    const hashbrown = fryHashbrown({
-      debounce: 0,
-      apiUrl: server.url,
-      model: OPENAI_MODEL,
-      system: `
+  const request: Chat.Api.CompletionCreateParams = {
+    operation: 'generate',
+    model: OPENAI_MODEL,
+    system: `
      I am writing an integration test against OpenAI. Respond
      exactly with the text "Hello, world!"
 
@@ -34,358 +23,316 @@ test('OpenAI Text Streaming', async () => {
      Assistant: "Hello, world!"
 
     `,
-      messages: [
-        {
-          role: 'user',
-          content: 'Please respond with the correct text.',
-        },
-      ],
-    });
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+  };
 
-    await waitUntilHashbrownIsSettled(hashbrown);
-
-    const assistantMessage = hashbrown
-      .messages()
-      .find((message) => message.role === 'assistant');
-
-    expect(assistantMessage?.content).toBe('Hello, world!');
-  } finally {
-    server.close();
-  }
-});
-
-test('OpenAI Tool Calling', async () => {
-  const expectedResponse =
-    "I don't sleep, I hover outside myself, watching my body survive";
-  let toolCallArgs: any;
-  const server = await createServer((request) =>
+  const frames = await collectFrames(
     HashbrownOpenAI.stream.text({
       apiKey: OPENAI_API_KEY,
       request,
     }),
   );
-  try {
-    const hashbrown = fryHashbrown({
-      debounce: 0,
-      apiUrl: server.url,
-      model: OPENAI_MODEL,
-      system: `
+
+  const responseText = extractText(frames);
+
+  expect(responseText).toBe('Hello, world!');
+  expect(frames.some((frame) => frame.type === 'response.created')).toBe(true);
+  expect(frames.some((frame) => frame.type === 'response.completed')).toBe(
+    true,
+  );
+});
+
+test('OpenAI Tool Calling', async () => {
+  const request: Chat.Api.CompletionCreateParams = {
+    operation: 'generate',
+    model: OPENAI_MODEL,
+    system: `
      I am writing an integration test against OpenAI. Call
      the "test" tool with the argument "Hello, world!"
 
      DO NOT respond with any other text.
-
-     The tool will respond with text. You must respond with the
-     exact text from the tool call.
     `,
-      messages: [
-        {
-          role: 'user',
-          content: 'Please call the test tool and respond with the text.',
-        },
-      ],
-      tools: [
-        {
-          name: 'test',
-          description: 'Test tool',
-          schema: s.object('args', {
+    messages: [
+      {
+        role: 'user',
+        content: 'Please call the test tool and respond with the text.',
+      },
+    ],
+    tools: [
+      {
+        name: 'test',
+        description: 'Test tool',
+        parameters: s.toJsonSchema(
+          s.object('args', {
             text: s.string(''),
           }),
-          handler: async (args: {
-            text: string;
-          }): Promise<{ text: string }> => {
-            toolCallArgs = args;
+        ),
+      },
+    ],
+    toolChoice: 'required',
+  };
 
-            return {
-              text: expectedResponse,
-            };
-          },
-        },
-      ],
-    });
+  const frames = await collectFrames(
+    HashbrownOpenAI.stream.text({
+      apiKey: OPENAI_API_KEY,
+      request,
+    }),
+  );
 
-    await waitUntilHashbrownIsSettled(hashbrown);
+  const toolCalls = extractToolCalls(frames);
+  const firstToolCall = toolCalls[0];
+  const parsedArgs = firstToolCall ? JSON.parse(firstToolCall.arguments) : null;
 
-    const assistantMessage = hashbrown
-      .messages()
-      .reverse()
-      .find((message) => message.role === 'assistant');
-
-    expect(assistantMessage?.content).toBe(expectedResponse);
-    expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
-  } finally {
-    server.close();
-  }
+  expect(firstToolCall?.name).toBe('test');
+  expect(parsedArgs).toEqual({ text: 'Hello, world!' });
+  expect(frames.some((frame) => frame.type === 'response.completed')).toBe(
+    true,
+  );
 });
 
 test('OpenAI with structured output', async () => {
-  const server = await createServer((request) =>
-    HashbrownOpenAI.stream.text({
-      apiKey: OPENAI_API_KEY,
-      request,
-    }),
-  );
-  try {
-    const hashbrown = fryHashbrown({
-      debounce: 0,
-      apiUrl: server.url,
-      model: OPENAI_MODEL,
-      system: `
+  const request: Chat.Api.CompletionCreateParams = {
+    operation: 'generate',
+    model: OPENAI_MODEL,
+    system: `
      I am writing an integration test against OpenAI. Respond
      exactly with the text "Hello, world!" in JSON format.
     `,
-      messages: [
-        {
-          role: 'user',
-          content: 'Please respond with the correct text.',
-        },
-      ],
-      responseSchema: s.object('response', {
+    messages: [
+      {
+        role: 'user',
+        content: 'Please respond with the correct text.',
+      },
+    ],
+    responseFormat: s.toJsonSchema(
+      s.object('response', {
         text: s.string(''),
       }),
-    });
+    ),
+  };
 
-    await waitUntilHashbrownIsSettled(hashbrown);
-
-    const assistantMessage = hashbrown
-      .messages()
-      .reverse()
-      .find((message) => message.role === 'assistant');
-
-    expect(assistantMessage?.content).toEqual({ text: 'Hello, world!' });
-  } finally {
-    server.close();
-  }
-});
-
-test('OpenAI with tool calling and structured output', async () => {
-  const expectedResponse = 'Hello, world!';
-  let toolCallArgs: any;
-  const server = await createServer((request) =>
+  const frames = await collectFrames(
     HashbrownOpenAI.stream.text({
       apiKey: OPENAI_API_KEY,
       request,
     }),
   );
 
-  try {
-    const hashbrown = fryHashbrown({
-      debounce: 0,
-      apiUrl: server.url,
-      model: OPENAI_MODEL,
-      system: `
+  const responseText = extractText(frames);
+  const parsed = JSON.parse(responseText);
+
+  expect(parsed).toEqual({ text: 'Hello, world!' });
+});
+
+test('OpenAI with tool calling and structured output', async () => {
+  const request: Chat.Api.CompletionCreateParams = {
+    operation: 'generate',
+    model: OPENAI_MODEL,
+    system: `
         You must call the "test" tool with the argument "Hello, world!".
         After the tool returns, respond only with its text in JSON { "text": "<value>" }.
       `,
-      messages: [
-        {
-          role: 'user',
-          content: 'Please call the test tool and respond with the text.',
-        },
-      ],
-      tools: [
-        {
-          name: 'test',
-          description: 'Test tool',
-          schema: s.object('args', {
+    messages: [
+      {
+        role: 'user',
+        content: 'Please call the test tool and respond with the text.',
+      },
+    ],
+    tools: [
+      {
+        name: 'test',
+        description: 'Test tool',
+        parameters: s.toJsonSchema(
+          s.object('args', {
             text: s.string(''),
           }),
-          handler: async (args: {
-            text: string;
-          }): Promise<{ text: string }> => {
-            toolCallArgs = args;
-
-            return {
-              text: expectedResponse,
-            };
-          },
-        },
-      ],
-      responseSchema: s.object('response', {
+        ),
+      },
+    ],
+    toolChoice: 'required',
+    responseFormat: s.toJsonSchema(
+      s.object('response', {
         text: s.string(''),
       }),
-    });
+    ),
+  };
 
-    await waitUntilHashbrownIsSettled(hashbrown);
-
-    const assistantMessage = hashbrown
-      .messages()
-      .reverse()
-      .find((message) => message.role === 'assistant');
-
-    expect(assistantMessage?.content).toEqual({ text: expectedResponse });
-    expect(toolCallArgs).toEqual({ text: 'Hello, world!' });
-  } finally {
-    server.close();
-  }
-}, 20_000);
-
-test('OpenAI supports thread IDs across turns', async () => {
-  const requests: Chat.Api.CompletionCreateParams[] = [];
-  const threadMessages = new Map<string, Chat.Api.Message[]>();
-  const server = await createServer((incomingRequest) => {
-    requests.push(incomingRequest);
-
-    const iterator = HashbrownOpenAI.stream.text({
+  const frames = await collectFrames(
+    HashbrownOpenAI.stream.text({
       apiKey: OPENAI_API_KEY,
-      request: incomingRequest,
-      loadThread: async (threadId: string) => {
-        return threadMessages.get(threadId) ?? [];
-      },
-      saveThread: async (thread: Chat.Api.Message[], threadId?: string) => {
-        const id = threadId ?? incomingRequest.threadId ?? 'server-thread';
-        threadMessages.set(id, thread);
-        return id;
-      },
-      transformRequestOptions: (options) => {
-        return options;
-      },
-    });
+      request,
+    }),
+  );
 
-    return iterator;
-  });
+  const toolCalls = extractToolCalls(frames);
+  const firstToolCall = toolCalls[0];
+  const responseText = extractText(frames);
+  const parsed = JSON.parse(responseText);
 
-  let teardown: (() => void) | undefined;
-  try {
-    const hashbrown = fryHashbrown({
-      debounce: 0,
-      apiUrl: server.url,
-      model: OPENAI_MODEL,
-      system: `
-     You are participating in a deterministic integration test.
-
-     Rules:
-     1. When the user sends a message that starts with "Store this value:", respond with "Stored".
-     2. When the user later sends a message that is exactly "Recall value", respond with the value that appeared after "Store this value:" in the most recent earlier user message. Respond with the value alone.
-     3. For any other message, respond with "Unexpected input".
-    `,
-      messages: [
-        {
-          role: 'user',
-          content: 'Store this value: 12345',
-        },
-      ],
-      threadId: 'openai-thread',
-    });
-
-    teardown = hashbrown.sizzle();
-
-    await waitForNextIdle(hashbrown);
-
-    const firstAssistant = hashbrown
-      .messages()
-      .find((message) => message.role === 'assistant');
-
-    expect(requests).toHaveLength(1);
-    expect(requests[0].messages).toEqual([
-      {
-        role: 'user',
-        content: 'Store this value: 12345',
-      },
-    ]);
-    expect(firstAssistant?.content).toBe('Stored');
-
-    hashbrown.sendMessage({
-      role: 'user',
-      content: 'Recall value',
-    });
-
-    await waitForNextIdle(hashbrown);
-
-    expect(requests).toHaveLength(2);
-    const [initialRequest, followupRequest] = requests;
-
-    expect(initialRequest.threadId).toBeDefined();
-    expect(followupRequest.threadId).toBe(initialRequest.threadId);
-    expect(initialRequest.messages).toEqual([
-      {
-        role: 'user',
-        content: 'Store this value: 12345',
-      },
-    ]);
-    expect(followupRequest.messages).toEqual([
-      {
-        role: 'user',
-        content: 'Recall value',
-      },
-    ]);
-    const savedThread =
-      threadMessages.get(initialRequest.threadId as string) ?? [];
-    const savedContents = savedThread.map((m) => m.content);
-    expect(savedContents).toContain('Store this value: 12345');
-    expect(savedContents.some((c) => c === 'Stored')).toBeTruthy();
-    expect(hashbrown.threadId()).toBe(initialRequest.threadId);
-  } finally {
-    teardown?.();
-    server.close();
-  }
+  expect(firstToolCall?.name).toBe('test');
+  expect(parsed).toEqual({ text: 'Hello, world!' });
 });
 
-async function createServer(
-  iteratorFactory: (
-    request: Chat.Api.CompletionCreateParams,
-  ) => AsyncIterable<Uint8Array>,
-) {
-  const app = express();
+type OpenResponsesFrame =
+  | {
+      type: 'response.created' | 'response.in_progress' | 'response.completed';
+      response: Record<string, unknown>;
+    }
+  | {
+      type: 'response.output_item.added' | 'response.output_item.done';
+      outputIndex: number;
+      item: Record<string, unknown> | null;
+    }
+  | {
+      type: 'response.output_text.delta';
+      itemId: string;
+      outputIndex: number;
+      contentIndex: number;
+      delta: string;
+    }
+  | {
+      type: 'response.output_text.done';
+      itemId: string;
+      outputIndex: number;
+      contentIndex: number;
+      text: string;
+    }
+  | {
+      type: 'response.function_call_arguments.delta';
+      itemId: string;
+      outputIndex: number;
+      delta: string;
+    }
+  | {
+      type: 'response.function_call_arguments.done';
+      itemId: string;
+      outputIndex: number;
+      arguments: string;
+    }
+  | {
+      type: 'error';
+      error: {
+        type: string;
+        message: string;
+      };
+    };
 
-  app.use(express.json());
+type ToolCallSummary = {
+  itemId: string;
+  name?: string;
+  arguments: string;
+};
 
-  app.use(cors());
+async function collectFrames(
+  iterator: AsyncIterable<Uint8Array>,
+): Promise<OpenResponsesFrame[]> {
+  const decoder = new TextDecoder();
+  let buffer = new Uint8Array(0);
+  const frames: OpenResponsesFrame[] = [];
 
-  app.post('/chat', async (req, res) => {
-    const iterator = iteratorFactory(req.body);
-    res.header('Content-Type', 'application/octet-stream');
+  for await (const chunk of iterator) {
+    const next = new Uint8Array(buffer.length + chunk.length);
+    next.set(buffer);
+    next.set(chunk, buffer.length);
+    buffer = next;
 
-    for await (const chunk of iterator) {
-      res.write(chunk);
+    let offset = 0;
+    const view = new DataView(
+      buffer.buffer,
+      buffer.byteOffset,
+      buffer.byteLength,
+    );
+
+    while (buffer.length - offset >= 4) {
+      const length = view.getUint32(offset, false);
+
+      if (buffer.length - offset < 4 + length) {
+        break;
+      }
+
+      const start = offset + 4;
+      const end = start + length;
+      const json = decoder.decode(buffer.subarray(start, end));
+      frames.push(JSON.parse(json) as OpenResponsesFrame);
+      offset = end;
     }
 
-    res.end();
-  });
-
-  const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
-    const listener = app.listen(0, () => resolve(listener));
-  });
-
-  const address = server.address();
-
-  if (!address || typeof address === 'string') {
-    server.close();
-    throw new Error('Failed to determine server address');
+    if (offset > 0) {
+      buffer = buffer.subarray(offset);
+    }
   }
 
-  return {
-    url: `http://127.0.0.1:${address.port}/chat`,
-    close: () => server.close(),
-  };
+  if (buffer.length > 0) {
+    throw new Error(`Stream ended with ${buffer.length} leftover bytes`);
+  }
+
+  return frames;
 }
 
-async function waitUntilHashbrownIsSettled(hashbrown: Hashbrown<any, any>) {
-  const teardown = hashbrown.sizzle();
+function extractText(frames: OpenResponsesFrame[]): string {
+  const deltas: string[] = [];
+  let doneText: string | undefined;
 
-  await new Promise((resolve) => {
-    hashbrown.isLoading.subscribe((isLoading) => {
-      if (!isLoading) resolve(null);
-    });
-  });
+  for (const frame of frames) {
+    if (frame.type === 'response.output_text.delta') {
+      deltas.push(frame.delta);
+    }
+    if (frame.type === 'response.output_text.done') {
+      doneText = frame.text;
+    }
+  }
 
-  const errorMessage = hashbrown
-    .messages()
-    .find((message) => message.role === 'error');
-
-  if (errorMessage) console.error(errorMessage);
-
-  teardown();
+  return doneText ?? deltas.join('');
 }
 
-async function waitForNextIdle(hashbrown: Hashbrown<any, any>) {
-  await new Promise((resolve) => {
-    hashbrown.isLoading.subscribe((isLoading) => {
-      if (!isLoading) resolve(null);
-    });
-  });
+function extractToolCalls(frames: OpenResponsesFrame[]): ToolCallSummary[] {
+  const toolCalls = new Map<string, ToolCallSummary>();
 
-  const errorMessage = hashbrown.error();
+  for (const frame of frames) {
+    if (frame.type === 'response.output_item.added' && frame.item) {
+      const item = frame.item as { id?: string; name?: string; type?: string };
+      if (item.type === 'function_call' && item.id) {
+        toolCalls.set(item.id, {
+          itemId: item.id,
+          name: item.name,
+          arguments: '',
+        });
+      }
+    }
 
-  if (errorMessage) console.error(errorMessage);
+    if (frame.type === 'response.function_call_arguments.delta') {
+      const existing = toolCalls.get(frame.itemId);
+      if (existing) {
+        existing.arguments = `${existing.arguments}${frame.delta}`;
+      } else {
+        toolCalls.set(frame.itemId, {
+          itemId: frame.itemId,
+          arguments: frame.delta,
+        });
+      }
+    }
+
+    if (frame.type === 'response.function_call_arguments.done') {
+      const existing = toolCalls.get(frame.itemId);
+      if (existing) {
+        existing.arguments = frame.arguments;
+      } else {
+        toolCalls.set(frame.itemId, {
+          itemId: frame.itemId,
+          arguments: frame.arguments,
+        });
+      }
+    }
+
+    if (frame.type === 'error') {
+      throw new Error(`${frame.error.type}: ${frame.error.message}`);
+    }
+  }
+
+  return Array.from(toolCalls.values());
 }

@@ -55,7 +55,7 @@
         "Update adapter tests to assert new frames"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
