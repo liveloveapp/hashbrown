@@ -1,0 +1,76 @@
+{
+  "project": "Hashbrown",
+  "branchName": "ai/open-responses",
+  "description": "Open Responses adapter and protocol migration",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Map chat requests to Open Responses payloads",
+      "description": "As an adapter developer, I want to convert Hashbrown chat requests into Open Responses request payloads so the adapter can send valid requests.",
+      "acceptanceCriteria": [
+        "Map model, system, messages, tools, toolChoice, and responseFormat fields",
+        "Convert user/assistant/tool messages into Open Responses input items",
+        "Serialize non-string content as JSON for parity with existing behavior",
+        "Add unit tests for mapping behavior"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Parse Open Responses SSE events into frames",
+      "description": "As an adapter developer, I need to map Open Responses SSE events into the Hashbrown frame protocol so clients can consume streams.",
+      "acceptanceCriteria": [
+        "Translate response lifecycle events into frames",
+        "Handle text, refusal, reasoning, and tool call delta events",
+        "Emit error frames on malformed JSON",
+        "Add unit tests for event-to-frame mapping"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Implement Open Responses text stream adapter",
+      "description": "As a Hashbrown user, I want a streaming adapter that posts to /v1/responses so I can use Open Responses-compatible backends.",
+      "acceptanceCriteria": [
+        "Expose HashbrownOpenResponses.stream.text API",
+        "Support transformRequestOptions and custom fetch implementation",
+        "Stream frames from the Open Responses SSE endpoint",
+        "Add unit tests for request assembly and streaming"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Update OpenAI adapter to emit Open Responses frames",
+      "description": "As a Hashbrown user, I want the OpenAI adapter to emit the new Open Responses frame protocol so clients can share a single parser.",
+      "acceptanceCriteria": [
+        "Map chat stream deltas to Open Responses-aligned frames",
+        "Remove thread-* frames",
+        "Update adapter tests to assert new frames"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Update React and Angular clients for Open Responses frames",
+      "description": "As a client developer, I want the UI packages to consume the new frame protocol so they stay compatible with all adapters.",
+      "acceptanceCriteria": [
+        "Update frame decoding and reducers to handle Open Responses frames",
+        "Remove thread-specific handling",
+        "Update client tests",
+        "Verify UI changes in browser"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
