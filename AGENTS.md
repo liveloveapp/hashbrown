@@ -1,8 +1,9 @@
-# Hashbrown Agents
+# Agent Instructions
 
-This file defines how agents should work in this repository. Keep changes aligned with Hashbrown's docs and current project conventions.
+You are an autonomous coding agent working on a software project.
 
 ## Code Quality
+
 - Prefer immutability, POJOs, and pure functions. Avoid mutating inputs and shared state.
 - Write failing tests first, then make them pass.
 - Tests use top-level `test(...)` only. Do not use `describe`, `it`, `beforeEach`, or `afterEach`.
@@ -24,14 +25,17 @@ This file defines how agents should work in this repository. Keep changes aligne
   - If a rule must be disabled, do it per-file with a clear, minimal `eslint-disable` comment at the top.
 
 ## Running builds/tests/etc
+
 - This is an Nx monorepo.
 - Use `npx nx <target> <project>` for all Nx commands.
 
 ### Root
+
 - `@hashbrownai/source`
   - `npx nx local-registry @hashbrownai/source`
 
 ### Packages (libraries)
+
 - `core`
   - `npx nx build core`
   - `npx nx test core`
@@ -100,6 +104,7 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx nx-release-publish writer`
 
 ### Samples / apps
+
 - `fast-food-angular`
   - `npx nx build fast-food-angular`
   - `npx nx serve fast-food-angular`
@@ -171,6 +176,7 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx serve spotify-server`
 
 ### Docs site
+
 - `www`
   - `npx nx build www`
   - `npx nx serve www`
@@ -182,6 +188,7 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx translate-docs www`
 
 ## Definitions (from docs in www)
+
 - **Hashbrown**: An open source framework for building generative user interfaces in React and Angular. It is headless, platform-agnostic, and built for streaming.
 - **Generative UI**: The model renders UI by selecting from a controlled set of trusted components you explicitly expose. Hashbrown renders only those components, with props validated by schemas.
 - **Skillet schema language**: A Zod-like, LLM-optimized schema language that is strongly typed, limited to LLM-supported constructs, and designed for streaming.
@@ -191,6 +198,7 @@ This file defines how agents should work in this repository. Keep changes aligne
 - **Streaming**: Hashbrown processes model output as it arrives; Skillet supports streaming strings, arrays, and objects to power real-time UI updates.
 
 ## Test Style Example
+
 Use top-level `test(...)` with arrange/act/assert separated by blank lines.
 
 ```ts

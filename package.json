@@ -16,6 +16,7 @@
     "clean": "git clean -xdf",
     "lint": "npx nx run-many -t lint",
     "prepare": "husky install",
+    "ralph": "bash bin/ralph.sh",
     "test": "npx nx run-many -t test",
     "docs:translate": "npx tsx www/src/tools/translate-docs.ts",
     "docs:review": "npx tsx www/src/tools/review-docs.ts",
