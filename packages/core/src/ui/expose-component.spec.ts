@@ -21,11 +21,39 @@ test('createComponentSchema accepts Standard JSON Schema props', () => {
       value: standardSchema,
     },
   };
+  const schema = createComponentSchema([component]);
+
+  const validateGood = () =>
+    schema.validate({ city: { props: { value: 'LA' } } });
+  const validateBad = () =>
+    schema.validate({ city: { props: { value: 123 } } });
+
+  expect(validateGood).not.toThrow();
+  expect(validateBad).toThrow();
+});
+
+test('createComponentSchema accepts node-wrapped props values', () => {
+  const component = {
+    component: {},
+    name: 'city',
+    description: 'City component',
+    props: {
+      value: s.string('value'),
+    },
+  };
+  const value = {
+    city: {
+      props: {
+        complete: true,
+        partialValue: { value: 'LA' },
+        value: { value: 'LA' },
+      },
+    },
+  };
 
   const schema = createComponentSchema([component]);
 
-  expect(() =>
-    schema.validate({ city: { props: { value: 'LA' } } }),
-  ).not.toThrow();
-  expect(() => schema.validate({ city: { props: { value: 123 } } })).toThrow();
+  const validate = () => schema.validate(value);
+
+  expect(validate).not.toThrow();
 });

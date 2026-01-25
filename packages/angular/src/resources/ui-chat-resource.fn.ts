@@ -2,27 +2,27 @@
 import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
+  type ComponentTreeSchema,
   type ModelInput,
   s,
   SystemPrompt,
   type TransportOrFactory,
-  ɵui,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import {
   TAG_NAME_REGISTRY,
-  TagNameRegistry,
   UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
 import { readSignalLike, SignalLike } from '../utils';
+import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
 
 /**
  * @public
  */
 export type UiChatMessageOutput = s.ObjectType<{
-  ui: s.ArrayType<ɵui.ComponentTreeSchema>;
+  ui: s.ArrayType<ComponentTreeSchema>;
 }>;
 
 /**
@@ -35,7 +35,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The components to use for the UI chat resource.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
 
   /**
    * The model to use for the UI chat resource.
@@ -129,21 +129,18 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 export function uiChatResource<Tools extends Chat.AnyTool>(
   args: UiChatResourceOptions<Tools>,
 ): UiChatResourceRef<Tools> {
-  const flattenedComponents = computed(() =>
-    ɵui.flattenComponents(args.components),
-  );
+  const uiKit = createUiKit<ExposedComponent<any>>({
+    components: args.components,
+  });
   const internalSchema = s.object('UI', {
-    ui: s.streaming.array(
-      'List of elements',
-      ɵui.createComponentSchema(args.components),
-    ),
+    ui: s.streaming.array('List of elements', uiKit.schema),
   });
   const systemAsString = computed(() => {
     const system = readSignalLike(args.system);
     if (typeof system === 'string') {
       return system;
     }
-    const result = system.compile(args.components, internalSchema);
+    const result = system.compile(uiKit.components, internalSchema);
     if (system.diagnostics.length > 0) {
       throw new Error(
         `System prompt has ${system.diagnostics.length} errors: \n\n${system.diagnostics.map((d) => d.message).join('\n\n')}`,
@@ -186,18 +183,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
 
           return {
             ...message,
-            [TAG_NAME_REGISTRY]:
-              Array.from(flattenedComponents().values()).reduce(
-                (acc, component) => {
-                  acc[component.name] = {
-                    props: component.props ?? {},
-                    component: component.component,
-                    fallback: component.fallback,
-                  };
-                  return acc;
-                },
-                {} as TagNameRegistry,
-              ) ?? {},
+            [TAG_NAME_REGISTRY]: uiKit.tagNameRegistry ?? {},
           };
         }
         if (message.role === 'user') {

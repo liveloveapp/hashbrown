@@ -7,3 +7,4 @@ export * from './expose-component.fn';
 export * from './signals';
 export * from './types';
 export * from './ui-chat.helpers';
+export * from './ui-kit.fn';

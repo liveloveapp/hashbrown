@@ -1,29 +1,25 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Chat,
+  type ComponentNode,
+  type ComponentTree,
   type ModelInput,
   s,
   SystemPrompt,
   type TransportOrFactory,
-  ɵui,
 } from '@hashbrownai/core';
-import {
-  createElement,
-  ReactElement,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactElement, useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
+import { useUiKit, type UiKitInput } from './use-ui-kit';
 
 /**
  * Represents a UI component in the chat schema with its properties and children.
  *
  * @public
  */
-export type UiChatSchemaComponent = ɵui.ComponentNode;
+export type UiChatSchemaComponent = ComponentNode;
 
 /**
  * The schema for UI components in the chat.
@@ -96,7 +92,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * The components that can be rendered by the chat.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
 
   /**
    * The initial messages for the chat.
@@ -171,35 +167,26 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
 ) => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  const flattenedComponents = useMemo(
+  const uiKit = useUiKit<ExposedComponent<any>>({ components });
+  const ui = useMemo(
     () =>
-      ɵui.flattenComponents(
-        components as unknown as ɵui.ExposedComponentDescriptor[],
-      ) as Map<string, ExposedComponent<any>>,
-    [components],
+      s.object('UI', {
+        ui: s.streaming.array('List of elements', uiKit.schema),
+      }),
+    [uiKit.serializedSchema],
   );
-  const ui = useMemo(() => {
-    return s.object('UI', {
-      ui: s.streaming.array(
-        'List of elements',
-        ɵui.createComponentSchema(
-          components as unknown as ɵui.ExposedComponentDescriptor[],
-        ),
-      ),
-    });
-  }, [components]);
   const systemAsString = useMemo(() => {
     if (typeof chatOptions.system === 'string') {
       return chatOptions.system;
     }
-    const output = chatOptions.system.compile(components, ui);
+    const output = chatOptions.system.compile(uiKit.components, ui);
     if (chatOptions.system.diagnostics.length > 0) {
       throw new Error(
         `System prompt has ${chatOptions.system.diagnostics.length} errors: \n\n${chatOptions.system.diagnostics.map((d) => d.message).join('\n\n')}`,
       );
     }
     return output;
-  }, [chatOptions.system, components, ui]);
+  }, [chatOptions.system, ui, uiKit.components]);
   const chat = useStructuredChat({
     ...chatOptions,
     schema: ui as any,
@@ -208,74 +195,13 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
   });
 
   const buildContent = useCallback(
-    (
-      nodes: string | Array<UiChatSchemaComponent>,
-      parentKey = '',
-    ): ReactElement[] | string => {
+    (nodes: string | Array<UiChatSchemaComponent>): ReactElement[] | string => {
       if (typeof nodes === 'string') {
         return nodes;
       }
-
-      const elements = nodes.reduce<ReactElement[]>((acc, element, index) => {
-        const key = `${parentKey}_${index}`;
-        const entries = Object.entries(element ?? {});
-        if (entries.length === 0) {
-          return acc;
-        }
-        const [tagName, node] = entries[0] as [
-          string,
-          {
-              props?: {
-                complete: boolean;
-                partialValue: any;
-                value?: Record<string, any>;
-              };
-              children?: UiChatSchemaComponent[] | string;
-            },
-          ];
-
-        const component = flattenedComponents.get(tagName);
-        if (!component) {
-          throw new Error(`Unknown element type. ${tagName}`);
-        }
-
-        const propsNode = node?.props;
-        if (!propsNode) {
-          return acc;
-        }
-
-        if (!propsNode.value) {
-          if (!component.fallback) {
-            return acc;
-          }
-
-          acc.push(
-            createElement(component.fallback, {
-              tag: tagName,
-              partialProps: propsNode.partialValue as Record<string, any>,
-              key,
-            }),
-          );
-          return acc;
-        }
-
-        const children: ReactNode[] | string | null = node?.children
-          ? buildContent(node.children, key)
-          : null;
-
-        acc.push(
-          createElement(component.component, {
-            ...propsNode.value,
-            children,
-            key,
-          }),
-        );
-        return acc;
-      }, []);
-
-      return elements;
+      return uiKit.render(nodes as ComponentTree);
     },
-    [flattenedComponents],
+    [uiKit],
   );
 
   const uiChatMessages = useMemo(() => {

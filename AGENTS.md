@@ -21,11 +21,14 @@ This file defines how agents should work in this repository. Keep changes aligne
   - In zoneless or OnPush scenarios, ensure UI updates are driven by signals or explicit change detection.
 - Linting:
   - Prefer to fix lint errors rather than suppress them.
-  - If a rule must be disabled, do it per-file with a clear, minimal `eslint-disable` comment at the top.
+- If a rule must be disabled, do it per-file with a clear, minimal `eslint-disable` comment at the top.
+- Core public API: Anything that is not meant for end users but must be shared across Hashbrown packages must be exported from core with the `ɵ` prefix (e.g. `ɵcreateX`, `ɵTypeX`). Do not add non-ɵ exports to core for internal-only usage.
+- Public types in React/Angular should not expose `ɵ`-prefixed types in their signatures. It's okay for React/Angular to call `ɵ`-prefixed functions internally, but public type signatures must reference non-ɵ types (prefer core public types over ɵ types).
 
 ## Running builds/tests/etc
 - This is an Nx monorepo.
 - Use `npx nx <target> <project>` for all Nx commands.
+- For any code change, run build, test, and lint for each affected package before final response. Report failures and warnings.
 
 ### Root
 - `@hashbrownai/source`

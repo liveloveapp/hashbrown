@@ -30,6 +30,12 @@ export {
   type UseStructuredCompletionResult,
 } from './hooks/use-structured-completion';
 export {
+  useUiKit,
+  type UiKit,
+  type UiKitInput,
+  type UiKitOptions,
+} from './hooks/use-ui-kit';
+export {
   useTool,
   type ToolOptions,
   type ToolOptionsWithInput,
