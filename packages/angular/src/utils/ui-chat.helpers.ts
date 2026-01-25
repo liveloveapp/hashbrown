@@ -1,5 +1,10 @@
 import { Type } from '@angular/core';
-import { Chat, s, ɵui } from '@hashbrownai/core';
+import {
+  Chat,
+  type ComponentFallbackProps,
+  type ComponentNode,
+  s,
+} from '@hashbrownai/core';
 
 export const TAG_NAME_REGISTRY = Symbol('ɵtagNameRegistry');
 
@@ -10,7 +15,7 @@ export type TagNameRegistry = {
   [tagName: string]: {
     props: Record<string, s.HashbrownType>;
     component: Type<object>;
-    fallback?: Type<ɵui.ComponentFallbackProps>;
+    fallback?: Type<ComponentFallbackProps>;
   };
 };
 
@@ -31,7 +36,7 @@ export const getTagNameRegistry = (
 /**
  * @public
  */
-export type UiChatSchemaComponent = ɵui.ComponentNode;
+export type UiChatSchemaComponent = ComponentNode;
 
 /**
  * @public

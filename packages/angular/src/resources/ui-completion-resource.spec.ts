@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { uiCompletionResource } from './ui-completion-resource.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
 import { TAG_NAME_REGISTRY } from '../utils';
+import { createUiKit } from '../utils/ui-kit.fn';
 
 vi.mock('./structured-completion-resource.fn', () => ({
   structuredCompletionResource: vi.fn(),
@@ -94,4 +95,54 @@ describe('uiCompletionResource', () => {
       TestComponent,
     );
   });
+});
+
+test('uiCompletionResource accepts UiKit inputs', () => {
+  // Arrange
+  structuredCompletionResourceMock.mockReset();
+
+  const completionValue = signal<any | null>(null);
+  structuredCompletionResourceMock.mockReturnValue(
+    createCompletionStub(completionValue),
+  );
+
+  class TileComponent {}
+
+  const uiKit = createUiKit({
+    components: [
+      {
+        component: TileComponent,
+        name: 'Tile',
+        description: 'Tile component',
+      },
+    ],
+  });
+
+  const resource = uiCompletionResource({
+    components: [uiKit],
+    input: signal('Describe a component'),
+    model: 'gpt-4o-mini',
+    system: 'system prompt',
+  });
+
+  // Act
+  completionValue.set({
+    ui: [
+      {
+        Tile: {
+          props: {
+            complete: true,
+            partialValue: {},
+            value: {},
+          },
+          children: [],
+        },
+      },
+    ],
+  });
+
+  const message = resource.value();
+
+  // Assert
+  expect(message?.[TAG_NAME_REGISTRY]?.Tile?.component).toBe(TileComponent);
 });

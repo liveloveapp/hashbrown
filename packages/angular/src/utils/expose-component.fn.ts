@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { reflectComponentType } from '@angular/core';
-import { s, ɵtypes, ɵui } from '@hashbrownai/core';
+import { reflectComponentType, Signal, Type } from '@angular/core';
+import { JsonResolvedValue, s, ɵtypes } from '@hashbrownai/core';
 
 /**
  * @public
@@ -25,7 +25,9 @@ export type ComponentPropSchema<T> = ɵtypes.Prettify<
  */
 export interface ExposedComponent<T extends { new (...args: any[]): any }> {
   component: T;
-  fallback?: { new (...args: any[]): ɵui.ComponentFallbackProps };
+  fallback?: Type<{
+    partialProps?: Signal<Record<string, JsonResolvedValue>>;
+  }>;
   name: string;
   description: string;
   children?: 'any' | 'text' | ExposedComponent<any>[] | false;
@@ -44,9 +46,12 @@ export interface ExposedComponent<T extends { new (...args: any[]): any }> {
 export function exposeComponent<T extends { new (...args: any[]): any }>(
   component: T,
   config: ɵtypes.Prettify<
-    Omit<ExposedComponent<T>, 'component' | 'name' | 'props'> & {
+    Omit<ExposedComponent<T>, 'component' | 'name' | 'props' | 'fallback'> & {
       input?: ComponentPropSchema<T>;
       name?: string;
+      fallback?: Type<{
+        partialProps?: Signal<Record<string, JsonResolvedValue>>;
+      }>;
     }
   >,
 ): ExposedComponent<T> {

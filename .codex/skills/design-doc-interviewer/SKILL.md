@@ -15,6 +15,12 @@ Elicit the minimum set of decisions and details needed to produce a clear design
 
 - Ask for the intended audience, affected systems, and whether there is a preferred template or example to mirror.
 - If the user provided a sample doc, follow its section order and tone.
+- Identify the target package in this monorepo. If unclear, ask the user to pick one of the packages managed here before proceeding.
+
+### 1.5) Pre-flight repo context
+
+- Search `design/*` with emphasis on `design/ideas/` for related context before asking detailed questions.
+- Summarize any relevant findings and confirm whether they should be incorporated.
 
 ### 2) Run a structured interview in small batches
 
@@ -39,6 +45,7 @@ Use the question bank when needed: `references/question-bank.md`.
 
 - Output a clean, single-pass doc with headings and code fences where needed.
 - Preserve the user’s terminology and system names.
+- Always save the final design doc at `design/{package}/` where `{package}` is a package managed in this monorepo. Create the directory if it does not exist.
 
 ## Interview Style Rules
 

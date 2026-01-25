@@ -1564,6 +1564,34 @@ export const NodeType: HashbrownTypeCtor<NodeType> = HashbrownTypeCtor({
     };
   },
   validateImpl: (schema, definition, object, path) => {
+    if (!object || typeof object !== 'object') {
+      throw new Error('Expected node value to be an object.');
+    }
+
+    const node = object as {
+      complete?: unknown;
+      partialValue?: unknown;
+      value?: unknown;
+    };
+
+    const isNodeWrapper = 'complete' in node || 'partialValue' in node;
+
+    if (isNodeWrapper) {
+      if (typeof node.complete !== 'boolean') {
+        throw new Error('Expected node.complete to be a boolean.');
+      }
+
+      if (!('partialValue' in node)) {
+        throw new Error('Expected node.partialValue to be present.');
+      }
+
+      if ('value' in node && node.value !== undefined) {
+        definition.inner.validate(node.value, [...path, 'value']);
+      }
+
+      return;
+    }
+
     definition.inner.validate(object, path);
   },
 });

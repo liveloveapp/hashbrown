@@ -24,7 +24,15 @@ export type {
   ComponentNode,
   ComponentPropSchema,
   ComponentTree,
+  ComponentTreeSchema,
 } from './ui/expose-component';
+export type { UiKit, UiKitInput, UiKitOptions } from './ui/ui-kit';
+export type {
+  UiKit as ɵUiKit,
+  UiKitInput as ɵUiKitInput,
+  UiKitOptions as ɵUiKitOptions,
+} from './ui/ui-kit';
+export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { mergeMessagesForThread } from './utils/threading';
 export type {
@@ -57,6 +65,7 @@ export {
   parseChunk,
   type JsonAstNode,
   type JsonAstType,
+  type JsonResolvedValue,
   type JsonValue,
   type ParserError,
   type ParserState,

@@ -5,13 +5,10 @@ import {
   s,
   SystemPrompt,
   type TransportOrFactory,
-  ɵui,
 } from '@hashbrownai/core';
 import {
-  createElement,
   Dispatch,
   ReactElement,
-  ReactNode,
   SetStateAction,
   useCallback,
   useMemo,
@@ -23,6 +20,7 @@ import {
   UiChatSchema,
   UiChatSchemaComponent,
 } from './use-ui-chat';
+import { useUiKit, type UiKitInput } from './use-ui-kit';
 import {
   useStructuredCompletion,
   type UseStructuredCompletionResult,
@@ -55,7 +53,7 @@ export interface UiCompletionOptions<
   /**
    * The components that can be rendered by the completion.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
 
   /**
    * The tools to make available to the completion.
@@ -110,7 +108,7 @@ export interface UseUiCompletionResult<Tools extends Chat.AnyTool>
   /**
    * Updates the available components for future completions.
    */
-  setComponents: Dispatch<SetStateAction<ExposedComponent<any>[]>>;
+  setComponents: Dispatch<SetStateAction<UiKitInput<ExposedComponent<any>>[]>>;
 }
 
 /**
@@ -131,31 +129,22 @@ export const useUiCompletion = <
     ...completionOptions
   } = options;
   const [components, setComponents] = useState(initialComponents);
-  const flattenedComponents = useMemo(
-    () =>
-      ɵui.flattenComponents(
-        components as unknown as ɵui.ExposedComponentDescriptor[],
-      ) as Map<string, ExposedComponent<any>>,
-    [components],
-  );
+  const uiKit = useUiKit<ExposedComponent<any>>({ components });
 
-  const uiSchema = useMemo(() => {
-    return s.object('UI', {
-      ui: s.streaming.array(
-        'List of elements',
-        ɵui.createComponentSchema(
-          components as unknown as ɵui.ExposedComponentDescriptor[],
-        ),
-      ),
-    });
-  }, [components]);
+  const uiSchema = useMemo(
+    () =>
+      s.object('UI', {
+        ui: s.streaming.array('List of elements', uiKit.schema),
+      }),
+    [uiKit.serializedSchema],
+  );
 
   const systemAsString = useMemo(() => {
     if (typeof system === 'string') {
       return system;
     }
 
-    const compiled = system.compile(components, uiSchema);
+    const compiled = system.compile(uiKit.components, uiSchema);
 
     if (system.diagnostics.length > 0) {
       throw new Error(
@@ -164,7 +153,7 @@ export const useUiCompletion = <
     }
 
     return compiled;
-  }, [system, components, uiSchema]);
+  }, [system, uiSchema, uiKit.components]);
 
   const structured = useStructuredCompletion<Input, typeof uiSchema>({
     ...completionOptions,
@@ -175,73 +164,13 @@ export const useUiCompletion = <
   });
 
   const buildContent = useCallback(
-    (
-      nodes: string | Array<UiChatSchemaComponent>,
-      parentKey = '',
-    ): ReactElement[] | string => {
+    (nodes: string | Array<UiChatSchemaComponent>): ReactElement[] | string => {
       if (typeof nodes === 'string') {
         return nodes;
       }
-
-      const elements = nodes.reduce<ReactElement[]>((acc, node, index) => {
-        const key = `${parentKey}_${index}`;
-        const entries = Object.entries(node ?? {});
-        if (entries.length === 0) {
-            return acc;
-        }
-        const [tagName, value] = entries[0] as [
-          string,
-          {
-              props?: {
-                complete: boolean;
-                partialValue: any;
-                value?: Record<string, any>;
-              };
-              children?: UiChatSchemaComponent[] | string;
-            },
-          ];
-          const component = flattenedComponents.get(tagName);
-          if (!component) {
-            throw new Error(`Unknown element type. ${tagName}`);
-          }
-
-          const propsNode = value?.props;
-          if (!propsNode) {
-            return acc;
-          }
-
-          if (!propsNode.value) {
-            if (!component.fallback) {
-              return acc;
-            }
-
-            acc.push(
-              createElement(component.fallback, {
-                tag: tagName,
-                partialProps: propsNode.partialValue as Record<string, any>,
-                key,
-              }),
-            );
-            return acc;
-          }
-
-          const children: ReactNode[] | string | null = value?.children
-            ? buildContent(value.children, key)
-            : null;
-
-          acc.push(
-            createElement(component.component, {
-              ...propsNode.value,
-              children,
-              key,
-            }),
-          );
-          return acc;
-        }, []);
-
-      return elements;
+      return uiKit.render(nodes);
     },
-    [flattenedComponents],
+    [uiKit],
   );
 
   const rawOutput = structured.output as UiChatSchema | null;

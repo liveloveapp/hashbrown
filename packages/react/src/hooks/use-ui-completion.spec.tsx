@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { s } from '@hashbrownai/core';
+import { s, ɵcreateUiKit, ɵisUiKit } from '@hashbrownai/core';
 import { useStructuredCompletion } from './use-structured-completion';
 import { useUiCompletion } from './use-ui-completion';
 
@@ -189,4 +189,136 @@ describe('useUiCompletion', () => {
     expect(result.current.output).toBeNull();
     expect(result.current.ui).toBeNull();
   });
+});
+
+test('useUiCompletion accepts UiKit inputs and renders their components', () => {
+  // Arrange
+  useStructuredCompletionMock.mockReset();
+
+  const structuredOutput = {
+    ui: [
+      {
+        UiKitButton: {
+          props: {
+            complete: true,
+            partialValue: { label: 'Hello' },
+            value: { label: 'Hello' },
+          },
+          children: [],
+        },
+      },
+    ],
+  };
+  useStructuredCompletionMock.mockReturnValue({
+    output: structuredOutput,
+    reload: vi.fn(),
+    error: undefined,
+    isLoading: false,
+    isReceiving: false,
+    isSending: false,
+    isGenerating: false,
+    isRunningToolCalls: false,
+    sendingError: undefined,
+    generatingError: undefined,
+    exhaustedRetries: false,
+    isLoadingThread: false,
+    isSavingThread: false,
+    threadLoadError: undefined,
+    threadSaveError: undefined,
+  });
+
+  const UiKitButton = ({ label }: { label: string }) =>
+    createElement('button', null, label);
+
+  const uiKit = ɵcreateUiKit({
+    components: [
+      {
+        component: UiKitButton,
+        name: 'UiKitButton',
+        description: 'renders a button',
+        props: {
+          label: s.string('label'),
+        },
+      },
+    ],
+  });
+
+  // Act
+  const { result } = renderHook(() =>
+    useUiCompletion({
+      input: 'Generate a UI',
+      model: 'gpt-4o-mini',
+      system: 'system prompt',
+      components: [uiKit],
+    }),
+  );
+
+  // Assert
+  expect(result.current.ui).toHaveLength(1);
+  expect(result.current.ui?.[0]?.type).toBe(UiKitButton);
+});
+
+test('useUiCompletion compiles system prompts with normalized components', () => {
+  // Arrange
+  useStructuredCompletionMock.mockReset();
+
+  const UiKitButton = ({ label }: { label: string }) =>
+    createElement('button', null, label);
+
+  const uiKit = ɵcreateUiKit({
+    components: [
+      {
+        component: UiKitButton,
+        name: 'UiKitButton',
+        description: 'renders a button',
+        props: {
+          label: s.string('label'),
+        },
+      },
+    ],
+  });
+
+  const systemPrompt = {
+    compile: vi.fn(() => 'compiled'),
+    examples: [],
+    diagnostics: [],
+    meta: { uiBlocks: [] },
+  };
+
+  useStructuredCompletionMock.mockReturnValue({
+    output: null,
+    reload: vi.fn(),
+    error: undefined,
+    isLoading: false,
+    isReceiving: false,
+    isSending: false,
+    isGenerating: false,
+    isRunningToolCalls: false,
+    sendingError: undefined,
+    generatingError: undefined,
+    exhaustedRetries: false,
+    isLoadingThread: false,
+    isSavingThread: false,
+    threadLoadError: undefined,
+    threadSaveError: undefined,
+  });
+
+  // Act
+  renderHook(() =>
+    useUiCompletion({
+      input: 'Generate a UI',
+      model: 'gpt-4o-mini',
+      system: systemPrompt,
+      components: [uiKit],
+    }),
+  );
+
+  const [components] = systemPrompt.compile.mock.calls[0] ?? [];
+  const hasUIKit = Array.isArray(components)
+    ? components.some((entry) => ɵisUiKit(entry))
+    : false;
+
+  // Assert
+  expect(systemPrompt.compile).toHaveBeenCalledTimes(1);
+  expect(hasUIKit).toBe(false);
 });
