@@ -306,6 +306,107 @@ test('Streaming object emits fields incrementally', () => {
   });
 });
 
+test('Streaming object initializes missing streaming string keys', () => {
+  const schema = s.streaming.object('obj', {
+    content: s.streaming.string('content'),
+    citations: s.streaming.array('citations', s.string('citation')),
+  });
+
+  const result = parseChunkResult(schema, '{"citations":[]');
+
+  expect(expectMatch(result)).toEqual({ content: '', citations: [] });
+});
+
+test('Streaming object initializes missing streaming array keys', () => {
+  const schema = s.streaming.object('obj', {
+    content: s.streaming.string('content'),
+    citations: s.streaming.array('citations', s.string('citation')),
+  });
+
+  const result = parseChunkResult(schema, '{"content":"hi"');
+
+  expect(expectMatch(result)).toEqual({ content: 'hi', citations: [] });
+});
+
+test('Streaming object initializes missing streaming object keys', () => {
+  const schema = s.streaming.object('obj', {
+    meta: s.streaming.object('meta', {
+      tags: s.streaming.array('tags', s.string('tag')),
+    }),
+    content: s.streaming.string('content'),
+  });
+
+  const result = parseChunkResult(schema, '{"content":"hi"');
+
+  expect(expectMatch(result)).toEqual({ meta: {}, content: 'hi' });
+});
+
+test('Streaming object does not initialize missing non-streaming keys', () => {
+  const schema = s.streaming.object('obj', {
+    content: s.streaming.string('content'),
+    count: s.number('count'),
+  });
+
+  const result = parseChunkResult(schema, '{"content":"hi"');
+
+  expect(expectMatch(result)).toEqual({ content: 'hi' });
+});
+
+test('Streaming object skips initialization for streaming objects with non-streaming children', () => {
+  const schema = s.streaming.object('obj', {
+    meta: s.streaming.object('meta', {
+      count: s.number('count'),
+    }),
+    content: s.streaming.string('content'),
+  });
+
+  const result = parseChunkResult(schema, '{"content":"hi"');
+
+  expect(expectMatch(result)).toEqual({ content: 'hi' });
+});
+
+test('Streaming object preserves initialized identity across chunks', () => {
+  const schema = s.streaming.object('obj', {
+    a: s.streaming.array('a', s.string('a')),
+    b: s.streaming.array('b', s.string('b')),
+  });
+
+  const initialState = createParserState();
+
+  const firstResult = applyChunk(
+    schema,
+    initialState,
+    undefined,
+    '{"a":["x"],',
+  );
+
+  expect(firstResult.result).toEqual({
+    state: 'match',
+    value: { a: ['x'], b: [] },
+  });
+  const firstValue =
+    firstResult.result.state === 'match' ? firstResult.result.value : null;
+  const firstA = firstValue?.a;
+  const firstB = firstValue?.b;
+
+  const secondResult = applyChunk(
+    schema,
+    firstResult.state,
+    firstResult.cache,
+    '"b":["y"]}',
+  );
+
+  expect(secondResult.result).toEqual({
+    state: 'match',
+    value: { a: ['x'], b: ['y'] },
+  });
+  const secondValue =
+    secondResult.result.state === 'match' ? secondResult.result.value : null;
+
+  expect(secondValue?.a).toBe(firstA);
+  expect(secondValue?.b).not.toBe(firstB);
+});
+
 test('Whitespace-only fragments are ignored', () => {
   const schema = s.number('num');
 
@@ -449,6 +550,65 @@ test('non-streaming object matches when all keys are present even if open', () =
 
   const result = applyChunk(schema, createParserState(), undefined, '{"a":1,');
   expect(result.result).toEqual({ state: 'match', value: { a: 1 } });
+});
+
+test('non-streaming object initializes missing streaming string keys', () => {
+  const schema = s.object('obj', {
+    text: s.streaming.string('text'),
+    count: s.number('count'),
+  });
+
+  const result = applyChunk(
+    schema,
+    createParserState(),
+    undefined,
+    '{"count":1,',
+  );
+
+  expect(result.result).toEqual({
+    state: 'match',
+    value: { text: '', count: 1 },
+  });
+});
+
+test('non-streaming object initializes missing streaming array keys', () => {
+  const schema = s.object('obj', {
+    items: s.streaming.array('items', s.string('item')),
+    count: s.number('count'),
+  });
+
+  const result = applyChunk(
+    schema,
+    createParserState(),
+    undefined,
+    '{"count":1,',
+  );
+
+  expect(result.result).toEqual({
+    state: 'match',
+    value: { items: [], count: 1 },
+  });
+});
+
+test('non-streaming object initializes missing streaming object keys', () => {
+  const schema = s.object('obj', {
+    meta: s.streaming.object('meta', {
+      tags: s.streaming.array('tags', s.string('tag')),
+    }),
+    count: s.number('count'),
+  });
+
+  const result = applyChunk(
+    schema,
+    createParserState(),
+    undefined,
+    '{"count":1,',
+  );
+
+  expect(result.result).toEqual({
+    state: 'match',
+    value: { meta: {}, count: 1 },
+  });
 });
 
 test('non-streaming object requires all keys to be present', () => {
