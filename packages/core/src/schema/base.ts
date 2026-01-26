@@ -1044,11 +1044,74 @@ ${' '.repeat(depth)}}`;
       }
 
       const resultValue: Record<string, JsonResolvedValue> = {};
+      const cachedObject = readCacheValue(cache, node.id, input.schemaId, true);
+      const cachedRecord =
+        cachedObject &&
+        typeof cachedObject === 'object' &&
+        !Array.isArray(cachedObject)
+          ? (cachedObject as Record<string, JsonResolvedValue>)
+          : undefined;
+      const resolvedRecord =
+        node.resolvedValue &&
+        typeof node.resolvedValue === 'object' &&
+        !Array.isArray(node.resolvedValue)
+          ? (node.resolvedValue as Record<string, JsonResolvedValue>)
+          : undefined;
       let nextCache = cache;
+
+      const getInitializedValue = (
+        childSchema: HashbrownType,
+      ): JsonResolvedValue | undefined => {
+        if (!isStreaming(childSchema)) {
+          return undefined;
+        }
+
+        if (isStringType(childSchema)) {
+          return '';
+        }
+
+        if (isArrayType(childSchema)) {
+          return [];
+        }
+
+        if (isObjectType(childSchema)) {
+          const childShape = childSchema[internal].definition.shape as Record<
+            string,
+            HashbrownType
+          >;
+          const hasNonStreamingChild = Object.values(childShape).some(
+            (child) => !isStreaming(child),
+          );
+          if (hasNonStreamingChild) {
+            return undefined;
+          }
+
+          return {};
+        }
+
+        return undefined;
+      };
+
+      const getCachedValueForKey = (key: string) => {
+        if (cachedRecord && key in cachedRecord) {
+          return cachedRecord[key];
+        }
+        if (resolvedRecord && key in resolvedRecord) {
+          return resolvedRecord[key];
+        }
+        return undefined;
+      };
 
       for (const [key, childSchema] of Object.entries(shape)) {
         const childId = childMap[key];
         if (childId === undefined) {
+          const initialized = getInitializedValue(childSchema);
+          if (initialized !== undefined) {
+            const cachedValue = getCachedValueForKey(key);
+            resultValue[key] = cachedValue ?? initialized;
+            continue;
+          }
+
           if (!isStreamingSchema) {
             return { result: { state: 'no-match' }, cache: nextCache };
           }
