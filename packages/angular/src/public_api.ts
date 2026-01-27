@@ -42,6 +42,7 @@ export {
   createToolJavaScript,
   createUiKit,
   exposeComponent,
+  injectJsonParser,
   type AngularSignalLike,
   type ComponentPropSchema,
   type CreateRuntimeOptions,
