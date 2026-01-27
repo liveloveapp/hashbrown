@@ -5,7 +5,7 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/packages/writer"],
+      "manifestRootsToUpdate": ["dist/packages/writer", "packages/writer"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false

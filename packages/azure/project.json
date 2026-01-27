@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/packages/azure"]
+      "manifestRootsToUpdate": ["dist/packages/azure", "packages/azure"]
     }
   },
   "tags": [],

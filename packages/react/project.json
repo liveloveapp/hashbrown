@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/packages/react"]
+      "manifestRootsToUpdate": ["dist/packages/react", "packages/react"]
     }
   },
   "tags": [],
