@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/angular",
-  "version": "0.4.1-alpha.1",
+  "version": "0.0.2-5",
   "description": "Angular bindings for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -10,7 +10,7 @@
   },
   "peerDependencies": {
     "@angular/core": "^20.0.0 || ^21.0.0",
-    "@hashbrownai/core": "0.4.1-alpha.1",
+    "@hashbrownai/core": "0.0.2-5",
     "@angular/common": "^20.0.0 || ^21.0.0"
   },
   "sideEffects": false,
