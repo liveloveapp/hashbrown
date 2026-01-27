@@ -5,7 +5,7 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/packages/ollama"],
+      "manifestRootsToUpdate": ["dist/packages/ollama", "packages/ollama"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     }

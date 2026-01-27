@@ -6,7 +6,7 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/packages/angular"],
+      "manifestRootsToUpdate": ["dist/packages/angular", "packages/angular"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false

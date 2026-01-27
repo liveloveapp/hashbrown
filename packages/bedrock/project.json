@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/packages/bedrock"]
+      "manifestRootsToUpdate": ["dist/packages/bedrock", "packages/bedrock"]
     }
   },
   "tags": [],
