@@ -17,6 +17,10 @@ export {
   type UseCompletionOptions,
   type UseCompletionResult,
 } from './hooks/use-completion';
+export {
+  useJsonParser,
+  type UseJsonParserResult,
+} from './hooks/use-json-parser';
 export { useRuntime, type UseRuntimeOptions } from './hooks/use-runtime';
 export { useRuntimeFunction } from './hooks/use-runtime-function';
 export {
