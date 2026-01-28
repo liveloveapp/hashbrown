@@ -1168,6 +1168,18 @@ ${' '.repeat(depth)}}`;
 
     const { shape } = definition;
     const isStreamingSchema = definition.streaming;
+    const shapeKeys = new Set(Object.keys(shape));
+
+    Object.keys(object).forEach((key) => {
+      if (isForbiddenObjectKey(key)) {
+        throw new Error(`Invalid object key "${key}" at: ${formatPath(path)}`);
+      }
+      if (!shapeKeys.has(key)) {
+        throw new Error(
+          `Unexpected object key "${key}" at: ${formatPath([...path, key])}`,
+        );
+      }
+    });
 
     Object.entries<HashbrownType>(shape).forEach(([key, child]) => {
       if (isStreamingSchema && !(key in object)) {
