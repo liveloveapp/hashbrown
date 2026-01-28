@@ -1,43 +1,44 @@
 ---
-Created: 2026-01-27
+Created: 2026-01-28
 Author: Mike Ryan
 Affects: angular, core
 ---
 
-# injectJsonParser (Angular)
+# injectJsonParser (Angular, prop-driven)
 
 ## Objective
 
-Enable Angular developers to consume Hashbrown’s streaming JSON parser independently of the full UI/chat runtime via a signal-backed API that accepts chunks, exposes parser state, and streams partial values (optionally guided by a Skillet schema).
+Provide a prop-driven Angular signal API that consumes an incrementally growing JSON signal and exposes parser state, resolved value, and errors without imperative callbacks.
 
 ## Background
 
-Hashbrown’s streaming JSON parser is built around an immutable AST, identity-preserving updates, and a reducer-like `(state, chunk) -> state` interface. The schema layer (`fromJsonAst`) resolves streaming values according to Skillet schemas, with caching to preserve object identity and to avoid unnecessary allocations. The existing integration in core reducers demonstrates how to combine parser state + schema resolution incrementally.
+Hashbrown’s streaming JSON parser is built around an immutable AST, identity-preserving updates, and a reducer-like `(state, chunk) -> state` interface. The schema layer (`fromJsonAst`) resolves streaming values according to Skillet schemas, with caching to preserve object identity and avoid unnecessary allocations. The existing integration in core reducers demonstrates how to combine parser state + schema resolution incrementally.
 
-We want a framework-native API that keeps the parser core in core, but lets Angular users drive it with their own state systems, without adopting the full Hashbrown runtime.
+The existing Angular API is imperative (`parseChunk`). This doc defines a prop-driven variant using the same core parser that is reactive to a growing JSON signal.
 
 ## Goals
 
 - Provide a public Angular signal factory (`injectJsonParser`) that:
-  - Accepts streaming JSON chunks as strings only.
-  - Exposes `value`, `error`, `parserState`, and `parseChunk(...)`.
-  - Supports optional Skillet schemas for streaming, partial value resolution.
+  - Accepts a `Signal<string>` containing a full JSON string that grows over time.
+  - Accepts a `schema` as either `s.HashbrownType` or `Signal<s.HashbrownType>`.
+  - Exposes `value`, `error`, and `parserState` signals.
+  - Supports streaming, partial value resolution per Skillet schemas.
   - Preserves identity for streaming objects/arrays when schema caching applies.
-  - Supports `reset()` to return to a clean parser state.
-- Integrate schema behavior consistent with `packages/core/src/schema/schema-parser-interaction.spec.ts`.
+- On input updates, only parse new content when the updated string extends the previous string.
+- On input updates that differ from the previous string, reset parser state and treat the new input as a full restart.
 - Keep core logic pure and immutable; framework layers only manage state.
 
 ## Non-Goals
 
 - Exposing the full Hashbrown UI/chat runtime or UI kit APIs.
-- Supporting non-string chunk inputs (e.g., `Uint8Array`, `ArrayBuffer`).
-- Adding extra lifecycle events (e.g., `complete`, `setSchema`, `parseChunks`) beyond `parseChunk` and `reset`.
+- Supporting non-string inputs (e.g., `Uint8Array`, `ArrayBuffer`).
+- Adding imperative methods (`parseChunk`, `reset`) to this API.
 - Implementing new schema semantics; use existing `fromJsonAst` behavior.
 
 ## UX / Workflows
 
 ```ts
-import { Component } from '@angular/core';
+import { Component, Signal, signal } from '@angular/core';
 import { injectJsonParser } from '@hashbrownai/angular';
 import * as s from '@hashbrownai/core/schema';
 
@@ -46,7 +47,10 @@ import * as s from '@hashbrownai/core/schema';
   template: `{{ parser.value() | json }}`,
 })
 export class DemoComponent {
+  json = signal('{"content":"Hel');
+
   parser = injectJsonParser(
+    this.json,
     s.object('root', {
       content: s.streaming.string('content'),
       citations: s.streaming.array('citations', s.string('citation')),
@@ -54,8 +58,7 @@ export class DemoComponent {
   );
 
   constructor() {
-    this.parser.parseChunk('{"content":"Hel');
-    this.parser.parseChunk('lo","citations":[]}');
+    this.json.set('{"content":"Hello","citations":[]}');
   }
 }
 ```
@@ -64,7 +67,7 @@ export class DemoComponent {
 
 ### Schema
 
-- Angular: `injectJsonParser(schema?: s.HashbrownType)`
+- Angular: `injectJsonParser(json: Signal<string>, schema?: s.HashbrownType | Signal<s.HashbrownType>)`
 
 Schema is optional. When provided, `value` is derived from `fromJsonAst` using the parser state and schema cache, and supports streaming types (e.g., `s.streaming.string`, `s.streaming.array`, `s.streaming.object`). When no schema is provided, `value` is the root node’s resolvedValue when available; it does not require the full JSON payload to be closed.
 
@@ -79,13 +82,15 @@ None.
 
 ## Core Logic / Algorithms
 
-Reuse existing parser and schema APIs directly from core:
+`injectJsonParser` keeps the parser state and schema cache in signals and derives `value` via `fromJsonAst`.
 
-- `createParserState()` to initialize parser state.
-- `parseChunk(state, chunk)` to advance the parser.
-- `fromJsonAst(schema, state, cache)` to resolve streaming values and preserve identity.
+It reacts to changes in the `json` signal (and optionally a `schema` signal). When `json` updates, it compares the new string to the previous string:
 
-`injectJsonParser` creates signals for `parserState`, `value`, `error`, and maintains schema cache/last value internally. It exposes imperative methods `parseChunk` and `reset`, and uses core `createParserState/parseChunk/fromJsonAst` for updates.
+- If `previous === current`, do nothing.
+- If `current` starts with `previous`, parse only the new suffix (`current.slice(previous.length)`).
+- Otherwise, reset parser state and parse `current` as a fresh stream from the beginning.
+
+When the schema changes, the function keeps the existing parser state and re-resolves `value` from the current AST with the new schema.
 
 ## Telemetry / Observability
 
@@ -105,7 +110,9 @@ Ship behind a minor release for `@hashbrownai/angular`. No migration needed.
 
 ## Testing
 
-- Angular: ensures signals update properly and identity is preserved across chunks.
+- Angular: ensures `value/error/parserState` update when JSON grows and when input resets.
+- Angular: ensures suffix-only updates parse only new content.
+- Angular: ensures schema signal changes re-resolve without resetting parser state.
 - Core: ensure parser + schema streaming behavior stays aligned with `schema-parser-interaction.spec.ts`.
 - Tests use top-level `test(...)` and arrange/act/assert style.
 

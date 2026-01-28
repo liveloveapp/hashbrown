@@ -18,6 +18,10 @@ export {
   type UseCompletionResult,
 } from './hooks/use-completion';
 export {
+  useImperativeJsonParser,
+  type UseImperativeJsonParserResult,
+} from './hooks/use-imperative-json-parser';
+export {
   useJsonParser,
   type UseJsonParserResult,
 } from './hooks/use-json-parser';
