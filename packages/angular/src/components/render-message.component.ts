@@ -346,6 +346,37 @@ export class RenderMessageComponent {
   /**
    * @internal
    */
+  isRenderableComplete(node: UiChatSchemaComponent): boolean {
+    if (!node || typeof node !== 'object') {
+      return false;
+    }
+
+    const entry = this.getNodeEntry(node);
+    if (!entry) {
+      return false;
+    }
+
+    const value = entry.value as
+      | {
+          props?: { value?: Record<string, unknown> };
+          children?: UiChatSchemaComponent[] | string;
+        }
+      | undefined;
+
+    if (!value?.props?.value) {
+      return false;
+    }
+
+    if (typeof value.children === 'string' || value.children === undefined) {
+      return true;
+    }
+
+    return value.children.every((child) => this.isRenderableComplete(child));
+  }
+
+  /**
+   * @internal
+   */
   isTextNode(node: UiChatSchemaComponent) {
     return typeof this.getNodeChildren(node) === 'string';
   }
@@ -368,7 +399,11 @@ export class RenderMessageComponent {
     }
 
     if (ui && uiKit) {
-      ui.forEach((node) => uiKit.schema.validate(node));
+      ui.forEach((node) => {
+        if (this.isRenderableComplete(node)) {
+          uiKit.schema.validate(node);
+        }
+      });
     }
 
     return { message, ui, uiKit };
