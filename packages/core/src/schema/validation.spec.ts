@@ -43,3 +43,12 @@ test('streaming object: missing keys do not invalidate partial values', () => {
 
   expect(subject).not.toThrow();
 });
+
+test('streaming object: unknown keys invalidate values', () => {
+  const schema = s.streaming.object('root', {
+    known: s.string('Known'),
+  });
+  const subject = () => schema.validate({ unknown: 'value' });
+
+  expect(subject).toThrow();
+});
