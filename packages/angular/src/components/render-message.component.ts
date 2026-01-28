@@ -12,10 +12,10 @@ import {
   ViewContainerRef,
 } from '@angular/core';
 import { NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
-import { type ComponentTree } from '@hashbrownai/core';
 import {
   getTagNameRegistry,
   UiAssistantMessage,
+  UiChatSchema,
   UiChatSchemaComponent,
 } from '../utils';
 import type { UiKit } from '../utils/ui-kit.fn';
@@ -75,7 +75,7 @@ import type { UiKit } from '../utils/ui-kit.fn';
 })
 export class RenderMessageComponent {
   message = input<UiAssistantMessage<any> | null>(null);
-  ui = input<ComponentTree | null>(null);
+  ui = input<UiChatSchema | null>(null);
   uiKit = input<UiKit<any> | null>(null);
   /**
    * @internal
@@ -91,7 +91,7 @@ export class RenderMessageComponent {
       return message.content?.ui ?? [];
     }
     if (ui && uiKit) {
-      return ui as UiChatSchemaComponent[];
+      return ui.ui ?? [];
     }
     return [];
   });
@@ -394,16 +394,16 @@ export class RenderMessageComponent {
 
     if (ui && !uiKit) {
       throw new Error(
-        'hb-render-message requires "uiKit" when rendering a UI array.',
+        'hb-render-message requires "uiKit" when rendering a UI wrapper.',
       );
     }
 
     if (ui && uiKit) {
-      ui.forEach((node) => {
-        if (this.isRenderableComplete(node)) {
-          uiKit.schema.validate(node);
-        }
-      });
+      const nodes = ui.ui ?? [];
+      const isComplete = nodes.every((node) => this.isRenderableComplete(node));
+      if (isComplete) {
+        uiKit.schema.validate(ui);
+      }
     }
 
     return { message, ui, uiKit };

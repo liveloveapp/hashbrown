@@ -36,6 +36,10 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
    * The components to use for the UI chat resource.
    */
   components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The model to use for the UI chat resource.
@@ -131,10 +135,9 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
 ): UiChatResourceRef<Tools> {
   const uiKit = createUiKit<ExposedComponent<any>>({
     components: args.components,
+    examples: args.examples,
   });
-  const internalSchema = s.object('UI', {
-    ui: s.streaming.array('List of elements', uiKit.schema),
-  });
+  const internalSchema = uiKit.schema;
   const systemAsString = computed(() => {
     const system = readSignalLike(args.system);
     if (typeof system === 'string') {

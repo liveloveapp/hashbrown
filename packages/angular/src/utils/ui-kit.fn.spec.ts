@@ -13,5 +13,5 @@ test('createUiKit builds a tagNameRegistry', () => {
     ],
   });
 
-  expect(kit.tagNameRegistry.Card.component).toBe(CardComponent);
+  expect(kit.tagNameRegistry['Card'].component).toBe(CardComponent);
 });
