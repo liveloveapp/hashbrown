@@ -31,6 +31,10 @@ export interface UiCompletionResourceOptions<
    * The components to use for the UI completion resource.
    */
   components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The signal that produces the input for the completion.
@@ -127,10 +131,9 @@ export function uiCompletionResource<
 ): UiCompletionResourceRef<Tools> {
   const uiKit = createUiKit<ExposedComponent<any>>({
     components: options.components,
+    examples: options.examples,
   });
-  const internalSchema = s.object('UI', {
-    ui: s.streaming.array('List of elements', uiKit.schema),
-  });
+  const internalSchema = uiKit.schema;
   const systemAsString = computed(() => {
     const system = readSignalLike(
       options.system as SignalLike<string | SystemPrompt>,

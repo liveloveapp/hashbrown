@@ -64,17 +64,19 @@ test('renders with ui + uiKit inputs', () => {
     ],
   });
 
-  const ui = [
-    {
-      Tile: {
-        props: {
-          complete: true,
-          partialValue: {},
-          value: {},
+  const ui = {
+    ui: [
+      {
+        Tile: {
+          props: {
+            complete: true,
+            partialValue: {},
+            value: {},
+          },
         },
       },
-    },
-  ];
+    ],
+  };
 
   // Act
   fixture.componentRef.setInput('ui', ui);
@@ -82,7 +84,7 @@ test('renders with ui + uiKit inputs', () => {
 
   // Assert
   expect(component.tagNameRegistry()).toEqual(uiKit.tagNameRegistry);
-  expect(component.getRenderableComponent(ui[0])).toBe(TileComponent);
+  expect(component.getRenderableComponent(ui.ui[0])).toBe(TileComponent);
 });
 
 test('throws when message and ui are provided together', () => {
@@ -108,7 +110,7 @@ test('throws when message and ui are provided together', () => {
     toolCalls: [],
     [TAG_NAME_REGISTRY]: {},
   });
-  fixture.componentRef.setInput('ui', []);
+  fixture.componentRef.setInput('ui', { ui: [] });
   fixture.componentRef.setInput('uiKit', uiKit);
 
   // Act
@@ -128,11 +130,11 @@ test('throws when ui is provided without a uiKit', () => {
   const component = fixture.componentInstance;
 
   // Act
-  fixture.componentRef.setInput('ui', []);
+  fixture.componentRef.setInput('ui', { ui: [] });
 
   // Assert
   expect(() => component.content()).toThrow(
-    'hb-render-message requires "uiKit" when rendering a UI array.',
+    'hb-render-message requires "uiKit" when rendering a UI wrapper.',
   );
 });
 
@@ -155,17 +157,19 @@ test('throws when ui does not match the uiKit schema', () => {
     ],
   });
 
-  const ui = [
-    {
-      Unknown: {
-        props: {
-          complete: true,
-          partialValue: {},
-          value: {},
+  const ui = {
+    ui: [
+      {
+        Unknown: {
+          props: {
+            complete: true,
+            partialValue: {},
+            value: {},
+          },
         },
       },
-    },
-  ];
+    ],
+  };
 
   // Act
   fixture.componentRef.setInput('ui', ui);

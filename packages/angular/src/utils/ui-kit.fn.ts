@@ -3,6 +3,7 @@ import {
   type UiKit as CoreUiKit,
   type UiKitInput as CoreUiKitInput,
   ɵcreateUiKit as createCoreUiKit,
+  type SystemPrompt,
 } from '@hashbrownai/core';
 import { ExposedComponent } from './expose-component.fn';
 import { TagNameRegistry } from './ui-chat.helpers';
@@ -24,6 +25,10 @@ export interface UiKitOptions<T extends ExposedComponent<any>> {
    * Components or other UiKit instances to compose.
    */
   components: readonly UiKitInput<T>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 }
 
 /**
@@ -48,6 +53,7 @@ export function createUiKit<T extends ExposedComponent<any>>(
 ): UiKit<T> {
   const uiKit = createCoreUiKit<T>({
     components: options.components,
+    examples: options.examples,
   });
 
   const tagNameRegistry = Array.from(uiKit.registry.values()).reduce(
