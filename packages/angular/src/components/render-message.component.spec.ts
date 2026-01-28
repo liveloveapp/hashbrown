@@ -23,7 +23,6 @@ test('renders using tag registry from assistant messages', () => {
               partialValue: {},
               value: {},
             },
-            children: [],
           },
         },
       ],
@@ -73,7 +72,6 @@ test('renders with ui + uiKit inputs', () => {
           partialValue: {},
           value: {},
         },
-        children: [],
       },
     },
   ];
@@ -165,7 +163,6 @@ test('throws when ui does not match the uiKit schema', () => {
           partialValue: {},
           value: {},
         },
-        children: [],
       },
     },
   ];

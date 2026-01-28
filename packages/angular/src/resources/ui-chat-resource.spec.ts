@@ -81,7 +81,6 @@ test('uiChatResource accepts UiKit inputs and decorates assistant messages', () 
                 partialValue: { label: 'Hello' },
                 value: { label: 'Hello' },
               },
-              children: [],
             },
           },
         ],
