@@ -2,7 +2,6 @@
 import {
   Chat,
   type ModelInput,
-  s,
   SystemPrompt,
   type TransportOrFactory,
 } from '@hashbrownai/core';
@@ -18,7 +17,6 @@ import { ExposedComponent } from '../expose-component.fn';
 import {
   UiAssistantMessage,
   UiChatSchema,
-  UiChatSchemaComponent,
 } from './use-ui-chat';
 import { useUiKit, type UiKitInput } from './use-ui-kit';
 import {
@@ -54,6 +52,10 @@ export interface UiCompletionOptions<
    * The components that can be rendered by the completion.
    */
   components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The tools to make available to the completion.
@@ -124,20 +126,15 @@ export const useUiCompletion = <
 ): UseUiCompletionResult<Tools> => {
   const {
     components: initialComponents,
+    examples,
     system,
     tools,
     ...completionOptions
   } = options;
   const [components, setComponents] = useState(initialComponents);
-  const uiKit = useUiKit<ExposedComponent<any>>({ components });
+  const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
 
-  const uiSchema = useMemo(
-    () =>
-      s.object('UI', {
-        ui: s.streaming.array('List of elements', uiKit.schema),
-      }),
-    [uiKit.serializedSchema],
-  );
+  const uiSchema = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
 
   const systemAsString = useMemo(() => {
     if (typeof system === 'string') {
@@ -164,11 +161,11 @@ export const useUiCompletion = <
   });
 
   const buildContent = useCallback(
-    (nodes: string | Array<UiChatSchemaComponent>): ReactElement[] | string => {
-      if (typeof nodes === 'string') {
-        return nodes;
+    (content: string | UiChatSchema): ReactElement[] | string => {
+      if (typeof content === 'string') {
+        return content;
       }
-      return uiKit.render(nodes);
+      return uiKit.render(content);
     },
     [uiKit],
   );
@@ -184,7 +181,7 @@ export const useUiCompletion = <
       role: 'assistant' as const,
       content: rawOutput,
       toolCalls: [],
-      ui: rawOutput.ui ? buildContent(rawOutput.ui) : null,
+      ui: rawOutput ? buildContent(rawOutput) : null,
     } as UiAssistantMessage<Tools>;
   }, [rawOutput, buildContent]);
 

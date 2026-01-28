@@ -3,11 +3,10 @@
 import {
   Chat,
   type ComponentNode,
-  type ComponentTree,
   type ModelInput,
-  s,
   SystemPrompt,
   type TransportOrFactory,
+  type UiWrapper,
 } from '@hashbrownai/core';
 import { ReactElement, useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
@@ -26,10 +25,7 @@ export type UiChatSchemaComponent = ComponentNode;
  *
  * @public
  */
-export interface UiChatSchema {
-  /** Array of UI components to render */
-  ui: UiChatSchemaComponent[];
-}
+export type UiChatSchema = UiWrapper;
 
 /**
  * A message from the assistant that includes rendered UI components.
@@ -93,6 +89,10 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * The components that can be rendered by the chat.
    */
   components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The initial messages for the chat.
@@ -165,16 +165,14 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
 export const useUiChat = <Tools extends Chat.AnyTool>(
   options: UiChatOptions<Tools>,
 ) => {
-  const { components: initialComponents, ...chatOptions } = options;
+  const {
+    components: initialComponents,
+    examples,
+    ...chatOptions
+  } = options;
   const [components, setComponents] = useState(initialComponents);
-  const uiKit = useUiKit<ExposedComponent<any>>({ components });
-  const ui = useMemo(
-    () =>
-      s.object('UI', {
-        ui: s.streaming.array('List of elements', uiKit.schema),
-      }),
-    [uiKit.serializedSchema],
-  );
+  const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
+  const ui = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
   const systemAsString = useMemo(() => {
     if (typeof chatOptions.system === 'string') {
       return chatOptions.system;
@@ -195,11 +193,11 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
   });
 
   const buildContent = useCallback(
-    (nodes: string | Array<UiChatSchemaComponent>): ReactElement[] | string => {
-      if (typeof nodes === 'string') {
-        return nodes;
+    (content: string | UiChatSchema): ReactElement[] | string => {
+      if (typeof content === 'string') {
+        return content;
       }
-      return uiKit.render(nodes as ComponentTree);
+      return uiKit.render(content);
     },
     [uiKit],
   );
@@ -209,7 +207,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
       if (message.role === 'assistant') {
         return {
           ...message,
-          ui: message.content?.ui ? buildContent(message.content.ui) : null,
+          ui: message.content ? buildContent(message.content) : null,
         } as UiAssistantMessage<Tools>;
       }
 
