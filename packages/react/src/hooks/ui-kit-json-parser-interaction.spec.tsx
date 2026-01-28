@@ -1,6 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
-import { s } from '@hashbrownai/core';
 import { exposeComponent } from '../expose-component.fn';
 import { useImperativeJsonParser } from './use-imperative-json-parser';
 import { useUiKit } from './use-ui-kit';
@@ -75,41 +74,42 @@ test('ui kit json parser interaction renders complex ui without errors', () => {
 
   const useUiKitParser = () => {
     const uiKit = useUiKit({ components });
-    const schema = s.streaming.array('UI', uiKit.schema);
-    const parser = useImperativeJsonParser(schema);
-    const rendered = uiKit.render(parser.value ?? []);
+    const parser = useImperativeJsonParser(uiKit.schema);
+    const rendered = uiKit.render(parser.value ?? { ui: [] });
     return { parser, rendered };
   };
 
-  const payload = [
-    {
-      Card: {
-        props: { title: 'Welcome' },
-        children: [
-          {
-            Paragraph: {
-              props: { tone: 'info' },
-              children: 'Hello there.',
+  const payload = {
+    ui: [
+      {
+        Card: {
+          props: { title: 'Welcome' },
+          children: [
+            {
+              Paragraph: {
+                props: { tone: 'info' },
+                children: 'Hello there.',
+              },
             },
-          },
-          {
-            Button: {
-              props: { label: 'Continue' },
+            {
+              Button: {
+                props: { label: 'Continue' },
+              },
             },
-          },
-          {
-            OrderedList: {
-              children: [
-                {
-                  ListItem: { children: 'Item 1' },
-                },
-              ],
+            {
+              OrderedList: {
+                children: [
+                  {
+                    ListItem: { children: 'Item 1' },
+                  },
+                ],
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-  ];
+    ],
+  };
   const json = JSON.stringify(payload);
   const chunks = json.split('');
 
