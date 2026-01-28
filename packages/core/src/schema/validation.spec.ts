@@ -34,3 +34,12 @@ test('array: minItems and maxItems validate', () => {
   expect(() => schema.validate(['a'])).not.toThrow();
   expect(() => schema.validate(['a', 'b', 'c'])).toThrow();
 });
+
+test('streaming object: missing keys do not invalidate partial values', () => {
+  const schema = s.streaming.object('root', {
+    props: s.node(s.object('Props', {})),
+  });
+  const subject = () => schema.validate({});
+
+  expect(subject).not.toThrow();
+});
