@@ -1167,8 +1167,13 @@ ${' '.repeat(depth)}}`;
       throw new Error(`Expected an object at: ${path.join('.')}`);
 
     const { shape } = definition;
+    const isStreamingSchema = definition.streaming;
 
     Object.entries<HashbrownType>(shape).forEach(([key, child]) => {
+      if (isStreamingSchema && !(key in object)) {
+        return;
+      }
+
       child.validate(object[key as keyof typeof object], [...path, key]);
     });
 
