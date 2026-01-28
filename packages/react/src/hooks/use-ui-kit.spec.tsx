@@ -30,7 +30,6 @@ test('useUiKit renders resolved UI values', () => {
           partialValue: { label: 'Hello' },
           value: { label: 'Hello' },
         },
-        children: [],
       },
     },
   ];
@@ -66,7 +65,6 @@ test('useUiKit throws when UI does not match the schema', () => {
           partialValue: { label: 'Hello' },
           value: { label: 'Hello' },
         },
-        children: [],
       },
     },
   ];

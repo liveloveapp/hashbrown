@@ -46,7 +46,6 @@ test('useUiChat renders components from UiKit and exposed component inputs', () 
                   partialValue: { label: 'One' },
                   value: { label: 'One' },
                 },
-                children: [],
               },
             },
             {
