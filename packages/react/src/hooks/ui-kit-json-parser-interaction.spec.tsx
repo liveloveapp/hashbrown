@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { s } from '@hashbrownai/core';
 import { exposeComponent } from '../expose-component.fn';
-import { useJsonParser } from './use-json-parser';
+import { useImperativeJsonParser } from './use-imperative-json-parser';
 import { useUiKit } from './use-ui-kit';
 
 test('ui kit json parser interaction renders complex ui without errors', () => {
@@ -76,7 +76,7 @@ test('ui kit json parser interaction renders complex ui without errors', () => {
   const useUiKitParser = () => {
     const uiKit = useUiKit({ components });
     const schema = s.streaming.array('UI', uiKit.schema);
-    const parser = useJsonParser(schema);
+    const parser = useImperativeJsonParser(schema);
     const rendered = uiKit.render(parser.value ?? []);
     return { parser, rendered };
   };

@@ -5,13 +5,15 @@ import {
   type ParserState,
   s,
 } from '@hashbrownai/core';
-import { useCallback, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 
 interface JsonParserSession<Output> {
   parserState: ParserState;
   cache: s.FromJsonAstCache | undefined;
   value: Output | undefined;
   error: ParserError | Error | undefined;
+  json: string;
+  schemaKey: string | null;
 }
 
 const createSession = <Output,>(): JsonParserSession<Output> => ({
@@ -19,6 +21,8 @@ const createSession = <Output,>(): JsonParserSession<Output> => ({
   cache: undefined,
   value: undefined,
   error: undefined,
+  json: '',
+  schemaKey: null,
 });
 
 function getSchemaKey(schema?: s.HashbrownType<unknown>) {
@@ -53,6 +57,85 @@ function resolveSchemaError(
   return previousError ?? new Error('Schema invalid');
 }
 
+function resetSession<Output>(schemaKey: string | null): JsonParserSession<Output> {
+  return {
+    ...createSession<Output>(),
+    schemaKey,
+  };
+}
+
+function resolveNextSession<Output>(
+  previous: JsonParserSession<Output>,
+  json: string,
+  schema: s.HashbrownType<Output> | undefined,
+  schemaKey: string | null,
+): JsonParserSession<Output> {
+  const schemaChanged = previous.schemaKey !== schemaKey;
+  let baseSession = previous;
+
+  if (schemaChanged) {
+    baseSession = {
+      ...previous,
+      cache: undefined,
+      value: undefined,
+      error: undefined,
+      schemaKey,
+    };
+  }
+
+  let nextParserState = baseSession.parserState;
+  let nextCache = baseSession.cache;
+  let nextValue = baseSession.value;
+  let nextError = baseSession.error;
+
+  if (json !== baseSession.json) {
+    if (json.startsWith(baseSession.json)) {
+      const chunk = json.slice(baseSession.json.length);
+      if (chunk.length > 0) {
+        nextParserState = parseChunk(baseSession.parserState, chunk);
+      }
+    } else {
+      const resetState = createParserState();
+      nextParserState = json.length > 0 ? parseChunk(resetState, json) : resetState;
+      nextCache = undefined;
+      nextValue = undefined;
+      nextError = undefined;
+    }
+  }
+
+  if (!schema) {
+    nextError = nextParserState.error ?? undefined;
+    nextValue =
+      nextParserState.error === null
+        ? getParserResolvedValue<Output>(nextParserState)
+        : undefined;
+  } else {
+    const output = s.fromJsonAst(schema, nextParserState, nextCache);
+    const result = output.result;
+    const isMatch = result.state === 'match';
+    const isInvalid = result.state === 'invalid';
+    if (isMatch) {
+      nextValue = result.value as Output;
+    }
+
+    nextCache = output.cache;
+    nextError = resolveSchemaError(
+      nextParserState.error,
+      isInvalid,
+      nextError,
+    );
+  }
+
+  return {
+    parserState: nextParserState,
+    cache: nextCache,
+    value: nextValue,
+    error: nextError,
+    json,
+    schemaKey,
+  };
+}
+
 /**
  * The result object returned by the `useJsonParser` hook.
  *
@@ -74,127 +157,46 @@ export interface UseJsonParserResult<Output> {
    * The current parser or schema error, if any.
    */
   error: ParserError | Error | undefined;
-
-  /**
-   * Apply a JSON chunk to the parser.
-   * @param chunk - The next JSON fragment.
-   */
-  parseChunk: (chunk: string) => void;
-
-  /**
-   * Reset the parser to its initial state.
-   */
-  reset: () => void;
 }
 
 /**
- * Create a streaming JSON parser that can optionally resolve values with a Skillet schema.
+ * Create a prop-driven streaming JSON parser that can optionally resolve values with a Skillet schema.
  *
  * @public
  * @typeParam Schema - The Hashbrown schema used to resolve streaming values.
+ * @param json - The full JSON string that grows over time.
  * @param schema - Optional Skillet schema to resolve values from the parser state.
  */
 export function useJsonParser<Schema extends s.HashbrownType>(
+  json: string,
   schema: Schema,
 ): UseJsonParserResult<s.Infer<Schema>>;
 
 /**
- * Create a streaming JSON parser without schema-based value resolution.
+ * Create a prop-driven streaming JSON parser without schema-based value resolution.
  * When no schema is provided, `value` reflects the root parser state’s resolvedValue.
  *
  * @public
+ * @param json - The full JSON string that grows over time.
  * @param schema - Optional Skillet schema to resolve values from the parser state.
  */
 export function useJsonParser<Output = unknown>(
+  json: string,
   schema?: s.HashbrownType<Output>,
 ): UseJsonParserResult<Output> {
-  const [session, setSession] = useState<JsonParserSession<Output>>(() =>
-    createSession<Output>(),
-  );
+  const sessionRef = useRef<JsonParserSession<Output> | null>(null);
   const schemaKey = getSchemaKey(schema);
-  const schemaKeyRef = useRef(schemaKey);
 
-  const parseChunkHandler = useCallback(
-    (chunk: string) => {
-      setSession((previous) => {
-        const shouldReset = schemaKeyRef.current !== schemaKey;
-        if (shouldReset) {
-          schemaKeyRef.current = schemaKey;
-        }
-
-        const baseSession = shouldReset ? createSession<Output>() : previous;
-        const nextParserState = parseChunk(baseSession.parserState, chunk);
-        if (nextParserState === baseSession.parserState) {
-          return shouldReset ? baseSession : previous;
-        }
-
-        if (!schema) {
-          const nextError = nextParserState.error ?? undefined;
-          const nextValue =
-            nextParserState.error === null
-              ? getParserResolvedValue<Output>(nextParserState)
-              : undefined;
-          if (
-            nextError === baseSession.error &&
-            nextValue === baseSession.value
-          ) {
-            return {
-              ...baseSession,
-              parserState: nextParserState,
-            };
-          }
-
-          return {
-            ...baseSession,
-            parserState: nextParserState,
-            value: nextValue,
-            error: nextError,
-          };
-        }
-
-        const output = s.fromJsonAst(schema, nextParserState, baseSession.cache);
-        const result = output.result;
-        const isMatch = result.state === 'match';
-        const isInvalid = result.state === 'invalid';
-        const nextValue = isMatch ? (result.value as Output) : baseSession.value;
-        const nextError = resolveSchemaError(
-          nextParserState.error,
-          isInvalid,
-          baseSession.error,
-        );
-        const nextSession = {
-          parserState: nextParserState,
-          cache: output.cache,
-          value: nextValue,
-          error: nextError,
-        } satisfies JsonParserSession<Output>;
-
-        if (
-          nextSession.cache === baseSession.cache &&
-          nextSession.value === baseSession.value &&
-          nextSession.error === baseSession.error
-        ) {
-          return {
-            ...baseSession,
-            parserState: nextParserState,
-          };
-        }
-
-        return nextSession;
-      });
-    },
-    [schema],
-  );
-
-  const reset = useCallback(() => {
-    setSession(createSession());
-  }, []);
+  const session = useMemo(() => {
+    const previous = sessionRef.current ?? resetSession<Output>(schemaKey);
+    const next = resolveNextSession(previous, json, schema, schemaKey);
+    sessionRef.current = next;
+    return next;
+  }, [json, schema, schemaKey]);
 
   return {
     parserState: session.parserState,
     value: session.value,
     error: session.error,
-    parseChunk: parseChunkHandler,
-    reset,
   };
 }
