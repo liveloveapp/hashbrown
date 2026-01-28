@@ -25,6 +25,7 @@ export type {
   ComponentPropSchema,
   ComponentTree,
   ComponentTreeSchema,
+  UiWrapper,
 } from './ui/expose-component';
 export type { UiKit, UiKitInput, UiKitOptions } from './ui/ui-kit';
 export type {
