@@ -91,6 +91,15 @@ export type ComponentTree = ComponentNode[];
 export type ComponentTreeSchema = s.HashbrownType<ComponentNode>;
 
 /**
+ * Wrapper object used for UI kit responses.
+ *
+ * @public
+ */
+export interface UiWrapper {
+  ui: ComponentTree;
+}
+
+/**
  * Flattens a component hierarchy into a map of component names to their definitions.
  * This includes nested components defined in the children property.
  *
