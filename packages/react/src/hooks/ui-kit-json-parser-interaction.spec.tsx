@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
+import { s } from '@hashbrownai/core';
 import { exposeComponent } from '../expose-component.fn';
 import { useImperativeJsonParser } from './use-imperative-json-parser';
 import { useUiKit } from './use-ui-kit';

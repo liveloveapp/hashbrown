@@ -102,5 +102,5 @@ test('useUiKit compiles examples into the wrapper schema description', () => {
   const jsonSchema = s.toJsonSchema(result.current.schema);
 
   // Assert
-  expect(jsonSchema.description ?? '').toContain('<ui><Button label="Save" /></ui>');
+  expect(jsonSchema.description ?? '').toContain('"label": "Save"');
 });
