@@ -10,6 +10,34 @@ import type { ReactElement } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { renderUiNodes } from './ui-kit.helpers';
 
+function isRenderableComplete(node: ComponentTree[number]): boolean {
+  if (!node || typeof node !== 'object') {
+    return false;
+  }
+
+  const entries = Object.entries(node);
+  if (entries.length === 0) {
+    return false;
+  }
+
+  const value = entries[0]?.[1] as
+    | {
+        props?: { value?: Record<string, unknown> };
+        children?: ComponentTree | string;
+      }
+    | undefined;
+
+  if (!value?.props?.value) {
+    return false;
+  }
+
+  if (typeof value.children === 'string' || value.children === undefined) {
+    return true;
+  }
+
+  return value.children.every((child) => isRenderableComplete(child));
+}
+
 /**
  * Public UiKit input type for React.
  *
@@ -57,7 +85,11 @@ export function useUiKit<T extends ExposedComponent<any>>(
   const uiKit = useMemo(() => nextKit, [nextKit.serializedSchema]);
   const render = useCallback(
     (value: ComponentTree) => {
-      value.forEach((node) => uiKit.schema.validate(node));
+      value.forEach((node) => {
+        if (isRenderableComplete(node)) {
+          uiKit.schema.validate(node);
+        }
+      });
       return renderUiNodes(value, uiKit.registry) as ReactElement[];
     },
     [uiKit],

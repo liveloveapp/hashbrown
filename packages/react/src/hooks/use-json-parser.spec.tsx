@@ -72,6 +72,33 @@ test('useJsonParser preserves streaming array identity when no new match', () =>
   expect(secondValue).toBe(firstValue);
 });
 
+test('useJsonParser does not reset when schema instances are structurally identical', () => {
+  const makeSchema = () =>
+    s.streaming.object('obj', {
+      text: s.streaming.string('text'),
+    });
+
+  const { result, rerender } = renderHook(
+    ({ schema }) => useJsonParser(schema),
+    {
+      initialProps: { schema: makeSchema() },
+    },
+  );
+
+  act(() => {
+    result.current.parseChunk('{"text":"he');
+  });
+
+  rerender({ schema: makeSchema() });
+
+  act(() => {
+    result.current.parseChunk('llo"}');
+  });
+
+  expect(result.current.error).toBeUndefined();
+  expect(result.current.value).toEqual({ text: 'hello' });
+});
+
 test('useJsonParser exposes parser errors without schema', () => {
   const { result } = renderHook(() => useJsonParser());
 

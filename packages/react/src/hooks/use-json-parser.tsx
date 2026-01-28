@@ -21,6 +21,14 @@ const createSession = <Output,>(): JsonParserSession<Output> => ({
   error: undefined,
 });
 
+function getSchemaKey(schema?: s.HashbrownType<unknown>) {
+  if (!schema) {
+    return null;
+  }
+
+  return JSON.stringify(s.toJsonSchema(schema));
+}
+
 function getParserResolvedValue<Output>(state: ParserState) {
   if (state.error || state.rootId === null) {
     return undefined;
@@ -103,14 +111,15 @@ export function useJsonParser<Output = unknown>(
   const [session, setSession] = useState<JsonParserSession<Output>>(() =>
     createSession<Output>(),
   );
-  const schemaRef = useRef(schema);
+  const schemaKey = getSchemaKey(schema);
+  const schemaKeyRef = useRef(schemaKey);
 
   const parseChunkHandler = useCallback(
     (chunk: string) => {
       setSession((previous) => {
-        const shouldReset = schemaRef.current !== schema;
+        const shouldReset = schemaKeyRef.current !== schemaKey;
         if (shouldReset) {
-          schemaRef.current = schema;
+          schemaKeyRef.current = schemaKey;
         }
 
         const baseSession = shouldReset ? createSession<Output>() : previous;
