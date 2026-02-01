@@ -1,6 +1,10 @@
 {
   "name": "@hashbrownai/www",
   "type": "module",
+  "dependencies": {
+    "@hashbrownai/core": "file:../../packages/core",
+    "@hashbrownai/openai": "file:../../packages/openai"
+  },
   "scripts": {
     "collect-docs": "npx tsx src/tools/extract-docs-content.ts",
     "review-docs": "npx tsx src/tools/review-docs.ts",

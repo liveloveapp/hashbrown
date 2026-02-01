@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import { type TransportOrFactory } from '@hashbrownai/core';
 
 /**
  * The options for the Hashbrown provider.
@@ -9,7 +10,7 @@ export interface HashbrownProviderOptions {
   /**
    * The URL of the Hashbrown server endpoint.
    */
-  url: string;
+  url?: string;
   /**
    * The headers to send with the POST request to the Hashbrown endpoint.
    */
@@ -25,14 +26,19 @@ export interface HashbrownProviderOptions {
    * as if the model has produced it via structured outputs.
    */
   emulateStructuredOutput?: boolean;
+  /**
+   * Optional transport override applied to all descendant hooks.
+   */
+  transport?: TransportOrFactory;
 }
 
 interface HashbrownProviderContext {
-  url: string;
+  url?: string;
   middleware?: Array<
     (request: RequestInit) => RequestInit | Promise<RequestInit>
   >;
   emulateStructuredOutput?: boolean;
+  transport?: TransportOrFactory;
 }
 
 export const HashbrownContext = createContext<
@@ -58,11 +64,12 @@ export const HashbrownProvider = (
     children: React.ReactNode;
   },
 ) => {
-  const { url, middleware, emulateStructuredOutput, children } = props;
+  const { url, middleware, emulateStructuredOutput, transport, children } =
+    props;
 
   return (
     <HashbrownContext.Provider
-      value={{ url, middleware, emulateStructuredOutput }}
+      value={{ url, middleware, emulateStructuredOutput, transport }}
     >
       {children}
     </HashbrownContext.Provider>

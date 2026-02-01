@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, effect, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { SignalLike } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { toDeepSignal } from '../utils/deep-signal';
@@ -17,9 +22,29 @@ export interface StructuredCompletionResourceRef<Output>
    */
   isSending: Signal<boolean>;
   /**
+   * Indicates whether the completion is generating assistant output.
+   */
+  isGenerating: Signal<boolean>;
+  /**
    * Indicates whether the underlying completion call is currently receiving tokens.
    */
   isReceiving: Signal<boolean>;
+  /** Indicates whether tool calls are running. */
+  isRunningToolCalls: Signal<boolean>;
+  /** Aggregate loading flag across transport, generation, tool calls, and thread load/save. */
+  isLoading: Signal<boolean>;
+  /** Whether a thread load request is in flight. */
+  isLoadingThread: Signal<boolean>;
+  /** Whether a thread save request is in flight. */
+  isSavingThread: Signal<boolean>;
+  /** Error encountered while loading a thread. */
+  threadLoadError: Signal<{ error: string; stacktrace?: string } | undefined>;
+  /** Error encountered while saving a thread. */
+  threadSaveError: Signal<{ error: string; stacktrace?: string } | undefined>;
+  /** Transport/request error before generation frames arrive. */
+  sendingError: Signal<Error | undefined>;
+  /** Error emitted during generation frames. */
+  generatingError: Signal<Error | undefined>;
   /**
    * Reloads the resource.
    *
@@ -41,12 +66,12 @@ export interface StructuredCompletionResourceRef<Output>
  */
 export interface StructuredCompletionResourceOptions<
   Input,
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
 > {
   /**
    * The model to use for the structured completion resource.
    */
-  model: KnownModelIds;
+  model: ModelInput;
   /**
    * The input to the structured completion resource.
    */
@@ -79,6 +104,20 @@ export interface StructuredCompletionResourceOptions<
    * The debounce time for the structured completion resource.
    */
   debounce?: number;
+
+  /**
+   * Optional transport override for this structured completion resource.
+   */
+  transport?: TransportOrFactory;
+  /**
+   * Whether this completion is UI generating.
+   */
+  ui?: boolean;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: SignalLike<string | undefined>;
 }
 
 /**
@@ -90,8 +129,8 @@ export interface StructuredCompletionResourceOptions<
  */
 export function structuredCompletionResource<
   Input,
-  Schema extends s.HashbrownType,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Schema extends s.SchemaOutput,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
@@ -116,6 +155,9 @@ export function structuredCompletionResource<
     apiUrl,
     retries,
     debounce,
+    transport: options.transport,
+    ui: options.ui ?? false,
+    threadId: options.threadId,
   });
 
   effect(() => {
@@ -166,7 +208,15 @@ export function structuredCompletionResource<
     error,
     isLoading,
     isSending: resource.isSending,
+    isGenerating: resource.isGenerating,
     isReceiving: resource.isReceiving,
+    isRunningToolCalls: resource.isRunningToolCalls,
+    isLoadingThread: resource.isLoadingThread,
+    isSavingThread: resource.isSavingThread,
+    threadLoadError: resource.threadLoadError,
+    threadSaveError: resource.threadSaveError,
+    sendingError: resource.sendingError,
+    generatingError: resource.generatingError,
     reload,
     stop,
     hasValue: hasValue as any,

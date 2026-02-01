@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { JsonResolvedValue, JsonValue } from '../skillet/parser/json-parser';
 import { s } from '../schema';
 import { Prettify } from '../utils';
 
@@ -21,12 +22,12 @@ export type ComponentPropSchema<T> = Prettify<
   T extends Component<infer P>
     ? {
         [K in keyof P]?: P[K] extends AngularSignalLike<infer U>
-          ? s.Schema<U>
+          ? s.Schema<U> | s.StandardJSONSchemaV1<U, U>
           : never;
       }
     : T extends Component<infer P>
       ? {
-          [K in keyof P]?: s.Schema<P[K]>;
+          [K in keyof P]?: s.Schema<P[K]> | s.StandardJSONSchemaV1<P[K], P[K]>;
         }
       : never
 >;
@@ -40,23 +41,63 @@ export interface ExposedComponent<T extends Component<unknown>> {
   description: string;
   children?: 'any' | 'text' | ExposedComponent<any>[] | false;
   props?: ComponentPropSchema<T>;
+  fallback?: Component<ComponentFallbackProps>;
+}
+
+/**
+ * Minimal component descriptor shape accepted by schema helpers.
+ *
+ * @public
+ */
+export interface ExposedComponentDescriptor {
+  component: object;
+  name: string;
+  description: string;
+  children?: 'any' | 'text' | false | unknown[];
+  props?: Record<string, s.HashbrownType | s.StandardJSONSchemaV1>;
+  fallback?: unknown;
 }
 
 /**
  * @public
  */
-export type ComponentTree = {
-  $tag: string;
-  $children: ComponentTree[];
-  $props: Record<string, any>;
+export type ComponentFallbackProps = {
+  tag: string;
+  partialProps?: Record<string, JsonResolvedValue>;
 };
 
 /**
  * @public
  */
-export type ComponentTreeSchema = {
-  [k in keyof ComponentTree]: s.Schema<ComponentTree[k]>;
+export type ComponentNode = {
+  [tagName: string]: {
+    props?: {
+      complete: boolean;
+      partialValue: JsonResolvedValue;
+      value?: Record<string, JsonValue>;
+    };
+    children?: ComponentNode[] | string;
+  };
 };
+
+/**
+ * @public
+ */
+export type ComponentTree = ComponentNode[];
+
+/**
+ * @public
+ */
+export type ComponentTreeSchema = s.HashbrownType<ComponentNode>;
+
+/**
+ * Wrapper object used for UI kit responses.
+ *
+ * @public
+ */
+export interface UiWrapper {
+  ui: ComponentTree;
+}
 
 /**
  * Flattens a component hierarchy into a map of component names to their definitions.
@@ -64,16 +105,16 @@ export type ComponentTreeSchema = {
  *
  * @public
  */
-export function flattenComponents(
-  components: ExposedComponent<any>[],
-): Map<string, ExposedComponent<any>> {
-  const componentMap = new Map<string, ExposedComponent<any>>();
+export function flattenComponents<T extends ExposedComponentDescriptor>(
+  components: T[],
+): Map<string, T> {
+  const componentMap = new Map<string, T>();
 
-  function processComponent(component: ExposedComponent<any>) {
+  function processComponent(component: T) {
     componentMap.set(component.name, component);
 
     if (component.children && Array.isArray(component.children)) {
-      component.children.forEach(processComponent);
+      (component.children as T[]).forEach(processComponent);
     }
   }
 
@@ -91,67 +132,87 @@ export function flattenComponents(
  * @returns A schema representing the structure of the components.
  */
 export function createComponentSchema(
-  components: ExposedComponent<any>[],
-): s.ObjectType<ComponentTreeSchema> {
-  const weakMap = new WeakMap<Component<any>, s.HashbrownType>();
+  components: ExposedComponentDescriptor[],
+): ComponentTreeSchema {
+  const weakMap = new WeakMap<object, s.HashbrownType>();
 
   const elements = s.anyOf(
     components.map((component) => createSchema(component)),
   );
 
-  function createSchema(component: ExposedComponent<any>): s.HashbrownType {
+  function createSchema(
+    component: ExposedComponentDescriptor,
+  ): s.HashbrownType {
     if (weakMap.has(component.component)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return weakMap.get(component.component)!;
     }
 
     const children = component.children;
+    const normalizedProps = normalizeComponentProps(component.props);
+    const nodeShape: Record<string, s.HashbrownType> = {
+      props: s.node(s.object('Component Props', normalizedProps)),
+    };
 
     if (children === 'any') {
-      const schema = s.object(component.description, {
-        $tag: s.literal(component.name),
-        $props: s.object('Component Props', component.props ?? {}),
-        get $children(): any {
-          return s.streaming.array('Child Elements', elements);
-        },
+      Object.defineProperty(nodeShape, 'children', {
+        enumerable: true,
+        get: () => s.streaming.array('Child Elements', elements),
       });
-
-      weakMap.set(component.component, schema);
-      return schema;
     } else if (children === 'text') {
-      const schema = s.object(component.description, {
-        $tag: s.literal(component.name),
-        $props: s.object('Component Props', component.props ?? {}),
-        $children: s.streaming.string('Content'),
-      });
-
-      weakMap.set(component.component, schema);
-      return schema;
+      nodeShape['children'] = s.streaming.string('Content');
     } else if (children && Array.isArray(children)) {
-      const schema = s.object(component.description, {
-        $tag: s.literal(component.name),
-        $props: s.object('Component Props', component.props ?? {}),
-        get $children(): any {
-          return s.streaming.array(
+      Object.defineProperty(nodeShape, 'children', {
+        enumerable: true,
+        get: () =>
+          s.streaming.array(
             'Child Elements',
-            s.anyOf(children.map((child) => createSchema(child))),
-          );
-        },
+            s.anyOf(
+              (children as ExposedComponentDescriptor[]).map((child) =>
+                createSchema(child),
+              ),
+            ),
+          ),
       });
-
-      weakMap.set(component.component, schema);
-      return schema;
-    } else {
-      const schema = s.object(component.description, {
-        $tag: s.literal(component.name),
-        $props: s.object('Component Props', component.props ?? {}),
-      });
-      weakMap.set(component.component, schema);
-      return schema;
     }
 
-    throw new Error(`Invalid children type: ${children}`);
+    const nodeSchema = s.streaming.object(`${component.name} node`, nodeShape);
+    const schema = s.streaming.object(component.description, {
+      [component.name]: nodeSchema,
+    });
+
+    weakMap.set(component.component, schema);
+    return schema;
   }
 
   return elements as any;
+}
+
+function normalizeComponentProps(
+  props?: Record<string, s.HashbrownType | s.StandardJSONSchemaV1>,
+): Record<string, s.HashbrownType> {
+  if (!props) {
+    return {};
+  }
+
+  const normalized: Record<string, s.HashbrownType> = {};
+  for (const [key, schema] of Object.entries(props)) {
+    let next: s.HashbrownType | object;
+    try {
+      next = s.normalizeSchemaInput(schema);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Component prop "${key}" schema normalization failed (mode: input). ${message}`,
+      );
+    }
+    if (!s.isHashbrownType(next)) {
+      throw new Error(
+        `Component prop "${key}" must be a Skillet schema or Standard JSON Schema.`,
+      );
+    }
+    normalized[key] = next;
+  }
+
+  return normalized;
 }

@@ -1,8 +1,42 @@
 {
   "name": "@hashbrownai/core",
-  "type": "module",
-  "private": true,
-  "exports": {
-    ".": "./src/index.ts"
+  "version": "0.5.0-beta.2",
+  "description": "Runtime helpers for Hashbrown AI",
+  "license": "MIT",
+  "sideEffects": false,
+  "files": [
+    "src/**/*",
+    "index.*",
+    "LICENSE",
+    "package.json",
+    "README.md",
+    "emscripten-module.*",
+    "ffi.*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "hashbrown",
+    "generative-ui",
+    "llm",
+    "ai",
+    "typescript"
+  ],
+  "homepage": "https://hashbrown.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liveloveapp/hashbrown.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/liveloveapp/hashbrown/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/liveloveapp"
   }
 }

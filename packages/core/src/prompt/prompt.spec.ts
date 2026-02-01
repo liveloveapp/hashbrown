@@ -2,7 +2,6 @@
 import { prompt } from './prompt';
 import { s } from '../schema';
 import { createComponentSchema } from '../ui';
-import type { HashbrownType } from '../schema/base';
 
 describe('prompt helper', () => {
   describe('weaving and extraction', () => {
@@ -21,10 +20,9 @@ describe('prompt helper', () => {
       const tree = sys.examples[0];
       expect(Array.isArray(tree)).toBe(true);
       const first = tree && tree[0];
-      expect(first && first.$tag).toBe('Markdown');
-      expect(
-        first && (first as any).$props && (first as any).$props.data,
-      ).toEqual(rich);
+      const entry = first && Object.entries(first)[0];
+      expect(entry && entry[0]).toBe('Markdown');
+      expect(entry && (entry[1] as any)?.props?.data).toEqual(rich);
     });
 
     it('extracts multiple <ui> blocks', () => {
@@ -54,11 +52,13 @@ describe('prompt helper', () => {
       const sys = prompt`<ui><Comp a="true" b="false" c="3.14" d="null" /></ui>`;
 
       const n: any = sys.examples[0] && sys.examples[0][0];
+      const entry = n && Object.entries(n)[0];
+      const props = entry?.[1]?.props;
 
-      expect(n && n.$props && n.$props.a).toBe(true);
-      expect(n && n.$props && n.$props.b).toBe(false);
-      expect(n && n.$props && n.$props.c).toBeCloseTo(3.14);
-      expect(n && n.$props && n.$props.d).toBeNull();
+      expect(props && props.a).toBe(true);
+      expect(props && props.b).toBe(false);
+      expect(props && props.c).toBeCloseTo(3.14);
+      expect(props && props.d).toBeNull();
     });
 
     it('duplicate attributes are flagged', () => {
@@ -167,15 +167,12 @@ describe('prompt helper', () => {
       expect(example.diagnostics.length).toBe(0);
 
       // Extract the injected JSON and verify $children is a string
-      const json = (out.match(/\{[\s\S]*\}/) || [])[0] || '';
+      const json = (out.match(/{[\s\S]*}/) || [])[0] || '';
 
       const obj = JSON.parse(json);
-      // Streaming shape injects an object with a top-level `ui` array where
-      // entries are objects keyed by component name. For text-children
-      // components, the value is the string content.
       expect(Array.isArray(obj.ui)).toBe(true);
-      expect(typeof obj.ui[0].Note).toBe('object');
-      expect(obj.ui[0].Note.$children).toBe('Hello world!');
+      expect(obj.ui[0].Note).toBeDefined();
+      expect(obj.ui[0].Note.children).toBe('Hello world!');
     });
 
     it('children: only listed child passes validation', () => {
@@ -519,11 +516,7 @@ describe('prompt helper', () => {
         } as const,
       ];
 
-      const schema = {
-        toStreaming: () => 'x',
-      } as unknown as HashbrownType;
-
-      const out = sys.compile(components, schema);
+      const out = sys.compile(components, toSchema(components));
 
       expect(out).toContain('trailing content: outside');
       expect(out).not.toContain('__HBX_');

@@ -24,28 +24,34 @@ import {
 } from '@hashbrownai/core';
 import { Prettify } from '../utils/ts-helpers';
 
+/** @public */
 export type MagicTextCitation = { id: string; url: string };
 
+/** @public */
 export type MagicTextLinkClickEvent = {
   mouseEvent: MouseEvent;
   href: string;
   fragment: MagicTextFragmentText;
 };
 
+/** @public */
 export type MagicTextCitationClickEvent = {
   mouseEvent: MouseEvent;
   citation: { id: string; url?: string };
   fragment: MagicTextFragmentCitation;
 };
 
+/** @public */
 export type MagicTextWhitespacePosition = 'before' | 'after';
 
+/** @public */
 export type MagicTextWhitespaceContext = {
   position: MagicTextWhitespacePosition;
   render: boolean;
   fragment: MagicTextFragment;
 };
 
+/** @public */
 export type MagicTextRenderTextContext = {
   text: string;
   tags: MagicTextTag[];
@@ -56,6 +62,7 @@ export type MagicTextRenderTextContext = {
   fragment: MagicTextFragmentText;
 };
 
+/** @public */
 export type MagicTextRenderLinkContext = Prettify<
   MagicTextRenderTextContext & {
     href: string;
@@ -67,6 +74,7 @@ export type MagicTextRenderLinkContext = Prettify<
   }
 >;
 
+/** @public */
 export interface MagicTextRenderCitationContext {
   citation: { id: string; number: number | string; url?: string };
   text: string;
@@ -102,6 +110,7 @@ export class MagicTextRenderText {
   }
 }
 
+/** @public */
 @Directive({ selector: 'ng-template[hbMagicTextRenderCitation]' })
 export class MagicTextRenderCitation {
   constructor(readonly template: TemplateRef<MagicTextRenderCitationContext>) {}
@@ -114,6 +123,7 @@ export class MagicTextRenderCitation {
   }
 }
 
+/** @public */
 @Directive({ selector: 'ng-template[hbMagicTextRenderWhitespace]' })
 export class MagicTextRenderWhitespace {
   constructor(readonly template: TemplateRef<MagicTextWhitespaceContext>) {}
@@ -126,6 +136,7 @@ export class MagicTextRenderWhitespace {
   }
 }
 
+/** @public */
 @Component({
   selector: 'hb-magic-text',
   imports: [NgTemplateOutlet],
@@ -274,7 +285,7 @@ export class MagicTextRenderWhitespace {
     }
 
     .hb-text--enter {
-      animation: enter 1s ease-in-out;
+      animation: enter 350ms ease-in-out;
     }
 
     @keyframes enter {
@@ -477,12 +488,6 @@ export class MagicText {
   ) {
     const href = fragment.marks.link?.href ?? '';
     this.linkClick.emit({ mouseEvent: event, href, fragment });
-    const target = event.currentTarget as HTMLElement | null;
-    const allowNavigation =
-      event.defaultPrevented || target?.dataset['allowNavigation'] === 'true';
-    if (!allowNavigation) {
-      event.preventDefault();
-    }
   }
 
   protected handleCitationClick(
@@ -494,11 +499,5 @@ export class MagicText {
       citation: { id: context.citation.id, url: context.citation.url },
       fragment: context.fragment,
     });
-    const target = event.currentTarget as HTMLElement | null;
-    const allowNavigation =
-      event.defaultPrevented || target?.dataset['allowNavigation'] === 'true';
-    if (!allowNavigation) {
-      event.preventDefault();
-    }
   }
 }

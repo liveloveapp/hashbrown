@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/google",
-  "version": "0.4.0-rc.1",
+  "version": "0.5.0-beta.2",
   "description": "Google provider for Hashbrown AI",
   "license": "MIT",
   "repository": {
@@ -16,8 +16,8 @@
     "@openapi-contrib/json-schema-to-openapi-schema": "^3.0.3"
   },
   "peerDependencies": {
-    "@google/genai": "^1.29.1",
-    "@hashbrownai/core": "0.4.0-rc.1"
+    "@google/genai": "^1.38.0",
+    "@hashbrownai/core": "0.5.0-beta.2"
   },
   "sideEffects": false,
   "publishConfig": {

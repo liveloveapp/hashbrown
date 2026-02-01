@@ -245,6 +245,22 @@ import { Squircle } from './Squircle';
             >Remote MCP</a
           >
         </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'threads']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Threads</a
+          >
+        </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'local-models']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Local Models</a
+          >
+        </li>
       </ol>
     </div>
     <div>
@@ -256,6 +272,14 @@ import { Squircle } from './Squircle';
             routerLinkActive="active"
             wwwSquircle="8"
             >OpenAI</a
+          >
+        </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'anthropic']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Anthropic</a
           >
         </li>
         <li>
@@ -272,6 +296,22 @@ import { Squircle } from './Squircle';
             routerLinkActive="active"
             wwwSquircle="8"
             >Azure</a
+          >
+        </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'bedrock']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Amazon Bedrock</a
+          >
+        </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'platform', 'anthropic']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Anthropic</a
           >
         </li>
         <li>

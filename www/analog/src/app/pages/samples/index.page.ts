@@ -67,6 +67,34 @@ export const routeMeta: RouteMeta = {
               </div>
             </div>
           </a>
+          <!-- <a routerLink="/samples/fast-food" wwwSquircle="16">
+            <div>
+              <h2>Fast Food App</h2>
+              <p>
+                Chat through menu ideas, chart nutrition tradeoffs, and explore
+                50+ restaurant menus with a friendly copilot.
+              </p>
+            </div>
+            <div class="pills">
+              <span wwwSquircle="8">Generative UI</span>
+              <span wwwSquircle="8">Streaming</span>
+              <span wwwSquircle="8">Charts</span>
+              <span wwwSquircle="8">Structured Data</span>
+            </div>
+            <img
+              src="/image/samples/fast-food.svg"
+              alt="Fast Food App screenshot"
+              wwwSquircle="8"
+              [wwwSquircleBorderWidth]="4"
+              wwwSquircleBorderColor="orange"
+            />
+            <div class="actions">
+              <div class="action" wwwSquircle="8">
+                <span>Run this App</span>
+                <www-player-play height="16px" width="16px" />
+              </div>
+            </div>
+          </a> -->
           <a routerLink="/samples/smart-home" wwwSquircle="16">
             <div>
               <h2>Smart Home App</h2>

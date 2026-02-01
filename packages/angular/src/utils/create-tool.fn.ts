@@ -31,6 +31,34 @@ export function createTool<
 }): Chat.Tool<Name, s.Infer<Schema>, Result>;
 
 /**
+ * Creates a tool with a Standard JSON Schema.
+ *
+ * @public
+ * @param input - The input for the tool containing:
+ *   - `name`: The name of the tool
+ *   - `description`: The description of the tool
+ *   - `schema`: The schema of the tool
+ *   - `handler`: The handler of the tool
+ * @param Name - The name of the tool.
+ * @param Schema - The schema of the tool.
+ * @param Result - The result of the tool.
+ * @returns The tool.
+ */
+export function createTool<
+  const Name extends string,
+  Schema extends s.StandardJSONSchemaV1,
+  Result,
+>(input: {
+  name: Name;
+  description: string;
+  schema: Schema;
+  handler: (
+    input: s.StandardJSONSchemaV1.InferInput<Schema>,
+    abortSignal: AbortSignal,
+  ) => Promise<Result>;
+}): Chat.Tool<Name, s.StandardJSONSchemaV1.InferInput<Schema>, Result>;
+
+/**
  * Creates a tool with a unknown JSON schema.
  *
  * @public

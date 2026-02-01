@@ -1,21 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
+import {
+  Chat,
+  type ComponentTreeSchema,
+  type ModelInput,
+  s,
+  SystemPrompt,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import {
   TAG_NAME_REGISTRY,
-  TagNameRegistry,
   UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
-import { readSignalLike } from '../utils';
+import { readSignalLike, SignalLike } from '../utils';
+import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
 
 /**
  * @public
  */
 export type UiChatMessageOutput = s.ObjectType<{
-  ui: s.ArrayType<s.ObjectType<ɵui.ComponentTreeSchema>>;
+  ui: s.ArrayType<ComponentTreeSchema>;
 }>;
 
 /**
@@ -28,12 +35,16 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The components to use for the UI chat resource.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The model to use for the UI chat resource.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system prompt to use for the UI chat resource.
@@ -68,6 +79,16 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
    * The API URL to use for the UI chat resource.
    */
   apiUrl?: string;
+
+  /**
+   * Custom transport override for the UI chat resource.
+   */
+  transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: SignalLike<string | undefined>;
 }
 
 /**
@@ -112,21 +133,17 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool>
 export function uiChatResource<Tools extends Chat.AnyTool>(
   args: UiChatResourceOptions<Tools>,
 ): UiChatResourceRef<Tools> {
-  const flattenedComponents = computed(() =>
-    ɵui.flattenComponents(args.components),
-  );
-  const internalSchema = s.object('UI', {
-    ui: s.streaming.array(
-      'List of elements',
-      ɵui.createComponentSchema(args.components),
-    ),
+  const uiKit = createUiKit<ExposedComponent<any>>({
+    components: args.components,
+    examples: args.examples,
   });
+  const internalSchema = uiKit.schema;
   const systemAsString = computed(() => {
     const system = readSignalLike(args.system);
     if (typeof system === 'string') {
       return system;
     }
-    const result = system.compile(args.components, internalSchema);
+    const result = system.compile(uiKit.components, internalSchema);
     if (system.diagnostics.length > 0) {
       throw new Error(
         `System prompt has ${system.diagnostics.length} errors: \n\n${system.diagnostics.map((d) => d.message).join('\n\n')}`,
@@ -144,6 +161,9 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     debugName: args.debugName,
     debounce: args.debounce,
     apiUrl: args.apiUrl,
+    transport: args.transport,
+    ui: true,
+    threadId: args.threadId,
   });
 
   const value = computed(
@@ -166,17 +186,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
 
           return {
             ...message,
-            [TAG_NAME_REGISTRY]:
-              Array.from(flattenedComponents().values()).reduce(
-                (acc, component) => {
-                  acc[component.name] = {
-                    props: component.props ?? {},
-                    component: component.component,
-                  };
-                  return acc;
-                },
-                {} as TagNameRegistry,
-              ) ?? {},
+            [TAG_NAME_REGISTRY]: uiKit.tagNameRegistry ?? {},
           };
         }
         if (message.role === 'user') {

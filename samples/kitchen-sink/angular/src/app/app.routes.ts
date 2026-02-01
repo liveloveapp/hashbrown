@@ -44,6 +44,27 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'chrome-ai',
+    loadComponent: () =>
+      import('./pages/chrome-ai/chrome-ai.component').then(
+        (m) => m.ChromeAiComponent,
+      ),
+  },
+  {
+    path: 'structured-demo',
+    loadComponent: () =>
+      import('./pages/structured-demo/structured-demo.component').then(
+        (m) => m.StructuredDemoComponent,
+      ),
+  },
+  {
+    path: 'ui-chat-demo',
+    loadComponent: () =>
+      import('./pages/ui-chat-demo/ui-chat-demo.component').then(
+        (m) => m.UiChatDemoComponent,
+      ),
+  },
+  {
     path: 'planner',
     loadComponent: () =>
       import('./features/planner/planner.component').then(

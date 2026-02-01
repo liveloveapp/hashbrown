@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
 import {
-  createElement,
+  Chat,
+  type ModelInput,
+  SystemPrompt,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
+import {
   Dispatch,
   ReactElement,
-  ReactNode,
   SetStateAction,
   useCallback,
   useMemo,
@@ -14,8 +17,8 @@ import { ExposedComponent } from '../expose-component.fn';
 import {
   UiAssistantMessage,
   UiChatSchema,
-  UiChatSchemaComponent,
 } from './use-ui-chat';
+import { useUiKit, type UiKitInput } from './use-ui-kit';
 import {
   useStructuredCompletion,
   type UseStructuredCompletionResult,
@@ -38,7 +41,7 @@ export interface UiCompletionOptions<
   /**
    * The model to use for the completion.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system prompt to use for the completion.
@@ -48,7 +51,11 @@ export interface UiCompletionOptions<
   /**
    * The components that can be rendered by the completion.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The tools to make available to the completion.
@@ -69,6 +76,16 @@ export interface UiCompletionOptions<
    * Number of retries if an error is received.
    */
   retries?: number;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: string;
 }
 
 /**
@@ -93,7 +110,7 @@ export interface UseUiCompletionResult<Tools extends Chat.AnyTool>
   /**
    * Updates the available components for future completions.
    */
-  setComponents: Dispatch<SetStateAction<ExposedComponent<any>[]>>;
+  setComponents: Dispatch<SetStateAction<UiKitInput<ExposedComponent<any>>[]>>;
 }
 
 /**
@@ -109,30 +126,22 @@ export const useUiCompletion = <
 ): UseUiCompletionResult<Tools> => {
   const {
     components: initialComponents,
+    examples,
     system,
     tools,
     ...completionOptions
   } = options;
   const [components, setComponents] = useState(initialComponents);
-  const [flattenedComponents] = useState(
-    ɵui.flattenComponents(initialComponents),
-  );
+  const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
 
-  const uiSchema = useMemo(() => {
-    return s.object('UI', {
-      ui: s.streaming.array(
-        'List of elements',
-        ɵui.createComponentSchema(components),
-      ),
-    });
-  }, [components]);
+  const uiSchema = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
 
   const systemAsString = useMemo(() => {
     if (typeof system === 'string') {
       return system;
     }
 
-    const compiled = system.compile(components, uiSchema);
+    const compiled = system.compile(uiKit.components, uiSchema);
 
     if (system.diagnostics.length > 0) {
       throw new Error(
@@ -141,50 +150,27 @@ export const useUiCompletion = <
     }
 
     return compiled;
-  }, [system, components, uiSchema]);
+  }, [system, uiSchema, uiKit.components]);
 
   const structured = useStructuredCompletion<Input, typeof uiSchema>({
     ...completionOptions,
     schema: uiSchema as any,
     system: systemAsString,
     tools,
+    ui: true,
   });
 
   const buildContent = useCallback(
-    (
-      nodes: string | Array<UiChatSchemaComponent>,
-      parentKey = '',
-    ): ReactElement[] | string => {
-      if (typeof nodes === 'string') {
-        return nodes;
+    (content: string | UiChatSchema): ReactElement[] | string => {
+      if (typeof content === 'string') {
+        return content;
       }
-
-      const elements = nodes.map((node, index) => {
-        const key = `${parentKey}_${index}`;
-        const { $tag, $props, $children } = node;
-        const componentType = flattenedComponents.get($tag)?.component;
-
-        if ($tag && componentType) {
-          const children: ReactNode[] | string | null = node.$children
-            ? buildContent($children, key)
-            : null;
-
-          return createElement(componentType, {
-            ...$props,
-            children,
-            key,
-          });
-        }
-
-        throw new Error(`Unknown element type. ${$tag}`);
-      });
-
-      return elements;
+      return uiKit.render(content);
     },
-    [flattenedComponents],
+    [uiKit],
   );
 
-  const rawOutput = structured.output;
+  const rawOutput = structured.output as UiChatSchema | null;
 
   const message = useMemo(() => {
     if (!rawOutput) {
@@ -195,7 +181,7 @@ export const useUiCompletion = <
       role: 'assistant' as const,
       content: rawOutput,
       toolCalls: [],
-      ui: rawOutput.ui ? buildContent(rawOutput.ui) : null,
+      ui: rawOutput ? buildContent(rawOutput) : null,
     } as UiAssistantMessage<Tools>;
   }, [rawOutput, buildContent]);
 

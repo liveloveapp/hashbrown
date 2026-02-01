@@ -41,7 +41,9 @@ export function toJsonSchema(schema: HashbrownType) {
     }
     seen.add(n);
 
-    if (s.isObjectType(n)) {
+    if (s.isNodeType(n)) {
+      visit(n[internal].definition.inner, [...path, n]);
+    } else if (s.isObjectType(n)) {
       Object.values(n[internal].definition.shape).forEach((child) =>
         visit(child, [...path, n]),
       );
@@ -84,9 +86,6 @@ export function toJsonSchema(schema: HashbrownType) {
     isRoot = false,
     inDef: HashbrownType | null = null,
     pathSeen: Set<HashbrownType> = new Set(),
-    // If provided, omit this property when printing an object. Used for
-    // anyOf literal-based envelopes where the literal is redundant.
-    omitObjectProp?: string,
   ): any {
     // a) cycle back to the root
     if (!isRoot && n === rootNode) {
@@ -115,23 +114,22 @@ export function toJsonSchema(schema: HashbrownType) {
 
     let result: any;
 
-    if (s.isObjectType(n)) {
+    if (s.isNodeType(n)) {
+      result = printNode(n[internal].definition.inner, isRoot, inDef, pathSeen);
+    } else if (s.isObjectType(n)) {
       // Sort props so that streaming ones are at the end
       const shapeWithStreamingAtEnd = Object.entries(
         n[internal].definition.shape,
-      )
-        // If we're omitting a prop due to envelope discrimination, remove it
-        .filter(([key]) => (omitObjectProp ? key !== omitObjectProp : true))
-        .sort((a, b) => {
-          if (!s.isStreaming(a[1]) && s.isStreaming(b[1])) {
-            return -1;
-          }
-          if (s.isStreaming(a[1]) && !s.isStreaming(b[1])) {
-            return 1;
-          }
+      ).sort((a, b) => {
+        if (!s.isStreaming(a[1]) && s.isStreaming(b[1])) {
+          return -1;
+        }
+        if (s.isStreaming(a[1]) && !s.isStreaming(b[1])) {
+          return 1;
+        }
 
-          return 0;
-        });
+        return 0;
+      });
 
       const props: Record<string, any> = {};
       for (const [k, child] of shapeWithStreamingAtEnd) {
@@ -140,7 +138,6 @@ export function toJsonSchema(schema: HashbrownType) {
 
       result = n.toJsonSchema();
       result.properties = props;
-      // Ensure required keys do not include any omitted discriminator prop
       result.required = Object.keys(props);
     } else if (s.isArrayType(n)) {
       result = n.toJsonSchema();
@@ -164,114 +161,10 @@ export function toJsonSchema(schema: HashbrownType) {
     } else if (s.isAnyOfType(n)) {
       result = n.toJsonSchema();
 
-      // Attempt to build a literal-based discriminator map for object options.
-      // If successful, we emit wrappers keyed by the literal values (overriding numeric index wrappers).
-      type DiscriminatorEntry = {
-        schema: s.HashbrownType;
-        literalKey: string;
-        literalValue: string;
-      };
-
-      const buildDiscriminatorMap = (
-        options: s.HashbrownType[],
-      ): Record<string, DiscriminatorEntry> | null => {
-        const map: Record<string, DiscriminatorEntry> = {};
-
-        for (const opt of options) {
-          if (!s.isObjectType(opt)) {
-            return null;
-          }
-
-          const shape = (opt as any)[internal].definition.shape as Record<
-            string,
-            s.HashbrownType
-          >;
-
-          const literalEntries = Object.entries(shape).filter(([, v]) =>
-            s.isLiteralType(v as any),
-          ) as [string, s.HashbrownType][];
-
-          // Require exactly one literal for clear discrimination
-          if (literalEntries.length !== 1) {
-            return null;
-          }
-
-          const [literalKey, litSchema] = literalEntries[0];
-          const literalValue = (litSchema as any)[internal].definition.value as
-            | string
-            | number
-            | boolean;
-
-          if (typeof literalValue !== 'string') {
-            // Only support string-based discriminators for wrapper keys
-            return null;
-          }
-
-          if (Object.prototype.hasOwnProperty.call(map, literalValue)) {
-            // Ambiguous (duplicate) discriminator value
-            return null;
-          }
-
-          map[literalValue] = { schema: opt, literalKey, literalValue };
-        }
-
-        return Object.keys(map).length === options.length ? map : null;
-      };
-
       const options = n[internal].definition.options as s.HashbrownType[];
-      const literalDiscriminatorMap = buildDiscriminatorMap(options);
-
-      if (literalDiscriminatorMap) {
-        // Emit wrappers keyed by the literal value
-        result.anyOf = options.map((opt) => {
-          // Find this option's literal value by scanning its shape
-          const shape = (opt as any)[internal].definition.shape as Record<
-            string,
-            s.HashbrownType
-          >;
-          const [literalKey, litSchema] = Object.entries(shape).find(([, v]) =>
-            s.isLiteralType(v as any),
-          ) as [string, s.HashbrownType];
-
-          const literalValue = (litSchema as any)[internal].definition
-            .value as string;
-
-          return {
-            type: 'object',
-            additionalProperties: false,
-            required: [literalValue],
-            properties: {
-              // When printing the option object, omit the discriminator literal
-              // key from the inner schema because it is already conveyed by
-              // the envelope key (literalValue)
-              [literalValue]: printNode(
-                opt,
-                false,
-                inDef,
-                pathSeen,
-                literalKey,
-              ),
-            },
-          };
-        });
-      } else {
-        // Fallback to previous behavior: index-based wrappers for complex options
-        result.anyOf = options.map((opt, index) => {
-          if (s.needsDiscriminatorWrapperInAnyOf(opt)) {
-            const indexAsStr = `${index}`;
-            return {
-              type: 'object',
-              additionalProperties: false,
-              required: [indexAsStr],
-              properties: {
-                [indexAsStr]: printNode(opt, false, inDef, pathSeen),
-              },
-            };
-          } else {
-            return printNode(opt, false, inDef, pathSeen);
-          }
-        });
-      }
+      result.anyOf = options.map((opt) =>
+        printNode(opt, false, inDef, pathSeen),
+      );
     } else {
       result = n.toJsonSchema();
 

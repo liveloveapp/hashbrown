@@ -1,0 +1,36 @@
+{
+  "name": "@hashbrownai/bedrock",
+  "version": "0.5.0-beta.2",
+  "description": "Amazon Bedrock provider for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "directory": "packages/bedrock"
+  },
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@aws-sdk/types": "3.922.0"
+  },
+  "peerDependencies": {
+    "@hashbrownai/core": "0.5.0-beta.2",
+    "@aws-sdk/client-bedrock-runtime": "^3.936.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "amazon-bedrock",
+    "generative-ui",
+    "ai",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,39 +1,31 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
 import {
-  createElement,
-  ReactElement,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+  Chat,
+  type ComponentNode,
+  type ModelInput,
+  SystemPrompt,
+  type TransportOrFactory,
+  type UiWrapper,
+} from '@hashbrownai/core';
+import { ReactElement, useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
+import { useUiKit, type UiKitInput } from './use-ui-kit';
 
 /**
  * Represents a UI component in the chat schema with its properties and children.
  *
  * @public
  */
-export interface UiChatSchemaComponent {
-  /** The name of the component to render */
-  $tag: string;
-  /** Child components to render inside this component */
-  $children: string | UiChatSchemaComponent[];
-  /** Properties of the component */
-  $props: Record<string, any>;
-}
+export type UiChatSchemaComponent = ComponentNode;
 
 /**
  * The schema for UI components in the chat.
  *
  * @public
  */
-export interface UiChatSchema {
-  /** Array of UI components to render */
-  ui: UiChatSchemaComponent[];
-}
+export type UiChatSchema = UiWrapper;
 
 /**
  * A message from the assistant that includes rendered UI components.
@@ -86,7 +78,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * The LLM model to use for the chat.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -96,7 +88,11 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * The components that can be rendered by the chat.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The initial messages for the chat.
@@ -120,6 +116,16 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: string;
 }
 
 /**
@@ -159,70 +165,41 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
 export const useUiChat = <Tools extends Chat.AnyTool>(
   options: UiChatOptions<Tools>,
 ) => {
-  const { components: initialComponents, ...chatOptions } = options;
+  const {
+    components: initialComponents,
+    examples,
+    ...chatOptions
+  } = options;
   const [components, setComponents] = useState(initialComponents);
-  const [flattenedComponents] = useState(
-    ɵui.flattenComponents(initialComponents),
-  );
-  const ui = useMemo(() => {
-    return s.object('UI', {
-      ui: s.streaming.array(
-        'List of elements',
-        ɵui.createComponentSchema(components),
-      ),
-    });
-  }, [components]);
+  const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
+  const ui = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
   const systemAsString = useMemo(() => {
     if (typeof chatOptions.system === 'string') {
       return chatOptions.system;
     }
-    const output = chatOptions.system.compile(components, ui);
+    const output = chatOptions.system.compile(uiKit.components, ui);
     if (chatOptions.system.diagnostics.length > 0) {
       throw new Error(
         `System prompt has ${chatOptions.system.diagnostics.length} errors: \n\n${chatOptions.system.diagnostics.map((d) => d.message).join('\n\n')}`,
       );
     }
     return output;
-  }, [chatOptions.system, components, ui]);
+  }, [chatOptions.system, ui, uiKit.components]);
   const chat = useStructuredChat({
     ...chatOptions,
     schema: ui as any,
     system: systemAsString,
+    ui: true,
   });
 
   const buildContent = useCallback(
-    (
-      nodes: string | Array<UiChatSchemaComponent>,
-      parentKey = '',
-    ): ReactElement[] | string => {
-      if (typeof nodes === 'string') {
-        return nodes;
+    (content: string | UiChatSchema): ReactElement[] | string => {
+      if (typeof content === 'string') {
+        return content;
       }
-
-      const elements = nodes.map((element, index) => {
-        const key = `${parentKey}_${index}`;
-
-        const { $tag, $children, $props } = element;
-        const componentType = flattenedComponents.get($tag)?.component;
-
-        if ($tag && componentType) {
-          const children: ReactNode[] | string | null = element.$children
-            ? buildContent($children, key)
-            : null;
-
-          return createElement(componentType, {
-            ...$props,
-            children,
-            key,
-          });
-        }
-
-        throw new Error(`Unknown element type. ${$tag}`);
-      });
-
-      return elements;
+      return uiKit.render(content);
     },
-    [flattenedComponents],
+    [uiKit],
   );
 
   const uiChatMessages = useMemo(() => {
@@ -230,7 +207,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
       if (message.role === 'assistant') {
         return {
           ...message,
-          ui: message.content?.ui ? buildContent(message.content.ui) : null,
+          ui: message.content ? buildContent(message.content) : null,
         } as UiAssistantMessage<Tools>;
       }
 

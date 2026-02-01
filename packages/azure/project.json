@@ -5,11 +5,10 @@
   "projectType": "library",
   "release": {
     "version": {
-      "generatorOptions": {
-        "packageRoot": "dist/{projectRoot}",
-        "currentVersionResolver": "git-tag",
-        "fallbackCurrentVersionResolver": "disk"
-      }
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk",
+      "preserveLocalDependencyProtocols": false,
+      "manifestRootsToUpdate": ["dist/packages/azure", "packages/azure"]
     }
   },
   "tags": [],
@@ -22,7 +21,14 @@
         "tsConfig": "packages/azure/tsconfig.lib.json",
         "packageJson": "packages/azure/package.json",
         "main": "packages/azure/src/index.ts",
-        "assets": ["packages/azure/*.md"]
+        "assets": [
+          "packages/azure/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
@@ -48,8 +54,10 @@
       }
     },
     "nx-release-publish": {
+      "executor": "@nx/js:release-publish",
+      "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/azure"
       }
     },
     "build-api-report": {

@@ -1,10 +1,10 @@
 import { s } from '../schema';
-import { DeepPartial } from '../utils';
 import { sleep, switchAsync } from '../utils/async';
 import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
 import { decodeFrames } from '../frames/decode-frames';
 import { Chat } from '../models';
+import { updateAssistantMessage } from '../utils/assistant-message';
 import {
   selectApiMessages,
   selectApiTools,
@@ -13,11 +13,25 @@ import {
   selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectRawStreamingMessage,
+  selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
+  selectStreamingMessageError,
   selectSystem,
+  selectThreadId,
+  selectToolEntities,
+  selectTransport,
+  selectUiRequested,
 } from '../reducers';
+import {
+  framesToLengthPrefixedStream,
+  ModelResolver,
+  type RequestedFeatures,
+  TransportError,
+  TransportResponse,
+} from '../transport';
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
@@ -37,21 +51,33 @@ export const generateMessage = createEffect((store) => {
       const model = store.read(selectModel);
       const responseSchema = store.read(selectResponseSchema);
       const messages = store.read(selectApiMessages);
-      const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const debounce = store.read(selectDebounce);
       const retries = store.read(selectRetries);
       const tools = store.read(selectApiTools);
+      const toolsByName = store.read(selectToolEntities);
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
+      const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
+      const threadId = store.read(selectThreadId);
+      const shouldLoadThread = Boolean(threadId) && messages.length === 0;
+      const messagePayload = threadId
+        ? _extractMessageDelta(messages)
+        : messages;
+      const shouldProceed = shouldLoadThread || shouldGenerateMessage;
 
-      if (!shouldGenerateMessage) {
+      if (!shouldProceed) {
+        return;
+      }
+
+      if (threadId && !shouldLoadThread && messagePayload.length === 0) {
         return;
       }
 
       const params: Chat.Api.CompletionCreateParams = {
+        operation: shouldLoadThread ? 'load-thread' : 'generate',
         model,
         system,
-        messages,
+        messages: messagePayload,
         tools,
         toolChoice:
           emulateStructuredOutput && responseSchema ? 'required' : undefined,
@@ -59,129 +85,261 @@ export const generateMessage = createEffect((store) => {
           !emulateStructuredOutput && responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined,
+        threadId: threadId,
+      };
+
+      const requestedFeatures: RequestedFeatures = {
+        tools:
+          Boolean(params.tools?.length) || params.toolChoice === 'required',
+        structured: Boolean(params.responseFormat),
+        ui: store.read(selectUiRequested),
+        threads: Boolean(threadId),
       };
 
       await sleep(debounce, switchSignal);
 
       let attempt = 0;
+      const transportProvider = store.read(selectTransport);
+      const resolver = new ModelResolver(model, {
+        url: apiUrl,
+        middleware: middleware ?? undefined,
+        transport: transportProvider,
+      });
 
-      do {
-        attempt++;
+      let selection = await resolver.select(requestedFeatures);
+      if (!selection) {
+        store.dispatch(
+          apiActions.generateMessageError(
+            new Error(
+              'No compatible model spec found for the requested features.',
+            ),
+          ),
+        );
+        return;
+      }
 
-        if (
-          effectAbortController.signal.aborted ||
-          switchSignal.aborted ||
-          cancelAbortController.signal.aborted
-        ) {
-          // we need to reset the cancelAbortController for the next messsage
-          if (cancelAbortController.signal.aborted) {
-            cancelAbortController = new AbortController();
-          }
-          return;
-        }
-
-        let requestInit: RequestInit = {
-          method: 'POST',
-          body: JSON.stringify(params),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          signal: switchSignal,
-        };
-
-        if (middleware && middleware.length) {
-          for (const m of middleware) {
-            requestInit = await m(requestInit);
-          }
-        }
-
-        try {
-          const response = await fetch(apiUrl, requestInit);
-
-          if (!response.ok) {
-            store.dispatch(
-              apiActions.generateMessageError(
-                new Error(`HTTP error! Status: ${response.status}`),
-              ),
-            );
-            continue;
-          }
-
-          if (!response.body) {
-            store.dispatch(
-              apiActions.generateMessageError(
-                new Error(`Response body is null`),
-              ),
-            );
-            continue;
-          }
-
-          // This catches an edge case where a cancellation was requested
-          // after we had already kicked off the initial request, but
-          // before we started decoding frames.
-          if (cancelAbortController.signal.aborted) {
-            // If the cancelAbortController is aborted, we need to reset it for the next message
-            cancelAbortController = new AbortController();
+      try {
+        do {
+          if (
+            effectAbortController.signal.aborted ||
+            switchSignal.aborted ||
+            cancelAbortController.signal.aborted
+          ) {
+            // we need to reset the cancelAbortController for the next messsage
+            if (cancelAbortController.signal.aborted) {
+              cancelAbortController = new AbortController();
+            }
             return;
           }
 
-          store.dispatch(apiActions.generateMessageStart());
+          let transportResponse: TransportResponse | undefined;
 
-          let message: Chat.Api.AssistantMessage | null = null;
+          try {
+            attempt++;
 
-          for await (const frame of decodeFrames(response.body, {
-            signal: AbortSignal.any([
-              cancelAbortController.signal,
+            const requestAbortSignal = AbortSignal.any([
+              switchSignal,
               effectAbortController.signal,
-            ]),
-          })) {
-            switch (frame.type) {
-              case 'chunk': {
-                message = _updateMessagesWithDelta(message, frame.chunk);
-                if (message) {
-                  store.dispatch(apiActions.generateMessageChunk(message));
+              cancelAbortController.signal,
+            ]);
+
+            const paramsWithModel: Chat.Api.CompletionCreateParams = {
+              ...params,
+              model: selection.spec.name,
+            };
+
+            transportResponse = await selection.transport.send({
+              params: paramsWithModel,
+              signal: requestAbortSignal,
+              attempt,
+              maxAttempts: retries + 1,
+              requestId: _createRequestId(),
+            });
+
+            if (cancelAbortController.signal.aborted) {
+              cancelAbortController = new AbortController();
+              return;
+            }
+
+            const frameStream = transportResponse.frames
+              ? framesToLengthPrefixedStream(transportResponse.frames)
+              : transportResponse.stream;
+
+            if (!frameStream) {
+              throw new TransportError(
+                'Transport returned neither frames nor stream',
+                { retryable: false },
+              );
+            }
+
+            transportResponse = {
+              ...transportResponse,
+              metadata: {
+                ...(transportResponse.metadata ?? {}),
+                selection: selection.metadata,
+              },
+            };
+
+            for await (const frame of decodeFrames(frameStream, {
+              signal: AbortSignal.any([
+                cancelAbortController.signal,
+                effectAbortController.signal,
+              ]),
+            })) {
+              switch (frame.type) {
+                case 'thread-load-start': {
+                  store.dispatch(apiActions.threadLoadStart());
+                  break;
                 }
-                break;
-              }
-              case 'error': {
-                // Assumption: a 'finish' will follow the 'error', but we know we need to retry
-                // as soon as we see the error.  Therefore, throw an exception to break out
-                // of the for loop.
-                throw new Error(frame.error);
-                break;
-              }
-              case 'finish': {
-                if (message) {
+                case 'thread-load-success': {
                   store.dispatch(
-                    apiActions.generateMessageSuccess(
-                      message as unknown as Chat.Api.AssistantMessage,
-                    ),
+                    apiActions.threadLoadSuccess({
+                      thread: frame.thread,
+                      responseSchema,
+                      toolsByName,
+                    }),
                   );
-                } else {
-                  store.dispatch(
-                    apiActions.generateMessageError(
-                      new Error('No message was generated'),
-                    ),
-                  );
+                  if (params.operation === 'load-thread') {
+                    return;
+                  }
+                  break;
                 }
-                break;
+                case 'thread-load-failure': {
+                  store.dispatch(
+                    apiActions.threadLoadFailure({
+                      error: frame.error,
+                      stacktrace: frame.stacktrace,
+                    }),
+                  );
+                  throw new Error(frame.error);
+                }
+                case 'generation-start': {
+                  store.dispatch(
+                    apiActions.generateMessageStart({
+                      responseSchema,
+                      emulateStructuredOutput,
+                      toolsByName:
+                        emulateStructuredOutput && responseSchema
+                          ? {
+                              ...toolsByName,
+                              output: {
+                                name: 'output',
+                                description:
+                                  'Reserved tool for emulated structured output.',
+                                schema: s.normalizeSchemaOutput(responseSchema),
+                                handler: async () => undefined,
+                              },
+                            }
+                          : toolsByName,
+                    }),
+                  );
+                  break;
+                }
+                case 'generation-chunk': {
+                  store.dispatch(apiActions.generateMessageChunk(frame.chunk));
+                  break;
+                }
+                case 'thread-save-success': {
+                  store.dispatch(
+                    apiActions.threadSaveSuccess({ threadId: frame.threadId }),
+                  );
+                  break;
+                }
+                case 'thread-save-start': {
+                  store.dispatch(apiActions.threadSaveStart());
+                  break;
+                }
+                case 'thread-save-failure': {
+                  store.dispatch(
+                    apiActions.threadSaveFailure({
+                      error: frame.error,
+                      stacktrace: frame.stacktrace,
+                    }),
+                  );
+                  break;
+                }
+                case 'generation-error': {
+                  // Assumption: a 'finish' will follow the 'error', but we know we need to retry
+                  // as soon as we see the error.  Therefore, throw an exception to break out
+                  // of the for loop.
+                  throw new Error(frame.error);
+                }
+                case 'generation-finish': {
+                  store.dispatch(apiActions.generateMessageFinish());
+
+                  const streamingError = store.read(
+                    selectStreamingMessageError,
+                  );
+                  if (streamingError) {
+                    store.dispatch(
+                      apiActions.generateMessageError(streamingError),
+                    );
+                    break;
+                  }
+
+                  const streamingMessage = store.read(
+                    selectRawStreamingMessage,
+                  );
+                  const streamingToolCalls = store.read(
+                    selectRawStreamingToolCalls,
+                  );
+
+                  if (streamingMessage) {
+                    store.dispatch(
+                      apiActions.generateMessageSuccess({
+                        message: streamingMessage,
+                        toolCalls: streamingToolCalls,
+                      }),
+                    );
+                  } else {
+                    store.dispatch(
+                      apiActions.generateMessageError(
+                        new Error('No message was generated'),
+                      ),
+                    );
+                  }
+                  break;
+                }
               }
             }
-          }
-        } catch (e) {
-          if (e instanceof Error) {
-            store.dispatch(apiActions.generateMessageError(e));
-          }
-          continue;
-        } finally {
-          // Reset the cancelAbortController for the next message
-          if (cancelAbortController.signal.aborted) {
-            cancelAbortController = new AbortController();
-          }
-        }
+          } catch (e) {
+            const error =
+              e instanceof Error ? e : new Error('Unknown transport error');
+            store.dispatch(apiActions.generateMessageError(error));
 
-        break;
-      } while (retries > 0 && attempt < retries + 1);
+            const retryable =
+              !(e instanceof TransportError) || e.retryable !== false;
+
+            if (
+              e instanceof TransportError &&
+              (e.code === 'FEATURE_UNSUPPORTED' ||
+                e.code === 'PLATFORM_UNSUPPORTED')
+            ) {
+              resolver.skipFromError(selection.spec, e);
+              selection = await resolver.select(requestedFeatures);
+              if (!selection) {
+                break;
+              }
+              continue;
+            }
+
+            if (!retryable) {
+              break;
+            }
+
+            continue;
+          } finally {
+            await transportResponse?.dispose?.();
+            if (cancelAbortController.signal.aborted) {
+              cancelAbortController = new AbortController();
+            }
+          }
+
+          break;
+        } while (retries > 0 && attempt < retries + 1);
+      } finally {
+        store.dispatch(apiActions.assistantTurnFinalized());
+      }
 
       // Did we exhaust our retries?
       if (retries > 0 && attempt > retries) {
@@ -200,35 +358,15 @@ export const generateMessage = createEffect((store) => {
   };
 });
 
-/**
- * Merges existing and new tool calls.
- *
- * @param existingCalls - The existing tool calls.
- * @param newCalls - The new tool calls to merge.
- * @returns The merged array of tool calls.
- */
-function mergeToolCalls(
-  existingCalls: Chat.Api.ToolCall[] = [],
-  newCalls: DeepPartial<Chat.Api.ToolCall>[] = [],
-): Chat.Api.ToolCall[] {
-  const merged = [...existingCalls];
-  newCalls.forEach((newCall) => {
-    const index = merged.findIndex((call) => call.index === newCall.index);
-    if (index !== -1) {
-      const existing = merged[index];
-      merged[index] = {
-        ...existing,
-        function: {
-          ...existing.function,
-          arguments:
-            existing.function.arguments + (newCall.function?.arguments ?? ''),
-        },
-      };
-    } else {
-      merged.push(newCall as Chat.Api.ToolCall);
-    }
-  });
-  return merged;
+function _createRequestId() {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return Math.random().toString(36).slice(2);
 }
 
 /**
@@ -238,30 +376,25 @@ function mergeToolCalls(
  * @param delta - The incoming message delta.
  * @returns The updated messages array.
  */
+export function _extractMessageDelta(
+  messages: Chat.Api.Message[],
+): Chat.Api.Message[] {
+  if (messages.length === 0) {
+    return messages;
+  }
+
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index]?.role === 'assistant') {
+      return messages.slice(index + 1);
+    }
+  }
+
+  return messages;
+}
+
 export function _updateMessagesWithDelta(
   message: Chat.Api.AssistantMessage | null,
   delta: Chat.Api.CompletionChunk,
 ): Chat.Api.AssistantMessage | null {
-  if (message && message.role === 'assistant' && delta.choices.length) {
-    const updatedToolCalls = mergeToolCalls(
-      message.toolCalls,
-      delta.choices[0].delta.toolCalls ?? [],
-    );
-    const updatedMessage: Chat.Api.AssistantMessage = {
-      ...message,
-      content: (message.content ?? '') + (delta.choices[0].delta.content ?? ''),
-      toolCalls: updatedToolCalls,
-    };
-    return updatedMessage;
-  } else if (
-    delta.choices.length &&
-    delta.choices[0]?.delta?.role === 'assistant'
-  ) {
-    return {
-      role: 'assistant',
-      content: delta.choices[0].delta.content ?? '',
-      toolCalls: mergeToolCalls([], delta.choices[0].delta.toolCalls ?? []),
-    };
-  }
-  return message;
+  return updateAssistantMessage(message, delta);
 }

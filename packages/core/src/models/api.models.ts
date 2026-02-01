@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { DeepPartial, KnownModelIds } from '../utils';
+import { DeepPartial } from '../utils';
+import { ModelInput } from '../transport';
 
 /**
  * @public
@@ -21,6 +22,7 @@ export interface ToolCall {
     name: string;
     arguments: string;
   };
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -96,10 +98,12 @@ export type CompletionToolChoiceOption = 'auto' | 'none' | 'required';
  * @public
  */
 export interface CompletionCreateParams {
-  model: KnownModelIds;
+  operation: 'load-thread' | 'generate';
+  model: ModelInput;
   system: string;
   messages: Message[];
   responseFormat?: object;
   toolChoice?: CompletionToolChoiceOption;
   tools?: Tool[];
+  threadId?: string;
 }

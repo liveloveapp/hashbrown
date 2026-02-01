@@ -1,23 +1,28 @@
 import { Chat } from '../models';
 import { s } from '../schema';
-import { KnownModelIds } from '../utils';
+import { type ModelInput, TransportOrFactory } from '../transport';
 import { createActionGroup, props } from '../utils/micro-ngrx';
 
 export default createActionGroup('dev', {
   init: props<{
-    apiUrl: string;
-    model: KnownModelIds;
+    apiUrl?: string;
+    model: ModelInput;
     system: string;
     debounce?: number;
     messages?: Chat.AnyMessage[];
     tools?: Chat.AnyTool[];
-    responseSchema?: s.HashbrownType;
+    responseSchema?: s.SchemaOutput;
     middleware?: Chat.Middleware[];
     emulateStructuredOutput?: boolean;
     retries?: number;
+    transport?: TransportOrFactory;
+    ui?: boolean;
+    threadId?: string;
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];
+    responseSchema?: s.SchemaOutput;
+    toolsByName?: Record<string, Chat.Internal.Tool>;
   }>(),
   sendMessage: props<{
     message: Chat.AnyMessage;
@@ -26,14 +31,17 @@ export default createActionGroup('dev', {
   updateOptions: props<{
     debugName?: string;
     apiUrl?: string;
-    model?: KnownModelIds;
+    model?: ModelInput;
     system?: string;
     tools?: Chat.AnyTool[];
-    responseSchema?: s.HashbrownType;
+    responseSchema?: s.SchemaOutput;
     middleware?: Chat.Middleware[];
     emulateStructuredOutput?: boolean;
     debounce?: number;
     retries?: number;
+    transport?: TransportOrFactory;
+    threadId?: string;
+    ui?: boolean;
   }>(),
   stopMessageGeneration: props<boolean>(),
 });

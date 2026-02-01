@@ -46,7 +46,7 @@
     "@angular/platform-browser-dynamic": "^20.0.0",
     "@angular/platform-server": "^20.0.0",
     "@angular/router": "^20.0.0",
-    "@google/genai": "^1.29.1",
+    "@google/genai": "^1.38.0",
     "@jitl/quickjs-singlefile-browser-debug-asyncify": "0.31.0",
     "@ngrx/effects": "^20.0.0",
     "@ngrx/entity": "^20.0.0",
@@ -54,6 +54,7 @@
     "@ngrx/store": "^20.0.0",
     "@spotify/web-api-ts-sdk": "^1.2.0",
     "@stackblitz/sdk": "^1.11.0",
+    "arktype": "^2.1.29",
     "express": "^4.21.2",
     "firebase": "^11.6.1",
     "front-matter": "^4.0.2",
@@ -74,7 +75,7 @@
     "rxjs": "~7.8.0",
     "sanitize-html": "^2.17.0",
     "tslib": "^2.4.0",
-    "zod": "^3.24.2",
+    "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.4",
     "zone.js": "~0.15.0"
   },
@@ -93,6 +94,7 @@
     "@angular/compiler-cli": "^20.0.0",
     "@angular/ssr": "^20.0.4",
     "@anthropic-ai/sdk": "^0.24.3",
+    "@aws-sdk/client-bedrock-runtime": "^3.936.0",
     "@babel/core": "^7.14.5",
     "@babel/preset-react": "^7.14.5",
     "@eslint/js": "^9.8.0",
@@ -212,6 +214,7 @@
     "vite-tsconfig-paths": "^4.2.0",
     "vitest": "^3.0.0",
     "writer-sdk": "^2.3.2",
+    "zod-v4": "npm:zod@^4.3.6",
     "zustand": "^5.0.3"
   },
   "optionalDependencies": {

@@ -5,7 +5,7 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "manifestRootsToUpdate": ["dist/packages/ollama", "packages/ollama"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     }
@@ -20,13 +20,57 @@
         "tsConfig": "packages/ollama/tsconfig.lib.json",
         "packageJson": "packages/ollama/package.json",
         "main": "packages/ollama/src/index.ts",
-        "assets": ["packages/ollama/*.md"]
+        "assets": [
+          "packages/ollama/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/ollama/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/ollama/jest.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/ollama/jest.e2e.config.ts",
+        "passWithNoTests": true
       }
     },
     "nx-release-publish": {
+      "executor": "@nx/js:release-publish",
+      "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/ollama"
       }
+    },
+    "build-api-report": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx api-extractor run --local --config packages/ollama/api-extractor.json",
+        "parallel": true
+      },
+      "dependsOn": [
+        {
+          "projects": ["ollama"],
+          "target": "build"
+        }
+      ]
     }
   }
 }

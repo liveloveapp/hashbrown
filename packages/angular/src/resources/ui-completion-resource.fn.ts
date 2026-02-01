@@ -1,16 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, Resource, Signal } from '@angular/core';
-import { Chat, KnownModelIds, s, SystemPrompt, ɵui } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  SystemPrompt,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
 import { readSignalLike } from '../utils';
 import {
   TAG_NAME_REGISTRY,
-  TagNameRegistry,
   UiAssistantMessage,
 } from '../utils/ui-chat.helpers';
 import { SignalLike } from '../utils/types';
 import { UiChatMessageOutput } from './ui-chat-resource.fn';
+import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
 
 /**
  * Options for the UI completion resource.
@@ -24,7 +30,11 @@ export interface UiCompletionResourceOptions<
   /**
    * The components to use for the UI completion resource.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The signal that produces the input for the completion.
@@ -34,7 +44,7 @@ export interface UiCompletionResourceOptions<
   /**
    * The model to use for the UI completion resource.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system prompt to use for the UI completion resource.
@@ -65,6 +75,16 @@ export interface UiCompletionResourceOptions<
    * The debounce time for the UI completion resource.
    */
   debounce?: number;
+
+  /**
+   * Custom transport override for the UI completion resource.
+   */
+  transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: SignalLike<string | undefined>;
 }
 
 /**
@@ -109,15 +129,11 @@ export function uiCompletionResource<
 >(
   options: UiCompletionResourceOptions<Input, Tools>,
 ): UiCompletionResourceRef<Tools> {
-  const flattenedComponents = computed(() =>
-    ɵui.flattenComponents(options.components),
-  );
-  const internalSchema = s.object('UI', {
-    ui: s.streaming.array(
-      'List of elements',
-      ɵui.createComponentSchema(options.components),
-    ),
+  const uiKit = createUiKit<ExposedComponent<any>>({
+    components: options.components,
+    examples: options.examples,
   });
+  const internalSchema = uiKit.schema;
   const systemAsString = computed(() => {
     const system = readSignalLike(
       options.system as SignalLike<string | SystemPrompt>,
@@ -127,7 +143,7 @@ export function uiCompletionResource<
       return system;
     }
 
-    const result = system.compile(options.components, internalSchema);
+    const result = system.compile(uiKit.components, internalSchema);
 
     if (system.diagnostics.length > 0) {
       throw new Error(
@@ -152,6 +168,9 @@ export function uiCompletionResource<
     apiUrl: options.apiUrl,
     retries: options.retries,
     debounce: options.debounce,
+    transport: options.transport,
+    ui: true,
+    threadId: options.threadId,
   });
 
   const value = computed(
@@ -162,14 +181,7 @@ export function uiCompletionResource<
         return null;
       }
 
-      const tagNameRegistry =
-        Array.from(flattenedComponents().values()).reduce((acc, component) => {
-          acc[component.name] = {
-            props: component.props ?? {},
-            component: component.component,
-          };
-          return acc;
-        }, {} as TagNameRegistry) ?? {};
+      const tagNameRegistry = uiKit.tagNameRegistry ?? {};
 
       return {
         role: 'assistant',

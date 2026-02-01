@@ -9,7 +9,6 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
-      "dependsOn": ["finance-netlify:build"],
       "options": {
         "outputPath": "dist/samples/finance/angular",
         "browser": "samples/finance/angular/src/main.ts",
@@ -63,11 +62,11 @@
       },
       "defaultConfiguration": "development"
     },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+    "deploy": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build:production"],
       "options": {
-        "jestConfig": "samples/finance/angular/jest.config.ts"
+        "command": "npx wrangler pages deploy dist/samples/finance/angular/browser"
       }
     }
   }

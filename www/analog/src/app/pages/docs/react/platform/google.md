@@ -1,10 +1,11 @@
 ---
-title: 'Google Gemini (React): Hashbrown React Docs'
+title: 'Google Gemini: Hashbrown React Docs'
 meta:
   - name: description
     content: 'Hashbrown’s Google Gemini adapter lets you stream chat completions from Google Gemini models, handling function calls, response schemas, and request transforms.'
 ---
-# Google Gemini (React)
+
+# Google Gemini
 
 First, install the Google adapter package:
 
@@ -147,7 +148,7 @@ const app = new Hono();
 
 app.post('/chat', async (c) => {
   const body = await c.req.json();
-  
+
   const stream = HashbrownGoogle.stream.text({
     apiKey: process.env.GOOGLE_API_KEY!,
     request: body, // must be Chat.Api.CompletionCreateParams
@@ -166,7 +167,7 @@ app.post('/chat', async (c) => {
       headers: {
         'Content-Type': 'application/octet-stream',
       },
-    }
+    },
   );
 });
 
@@ -205,7 +206,7 @@ app.post('/chat', async (req, res) => {
         ...options,
         // Add system instructions for Gemini
         systemInstruction: {
-          parts: [{ text: 'You are a helpful AI assistant.' }]
+          parts: [{ text: 'You are a helpful AI assistant.' }],
         },
         // Adjust generation config
         generationConfig: {
@@ -245,7 +246,7 @@ fastify.post('/chat', async (request, reply) => {
         ...options,
         // Add system instructions for Gemini
         systemInstruction: {
-          parts: [{ text: 'You are a helpful AI assistant.' }]
+          parts: [{ text: 'You are a helpful AI assistant.' }],
         },
         // Adjust generation config
         generationConfig: {
@@ -287,7 +288,7 @@ export class ChatController {
           ...options,
           // Add system instructions for Gemini
           systemInstruction: {
-            parts: [{ text: 'You are a helpful AI assistant.' }]
+            parts: [{ text: 'You are a helpful AI assistant.' }],
           },
           // Adjust generation config
           generationConfig: {
@@ -321,7 +322,7 @@ const app = new Hono();
 
 app.post('/chat', async (c) => {
   const body = await c.req.json();
-  
+
   const stream = HashbrownGoogle.stream.text({
     apiKey: process.env.GOOGLE_API_KEY!,
     request: body,
@@ -330,7 +331,7 @@ app.post('/chat', async (c) => {
         ...options,
         // Add system instructions for Gemini
         systemInstruction: {
-          parts: [{ text: 'You are a helpful AI assistant.' }]
+          parts: [{ text: 'You are a helpful AI assistant.' }],
         },
         // Adjust generation config
         generationConfig: {
@@ -354,7 +355,7 @@ app.post('/chat', async (c) => {
       headers: {
         'Content-Type': 'application/octet-stream',
       },
-    }
+    },
   );
 });
 ```

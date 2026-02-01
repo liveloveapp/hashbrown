@@ -32,9 +32,8 @@ export function toNgSignal<T>(
   debugName?: string,
 ): Signal<T> {
   const destroyRef = inject(DestroyRef);
-  const _signal: WritableSignal<T> = signal(source(), {
-    debugName,
-  });
+  const options = debugName ? { debugName } : undefined;
+  const _signal: WritableSignal<T> = signal(source(), options);
 
   const teardown = source.subscribe((value) => {
     _signal.set(value);

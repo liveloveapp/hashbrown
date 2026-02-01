@@ -1,4 +1,9 @@
-import { Chat, KnownModelIds, s } from '@hashbrownai/core';
+import {
+  Chat,
+  type ModelInput,
+  s,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useStructuredChat } from './use-structured-chat';
 
@@ -11,7 +16,7 @@ import { useStructuredChat } from './use-structured-chat';
  */
 export interface UseStructuredCompletionOptions<
   Input,
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
 > {
   /**
    * The input string to predict from.
@@ -21,7 +26,7 @@ export interface UseStructuredCompletionOptions<
   /**
    * The LLM model to use for the chat.
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -55,6 +60,20 @@ export interface UseStructuredCompletionOptions<
    * default: 0
    */
   retries?: number;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
+  /**
+   * Whether this completion should be treated as UI-generating.
+   */
+  ui?: boolean;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: string;
 }
 
 /**
@@ -80,6 +99,11 @@ export interface UseStructuredCompletionResult<Output> {
   error: Error | undefined;
 
   /**
+   * Aggregate loading flag across transport, generation, tool-calls, and thread load/save.
+   */
+  isLoading: boolean;
+
+  /**
    * Whether the chat is receiving a response.
    */
   isReceiving: boolean;
@@ -90,14 +114,38 @@ export interface UseStructuredCompletionResult<Output> {
   isSending: boolean;
 
   /**
+   * Whether the chat is currently generating.
+   */
+  isGenerating: boolean;
+
+  /**
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
 
   /**
+   * Transport/request failure before generation frames arrive.
+   */
+  sendingError: Error | undefined;
+
+  /**
+   * Error emitted during generation frames.
+   */
+  generatingError: Error | undefined;
+
+  /**
    * Whether the current request has exhausted retries.
    */
   exhaustedRetries: boolean;
+
+  /** Whether a thread load request is in flight. */
+  isLoadingThread: boolean;
+  /** Whether a thread save request is in flight. */
+  isSavingThread: boolean;
+  /** Error encountered while loading a thread. */
+  threadLoadError: { error: string; stacktrace?: string } | undefined;
+  /** Error encountered while saving a thread. */
+  threadSaveError: { error: string; stacktrace?: string } | undefined;
 }
 
 /**
@@ -133,11 +181,12 @@ export interface UseStructuredCompletionResult<Output> {
  * });
  * ```
  */
-export function useStructuredCompletion<Input, Schema extends s.HashbrownType>(
+export function useStructuredCompletion<Input, Schema extends s.SchemaOutput>(
   options: UseStructuredCompletionOptions<Input, Schema>,
-): UseStructuredCompletionResult<s.Infer<Schema>> {
+): UseStructuredCompletionResult<s.InferSchemaOutput<Schema>> {
   const { setMessages, ...chat } = useStructuredChat({
     ...options,
+    ui: options.ui ?? false,
   });
 
   useEffect(() => {
@@ -146,23 +195,35 @@ export function useStructuredCompletion<Input, Schema extends s.HashbrownType>(
     setMessages([{ role: 'user', content: options.input }]);
   }, [setMessages, options.input]);
 
-  const output: s.Infer<Schema> | null = useMemo(() => {
+  const output: s.InferSchemaOutput<Schema> | null = useMemo(() => {
     const message = chat.messages.find(
-      (message) => message.role === 'assistant' && message.content,
+      (message) =>
+        message.role === 'assistant' &&
+        message.content !== null &&
+        message.content !== undefined,
     );
 
-    if (!message) return null;
-
-    return message.content;
+    const content = message?.content;
+    return content === undefined || content === null
+      ? null
+      : (content as s.InferSchemaOutput<Schema>);
   }, [chat.messages]);
 
   return {
     output,
     reload: chat.reload,
     error: chat.error,
+    isLoading: chat.isLoading,
     isReceiving: chat.isReceiving,
     isSending: chat.isSending,
+    isGenerating: chat.isGenerating,
     isRunningToolCalls: chat.isRunningToolCalls,
+    sendingError: chat.sendingError,
+    generatingError: chat.generatingError,
     exhaustedRetries: chat.exhaustedRetries,
+    isLoadingThread: chat.isLoadingThread,
+    isSavingThread: chat.isSavingThread,
+    threadLoadError: chat.threadLoadError,
+    threadSaveError: chat.threadSaveError,
   };
 }

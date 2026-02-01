@@ -2,8 +2,9 @@ import {
   Chat,
   fryHashbrown,
   Hashbrown,
-  KnownModelIds,
+  type ModelInput,
   s,
+  type TransportOrFactory,
 } from '@hashbrownai/core';
 import {
   useCallback,
@@ -25,15 +26,15 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
  * @typeParam Output - The type of the output from the chat.
  */
 export interface UseStructuredChatOptions<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 > {
   /**
    * The LLM model to use for the chat.
    *
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -72,6 +73,20 @@ export interface UseStructuredChatOptions<
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
+  /**
+   * Whether this structured chat is expected to produce UI elements.
+   */
+  ui?: boolean;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: string;
 }
 
 /**
@@ -130,9 +145,19 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   isSending: boolean;
 
   /**
+   * Whether the chat is currently generating.
+   */
+  isGenerating: boolean;
+
+  /**
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Aggregate loading flag across transport, generation, tool-calls, and thread load/save.
+   */
+  isLoading: boolean;
 
   /**
    * Whether the current request has exhausted retries.
@@ -140,9 +165,28 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   exhaustedRetries: boolean;
 
   /**
+   * Transport/request failure before generation frames arrive.
+   */
+  sendingError: Error | undefined;
+
+  /**
+   * Error emitted during generation frames.
+   */
+  generatingError: Error | undefined;
+
+  /**
    * The last assistant message.
    */
   lastAssistantMessage: Chat.AssistantMessage<Output, Tools> | undefined;
+
+  /** Whether a thread load request is in flight. */
+  isLoadingThread: boolean;
+  /** Whether a thread save request is in flight. */
+  isSavingThread: boolean;
+  /** Error encountered while loading a thread. */
+  threadLoadError: { error: string; stacktrace?: string } | undefined;
+  /** Error encountered while saving a thread. */
+  threadSaveError: { error: string; stacktrace?: string } | undefined;
 }
 
 /**
@@ -174,9 +218,9 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
  * ```
  */
 export function useStructuredChat<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: UseStructuredChatOptions<Schema, Tools, Output>,
 ): UseStructuredChatResult<Output, Tools> {
@@ -207,6 +251,9 @@ export function useStructuredChat<
       debugName: options.debugName,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: options.ui ?? false,
+      threadId: options.threadId,
     });
   }
 
@@ -236,11 +283,15 @@ export function useStructuredChat<
       debugName: options.debugName,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: options.ui ?? false,
+      threadId: options.threadId,
     });
   }, [
     config.url,
     config.middleware,
     config.emulateStructuredOutput,
+    config.transport,
     options.model,
     options.system,
     options.debugName,
@@ -248,21 +299,34 @@ export function useStructuredChat<
     tools,
     options.debounceTime,
     options.retries,
+    options.transport,
+    options.ui,
+    options.threadId,
   ]);
 
   const internalMessages = useHashbrownSignal(hashbrown.current.messages);
   const isReceiving = useHashbrownSignal(hashbrown.current.isReceiving);
   const isSending = useHashbrownSignal(hashbrown.current.isSending);
+  const isGenerating = useHashbrownSignal(hashbrown.current.isGenerating);
   const isRunningToolCalls = useHashbrownSignal(
     hashbrown.current.isRunningToolCalls,
   );
+  const isLoading = useHashbrownSignal(hashbrown.current.isLoading);
   const exhaustedRetries = useHashbrownSignal(
     hashbrown.current.exhaustedRetries,
   );
   const error = useHashbrownSignal(hashbrown.current.error);
+  const sendingError = useHashbrownSignal(hashbrown.current.sendingError);
+  const generatingError = useHashbrownSignal(
+    hashbrown.current.generatingError,
+  );
   const lastAssistantMessage = useHashbrownSignal(
     hashbrown.current.lastAssistantMessage,
   );
+  const isLoadingThread = useHashbrownSignal(hashbrown.current.isLoadingThread);
+  const isSavingThread = useHashbrownSignal(hashbrown.current.isSavingThread);
+  const threadLoadError = useHashbrownSignal(hashbrown.current.threadLoadError);
+  const threadSaveError = useHashbrownSignal(hashbrown.current.threadSaveError);
 
   const sendMessage = useCallback((message: Chat.Message<Output, Tools>) => {
     getHashbrown().sendMessage(message);
@@ -300,10 +364,18 @@ export function useStructuredChat<
     setMessages,
     reload,
     error,
+    isGenerating,
     isReceiving,
     isSending,
     isRunningToolCalls,
+    isLoading,
     exhaustedRetries,
+    sendingError,
+    generatingError,
     lastAssistantMessage,
+    isLoadingThread,
+    isSavingThread,
+    threadLoadError,
+    threadSaveError,
   };
 }

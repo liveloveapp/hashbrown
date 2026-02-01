@@ -146,13 +146,25 @@ type TextSpan = {
   lockMerge?: boolean;
 };
 
+/**
+ * Supported MagicText formatting tags.
+ * @public
+ */
 export type MagicTextTag = 'strong' | 'em';
 
+/**
+ * Whitespace flags attached to fragments for rendering fidelity.
+ * @public
+ */
 export type MagicTextHasWhitespace = {
   before: boolean;
   after: boolean;
 };
 
+/**
+ * Renderable text fragment produced by MagicText parsing.
+ * @public
+ */
 export type MagicTextFragmentText = TextFragment & {
   type: 'text';
   key: string;
@@ -164,6 +176,10 @@ export type MagicTextFragmentText = TextFragment & {
   isStatic: boolean;
 };
 
+/**
+ * Citation fragment produced by MagicText parsing.
+ * @public
+ */
 export type MagicTextFragmentCitation = CitationFragment & {
   type: 'citation';
   key: string;
@@ -173,10 +189,18 @@ export type MagicTextFragmentCitation = CitationFragment & {
   isStatic: boolean;
 };
 
+/**
+ * Union of all MagicText fragment variants.
+ * @public
+ */
 export type MagicTextFragment =
   | MagicTextFragmentText
   | MagicTextFragmentCitation;
 
+/**
+ * Parsed MagicText result including fragments and warnings.
+ * @public
+ */
 export type MagicTextResult = {
   fragments: MagicTextFragment[];
   warnings: ParseWarning[];
@@ -188,6 +212,10 @@ type FragmentWhitespace = {
   after: boolean;
 };
 
+/**
+ * Parses raw MagicText into renderable fragments with whitespace hints.
+ * @public
+ */
 export function prepareMagicText(input: string): MagicTextResult {
   const parseResult = parseMagicText(input);
   const whitespaceHints = computeWhitespaceHints(parseResult.fragments);

@@ -5,11 +5,10 @@
   "projectType": "library",
   "release": {
     "version": {
-      "generatorOptions": {
-        "packageRoot": "dist/{projectRoot}",
-        "currentVersionResolver": "git-tag",
-        "fallbackCurrentVersionResolver": "disk"
-      }
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk",
+      "preserveLocalDependencyProtocols": false,
+      "manifestRootsToUpdate": ["dist/packages/anthropic", "packages/anthropic"]
     }
   },
   "tags": [],
@@ -22,7 +21,14 @@
         "tsConfig": "packages/anthropic/tsconfig.lib.json",
         "packageJson": "packages/anthropic/package.json",
         "main": "packages/anthropic/src/index.ts",
-        "assets": ["packages/anthropic/*.md"]
+        "assets": [
+          "packages/anthropic/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
@@ -46,8 +52,10 @@
       }
     },
     "nx-release-publish": {
+      "executor": "@nx/js:release-publish",
+      "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/anthropic"
       }
     },
     "build-api-report": {

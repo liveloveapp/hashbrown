@@ -121,7 +121,7 @@ export class ChatPanelComponent {
   }
 
   chat = uiChatResource({
-    model: 'gpt-4.1',
+    model: 'gpt-5.1',
     debugName: 'ui-chat',
     system: prompt`
       ### ROLE & TONE

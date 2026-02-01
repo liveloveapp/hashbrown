@@ -1,14 +1,22 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';
-import { selectPendingToolCalls, selectToolEntities } from '../reducers';
+import {
+  selectPendingToolCalls,
+  selectToolEntities,
+  selectUnifiedError,
+} from '../reducers';
 import { s } from '../schema';
 
 export const runTools = createEffect((store) => {
   const abortController = new AbortController();
 
-  store.when(apiActions.generateMessageSuccess, async () => {
+  store.when(apiActions.assistantTurnFinalized, async () => {
+    const unifiedError = store.read(selectUnifiedError);
+    if (unifiedError) {
+      return;
+    }
+
     const toolCalls = store.read(selectPendingToolCalls);
     const toolEntities = store.read(selectToolEntities);
 
@@ -26,31 +34,25 @@ export const runTools = createEffect((store) => {
       }
 
       try {
-        const args = s.isHashbrownType(tool.schema)
-          ? tool.schema.parseJsonSchema(toolCall.arguments)
-          : JSON.parse(toolCall.arguments as any);
+        let args: unknown = toolCall.arguments;
 
-        return Promise.resolve(tool.handler(args, abortController.signal));
-      } catch (error) {
-        // We may have received unnecessarily escaped input, so try
-        // again with JSON.parse
-        if (
-          error instanceof Error &&
-          error.message.includes('Expected an object at')
-        ) {
-          try {
-            const args = s.isHashbrownType(tool.schema)
-              ? tool.schema.parseJsonSchema(
-                  JSON.parse(toolCall.arguments as any),
-                )
-              : JSON.parse(toolCall.arguments as any);
-
-            return Promise.resolve(tool.handler(args, abortController.signal));
-          } catch (error) {
-            return Promise.reject(error);
+        if (typeof args === 'string') {
+          args = JSON.parse(args);
+          if (typeof args === 'string') {
+            try {
+              args = JSON.parse(args);
+            } catch {
+              // Keep the original string if it isn't valid JSON.
+            }
           }
         }
 
+        if (s.isHashbrownType(tool.schema)) {
+          tool.schema.validate(args);
+        }
+
+        return Promise.resolve(tool.handler(args, abortController.signal));
+      } catch (error) {
         return Promise.reject(error);
       }
     });

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { s, ɵtypes } from '@hashbrownai/core';
+import { s, ɵtypes, type ComponentFallbackProps } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 
 /**
@@ -22,7 +22,7 @@ import type { ComponentType } from 'react';
 export type ComponentPropSchema<T> = ɵtypes.Prettify<
   T extends ComponentType<infer P>
     ? {
-        [K in keyof P]?: s.Schema<P[K]>;
+        [K in keyof P]?: s.Schema<P[K]> | s.StandardJSONSchemaV1<P[K], P[K]>;
       }
     : never
 >;
@@ -49,6 +49,10 @@ export interface ExposedComponent<T extends ComponentType<any>> {
    * The component to be exposed.
    */
   component: T;
+  /**
+   * Optional fallback component rendered while props are streaming.
+   */
+  fallback?: ComponentType<ComponentFallbackProps>;
   /**
    * The name of the component.
    */

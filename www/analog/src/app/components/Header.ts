@@ -75,6 +75,12 @@ import { Squircle } from './Squircle';
                       wwwSquircle="8"
                       >finance app
                     </a>
+                    <!-- <a
+                      routerLink="/samples/fast-food"
+                      class="menu-item"
+                      wwwSquircle="8"
+                      >fast food app
+                    </a> -->
                     <a
                       routerLink="/samples/smart-home"
                       class="menu-item"
@@ -85,7 +91,7 @@ import { Squircle } from './Squircle';
                   </div>
                 </www-dropdown-menu>
               </li>
-              <li>
+              <!-- <li>
                 <www-dropdown-menu
                   [positions]="[
                     {
@@ -119,7 +125,7 @@ import { Squircle } from './Squircle';
                     >
                   </div>
                 </www-dropdown-menu>
-              </li>
+              </li> -->
               <li>
                 <a routerLink="/blog" routerLinkActive="active">blog</a>
               </li>
@@ -201,13 +207,13 @@ import { Squircle } from './Squircle';
                   >
                     examples
                   </a>
-                  <a
+                  <!-- <a
                     (click)="fullScreenMenu.onClick()"
                     routerLink="/workshops"
                     wwwSquircle="8"
                   >
                     workshops
-                  </a>
+                  </a> -->
                   <a
                     (click)="fullScreenMenu.onClick()"
                     routerLink="/blog"

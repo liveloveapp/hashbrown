@@ -9,7 +9,7 @@ import {
 import { Chat } from '../models';
 import { apiActions, devActions, internalActions } from '../actions';
 import {
-  toInternalToolCallsFromApi,
+  toInternalToolCallsFromApiMessages,
   toInternalToolCallsFromView,
 } from '../models/internal_helpers';
 
@@ -36,16 +36,21 @@ export const reducer = createReducer(
     return adapter.addMany(initialState, toInternalToolCallsFromView(messages));
   }),
   on(apiActions.generateMessageSuccess, (state, action) => {
-    const message = action.payload;
+    return adapter.addMany(state, action.payload.toolCalls);
+  }),
+  on(apiActions.threadLoadSuccess, (state, action) => {
+    const thread = action.payload.thread;
 
-    if (!message.toolCalls) {
+    if (!thread || thread.length === 0) {
       return state;
     }
 
-    return adapter.addMany(
-      state,
-      message.toolCalls.flatMap(toInternalToolCallsFromApi),
+    const toolCalls = toInternalToolCallsFromApiMessages(
+      thread,
+      action.payload.toolsByName ?? {},
     );
+
+    return adapter.addMany(initialState, toolCalls);
   }),
   on(internalActions.runToolCallsSuccess, (state, action) => {
     const { toolMessages } = action.payload;
@@ -71,5 +76,7 @@ export const selectToolCalls = select(
 );
 
 export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) => {
-  return toolCalls.filter((toolCall) => toolCall.status === 'pending');
+  return toolCalls.filter(
+    (toolCall) => toolCall.status === 'pending' && toolCall.name !== 'output',
+  );
 });

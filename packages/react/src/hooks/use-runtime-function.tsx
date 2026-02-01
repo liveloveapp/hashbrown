@@ -19,6 +19,7 @@ import { DependencyList, useCallback, useMemo, useRef } from 'react';
  *   - handler: The handler of the function
  *   - deps: The dependencies of the function
  * @returns The function reference.
+ * @public
  */
 export function useRuntimeFunction<
   ArgsSchema extends s.HashbrownType,
@@ -45,6 +46,7 @@ export function useRuntimeFunction<
  *   - handler: The handler of the function
  *   - deps: The dependencies of the function
  * @returns The function reference.
+ * @public
  */
 export function useRuntimeFunction<ResultSchema extends s.HashbrownType>(cfg: {
   name: string;
@@ -66,6 +68,7 @@ export function useRuntimeFunction<ResultSchema extends s.HashbrownType>(cfg: {
  *   - handler: The handler of the function
  *   - deps: The dependencies of the function
  * @returns The function reference.
+ * @public
  */
 export function useRuntimeFunction<ArgsSchema extends s.HashbrownType>(cfg: {
   name: string;

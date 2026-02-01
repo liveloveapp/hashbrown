@@ -143,7 +143,7 @@ We will get there with @hashbrownai/react!useStructuredCompletion:function and o
 
 ## 3 Describe the result schema (success **or** error)
 
-@hashbrownai/react!useStructuredCompletion:function needs a Skillet schema. We want two possible outcomes:
+@hashbrownai/react!useStructuredCompletion:function needs a Skillet schema (or a Standard JSON Schema object with the `~standard` spec). We want two possible outcomes:
 
 1. A **parsed expense**: When the LLM can successfully infer all of the information, it should emit an expense with `type = "Expense"`
 2. An **error**: If the LLM cannot infer all of the information, we should give it a chance to tell the user with `type = "ParseError"`

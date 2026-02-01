@@ -16,7 +16,7 @@ it('should populate an empty schema if no schema is provided', () => {
     }),
   );
 
-  expect(result.current.schema).toEqual(expected);
+  expect(result.current.schema.toJsonSchema()).toEqual(expected.toJsonSchema());
 });
 
 it('should return the provided schema if it exists', () => {

@@ -9,6 +9,7 @@ import * as fromStatus from './status.reducer';
 import * as fromStreamingMessage from './streaming-message.reducer';
 import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
+import * as fromThread from './thread.reducer';
 
 export const reducers = {
   config: fromConfig.reducer,
@@ -17,11 +18,49 @@ export const reducers = {
   streamingMessage: fromStreamingMessage.reducer,
   toolCalls: fromToolCalls.reducer,
   tools: fromTools.reducer,
+  thread: fromThread.reducer,
 };
 
 type State = Prettify<{
   [P in keyof typeof reducers]: ReturnType<(typeof reducers)[P]>;
 }>;
+
+function applyEmulatedOutputToMessage(
+  message: Chat.Internal.Message,
+  toolCalls: Record<string, Chat.Internal.ToolCall>,
+  responseSchema: s.HashbrownType | undefined,
+  emulateStructuredOutput: boolean | undefined,
+): Chat.Internal.Message {
+  if (!emulateStructuredOutput || !responseSchema) {
+    return message;
+  }
+
+  if (message.role !== 'assistant') {
+    return message;
+  }
+
+  const outputToolCall = message.toolCallIds
+    .map((toolCallId) => toolCalls[toolCallId])
+    .find((toolCall) => toolCall?.name === 'output');
+
+  if (!outputToolCall) {
+    return message;
+  }
+
+  const rawArguments = outputToolCall.arguments;
+  const content =
+    typeof rawArguments === 'string'
+      ? rawArguments
+      : JSON.stringify(rawArguments);
+  const contentResolved =
+    outputToolCall.argumentsResolved ?? message.contentResolved;
+
+  return {
+    ...message,
+    content,
+    contentResolved,
+  };
+}
 
 /**
  * Messages
@@ -44,9 +83,17 @@ export const selectIsSending = select(
   selectStatusState,
   fromStatus.selectIsSending,
 );
-export const selectIsRunningToolCalls = select(
+export const selectIsGenerating = select(
   selectStatusState,
-  fromStatus.selectIsRunningToolCalls,
+  fromStatus.selectIsGenerating,
+);
+export const selectSendingError = select(
+  selectStatusState,
+  fromStatus.selectSendingError,
+);
+export const selectGeneratingError = select(
+  selectStatusState,
+  fromStatus.selectGeneratingError,
 );
 export const selectError = select(selectStatusState, fromStatus.selectError);
 
@@ -60,6 +107,18 @@ export const selectExhaustedRetries = select(
  */
 export const selectStreamingMessageState = (state: State) =>
   state.streamingMessage;
+export const selectRawStreamingMessage = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectRawStreamingMessage,
+);
+export const selectRawStreamingToolCalls = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectRawStreamingToolCalls,
+);
+export const selectStreamingMessageError = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectStreamingMessageError,
+);
 export const selectStreamingMessage = select(
   selectStreamingMessageState,
   fromStreamingMessage.selectStreamingMessage,
@@ -97,6 +156,31 @@ export const selectPendingToolCalls = select(
 );
 
 /**
+ * Thread
+ */
+export const selectThreadState = (state: State) => state.thread;
+export const selectThreadIdState = select(
+  selectThreadState,
+  fromThread.selectThreadId,
+);
+export const selectIsLoadingThread = select(
+  selectThreadState,
+  fromThread.selectIsLoadingThread,
+);
+export const selectIsSavingThread = select(
+  selectThreadState,
+  fromThread.selectIsSavingThread,
+);
+export const selectThreadLoadError = select(
+  selectThreadState,
+  fromThread.selectThreadLoadError,
+);
+export const selectThreadSaveError = select(
+  selectThreadState,
+  fromThread.selectThreadSaveError,
+);
+
+/**
  * Config
  */
 export const selectConfigState = (state: State) => state.config;
@@ -115,6 +199,10 @@ export const selectRetries = select(
   selectConfigState,
   fromConfig.selectRetries,
 );
+export const selectThreadId = select(
+  selectThreadState,
+  fromThread.selectThreadId,
+);
 export const selectResponseSchema = select(
   selectConfigState,
   fromConfig.selectResponseSchema,
@@ -122,6 +210,14 @@ export const selectResponseSchema = select(
 export const selectEmulateStructuredOutput = select(
   selectConfigState,
   fromConfig.selectEmulateStructuredOutput,
+);
+export const selectTransport = select(
+  selectConfigState,
+  fromConfig.selectTransport,
+);
+export const selectUiRequested = select(
+  selectConfigState,
+  fromConfig.selectUiRequested,
 );
 
 /**
@@ -132,10 +228,16 @@ const selectNonStreamingViewMessages = select(
   selectToolCallEntities,
   selectTools,
   selectResponseSchema,
-  (messages, toolCalls, tools, responseSchema) => {
+  selectEmulateStructuredOutput,
+  (messages, toolCalls, tools, responseSchema, emulateStructuredOutput) => {
     return messages.flatMap((message): Chat.AnyMessage[] =>
       Chat.helpers.toViewMessagesFromInternal(
-        message,
+        applyEmulatedOutputToMessage(
+          message,
+          toolCalls,
+          responseSchema,
+          emulateStructuredOutput,
+        ),
         toolCalls,
         tools,
         responseSchema,
@@ -149,11 +251,23 @@ const selectStreamingViewMessages = select(
   selectStreamingToolCallEntities,
   selectTools,
   selectResponseSchema,
-  (streamingMessage, streamingToolCalls, tools, responseSchema) => {
+  selectEmulateStructuredOutput,
+  (
+    streamingMessage,
+    streamingToolCalls,
+    tools,
+    responseSchema,
+    emulateStructuredOutput,
+  ) => {
     return (streamingMessage ? [streamingMessage] : []).flatMap(
       (message): Chat.AnyMessage[] =>
         Chat.helpers.toViewMessagesFromInternal(
-          message,
+          applyEmulatedOutputToMessage(
+            message,
+            streamingToolCalls,
+            responseSchema,
+            emulateStructuredOutput,
+          ),
           streamingToolCalls,
           tools,
           responseSchema,
@@ -213,10 +327,59 @@ export const selectApiTools = select(
   },
 );
 
+export const selectUnifiedError = select(
+  selectSendingError,
+  selectGeneratingError,
+  selectThreadLoadError,
+  selectThreadSaveError,
+  selectError,
+  (
+    sendingError,
+    generatingError,
+    threadLoadError,
+    threadSaveError,
+    statusError,
+  ) =>
+    sendingError ??
+    generatingError ??
+    (threadLoadError && new Error(threadLoadError.error)) ??
+    (threadSaveError && new Error(threadSaveError.error)) ??
+    statusError,
+);
+
+export const selectIsRunningToolCalls = select(
+  selectPendingToolCalls,
+  selectIsGenerating,
+  selectIsLoadingThread,
+  selectIsSavingThread,
+  selectUnifiedError,
+  (pendingToolCalls, isGenerating, isLoadingThread, isSavingThread, error) =>
+    pendingToolCalls.length > 0 &&
+    !isGenerating &&
+    !isLoadingThread &&
+    !isSavingThread &&
+    !error,
+);
+
 export const selectIsLoading = select(
   selectIsSending,
+  selectIsGenerating,
   selectIsReceiving,
   selectIsRunningToolCalls,
-  (isSending, isReceiving, isRunningToolCalls) =>
-    isSending || isReceiving || isRunningToolCalls,
+  selectIsLoadingThread,
+  selectIsSavingThread,
+  (
+    isSending,
+    isGenerating,
+    isReceiving,
+    isRunningToolCalls,
+    isLoadingThread,
+    isSavingThread,
+  ) =>
+    isSending ||
+    isGenerating ||
+    isReceiving ||
+    isRunningToolCalls ||
+    isLoadingThread ||
+    isSavingThread,
 );

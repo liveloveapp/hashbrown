@@ -9,7 +9,6 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
-      "dependsOn": ["smart-home-netlify:build"],
       "options": {
         "outputPath": "dist/samples/smart-home/angular",
         "browser": "samples/smart-home/angular/src/main.ts",
@@ -82,6 +81,13 @@
         "port": 4900,
         "staticFilePath": "dist/samples/smart-home/angular/browser",
         "spa": true
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build:production"],
+      "options": {
+        "command": "npx wrangler pages deploy dist/samples/smart-home/angular/browser"
       }
     }
   }

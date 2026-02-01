@@ -5,11 +5,10 @@
   "projectType": "library",
   "release": {
     "version": {
-      "generatorOptions": {
-        "packageRoot": "dist/{projectRoot}",
-        "currentVersionResolver": "git-tag",
-        "fallbackCurrentVersionResolver": "disk"
-      }
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk",
+      "preserveLocalDependencyProtocols": false,
+      "manifestRootsToUpdate": ["dist/packages/google", "packages/google"]
     }
   },
   "tags": [],
@@ -22,7 +21,14 @@
         "tsConfig": "packages/google/tsconfig.lib.json",
         "packageJson": "packages/google/package.json",
         "main": "packages/google/src/index.ts",
-        "assets": ["packages/google/*.md"]
+        "assets": [
+          "packages/google/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
@@ -48,8 +54,10 @@
       }
     },
     "nx-release-publish": {
+      "executor": "@nx/js:release-publish",
+      "dependsOn": ["^nx-release-publish"],
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "packageRoot": "dist/packages/google"
       }
     },
     "build-api-report": {

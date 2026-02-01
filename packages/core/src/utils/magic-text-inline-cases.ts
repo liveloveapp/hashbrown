@@ -194,6 +194,14 @@ export const INLINE_MARKDOWN_CASES: InlineMarkdownCase[] = [
     expectedFragments: [{ text: 'See [the docs]', state: 'final' }],
   },
   {
+    name: 'Test 19b — balanced bracketed text stays literal without destination',
+    input: 'Hashbrowns at [Waffle House]',
+    expectedText: 'Hashbrowns at [Waffle House]',
+    expectedFragments: [
+      { text: 'Hashbrowns at [Waffle House]', state: 'final' },
+    ],
+  },
+  {
     name: 'Test 20 — dangling opening parenthesis after link text',
     input: 'See [the docs](',
     expectedText: 'See [the docs](',

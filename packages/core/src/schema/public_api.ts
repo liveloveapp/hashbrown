@@ -20,10 +20,13 @@ export {
   isIntegerType,
   isNullType,
   isNumberType,
+  isNodeType,
   isObjectType,
   isStringType,
   isHashbrownType,
+  node,
   nullish,
+  NodeType,
   NullType,
   number,
   NumberType,
@@ -31,9 +34,27 @@ export {
   ObjectType,
   string,
   StringType,
+  type StringFormat,
+  type StringConstraintsInput,
+  type FromJsonAstCache,
+  type FromJsonAstOutput,
+  type FromJsonAstResult,
   type Infer,
   type Schema,
 } from './base';
+export { fromJsonAst } from './from-json-ast';
 export { getDescription } from './get-description';
 export * as streaming from './streaming';
+export {
+  fromStandardJsonSchema,
+  isStandardJsonSchema,
+  normalizeSchemaInput,
+  normalizeSchemaOutput,
+  type InferSchemaInput,
+  type InferSchemaOutput,
+  type SchemaInput,
+  type SchemaOutput,
+  type StandardJSONSchemaV1,
+  type StandardTypedV1,
+} from './standard-json-schema';
 export { toJsonSchema } from './to-json-schema';

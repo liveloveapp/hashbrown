@@ -2,7 +2,8 @@ import {
   type Chat,
   fryHashbrown,
   Hashbrown,
-  type KnownModelIds,
+  type ModelInput,
+  type TransportOrFactory,
 } from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { HashbrownContext } from '../hashbrown-provider';
@@ -19,7 +20,7 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
    * The LLM model to use for the chat.
    *
    */
-  model: KnownModelIds;
+  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -53,6 +54,16 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
    * The name of the hook, useful for debugging.
    */
   debugName?: string;
+
+  /**
+   * Optional transport override for this hook.
+   */
+  transport?: TransportOrFactory;
+
+  /**
+   * Optional thread identifier used to load or continue an existing conversation.
+   */
+  threadId?: string;
 }
 
 /**
@@ -105,9 +116,19 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
   isSending: boolean;
 
   /**
+   * Whether the chat is currently generating (between start and finish/error frames).
+   */
+  isGenerating: boolean;
+
+  /**
    * Whether the chat is running tool calls.
    */
   isRunningToolCalls: boolean;
+
+  /**
+   * Aggregate loading flag across transport, generation, tool-calls, and thread load/save.
+   */
+  isLoading: boolean;
 
   /**
    * Whether the current request has exhausted retries.
@@ -115,9 +136,39 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
   exhaustedRetries: boolean;
 
   /**
+   * Transport/request failure before generation frames arrive.
+   */
+  sendingError: Error | undefined;
+
+  /**
+   * Error emitted during generation frames.
+   */
+  generatingError: Error | undefined;
+
+  /**
    * The last assistant message.
    */
   lastAssistantMessage: Chat.AssistantMessage<string, Tools> | undefined;
+
+  /**
+   * Whether a thread load request is in flight.
+   */
+  isLoadingThread: boolean;
+
+  /**
+   * Whether a thread save request is in flight.
+   */
+  isSavingThread: boolean;
+
+  /**
+   * Thread loading error, if present.
+   */
+  threadLoadError: { error: string; stacktrace?: string } | undefined;
+
+  /**
+   * Thread saving error, if present.
+   */
+  threadSaveError: { error: string; stacktrace?: string } | undefined;
 }
 
 /**
@@ -188,6 +239,9 @@ export function useChat<Tools extends Chat.AnyTool>(
       tools,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: false,
+      threadId: options.threadId,
     });
   }
 
@@ -216,16 +270,22 @@ export function useChat<Tools extends Chat.AnyTool>(
       tools,
       debounce: options.debounceTime,
       retries: options.retries,
+      transport: options.transport ?? config.transport,
+      ui: false,
+      threadId: options.threadId,
     });
   }, [
     config.url,
     config.middleware,
     config.emulateStructuredOutput,
+    config.transport,
     options.debounceTime,
     options.debugName,
     options.model,
     options.retries,
     options.system,
+    options.transport,
+    options.threadId,
     tools,
   ]);
 
@@ -234,16 +294,36 @@ export function useChat<Tools extends Chat.AnyTool>(
   );
   const isReceiving = useHashbrownSignal<boolean>(getHashbrown().isReceiving);
   const isSending = useHashbrownSignal<boolean>(getHashbrown().isSending);
+  const isGenerating = useHashbrownSignal<boolean>(getHashbrown().isGenerating);
   const isRunningToolCalls = useHashbrownSignal<boolean>(
     getHashbrown().isRunningToolCalls,
   );
+  const isLoading = useHashbrownSignal<boolean>(getHashbrown().isLoading);
   const exhaustedRetries = useHashbrownSignal<boolean>(
     getHashbrown().exhaustedRetries,
   );
   const error = useHashbrownSignal<Error | undefined>(getHashbrown().error);
+  const sendingError = useHashbrownSignal<Error | undefined>(
+    getHashbrown().sendingError,
+  );
+  const generatingError = useHashbrownSignal<Error | undefined>(
+    getHashbrown().generatingError,
+  );
   const lastAssistantMessage = useHashbrownSignal<
     Chat.AssistantMessage<string, Tools> | undefined
   >(getHashbrown().lastAssistantMessage);
+  const isLoadingThread = useHashbrownSignal<boolean>(
+    getHashbrown().isLoadingThread,
+  );
+  const isSavingThread = useHashbrownSignal<boolean>(
+    getHashbrown().isSavingThread,
+  );
+  const threadLoadError = useHashbrownSignal<
+    { error: string; stacktrace?: string } | undefined
+  >(getHashbrown().threadLoadError);
+  const threadSaveError = useHashbrownSignal<
+    { error: string; stacktrace?: string } | undefined
+  >(getHashbrown().threadSaveError);
 
   const sendMessage = useCallback((message: Chat.Message<string, Tools>) => {
     getHashbrown().sendMessage(message);
@@ -276,10 +356,18 @@ export function useChat<Tools extends Chat.AnyTool>(
     stop,
     reload,
     error,
+    isGenerating,
     isReceiving,
     isSending,
     isRunningToolCalls,
+    isLoading,
     exhaustedRetries,
+    sendingError,
+    generatingError,
     lastAssistantMessage,
+    isLoadingThread,
+    isSavingThread,
+    threadLoadError,
+    threadSaveError,
   };
 }
