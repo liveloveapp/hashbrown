@@ -1,5 +1,6 @@
 <h1 align="center">Hashbrown - Build Agents for the Browser</h1>
 
+
 <p align="center">
   <img src="www/analog/public/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
