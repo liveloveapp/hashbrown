@@ -23,25 +23,36 @@ const awPolyfill = `(function(){if(typeof URL==="undefined"){const parseUrl=func
 function patchAudioWorkletBootstrap(filePath) {
   let originalContent = fs.readFileSync(filePath, 'utf8');
 
-  if (!originalContent.includes('if(typeof URL==="undefined")')) {
+  const hasUrlPolyfill = /globalThis\.URL\s*=\s*class URL/.test(
+    originalContent,
+  );
+
+  if (!hasUrlPolyfill) {
     originalContent = awPolyfill + originalContent;
     console.log('Added URL polyfill to vad_audio_worklet.aw.js');
   } else {
     console.log('URL polyfill already present in vad_audio_worklet.aw.js');
   }
 
-  if (originalContent.includes('p.onmessage=msg=>{')) {
-    originalContent = originalContent.replace(
-      /p\.onmessage=msg=>\{let d=msg\.data;if\(d&&d\.type==='integer'\)\{p\.postMessage\(\{type:'integer',value:d\.value\}\);return;\}let d=msg\.data;/g,
-      `p.onmessage=msg=>{let d=msg.data;`,
-    );
+  const integerMessagePattern =
+    /postMessage\(\{\s*type\s*:\s*['"]integer['"]\s*,\s*value\s*:\s*d\.value\s*\}\)/;
+  const onMessagePattern =
+    /p\.onmessage\s*=\s*\(?\s*msg\s*\)?\s*=>\s*\{\s*(?:let|var|const)\s+d\s*=\s*msg\.data\s*;/;
+
+  if (!integerMessagePattern.test(originalContent)) {
+    if (!onMessagePattern.test(originalContent)) {
+      console.error('Could not find expected onmessage handler in worklet');
+      process.exit(1);
+    }
 
     originalContent = originalContent.replace(
-      /p\.onmessage=msg=>\{let d=msg\.data;/g,
-      `p.onmessage=msg=>{let d=msg.data;if(d&&d.type==='integer'){p.postMessage({type:'integer',value:d.value});return;}`,
+      onMessagePattern,
+      "p.onmessage=msg=>{let d=msg.data;if(d&&d.type==='integer'){p.postMessage({type:'integer',value:d.value});return;}",
     );
 
     console.log('Modified message handler to forward custom integer messages');
+  } else {
+    console.log('Integer message forward already present in worklet handler');
   }
 
   fs.writeFileSync(filePath, originalContent, 'utf8');
@@ -50,24 +61,30 @@ function patchAudioWorkletBootstrap(filePath) {
 
 function patchLoaderAwResolution(filePath) {
   let loaderContent = fs.readFileSync(filePath, 'utf8');
-  const expectedLiteral = ".addModule('vad_audio_worklet.aw.js')";
-  const patchedLiteral = ".addModule(locateFile('vad_audio_worklet.aw.js'))";
+  const patchedLiteral =
+    /\.addModule\(locateFile\((['"])vad_audio_worklet\.aw\.js\1\)\)/;
+  const expectedLiteral =
+    /\.addModule\(\s*(['"])vad_audio_worklet\.aw\.js\1\s*\)/;
 
-  if (loaderContent.includes(patchedLiteral)) {
+  if (patchedLiteral.test(loaderContent)) {
     console.log(
       'Loader already resolves vad_audio_worklet.aw.js through locateFile',
     );
     return;
   }
 
-  if (!loaderContent.includes(expectedLiteral)) {
+  if (!expectedLiteral.test(loaderContent)) {
     console.error(
       'Could not find expected addModule literal for vad_audio_worklet.aw.js in loader output',
     );
     process.exit(1);
   }
 
-  loaderContent = loaderContent.replace(expectedLiteral, patchedLiteral);
+  loaderContent = loaderContent.replace(
+    expectedLiteral,
+    (_match, quote) =>
+      `.addModule(locateFile(${quote}vad_audio_worklet.aw.js${quote}))`,
+  );
   fs.writeFileSync(filePath, loaderContent, 'utf8');
   console.log(
     'Patched loader to resolve vad_audio_worklet.aw.js via locateFile',

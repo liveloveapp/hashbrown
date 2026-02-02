@@ -83,6 +83,16 @@ export interface VADStatus {
 }
 
 /**
+ * Error thrown when the runtime environment cannot support the VAD worklet.
+ */
+export class VADEnvironmentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'VADEnvironmentError';
+  }
+}
+
+/**
  * VAD class for managing Voice Activity Detection
  */
 export class VAD {
@@ -126,6 +136,8 @@ export class VAD {
       return;
     }
 
+    this.assertEnvironmentSupportsWorklet();
+
     const moduleOptions: VADModuleOptions = {
       // Allow caller override; otherwise let the loader's defaults handle embedded assets.
       locateFile: this.options.locateFile
@@ -135,7 +147,20 @@ export class VAD {
       mainScriptUrlOrBlob: this.options.mainScriptUrlOrBlob,
     };
 
-    this.module = await moduleLoader(moduleOptions);
+    try {
+      this.module = await moduleLoader(moduleOptions);
+    } catch (error) {
+      if (this.isSharedArrayBufferError(error)) {
+        throw new VADEnvironmentError(
+          'VAD requires cross-origin isolation (SharedArrayBuffer). ' +
+            'Set these headers on HTML and asset responses: ' +
+            '"Cross-Origin-Opener-Policy: same-origin" and ' +
+            '"Cross-Origin-Embedder-Policy: require-corp".',
+        );
+      }
+
+      throw error;
+    }
     this.isInitialized = true;
   }
 
@@ -152,6 +177,8 @@ export class VAD {
     if (this.isRunning) {
       return;
     }
+
+    this.assertEnvironmentSupportsWorklet();
 
     // Patch AudioWorklet.addModule to handle path resolution
     this.patchAudioWorkletAddModule();
@@ -446,6 +473,50 @@ export class VAD {
     } catch {
       return `${this.assetBase}${path}`;
     }
+  }
+
+  private assertEnvironmentSupportsWorklet(): void {
+    if (typeof window === 'undefined') {
+      throw new VADEnvironmentError('VAD requires a browser environment.');
+    }
+
+    const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+    const isCrossOriginIsolated =
+      typeof crossOriginIsolated === 'boolean' && crossOriginIsolated;
+
+    if (!hasSharedArrayBuffer || !isCrossOriginIsolated) {
+      throw new VADEnvironmentError(
+        'VAD requires cross-origin isolation (SharedArrayBuffer). ' +
+          'Set these headers on HTML and asset responses: ' +
+          '"Cross-Origin-Opener-Policy: same-origin" and ' +
+          '"Cross-Origin-Embedder-Policy: require-corp".',
+      );
+    }
+
+    const AudioContextCtor =
+      window.AudioContext ??
+      (window as Window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioContextCtor) {
+      throw new VADEnvironmentError('AudioContext is not supported.');
+    }
+
+    if (typeof AudioWorkletNode === 'undefined') {
+      throw new VADEnvironmentError('AudioWorklet is not supported.');
+    }
+  }
+
+  private isSharedArrayBufferError(error: unknown): boolean {
+    if (typeof SharedArrayBuffer === 'undefined') {
+      return true;
+    }
+
+    if (typeof error !== 'object' || !error) {
+      return false;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    return message.includes('SharedArrayBuffer');
   }
 }
 
