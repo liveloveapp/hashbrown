@@ -732,7 +732,7 @@ var createAudioWorkletModule = (() => {
         return audioWorkletCreationFailed();
       }
       audioWorklet
-        .addModule('vad_audio_worklet.aw.js')
+        .addModule(locateFile('vad_audio_worklet.aw.js'))
         .then(() => {
           audioWorklet.bootstrapMessage = new AudioWorkletNode(
             audioContext,

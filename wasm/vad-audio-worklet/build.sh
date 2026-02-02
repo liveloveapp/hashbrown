@@ -43,10 +43,10 @@ if [ -f "$OUTPUT_DIR/build-info.json" ]; then
     fi
 fi
 
-# Patch the .aw.js file with URL polyfill
+# Patch generated .aw.js and loader files
 if [ -f "$OUTPUT_DIR/vad_audio_worklet.aw.js" ]; then
     echo ""
-    echo "Adding URL polyfill to audio worklet file..."
+    echo "Patching generated audio worklet artifacts..."
     node "$SCRIPT_DIR/patch-aw.js"
 fi
 
@@ -66,4 +66,3 @@ if [ -f "$OUTPUT_DIR/build-info.json" ]; then
     cat "$OUTPUT_DIR/build-info.json"
     echo ""
 fi
-
