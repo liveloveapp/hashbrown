@@ -98,9 +98,11 @@ export class VADEnvironmentError extends Error {
 export class VAD {
   private module: EmscriptenModule | null = null;
   private audioContext: AudioContext | null = null;
+  private microphoneStream: MediaStream | null = null;
   private microphoneSource: MediaStreamAudioSourceNode | null = null;
   private workletNode: AudioWorkletNode | null = null;
   private isRunning = false;
+  private isConnecting = false;
   private isInitialized = false;
   private mode: VADMode = 2;
   private onDecisionCallback?: (decision: VADDecision) => void;
@@ -242,6 +244,12 @@ export class VAD {
           return;
         }
 
+        if (this.isConnecting) {
+          return;
+        }
+
+        this.isConnecting = true;
+
         // Resume audio context
         const resumeAudioContext = module.cwrap(
           'ResumeAudioContext',
@@ -259,6 +267,8 @@ export class VAD {
         } catch (error) {
           this.clearInitTimers();
           reject(error);
+        } finally {
+          this.isConnecting = false;
         }
       }, this.pollInterval);
 
@@ -280,6 +290,7 @@ export class VAD {
       return;
     }
 
+    this.microphoneStream?.getTracks().forEach((track) => track.stop());
     this.microphoneSource?.disconnect();
     this.workletNode?.disconnect();
     this.audioContext?.close();
@@ -292,7 +303,9 @@ export class VAD {
     this.microphoneSource = null;
     this.workletNode = null;
     this.audioContext = null;
+    this.microphoneStream = null;
     this.isRunning = false;
+    this.isConnecting = false;
     const win = window as WindowWithVAD;
     win.vadModeInitialized = false;
 
@@ -358,6 +371,7 @@ export class VAD {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: true,
     });
+    this.microphoneStream = stream;
 
     if (!this.audioContext) {
       throw new Error('Audio context not available');

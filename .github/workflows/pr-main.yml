@@ -42,5 +42,5 @@ jobs:
 
       - name: Lint, test, and build affected projects
         env:
-          NX_VERBOSE_LOGGING: "true"
+          NX_VERBOSE_LOGGING: 'true'
         run: npx nx affected -t lint,test,build --parallel=3 --verbose
