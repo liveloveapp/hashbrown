@@ -33,5 +33,5 @@
     "strict": true,
     "strictTemplates": true
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": ["node_modules", "tmp", "fake"]
 }
