@@ -32,15 +32,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Debug affected projects
-        run: |
-          echo "NX_BASE=$NX_BASE"
-          echo "NX_HEAD=$NX_HEAD"
-          npx nx show projects --affected --base="$NX_BASE" --head="$NX_HEAD" --verbose
-          npx nx print-affected --base="$NX_BASE" --head="$NX_HEAD"
-          git diff --name-only "$NX_BASE" "$NX_HEAD"
-
       - name: Lint, test, and build affected projects
-        env:
-          NX_VERBOSE_LOGGING: 'true'
         run: npx nx affected -t lint,test,build --parallel=3 --verbose
