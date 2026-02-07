@@ -25,7 +25,7 @@ mkdir -p "$OUTPUT_DIR"
 
 # Build the Docker image and extract artifacts
 echo "Building Docker image..."
-docker build -t vad-audio-worklet-builder "$SCRIPT_DIR"
+docker build --no-cache -t vad-audio-worklet-builder "$SCRIPT_DIR"
 
 # Run the container and extract build artifacts
 echo ""

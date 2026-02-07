@@ -1,5 +1,5 @@
 {
-  "webrtc_commit_sha": "00c8660b0c095442b2243a78ade8829acdd34cbe",
-  "build_date": "2025-12-06T20:06:30Z",
+  "webrtc_commit_sha": "62f5e2318d617abaa1f479422a4c6892c14e56a3",
+  "build_date": "2026-02-07T19:22:54Z",
   "build_method": "docker"
 }
