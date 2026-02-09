@@ -184,7 +184,7 @@ test('renders unresolved citations as buttons', () => {
     fixture.nativeElement as HTMLElement
   ).querySelector('sup button[role="doc-noteref"]');
 
-  expect(unresolvedCitation?.textContent).toBe('[1]');
+  expect(unresolvedCitation?.textContent?.trim()).toBe('[1]');
 });
 
 @Component({
