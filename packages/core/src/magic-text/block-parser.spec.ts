@@ -128,3 +128,22 @@ test('parses fence info + meta for backtick and tilde fences', () => {
   expect(codeBlocks[1].props['info']).toBe('js');
   expect(codeBlocks[1].props['meta']).toBe('data');
 });
+
+test('parses blockquote content as nested blocks', () => {
+  const lines = splitLines(
+    '> # Heading\n> - item\n>\n> ```ts\n> const x = 1;\n> ```\n',
+  );
+  const context = createContext();
+
+  const rootResult = parseBlocks(lines, 0, lines.length, '0', context, true);
+  const quote = rootResult.value.children.find(
+    (node) => node.type === 'blockquote',
+  );
+
+  expect(quote).toBeDefined();
+  expect(quote?.children.map((node) => node.type)).toEqual([
+    'heading',
+    'list',
+    'code-block',
+  ]);
+});
