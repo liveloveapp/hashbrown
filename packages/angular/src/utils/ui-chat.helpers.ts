@@ -1,4 +1,4 @@
-import { Type } from '@angular/core';
+import { Provider, Type } from '@angular/core';
 import {
   Chat,
   type ComponentFallbackProps,
@@ -16,6 +16,7 @@ export type TagNameRegistry = {
     props: Record<string, s.HashbrownType>;
     component: Type<object>;
     fallback?: Type<ComponentFallbackProps>;
+    providers?: Provider[];
   };
 };
 
