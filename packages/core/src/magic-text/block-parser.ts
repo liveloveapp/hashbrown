@@ -335,22 +335,27 @@ function parseBlockquote(
     break;
   }
 
-  const stripped = picked.map((line) => line.text.replace(/^\s{0,3}>\s?/, ''));
-  const inlineSource = stripped.join('\n');
-  const children = parseInline(
-    inlineSource,
-    picked[0].start,
-    `${path}.0`,
+  const stripped = picked.map((line) => {
+    const marker = /^(\s{0,3}>\s?)/.exec(line.text);
+    const markerWidth = marker?.[1].length ?? 0;
+    const text = marker ? line.text.slice(markerWidth) : line.text;
+    const start = line.start + markerWidth;
+
+    return {
+      text,
+      start,
+      end: start + text.length,
+      hasNewline: line.hasNewline,
+    };
+  });
+  const children = parseBlocks(
+    stripped,
+    0,
+    stripped.length,
+    path,
     context,
+    false,
   );
-  const paragraph: DraftNode = {
-    path: `${path}.0`,
-    type: 'paragraph',
-    range: { start: picked[0].start, end: picked[picked.length - 1].end },
-    closed: context.isComplete || picked[picked.length - 1].hasNewline,
-    props: {},
-    children: children.value,
-  };
 
   return {
     value: {
@@ -359,7 +364,7 @@ function parseBlockquote(
       range: { start: picked[0].start, end: picked[picked.length - 1].end },
       closed: context.isComplete || picked[picked.length - 1].hasNewline,
       props: {},
-      children: [paragraph],
+      children: children.value.children,
     },
     next: i,
     citations: children.citations,
