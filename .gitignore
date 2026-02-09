@@ -46,6 +46,7 @@ Thumbs.db
 
 # Angular
 .angular
+packages/angular/coverage
 
 # Nitro
 .nitro
