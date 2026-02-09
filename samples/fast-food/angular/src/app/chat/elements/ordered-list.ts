@@ -1,5 +1,4 @@
 import { Component, computed, input } from '@angular/core';
-import { MagicTextCitation } from '@hashbrownai/angular';
 import { MagicTextRenderer } from '../magic-text-renderer';
 
 @Component({
@@ -9,10 +8,7 @@ import { MagicTextRenderer } from '../magic-text-renderer';
     <ol>
       @for (item of itemsWithIds(); track item.id) {
         <li>
-          <app-magic-text-renderer
-            [text]="item.text"
-            [citations]="citations()"
-          ></app-magic-text-renderer>
+          <app-magic-text-renderer [text]="item.text"></app-magic-text-renderer>
         </li>
       }
     </ol>
@@ -42,7 +38,7 @@ import { MagicTextRenderer } from '../magic-text-renderer';
 })
 export class OrderedList {
   readonly items = input<string[]>([]);
-  readonly citations = input<MagicTextCitation[]>([]);
+  readonly citations = input<ListCitation[]>([]);
   readonly itemsWithIds = computed(() =>
     this.items().map((text, index) => ({
       id: index,
@@ -50,3 +46,8 @@ export class OrderedList {
     })),
   );
 }
+
+type ListCitation = {
+  id: string;
+  url: string;
+};

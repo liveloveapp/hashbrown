@@ -1,20 +1,13 @@
-import {
-  afterRenderEffect,
-  Component,
-  ElementRef,
-  inject,
-  input,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, ElementRef, inject, input } from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import { MagicText, MagicTextRenderTextSegment } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-ai-toast-notification',
-  imports: [MatIconButton, MatIcon],
+  imports: [MatIconButton, MatIcon, MagicText, MagicTextRenderTextSegment],
   template: `
-    <div class="content" #content>
+    <div class="content">
       <div class="title">
         <span class="title-text">
           {{ title() }}
@@ -23,17 +16,20 @@ import { MatIcon } from '@angular/material/icon';
           <mat-icon inline>close</mat-icon>
         </button>
       </div>
-      <div class="message" #messageContainer>
-        @for (line of lines(); track $index) {
-          <span class="line">
-            {{ line }}
-          </span>
-        }
+      <div class="message">
+        <hb-magic-text
+          [text]="message()"
+          [isComplete]="true"
+          [options]="magicTextOptions"
+          [caret]="false"
+        >
+          <ng-template hbMagicTextRenderTextSegment let-context>
+            <span class="segment">
+              {{ context.segment.text }}
+            </span>
+          </ng-template>
+        </hb-magic-text>
       </div>
-      <div
-        #measureElement
-        style="position:absolute; visibility:hidden; white-space:pre; top:0; left:0; pointer-events:none;"
-      ></div>
     </div>
   `,
   host: {
@@ -94,15 +90,19 @@ import { MatIcon } from '@angular/material/icon';
       color: rgba(0, 0, 0, 0.8);
     }
 
+    .message :where(.hb-magic-text-root) {
+      display: block;
+    }
+
+    .message :where(p) {
+      margin: 0;
+    }
+
     .title-text {
       color: inherit;
     }
 
-    .message-text {
-      color: inherit;
-    }
-
-    .line {
+    .segment {
       opacity: 1;
       transform: translateY(0);
       transition:
@@ -132,51 +132,8 @@ export class AiToastNotification {
   title = input.required<string>();
   message = input.required<string>();
   type = input.required<'refusal' | 'success' | 'info'>();
-  host: ElementRef<HTMLElement> = inject(ElementRef);
-  messageContainerRef =
-    viewChild.required<ElementRef<HTMLDivElement>>('messageContainer');
-  measureRef = viewChild.required<ElementRef<HTMLDivElement>>('measureElement');
-  contentRef = viewChild.required<ElementRef<HTMLDivElement>>('content');
-  lines = signal<string[]>([]);
-
-  constructor() {
-    afterRenderEffect(() => {
-      const text = this.message();
-      const segmener = new Intl.Segmenter(navigator.language, {
-        granularity: 'word',
-      });
-      const segments = segmener.segment(text);
-      const testElement = this.measureRef().nativeElement;
-      const style = getComputedStyle(this.messageContainerRef().nativeElement);
-      const lines: string[] = [];
-      const maxWidth = this.messageContainerRef().nativeElement.clientWidth;
-
-      testElement.style.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-
-      let line = '';
-      for (const { segment } of segments) {
-        const test = line + segment;
-        testElement.textContent = test;
-        const width = testElement.offsetWidth;
-        if (width <= maxWidth) {
-          line = test;
-        } else {
-          lines.push(line);
-          line = segment.trimStart();
-        }
-      }
-      if (line) lines.push(line);
-      this.lines.set(lines);
-
-      requestAnimationFrame(() => {
-        const verticalPadding =
-          parseFloat(getComputedStyle(this.host.nativeElement).paddingTop) +
-          parseFloat(getComputedStyle(this.host.nativeElement).paddingBottom);
-        this.host.nativeElement.style.height =
-          this.contentRef().nativeElement.scrollHeight + verticalPadding + 'px';
-      });
-    });
-  }
+  host = inject<ElementRef<HTMLElement>>(ElementRef);
+  readonly magicTextOptions = { segmenter: { granularity: 'word' as const } };
 
   onClose() {
     this.host.nativeElement.classList.add('closing');
