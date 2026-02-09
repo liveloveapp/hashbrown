@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { reflectComponentType, Signal, Type } from '@angular/core';
+import {
+  type Provider,
+  reflectComponentType,
+  Signal,
+  Type,
+} from '@angular/core';
 import { JsonResolvedValue, s, ɵtypes } from '@hashbrownai/core';
 
 /**
@@ -32,6 +37,7 @@ export interface ExposedComponent<T extends { new (...args: any[]): any }> {
   description: string;
   children?: 'any' | 'text' | ExposedComponent<any>[] | false;
   props?: ComponentPropSchema<T>;
+  providers?: Provider[];
 }
 
 /**

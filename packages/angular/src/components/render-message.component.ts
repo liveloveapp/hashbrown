@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @angular-eslint/component-selector */
 import {
   ApplicationRef,
   Component,
   computed,
   EmbeddedViewRef,
   inject,
+  Injector,
   input,
   TemplateRef,
   ViewContainerRef,
@@ -53,6 +53,7 @@ import type { UiKit } from '../utils/ui-kit.fn';
           *ngComponentOutlet="
             getRenderableComponent(node);
             inputs: getRenderableInputs(node);
+            injector: getRenderableInjector(node);
             content: getRenderableContent(node, childrenTemplateRef)
           "
         ></ng-container>
@@ -61,11 +62,6 @@ import type { UiKit } from '../utils/ui-kit.fn';
 
     @if (content()) {
       @for (node of content(); track $index) {
-        <ng-template
-          [ngTemplateOutlet]="nodeTemplateRef"
-          [ngTemplateOutletContext]="node"
-        >
-        </ng-template>
         <ng-container
           *ngTemplateOutlet="nodeTemplateRef; context: { node: node }"
         />
@@ -143,6 +139,11 @@ export class RenderMessageComponent {
   /**
    * @internal
    */
+  renderableInjectorWeakMap = new WeakMap<object, Injector | undefined>();
+
+  /**
+   * @internal
+   */
   renderableContentWeakMap = new WeakMap<
     object,
     WeakMap<TemplateRef<any>, any[][] | undefined>
@@ -165,6 +166,13 @@ export class RenderMessageComponent {
    */
   getFallbackComponent(tagName: string) {
     return this.tagNameRegistry()?.[tagName]?.fallback ?? null;
+  }
+
+  /**
+   * @internal
+   */
+  getTagProviders(tagName: string) {
+    return this.tagNameRegistry()?.[tagName]?.providers;
   }
 
   /**
@@ -278,6 +286,38 @@ export class RenderMessageComponent {
       this.renderableInputsWeakMap.set(node as object, propsNode.value);
     }
     return propsNode.value;
+  }
+
+  /**
+   * @internal
+   */
+  getRenderableInjector(node: UiChatSchemaComponent): Injector | undefined {
+    if (node && typeof node === 'object') {
+      if (this.renderableInjectorWeakMap.has(node as object)) {
+        return this.renderableInjectorWeakMap.get(node as object);
+      }
+    }
+
+    const entry = this.getNodeEntry(node);
+    if (!entry) {
+      return undefined;
+    }
+
+    const providers = this.getTagProviders(entry.tag);
+    if (!providers?.length) {
+      return undefined;
+    }
+
+    const injector = Injector.create({
+      providers,
+      parent: this.viewContainerRef.injector,
+    });
+
+    if (node && typeof node === 'object') {
+      this.renderableInjectorWeakMap.set(node as object, injector);
+    }
+
+    return injector;
   }
 
   /**

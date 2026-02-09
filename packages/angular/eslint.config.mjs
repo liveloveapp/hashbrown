@@ -2,6 +2,9 @@ import nx from '@nx/eslint-plugin';
 import baseConfig from '../../eslint.config.mjs';
 
 export default [
+  {
+    ignores: ['coverage/**', '**/coverage/**'],
+  },
   ...baseConfig,
   {
     files: ['**/*.json'],
@@ -26,7 +29,7 @@ export default [
         'error',
         {
           type: 'attribute',
-          prefix: 'lib',
+          prefix: 'hb',
           style: 'camelCase',
         },
       ],
@@ -35,7 +38,7 @@ export default [
         'error',
         {
           type: 'element',
-          prefix: 'lib',
+          prefix: 'hb',
           style: 'kebab-case',
         },
       ],

@@ -1,137 +1,115 @@
 /* eslint-disable @angular-eslint/component-class-suffix */
-/* eslint-disable no-useless-escape */
-/* eslint-disable @angular-eslint/component-selector */
-/* eslint-disable @angular-eslint/directive-selector */
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   contentChild,
+  contentChildren,
   Directive,
   input,
+  InputSignal,
   output,
   TemplateRef,
   ViewEncapsulation,
 } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
 import {
-  type MagicTextFragment,
-  type MagicTextFragmentCitation,
-  type MagicTextFragmentText,
-  type MagicTextHasWhitespace,
-  type MagicTextTag,
-  prepareMagicText,
+  type MagicTextAstNode,
+  type MagicTextNodeType,
+  type MagicTextParserOptions,
+  type TextSegment,
 } from '@hashbrownai/core';
-import { Prettify } from '../utils/ts-helpers';
+import { injectMagicTextParser } from '../utils/inject-magic-text-parser.fn';
 
-/** @public */
-export type MagicTextCitation = { id: string; url: string };
+type MagicTextLinkNode = Extract<MagicTextAstNode, { type: 'link' }>;
+type MagicTextAutolinkNode = Extract<MagicTextAstNode, { type: 'autolink' }>;
+type MagicTextCitationNode = Extract<MagicTextAstNode, { type: 'citation' }>;
+
+type MagicTextNodeTemplateType = MagicTextNodeType | 'node';
+
+type CitationRenderData = {
+  id: string;
+  number: number | string;
+  text?: string;
+  url?: string;
+};
 
 /** @public */
 export type MagicTextLinkClickEvent = {
   mouseEvent: MouseEvent;
-  href: string;
-  fragment: MagicTextFragmentText;
+  url: string;
+  node: MagicTextLinkNode | MagicTextAutolinkNode;
 };
 
 /** @public */
 export type MagicTextCitationClickEvent = {
   mouseEvent: MouseEvent;
-  citation: { id: string; url?: string };
-  fragment: MagicTextFragmentCitation;
+  citation: CitationRenderData;
+  node: MagicTextCitationNode;
 };
 
 /** @public */
-export type MagicTextWhitespacePosition = 'before' | 'after';
-
-/** @public */
-export type MagicTextWhitespaceContext = {
-  position: MagicTextWhitespacePosition;
-  render: boolean;
-  fragment: MagicTextFragment;
+export type MagicTextNodeRenderContext = {
+  node: MagicTextAstNode;
+  isOpen: boolean;
+  isComplete: boolean;
+  renderChildren: () => unknown;
 };
 
 /** @public */
-export type MagicTextRenderTextContext = {
-  text: string;
-  tags: MagicTextTag[];
-  state: MagicTextFragmentText['state'];
-  isStatic: boolean;
-  renderWhitespace: MagicTextHasWhitespace;
-  isCode: boolean;
-  fragment: MagicTextFragmentText;
+export type MagicTextTextSegmentRenderContext = {
+  node: Extract<MagicTextAstNode, { type: 'text' }>;
+  segment: TextSegment;
+  index: number;
 };
 
 /** @public */
-export type MagicTextRenderLinkContext = Prettify<
-  MagicTextRenderTextContext & {
-    href: string;
-    title?: string;
-    ariaLabel?: string;
-    rel?: string;
-    target?: string;
-    link: NonNullable<MagicTextFragmentText['marks']['link']>;
-  }
->;
-
-/** @public */
-export interface MagicTextRenderCitationContext {
-  citation: { id: string; number: number | string; url?: string };
-  text: string;
-  state: MagicTextFragmentCitation['state'];
-  isStatic: boolean;
-  renderWhitespace: MagicTextHasWhitespace;
-  fragment: MagicTextFragmentCitation;
-}
+export type MagicTextCaretContext = {
+  node: MagicTextAstNode;
+  depth: number;
+};
 
 type $Implicit<T> = { $implicit: T };
 
-@Directive({ selector: 'ng-template[hbMagicTextRenderLink]' })
-export class MagicTextRenderLink {
-  constructor(readonly template: TemplateRef<MagicTextRenderLinkContext>) {}
+/** @public */
+@Directive({ selector: 'ng-template[hbMagicTextRenderNode]' })
+export class MagicTextRenderNode {
+  nodeType = input.required<MagicTextNodeTemplateType>();
+
+  constructor(readonly template: TemplateRef<MagicTextNodeRenderContext>) {}
 
   static ngTemplateContextGuard(
-    dir: MagicTextRenderLink,
+    dir: MagicTextRenderNode,
     context: unknown,
-  ): context is $Implicit<MagicTextRenderLinkContext> {
-    return true;
-  }
-}
-
-@Directive({ selector: 'ng-template[hbMagicTextRenderText]' })
-export class MagicTextRenderText {
-  constructor(readonly template: TemplateRef<MagicTextRenderTextContext>) {}
-
-  static ngTemplateContextGuard(
-    dir: MagicTextRenderText,
-    context: unknown,
-  ): context is $Implicit<MagicTextRenderTextContext> {
+  ): context is $Implicit<MagicTextNodeRenderContext> {
     return true;
   }
 }
 
 /** @public */
-@Directive({ selector: 'ng-template[hbMagicTextRenderCitation]' })
-export class MagicTextRenderCitation {
-  constructor(readonly template: TemplateRef<MagicTextRenderCitationContext>) {}
+@Directive({ selector: 'ng-template[hbMagicTextRenderTextSegment]' })
+export class MagicTextRenderTextSegment {
+  constructor(
+    readonly template: TemplateRef<MagicTextTextSegmentRenderContext>,
+  ) {}
 
   static ngTemplateContextGuard(
-    dir: MagicTextRenderCitation,
+    dir: MagicTextRenderTextSegment,
     context: unknown,
-  ): context is $Implicit<MagicTextRenderCitationContext> {
+  ): context is $Implicit<MagicTextTextSegmentRenderContext> {
     return true;
   }
 }
 
 /** @public */
-@Directive({ selector: 'ng-template[hbMagicTextRenderWhitespace]' })
-export class MagicTextRenderWhitespace {
-  constructor(readonly template: TemplateRef<MagicTextWhitespaceContext>) {}
+@Directive({ selector: 'ng-template[hbMagicTextRenderCaret]' })
+export class MagicTextRenderCaret {
+  constructor(readonly template: TemplateRef<MagicTextCaretContext>) {}
 
   static ngTemplateContextGuard(
-    dir: MagicTextRenderWhitespace,
+    dir: MagicTextRenderCaret,
     context: unknown,
-  ): context is $Implicit<MagicTextWhitespaceContext> {
+  ): context is $Implicit<MagicTextCaretContext> {
     return true;
   }
 }
@@ -141,363 +119,846 @@ export class MagicTextRenderWhitespace {
   selector: 'hb-magic-text',
   imports: [NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
   template: `
-    <ng-template
-      #defaultWhitespace
-      let-fragment="fragment"
-      let-position="position"
-      let-render="render"
-    >
-      @if (render) {
-        <span
-          class="hb-space"
-          [class.hb-space--before]="position === 'before'"
-          [class.hb-space--after]="position === 'after'"
-          aria-hidden="true"
-          >{{ ' ' }}</span
-        >
-      }
-    </ng-template>
-
-    <ng-template #defaultText let-node="node">
-      <span
-        class="hb-text"
-        [class.hb-text--code]="node.isCode"
-        [class.hb-text--strong]="node.tags.includes('strong')"
-        [class.hb-text--em]="node.tags.includes('em')"
-        [attr.data-fragment-state]="node.state"
-        animate.enter="hb-text--enter"
-        >{{ node.text }}</span
-      >
-    </ng-template>
-
-    <ng-template #defaultLink let-node="node">
-      <a
-        class="hb-link"
-        [attr.href]="node.href"
-        [attr.title]="node.title || null"
-        [attr.aria-label]="node.ariaLabel || null"
-        [attr.rel]="node.rel || defaultLinkRel()"
-        [attr.target]="node.target || defaultLinkTarget()"
-        data-fragment-kind="text"
-        [attr.data-fragment-state]="node.state"
-        animate.enter="hb-text--enter"
-        (click)="handleLinkClick($event, node.fragment)"
-      >
-        <ng-container
-          *ngTemplateOutlet="
-            textTemplate()?.template ?? defaultText;
-            context: templateContext(toTextNode(node.fragment))
-          "
-        />
-      </a>
-    </ng-template>
-
-    <ng-template #defaultCitation let-node="node">
-      <span animate.enter="hb-text--enter">
-        @if (node.citation.url) {
-          <a
-            class="hb-citation"
-            role="doc-noteref"
-            [attr.href]="node.citation.url"
-            [attr.rel]="defaultLinkRel()"
-            [attr.target]="defaultLinkTarget()"
-            data-fragment-kind="citation"
-            [attr.data-fragment-state]="node.state"
-            (click)="handleCitationClick($event, node)"
-            >{{ node.text }}</a
-          >
-        } @else {
-          <button
-            type="button"
-            class="hb-citation hb-citation-placeholder"
-            role="doc-noteref"
-            data-fragment-kind="citation"
-            [attr.data-fragment-state]="node.state"
-            (click)="handleCitationClick($event, node)"
-          >
-            {{ node.text }}
-          </button>
-        }
-      </span>
-    </ng-template>
-
-    @for (fragment of fragments(); track fragment.key; let i = $index) {
-      <ng-container
-        *ngTemplateOutlet="
-          whitespaceTemplate()?.template ?? defaultWhitespace;
-          context: whitespaceContext(fragment, 'before', i)
-        "
-      />
-
-      <span
-        class="hb-fragment"
-        [attr.data-fragment-kind]="fragment.type"
-        [attr.data-fragment-state]="fragment.state"
-        animate.enter="hb-text--enter"
-      >
-        @if (fragment.type === 'text') {
-          @if (fragment.marks.link) {
-            <ng-container
-              *ngTemplateOutlet="
-                linkTemplate()?.template ?? defaultLink;
-                context: templateContext(toLinkNode(fragment))
-              "
-            />
-          } @else {
-            <ng-container
-              *ngTemplateOutlet="
-                textTemplate()?.template ?? defaultText;
-                context: templateContext(toTextNode(fragment))
-              "
-            />
-          }
-        } @else {
+    <ng-template #nodeTemplateRef let-node="node">
+      @if (node) {
+        @if (getNodeTemplate(node.type); as customNodeTemplate) {
           <ng-container
             *ngTemplateOutlet="
-              citationTemplate()?.template ?? defaultCitation;
-              context: templateContext(toCitationNode(fragment))
+              customNodeTemplate;
+              context: getNodeRenderContext(node)
             "
           />
+        } @else if (getNodeTemplate('node'); as fallbackNodeTemplate) {
+          <ng-container
+            *ngTemplateOutlet="
+              fallbackNodeTemplate;
+              context: getNodeRenderContext(node)
+            "
+          />
+        } @else {
+          @switch (node.type) {
+            @case ('document') {
+              @for (childId of getChildren(node); track childId) {
+                <ng-container
+                  *ngTemplateOutlet="
+                    nodeTemplateRef;
+                    context: { node: getNodeById(childId) }
+                  "
+                />
+              }
+
+              <ng-container
+                *ngTemplateOutlet="
+                  resolveCaretTemplate(defaultCaretTemplate);
+                  context: getCaretContext(node)
+                "
+              />
+            }
+
+            @case ('paragraph') {
+              <p
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </p>
+            }
+
+            @case ('heading') {
+              @switch (node.level) {
+                @case (1) {
+                  <h1
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
+                  >
+                    @for (childId of getChildren(node); track childId) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          nodeTemplateRef;
+                          context: { node: getNodeById(childId) }
+                        "
+                      />
+                    }
+
+                    <ng-container
+                      *ngTemplateOutlet="
+                        resolveCaretTemplate(defaultCaretTemplate);
+                        context: getCaretContext(node)
+                      "
+                    />
+                  </h1>
+                }
+                @case (2) {
+                  <h2
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
+                  >
+                    @for (childId of getChildren(node); track childId) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          nodeTemplateRef;
+                          context: { node: getNodeById(childId) }
+                        "
+                      />
+                    }
+
+                    <ng-container
+                      *ngTemplateOutlet="
+                        resolveCaretTemplate(defaultCaretTemplate);
+                        context: getCaretContext(node)
+                      "
+                    />
+                  </h2>
+                }
+                @case (3) {
+                  <h3
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
+                  >
+                    @for (childId of getChildren(node); track childId) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          nodeTemplateRef;
+                          context: { node: getNodeById(childId) }
+                        "
+                      />
+                    }
+
+                    <ng-container
+                      *ngTemplateOutlet="
+                        resolveCaretTemplate(defaultCaretTemplate);
+                        context: getCaretContext(node)
+                      "
+                    />
+                  </h3>
+                }
+                @case (4) {
+                  <h4
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
+                  >
+                    @for (childId of getChildren(node); track childId) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          nodeTemplateRef;
+                          context: { node: getNodeById(childId) }
+                        "
+                      />
+                    }
+
+                    <ng-container
+                      *ngTemplateOutlet="
+                        resolveCaretTemplate(defaultCaretTemplate);
+                        context: getCaretContext(node)
+                      "
+                    />
+                  </h4>
+                }
+                @case (5) {
+                  <h5
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
+                  >
+                    @for (childId of getChildren(node); track childId) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          nodeTemplateRef;
+                          context: { node: getNodeById(childId) }
+                        "
+                      />
+                    }
+
+                    <ng-container
+                      *ngTemplateOutlet="
+                        resolveCaretTemplate(defaultCaretTemplate);
+                        context: getCaretContext(node)
+                      "
+                    />
+                  </h5>
+                }
+                @default {
+                  <h6
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
+                  >
+                    @for (childId of getChildren(node); track childId) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          nodeTemplateRef;
+                          context: { node: getNodeById(childId) }
+                        "
+                      />
+                    }
+
+                    <ng-container
+                      *ngTemplateOutlet="
+                        resolveCaretTemplate(defaultCaretTemplate);
+                        context: getCaretContext(node)
+                      "
+                    />
+                  </h6>
+                }
+              }
+            }
+
+            @case ('blockquote') {
+              <blockquote
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </blockquote>
+            }
+
+            @case ('list') {
+              @if (node.ordered) {
+                <ol
+                  [attr.start]="node.start ?? null"
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                  [attr.data-list-tight]="node.tight"
+                >
+                  @for (childId of getChildren(node); track childId) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        nodeTemplateRef;
+                        context: { node: getNodeById(childId) }
+                      "
+                    />
+                  }
+
+                  <ng-container
+                    *ngTemplateOutlet="
+                      resolveCaretTemplate(defaultCaretTemplate);
+                      context: getCaretContext(node)
+                    "
+                  />
+                </ol>
+              } @else {
+                <ul
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                  [attr.data-list-tight]="node.tight"
+                >
+                  @for (childId of getChildren(node); track childId) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        nodeTemplateRef;
+                        context: { node: getNodeById(childId) }
+                      "
+                    />
+                  }
+
+                  <ng-container
+                    *ngTemplateOutlet="
+                      resolveCaretTemplate(defaultCaretTemplate);
+                      context: getCaretContext(node)
+                    "
+                  />
+                </ul>
+              }
+            }
+
+            @case ('list-item') {
+              <li
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </li>
+            }
+
+            @case ('table') {
+              <table
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                <tbody>
+                  @for (childId of getChildren(node); track childId) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        nodeTemplateRef;
+                        context: { node: getNodeById(childId) }
+                      "
+                    />
+                  }
+
+                  <ng-container
+                    *ngTemplateOutlet="
+                      resolveCaretTemplate(defaultCaretTemplate);
+                      context: getCaretContext(node)
+                    "
+                  />
+                </tbody>
+              </table>
+            }
+
+            @case ('table-row') {
+              <tr
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </tr>
+            }
+
+            @case ('table-cell') {
+              @if (isTableHeaderCell(node)) {
+                <th
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                >
+                  @for (childId of getChildren(node); track childId) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        nodeTemplateRef;
+                        context: { node: getNodeById(childId) }
+                      "
+                    />
+                  }
+
+                  <ng-container
+                    *ngTemplateOutlet="
+                      resolveCaretTemplate(defaultCaretTemplate);
+                      context: getCaretContext(node)
+                    "
+                  />
+                </th>
+              } @else {
+                <td
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                >
+                  @for (childId of getChildren(node); track childId) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        nodeTemplateRef;
+                        context: { node: getNodeById(childId) }
+                      "
+                    />
+                  }
+
+                  <ng-container
+                    *ngTemplateOutlet="
+                      resolveCaretTemplate(defaultCaretTemplate);
+                      context: getCaretContext(node)
+                    "
+                  />
+                </td>
+              }
+            }
+
+            @case ('em') {
+              <em
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </em>
+            }
+
+            @case ('strong') {
+              <strong
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </strong>
+            }
+
+            @case ('strikethrough') {
+              <s
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </s>
+            }
+
+            @case ('link') {
+              <a
+                [attr.href]="node.url"
+                [attr.title]="node.title ?? null"
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+                (click)="handleLinkClick($event, node, node.url)"
+              >
+                @for (childId of getChildren(node); track childId) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      nodeTemplateRef;
+                      context: { node: getNodeById(childId) }
+                    "
+                  />
+                }
+
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </a>
+            }
+
+            @case ('code-block') {
+              <pre
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                <code [attr.data-code-info]="node.info ?? null">
+                  {{ node.text }}
+                  <ng-container
+                    *ngTemplateOutlet="
+                      resolveCaretTemplate(defaultCaretTemplate);
+                      context: getCaretContext(node)
+                    "
+                  />
+                </code>
+              </pre>
+            }
+
+            @case ('thematic-break') {
+              <hr
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              />
+            }
+
+            @case ('text') {
+              @if (node.text.length && node.segments.length) {
+                @for (
+                  segment of node.segments;
+                  track segment.start + ':' + segment.kind
+                ) {
+                  @if (textSegmentTemplate(); as textSegmentTpl) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        textSegmentTpl;
+                        context: {
+                          node: node,
+                          segment: segment,
+                          index: $index,
+                        }
+                      "
+                    />
+                  } @else {
+                    <span
+                      class="hb-magic-text-segment"
+                      [attr.data-magic-text-segment-kind]="segment.kind"
+                      [attr.data-magic-text-whitespace]="segment.isWhitespace"
+                      >{{ segment.text }}</span
+                    >
+                  }
+                }
+              } @else if (node.text.length) {
+                <span
+                  class="hb-magic-text-segment"
+                  data-magic-text-segment-kind="full"
+                  data-magic-text-whitespace="false"
+                  >{{ node.text }}</span
+                >
+              }
+            }
+
+            @case ('inline-code') {
+              <code
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+                >{{ node.text }}</code
+              >
+            }
+
+            @case ('soft-break') {
+              {{
+                '
+'
+              }}
+            }
+
+            @case ('hard-break') {
+              <br
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              />
+            }
+
+            @case ('image') {
+              <img
+                [attr.src]="node.url"
+                [attr.alt]="node.alt"
+                [attr.title]="node.title ?? null"
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              />
+            }
+
+            @case ('autolink') {
+              <a
+                [attr.href]="node.url"
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+                (click)="handleLinkClick($event, node, node.url)"
+                >{{ node.text }}</a
+              >
+            }
+
+            @case ('citation') {
+              @if (getCitation(node).url; as citationUrl) {
+                <sup
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                >
+                  <a
+                    [attr.href]="citationUrl"
+                    role="doc-noteref"
+                    (click)="handleCitationClick($event, node)"
+                    >[{{ getCitation(node).number }}]</a
+                  >
+                </sup>
+              } @else {
+                <sup
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                >
+                  <button
+                    type="button"
+                    role="doc-noteref"
+                    (click)="handleCitationClick($event, node)"
+                  >
+                    [{{ getCitation(node).number }}]
+                  </button>
+                </sup>
+              }
+            }
+          }
         }
-      </span>
+      }
+    </ng-template>
 
-      <ng-container
-        *ngTemplateOutlet="
-          whitespaceTemplate()?.template ?? defaultWhitespace;
-          context: whitespaceContext(fragment, 'after', i)
-        "
-      />
-    }
+    <ng-template #defaultCaretTemplate let-node="node">
+      @if (shouldRenderCaret(node.id)) {
+        <span
+          aria-hidden="true"
+          class="hb-magic-text-caret"
+          data-magic-text-caret
+        ></span>
+      }
+    </ng-template>
+
+    <div class="hb-magic-text-root" [class]="className()" data-magic-text-root>
+      @if (rootNode(); as root) {
+        <ng-container
+          *ngTemplateOutlet="nodeTemplateRef; context: { node: root }"
+        />
+      }
+    </div>
   `,
-  encapsulation: ViewEncapsulation.None,
   styles: `
-    .hb-text--code {
-      font-family: monospace;
-    }
-
-    .hb-text--strong {
-      font-weight: bold;
-    }
-
-    .hb-text--em {
-      font-style: italic;
-    }
-
-    .hb-text--enter {
-      animation: enter 350ms ease-in-out;
-    }
-
-    @keyframes enter {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
+    .hb-magic-text-caret {
+      display: inline-block;
+      width: 0.48em;
+      height: 0.48em;
+      margin-inline-start: 0.08em;
+      vertical-align: -0.08em;
+      border-radius: 999px;
+      background-color: currentColor;
+      opacity: 0.55;
     }
   `,
 })
 export class MagicText {
-  readonly text = input.required<string>();
-  readonly defaultLinkTarget = input('_blank');
-  readonly defaultLinkRel = input('noopener noreferrer');
-  readonly citations = input<MagicTextCitation[] | undefined>();
+  /**
+   * Full markdown text, usually increasing over time.
+   */
+  readonly text: InputSignal<string> = input.required<string>();
 
+  /**
+   * Finalization flag for the current text.
+   */
+  readonly isComplete: InputSignal<boolean> = input(false);
+
+  /**
+   * Optional parser configuration overrides.
+   */
+  readonly options = input<Partial<MagicTextParserOptions> | undefined>(
+    undefined,
+  );
+
+  /**
+   * Caret visibility for streaming content.
+   */
+  readonly caret = input<boolean | TemplateRef<MagicTextCaretContext>>(true);
+
+  /**
+   * Optional root CSS class.
+   */
+  readonly className = input<string | undefined>(undefined);
+
+  /**
+   * Emitted when links or autolinks are clicked.
+   */
   readonly linkClick = output<MagicTextLinkClickEvent>();
+
+  /**
+   * Emitted when citation anchors are clicked.
+   */
   readonly citationClick = output<MagicTextCitationClickEvent>();
 
-  readonly linkTemplate = contentChild(MagicTextRenderLink);
-  readonly textTemplate = contentChild(MagicTextRenderText);
-  readonly citationTemplate = contentChild(MagicTextRenderCitation);
-  readonly whitespaceTemplate = contentChild(MagicTextRenderWhitespace);
+  readonly nodeTemplates = contentChildren(MagicTextRenderNode);
+  readonly textSegmentTemplateDirective = contentChild(
+    MagicTextRenderTextSegment,
+  );
+  readonly caretTemplateDirective = contentChild(MagicTextRenderCaret);
 
-  protected fragments = computed(() => {
-    const fragments = prepareMagicText(this.text()).fragments;
-    return fragments.map((fragment, index, all) => {
-      if (fragment.type !== 'text') {
-        return fragment;
-      }
+  private readonly parser = injectMagicTextParser(
+    computed(() => this.text() ?? ''),
+    computed(() => this.isComplete()),
+    computed(() => this.options()),
+  );
 
-      const next = all[index + 1];
-      const prev = all[index - 1];
+  protected readonly parserState = this.parser.parserState;
+  protected readonly nodeById = this.parser.nodeById;
+  protected readonly rootNode = this.parser.rootNode;
 
-      // Keep natural spacing, but strip edge spaces that would create gaps
-      // around tight footnote citations.
-      let text = fragment.text.replace(/[\u00a0\u202f]/g, ' ');
-      if (next?.type === 'citation') {
-        text = text.replace(/\s+$/, '');
-      }
-      if (prev?.type === 'citation') {
-        text = text.replace(/^\s+/, '');
-      }
-
-      return { ...fragment, text };
-    });
+  protected readonly openNodeId = computed(() => {
+    const stack = this.parserState().stack;
+    return stack.length ? stack[stack.length - 1] : null;
   });
 
-  protected citationLookup = computed(() => {
-    const map = new Map<string, string>();
-    for (const citation of this.citations() ?? []) {
-      if (!citation) {
-        continue;
-      }
-      const key = citation.id?.trim?.() ?? '';
-      const url = citation.url?.trim?.() ?? '';
-      if (key && url) {
-        map.set(key, url);
-      }
+  protected readonly openNodeDepthById = computed(() => {
+    const stack = this.parserState().stack;
+    const map = new Map<number, number>();
+
+    for (let index = 0; index < stack.length; index += 1) {
+      map.set(stack[index], index);
     }
+
     return map;
   });
 
-  protected whitespaceContext(
-    fragment: MagicTextFragment,
-    position: MagicTextWhitespacePosition,
-    index: number,
-  ) {
-    const fragments = this.fragments();
-    const previous = fragments[index - 1];
+  protected readonly nodeTemplateMap = computed(() => {
+    const map = new Map<
+      MagicTextNodeTemplateType,
+      TemplateRef<MagicTextNodeRenderContext>
+    >();
 
-    let render =
-      position === 'before'
-        ? fragment.renderWhitespace.before
-        : fragment.renderWhitespace.after;
-
-    if (position === 'before' && index === 0) {
-      render = false;
+    for (const nodeTemplate of this.nodeTemplates()) {
+      map.set(nodeTemplate.nodeType(), nodeTemplate.template);
     }
 
-    const next = fragments[index + 1];
-    const hasLeadingWhitespace = (frag: MagicTextFragment | undefined) =>
-      frag?.type === 'text' && /^\s/.test(frag.text);
-    const hasTrailingWhitespace = (frag: MagicTextFragment | undefined) =>
-      frag?.type === 'text' && /\s$/.test(frag.text);
+    return map;
+  });
 
-    if (position === 'before') {
-      // If the surrounding fragments already carry whitespace in their text,
-      // avoid rendering an extra spacer node.
-      const hasWhitespaceInText =
-        hasTrailingWhitespace(previous) || hasLeadingWhitespace(fragment);
-      render = render && !hasWhitespaceInText;
-    }
+  protected readonly textSegmentTemplate = computed(
+    () => this.textSegmentTemplateDirective()?.template,
+  );
 
-    if (position === 'after') {
-      const hasWhitespaceInText =
-        hasTrailingWhitespace(fragment) || hasLeadingWhitespace(next);
-      render = render && !hasWhitespaceInText;
-    }
+  protected readonly caretTemplateFromContent = computed(
+    () => this.caretTemplateDirective()?.template,
+  );
 
-    if (position === 'before' && fragment.type === 'citation') {
-      render = false;
-    }
-
-    // Footnote-style citations should sit tight against the preceding text.
-    if (position === 'after' && next?.type === 'citation') {
-      render = false;
-    }
-
-    const startsTight = (frag: MagicTextFragment | undefined): boolean =>
-      frag?.type === 'text' && /^[,.;:!?|\)\]]/.test(frag.text.trim());
-
-    const endsWithNoGap = (frag: MagicTextFragment | undefined): boolean =>
-      frag?.type === 'text' && /([\(\|])$/.test(frag.text.trim());
-
-    if (position === 'before' && startsTight(fragment)) {
-      render = false;
-    }
-
-    if (position === 'after' && startsTight(next)) {
-      render = false;
-    }
-
-    if (position === 'after' && endsWithNoGap(fragment)) {
-      render = false;
-    }
-
-    return {
-      $implicit: { position, render, fragment },
-      position,
-      render,
-      fragment,
-      index,
-    } satisfies Record<string, unknown>;
+  protected getNodeTemplate(type: MagicTextNodeTemplateType) {
+    return this.nodeTemplateMap().get(type);
   }
 
-  protected templateContext<T>(node: T): $Implicit<T> & { node: T } {
-    return { $implicit: node, node };
+  protected getNodeById(nodeId: number): MagicTextAstNode | null {
+    return this.nodeById().get(nodeId) ?? null;
   }
 
-  protected toTextNode(
-    fragment: MagicTextFragmentText,
-  ): MagicTextRenderTextContext {
-    const text = this.normalizeFragmentText(fragment);
+  protected getChildren(node: MagicTextAstNode): readonly number[] {
+    return 'children' in node ? node.children : [];
+  }
+
+  protected isNodeOpen(node: MagicTextAstNode): boolean {
+    return !node.closed;
+  }
+
+  protected getNodeRenderContext(
+    node: MagicTextAstNode,
+  ): MagicTextNodeRenderContext {
     return {
-      text,
-      tags: fragment.tags,
-      state: fragment.state,
-      isStatic: fragment.isStatic,
-      renderWhitespace: fragment.renderWhitespace,
-      isCode: fragment.isCode,
-      fragment,
+      node,
+      isOpen: !node.closed,
+      isComplete: this.parserState().isComplete,
+      renderChildren: () =>
+        this.getChildren(node)
+          .map((childId) => this.getNodeById(childId))
+          .filter((child): child is MagicTextAstNode => child !== null),
     };
   }
 
-  protected normalizeFragmentText(fragment: MagicTextFragmentText): string {
-    // Normalize only non-breaking spaces; keep the original whitespace intact
-    // so we don't double-insert gaps alongside rendered spacer nodes.
-    return fragment.text.replace(/[\u00a0\u202f]/g, ' ');
-  }
-
-  protected toLinkNode(
-    fragment: MagicTextFragmentText,
-  ): MagicTextRenderLinkContext {
-    const link = fragment.marks.link;
-    if (!link) {
-      throw new Error('Link fragment is missing link metadata.');
+  protected isTableHeaderCell(
+    node: Extract<MagicTextAstNode, { type: 'table-cell' }>,
+  ): boolean {
+    if (node.parentId == null) {
+      return false;
     }
+
+    const parent = this.getNodeById(node.parentId);
+    return parent?.type === 'table-row' && parent.isHeader;
+  }
+
+  protected shouldRenderCaret(nodeId: number): boolean {
+    if (this.parserState().isComplete) {
+      return false;
+    }
+
+    const caret = this.caret();
+    if (caret === false) {
+      return false;
+    }
+
+    return this.openNodeId() === nodeId;
+  }
+
+  protected getCaretContext(node: MagicTextAstNode): MagicTextCaretContext {
     return {
-      ...this.toTextNode(fragment),
-      href: link.href,
-      title: link.title,
-      ariaLabel: link.ariaLabel,
-      rel: link.rel,
-      target: link.target,
-      link,
+      node,
+      depth: this.openNodeDepthById().get(node.id) ?? -1,
     };
   }
 
-  protected toCitationNode(
-    fragment: MagicTextFragmentCitation,
-  ): MagicTextRenderCitationContext {
-    const url = this.citationLookup().get(String(fragment.citation.id));
-    const text = fragment.text.trim();
-    return {
-      citation: { ...fragment.citation, url },
-      text,
-      state: fragment.state,
-      isStatic: fragment.isStatic,
-      renderWhitespace: fragment.renderWhitespace,
-      fragment,
-    };
+  protected resolveCaretTemplate(
+    defaultTemplate: TemplateRef<MagicTextCaretContext>,
+  ): TemplateRef<MagicTextCaretContext> {
+    const caret = this.caret();
+    if (caret instanceof TemplateRef) {
+      return caret;
+    }
+
+    return this.caretTemplateFromContent() ?? defaultTemplate;
   }
 
   protected handleLinkClick(
-    event: MouseEvent,
-    fragment: MagicTextFragmentText,
-  ) {
-    const href = fragment.marks.link?.href ?? '';
-    this.linkClick.emit({ mouseEvent: event, href, fragment });
+    mouseEvent: MouseEvent,
+    node: MagicTextLinkNode | MagicTextAutolinkNode,
+    url: string,
+  ): void {
+    this.linkClick.emit({ mouseEvent, url, node });
+  }
+
+  protected getCitation(node: MagicTextCitationNode): CitationRenderData {
+    const citations = this.parserState().citations;
+    const number = node.number ?? citations.numbers[node.idRef] ?? node.idRef;
+    const definition = citations.definitions[node.idRef];
+
+    return {
+      id: node.idRef,
+      number,
+      text: definition?.text,
+      url: definition?.url,
+    };
   }
 
   protected handleCitationClick(
-    event: MouseEvent,
-    context: MagicTextRenderCitationContext,
-  ) {
+    mouseEvent: MouseEvent,
+    node: MagicTextCitationNode,
+  ): void {
     this.citationClick.emit({
-      mouseEvent: event,
-      citation: { id: context.citation.id, url: context.citation.url },
-      fragment: context.fragment,
+      mouseEvent,
+      citation: this.getCitation(node),
+      node,
     });
   }
 }

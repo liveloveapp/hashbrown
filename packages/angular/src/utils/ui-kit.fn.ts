@@ -62,6 +62,7 @@ export function createUiKit<T extends ExposedComponent<any>>(
         props: component.props ?? {},
         component: component.component as any,
         fallback: component.fallback as any,
+        providers: component.providers,
       };
       return acc;
     },
