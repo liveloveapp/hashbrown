@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createElement, ReactElement, ReactNode } from 'react';
+import { createElement, ReactElement } from 'react';
 import { type ComponentNode } from '@hashbrownai/core';
 import { ExposedComponent } from '../expose-component.fn';
 
@@ -55,17 +55,17 @@ export function renderUiNodes(
       return acc;
     }
 
-    const children: ReactNode[] | string | null = node?.children
-      ? renderUiNodes(node.children, registry, key)
-      : null;
+    const propsWithChildren: Record<string, unknown> = {
+      ...propsNode.value,
+      key,
+    };
 
-    acc.push(
-      createElement(component.component, {
-        ...propsNode.value,
-        children,
-        key,
-      }),
-    );
+    // Preserve props.value.children when the node does not provide structural children.
+    if (node?.children !== undefined) {
+      propsWithChildren.children = renderUiNodes(node.children, registry, key);
+    }
+
+    acc.push(createElement(component.component, propsWithChildren));
     return acc;
   }, []);
 }
