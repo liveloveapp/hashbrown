@@ -72,10 +72,16 @@ export function parseInline(
     const current = text[i];
 
     if (current === '\n') {
+      const trailingBackslashes = countTrailing(text, i - 1, '\\');
+      const hardByBackslash = trailingBackslashes % 2 === 1;
+      const hardBySpaces = i > 1 && text.slice(i - 2, i) === '  ';
+      const hard = hardByBackslash || hardBySpaces;
+
+      if (hardByBackslash && textBuffer.endsWith('\\')) {
+        textBuffer = textBuffer.slice(0, -1);
+      }
+
       flushTextBuffer();
-      const before = i > 0 ? text[i - 1] : '';
-      const before2 = i > 1 ? text.slice(i - 2, i) : '';
-      const hard = before === '\\' || before2 === '  ';
 
       nodes.push({
         path: `${path}.${nodes.length}`,
@@ -272,6 +278,18 @@ export function parseInline(
     warnings,
     hasWarnedSegmenterUnavailable,
   };
+}
+
+function countTrailing(text: string, index: number, value: string): number {
+  let run = 0;
+  let i = index;
+
+  while (i >= 0 && text[i] === value) {
+    run += 1;
+    i -= 1;
+  }
+
+  return run;
 }
 
 function appendText(

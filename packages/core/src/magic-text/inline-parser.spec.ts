@@ -55,6 +55,39 @@ test('emits hard and soft breaks based on markdown rules', () => {
   ]);
 });
 
+test('consumes an unescaped backslash marker before a hard break', () => {
+  const context = createContext();
+
+  const result = parseInline('line\\\nnext', 0, '0.0', context);
+  const nodes = result.value;
+  const text = nodes
+    .filter((node) => node.type === 'text')
+    .map((node) => (node.type === 'text' ? node.props['text'] : ''))
+    .join('');
+  const breaks = nodes.filter(
+    (node) => node.type === 'soft-break' || node.type === 'hard-break',
+  );
+
+  expect(text).toBe('linenext');
+  expect(breaks.map((node) => node.type)).toEqual(['hard-break']);
+});
+
+test('does not treat escaped backslash before newline as a hard break marker', () => {
+  const context = createContext();
+
+  const result = parseInline('line\\\\\nnext', 0, '0.0', context);
+  const breaks = result.value.filter(
+    (node) => node.type === 'soft-break' || node.type === 'hard-break',
+  );
+  const text = result.value
+    .filter((node) => node.type === 'text')
+    .map((node) => (node.type === 'text' ? node.props['text'] : ''))
+    .join('');
+
+  expect(breaks.map((node) => node.type)).toEqual(['soft-break']);
+  expect(text).toBe('line\\next');
+});
+
 test('supports escaped punctuation and does not keep the backslash', () => {
   const context = createContext();
 
