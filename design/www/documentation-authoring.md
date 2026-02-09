@@ -53,8 +53,8 @@ Docs are rendered via Analog content with Markdown renderer enabled in:
 
 A custom extension rewrites tokens like this:
 
-- `@hashbrownai/react!useChat:function`
-- `@hashbrownai/angular!chatResource:function`
+- @hashbrownai/react!useChat:function
+- @hashbrownai/angular!chatResource:function
 
 into clickable symbol links (`hb-markdown-symbol-link`).
 
@@ -183,6 +183,31 @@ Current tooling and content emphasize these preferred terms:
 - Generative UI
 - Exposing Components
 - Skillet Schema
+
+## Public Docs Content Rules
+
+### Avoid repository file-path references in docs prose
+
+For public-facing docs pages, do not reference local repository paths (for example `packages/...` or `design/...`) as if end users can navigate them from the website.
+
+Use one of these instead:
+
+- Canonical API symbol links (for example @hashbrownai/angular!exposeMarkdown:function)
+- Normal docs-site links under `/docs/...` or `/api/...`
+- Plain conceptual references (for example "the Magic Text parser design doc in the Hashbrown repository") when a public URL is not available in-site
+
+### Canonical symbol formatting
+
+Canonical symbol references should be plain inline text, not wrapped in Markdown backticks.
+
+- Wrong: `` `@hashbrownai/angular!exposeMarkdown:function` ``
+- Right: @hashbrownai/angular!exposeMarkdown:function
+
+Reason: backticks suppress the docs renderer's canonical-symbol link transformation.
+
+Exception:
+
+- Local repository paths are fine in internal design docs under `design/**`, where the audience is maintainers, not external docs readers.
 
 (Also reflected in review tooling in `www/analog/src/tools/review-docs.ts`.)
 

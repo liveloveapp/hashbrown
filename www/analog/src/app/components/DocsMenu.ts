@@ -255,6 +255,14 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'recipes', 'magic-text']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Magic Text</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'recipes', 'local-models']"
             routerLinkActive="active"
             wwwSquircle="8"
