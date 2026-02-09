@@ -47,14 +47,20 @@ export type { ModelInput } from './transport/model-spec';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
 export {
-  prepareMagicText,
-  type MagicTextFragment,
-  type MagicTextFragmentText,
-  type MagicTextFragmentCitation,
-  type MagicTextResult,
-  type MagicTextHasWhitespace,
-  type MagicTextTag,
-} from './utils/magic-text';
+  createMagicTextParserState,
+  finalizeMagicText,
+  parseMagicTextChunk,
+  type CitationDefinition,
+  type CitationState,
+  type MagicTextAstNode,
+  type MagicTextNodeType,
+  type MagicTextParserOptions,
+  type MagicTextParserState,
+  type MagicTextWarning,
+  type ParseMode,
+  type SegmenterOptions,
+  type TextSegment,
+} from './magic-text';
 export {
   mergeToolCalls,
   updateAssistantMessage,
