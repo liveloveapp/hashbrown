@@ -108,6 +108,7 @@ export function parseInline(
       path,
       citations,
       nodes.length,
+      context.isComplete,
     );
     if (citation) {
       flushTextBuffer();
@@ -445,34 +446,57 @@ function parseCitationInline(
   path: string,
   citations: CitationState,
   index: number,
+  isComplete: boolean,
 ): { node: DraftNode; next: number; citations: CitationState } | null {
   if (!text.startsWith('[^', at)) {
     return null;
   }
 
   const close = text.indexOf(']', at + 2);
-  if (close < 0) {
+  if (close >= 0) {
+    const idRef = text.slice(at + 2, close).trim();
+    if (!idRef) {
+      return null;
+    }
+
+    const numbered = assignCitationNumber(citations, idRef);
+
+    return {
+      node: {
+        path: `${path}.${index}`,
+        type: 'citation',
+        range: { start: start + at, end: start + close + 1 },
+        closed: true,
+        props: { idRef, number: numbered.number },
+        children: [],
+      },
+      next: close + 1,
+      citations: numbered.citations,
+    };
+  }
+
+  if (isComplete) {
     return null;
   }
 
-  const idRef = text.slice(at + 2, close).trim();
-  if (!idRef) {
+  const partial = text.slice(at);
+  if (!/^\[\^[^\]\s]+$/u.test(partial)) {
     return null;
   }
 
-  const numbered = assignCitationNumber(citations, idRef);
+  const partialIdRef = partial.slice(2);
 
   return {
     node: {
       path: `${path}.${index}`,
       type: 'citation',
-      range: { start: start + at, end: start + close + 1 },
-      closed: true,
-      props: { idRef, number: numbered.number },
+      range: { start: start + at, end: start + text.length },
+      closed: false,
+      props: { idRef: partialIdRef },
       children: [],
     },
-    next: close + 1,
-    citations: numbered.citations,
+    next: text.length,
+    citations,
   };
 }
 

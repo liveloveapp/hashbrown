@@ -111,6 +111,39 @@ test('assigns citation numbers from inline references', () => {
   expect(result.citations.numbers).toEqual({ b: 1, a: 2 });
 });
 
+test('optimistically parses unfinished inline citation references while incomplete', () => {
+  const context = createContext();
+
+  const result = parseInline('Tail [^eater', 0, '0.0', context);
+  const citation = result.value.find((node) => node.type === 'citation');
+  const text = result.value
+    .filter((node) => node.type === 'text')
+    .map((node) => (node.type === 'text' ? node.props['text'] : ''))
+    .join('');
+
+  expect(citation?.type).toBe('citation');
+  expect(citation?.closed).toBe(false);
+  expect(citation?.type === 'citation' ? citation.props['idRef'] : '').toBe(
+    'eater',
+  );
+  expect(text).toContain('Tail ');
+  expect(text).not.toContain('[^eater');
+});
+
+test('does not optimistically parse unfinished inline citation references when complete', () => {
+  const context = createContext();
+  context.isComplete = true;
+
+  const result = parseInline('Tail [^eater', 0, '0.0', context);
+  const text = result.value
+    .filter((node) => node.type === 'text')
+    .map((node) => (node.type === 'text' ? node.props['text'] : ''))
+    .join('');
+
+  expect(result.value.some((node) => node.type === 'citation')).toBe(false);
+  expect(text).toContain('[^eater');
+});
+
 test('keeps unterminated inline constructs as optimistic open nodes', () => {
   const context = createContext();
 
