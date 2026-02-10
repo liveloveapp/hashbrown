@@ -75,6 +75,24 @@ test('creates one span per parsed text segment', () => {
   expect(segments[1]?.textContent).toBe('b');
 });
 
+test('prefixes word joiner before punctuation after citations', () => {
+  const fixture = renderMagicText({
+    text: 'Alpha[^a]; beta\n\n[^a]: Source https://hashbrown.dev',
+    isComplete: true,
+    options: { segmenter: { granularity: 'word' } },
+  });
+  const segments = Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll(
+      'span.hb-magic-text-segment',
+    ),
+  );
+  const punctuationSegment = segments.find((segment) =>
+    segment.textContent?.includes(';'),
+  );
+
+  expect(punctuationSegment?.textContent?.startsWith('\u2060;')).toBe(true);
+});
+
 test('preserves existing segment DOM identity across updates', () => {
   const fixture = renderMagicText({
     text: 'ab',
@@ -135,6 +153,21 @@ test('renders a caret while incomplete and hides it when complete', () => {
   expect(closedCaret).toBeNull();
 });
 
+test('does not render caret when only document root remains open', () => {
+  const fixture = renderMagicText({
+    text: 'Paragraph\n\n[^source',
+    options: { segmenter: false },
+    caret: true,
+  });
+
+  const host = fixture.nativeElement as HTMLElement;
+  const paragraph = host.querySelector('p[data-magic-text-node="paragraph"]');
+  const caret = host.querySelector('[data-magic-text-caret]');
+
+  expect(paragraph?.textContent).toBe('Paragraph');
+  expect(caret).toBeNull();
+});
+
 test('does not render caret when caret input is false', () => {
   const fixture = renderMagicText({
     text: 'streaming paragraph',
@@ -173,7 +206,7 @@ test('table header detection handles both header and non-header parents', () => 
   expect(bodyCell).toBe(false);
 });
 
-test('renders unresolved citations as buttons', () => {
+test('renders unresolved citations as plain superscript references', () => {
   const fixture = renderMagicText({
     text: 'Cite [^missing]',
     isComplete: true,
@@ -182,9 +215,9 @@ test('renders unresolved citations as buttons', () => {
 
   const unresolvedCitation = (
     fixture.nativeElement as HTMLElement
-  ).querySelector('sup button[role="doc-noteref"]');
+  ).querySelector('sup[role="doc-noteref"]');
 
-  expect(unresolvedCitation?.textContent?.trim()).toBe('[1]');
+  expect(unresolvedCitation?.textContent).toBe('[1]');
 });
 
 @Component({
