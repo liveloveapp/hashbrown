@@ -197,6 +197,34 @@ test('creates citation nodes and numbers by first reference', () => {
   });
 });
 
+test('marks punctuation segments after citations as no-break-before', () => {
+  const result = parseAll('Alpha[^a]; beta\n\n[^a]: Source');
+  const textNodes = result.nodes.filter(
+    (node): node is Extract<MagicTextAstNode, { type: 'text' }> =>
+      node.type === 'text',
+  );
+  const punctuationNode = textNodes.find((node) => node.text.startsWith(';'));
+  const firstSegment = punctuationNode?.segments[0];
+
+  expect(punctuationNode).toBeDefined();
+  expect(firstSegment?.text.startsWith(';')).toBe(true);
+  expect(firstSegment?.noBreakBefore).toBe(true);
+});
+
+test('marks CJK punctuation segments after citations as no-break-before', () => {
+  const result = parseAll('你好[^a]。世界\n\n[^a]: Source');
+  const textNodes = result.nodes.filter(
+    (node): node is Extract<MagicTextAstNode, { type: 'text' }> =>
+      node.type === 'text',
+  );
+  const punctuationNode = textNodes.find((node) => node.text.startsWith('。'));
+  const firstSegment = punctuationNode?.segments[0];
+
+  expect(punctuationNode).toBeDefined();
+  expect(firstSegment?.text.startsWith('。')).toBe(true);
+  expect(firstSegment?.noBreakBefore).toBe(true);
+});
+
 test('warns on duplicate citation definitions', () => {
   const result = parseAll('[^a]: one\n[^a]: two');
 

@@ -36,6 +36,46 @@ test('supports explicit locale and granularity options', () => {
   expect(result.segments.some((segment) => segment.kind === 'word')).toBe(true);
 });
 
+test('attaches trailing ASCII punctuation to the previous word segment', () => {
+  const result = createSegments('Hello world, how are you?', 0, {
+    segmenter: { locale: 'en', granularity: 'word' },
+    hasWarnedSegmenterUnavailable: false,
+  });
+
+  expect(result.segments.map((segment) => segment.text)).toEqual([
+    'Hello',
+    ' ',
+    'world,',
+    ' ',
+    'how',
+    ' ',
+    'are',
+    ' ',
+    'you?',
+  ]);
+});
+
+test('attaches opening punctuation to the following segment', () => {
+  const result = createSegments('(hello)', 0, {
+    segmenter: { locale: 'en', granularity: 'word' },
+    hasWarnedSegmenterUnavailable: false,
+  });
+
+  expect(result.segments.map((segment) => segment.text)).toEqual(['(hello)']);
+});
+
+test('attaches trailing CJK punctuation to the previous word segment', () => {
+  const result = createSegments('你好，世界。', 0, {
+    segmenter: { locale: 'zh', granularity: 'word' },
+    hasWarnedSegmenterUnavailable: false,
+  });
+
+  expect(result.segments.map((segment) => segment.text)).toEqual([
+    '你好，',
+    '世界。',
+  ]);
+});
+
 test('defaults object segmenter options to word granularity', () => {
   const result = createSegments('ab', 0, {
     segmenter: {},
