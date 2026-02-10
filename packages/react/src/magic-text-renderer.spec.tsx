@@ -22,7 +22,7 @@ test('MagicTextRenderer renders markdown blocks and citations from the AST', () 
   expect(heading?.textContent).toBe('Title');
   expect(listItems).toHaveLength(2);
   expect(citation?.getAttribute('href')).toBe('https://hashbrown.dev');
-  expect(citation?.textContent).toBe('[1]');
+  expect(citation?.textContent).toBe('1');
 });
 
 test('MagicTextRenderer creates one span per parsed text segment', () => {
@@ -78,7 +78,7 @@ test('MagicTextRenderer keeps unresolved citation punctuation glued', () => {
     (segment) => segment.textContent?.includes('.') ?? false,
   );
 
-  expect(unresolvedCitation?.textContent).toBe('[1]');
+  expect(unresolvedCitation?.textContent).toBe('1');
   expect(unresolvedCitationButton).toBeNull();
   expect(punctuationSegment?.textContent?.startsWith('\u2060.')).toBe(true);
 });
@@ -358,7 +358,7 @@ test('MagicTextRenderer renders unresolved citations without links', () => {
   const citationText = container.querySelector('sup')?.textContent;
 
   expect(citationLink).toBeNull();
-  expect(citationText).toBe('[1]');
+  expect(citationText).toBe('1');
 });
 
 test('MagicTextRenderer override receives and can reuse default node', () => {

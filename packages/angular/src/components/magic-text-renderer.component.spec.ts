@@ -57,7 +57,7 @@ test('renders markdown blocks and citations from the AST', () => {
   expect(heading?.textContent).toBe('Title');
   expect(listItems).toHaveLength(2);
   expect(citation?.getAttribute('href')).toBe('https://hashbrown.dev');
-  expect(citation?.textContent).toBe('[1]');
+  expect(citation?.textContent).toBe('1');
 });
 
 test('creates one span per parsed text segment', () => {
@@ -215,9 +215,9 @@ test('renders unresolved citations as plain superscript references', () => {
 
   const unresolvedCitation = (
     fixture.nativeElement as HTMLElement
-  ).querySelector('sup[role="doc-noteref"]');
+  ).querySelector('sup .hb-magic-text-citation-label[role="doc-noteref"]');
 
-  expect(unresolvedCitation?.textContent).toBe('[1]');
+  expect(unresolvedCitation?.textContent).toBe('1');
 });
 
 @Component({

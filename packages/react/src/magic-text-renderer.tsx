@@ -254,6 +254,67 @@ type MagicTextTextNode = Extract<MagicTextAstNode, { type: 'text' }>;
 type MagicTextCitationNode = Extract<MagicTextAstNode, { type: 'citation' }>;
 
 const WORD_JOINER = '\u2060';
+const DEFAULT_ROOT_CLASS = 'hb-magic-text-root';
+const DEFAULT_CITATION_CLASS = 'hb-magic-text-citation';
+const DEFAULT_CITATION_LABEL_CLASS = 'hb-magic-text-citation-label';
+const DEFAULT_STYLES = `
+  .${DEFAULT_ROOT_CLASS} .hb-magic-text-segment {
+    opacity: 1;
+    transition: opacity 180ms ease-out;
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_CLASS} {
+    vertical-align: baseline;
+  }
+
+  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_LABEL_CLASS} {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.4em;
+    block-size: 1.4em;
+    border-radius: 999px;
+    border: 1px solid hsl(0 0% 50% / 0.35);
+    background-color: hsl(0 0% 50% / 0.16);
+    color: inherit;
+    font-size: 0.7em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+    transform: translateY(-0.15em);
+  }
+`;
+
+const DEFAULT_STYLES_FALLBACK = `
+  .${DEFAULT_ROOT_CLASS} .hb-magic-text-segment {
+    opacity: 1;
+    transition: opacity 180ms ease-out;
+  }
+
+  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_CLASS} {
+    vertical-align: baseline;
+  }
+
+  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_LABEL_CLASS} {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.4em;
+    block-size: 1.4em;
+    border-radius: 999px;
+    border: 1px solid hsl(0 0% 50% / 0.35);
+    background-color: hsl(0 0% 50% / 0.16);
+    color: inherit;
+    font-size: 0.7em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+    transform: translateY(-0.15em);
+  }
+`;
 
 type ContainerNodeType = Extract<
   MagicTextNodeType,
@@ -444,17 +505,23 @@ function renderDefaultCitation(
   context: RenderContext,
   citation: MagicTextCitationRenderData,
 ): ReactNode {
-  const label = `[${citation.number}]`;
+  const label = String(citation.number);
   const href = citation.definition?.url;
 
   if (!href) {
     return (
       <sup
         key={node.id}
+        className={DEFAULT_CITATION_CLASS}
         data-magic-text-node={node.type}
         data-node-open={String(!node.closed)}
       >
-        {label}
+        <span
+          role="doc-noteref"
+          className={DEFAULT_CITATION_LABEL_CLASS}
+        >
+          {label}
+        </span>
       </sup>
     );
   }
@@ -462,12 +529,14 @@ function renderDefaultCitation(
   return (
     <sup
       key={node.id}
+      className={DEFAULT_CITATION_CLASS}
       data-magic-text-node={node.type}
       data-node-open={String(!node.closed)}
     >
       <a
         href={href}
         role="doc-noteref"
+        className={DEFAULT_CITATION_LABEL_CLASS}
         onClick={(event) => {
           context.onCitationClickRef.current?.(event, citation, node);
         }}
@@ -911,15 +980,30 @@ export function MagicTextRenderer({
 
   const rootNode =
     parserState.rootId == null ? undefined : nodeById.get(parserState.rootId);
+  const rootClassName = className
+    ? `${DEFAULT_ROOT_CLASS} ${className}`
+    : DEFAULT_ROOT_CLASS;
+  const styleText =
+    typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)
+      ? DEFAULT_STYLES_FALLBACK
+      : DEFAULT_STYLES;
 
   if (!rootNode) {
-    return <div className={className} data-magic-text-root />;
+    return (
+      <>
+        <style>{styleText}</style>
+        <div className={rootClassName} data-magic-text-root />
+      </>
+    );
   }
 
   return (
-    <div className={className} data-magic-text-root>
-      {renderNode(rootNode, context)}
-    </div>
+    <>
+      <style>{styleText}</style>
+      <div className={rootClassName} data-magic-text-root>
+        {renderNode(rootNode, context)}
+      </div>
+    </>
   );
 }
 
