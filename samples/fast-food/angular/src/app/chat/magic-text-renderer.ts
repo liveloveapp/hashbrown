@@ -13,7 +13,7 @@ import { LinkClickHandler } from './link-click-handler';
     <hb-magic-text
       class="magic-text"
       [text]="text()"
-      [isComplete]="true"
+      [isComplete]="isComplete()"
       [caret]="false"
       [options]="magicTextOptions"
       (linkClick)="handleLinkClick($event)"
@@ -23,7 +23,9 @@ import { LinkClickHandler } from './link-click-handler';
   styles: [
     `
       :host {
-        display: contents;
+        display: block;
+        width: var(--article-width);
+        margin-bottom: 12px;
         color: var(--gray);
       }
 
@@ -34,6 +36,45 @@ import { LinkClickHandler } from './link-click-handler';
       hb-magic-text strong {
         font-weight: 500;
       }
+
+      hb-magic-text p[data-magic-text-node='paragraph'] {
+        margin: 0 0 12px;
+        line-height: 1.6;
+      }
+
+      hb-magic-text p[data-magic-text-node='paragraph']:last-child {
+        margin-bottom: 0;
+      }
+
+      hb-magic-text ol[data-magic-text-node='list'] {
+        margin: 0 0 12px;
+        padding-left: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        list-style-type: decimal;
+      }
+
+      hb-magic-text ol[data-magic-text-node='list']:last-child {
+        margin-bottom: 0;
+      }
+
+      hb-magic-text ul[data-magic-text-node='list'] {
+        margin: 0 0 12px;
+        padding-left: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        list-style-type: disc;
+      }
+
+      hb-magic-text ul[data-magic-text-node='list']:last-child {
+        margin-bottom: 0;
+      }
+
+      hb-magic-text li[data-magic-text-node='list-item'] {
+        line-height: 1.3;
+      }
     `,
   ],
   encapsulation: ViewEncapsulation.None,
@@ -42,6 +83,7 @@ export class MagicTextRenderer {
   private readonly linkClickHandler = inject(LinkClickHandler);
 
   readonly text = input.required<string>();
+  readonly isComplete = input(false);
   readonly magicTextOptions = { segmenter: { granularity: 'word' as const } };
 
   handleLinkClick(event: MagicTextLinkClickEvent) {

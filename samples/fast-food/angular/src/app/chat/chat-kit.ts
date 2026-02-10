@@ -1,16 +1,18 @@
 import { ChartType } from 'chart.js';
 import { Injectable } from '@angular/core';
 import { s } from '@hashbrownai/core';
-import { createUiKit, exposeComponent } from '@hashbrownai/angular';
+import {
+  createUiKit,
+  exposeComponent,
+  exposeMarkdown,
+} from '@hashbrownai/angular';
 import { ExecutiveSummary } from './elements/executive-summary';
 import { HorizontalRule } from './elements/hr';
-import { Paragraph } from './elements/paragraph';
 import { Heading } from './elements/heading';
 import { Citation } from './elements/citation';
-import { OrderedList } from './elements/ordered-list';
-import { UnorderedList } from './elements/unordered-list';
 import { Chart } from './elements/chart';
 import { ChartGhostLoader } from './elements/chart-ghost-loader';
+import { MagicTextRenderer } from './magic-text-renderer';
 
 const chartTypeHints: ChartType[] = [
   'bar',
@@ -44,27 +46,15 @@ export class ChatKit {
         name: 'hr',
         description: 'Show a horizontal rule to separate sections',
       }),
-      exposeComponent(Paragraph, {
-        name: 'p',
+      exposeMarkdown({
+        name: 'markdown',
+        citations: true,
+        renderer: MagicTextRenderer,
         description: `
-          Render a rich Magic Text paragraph with inline markdown (bold, italic), auto-numbered
-          citations, and links.
-
-          Examples:
-          - **Headline:** _Give the TL;DR_ in bold + italics for emphasis.
-          - Compare nutrients: 'Protein hits **42 g** while sodium stays under _720 mg_.'
-          - Cite sources inline like [^1] and put the URL in the citations array.
+          Render Markdown content with links, emphasis, and citation definitions.
+          Write all markdown as children and define citations in markdown using:
+          [^source-id]: Source title https://example.com
         `,
-        input: {
-          text: s.streaming.string('The text to show in the paragraph'),
-          citations: s.streaming.array(
-            'The citations to show in the paragraph',
-            s.object('The citation', {
-              id: s.string('The number of the citation'),
-              url: s.string('The URL of the citation'),
-            }),
-          ),
-        },
       }),
       exposeComponent(Heading, {
         name: 'h',
@@ -83,42 +73,6 @@ export class ChatKit {
         input: {
           text: s.streaming.string('The quoted text to display'),
           source: s.streaming.string('Optional source or attribution'),
-        },
-      }),
-      exposeComponent(OrderedList, {
-        name: 'ol',
-        description:
-          'Display a numbered list. Provide the shared citations array just like paragraphs so inline markers render consistently.',
-        input: {
-          items: s.streaming.array(
-            'The ordered list entries',
-            s.streaming.string('The content of a single list entry'),
-          ),
-          citations: s.streaming.array(
-            'The citations to show in the list (reused for each entry)',
-            s.object('The citation', {
-              id: s.string('The number of the citation'),
-              url: s.string('The URL of the citation'),
-            }),
-          ),
-        },
-      }),
-      exposeComponent(UnorderedList, {
-        name: 'ul',
-        description:
-          'Display a bulleted list. Supply a shared citations array to keep numbering in sync with paragraphs.',
-        input: {
-          items: s.streaming.array(
-            'The unordered list entries',
-            s.streaming.string('The content of a single list entry'),
-          ),
-          citations: s.streaming.array(
-            'The citations to show in the list (reused for each entry)',
-            s.object('The citation', {
-              id: s.string('The number of the citation'),
-              url: s.string('The URL of the citation'),
-            }),
-          ),
         },
       }),
       exposeComponent(Chart, {

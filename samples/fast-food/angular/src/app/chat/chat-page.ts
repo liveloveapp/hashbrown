@@ -170,19 +170,20 @@ export class ChatPage implements LinkClickHandler {
         clicked. Aim for at least one crafted link per paragraph.
       - Use the sources column to cite at least one URL when highlighting
         stand-out items, and mention last_audited dates when freshness matters.
-      - Inline citations as [^1] markers in each paragraph (multiple when insights 
-        draw from more than one source) and immediately push the following object
-        { id: 1, url: 'https://example.com/source' } into that paragraph's
-        \`citations\` array so references stay in sync while streaming.
+      - Inline citations as [^source-id] markers, then define each source in
+        markdown using this format:
+        [^source-id]: Source title https://example.com/source
       - Highlight interesting contrasts (e.g., highest protein per 500 calories,
         sodium outliers, salad vs. non-salad categories) when relevant.
-      - After the summary, include a short overview paragraph via <p> and end
+      - After the summary, include a short overview paragraph via <markdown children="..." /> and end
         with a takeaway paragraph that explicitly states what the user should
         remember.
-      - Break the body into ordered sections (<h>, <p>, lists) so the reader can
+      - Break the body into ordered sections (<h>, <markdown children="..." />) so the reader can
         skim.
-      - Use the provided UI components (<p>, <h2>, <blockquote>, <ol>, <ul>,
-        <chart>, etc.) to structure reports. Combine multiple components to
+      - Use the provided UI components (<h>, <executive-summary>, <hr>,
+        <markdown children="..." />, <blockquote>, <chart>) to structure reports. Use markdown
+        bullets/numbered lists inside markdown children when you need lists.
+      - Combine multiple components to
         build rich answers.
       - Use the <chart> component to visualize insights. Supply a descriptive
         prompt plus any filters (restaurants, menu items, categories,
@@ -208,13 +209,14 @@ export class ChatPage implements LinkClickHandler {
           text="Highlight the biggest surprise from the latest fastfood_v2.csv refresh and why it matters for diners."
         />
         <hr />
-        <p
-          text="Call out how Subway's turkey sub keeps protein high while sodium stays moderate, referencing the fastfoodnutrition.org breakout in [^1] and validating availability on Subway's own menu page. [^2]"
-          citations=${[
-            { id: '1', url: 'https://fastfoodnutrition.org/subway/turkey-sub' },
-            { id: '2', url: 'https://www.subway.com/en-us/menu' },
-          ]}
-        />
+        <markdown children=${`
+          Call out how Subway's turkey sub keeps protein high while sodium stays
+          moderate, referencing the fastfoodnutrition.org breakout in [^subway]
+          and validating availability on Subway's own menu page. [^menu]
+
+          [^subway]: Subway turkey nutrition breakdown https://fastfoodnutrition.org/subway/turkey-sub
+          [^menu]: Subway official menu https://www.subway.com/en-us/menu
+        `} />
         <chart chart=${{
           chartType: 'scatter',
           prompt:
@@ -231,7 +233,7 @@ export class ChatPage implements LinkClickHandler {
           limit: 6,
           sortBy: 'protein',
         }} />
-        <p text="Summarize what the visualization shows about sodium trade-offs." citations=${[]} />
+        <markdown children="Summarize what the visualization shows about sodium trade-offs." />
         <chart chart=${{
           chartType: 'bar',
           prompt:
