@@ -535,6 +535,8 @@ function renderDefaultCitation(
     >
       <a
         href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         role="doc-noteref"
         className={DEFAULT_CITATION_LABEL_CLASS}
         onClick={(event) => {
@@ -788,6 +790,8 @@ function renderContainerNode(
     <a
       key={node.id}
       href={node.url}
+      target="_blank"
+      rel="noopener noreferrer"
       title={node.title}
       onClick={handleLinkClick(context, node, node.url)}
       data-magic-text-node={node.type}
@@ -900,6 +904,8 @@ function renderNode(node: MagicTextAstNode, context: RenderContext): ReactNode {
       <a
         key={node.id}
         href={node.url}
+        target="_blank"
+        rel="noopener noreferrer"
         onClick={handleLinkClick(context, node, node.url)}
         data-magic-text-node={node.type}
         data-node-open={String(!node.closed)}
