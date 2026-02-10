@@ -284,6 +284,26 @@ test('keeps citation-definition prefix hidden when it resolves into a valid defi
   });
 });
 
+test('optimistically parses unfinished inline citation references while streaming', () => {
+  const state = createMagicTextParserState({ segmenter: false });
+
+  const next = parseMagicTextChunk(state, 'Paragraph [^source');
+  const textNodes = next.nodes.filter(
+    (node): node is Extract<MagicTextAstNode, { type: 'text' }> =>
+      node.type === 'text',
+  );
+  const renderedText = textNodes.map((node) => node.text).join('');
+  const citation = next.nodes.find(
+    (node): node is Extract<MagicTextAstNode, { type: 'citation' }> =>
+      node.type === 'citation',
+  );
+
+  expect(renderedText).toContain('Paragraph ');
+  expect(renderedText).not.toContain('[^source');
+  expect(citation?.idRef).toBe('source');
+  expect(citation?.closed).toBe(false);
+});
+
 test('emits soft and hard break nodes inside paragraphs', () => {
   const result = parseAll('alpha\nbeta  \ngamma\\\ndelta');
 
