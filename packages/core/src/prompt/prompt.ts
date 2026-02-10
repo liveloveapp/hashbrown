@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { HashbrownType, internal, isObjectType } from '../schema/base';
+import {
+  HashbrownType,
+  internal,
+  isNodeType,
+  isObjectType,
+} from '../schema/base';
 import { JsonValue } from '../skillet/parser/json-parser';
 import { ExposedComponent } from '../ui';
 import type {
@@ -560,7 +565,24 @@ function validateExamples(
           try {
             const schema = (comp as any).props?.[k];
             if (schema && typeof schema.validate === 'function') {
-              schema.validate(v);
+              // Node props (s.node(...)) are model-authored as inner values in prompts.
+              // Accept both wrapper objects and raw inner values here.
+              if (isNodeType(schema)) {
+                const isNodeWrapper =
+                  !!v &&
+                  typeof v === 'object' &&
+                  ('complete' in (v as Record<string, unknown>) ||
+                    'partialValue' in (v as Record<string, unknown>) ||
+                    'value' in (v as Record<string, unknown>));
+
+                if (isNodeWrapper) {
+                  schema.validate(v);
+                } else {
+                  schema[internal].definition.inner.validate(v, [k]);
+                }
+              } else {
+                schema.validate(v);
+              }
             }
           } catch (e) {
             diags.push({

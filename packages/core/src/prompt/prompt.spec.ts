@@ -656,6 +656,62 @@ test('full integration with streaming', () => {
   expect(out).toMatchSnapshot();
 });
 
+test('node prop schemas validate raw authored prompt values', () => {
+  const sys = prompt`
+    <ui>
+      <markdown children="A cited sentence [^ref].
+
+[^ref]: Example https://example.com" />
+    </ui>
+  `;
+
+  const components = [
+    {
+      name: 'markdown',
+      component: createMockComponent(),
+      description: '',
+      props: { children: s.node(s.streaming.string('Markdown content')) },
+      children: false,
+    } as const,
+  ];
+
+  sys.compile(components, toSchema(components));
+
+  const errorMessages = sys.diagnostics
+    .filter((d) => d.code === 'E1203')
+    .map((d) => d.message)
+    .join('\n');
+
+  expect(errorMessages).not.toContain('Expected node value to be an object.');
+});
+
+test('node prop schemas also validate explicit node wrapper objects', () => {
+  const sys = prompt`
+    <ui>
+      <markdown children=${{
+        complete: true,
+        partialValue: 'Partial',
+        value: 'Final',
+      }} />
+    </ui>
+  `;
+
+  const components = [
+    {
+      name: 'markdown',
+      component: createMockComponent(),
+      description: '',
+      props: { children: s.node(s.streaming.string('Markdown content')) },
+      children: false,
+    } as const,
+  ];
+
+  sys.compile(components, toSchema(components));
+
+  const errorCodes = sys.diagnostics.map((d) => d.code);
+  expect(errorCodes).not.toContain('E1203');
+});
+
 function toSchema(components: any[]) {
   return s.object('UI', {
     ui: s.streaming.array(
