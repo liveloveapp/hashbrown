@@ -276,18 +276,18 @@ class MarkdownRenderHostComponent {
               children: {
                 complete: true,
                 partialValue:
-                  '[link](https://example.com) cite [^ref]\\n\\n[^ref]: Ref https://hashbrown.dev',
+                  '[link](https://example.com) cite [^ref]\n\n[^ref]: Ref https://hashbrown.dev',
                 value:
-                  '[link](https://example.com) cite [^ref]\\n\\n[^ref]: Ref https://hashbrown.dev',
+                  '[link](https://example.com) cite [^ref]\n\n[^ref]: Ref https://hashbrown.dev',
               },
             },
             value: {
               children: {
                 complete: true,
                 partialValue:
-                  '[link](https://example.com) cite [^ref]\\n\\n[^ref]: Ref https://hashbrown.dev',
+                  '[link](https://example.com) cite [^ref]\n\n[^ref]: Ref https://hashbrown.dev',
                 value:
-                  '[link](https://example.com) cite [^ref]\\n\\n[^ref]: Ref https://hashbrown.dev',
+                  '[link](https://example.com) cite [^ref]\n\n[^ref]: Ref https://hashbrown.dev',
               },
             },
           },
@@ -312,8 +312,8 @@ test('exposeMarkdown callbacks are invoked through hb-render-message injector wi
     'a[href="https://example.com"]',
   ) as HTMLAnchorElement | null;
   const citation = host.querySelector(
-    '[role="doc-noteref"]',
-  ) as HTMLElement | null;
+    'sup a[role="doc-noteref"]',
+  ) as HTMLAnchorElement | null;
 
   expect(link).not.toBeNull();
   expect(citation).not.toBeNull();

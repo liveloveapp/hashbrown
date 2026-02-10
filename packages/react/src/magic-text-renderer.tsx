@@ -253,6 +253,8 @@ type RenderContext = {
 type MagicTextTextNode = Extract<MagicTextAstNode, { type: 'text' }>;
 type MagicTextCitationNode = Extract<MagicTextAstNode, { type: 'citation' }>;
 
+const WORD_JOINER = '\u2060';
+
 type ContainerNodeType = Extract<
   MagicTextNodeType,
   | 'document'
@@ -408,7 +410,7 @@ function renderTextSegments(node: MagicTextTextNode): ReactNode {
       data-magic-text-segment-kind={segment.kind}
       data-magic-text-whitespace={String(segment.isWhitespace)}
     >
-      {segment.text}
+      {segment.noBreakBefore ? `${WORD_JOINER}${segment.text}` : segment.text}
     </span>
   ));
 }
@@ -879,12 +881,7 @@ export function MagicTextRenderer({
   }, [parserState.nodes]);
 
   const context = useMemo(() => {
-    const openNodeId =
-      parserState.stack.length > 0
-        ? parserState.stack[parserState.stack.length - 1]
-        : null;
-    const openNode =
-      openNodeId == null ? null : (nodeById.get(openNodeId) ?? null);
+    const openNode = findDeepestOpenRenderableNode(parserState.stack, nodeById);
     const caretNode = resolveCaretNode(caret, {
       isComplete: parserState.isComplete,
       openNode,
@@ -924,4 +921,18 @@ export function MagicTextRenderer({
       {renderNode(rootNode, context)}
     </div>
   );
+}
+
+function findDeepestOpenRenderableNode(
+  stack: number[],
+  nodeById: Map<number, MagicTextAstNode>,
+): MagicTextAstNode | null {
+  for (let index = stack.length - 1; index >= 0; index -= 1) {
+    const candidate = nodeById.get(stack[index]) ?? null;
+    if (candidate && candidate.type !== 'document') {
+      return candidate;
+    }
+  }
+
+  return null;
 }

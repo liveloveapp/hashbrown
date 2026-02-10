@@ -25,6 +25,8 @@ type MagicTextLinkNode = Extract<MagicTextAstNode, { type: 'link' }>;
 type MagicTextAutolinkNode = Extract<MagicTextAstNode, { type: 'autolink' }>;
 type MagicTextCitationNode = Extract<MagicTextAstNode, { type: 'citation' }>;
 
+const WORD_JOINER = '\u2060';
+
 type MagicTextNodeTemplateType = MagicTextNodeType | 'node';
 
 type CitationRenderData = {
@@ -647,7 +649,7 @@ export class MagicTextRenderCaret {
                       class="hb-magic-text-segment"
                       [attr.data-magic-text-segment-kind]="segment.kind"
                       [attr.data-magic-text-whitespace]="segment.isWhitespace"
-                      >{{ segment.text }}</span
+                      >{{ renderSegmentText(segment) }}</span
                     >
                   }
                 }
@@ -713,22 +715,16 @@ export class MagicTextRenderCaret {
                     [attr.href]="citationUrl"
                     role="doc-noteref"
                     (click)="handleCitationClick($event, node)"
-                    >[{{ getCitation(node).number }}]</a
+                    >{{ getCitationLabel(node) }}</a
                   >
                 </sup>
               } @else {
                 <sup
                   [attr.data-magic-text-node]="node.type"
                   [attr.data-node-open]="isNodeOpen(node)"
+                  role="doc-noteref"
+                  >{{ getCitationLabel(node) }}</sup
                 >
-                  <button
-                    type="button"
-                    role="doc-noteref"
-                    (click)="handleCitationClick($event, node)"
-                  >
-                    [{{ getCitation(node).number }}]
-                  </button>
-                </sup>
               }
             }
           }
@@ -823,7 +819,15 @@ export class MagicText {
 
   protected readonly openNodeId = computed(() => {
     const stack = this.parserState().stack;
-    return stack.length ? stack[stack.length - 1] : null;
+    const nodeById = this.nodeById();
+    for (let index = stack.length - 1; index >= 0; index -= 1) {
+      const candidate = nodeById.get(stack[index]);
+      if (candidate && candidate.type !== 'document') {
+        return candidate.id;
+      }
+    }
+
+    return null;
   });
 
   protected readonly openNodeDepthById = computed(() => {
@@ -951,6 +955,10 @@ export class MagicText {
     };
   }
 
+  protected getCitationLabel(node: MagicTextCitationNode): string {
+    return `[${this.getCitation(node).number}]`;
+  }
+
   protected handleCitationClick(
     mouseEvent: MouseEvent,
     node: MagicTextCitationNode,
@@ -960,5 +968,11 @@ export class MagicText {
       citation: this.getCitation(node),
       node,
     });
+  }
+
+  protected renderSegmentText(segment: TextSegment): string {
+    return segment.noBreakBefore
+      ? `${WORD_JOINER}${segment.text}`
+      : segment.text;
   }
 }

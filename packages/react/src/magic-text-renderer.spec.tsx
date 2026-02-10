@@ -37,6 +37,52 @@ test('MagicTextRenderer creates one span per parsed text segment', () => {
   expect(segments[1]?.textContent).toBe('b');
 });
 
+test('MagicTextRenderer prefixes word joiner before punctuation after citations', () => {
+  const { container } = render(
+    <MagicTextRenderer
+      isComplete
+      options={{ segmenter: { granularity: 'word' } }}
+    >
+      {'Alpha[^a]; beta\n\n[^a]: Source https://hashbrown.dev'}
+    </MagicTextRenderer>,
+  );
+
+  const segments = Array.from(
+    container.querySelectorAll('span.hb-magic-text-segment'),
+  );
+  const punctuationSegment = segments.find(
+    (segment) => segment.textContent?.includes(';') ?? false,
+  );
+
+  expect(punctuationSegment?.textContent?.startsWith('\u2060;')).toBe(true);
+});
+
+test('MagicTextRenderer keeps unresolved citation punctuation glued', () => {
+  const { container } = render(
+    <MagicTextRenderer
+      isComplete
+      options={{ segmenter: { granularity: 'word' } }}
+    >
+      {'Alpha[^missing].'}
+    </MagicTextRenderer>,
+  );
+
+  const unresolvedCitation = container.querySelector('sup[data-magic-text-node="citation"]');
+  const unresolvedCitationButton = container.querySelector(
+    'sup[data-magic-text-node="citation"] button',
+  );
+  const segments = Array.from(
+    container.querySelectorAll('span.hb-magic-text-segment'),
+  );
+  const punctuationSegment = segments.find(
+    (segment) => segment.textContent?.includes('.') ?? false,
+  );
+
+  expect(unresolvedCitation?.textContent).toBe('[1]');
+  expect(unresolvedCitationButton).toBeNull();
+  expect(punctuationSegment?.textContent?.startsWith('\u2060.')).toBe(true);
+});
+
 test('MagicTextRenderer preserves existing segment dom identity across updates', () => {
   const { container, rerender } = render(
     <MagicTextRenderer options={{ segmenter: { granularity: 'grapheme' } }}>ab</MagicTextRenderer>,
@@ -106,6 +152,20 @@ test('MagicTextRenderer hides the caret once parsing is complete', () => {
 
   const caret = container.querySelector('[data-magic-text-caret]');
 
+  expect(caret).toBeNull();
+});
+
+test('MagicTextRenderer does not render caret when only document root remains open', () => {
+  const { container } = render(
+    <MagicTextRenderer caret options={{ segmenter: false }}>
+      {'Paragraph\n\n[^source'}
+    </MagicTextRenderer>,
+  );
+
+  const paragraph = container.querySelector('p[data-magic-text-node="paragraph"]');
+  const caret = container.querySelector('[data-magic-text-caret]');
+
+  expect(paragraph?.textContent).toBe('Paragraph');
   expect(caret).toBeNull();
 });
 
@@ -220,7 +280,7 @@ const x = 1;
   const codeBlock = container.querySelector('pre code[data-code-info="ts"]');
   const segments = container.querySelectorAll('span.hb-magic-text-segment');
 
-  expect(blockquote?.textContent).toBe('block\n');
+  expect(blockquote?.textContent).toBe('block');
   expect(unorderedList?.querySelectorAll('li')).toHaveLength(1);
   expect(orderedList?.getAttribute('start')).toBe('3');
   expect(orderedListItem?.textContent).toBe('three');
