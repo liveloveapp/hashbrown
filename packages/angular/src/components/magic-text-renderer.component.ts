@@ -708,10 +708,12 @@ export class MagicTextRenderCaret {
             @case ('citation') {
               @if (getCitation(node).url; as citationUrl) {
                 <sup
+                  class="hb-magic-text-citation"
                   [attr.data-magic-text-node]="node.type"
                   [attr.data-node-open]="isNodeOpen(node)"
                 >
                   <a
+                    class="hb-magic-text-citation-label"
                     [attr.href]="citationUrl"
                     role="doc-noteref"
                     (click)="handleCitationClick($event, node)"
@@ -720,11 +722,16 @@ export class MagicTextRenderCaret {
                 </sup>
               } @else {
                 <sup
+                  class="hb-magic-text-citation"
                   [attr.data-magic-text-node]="node.type"
                   [attr.data-node-open]="isNodeOpen(node)"
-                  role="doc-noteref"
-                  >{{ getCitationLabel(node) }}</sup
                 >
+                  <span
+                    class="hb-magic-text-citation-label"
+                    role="doc-noteref"
+                    >{{ getCitationLabel(node) }}</span
+                  >
+                </sup>
               }
             }
           }
@@ -751,6 +758,35 @@ export class MagicTextRenderCaret {
     </div>
   `,
   styles: `
+    .hb-magic-text-segment {
+      opacity: 1;
+      transition: opacity 180ms ease-out;
+      @starting-style {
+        opacity: 0;
+      }
+    }
+
+    .hb-magic-text-citation {
+      vertical-align: baseline;
+    }
+
+    .hb-magic-text-citation-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      inline-size: 1.4em;
+      block-size: 1.4em;
+      border-radius: 999px;
+      border: 1px solid hsl(0 0% 50% / 0.35);
+      background-color: hsl(0 0% 50% / 0.16);
+      color: inherit;
+      font-size: 0.7em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-decoration: none;
+      transform: translateY(-0.15em);
+    }
+
     .hb-magic-text-caret {
       display: inline-block;
       width: 0.48em;
@@ -956,7 +992,7 @@ export class MagicText {
   }
 
   protected getCitationLabel(node: MagicTextCitationNode): string {
-    return `[${this.getCitation(node).number}]`;
+    return String(this.getCitation(node).number);
   }
 
   protected handleCitationClick(
