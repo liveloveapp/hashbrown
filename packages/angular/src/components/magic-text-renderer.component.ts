@@ -760,7 +760,7 @@ export class MagicTextRenderCaret {
   styles: `
     .hb-magic-text-segment {
       opacity: 1;
-      transition: opacity 180ms ease-out;
+      transition: opacity 400ms ease-out;
       @starting-style {
         opacity: 0;
       }

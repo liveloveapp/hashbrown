@@ -260,7 +260,7 @@ const DEFAULT_CITATION_LABEL_CLASS = 'hb-magic-text-citation-label';
 const DEFAULT_STYLES = `
   .${DEFAULT_ROOT_CLASS} .hb-magic-text-segment {
     opacity: 1;
-    transition: opacity 180ms ease-out;
+    transition: opacity 400ms ease-out;
     @starting-style {
       opacity: 0;
     }
@@ -291,7 +291,7 @@ const DEFAULT_STYLES = `
 const DEFAULT_STYLES_FALLBACK = `
   .${DEFAULT_ROOT_CLASS} .hb-magic-text-segment {
     opacity: 1;
-    transition: opacity 180ms ease-out;
+    transition: opacity 400ms ease-out;
   }
 
   .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_CLASS} {
