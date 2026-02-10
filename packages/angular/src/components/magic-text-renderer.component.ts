@@ -71,6 +71,15 @@ export type MagicTextCaretContext = {
   depth: number;
 };
 
+/** @public */
+export type MagicTextCitationRenderContext = {
+  node: MagicTextCitationNode;
+  citation: CitationRenderData;
+  label: string;
+  isOpen: boolean;
+  isComplete: boolean;
+};
+
 type $Implicit<T> = { $implicit: T };
 
 /** @public */
@@ -117,6 +126,20 @@ export class MagicTextRenderCaret {
 }
 
 /** @public */
+@Directive({ selector: 'ng-template[hbMagicTextRenderCitation]' })
+export class MagicTextRenderCitation {
+  constructor(readonly template: TemplateRef<MagicTextCitationRenderContext>) {}
+
+  static ngTemplateContextGuard(
+    dir: MagicTextRenderCitation,
+    context: unknown,
+  ): context is $Implicit<MagicTextCitationRenderContext> &
+    MagicTextCitationRenderContext {
+    return true;
+  }
+}
+
+/** @public */
 @Component({
   selector: 'hb-magic-text',
   imports: [NgTemplateOutlet],
@@ -129,14 +152,14 @@ export class MagicTextRenderCaret {
           <ng-container
             *ngTemplateOutlet="
               customNodeTemplate;
-              context: getNodeRenderContext(node)
+              context: getNodeTemplateOutletContext(node)
             "
           />
         } @else if (getNodeTemplate('node'); as fallbackNodeTemplate) {
           <ng-container
             *ngTemplateOutlet="
               fallbackNodeTemplate;
-              context: getNodeRenderContext(node)
+              context: getNodeTemplateOutletContext(node)
             "
           />
         } @else {
@@ -710,34 +733,43 @@ export class MagicTextRenderCaret {
             }
 
             @case ('citation') {
-              @if (getCitation(node).url; as citationUrl) {
-                <sup
-                  class="hb-magic-text-citation"
-                  [attr.data-magic-text-node]="node.type"
-                  [attr.data-node-open]="isNodeOpen(node)"
-                >
-                  <a
-                    class="hb-magic-text-citation-label"
-                    [attr.href]="citationUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="doc-noteref"
-                    (click)="handleCitationClick($event, node)"
-                    >{{ getCitationLabel(node) }}</a
-                  >
-                </sup>
+              @if (citationTemplate(); as citationTpl) {
+                <ng-container
+                  *ngTemplateOutlet="
+                    citationTpl;
+                    context: getCitationTemplateOutletContext(node)
+                  "
+                />
               } @else {
-                <sup
-                  class="hb-magic-text-citation"
-                  [attr.data-magic-text-node]="node.type"
-                  [attr.data-node-open]="isNodeOpen(node)"
-                >
-                  <span
-                    class="hb-magic-text-citation-label"
-                    role="doc-noteref"
-                    >{{ getCitationLabel(node) }}</span
+                @if (getCitation(node).url; as citationUrl) {
+                  <sup
+                    class="hb-magic-text-citation"
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
                   >
-                </sup>
+                    <a
+                      class="hb-magic-text-citation-label"
+                      [attr.href]="citationUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      role="doc-noteref"
+                      (click)="handleCitationClick($event, node)"
+                      >{{ getCitationLabel(node) }}</a
+                    >
+                  </sup>
+                } @else {
+                  <sup
+                    class="hb-magic-text-citation"
+                    [attr.data-magic-text-node]="node.type"
+                    [attr.data-node-open]="isNodeOpen(node)"
+                  >
+                    <span
+                      class="hb-magic-text-citation-label"
+                      role="doc-noteref"
+                      >{{ getCitationLabel(node) }}</span
+                    >
+                  </sup>
+                }
               }
             }
           }
@@ -847,6 +879,7 @@ export class MagicText {
   readonly textSegmentTemplateDirective = contentChild(
     MagicTextRenderTextSegment,
   );
+  readonly citationTemplateDirective = contentChild(MagicTextRenderCitation);
   readonly caretTemplateDirective = contentChild(MagicTextRenderCaret);
 
   private readonly parser = injectMagicTextParser(
@@ -899,6 +932,9 @@ export class MagicText {
   protected readonly textSegmentTemplate = computed(
     () => this.textSegmentTemplateDirective()?.template,
   );
+  protected readonly citationTemplate = computed(
+    () => this.citationTemplateDirective()?.template,
+  );
 
   protected readonly caretTemplateFromContent = computed(
     () => this.caretTemplateDirective()?.template,
@@ -931,6 +967,21 @@ export class MagicText {
         this.getChildren(node)
           .map((childId) => this.getNodeById(childId))
           .filter((child): child is MagicTextAstNode => child !== null),
+    };
+  }
+
+  protected getNodeTemplateOutletContext(node: MagicTextAstNode): {
+    $implicit: MagicTextNodeRenderContext;
+    node: MagicTextAstNode;
+    isOpen: boolean;
+    isComplete: boolean;
+    renderChildren: () => unknown;
+  } {
+    const context = this.getNodeRenderContext(node);
+
+    return {
+      $implicit: context,
+      ...context,
     };
   }
 
@@ -999,6 +1050,34 @@ export class MagicText {
 
   protected getCitationLabel(node: MagicTextCitationNode): string {
     return String(this.getCitation(node).number);
+  }
+
+  protected getCitationRenderContext(
+    node: MagicTextCitationNode,
+  ): MagicTextCitationRenderContext {
+    return {
+      node,
+      citation: this.getCitation(node),
+      label: this.getCitationLabel(node),
+      isOpen: !node.closed,
+      isComplete: this.parserState().isComplete,
+    };
+  }
+
+  protected getCitationTemplateOutletContext(node: MagicTextCitationNode): {
+    $implicit: MagicTextCitationRenderContext;
+    node: MagicTextCitationNode;
+    citation: CitationRenderData;
+    label: string;
+    isOpen: boolean;
+    isComplete: boolean;
+  } {
+    const context = this.getCitationRenderContext(node);
+
+    return {
+      $implicit: context,
+      ...context,
+    };
   }
 
   protected handleCitationClick(
