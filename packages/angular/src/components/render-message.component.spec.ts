@@ -381,6 +381,55 @@ test('caches injector and returns undefined when providers are empty', () => {
   expect(noProviderInjector).toBeUndefined();
 });
 
+test('reuses injector across immutable node identity changes for the same tag', () => {
+  const fixture = TestBed.configureTestingModule({
+    imports: [RenderMessageComponent],
+  }).createComponent(RenderMessageComponent);
+  const component = fixture.componentInstance;
+
+  class CardComponent {}
+
+  const message = {
+    role: 'assistant' as const,
+    content: { ui: [] },
+    toolCalls: [],
+    [TAG_NAME_REGISTRY]: {
+      Card: {
+        props: {},
+        component: CardComponent,
+        providers: [{ provide: TOKEN, useValue: 'stable' }],
+      },
+    },
+  };
+
+  fixture.componentRef.setInput('message', message);
+
+  const firstNode = {
+    Card: {
+      props: {
+        complete: true,
+        partialValue: {},
+        value: {},
+      },
+    },
+  };
+  const secondNode = {
+    Card: {
+      props: {
+        complete: true,
+        partialValue: {},
+        value: {},
+      },
+    },
+  };
+
+  const firstInjector = component.getRenderableInjector(firstNode as never);
+  const secondInjector = component.getRenderableInjector(secondNode as never);
+
+  expect(firstInjector?.get(TOKEN)).toBe('stable');
+  expect(secondInjector).toBe(firstInjector);
+});
+
 test('returns cached renderable content only when node has props value and children key', () => {
   const fixture = TestBed.configureTestingModule({
     imports: [RenderMessageComponent],

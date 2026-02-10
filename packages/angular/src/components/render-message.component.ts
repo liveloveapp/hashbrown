@@ -139,7 +139,8 @@ export class RenderMessageComponent {
   /**
    * @internal
    */
-  renderableInjectorWeakMap = new WeakMap<object, Injector | undefined>();
+  renderableInjectorMap = new Map<string, Injector | undefined>();
+  private renderableInjectorTagRegistryRef: object | null = null;
 
   /**
    * @internal
@@ -292,19 +293,24 @@ export class RenderMessageComponent {
    * @internal
    */
   getRenderableInjector(node: UiChatSchemaComponent): Injector | undefined {
-    if (node && typeof node === 'object') {
-      if (this.renderableInjectorWeakMap.has(node as object)) {
-        return this.renderableInjectorWeakMap.get(node as object);
-      }
-    }
-
     const entry = this.getNodeEntry(node);
     if (!entry) {
       return undefined;
     }
 
+    const tagRegistry = this.tagNameRegistry() as object | undefined;
+    if (tagRegistry && this.renderableInjectorTagRegistryRef !== tagRegistry) {
+      this.renderableInjectorMap.clear();
+      this.renderableInjectorTagRegistryRef = tagRegistry;
+    }
+
+    if (this.renderableInjectorMap.has(entry.tag)) {
+      return this.renderableInjectorMap.get(entry.tag);
+    }
+
     const providers = this.getTagProviders(entry.tag);
     if (!providers?.length) {
+      this.renderableInjectorMap.set(entry.tag, undefined);
       return undefined;
     }
 
@@ -313,9 +319,7 @@ export class RenderMessageComponent {
       parent: this.viewContainerRef.injector,
     });
 
-    if (node && typeof node === 'object') {
-      this.renderableInjectorWeakMap.set(node as object, injector);
-    }
+    this.renderableInjectorMap.set(entry.tag, injector);
 
     return injector;
   }
