@@ -345,7 +345,7 @@ function areSegmentArraysIdentical(
  * Produces a stable signature for matching segments across immutable parse iterations.
  */
 function getSegmentSignature(segment: TextSegment): string {
-  return `${segment.start}:${segment.end}:${segment.text}:${segment.kind}:${String(segment.isWhitespace)}`;
+  return `${segment.start}:${segment.end}:${segment.text}:${segment.kind}:${String(segment.isWhitespace)}:${String(segment.noBreakBefore === true)}`;
 }
 
 /**

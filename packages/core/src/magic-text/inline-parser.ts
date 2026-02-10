@@ -9,7 +9,7 @@ import {
 } from './helpers';
 import type { DraftNode, ParseContext, ParseResult } from './internal';
 import { createSegments } from './segments';
-import type { CitationState, MagicTextWarning } from './types';
+import type { CitationState, MagicTextWarning, TextSegment } from './types';
 
 /**
  * Parses inline markdown content into inline draft nodes.
@@ -271,9 +271,10 @@ export function parseInline(
   }
 
   flushTextBuffer();
+  const inlineNodes = annotateNoBreakBeforeSegments(nodes);
 
   return {
-    value: nodes,
+    value: inlineNodes,
     citations,
     warnings,
     hasWarnedSegmenterUnavailable,
@@ -291,6 +292,116 @@ function countTrailing(text: string, index: number, value: string): number {
 
   return run;
 }
+
+function annotateNoBreakBeforeSegments(nodes: DraftNode[]): DraftNode[] {
+  let changed = false;
+
+  const next = nodes.map((node, index) => {
+    if (node.type !== 'text') {
+      return node;
+    }
+
+    const segments = node.props['segments'];
+    if (!Array.isArray(segments) || segments.length === 0) {
+      return node;
+    }
+
+    const typedSegments = segments as TextSegment[];
+    const firstSegment = typedSegments[0];
+    if (!firstSegment) {
+      return node;
+    }
+
+    const previous = index > 0 ? nodes[index - 1] : null;
+    const shouldMark =
+      startsWithClosingPunctuation(firstSegment.text) &&
+      shouldPreventBreakBeforeNode(previous);
+    const alreadyMarked = firstSegment.noBreakBefore === true;
+
+    if (shouldMark === alreadyMarked) {
+      return node;
+    }
+
+    const nextFirst: TextSegment = shouldMark
+      ? { ...firstSegment, noBreakBefore: true }
+      : { ...firstSegment, noBreakBefore: undefined };
+    const nextSegments = [nextFirst, ...typedSegments.slice(1)];
+
+    changed = true;
+    return {
+      ...node,
+      props: {
+        ...node.props,
+        segments: nextSegments,
+      },
+    };
+  });
+
+  return changed ? next : nodes;
+}
+
+function shouldPreventBreakBeforeNode(node: DraftNode | null): boolean {
+  if (!node) {
+    return false;
+  }
+
+  if (node.type === 'soft-break' || node.type === 'hard-break') {
+    return false;
+  }
+
+  if (node.type === 'text') {
+    const text = String(node.props['text'] ?? '');
+    if (!text || /\s$/u.test(text)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function startsWithClosingPunctuation(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const [first] = [...value];
+  return first != null && CLOSING_PUNCTUATION.has(first);
+}
+
+const CLOSING_PUNCTUATION = new Set([
+  ']',
+  ',',
+  '.',
+  '!',
+  '?',
+  ';',
+  ':',
+  '%',
+  ')',
+  '}',
+  '>',
+  '"',
+  "'",
+  '、',
+  '。',
+  '，',
+  '．',
+  '！',
+  '？',
+  '：',
+  '；',
+  '％',
+  '）',
+  '］',
+  '｝',
+  '〉',
+  '》',
+  '」',
+  '』',
+  '】',
+  '〕',
+  '〗',
+]);
 
 function appendText(
   nodes: DraftNode[],

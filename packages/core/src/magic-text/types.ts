@@ -84,6 +84,11 @@ export type TextSegment = {
   end: number;
   kind: SegmentGranularity;
   isWhitespace: boolean;
+  /**
+   * Hint for renderers to avoid line-breaking before this segment.
+   * @public
+   */
+  noBreakBefore?: boolean;
 };
 
 /**
