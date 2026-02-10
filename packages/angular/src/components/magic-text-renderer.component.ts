@@ -580,6 +580,8 @@ export class MagicTextRenderCaret {
             @case ('link') {
               <a
                 [attr.href]="node.url"
+                target="_blank"
+                rel="noopener noreferrer"
                 [attr.title]="node.title ?? null"
                 [attr.data-magic-text-node]="node.type"
                 [attr.data-node-open]="isNodeOpen(node)"
@@ -698,6 +700,8 @@ export class MagicTextRenderCaret {
             @case ('autolink') {
               <a
                 [attr.href]="node.url"
+                target="_blank"
+                rel="noopener noreferrer"
                 [attr.data-magic-text-node]="node.type"
                 [attr.data-node-open]="isNodeOpen(node)"
                 (click)="handleLinkClick($event, node, node.url)"
@@ -715,6 +719,8 @@ export class MagicTextRenderCaret {
                   <a
                     class="hb-magic-text-citation-label"
                     [attr.href]="citationUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     role="doc-noteref"
                     (click)="handleCitationClick($event, node)"
                     >{{ getCitationLabel(node) }}</a

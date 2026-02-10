@@ -57,6 +57,8 @@ test('renders markdown blocks and citations from the AST', () => {
   expect(heading?.textContent).toBe('Title');
   expect(listItems).toHaveLength(2);
   expect(citation?.getAttribute('href')).toBe('https://hashbrown.dev');
+  expect(citation?.getAttribute('target')).toBe('_blank');
+  expect(citation?.getAttribute('rel')).toBe('noopener noreferrer');
   expect(citation?.textContent).toBe('1');
 });
 
@@ -431,6 +433,10 @@ test('emits linkClick and citationClick events', () => {
     fireEvent.click(citation);
   }
 
+  expect(link?.getAttribute('target')).toBe('_blank');
+  expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+  expect(citation?.getAttribute('target')).toBe('_blank');
+  expect(citation?.getAttribute('rel')).toBe('noopener noreferrer');
   expect(linkEvents.map((event) => event.url)).toEqual(['https://example.com']);
   expect(citationEvents.map((event) => event.citation.id)).toEqual(['ref']);
 });

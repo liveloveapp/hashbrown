@@ -22,6 +22,8 @@ test('MagicTextRenderer renders markdown blocks and citations from the AST', () 
   expect(heading?.textContent).toBe('Title');
   expect(listItems).toHaveLength(2);
   expect(citation?.getAttribute('href')).toBe('https://hashbrown.dev');
+  expect(citation?.getAttribute('target')).toBe('_blank');
+  expect(citation?.getAttribute('rel')).toBe('noopener noreferrer');
   expect(citation?.textContent).toBe('1');
 });
 
@@ -288,6 +290,10 @@ const x = 1;
   expect(tableHeaders).toHaveLength(2);
   expect(tableCells).toHaveLength(2);
   expect(markdownLink?.getAttribute('title')).toBe('title');
+  expect(markdownLink?.getAttribute('target')).toBe('_blank');
+  expect(markdownLink?.getAttribute('rel')).toBe('noopener noreferrer');
+  expect(autolink?.getAttribute('target')).toBe('_blank');
+  expect(autolink?.getAttribute('rel')).toBe('noopener noreferrer');
   expect(autolink?.textContent).toBe('https://hashbrown.dev');
   expect(image?.getAttribute('alt')).toBe('alt');
   expect(image?.getAttribute('title')).toBe('image-title');
