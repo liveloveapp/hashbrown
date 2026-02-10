@@ -6,6 +6,7 @@ import {
   MagicTextCitationClickEvent,
   MagicTextLinkClickEvent,
   MagicTextRenderCaret,
+  MagicTextRenderCitation,
   MagicTextRenderNode,
   MagicTextRenderTextSegment,
 } from './magic-text-renderer.component';
@@ -331,6 +332,51 @@ test('uses text segment override templates', () => {
 
 @Component({
   standalone: true,
+  imports: [MagicText, MagicTextRenderCitation],
+  template: `
+    <hb-magic-text
+      [text]="text()"
+      [isComplete]="true"
+      [options]="{ segmenter: false }"
+    >
+      <ng-template
+        hbMagicTextRenderCitation
+        let-citation="citation"
+        let-label="label"
+      >
+        <a
+          data-custom-citation
+          [attr.href]="citation.url ?? null"
+          [attr.data-id]="citation.id"
+          [attr.data-label]="label"
+          >custom citation</a
+        >
+      </ng-template>
+    </hb-magic-text>
+  `,
+})
+class CitationOverrideHostComponent {
+  text = signal('Cite [^ref]\n\n[^ref]: Ref https://hashbrown.dev');
+}
+
+test('uses citation override template with resolved citation context', () => {
+  const fixture = TestBed.configureTestingModule({
+    imports: [CitationOverrideHostComponent],
+  }).createComponent(CitationOverrideHostComponent);
+
+  fixture.detectChanges();
+
+  const citation = (fixture.nativeElement as HTMLElement).querySelector(
+    '[data-custom-citation]',
+  );
+
+  expect(citation?.getAttribute('href')).toBe('https://hashbrown.dev');
+  expect(citation?.getAttribute('data-id')).toBe('ref');
+  expect(citation?.getAttribute('data-label')).toBe('1');
+});
+
+@Component({
+  standalone: true,
   imports: [MagicText, MagicTextRenderCaret],
   template: `
     <hb-magic-text
@@ -488,6 +534,12 @@ test('MagicText directive context guards always return true', () => {
   expect(
     MagicTextRenderCaret.ngTemplateContextGuard(
       null as unknown as MagicTextRenderCaret,
+      {},
+    ),
+  ).toBe(true);
+  expect(
+    MagicTextRenderCitation.ngTemplateContextGuard(
+      null as unknown as MagicTextRenderCitation,
       {},
     ),
   ).toBe(true);

@@ -1,9 +1,11 @@
 export { RenderMessageComponent, MagicText } from './components';
 export {
   MagicTextRenderCaret,
+  MagicTextRenderCitation,
   MagicTextRenderNode,
   MagicTextRenderTextSegment,
   type MagicTextCitationClickEvent,
+  type MagicTextCitationRenderContext,
   type MagicTextLinkClickEvent,
   type MagicTextCaretContext,
   type MagicTextNodeRenderContext,
