@@ -448,10 +448,10 @@ test('tracks index and line coordinates after multiple streaming updates', () =>
   expect(b.column).toBe(5);
 });
 
-test('infers completion when the stream ends at a closed block boundary', () => {
+test('does not infer completion when the stream ends at a closed block boundary', () => {
   const state = parseInChunks(['hello\n']);
 
-  expect(state.isComplete).toBe(true);
+  expect(state.isComplete).toBe(false);
   expect(findSingle(state.nodes, 'document')?.closed).toBe(true);
 });
 

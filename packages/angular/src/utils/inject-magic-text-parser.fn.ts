@@ -235,7 +235,7 @@ function resolveNextSession(
 
   let nextParserState: MagicTextParserState;
 
-  if (text.startsWith(previous.text) && !previous.parserState.isComplete) {
+  if (text.startsWith(previous.text)) {
     const suffix = text.slice(previous.text.length);
     nextParserState =
       suffix.length > 0

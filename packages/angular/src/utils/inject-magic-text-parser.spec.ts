@@ -147,3 +147,43 @@ test('injectMagicTextParser finalizes prefix updates when completion is already 
 
   expect(parser.parserState().isComplete).toBe(true);
 });
+
+test('injectMagicTextParser preserves list item identity across newline prefix growth', () => {
+  const text = signal('1. one\n');
+  const parser = injectMagicTextParser(text);
+
+  const beforeState = parser.parserState();
+  const beforeById = new Map(beforeState.nodes.map((node) => [node.id, node]));
+  const beforeList = beforeState.nodes.find(
+    (node): node is Extract<MagicTextAstNode, { type: 'list' }> =>
+      node.type === 'list',
+  );
+  const beforeFirstItemId = beforeList?.children[0];
+  const beforeFirstItem =
+    typeof beforeFirstItemId === 'number'
+      ? beforeById.get(beforeFirstItemId)
+      : undefined;
+
+  text.set('1. one\n2. two');
+
+  const afterState = parser.parserState();
+  const afterById = new Map(afterState.nodes.map((node) => [node.id, node]));
+  const afterList = afterState.nodes.find(
+    (node): node is Extract<MagicTextAstNode, { type: 'list' }> =>
+      node.type === 'list',
+  );
+  const afterFirstItemId = afterList?.children[0];
+  const afterFirstItem =
+    typeof afterFirstItemId === 'number'
+      ? afterById.get(afterFirstItemId)
+      : undefined;
+
+  expect(beforeList).toBeDefined();
+  expect(beforeFirstItemId).toBeDefined();
+  expect(beforeFirstItem).toBeDefined();
+  expect(beforeState.isComplete).toBe(false);
+  expect(afterState.isComplete).toBe(false);
+  expect(afterList?.children).toHaveLength(2);
+  expect(afterList?.children[0]).toBe(beforeFirstItemId);
+  expect(afterFirstItem).toBe(beforeFirstItem);
+});

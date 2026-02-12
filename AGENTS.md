@@ -17,6 +17,9 @@ This file defines how agents should work in this repository. Keep changes aligne
 - Angular best practices (from angular.dev):
   - Follow the official style guide for naming, file organization, and consistent patterns.
   - Prefer standalone components (Angular defaults to standalone); declare dependencies via `imports` on the component.
+  - Prefer function-based component APIs for new code: use `input()`/`input.required()` and `output()` instead of `@Input`/`@Output` decorators.
+  - Prefer the `host` property in `@Component`/`@Directive` metadata over `@HostBinding` and `@HostListener` (kept only for backwards compatibility).
+  - Prefer composition over inheritance for sharing component behavior. Use helper functions, services, or directive composition (`hostDirectives`) before base component classes.
   - Use signals for local state and derived state (`computed`) where possible; use `effect` for side effects.
   - In zoneless or OnPush scenarios, ensure UI updates are driven by signals or explicit change detection.
 - Linting:

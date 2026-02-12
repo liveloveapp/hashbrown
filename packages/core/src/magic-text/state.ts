@@ -150,12 +150,6 @@ function rebuildState(
 
   const lineBuffer = getLineBuffer(input.source);
   const { line, column } = toLineColumn(input.source, input.source.length);
-  const inferredComplete = inferIsComplete(
-    reduced.nodes,
-    reduced.rootId,
-    lineBuffer,
-    input.pendingCarriageReturn,
-  );
 
   return {
     ...prev,
@@ -167,7 +161,7 @@ function rebuildState(
     warnings: reduced.warnings,
     citations: reduced.citations,
     lineBuffer,
-    isComplete: input.isComplete || inferredComplete,
+    isComplete: input.isComplete,
     index: input.source.length,
     line,
     column,
@@ -241,18 +235,4 @@ function inferMode(
   }
 
   return 'block';
-}
-
-function inferIsComplete(
-  nodes: MagicTextAstNode[],
-  rootId: number | null,
-  lineBuffer: string,
-  pendingCarriageReturn: boolean,
-): boolean {
-  if (rootId == null || pendingCarriageReturn || lineBuffer.length > 0) {
-    return false;
-  }
-
-  const root = nodes.find((node) => node.id === rootId);
-  return !!root && root.closed;
 }

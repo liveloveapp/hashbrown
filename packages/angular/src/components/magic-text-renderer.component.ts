@@ -1,4 +1,3 @@
-/* eslint-disable @angular-eslint/component-class-suffix */
 import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -7,6 +6,7 @@ import {
   contentChild,
   contentChildren,
   Directive,
+  inject,
   input,
   InputSignal,
   output,
@@ -87,7 +87,8 @@ type $Implicit<T> = { $implicit: T };
 export class MagicTextRenderNode {
   nodeType = input.required<MagicTextNodeTemplateType>();
 
-  constructor(readonly template: TemplateRef<MagicTextNodeRenderContext>) {}
+  readonly template =
+    inject<TemplateRef<MagicTextNodeRenderContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
     dir: MagicTextRenderNode,
@@ -100,9 +101,8 @@ export class MagicTextRenderNode {
 /** @public */
 @Directive({ selector: 'ng-template[hbMagicTextRenderTextSegment]' })
 export class MagicTextRenderTextSegment {
-  constructor(
-    readonly template: TemplateRef<MagicTextTextSegmentRenderContext>,
-  ) {}
+  readonly template =
+    inject<TemplateRef<MagicTextTextSegmentRenderContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
     dir: MagicTextRenderTextSegment,
@@ -115,7 +115,7 @@ export class MagicTextRenderTextSegment {
 /** @public */
 @Directive({ selector: 'ng-template[hbMagicTextRenderCaret]' })
 export class MagicTextRenderCaret {
-  constructor(readonly template: TemplateRef<MagicTextCaretContext>) {}
+  readonly template = inject<TemplateRef<MagicTextCaretContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
     dir: MagicTextRenderCaret,
@@ -128,7 +128,8 @@ export class MagicTextRenderCaret {
 /** @public */
 @Directive({ selector: 'ng-template[hbMagicTextRenderCitation]' })
 export class MagicTextRenderCitation {
-  constructor(readonly template: TemplateRef<MagicTextCitationRenderContext>) {}
+  readonly template =
+    inject<TemplateRef<MagicTextCitationRenderContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
     dir: MagicTextRenderCitation,

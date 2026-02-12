@@ -134,14 +134,14 @@ test('useImperativeJsonParser returns root resolvedValue even when JSON is incom
   expect(result.current.parserState.isComplete).toBe(false);
 });
 
-test('useImperativeJsonParser keeps value undefined when root has no resolved value', () => {
+test('useImperativeJsonParser returns root partial value when JSON is incomplete', () => {
   const { result } = renderHook(() => useImperativeJsonParser());
 
   act(() => {
     result.current.parseChunk('"he');
   });
 
-  expect(result.current.value).toBeUndefined();
+  expect(result.current.value).toBe('he');
   expect(result.current.parserState.isComplete).toBe(false);
 });
 

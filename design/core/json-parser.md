@@ -199,6 +199,7 @@ Algorithm outline:
 
 ### Resolved Value & Identity
 - Closed nodes compute `resolvedValue` from buffers or children.
+- Open string nodes expose partial `resolvedValue` as their current decoded buffer.
 - Open container nodes maintain a partially-resolved value that reuses child identities.
 - Only the dirty path gets new identities; unchanged subtree values are preserved.
 
