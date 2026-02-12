@@ -583,8 +583,15 @@ function appendStringFragment(state: ParserState, fragment: string): ParserState
     }
 
     const node = state.nodes[state.currentNodeId] as JsonStringAstNode;
-    const updated = { ...node, buffer: node.buffer + fragment };
-    const nodes = replaceNode(state.nodes, state.currentNodeId, updated);
+    const nextBuffer = node.buffer + fragment;
+    const updated = {
+      ...node,
+      buffer: nextBuffer,
+      // Keep partial string value available while still open.
+      resolvedValue: nextBuffer,
+    };
+    let nodes = replaceNode(state.nodes, state.currentNodeId, updated);
+    nodes = propagateResolved(nodes, updated.parentId);
     return { ...state, nodes };
   }
 

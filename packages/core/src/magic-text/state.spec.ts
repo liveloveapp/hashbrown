@@ -96,3 +96,12 @@ test('does not infer completion when trailing carriage return is pending', () =>
   expect(next.pendingCarriageReturn).toBe(true);
   expect(next.isComplete).toBe(false);
 });
+
+test('does not infer completion when a chunk ends at a newline boundary', () => {
+  const state = createMagicTextParserState({ segmenter: false });
+
+  const next = parseMagicTextChunk(state, '1. one\n');
+
+  expect(next.lineBuffer).toBe('');
+  expect(next.isComplete).toBe(false);
+});

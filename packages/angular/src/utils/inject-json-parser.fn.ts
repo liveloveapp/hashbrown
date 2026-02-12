@@ -187,8 +187,24 @@ export function injectJsonParser<Schema extends s.HashbrownType>(
  *
  * @public
  * @param json - Signal containing the full JSON string that grows over time.
+ */
+export function injectJsonParser(
+  json: Signal<string>,
+): JsonParserRef<unknown>;
+
+/**
+ * Create a prop-driven streaming JSON parser backed by Angular signals without schema-based value resolution.
+ * When no schema is provided, `value` reflects the root parser state’s resolvedValue.
+ *
+ * @public
+ * @param json - Signal containing the full JSON string that grows over time.
  * @param schema - Optional Skillet schema to resolve values from the parser state.
  */
+export function injectJsonParser<Output = unknown>(
+  json: Signal<string>,
+  schema: s.HashbrownType<Output> | Signal<s.HashbrownType<Output>>,
+): JsonParserRef<Output>;
+
 export function injectJsonParser<Output = unknown>(
   json: Signal<string>,
   schema?: s.HashbrownType<Output> | Signal<s.HashbrownType<Output>>,

@@ -162,6 +162,26 @@ test('updates open container resolved values incrementally', () => {
   expect(getResolvedValue(done)).toEqual([1, 2]);
 });
 
+test('updates open string resolved values incrementally', () => {
+  const state = createParserState();
+
+  const next = parseChunk(state, '"he');
+  const root = getNode(next.nodes, next.rootId);
+
+  expect(next.error).toBeNull();
+  expect(next.isComplete).toBe(false);
+  expect(root.type).toBe('string');
+  expect(root.closed).toBe(false);
+  expect(root.resolvedValue).toBe('he');
+
+  const next2 = parseChunk(next, 'llo"');
+  const done = finalizeJsonParse(next2);
+
+  expect(done.error).toBeNull();
+  expect(done.isComplete).toBe(true);
+  expect(getResolvedValue(done)).toBe('hello');
+});
+
 test('preserves identity for unchanged subtrees', () => {
   const state = createParserState();
 

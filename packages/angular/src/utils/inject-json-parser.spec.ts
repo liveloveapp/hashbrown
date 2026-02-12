@@ -62,3 +62,16 @@ test('injectJsonParser resolves root value when no schema and json is partial', 
   expect(parser.value()).toEqual([1, 2]);
   expect(parser.parserState().isComplete).toBe(true);
 });
+
+test('injectJsonParser resolves partial string value when no schema', () => {
+  const json = signal('"he');
+  const parser = injectJsonParser(json);
+
+  expect(parser.value()).toBe('he');
+  expect(parser.parserState().isComplete).toBe(false);
+
+  json.set('"hello"');
+
+  expect(parser.value()).toBe('hello');
+  expect(parser.parserState().isComplete).toBe(true);
+});

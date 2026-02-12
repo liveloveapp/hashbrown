@@ -651,7 +651,7 @@ test('anyOf picks the first match and propagates invalid parser states', () => {
   if (orderedResult.result.state === 'match') {
     expect(orderedResult.result.value).toEqual({
       complete: false,
-      partialValue: undefined,
+      partialValue: 'hi',
       value: 'hi',
     });
   }
@@ -674,7 +674,7 @@ test('node exposes parser state even when inner schema does not match', () => {
   if (result.result.state === 'match') {
     expect(result.result.value).toEqual({
       complete: false,
-      partialValue: undefined,
+      partialValue: 'he',
       value: undefined,
     });
   }

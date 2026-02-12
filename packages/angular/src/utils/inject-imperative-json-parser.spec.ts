@@ -88,12 +88,12 @@ test('injectImperativeJsonParser returns root resolvedValue even when JSON is in
   expect(parser.parserState().isComplete).toBe(false);
 });
 
-test('injectImperativeJsonParser keeps value undefined when root has no resolved value', () => {
+test('injectImperativeJsonParser returns partial root string when JSON is incomplete', () => {
   const parser = injectImperativeJsonParser();
 
   parser.parseChunk('"he');
 
-  expect(parser.value()).toBeUndefined();
+  expect(parser.value()).toBe('he');
   expect(parser.parserState().isComplete).toBe(false);
 });
 

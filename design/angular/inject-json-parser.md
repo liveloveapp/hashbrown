@@ -20,7 +20,7 @@ The existing Angular API is imperative (`parseChunk`). This doc defines a prop-d
 
 - Provide a public Angular signal factory (`injectJsonParser`) that:
   - Accepts a `Signal<string>` containing a full JSON string that grows over time.
-  - Accepts a `schema` as either `s.HashbrownType` or `Signal<s.HashbrownType>`.
+  - Optionally accepts a `schema` as either `s.HashbrownType` or `Signal<s.HashbrownType>`.
   - Exposes `value`, `error`, and `parserState` signals.
   - Supports streaming, partial value resolution per Skillet schemas.
   - Preserves identity for streaming objects/arrays when schema caching applies.

@@ -81,3 +81,20 @@ test('useJsonParser resolves root value when no schema and json is partial', () 
   expect(result.current.value).toEqual([1, 2]);
   expect(result.current.parserState.isComplete).toBe(true);
 });
+
+test('useJsonParser resolves partial string value when no schema', () => {
+  const { result, rerender } = renderHook(
+    ({ json }) => useJsonParser(json),
+    {
+      initialProps: { json: '"he' },
+    },
+  );
+
+  expect(result.current.value).toBe('he');
+  expect(result.current.parserState.isComplete).toBe(false);
+
+  rerender({ json: '"hello"' });
+
+  expect(result.current.value).toBe('hello');
+  expect(result.current.parserState.isComplete).toBe(true);
+});
