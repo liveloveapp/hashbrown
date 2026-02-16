@@ -10,9 +10,10 @@ Contains **locked/stable** built WASM modules for use by the rest of the project
 
 **Note:** Use the relevant `promote.sh` script to update these files when you want to release a new stable version.
 
-### `vad/`
+### `vad-audio-worklet/`
 
-Contains the **build system** for creating a fresh VAD WASM build from the latest WebRTC source code.
+Contains the **build system** for creating a fresh VAD audio worklet build from
+the WebRTC VAD sources.
 
 Use this directory to:
 
@@ -20,4 +21,5 @@ Use this directory to:
 - Test changes and updates
 - Promote builds to stable using `promote.sh`
 
-See [`vad/README.md`](./vad/README.md) for detailed build instructions.
+See [`vad-audio-worklet/README.md`](./vad-audio-worklet/README.md) for detailed
+build instructions.

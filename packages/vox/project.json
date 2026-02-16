@@ -1,0 +1,47 @@
+{
+  "name": "vox",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/vox/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project vox --web",
+  "targets": {
+    "build": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/vox/src/index.ts",
+        "tsConfig": "packages/vox/tsconfig.lib.json",
+        "outputPath": "dist/packages/vox",
+        "format": ["esm", "cjs"],
+        "outputFileName": "index",
+        "outputFileExtensionForEsm": ".mjs",
+        "outputFileExtensionForCjs": ".cjs",
+        "assets": [
+          { "input": "packages/vox", "glob": "*.md", "output": "." },
+          {
+            "input": "packages/vox/src/assets",
+            "glob": "**/*",
+            "output": "assets"
+          }
+        ],
+        "generateExportsField": false
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/vox/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/vox/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}
