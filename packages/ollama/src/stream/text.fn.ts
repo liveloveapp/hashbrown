@@ -2,7 +2,6 @@ import {
   Chat,
   encodeFrame,
   Frame,
-  mergeMessagesForThread,
   updateAssistantMessage,
 } from '@hashbrownai/core';
 import OllamaClient, { ChatRequest, Message, Ollama, ToolCall } from 'ollama';
@@ -18,81 +17,25 @@ type BaseOllamaTextStreamOptions = {
     | Promise<ChatRequest & { stream: true }>;
 };
 
-type ThreadPersistenceOptions = {
-  loadThread: (threadId: string) => Promise<Chat.Api.Message[]>;
-  saveThread: (
-    thread: Chat.Api.Message[],
-    threadId?: string,
-  ) => Promise<string>;
-};
-
-type ThreadlessOptions = BaseOllamaTextStreamOptions & {
-  loadThread?: undefined;
-  saveThread?: undefined;
-};
-
-type ThreadfulOptions = BaseOllamaTextStreamOptions & ThreadPersistenceOptions;
-
-export type OpenAITextStreamOptions = ThreadlessOptions | ThreadfulOptions;
-
-export function text(options: ThreadfulOptions): AsyncIterable<Uint8Array>;
-export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
+export type OpenAITextStreamOptions = BaseOllamaTextStreamOptions;
 
 export async function* text(
   options: OpenAITextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { turbo, request, transformRequestOptions, loadThread, saveThread } =
-    options;
+  const { turbo, request, transformRequestOptions } = options;
   const { model, tools, responseFormat, system } = request;
-  const threadId = request.threadId;
-  let loadedThread: Chat.Api.Message[] = [];
-  let effectiveThreadId = threadId;
-
-  const shouldLoadThread = Boolean(request.threadId);
-  const shouldHydrateThreadOnTheClient = Boolean(
-    request.operation === 'load-thread',
-  );
-
-  if (shouldLoadThread) {
-    yield encodeFrame({ type: 'thread-load-start' });
-
-    if (!loadThread) {
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: 'Thread loading is not available for this transport.',
-      });
-      return;
-    }
-
-    try {
-      loadedThread = await loadThread(request.threadId as string);
-      if (shouldHydrateThreadOnTheClient) {
-        yield encodeFrame({
-          type: 'thread-load-success',
-          thread: loadedThread,
-        });
-      } else {
-        yield encodeFrame({ type: 'thread-load-success' });
-      }
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
-  }
-
   if (request.operation === 'load-thread') {
+    yield encodeFrame({
+      type: 'error',
+      error: {
+        type: 'invalid_request',
+        message: 'Thread operations are not supported.',
+      },
+    });
     return;
   }
 
-  const mergedMessages =
-    request.threadId && shouldLoadThread
-      ? mergeMessagesForThread(loadedThread, request.messages ?? [])
-      : (request.messages ?? []);
+  const mergedMessages = request.messages ?? [];
   const mergedMessagesLength = mergedMessages.length;
   let assistantMessage: Chat.Api.AssistantMessage | null = null;
 
@@ -222,34 +165,6 @@ export async function* text(
 
     yield encodeFrame(frame);
     return;
-  }
-
-  if (saveThread) {
-    const threadToSave = mergeMessagesForThread(mergedMessages, [
-      ...(assistantMessage ? [assistantMessage] : []),
-    ]);
-    yield encodeFrame({ type: 'thread-save-start' });
-    try {
-      const savedThreadId = await saveThread(threadToSave, effectiveThreadId);
-      if (effectiveThreadId && savedThreadId !== effectiveThreadId) {
-        throw new Error(
-          'Save returned a different threadId than the existing thread',
-        );
-      }
-      effectiveThreadId = savedThreadId;
-      yield encodeFrame({
-        type: 'thread-save-success',
-        threadId: savedThreadId,
-      });
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-save-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
   }
 }
 

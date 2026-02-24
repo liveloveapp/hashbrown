@@ -507,204 +507,203 @@ test('updateMessagesWithDelta returns null when nothing to update', () => {
   expect(message).toBeNull();
 });
 
-describe('generateMessage effect', () => {
-  const ModelResolverMock = jest.mocked(ModelResolver);
-  const decodeFramesMock = jest.mocked(decodeFrames);
+const ModelResolverMock = jest.mocked(ModelResolver);
+const decodeFramesMock = jest.mocked(decodeFrames);
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+type MockTransportResponse = {
+  frames?: AsyncIterable<unknown>;
+  stream?: AsyncIterable<unknown>;
+  dispose?: jest.Mock;
+  metadata?: unknown;
+};
 
-  type MockTransportResponse = {
-    frames?: AsyncIterable<unknown>;
-    stream?: AsyncIterable<unknown>;
-    dispose?: jest.Mock;
-    metadata?: unknown;
+function makeSelection(
+  transportResponseFactory: () => Promise<MockTransportResponse>,
+) {
+  const send = jest.fn().mockImplementation(transportResponseFactory);
+  const selection = {
+    spec: { name: 'selected-model' },
+    transport: { send },
+    metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
+  };
+  ModelResolverMock.mockImplementation(
+    () =>
+      ({
+        select: jest.fn(async () => selection),
+        skipFromError: jest.fn(),
+        getMetadata: jest.fn(() => selection.metadata),
+      }) as unknown as ModelResolver,
+  );
+  return { send, selection };
+}
+
+test('generateMessage dispatches start, chunk, success, and finalize on happy path', async () => {
+  jest.clearAllMocks();
+  const frames = async function* () {
+    yield { type: 'response.created' as const, response: { id: 'resp-1' } };
+    yield {
+      type: 'response.output_text.delta' as const,
+      itemId: 'item-1',
+      outputIndex: 0,
+      contentIndex: 0,
+      delta: 'Hello',
+    };
+    yield {
+      type: 'response.completed' as const,
+      response: { id: 'resp-1' },
+    };
   };
 
-  function makeSelection(
-    transportResponseFactory: () => Promise<MockTransportResponse>,
-  ) {
-    const send = jest.fn().mockImplementation(transportResponseFactory);
-    const selection = {
-      spec: { name: 'selected-model' },
-      transport: { send },
-      metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
-    };
-    ModelResolverMock.mockImplementation(
-      () =>
-        ({
-          select: jest.fn(async () => selection),
-          skipFromError: jest.fn(),
-          getMetadata: jest.fn(() => selection.metadata),
-        }) as unknown as ModelResolver,
-    );
-    return { send, selection };
-  }
+  const dispose = jest.fn();
+  const { send } = makeSelection(async () => ({
+    frames: frames(),
+    dispose,
+  }));
 
-  it('dispatches start, chunk, success, and finalize on happy path', async () => {
-    const messageChunk: Chat.Api.CompletionChunk = {
-      choices: [
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectRawStreamingMessage,
         {
-          index: 0,
-          delta: { role: 'assistant', content: 'Hello' },
-          finishReason: 'stop',
+          role: 'assistant',
+          content: 'Hello',
+          toolCallIds: [],
         },
       ],
-    };
+    ]),
+  );
+  const teardown = generateMessage(store);
 
-    const frames = async function* () {
-      yield { type: 'generation-start' as const };
-      yield { type: 'generation-chunk' as const, chunk: messageChunk };
-      yield { type: 'generation-finish' as const };
-    };
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
 
-    const dispose = jest.fn();
-    const { send } = makeSelection(async () => ({
-      frames: frames(),
-      dispose,
-    }));
-
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([
-        [
-          selectRawStreamingMessage,
-          {
-            role: 'assistant',
-            content: 'Hello',
-            toolCallIds: [],
-          },
-        ],
-      ]),
-    );
-    const teardown = generateMessage(store);
-
-    await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-    );
-
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(decodeFramesMock).toHaveBeenCalled();
-    expect(store.actions.map((a) => a.type)).toEqual([
-      apiActions.generateMessageStart.type,
-      apiActions.generateMessageChunk.type,
-      apiActions.generateMessageFinish.type,
-      apiActions.generateMessageSuccess.type,
-      apiActions.assistantTurnFinalized.type,
-    ]);
-    expect(store.actions[1].payload).toMatchObject({
-      choices: [
-        {
-          delta: expect.objectContaining({
-            content: 'Hello',
-            role: 'assistant',
-          }),
-        },
-      ],
-    });
-    expect(store.actions[3].payload).toMatchObject({
-      message: {
-        role: 'assistant',
-        content: 'Hello',
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(decodeFramesMock).toHaveBeenCalled();
+  expect(store.actions.map((a) => a.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageChunk.type,
+    apiActions.generateMessageFinish.type,
+    apiActions.generateMessageSuccess.type,
+    apiActions.assistantTurnFinalized.type,
+  ]);
+  expect(store.actions[1].payload).toMatchObject({
+    choices: [
+      {
+        delta: expect.objectContaining({
+          content: 'Hello',
+          role: 'assistant',
+        }),
       },
-      toolCalls: [],
-    });
-    expect(dispose).toHaveBeenCalledTimes(1);
+    ],
+  });
+  expect(store.actions[3].payload).toMatchObject({
+    message: {
+      role: 'assistant',
+      content: 'Hello',
+    },
+    toolCalls: [],
+  });
+  expect(dispose).toHaveBeenCalledTimes(1);
 
-    teardown?.();
+  teardown?.();
+});
+
+test('generateMessage retries on retryable transport errors and eventually succeeds', async () => {
+  jest.clearAllMocks();
+  const retries = 1;
+
+  let attempt = 0;
+
+  const { send } = makeSelection(async () => {
+    attempt++;
+    if (attempt === 1) {
+      throw new TransportError('temporary boom', { retryable: true });
+    }
+    return {
+      frames: (async function* () {
+        yield {
+          type: 'response.created' as const,
+          response: { id: 'resp-2' },
+        };
+        yield {
+          type: 'response.output_text.delta' as const,
+          itemId: 'item-2',
+          outputIndex: 0,
+          contentIndex: 0,
+          delta: 'Hi after retry',
+        };
+        yield {
+          type: 'response.completed' as const,
+          response: { id: 'resp-2' },
+        };
+      })(),
+      dispose: jest.fn(),
+    };
   });
 
-  it('retries on retryable transport errors and eventually succeeds', async () => {
-    const retries = 1;
-
-    let attempt = 0;
-    const messageChunk: Chat.Api.CompletionChunk = {
-      choices: [
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, retries],
+      [
+        selectRawStreamingMessage,
         {
-          index: 0,
-          delta: { role: 'assistant', content: 'Hi after retry' },
-          finishReason: 'stop',
+          role: 'assistant',
+          content: 'Hi after retry',
+          toolCallIds: [],
         },
       ],
-    };
+    ]),
+  );
+  const teardown = generateMessage(store);
 
-    const { send } = makeSelection(async () => {
-      attempt++;
-      if (attempt === 1) {
-        throw new TransportError('temporary boom', { retryable: true });
-      }
-      return {
-        frames: (async function* () {
-          yield { type: 'generation-start' as const };
-          yield { type: 'generation-chunk' as const, chunk: messageChunk };
-          yield { type: 'generation-finish' as const };
-        })(),
-        dispose: jest.fn(),
-      };
-    });
+  await store.trigger(
+    devActions.sendMessage({
+      message: { role: 'user', content: 'retry me' },
+    }),
+  );
 
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([
-        [selectRetries, retries],
-        [
-          selectRawStreamingMessage,
-          {
-            role: 'assistant',
-            content: 'Hi after retry',
-            toolCallIds: [],
-          },
-        ],
-      ]),
-    );
-    const teardown = generateMessage(store);
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(store.actions.map((a) => a.type)).toEqual([
+    apiActions.generateMessageError.type,
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageChunk.type,
+    apiActions.generateMessageFinish.type,
+    apiActions.generateMessageSuccess.type,
+    apiActions.assistantTurnFinalized.type,
+    apiActions.generateMessageExhaustedRetries.type,
+  ]);
+  const chunkPayload = (store.actions[2].payload ??
+    {}) as Chat.Api.CompletionChunk;
+  expect(chunkPayload.choices[0]?.delta?.content).toBe('Hi after retry');
 
-    await store.trigger(
-      devActions.sendMessage({
-        message: { role: 'user', content: 'retry me' },
-      }),
-    );
+  teardown?.();
+});
 
-    expect(send).toHaveBeenCalledTimes(2);
-    expect(store.actions.map((a) => a.type)).toEqual([
-      apiActions.generateMessageError.type,
-      apiActions.generateMessageStart.type,
-      apiActions.generateMessageChunk.type,
-      apiActions.generateMessageFinish.type,
-      apiActions.generateMessageSuccess.type,
-      apiActions.assistantTurnFinalized.type,
-      apiActions.generateMessageExhaustedRetries.type,
-    ]);
-    const chunkPayload = (store.actions[2].payload ??
-      {}) as Chat.Api.CompletionChunk;
-    expect(chunkPayload.choices[0]?.delta?.content).toBe('Hi after retry');
+test('generateMessage dispatches exhausted retries after max retryable failures', async () => {
+  jest.clearAllMocks();
+  const retries = 1;
+  const error = new Error('still broken');
 
-    teardown?.();
+  makeSelection(async () => {
+    throw error;
   });
 
-  it('dispatches exhausted retries after max retryable failures', async () => {
-    const retries = 1;
-    const error = new Error('still broken');
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, retries]]),
+  );
+  const teardown = generateMessage(store);
 
-    makeSelection(async () => {
-      throw error;
-    });
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'fail' } }),
+  );
 
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([[selectRetries, retries]]),
-    );
-    const teardown = generateMessage(store);
+  expect(store.actions.map((a) => a.type)).toEqual([
+    apiActions.generateMessageError.type,
+    apiActions.generateMessageError.type,
+    apiActions.assistantTurnFinalized.type,
+    apiActions.generateMessageExhaustedRetries.type,
+  ]);
 
-    await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'fail' } }),
-    );
-
-    expect(store.actions.map((a) => a.type)).toEqual([
-      apiActions.generateMessageError.type,
-      apiActions.generateMessageError.type,
-      apiActions.assistantTurnFinalized.type,
-      apiActions.generateMessageExhaustedRetries.type,
-    ]);
-
-    teardown?.();
-  });
+  teardown?.();
 });

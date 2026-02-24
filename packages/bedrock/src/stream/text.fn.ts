@@ -18,7 +18,6 @@ import {
   Chat,
   encodeFrame,
   Frame,
-  mergeMessagesForThread,
   updateAssistantMessage,
 } from '@hashbrownai/core';
 
@@ -33,79 +32,25 @@ type BaseBedrockTextStreamOptions = {
   credentials?: AwsCredentialIdentity | Provider<AwsCredentialIdentity>;
 };
 
-type ThreadPersistenceOptions = {
-  loadThread: (threadId: string) => Promise<Chat.Api.Message[]>;
-  saveThread: (
-    thread: Chat.Api.Message[],
-    threadId?: string,
-  ) => Promise<string>;
-};
+export type BedrockTextStreamOptions = BaseBedrockTextStreamOptions;
 
-type ThreadlessOptions = BaseBedrockTextStreamOptions & {
-  loadThread?: undefined;
-  saveThread?: undefined;
-};
-
-type ThreadfulOptions = BaseBedrockTextStreamOptions & ThreadPersistenceOptions;
-
-export type BedrockTextStreamOptions = ThreadlessOptions | ThreadfulOptions;
-
-export function text(options: ThreadfulOptions): AsyncIterable<Uint8Array>;
-export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
 export async function* text(
   options: BedrockTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { request, loadThread, saveThread } = options;
+  const { request } = options;
   const client = getBedrockClient(options);
-  const threadId = request.threadId;
-  let loadedThread: Chat.Api.Message[] = [];
-  let effectiveThreadId = threadId;
-
-  const shouldLoadThread = Boolean(request.threadId);
-  const shouldHydrateThreadOnTheClient = Boolean(
-    request.operation === 'load-thread',
-  );
-
-  if (shouldLoadThread) {
-    yield encodeFrame({ type: 'thread-load-start' });
-
-    if (!loadThread) {
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: 'Thread loading is not available for this transport.',
-      });
-      return;
-    }
-
-    try {
-      loadedThread = await loadThread(request.threadId as string);
-      if (shouldHydrateThreadOnTheClient) {
-        yield encodeFrame({
-          type: 'thread-load-success',
-          thread: loadedThread,
-        });
-      } else {
-        yield encodeFrame({ type: 'thread-load-success' });
-      }
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
-  }
-
   if (request.operation === 'load-thread') {
+    yield encodeFrame({
+      type: 'error',
+      error: {
+        type: 'invalid_request',
+        message: 'Thread operations are not supported.',
+      },
+    });
     return;
   }
 
-  const mergedMessages =
-    request.threadId && shouldLoadThread
-      ? mergeMessagesForThread(loadedThread, request.messages ?? [])
-      : (request.messages ?? []);
+  const mergedMessages = request.messages ?? [];
   let assistantMessage: Chat.Api.AssistantMessage | null = null;
 
   try {
@@ -294,34 +239,6 @@ export async function* text(
   }
   // close generation phase after successful streaming
   yield encodeFrame({ type: 'generation-finish' });
-
-  if (saveThread) {
-    const threadToSave = mergeMessagesForThread(mergedMessages, [
-      ...(assistantMessage ? [assistantMessage] : []),
-    ]);
-    yield encodeFrame({ type: 'thread-save-start' });
-    try {
-      const savedThreadId = await saveThread(threadToSave, effectiveThreadId);
-      if (effectiveThreadId && savedThreadId !== effectiveThreadId) {
-        throw new Error(
-          'Save returned a different threadId than the existing thread',
-        );
-      }
-      effectiveThreadId = savedThreadId;
-      yield encodeFrame({
-        type: 'thread-save-success',
-        threadId: savedThreadId,
-      });
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-save-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
-  }
 }
 
 function getBedrockClient(
@@ -573,11 +490,4 @@ function toErrorFrame(error: unknown): Frame {
     type: 'generation-error',
     error: String(error),
   };
-}
-
-function normalizeError(error: unknown): { message: string; stack?: string } {
-  if (error instanceof Error) {
-    return { message: error.message, stack: error.stack };
-  }
-  return { message: String(error) };
 }

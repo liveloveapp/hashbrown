@@ -20,7 +20,6 @@ import {
   selectShouldGenerateMessage,
   selectStreamingMessageError,
   selectSystem,
-  selectThreadId,
   selectToolEntities,
   selectTransport,
   selectUiRequested,
@@ -58,23 +57,15 @@ export const generateMessage = createEffect((store) => {
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
-      const threadId = store.read(selectThreadId);
-      const shouldLoadThread = Boolean(threadId) && messages.length === 0;
-      const messagePayload = threadId
-        ? _extractMessageDelta(messages)
-        : messages;
-      const shouldProceed = shouldLoadThread || shouldGenerateMessage;
+      const messagePayload = messages;
+      const shouldProceed = shouldGenerateMessage;
 
       if (!shouldProceed) {
         return;
       }
 
-      if (threadId && !shouldLoadThread && messagePayload.length === 0) {
-        return;
-      }
-
       const params: Chat.Api.CompletionCreateParams = {
-        operation: shouldLoadThread ? 'load-thread' : 'generate',
+        operation: 'generate',
         model,
         system,
         messages: messagePayload,
@@ -85,7 +76,6 @@ export const generateMessage = createEffect((store) => {
           !emulateStructuredOutput && responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined,
-        threadId: threadId,
       };
 
       const requestedFeatures: RequestedFeatures = {
@@ -93,7 +83,7 @@ export const generateMessage = createEffect((store) => {
           Boolean(params.tools?.length) || params.toolChoice === 'required',
         structured: Boolean(params.responseFormat),
         ui: store.read(selectUiRequested),
-        threads: Boolean(threadId),
+        threads: false,
       };
 
       await sleep(debounce, switchSignal);
@@ -180,6 +170,131 @@ export const generateMessage = createEffect((store) => {
               },
             };
 
+            let hasStarted = false;
+            const textByItemId = new Map<string, string>();
+            const toolArgsByItemId = new Map<string, string>();
+            const toolItemsById = new Map<
+              string,
+              {
+                itemId: string;
+                id: string;
+                index: number;
+                name?: string;
+                emittedArgsLength: number;
+              }
+            >();
+
+            const ensureStarted = () => {
+              if (hasStarted) {
+                return;
+              }
+              hasStarted = true;
+              store.dispatch(
+                apiActions.generateMessageStart({
+                  responseSchema,
+                  emulateStructuredOutput,
+                  toolsByName:
+                    emulateStructuredOutput && responseSchema
+                      ? {
+                          ...toolsByName,
+                          output: {
+                            name: 'output',
+                            description:
+                              'Reserved tool for emulated structured output.',
+                            schema: s.normalizeSchemaOutput(responseSchema),
+                            handler: async () => undefined,
+                          },
+                        }
+                      : toolsByName,
+                }),
+              );
+            };
+
+            const dispatchTextDelta = (itemId: string, delta: string) => {
+              if (!delta) {
+                return;
+              }
+              ensureStarted();
+              const current = textByItemId.get(itemId) ?? '';
+              textByItemId.set(itemId, `${current}${delta}`);
+              store.dispatch(
+                apiActions.generateMessageChunk({
+                  choices: [
+                    {
+                      index: 0,
+                      delta: {
+                        role: 'assistant',
+                        content: delta,
+                      },
+                      finishReason: null,
+                    },
+                  ],
+                }),
+              );
+            };
+
+            const updateToolItem = (
+              itemId: string,
+              index: number,
+              name: string | undefined,
+              callId: string | undefined,
+            ) => {
+              const existing = toolItemsById.get(itemId);
+              const next = {
+                itemId,
+                id: callId ?? itemId,
+                index,
+                name: name ?? existing?.name,
+                emittedArgsLength: existing?.emittedArgsLength ?? 0,
+              };
+              toolItemsById.set(itemId, next);
+              return next;
+            };
+
+            const dispatchToolArgs = (itemId: string, args: string) => {
+              const toolItem = toolItemsById.get(itemId);
+              if (!toolItem || !toolItem.name) {
+                return;
+              }
+
+              if (args.length < toolItem.emittedArgsLength) {
+                toolItem.emittedArgsLength = 0;
+              }
+
+              const delta = args.slice(toolItem.emittedArgsLength);
+              if (!delta) {
+                return;
+              }
+
+              toolItem.emittedArgsLength += delta.length;
+              toolItemsById.set(itemId, toolItem);
+              ensureStarted();
+              store.dispatch(
+                apiActions.generateMessageChunk({
+                  choices: [
+                    {
+                      index: 0,
+                      delta: {
+                        role: 'assistant',
+                        toolCalls: [
+                          {
+                            index: toolItem.index,
+                            id: toolItem.id,
+                            type: 'function',
+                            function: {
+                              name: toolItem.name,
+                              arguments: delta,
+                            },
+                          },
+                        ],
+                      },
+                      finishReason: null,
+                    },
+                  ],
+                }),
+              );
+            };
+
             for await (const frame of decodeFrames(frameStream, {
               signal: AbortSignal.any([
                 cancelAbortController.signal,
@@ -187,75 +302,12 @@ export const generateMessage = createEffect((store) => {
               ]),
             })) {
               switch (frame.type) {
-                case 'thread-load-start': {
-                  store.dispatch(apiActions.threadLoadStart());
-                  break;
-                }
-                case 'thread-load-success': {
-                  store.dispatch(
-                    apiActions.threadLoadSuccess({
-                      thread: frame.thread,
-                      responseSchema,
-                      toolsByName,
-                    }),
-                  );
-                  if (params.operation === 'load-thread') {
-                    return;
-                  }
-                  break;
-                }
-                case 'thread-load-failure': {
-                  store.dispatch(
-                    apiActions.threadLoadFailure({
-                      error: frame.error,
-                      stacktrace: frame.stacktrace,
-                    }),
-                  );
-                  throw new Error(frame.error);
-                }
                 case 'generation-start': {
-                  store.dispatch(
-                    apiActions.generateMessageStart({
-                      responseSchema,
-                      emulateStructuredOutput,
-                      toolsByName:
-                        emulateStructuredOutput && responseSchema
-                          ? {
-                              ...toolsByName,
-                              output: {
-                                name: 'output',
-                                description:
-                                  'Reserved tool for emulated structured output.',
-                                schema: s.normalizeSchemaOutput(responseSchema),
-                                handler: async () => undefined,
-                              },
-                            }
-                          : toolsByName,
-                    }),
-                  );
+                  ensureStarted();
                   break;
                 }
                 case 'generation-chunk': {
                   store.dispatch(apiActions.generateMessageChunk(frame.chunk));
-                  break;
-                }
-                case 'thread-save-success': {
-                  store.dispatch(
-                    apiActions.threadSaveSuccess({ threadId: frame.threadId }),
-                  );
-                  break;
-                }
-                case 'thread-save-start': {
-                  store.dispatch(apiActions.threadSaveStart());
-                  break;
-                }
-                case 'thread-save-failure': {
-                  store.dispatch(
-                    apiActions.threadSaveFailure({
-                      error: frame.error,
-                      stacktrace: frame.stacktrace,
-                    }),
-                  );
                   break;
                 }
                 case 'generation-error': {
@@ -299,6 +351,148 @@ export const generateMessage = createEffect((store) => {
                     );
                   }
                   break;
+                }
+                case 'response.created':
+                case 'response.queued':
+                case 'response.in_progress': {
+                  ensureStarted();
+                  break;
+                }
+                case 'response.output_text.delta': {
+                  dispatchTextDelta(frame.itemId, frame.delta);
+                  break;
+                }
+                case 'response.output_text.done': {
+                  const previous = textByItemId.get(frame.itemId) ?? '';
+                  const nextText = frame.text ?? '';
+                  const delta = nextText.startsWith(previous)
+                    ? nextText.slice(previous.length)
+                    : nextText;
+                  if (!nextText.startsWith(previous)) {
+                    textByItemId.set(frame.itemId, '');
+                  }
+                  if (delta) {
+                    dispatchTextDelta(frame.itemId, delta);
+                  } else {
+                    textByItemId.set(frame.itemId, nextText);
+                  }
+                  break;
+                }
+                case 'response.refusal.delta': {
+                  dispatchTextDelta(frame.itemId, frame.delta);
+                  break;
+                }
+                case 'response.refusal.done': {
+                  const previous = textByItemId.get(frame.itemId) ?? '';
+                  const nextText = frame.refusal ?? '';
+                  const delta = nextText.startsWith(previous)
+                    ? nextText.slice(previous.length)
+                    : nextText;
+                  if (!nextText.startsWith(previous)) {
+                    textByItemId.set(frame.itemId, '');
+                  }
+                  if (delta) {
+                    dispatchTextDelta(frame.itemId, delta);
+                  } else {
+                    textByItemId.set(frame.itemId, nextText);
+                  }
+                  break;
+                }
+                case 'response.output_item.added':
+                case 'response.output_item.done': {
+                  const item = frame.item;
+                  if (!item || typeof item !== 'object') {
+                    break;
+                  }
+                  const type =
+                    typeof (item as { type?: unknown }).type === 'string'
+                      ? (item as { type: string }).type
+                      : undefined;
+                  if (type !== 'function_call') {
+                    break;
+                  }
+                  const itemId =
+                    typeof (item as { id?: unknown }).id === 'string'
+                      ? (item as { id: string }).id
+                      : undefined;
+                  if (!itemId) {
+                    break;
+                  }
+                  const name =
+                    typeof (item as { name?: unknown }).name === 'string'
+                      ? (item as { name: string }).name
+                      : undefined;
+                  const callId =
+                    typeof (item as { call_id?: unknown }).call_id === 'string'
+                      ? (item as { call_id: string }).call_id
+                      : undefined;
+                  const toolItem = updateToolItem(
+                    itemId,
+                    frame.outputIndex,
+                    name,
+                    callId,
+                  );
+                  const args = toolArgsByItemId.get(itemId);
+                  if (args) {
+                    dispatchToolArgs(toolItem.itemId, args);
+                  }
+                  break;
+                }
+                case 'response.function_call_arguments.delta': {
+                  const current = toolArgsByItemId.get(frame.itemId) ?? '';
+                  const nextArgs = `${current}${frame.delta}`;
+                  toolArgsByItemId.set(frame.itemId, nextArgs);
+                  dispatchToolArgs(frame.itemId, nextArgs);
+                  break;
+                }
+                case 'response.function_call_arguments.done': {
+                  const nextArgs = frame.arguments ?? '';
+                  toolArgsByItemId.set(frame.itemId, nextArgs);
+                  dispatchToolArgs(frame.itemId, nextArgs);
+                  break;
+                }
+                case 'response.completed':
+                case 'response.incomplete': {
+                  store.dispatch(apiActions.generateMessageFinish());
+
+                  const streamingError = store.read(
+                    selectStreamingMessageError,
+                  );
+                  if (streamingError) {
+                    store.dispatch(
+                      apiActions.generateMessageError(streamingError),
+                    );
+                    break;
+                  }
+
+                  const streamingMessage = store.read(
+                    selectRawStreamingMessage,
+                  );
+                  const streamingToolCalls = store.read(
+                    selectRawStreamingToolCalls,
+                  );
+
+                  if (streamingMessage) {
+                    store.dispatch(
+                      apiActions.generateMessageSuccess({
+                        message: streamingMessage,
+                        toolCalls: streamingToolCalls,
+                      }),
+                    );
+                  } else {
+                    store.dispatch(
+                      apiActions.generateMessageError(
+                        new Error('No message was generated'),
+                      ),
+                    );
+                  }
+                  break;
+                }
+                case 'response.failed': {
+                  throw new Error('Response failed.');
+                }
+                case 'error': {
+                  throw new Error(frame.error.message);
                 }
               }
             }

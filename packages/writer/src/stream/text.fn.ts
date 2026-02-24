@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Writer from 'writer-sdk';
-import {
-  Chat,
-  encodeFrame,
-  mergeMessagesForThread,
-  updateAssistantMessage,
-} from '@hashbrownai/core';
+import { Chat, encodeFrame, updateAssistantMessage } from '@hashbrownai/core';
 
 /**
  * The options for the Writer text stream.
@@ -27,22 +22,7 @@ type BaseWriterTextStreamOptions = {
   ) => Writer.Chat.ChatChatParams | Promise<Writer.Chat.ChatChatParams>;
 };
 
-type ThreadPersistenceOptions = {
-  loadThread: (threadId: string) => Promise<Chat.Api.Message[]>;
-  saveThread: (
-    thread: Chat.Api.Message[],
-    threadId?: string,
-  ) => Promise<string>;
-};
-
-type ThreadlessOptions = BaseWriterTextStreamOptions & {
-  loadThread?: undefined;
-  saveThread?: undefined;
-};
-
-type ThreadfulOptions = BaseWriterTextStreamOptions & ThreadPersistenceOptions;
-
-export type WriterTextStreamOptions = ThreadlessOptions | ThreadfulOptions;
+export type WriterTextStreamOptions = BaseWriterTextStreamOptions;
 
 /**
  * Streams text from the Writer API.
@@ -50,65 +30,25 @@ export type WriterTextStreamOptions = ThreadlessOptions | ThreadfulOptions;
  * @param options - The options for the stream.
  * @returns An async iterable of Uint8Arrays.
  */
-export function text(options: ThreadfulOptions): AsyncIterable<Uint8Array>;
-export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
-
 export async function* text(
   options: WriterTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, request, transformRequestOptions, loadThread, saveThread } =
-    options;
+  const { apiKey, request, transformRequestOptions } = options;
   const writer = new Writer({
     apiKey,
   });
-  const threadId = request.threadId;
-  let loadedThread: Chat.Api.Message[] = [];
-  let effectiveThreadId = threadId;
-
-  const shouldLoadThread = Boolean(request.threadId);
-  const shouldHydrateThreadOnTheClient = Boolean(
-    request.operation === 'load-thread',
-  );
-
-  if (shouldLoadThread) {
-    yield encodeFrame({ type: 'thread-load-start' });
-
-    if (!loadThread) {
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: 'Thread loading is not available for this transport.',
-      });
-      return;
-    }
-
-    try {
-      loadedThread = await loadThread(request.threadId as string);
-      if (shouldHydrateThreadOnTheClient) {
-        yield encodeFrame({
-          type: 'thread-load-success',
-          thread: loadedThread,
-        });
-      } else {
-        yield encodeFrame({ type: 'thread-load-success' });
-      }
-    } catch (error: unknown) {
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: error instanceof Error ? error.message : String(error),
-        stacktrace: error instanceof Error ? error.stack : undefined,
-      });
-      return;
-    }
-  }
-
   if (request.operation === 'load-thread') {
+    yield encodeFrame({
+      type: 'error',
+      error: {
+        type: 'invalid_request',
+        message: 'Thread operations are not supported.',
+      },
+    });
     return;
   }
 
-  const mergedMessages =
-    request.threadId && shouldLoadThread
-      ? mergeMessagesForThread(loadedThread, request.messages ?? [])
-      : (request.messages ?? []);
+  const mergedMessages = request.messages ?? [];
   let assistantMessage: Chat.Api.AssistantMessage | null = null;
 
   try {
@@ -236,30 +176,4 @@ export async function* text(
   yield encodeFrame({
     type: 'generation-finish',
   });
-
-  if (saveThread) {
-    const threadToSave = mergeMessagesForThread(mergedMessages, [
-      ...(assistantMessage ? [assistantMessage] : []),
-    ]);
-    yield encodeFrame({ type: 'thread-save-start' });
-    try {
-      const savedThreadId = await saveThread(threadToSave, effectiveThreadId);
-      if (effectiveThreadId && savedThreadId !== effectiveThreadId) {
-        throw new Error(
-          'Save returned a different threadId than the existing thread',
-        );
-      }
-      effectiveThreadId = savedThreadId;
-      yield encodeFrame({
-        type: 'thread-save-success',
-        threadId: savedThreadId,
-      });
-    } catch (error: unknown) {
-      yield encodeFrame({
-        type: 'thread-save-failure',
-        error: error instanceof Error ? error.message : String(error),
-        stacktrace: error instanceof Error ? error.stack : undefined,
-      });
-    }
-  }
 }
