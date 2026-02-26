@@ -7,7 +7,8 @@ import { IResponseDeserializer, SpotifyApi } from '@spotify/web-api-ts-sdk';
 import type { Track } from '@spotify/web-api-ts-sdk';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod/v3';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { Client as GeniusClient } from 'genius-lyrics';
 
 const host = process.env.HOST ?? 'localhost';
@@ -76,6 +77,30 @@ const mcpServer = new McpServer({
   version: '1.0.0',
 });
 
+const searchInputZodSchema = z.object({
+  query: z.string().describe('Search keywords'),
+  type: z.enum(['track', 'artist', 'album']).optional(),
+});
+
+const searchInputSchema = zodToJsonSchema(searchInputZodSchema) as Record<
+  string,
+  unknown
+>;
+
+const queueTrackInputZodSchema = z.object({
+  uri: z
+    .string()
+    .describe('spotify:track:<id> or https://open.spotify.com/track/<id>'),
+  deviceId: z
+    .string()
+    .optional()
+    .describe('The ID of the device to queue the track on'),
+});
+
+const queueTrackInputSchema = zodToJsonSchema(
+  queueTrackInputZodSchema,
+) as Record<string, unknown>;
+
 /**
  * Register tool
  *
@@ -111,12 +136,7 @@ mcpServer.registerTool(
  *      query:
  *        type: string
  */
-const searchInputSchema = z.object({
-  query: z.string().describe('Search keywords'),
-  type: z.enum(['track', 'artist', 'album']).optional(),
-});
-
-type SearchToolInput = z.infer<typeof searchInputSchema>;
+type SearchToolInput = z.infer<typeof searchInputZodSchema>;
 
 mcpServer.registerTool(
   'search',
@@ -165,17 +185,7 @@ mcpServer.registerTool(
  *        type: string
  */
 
-const queueTrackInputSchema = z.object({
-  uri: z
-    .string()
-    .describe('spotify:track:<id> or https://open.spotify.com/track/<id>'),
-  deviceId: z
-    .string()
-    .optional()
-    .describe('The ID of the device to queue the track on'),
-});
-
-type QueueTrackInput = z.infer<typeof queueTrackInputSchema>;
+type QueueTrackInput = z.infer<typeof queueTrackInputZodSchema>;
 
 mcpServer.registerTool(
   'queue_track',

@@ -1,0 +1,17 @@
+.container {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.stepText {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.thinking {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.5);
+}

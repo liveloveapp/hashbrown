@@ -5,7 +5,7 @@ import { useSmartHomeStore } from '../store/smart-home.store';
 import { Button } from './button';
 import { Message } from './Message';
 import { ScrollArea } from './scrollarea';
-import { Textarea } from './textarea';
+import { Textarea } from './Textarea';
 
 export const ChatPanel = () => {
   const getLights = useTool({

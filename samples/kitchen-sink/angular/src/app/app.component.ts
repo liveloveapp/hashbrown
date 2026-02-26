@@ -91,11 +91,12 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
   ],
 })
 export class AppComponent {
-  store = inject(Store);
-  isChatPanelOpen = this.store.selectSignal(selectIsChatPanelOpen);
+  readonly store = inject(Store);
+  readonly isChatPanelOpen = this.store.selectSignal(selectIsChatPanelOpen);
+  private readonly iconRegistry = inject(MatIconRegistry);
 
-  constructor(iconRegistry: MatIconRegistry) {
-    iconRegistry.setDefaultFontSetClass('material-symbols-outlined');
+  constructor() {
+    this.iconRegistry.setDefaultFontSetClass('material-symbols-outlined');
   }
 
   toggleChatPanel() {

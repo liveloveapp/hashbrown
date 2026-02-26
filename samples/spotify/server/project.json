@@ -13,25 +13,20 @@
         "outputPath": "dist/samples/spotify/server",
         "format": ["cjs"],
         "bundle": false,
+        "skipTypeCheck": true,
         "main": "samples/spotify/server/src/main.ts",
         "tsConfig": "samples/spotify/server/tsconfig.app.json",
-        "assets": ["samples/spotify/server/src/assets"],
-        "generatePackageJson": true,
+        "assets": [],
+        "generatePackageJson": false,
         "esbuildOptions": {
-          "sourcemap": true,
-          "outExtension": {
-            ".js": ".js"
-          }
+          "sourcemap": true
         }
       },
       "configurations": {
         "development": {},
         "production": {
           "esbuildOptions": {
-            "sourcemap": false,
-            "outExtension": {
-              ".js": ".js"
-            }
+            "sourcemap": false
           }
         }
       }

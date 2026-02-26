@@ -79,3 +79,10 @@ llms.txt
 llms-full.txt
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
+
+# Next.js
+.next
+out
+
+# LangGraph API
+.langgraph_api

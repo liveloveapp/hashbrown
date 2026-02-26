@@ -1,0 +1,39 @@
+.tool {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #fff;
+  font:
+    400 12px/16px JetBrains Mono,
+    monospace;
+}
+
+.toolInProgress {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.toolInProgress .stepText {
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.7);
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.toolComplete {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

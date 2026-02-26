@@ -1,0 +1,37 @@
+.wrapper {
+  display: block;
+  width: var(--article-width, 100%);
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+.heading {
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--gray);
+}
+
+.h1 {
+  font-size: 24px;
+}
+
+.h2 {
+  font-size: 20px;
+}
+
+.h3 {
+  font-size: 18px;
+}
+
+.h4 {
+  font-size: 16px;
+}
+
+.h5 {
+  font-size: 14px;
+}
+
+.h6 {
+  font-size: 12px;
+}

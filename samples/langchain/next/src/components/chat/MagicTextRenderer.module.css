@@ -1,0 +1,106 @@
+.container {
+  display: contents;
+  color: inherit;
+}
+
+.fragment {
+  display: inline;
+}
+
+.fragment:not(.fragmentStatic) .fragmentText,
+.fragment:not(.fragmentStatic) .fragmentTextCode,
+.fragment:not(.fragmentStatic) em,
+.fragment:not(.fragmentStatic) strong,
+.fragment:not(.fragmentStatic) sup,
+.fragment:not(.fragmentStatic) code {
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fragmentProvisional {
+  opacity: 0;
+}
+
+.fragmentStatic {
+  opacity: 1;
+  animation: none;
+}
+
+.fragmentText {
+  white-space: pre-wrap;
+}
+
+.fragmentTextCode {
+  font-family:
+    JetBrains Mono,
+    monospace;
+  background: var(--fragment-code-bg, rgba(0, 0, 0, 0.08));
+  padding: 0 3px;
+  border-radius: 4px;
+  color: inherit;
+}
+
+.fragmentSpace {
+  display: inline;
+  white-space: pre;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fragmentSpaceBefore {
+  /* Additional styles if needed */
+}
+
+.fragmentSpaceAfter {
+  /* Additional styles if needed */
+}
+
+.link {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.citation {
+  font-size: 0.85em;
+  margin-left: 2px;
+}
+
+.citationPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+
+.citationPlaceholderWrapper {
+  display: inline-flex;
+  margin-right: 4px;
+}
+
+.citationPlaceholderIcon {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background-color: transparent;
+  opacity: 0.5;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
