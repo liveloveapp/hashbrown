@@ -1,0 +1,28 @@
+{
+  "name": "langchain-server",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "samples/langchain/server/src",
+  "projectType": "application",
+  "targets": {
+    "init": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx samples/langchain/server/scripts/init.ts"
+      }
+    },
+    "fetch-pdfs": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx samples/langchain/server/scripts/fetch-pdfs.ts"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["init"],
+      "options": {
+        "command": "npx @langchain/langgraph-cli dev -c samples/langchain/server/langgraph.json --port 2024 --no-browser"
+      }
+    }
+  },
+  "tags": []
+}

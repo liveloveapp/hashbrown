@@ -1,0 +1,103 @@
+/* base button styles */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font:
+    400 16px/24px 'Fredoka',
+    sans-serif;
+  cursor: pointer;
+  transition: all 200ms;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* button variants */
+.buttonDefault {
+  background: var(--sunshine-yellow-light, rgba(253, 228, 186, 1));
+  color: var(--gray, rgba(94, 92, 90, 1));
+}
+
+.buttonDefault:hover:not(:disabled) {
+  background: var(--sunshine-yellow, rgba(251, 187, 82, 1));
+}
+
+.buttonSecondary {
+  background: var(--gray-light, rgba(164, 163, 161, 1));
+  color: var(--gray-dark, rgba(61, 60, 58, 1));
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background: var(--gray, rgba(94, 92, 90, 1));
+  color: #fff;
+}
+
+.buttonOutline {
+  background: transparent;
+  color: var(--gray-dark, rgba(61, 60, 58, 1));
+  border: 1px solid var(--gray-light, rgba(164, 163, 161, 1));
+}
+
+.buttonOutline:hover:not(:disabled) {
+  background: var(--gray-light, rgba(164, 163, 161, 0.2));
+  border-color: var(--gray, rgba(94, 92, 90, 1));
+}
+
+.buttonGhost {
+  background: transparent;
+  color: var(--gray-dark, rgba(61, 60, 58, 1));
+}
+
+.buttonGhost:hover:not(:disabled) {
+  background: var(--gray-light, rgba(164, 163, 161, 0.2));
+}
+
+.buttonDestructive {
+  background: var(--indian-red, rgba(184, 96, 96, 1));
+  color: #fff;
+}
+
+.buttonDestructive:hover:not(:disabled) {
+  background: var(--indian-red-dark, rgba(146, 78, 78, 1));
+}
+
+/* button sizes */
+.buttonDefaultSize {
+  padding: 9px 16px;
+  height: auto;
+}
+
+.buttonSm {
+  padding: 6px 12px;
+  font:
+    400 14px/20px 'Fredoka',
+    sans-serif;
+  height: auto;
+}
+
+.buttonLg {
+  padding: 12px 20px;
+  font:
+    400 18px/28px 'Fredoka',
+    sans-serif;
+  height: auto;
+}
+
+.buttonIcon {
+  padding: 9px;
+  width: auto;
+  height: auto;
+}
+
+/* disabled state */
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* focus state */
+.button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(232, 140, 77, 0.2);
+}

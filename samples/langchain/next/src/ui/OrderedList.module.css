@@ -1,0 +1,18 @@
+.wrapper {
+  display: block;
+  width: var(--article-width, 100%);
+  margin: 12px 0;
+}
+
+.list {
+  margin: 0;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style-type: decimal;
+}
+
+.item {
+  line-height: 1.3;
+}

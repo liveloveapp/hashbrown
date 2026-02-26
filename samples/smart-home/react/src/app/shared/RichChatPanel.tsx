@@ -17,7 +17,7 @@ import { CardComponent } from './CardComponent';
 import { MarkdownComponent } from './MarkdownComponent';
 import { RichMessage } from './RichMessage';
 import { ScrollArea } from './scrollarea';
-import { Textarea } from './textarea';
+import { Textarea } from './Textarea';
 import { Light } from '../models/light.model';
 
 const magicTextAnimationStyles = `

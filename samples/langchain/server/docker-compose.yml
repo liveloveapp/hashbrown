@@ -1,0 +1,17 @@
+services:
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: chroma
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      CHROMA_SERVER_HOST: 0.0.0.0
+      CHROMA_SERVER_PORT: '8000'
+      ANONYMIZED_TELEMETRY: 'false'
+      CHROMA_SERVER_HTTP_WORKERS: '4'
+    volumes:
+      - chroma-data:/chroma/chroma
+
+volumes:
+  chroma-data:
