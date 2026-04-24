@@ -13,6 +13,30 @@ First, install the Google adapter package:
 npm install @hashbrownai/google
 ```
 
+## Authentication
+
+The adapter supports two mutually exclusive authentication modes.
+
+**API Key (Gemini Developer API):**
+
+```ts
+HashbrownGoogle.stream.text({
+  apiKey: process.env.GOOGLE_API_KEY!,
+  request: req.body,
+});
+```
+
+**Vertex AI (project + location via ADC):**
+
+```ts
+HashbrownGoogle.stream.text({
+  vertexai: true,
+  project: ‘your-gcp-project’,
+  location: ‘us-central1’,
+  request: req.body,
+});
+```
+
 ## Streaming Text Responses
 
 Hashbrown’s Google Gemini adapter lets you **stream chat completions** from Google Gemini models, handling function calls, response schemas, and request transforms.
@@ -25,11 +49,14 @@ Streams a Gemini chat completion as a series of encoded frames. Handles content,
 
 **Options:**
 
-| Name                      | Type                                    | Description                                                                    |
-| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `apiKey`                  | `string`                                | Your Google Gemini API Key.                                                    |
-| `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.         |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final Gemini request before it is sent. |
+| Name                      | Type                                    | Description                                                                                    |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `apiKey`                  | `string`                                | Gemini Developer API key. Mutually exclusive with `vertexai`.                                  |
+| `vertexai`                | `true`                                  | Enable Vertex AI auth. Mutually exclusive with `apiKey`.                                       |
+| `project`                 | `string`                                | GCP project ID. Required when `vertexai: true`.                                                |
+| `location`                | `string`                                | GCP region (e.g. `us-central1`). Required when `vertexai: true`.                              |
+| `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.                         |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final Gemini request before it is sent.                 |
 
 **Supported Features:**
 

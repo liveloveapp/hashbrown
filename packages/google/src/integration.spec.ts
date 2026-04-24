@@ -6,6 +6,8 @@ import { Chat, fryHashbrown, Hashbrown, s } from '@hashbrownai/core';
 import { HashbrownGoogle } from './index';
 
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
+const VERTEX_AI_PROJECT = process.env['GOOGLE_CLOUD_PROJECT'] ?? '';
+const VERTEX_AI_LOCATION = process.env['GOOGLE_CLOUD_LOCATION'] ?? '';
 
 jest.setTimeout(60_000);
 
@@ -27,6 +29,46 @@ test('Google Text Streaming', async () => {
 
      DO NOT respond with any other text.
     `,
+      messages: [
+        {
+          role: 'user',
+          content: 'Please respond with the correct text.',
+        },
+      ],
+    });
+
+    await waitUntilHashbrownIsSettled(hashbrown);
+
+    const assistantMessage = hashbrown
+      .messages()
+      .find((message) => message.role === 'assistant');
+
+    expect(assistantMessage?.content).toBe('Hello, world!');
+  } finally {
+    server.close();
+  }
+});
+
+xtest('Vertex AI Text Streaming', async () => {
+  const server = await createServer((request) =>
+    HashbrownGoogle.stream.text({
+      vertexai: true,
+      project: VERTEX_AI_PROJECT,
+      location: VERTEX_AI_LOCATION,
+      request,
+    }),
+  );
+  try {
+    const hashbrown = fryHashbrown({
+      debounce: 0,
+      apiUrl: server.url,
+      model: 'gemini-2.5-flash',
+      system: `
+       I am writing an integration test against Google Vertex AI. Respond
+       exactly with the text "Hello, world!"
+
+       DO NOT respond with any other text.
+      `,
       messages: [
         {
           role: 'user',
