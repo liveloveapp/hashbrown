@@ -16,8 +16,21 @@ import {
   updateAssistantMessage,
 } from '@hashbrownai/core';
 
-type BaseGoogleTextStreamOptions = {
+type ApiKeyAuthOptions = {
   apiKey: string;
+  vertexai?: undefined;
+  project?: undefined;
+  location?: undefined;
+};
+
+type VertexAIAuthOptions = {
+  vertexai: true;
+  project: string;
+  location: string;
+  apiKey?: undefined;
+};
+
+type BaseGoogleTextStreamOptions = (ApiKeyAuthOptions | VertexAIAuthOptions) & {
   request: Chat.Api.CompletionCreateParams;
   transformRequestOptions?: (
     options: GenerateContentParameters,
@@ -47,16 +60,19 @@ export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
 export async function* text(
   options: GoogleTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { apiKey, request, transformRequestOptions, loadThread, saveThread } =
-    options;
+  const { request, transformRequestOptions, loadThread, saveThread } = options;
   const { model, tools, responseFormat, toolChoice, system } = request;
   const threadId = request.threadId;
   let loadedThread: Chat.Api.Message[] = [];
   let effectiveThreadId = threadId;
 
-  const ai = new GoogleGenAI({
-    apiKey,
-  });
+  const ai: GoogleGenAI = options.vertexai
+    ? new GoogleGenAI({
+        vertexai: true,
+        project: options.project,
+        location: options.location,
+      })
+    : new GoogleGenAI({ apiKey: options.apiKey });
 
   const shouldLoadThread = Boolean(request.threadId);
   const shouldHydrateThreadOnTheClient = Boolean(
