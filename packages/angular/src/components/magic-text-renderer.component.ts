@@ -838,7 +838,7 @@ export class MagicTextRenderCitation {
     }
   `,
 })
-export class MagicText {
+class MagicTextComponent {
   /**
    * Full markdown text, usually increasing over time.
    */
@@ -1098,3 +1098,5 @@ export class MagicText {
       : segment.text;
   }
 }
+
+export { MagicTextComponent as MagicText };

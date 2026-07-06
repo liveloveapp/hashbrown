@@ -17,6 +17,7 @@
         "outputFileName": "index",
         "outputFileExtensionForEsm": ".mjs",
         "outputFileExtensionForCjs": ".cjs",
+        "useLegacyTypescriptPlugin": false,
         "assets": [
           { "input": "packages/vox", "glob": "*.md", "output": "." },
           {
