@@ -30,6 +30,8 @@ const { messages, sendMessage } = useChat({
 
 Hashbrown manages message history for you. Pass an initial message array to the `messages` option, or use the `setMessages` method to update it.
 
+For persistence, pruning, and history mutation examples, see [Message History](/docs/react/concept/message-history).
+
 ```tsx
 import { useChat } from '@hashbrownai/react';
 
