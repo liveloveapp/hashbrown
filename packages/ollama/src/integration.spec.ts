@@ -17,12 +17,8 @@ test('Ollama Text Streaming', async () => {
       turbo: OLLAMA_TURBO_API_KEY
         ? { apiKey: OLLAMA_TURBO_API_KEY }
         : undefined,
+      host: OLLAMA_HOST,
       request,
-      transformRequestOptions: (opts) => ({
-        ...opts,
-        // Allow overriding host for local daemon when provided
-        ...(OLLAMA_HOST ? { host: OLLAMA_HOST } : {}),
-      }),
     }),
   );
   try {
@@ -68,11 +64,8 @@ test('Ollama Tool Calling', async () => {
       turbo: OLLAMA_TURBO_API_KEY
         ? { apiKey: OLLAMA_TURBO_API_KEY }
         : undefined,
+      host: OLLAMA_HOST,
       request,
-      transformRequestOptions: (opts) => ({
-        ...opts,
-        ...(OLLAMA_HOST ? { host: OLLAMA_HOST } : {}),
-      }),
     }),
   );
 
@@ -149,11 +142,8 @@ test('Ollama with structured output', async () => {
       turbo: OLLAMA_TURBO_API_KEY
         ? { apiKey: OLLAMA_TURBO_API_KEY }
         : undefined,
+      host: OLLAMA_HOST,
       request,
-      transformRequestOptions: (opts) => ({
-        ...opts,
-        ...(OLLAMA_HOST ? { host: OLLAMA_HOST } : {}),
-      }),
     }),
   );
 
@@ -201,11 +191,8 @@ test('Ollama with tool calling and structured output', async () => {
       turbo: OLLAMA_TURBO_API_KEY
         ? { apiKey: OLLAMA_TURBO_API_KEY }
         : undefined,
+      host: OLLAMA_HOST,
       request,
-      transformRequestOptions: (opts) => ({
-        ...opts,
-        ...(OLLAMA_HOST ? { host: OLLAMA_HOST } : {}),
-      }),
     }),
   );
 
@@ -277,11 +264,8 @@ test('Ollama supports thread IDs across turns', async () => {
       turbo: OLLAMA_TURBO_API_KEY
         ? { apiKey: OLLAMA_TURBO_API_KEY }
         : undefined,
+      host: OLLAMA_HOST,
       request: incomingRequest,
-      transformRequestOptions: (opts) => ({
-        ...opts,
-        ...(OLLAMA_HOST ? { host: OLLAMA_HOST } : {}),
-      }),
       loadThread: async (threadId: string) =>
         threadMessages.get(threadId) ?? [],
       saveThread: async (thread: Chat.Api.Message[], threadId?: string) => {
