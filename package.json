@@ -190,7 +190,7 @@
     "prettier": "^3.9.4",
     "react-day-picker": "^8.10.2",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "6.29.0",
+    "react-router-dom": "6.30.4",
     "serverless": "^4.38.1",
     "serverless-esbuild": "^1.57.2",
     "serverless-offline": "^14.7.4",
