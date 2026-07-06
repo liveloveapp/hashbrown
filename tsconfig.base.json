@@ -25,6 +25,7 @@
       "@hashbrownai/ollama": ["packages/ollama/src/index.ts"],
       "@hashbrownai/openai": ["packages/openai/src/index.ts"],
       "@hashbrownai/react": ["packages/react/src/index.ts"],
+      "@hashbrownai/testing/aimock": ["tools/testing/aimock/index.ts"],
       "@hashbrownai/vox": ["packages/vox/src/index.ts"],
       "@hashbrownai/vox/loader": [
         "packages/vox/src/assets/vad_audio_worklet.single.js"

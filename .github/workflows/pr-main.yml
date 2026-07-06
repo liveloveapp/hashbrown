@@ -32,5 +32,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint, test, and build affected projects
-        run: npx nx affected -t lint,test,build --parallel=3
+      - name: Lint, test, build, and e2e affected projects
+        run: npx nx affected -t lint,test,build,e2e --parallel=3

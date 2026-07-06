@@ -72,6 +72,7 @@ export async function* text(
   const threadId = request.threadId;
   let loadedThread: Chat.Api.Message[] = [];
   let effectiveThreadId = threadId;
+  const baseUrl = process.env['HASHBROWN_GOOGLE_API_BASE_URL'];
 
   const ai: GoogleGenAI = options.vertexai
     ? new GoogleGenAI({
@@ -79,7 +80,10 @@ export async function* text(
         project: options.project,
         location: options.location,
       })
-    : new GoogleGenAI({ apiKey: options.apiKey });
+    : new GoogleGenAI({
+        apiKey: options.apiKey,
+        ...(baseUrl ? { httpOptions: { baseUrl } } : {}),
+      });
 
   const shouldLoadThread = Boolean(request.threadId);
   const shouldHydrateThreadOnTheClient = Boolean(

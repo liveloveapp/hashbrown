@@ -1,0 +1,18 @@
+{
+  "fixtures": [
+    {
+      "match": { "userMessage": "call the lookup tool" },
+      "response": {
+        "toolCalls": [
+          {
+            "id": "call_lookup_fixture",
+            "name": "lookup",
+            "arguments": {
+              "query": "hashbrown"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

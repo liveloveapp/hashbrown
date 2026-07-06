@@ -1,0 +1,16 @@
+{
+  "name": "testing",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/testing",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/tools/testing"],
+      "options": {
+        "jestConfig": "tools/testing/jest.config.ts",
+        "passWithNoTests": false
+      }
+    }
+  }
+}

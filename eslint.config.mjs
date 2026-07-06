@@ -19,7 +19,10 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?js$'],
+          allow: [
+            '^.*/eslint(\\.base)?\\.config\\.[cm]?js$',
+            '^@hashbrownai/testing/aimock$',
+          ],
           depConstraints: [
             {
               sourceTag: '*',
