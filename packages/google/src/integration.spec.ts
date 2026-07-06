@@ -333,7 +333,7 @@ test('Google with tool calling and structured output (gemini-3-flash-preview)', 
   }
 });
 
-test('Google with tool calling and structured output (gemini-3-pro-preview)', async () => {
+test('Google with tool calling and structured output (gemini-3.1-pro-preview)', async () => {
   const expectedResponse = 'Measure twice, cut once';
   let toolCallArgs: any;
   const server = await createServer((request) =>
@@ -347,7 +347,7 @@ test('Google with tool calling and structured output (gemini-3-pro-preview)', as
     const hashbrown = fryHashbrown({
       debounce: 0,
       apiUrl: server.url,
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3.1-pro-preview',
       system: `
      I am writing an integration test against Google. Call
      the "test" tool with the argument "Hello, world!"
