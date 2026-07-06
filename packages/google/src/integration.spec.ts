@@ -49,7 +49,7 @@ test('Google Text Streaming', async () => {
   }
 });
 
-xtest('Vertex AI Text Streaming', async () => {
+test.skip('Vertex AI Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownGoogle.stream.text({
       vertexai: true,

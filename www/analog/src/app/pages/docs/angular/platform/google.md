@@ -30,8 +30,8 @@ HashbrownGoogle.stream.text({
 ```ts
 HashbrownGoogle.stream.text({
   vertexai: true,
-  project: ‘your-gcp-project’,
-  location: ‘us-central1’,
+  project: 'your-gcp-project',
+  location: 'us-central1',
   request: req.body,
 });
 ```
