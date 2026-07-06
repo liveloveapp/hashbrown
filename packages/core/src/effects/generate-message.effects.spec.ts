@@ -1,4 +1,5 @@
 import { Chat } from '../models';
+import { s } from '../schema';
 import { apiActions, devActions } from '../actions';
 import {
   selectApiMessages,
@@ -14,6 +15,7 @@ import {
   selectRetries,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
+  selectStructuredOutput,
   selectSystem,
   selectThreadId,
   selectToolEntities,
@@ -45,8 +47,7 @@ jest.mock('../transport', () => {
   };
 });
 
-// In tests we don't care about selector input typing; loosen to avoid variance
-type SelectorKey = (state: any) => unknown;
+type SelectorKey = (state: never) => unknown;
 type ActionLike = { type: string; payload?: unknown };
 type TestHandler = {
   types: string[];
@@ -74,6 +75,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectToolEntities, {}],
     [selectSystem, 'You are a test bot'],
     [selectEmulateStructuredOutput, false],
+    [selectStructuredOutput, undefined],
     [selectThreadId, undefined],
     [selectTransport, { kind: 'test-transport' }],
     [selectUiRequested, false],
@@ -506,6 +508,136 @@ test('updateMessagesWithDelta returns null when nothing to update', () => {
 
   expect(message).toBeNull();
 });
+
+test('generateMessage sends schema response format mode by default for structured output', async () => {
+  const send = mockSuccessfulSelection();
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectResponseSchema, s.object('response', {})],
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: {},
+          toolCallIds: [],
+        },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: expect.objectContaining({
+        responseFormat: expect.any(Object),
+        responseFormatMode: 'schema',
+        toolChoice: undefined,
+      }),
+    }),
+  );
+
+  teardown?.();
+});
+
+test('generateMessage sends json response format mode without provider schema', async () => {
+  const send = mockSuccessfulSelection();
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectResponseSchema, s.object('response', {})],
+      [selectStructuredOutput, { mode: 'json' }],
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: {},
+          toolCallIds: [],
+        },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: expect.objectContaining({
+        responseFormat: undefined,
+        responseFormatMode: 'json',
+        toolChoice: undefined,
+      }),
+    }),
+  );
+
+  teardown?.();
+});
+
+test('generateMessage lets resource-level tool mode override strict structured output', async () => {
+  const send = mockSuccessfulSelection();
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectResponseSchema, s.object('response', {})],
+      [selectStructuredOutput, { mode: 'tool' }],
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: {},
+          toolCallIds: [],
+        },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: expect.objectContaining({
+        responseFormat: undefined,
+        responseFormatMode: undefined,
+        toolChoice: 'required',
+      }),
+    }),
+  );
+
+  teardown?.();
+});
+
+function mockSuccessfulSelection() {
+  const ModelResolverMock = jest.mocked(ModelResolver);
+  const send = jest.fn(async () => ({
+    frames: (async function* () {
+      yield { type: 'generation-start' as const };
+      yield { type: 'generation-finish' as const };
+    })(),
+  }));
+  const selection = {
+    spec: { name: 'selected-model' },
+    transport: { send },
+    metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
+  };
+
+  ModelResolverMock.mockImplementation(
+    () =>
+      ({
+        select: jest.fn(async () => selection),
+        skipFromError: jest.fn(),
+        getMetadata: jest.fn(() => selection.metadata),
+      }) as unknown as ModelResolver,
+  );
+
+  return send;
+}
 
 describe('generateMessage effect', () => {
   const ModelResolverMock = jest.mocked(ModelResolver);

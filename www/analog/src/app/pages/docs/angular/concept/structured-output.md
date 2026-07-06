@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Specify the JSON schema of the model response.'
 ---
+
 # Structured Output
 
 <p class="subtitle">Specify the JSON schema of the model response.</p>
@@ -76,19 +77,50 @@ The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `
 
 ---
 
+### Structured Output Modes
+
+Structured resources use provider schema enforcement by default. For very large or complex schemas, you can ask the provider for JSON without sending the full schema, while Hashbrown still parses, streams, validates, and retries locally.
+
+<hb-code-example header="use JSON mode for a complex schema">
+
+```ts
+chat = structuredChatResource({
+  model: 'gpt-4.1',
+  system: 'Return a dashboard configuration for the current user.',
+  schema: dashboardSchema,
+  structuredOutput: { mode: 'json' },
+  retries: 2,
+});
+```
+
+</hb-code-example>
+
+The available modes are:
+
+| Mode     | Behavior                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------- |
+| `strict` | Default. Sends the schema to providers that support schema-constrained structured output.    |
+| `json`   | Requests JSON output without sending the provider schema. Hashbrown still validates locally. |
+| `tool`   | Uses Hashbrown's reserved output tool for emulated structured output.                        |
+
+Provider support differs. OpenAI and Azure use JSON object mode, Google sets the response MIME type to JSON, Ollama uses `format: 'json'`, and Writer omits `response_format` because its SDK currently supports only `text` and `json_schema`.
+
+---
+
 ### `StructuredChatResourceOptions`
 
-| Option      | Type                                     | Required | Description                                               |
-| ----------- | ---------------------------------------- | -------- | --------------------------------------------------------- |
-| `model`     | `KnownModelIds \| Signal<KnownModelIds>` | Yes      | The model to use for the structured chat resource         |
-| `system`    | `string \| Signal<string>`               | Yes      | The system prompt to use for the structured chat resource |
-| `schema`    | `s.SchemaOutput`                         | Yes      | The schema to use for the structured chat resource        |
-| `tools`     | `Tools[]`                                | No       | The tools to use for the structured chat resource         |
-| `messages`  | `Chat.Message<Output, Tools>[]`          | No       | The initial messages for the structured chat resource     |
-| `debugName` | `string`                                 | No       | The debug name for the structured chat resource           |
-| `debounce`  | `number`                                 | No       | The debounce time for the structured chat resource        |
-| `retries`   | `number`                                 | No       | The number of retries for the structured chat resource    |
-| `apiUrl`    | `string`                                 | No       | The API URL to use for the structured chat resource       |
+| Option             | Type                                     | Required | Description                                                     |
+| ------------------ | ---------------------------------------- | -------- | --------------------------------------------------------------- |
+| `model`            | `KnownModelIds \| Signal<KnownModelIds>` | Yes      | The model to use for the structured chat resource               |
+| `system`           | `string \| Signal<string>`               | Yes      | The system prompt to use for the structured chat resource       |
+| `schema`           | `s.SchemaOutput`                         | Yes      | The schema to use for the structured chat resource              |
+| `tools`            | `Tools[]`                                | No       | The tools to use for the structured chat resource               |
+| `messages`         | `Chat.Message<Output, Tools>[]`          | No       | The initial messages for the structured chat resource           |
+| `debugName`        | `string`                                 | No       | The debug name for the structured chat resource                 |
+| `debounce`         | `number`                                 | No       | The debounce time for the structured chat resource              |
+| `retries`          | `number`                                 | No       | The number of retries for the structured chat resource          |
+| `apiUrl`           | `string`                                 | No       | The API URL to use for the structured chat resource             |
+| `structuredOutput` | `StructuredOutputOptions`                | No       | Controls how the provider is asked to produce structured output |
 
 ---
 
@@ -173,15 +205,16 @@ When the user types a scene name, the LLM will predict which lights should be ad
 
 ### `StructuredCompletionResourceOptions`
 
-| Option      | Type                                 | Required | Description                                                     |
-| ----------- | ------------------------------------ | -------- | --------------------------------------------------------------- |
-| `model`     | `KnownModelIds`                      | Yes      | The model to use for the structured completion resource         |
-| `input`     | `Signal<null \| undefined \| Input>` | Yes      | The input to the structured completion resource                 |
-| `schema`    | `s.SchemaOutput`                     | Yes      | The schema to use for the structured completion resource        |
-| `system`    | `SignalLike<string>`                 | Yes      | The system prompt to use for the structured completion resource |
-| `tools`     | `Chat.AnyTool[]`                     | No       | The tools to use for the structured completion resource         |
-| `debugName` | `string`                             | No       | The debug name for the structured completion resource           |
-| `apiUrl`    | `string`                             | No       | The API URL to use for the structured completion resource       |
+| Option             | Type                                 | Required | Description                                                     |
+| ------------------ | ------------------------------------ | -------- | --------------------------------------------------------------- |
+| `model`            | `KnownModelIds`                      | Yes      | The model to use for the structured completion resource         |
+| `input`            | `Signal<null \| undefined \| Input>` | Yes      | The input to the structured completion resource                 |
+| `schema`           | `s.SchemaOutput`                     | Yes      | The schema to use for the structured completion resource        |
+| `system`           | `SignalLike<string>`                 | Yes      | The system prompt to use for the structured completion resource |
+| `tools`            | `Chat.AnyTool[]`                     | No       | The tools to use for the structured completion resource         |
+| `debugName`        | `string`                             | No       | The debug name for the structured completion resource           |
+| `apiUrl`           | `string`                             | No       | The API URL to use for the structured completion resource       |
+| `structuredOutput` | `StructuredOutputOptions`            | No       | Controls how the provider is asked to produce structured output |
 
 ---
 

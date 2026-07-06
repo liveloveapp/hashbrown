@@ -82,6 +82,11 @@ export interface UiCompletionResourceOptions<
   transport?: TransportOrFactory;
 
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
+  /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
   threadId?: SignalLike<string | undefined>;
@@ -92,8 +97,9 @@ export interface UiCompletionResourceOptions<
  *
  * @public
  */
-export interface UiCompletionResourceRef<Tools extends Chat.AnyTool>
-  extends Resource<UiAssistantMessage<Tools> | null> {
+export interface UiCompletionResourceRef<
+  Tools extends Chat.AnyTool,
+> extends Resource<UiAssistantMessage<Tools> | null> {
   /**
    * Indicates whether the underlying completion call is currently sending a request.
    */
@@ -169,6 +175,7 @@ export function uiCompletionResource<
     retries: options.retries,
     debounce: options.debounce,
     transport: options.transport,
+    structuredOutput: options.structuredOutput,
     ui: true,
     threadId: options.threadId,
   });

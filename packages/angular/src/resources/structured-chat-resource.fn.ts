@@ -30,8 +30,10 @@ import { toDeepSignal } from '../utils/deep-signal';
  * @typeParam Output - The type of the output from the chat.
  * @typeParam Tools - The set of tool definitions available to the chat.
  */
-export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
-  extends Resource<Chat.Message<Output, Tools>[]> {
+export interface StructuredChatResourceRef<
+  Output,
+  Tools extends Chat.AnyTool,
+> extends Resource<Chat.Message<Output, Tools>[]> {
   /**
    * Indicates whether the underlying chat call is currently sending a message.
    */
@@ -161,6 +163,10 @@ export interface StructuredChatResourceOptions<
    */
   transport?: TransportOrFactory;
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+  /**
    * Whether this structured chat is generating UI content.
    */
   ui?: boolean;
@@ -204,6 +210,7 @@ export function structuredChatResource<
     debounce: options.debounce,
     retries: options.retries,
     transport: options.transport ?? config.transport,
+    structuredOutput: options.structuredOutput,
     ui: options.ui ?? false,
     threadId: options.threadId ? readSignalLike(options.threadId) : undefined,
   });
@@ -218,6 +225,7 @@ export function structuredChatResource<
     hashbrown.updateOptions({
       model,
       system,
+      structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
       threadId,
     });

@@ -1,8 +1,7 @@
-import { act, renderHook } from '@testing-library/react';
-import { type ReactNode } from 'react';
+import { TestBed } from '@angular/core/testing';
 import { s } from '@hashbrownai/core';
-import { HashbrownProvider } from '../hashbrown-provider';
-import { useStructuredChat } from './use-structured-chat';
+import { provideHashbrown } from '../providers/provide-hashbrown.fn';
+import { structuredChatResource } from './structured-chat-resource.fn';
 
 const fryHashbrownMock = vi.hoisted(() => vi.fn());
 
@@ -15,56 +14,26 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
   };
 });
 
-test('useStructuredChat initializes with the provided message history', () => {
-  const messages = [
-    {
-      role: 'user' as const,
-      content: 'What is the current portfolio risk?',
-    },
-  ];
+test('structuredChatResource passes structured output options to Hashbrown', () => {
   fryHashbrownMock.mockReset();
   fryHashbrownMock.mockImplementation((init) =>
     createHashbrownStub({ messages: init.messages ?? [] }),
   );
 
-  const { result } = renderHook(
-    () =>
-      useStructuredChat({
-        model: 'gpt-4.1',
-        system: 'You are a portfolio analyst.',
-        schema: s.object('risk summary', {
-          risk: s.string('Risk level'),
-        }),
-        messages,
-      }),
-    { wrapper: ProviderWrapper },
-  );
-
-  expect(result.current.messages).toEqual(messages);
-});
-
-test('useStructuredChat passes structured output options to Hashbrown', async () => {
-  fryHashbrownMock.mockReset();
-  fryHashbrownMock.mockImplementation((init) =>
-    createHashbrownStub({ messages: init.messages ?? [] }),
-  );
-
-  renderHook(
-    () =>
-      useStructuredChat({
-        model: 'gpt-4.1',
-        system: 'You are a portfolio analyst.',
-        schema: s.object('risk summary', {
-          risk: s.string('Risk level'),
-        }),
-        structuredOutput: { mode: 'json' },
-      }),
-    { wrapper: ProviderWrapper },
-  );
-
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
+
+  TestBed.runInInjectionContext(() =>
+    structuredChatResource({
+      model: 'gpt-4.1',
+      system: 'You are a portfolio analyst.',
+      schema: s.object('risk summary', {
+        risk: s.string('Risk level'),
+      }),
+      structuredOutput: { mode: 'json' },
+    }),
+  );
 
   expect(fryHashbrownMock).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -72,10 +41,6 @@ test('useStructuredChat passes structured output options to Hashbrown', async ()
     }),
   );
 });
-
-function ProviderWrapper({ children }: { children: ReactNode }) {
-  return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
-}
 
 function createHashbrownStub({ messages }: { messages: unknown[] }) {
   return {

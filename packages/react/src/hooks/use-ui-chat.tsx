@@ -64,9 +64,7 @@ export type UiErrorMessage = Chat.ErrorMessage;
  * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export type UiChatMessage<Tools extends Chat.AnyTool> =
-  | UiAssistantMessage<Tools>
-  | UiErrorMessage
-  | UiUserMessage;
+  UiAssistantMessage<Tools> | UiErrorMessage | UiUserMessage;
 
 /**
  * Options for the `useUiChat` hook.
@@ -123,6 +121,11 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   transport?: TransportOrFactory;
 
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
+  /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
   threadId?: string;
@@ -165,11 +168,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
 export const useUiChat = <Tools extends Chat.AnyTool>(
   options: UiChatOptions<Tools>,
 ) => {
-  const {
-    components: initialComponents,
-    examples,
-    ...chatOptions
-  } = options;
+  const { components: initialComponents, examples, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
   const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
   const ui = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);

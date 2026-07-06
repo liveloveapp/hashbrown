@@ -15,8 +15,9 @@ import { toDeepSignal } from '../utils/deep-signal';
  *
  * @public
  */
-export interface StructuredCompletionResourceRef<Output>
-  extends Resource<Output | null> {
+export interface StructuredCompletionResourceRef<
+  Output,
+> extends Resource<Output | null> {
   /**
    * Indicates whether the underlying completion call is currently sending a message.
    */
@@ -110,6 +111,10 @@ export interface StructuredCompletionResourceOptions<
    */
   transport?: TransportOrFactory;
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+  /**
    * Whether this completion is UI generating.
    */
   ui?: boolean;
@@ -156,6 +161,7 @@ export function structuredCompletionResource<
     retries,
     debounce,
     transport: options.transport,
+    structuredOutput: options.structuredOutput,
     ui: options.ui ?? false,
     threadId: options.threadId,
   });

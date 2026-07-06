@@ -14,10 +14,7 @@ import {
   useState,
 } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
-import {
-  UiAssistantMessage,
-  UiChatSchema,
-} from './use-ui-chat';
+import { UiAssistantMessage, UiChatSchema } from './use-ui-chat';
 import { useUiKit, type UiKitInput } from './use-ui-kit';
 import {
   useStructuredCompletion,
@@ -83,6 +80,11 @@ export interface UiCompletionOptions<
   transport?: TransportOrFactory;
 
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
+  /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
   threadId?: string;
@@ -93,8 +95,10 @@ export interface UiCompletionOptions<
  *
  * @public
  */
-export interface UseUiCompletionResult<Tools extends Chat.AnyTool>
-  extends Omit<UseStructuredCompletionResult<UiChatSchema>, 'output'> {
+export interface UseUiCompletionResult<Tools extends Chat.AnyTool> extends Omit<
+  UseStructuredCompletionResult<UiChatSchema>,
+  'output'
+> {
   /**
    * The assistant message that contains the rendered UI elements.
    */

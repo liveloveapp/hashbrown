@@ -61,7 +61,14 @@ export async function* text(
   options: GoogleTextStreamOptions,
 ): AsyncIterable<Uint8Array> {
   const { request, transformRequestOptions, loadThread, saveThread } = options;
-  const { model, tools, responseFormat, toolChoice, system } = request;
+  const {
+    model,
+    tools,
+    responseFormat,
+    responseFormatMode,
+    toolChoice,
+    system,
+  } = request;
   const threadId = request.threadId;
   let loadedThread: Chat.Api.Message[] = [];
   let effectiveThreadId = threadId;
@@ -214,8 +221,12 @@ export async function* text(
       systemInstruction: {
         parts: [{ text: system }],
       },
-      responseMimeType: responseFormat ? 'application/json' : 'text/plain',
-      responseJsonSchema: responseFormat,
+      responseMimeType:
+        responseFormatMode === 'json' || responseFormat
+          ? 'application/json'
+          : 'text/plain',
+      responseJsonSchema:
+        responseFormatMode === 'json' ? undefined : responseFormat,
     };
 
     // Only include tools and toolConfig when there are actual tools

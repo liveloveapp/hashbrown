@@ -11,6 +11,34 @@ const VERTEX_AI_LOCATION = process.env['GOOGLE_CLOUD_LOCATION'] ?? '';
 
 jest.setTimeout(60_000);
 
+test('Google JSON response format mode requests JSON without a schema', async () => {
+  let capturedConfig: unknown;
+
+  await consumeProviderStream(
+    HashbrownGoogle.stream.text({
+      apiKey: 'test-api-key',
+      request: {
+        operation: 'generate',
+        model: 'gemini-2.5-flash',
+        system: 'Respond with JSON.',
+        messages: [{ role: 'user', content: 'Hello' }],
+        responseFormatMode: 'json',
+      },
+      transformRequestOptions: (options) => {
+        capturedConfig = options.config;
+        throw new Error('stop');
+      },
+    }),
+  );
+
+  expect(capturedConfig).toEqual(
+    expect.objectContaining({
+      responseMimeType: 'application/json',
+      responseJsonSchema: undefined,
+    }),
+  );
+});
+
 test('Google Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownGoogle.stream.text({
@@ -525,6 +553,14 @@ async function createServer(
     url: `http://127.0.0.1:${address.port}/chat`,
     close: () => server.close(),
   };
+}
+
+async function consumeProviderStream(
+  stream: AsyncIterable<Uint8Array>,
+): Promise<void> {
+  for await (const chunk of stream) {
+    void chunk;
+  }
 }
 
 async function waitUntilHashbrownIsSettled(hashbrown: Hashbrown<any, any>) {

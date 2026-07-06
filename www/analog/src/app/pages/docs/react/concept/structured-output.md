@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Specify the JSON schema of the model response.'
 ---
+
 # Structured Output
 
 <p class="subtitle">Specify the JSON schema of the model response.</p>
@@ -81,18 +82,49 @@ The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `
 
 ---
 
+### Structured Output Modes
+
+Structured resources use provider schema enforcement by default. For very large or complex schemas, you can ask the provider for JSON without sending the full schema, while Hashbrown still parses, streams, validates, and retries locally.
+
+<hb-code-example header="use JSON mode for a complex schema">
+
+```tsx
+const chat = useStructuredChat({
+  model: 'gpt-4.1',
+  system: 'Return a dashboard configuration for the current user.',
+  schema: dashboardSchema,
+  structuredOutput: { mode: 'json' },
+  retries: 2,
+});
+```
+
+</hb-code-example>
+
+The available modes are:
+
+| Mode     | Behavior                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------- |
+| `strict` | Default. Sends the schema to providers that support schema-constrained structured output.    |
+| `json`   | Requests JSON output without sending the provider schema. Hashbrown still validates locally. |
+| `tool`   | Uses Hashbrown's reserved output tool for emulated structured output.                        |
+
+Provider support differs. OpenAI and Azure use JSON object mode, Google sets the response MIME type to JSON, Ollama uses `format: 'json'`, and Writer omits `response_format` because its SDK currently supports only `text` and `json_schema`.
+
+---
+
 ### `UseStructuredChatOptions`
 
-| Option         | Type                            | Required | Description                                         |
-| -------------- | ------------------------------- | -------- | --------------------------------------------------- |
-| `model`        | `KnownModelIds`                 | Yes      | The model to use for the structured chat            |
-| `system`       | `string`                        | Yes      | The system prompt to use for the structured chat    |
-| `schema`       | `s.SchemaOutput`                | Yes      | The schema to use for the structured chat           |
-| `tools`        | `Tools[]`                       | No       | The tools to make available for the structured chat |
-| `messages`     | `Chat.Message<Output, Tools>[]` | No       | The initial messages for the structured chat        |
-| `debugName`    | `string`                        | No       | The debug name for the structured chat              |
-| `debounceTime` | `number`                        | No       | The debounce time between sends to the endpoint     |
-| `retries`      | `number`                        | No       | The number of retries if an error is received       |
+| Option             | Type                            | Required | Description                                                     |
+| ------------------ | ------------------------------- | -------- | --------------------------------------------------------------- |
+| `model`            | `KnownModelIds`                 | Yes      | The model to use for the structured chat                        |
+| `system`           | `string`                        | Yes      | The system prompt to use for the structured chat                |
+| `schema`           | `s.SchemaOutput`                | Yes      | The schema to use for the structured chat                       |
+| `tools`            | `Tools[]`                       | No       | The tools to make available for the structured chat             |
+| `messages`         | `Chat.Message<Output, Tools>[]` | No       | The initial messages for the structured chat                    |
+| `debugName`        | `string`                        | No       | The debug name for the structured chat                          |
+| `debounceTime`     | `number`                        | No       | The debounce time between sends to the endpoint                 |
+| `retries`          | `number`                        | No       | The number of retries if an error is received                   |
+| `structuredOutput` | `StructuredOutputOptions`       | No       | Controls how the provider is asked to produce structured output |
 
 ---
 
@@ -185,16 +217,17 @@ Let's review the code above.
 
 ### `UseStructuredCompletionOptions`
 
-| Option         | Type                         | Required | Description                                               |
-| -------------- | ---------------------------- | -------- | --------------------------------------------------------- |
-| `model`        | `KnownModelIds`              | Yes      | The model to use for the structured completion            |
-| `input`        | `Input \| null \| undefined` | Yes      | The input to the structured completion                    |
-| `schema`       | `s.SchemaOutput`             | Yes      | The schema to use for the structured completion           |
-| `system`       | `string`                     | Yes      | The system prompt to use for the structured completion    |
-| `tools`        | `Chat.AnyTool[]`             | No       | The tools to make available for the structured completion |
-| `debugName`    | `string`                     | No       | The debug name for the structured completion              |
-| `debounceTime` | `number`                     | No       | The debounce time between sends to the endpoint           |
-| `retries`      | `number`                     | No       | The number of retries if an error is received             |
+| Option             | Type                         | Required | Description                                                     |
+| ------------------ | ---------------------------- | -------- | --------------------------------------------------------------- |
+| `model`            | `KnownModelIds`              | Yes      | The model to use for the structured completion                  |
+| `input`            | `Input \| null \| undefined` | Yes      | The input to the structured completion                          |
+| `schema`           | `s.SchemaOutput`             | Yes      | The schema to use for the structured completion                 |
+| `system`           | `string`                     | Yes      | The system prompt to use for the structured completion          |
+| `tools`            | `Chat.AnyTool[]`             | No       | The tools to make available for the structured completion       |
+| `debugName`        | `string`                     | No       | The debug name for the structured completion                    |
+| `debounceTime`     | `number`                     | No       | The debounce time between sends to the endpoint                 |
+| `retries`          | `number`                     | No       | The number of retries if an error is received                   |
+| `structuredOutput` | `StructuredOutputOptions`    | No       | Controls how the provider is asked to produce structured output |
 
 ---
 

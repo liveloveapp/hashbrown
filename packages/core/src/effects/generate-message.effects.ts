@@ -19,6 +19,7 @@ import {
   selectRetries,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
+  selectStructuredOutput,
   selectSystem,
   selectThreadId,
   selectToolEntities,
@@ -57,6 +58,11 @@ export const generateMessage = createEffect((store) => {
       const toolsByName = store.read(selectToolEntities);
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
+      const structuredOutput = store.read(selectStructuredOutput);
+      const structuredOutputMode = responseSchema
+        ? (structuredOutput?.mode ??
+          (emulateStructuredOutput ? 'tool' : 'strict'))
+        : undefined;
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const threadId = store.read(selectThreadId);
       const shouldLoadThread = Boolean(threadId) && messages.length === 0;
@@ -79,19 +85,24 @@ export const generateMessage = createEffect((store) => {
         system,
         messages: messagePayload,
         tools,
-        toolChoice:
-          emulateStructuredOutput && responseSchema ? 'required' : undefined,
+        toolChoice: structuredOutputMode === 'tool' ? 'required' : undefined,
         responseFormat:
-          !emulateStructuredOutput && responseSchema
+          structuredOutputMode === 'strict' && responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined,
+        responseFormatMode:
+          structuredOutputMode === 'strict'
+            ? 'schema'
+            : structuredOutputMode === 'json'
+              ? 'json'
+              : undefined,
         threadId: threadId,
       };
 
       const requestedFeatures: RequestedFeatures = {
         tools:
           Boolean(params.tools?.length) || params.toolChoice === 'required',
-        structured: Boolean(params.responseFormat),
+        structured: Boolean(params.responseFormatMode),
         ui: store.read(selectUiRequested),
         threads: Boolean(threadId),
       };
