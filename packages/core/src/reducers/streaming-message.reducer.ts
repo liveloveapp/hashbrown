@@ -148,7 +148,6 @@ export const reducer = createReducer(
 
       const config = state.configSnapshot;
       const responseSchema = config?.responseSchema;
-      const emulateStructuredOutput = config?.emulateStructuredOutput ?? false;
       const toolsByName = config?.toolsByName ?? {};
 
       const delta = choice.delta;

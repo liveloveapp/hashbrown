@@ -195,7 +195,7 @@ export async function* text(
                 index,
                 function: {
                   ...toolCall.function,
-                  arguments: toolCall.function.arguments as any,
+                  arguments: toolCall.function.arguments as unknown as string,
                 },
               })),
             },
@@ -286,11 +286,9 @@ function normalizeError(error: unknown): { message: string; stack?: string } {
   return { message: String(error) };
 }
 
-function normalizeToolArguments(args: unknown): {
-  [key: string]: any;
-} {
+function normalizeToolArguments(args: unknown): Record<string, unknown> {
   if (args && typeof args === 'object') {
-    return args as { [key: string]: any };
+    return args as Record<string, unknown>;
   }
 
   if (typeof args === 'string') {
@@ -304,7 +302,7 @@ function normalizeToolArguments(args: unknown): {
         }
       }
       if (parsed && typeof parsed === 'object') {
-        return parsed as { [key: string]: any };
+        return parsed as Record<string, unknown>;
       }
     } catch {
       // Fall through to empty object when args are not valid JSON.

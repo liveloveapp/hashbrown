@@ -91,9 +91,11 @@ export class MagicTextRenderNode {
     inject<TemplateRef<MagicTextNodeRenderContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
-    dir: MagicTextRenderNode,
-    context: unknown,
-  ): context is $Implicit<MagicTextNodeRenderContext> {
+    _dir: MagicTextRenderNode,
+    _context: unknown,
+  ): _context is $Implicit<MagicTextNodeRenderContext> {
+    void _context;
+
     return true;
   }
 }
@@ -105,9 +107,11 @@ export class MagicTextRenderTextSegment {
     inject<TemplateRef<MagicTextTextSegmentRenderContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
-    dir: MagicTextRenderTextSegment,
-    context: unknown,
-  ): context is $Implicit<MagicTextTextSegmentRenderContext> {
+    _dir: MagicTextRenderTextSegment,
+    _context: unknown,
+  ): _context is $Implicit<MagicTextTextSegmentRenderContext> {
+    void _context;
+
     return true;
   }
 }
@@ -118,9 +122,11 @@ export class MagicTextRenderCaret {
   readonly template = inject<TemplateRef<MagicTextCaretContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
-    dir: MagicTextRenderCaret,
-    context: unknown,
-  ): context is $Implicit<MagicTextCaretContext> {
+    _dir: MagicTextRenderCaret,
+    _context: unknown,
+  ): _context is $Implicit<MagicTextCaretContext> {
+    void _context;
+
     return true;
   }
 }
@@ -132,10 +138,12 @@ export class MagicTextRenderCitation {
     inject<TemplateRef<MagicTextCitationRenderContext>>(TemplateRef);
 
   static ngTemplateContextGuard(
-    dir: MagicTextRenderCitation,
-    context: unknown,
-  ): context is $Implicit<MagicTextCitationRenderContext> &
+    _dir: MagicTextRenderCitation,
+    _context: unknown,
+  ): _context is $Implicit<MagicTextCitationRenderContext> &
     MagicTextCitationRenderContext {
+    void _context;
+
     return true;
   }
 }
