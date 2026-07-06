@@ -97,6 +97,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1079.0",
     "@babel/core": "^7.29.7",
     "@babel/preset-react": "^7.29.7",
+    "@copilotkit/aimock": "^1.35.1",
     "@eslint/js": "^9.39.4",
     "@faker-js/faker": "^9.9.0",
     "@microsoft/api-extractor": "^7.58.9",
