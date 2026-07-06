@@ -84,6 +84,9 @@ export function toViewMessagesFromInternal(
   outputSchema?: s.HashbrownType,
   streaming = true,
 ): Chat.AnyMessage[] {
+  void outputSchema;
+  void streaming;
+
   switch (message.role) {
     case 'user': {
       return [
