@@ -65,6 +65,12 @@ export interface UseStructuredCompletionOptions<
    * Optional transport override for this hook.
    */
   transport?: TransportOrFactory;
+
+  /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
   /**
    * Whether this completion should be treated as UI-generating.
    */

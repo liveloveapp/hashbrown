@@ -86,6 +86,11 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   transport?: TransportOrFactory;
 
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
+  /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
   threadId?: SignalLike<string | undefined>;
@@ -96,8 +101,9 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
  *
  * @public
  */
-export interface UiChatResourceRef<Tools extends Chat.AnyTool>
-  extends Resource<UiChatMessage<Tools>[]> {
+export interface UiChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
+  UiChatMessage<Tools>[]
+> {
   /**
    * Send a new user message to the chat.
    *
@@ -162,6 +168,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     debounce: args.debounce,
     apiUrl: args.apiUrl,
     transport: args.transport,
+    structuredOutput: args.structuredOutput,
     ui: true,
     threadId: args.threadId,
   });
@@ -173,9 +180,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
       return messages.map((message): UiChatMessage<Tools> => {
         if (message.role === 'assistant') {
           const content = message.content as
-            | s.Infer<typeof internalSchema>
-            | ''
-            | undefined;
+            s.Infer<typeof internalSchema> | '' | undefined;
 
           if (!content) {
             return {

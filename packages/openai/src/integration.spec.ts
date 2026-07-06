@@ -11,6 +11,29 @@ const OPENAI_MODEL = (process.env['OPENAI_MODEL'] ??
 
 jest.setTimeout(60_000);
 
+test('OpenAI JSON response format mode requests JSON object output', async () => {
+  let capturedResponseFormat: unknown;
+
+  await consumeProviderStream(
+    HashbrownOpenAI.stream.text({
+      apiKey: 'test-api-key',
+      request: {
+        operation: 'generate',
+        model: OPENAI_MODEL,
+        system: 'Respond with JSON.',
+        messages: [{ role: 'user', content: 'Hello' }],
+        responseFormatMode: 'json',
+      },
+      transformRequestOptions: (options) => {
+        capturedResponseFormat = options.response_format;
+        throw new Error('stop');
+      },
+    }),
+  );
+
+  expect(capturedResponseFormat).toEqual({ type: 'json_object' });
+});
+
 test('OpenAI Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownOpenAI.stream.text({
@@ -358,6 +381,14 @@ async function createServer(
     url: `http://127.0.0.1:${address.port}/chat`,
     close: () => server.close(),
   };
+}
+
+async function consumeProviderStream(
+  stream: AsyncIterable<Uint8Array>,
+): Promise<void> {
+  for await (const chunk of stream) {
+    void chunk;
+  }
 }
 
 async function waitUntilHashbrownIsSettled(hashbrown: Hashbrown<any, any>) {

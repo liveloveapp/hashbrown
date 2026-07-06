@@ -140,6 +140,27 @@ test('passes transformed request options to the selected client', async () => {
   );
 });
 
+test('uses Ollama JSON format for JSON response format mode', async () => {
+  resetOllamaMocks();
+  const chat = jest.fn().mockResolvedValue(createOllamaStream());
+  mockedDefaultClient.chat = chat;
+
+  await consumeStream(
+    text({
+      request: {
+        ...createRequest(),
+        responseFormatMode: 'json',
+      },
+    }),
+  );
+
+  expect(chat).toHaveBeenCalledWith(
+    expect.objectContaining({
+      format: 'json',
+    }),
+  );
+});
+
 async function consumeStream(stream: AsyncIterable<Uint8Array>): Promise<void> {
   for await (const chunk of stream) {
     void chunk;

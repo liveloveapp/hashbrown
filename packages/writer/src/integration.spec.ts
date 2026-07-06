@@ -9,6 +9,29 @@ const WRITER_API_KEY = process.env['WRITER_API_KEY'] ?? '';
 
 jest.setTimeout(60_000);
 
+test('Writer JSON response format mode does not request a provider schema', async () => {
+  let capturedResponseFormat: unknown;
+
+  await consumeProviderStream(
+    HashbrownWriter.stream.text({
+      apiKey: 'test-api-key',
+      request: {
+        operation: 'generate',
+        model: 'palmyra-x5',
+        system: 'Respond with JSON.',
+        messages: [{ role: 'user', content: 'Hello' }],
+        responseFormatMode: 'json',
+      },
+      transformRequestOptions: (options) => {
+        capturedResponseFormat = options.response_format;
+        throw new Error('stop');
+      },
+    }),
+  );
+
+  expect(capturedResponseFormat).toBeUndefined();
+});
+
 test('Writer Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownWriter.stream.text({
@@ -369,6 +392,14 @@ async function createServer(
     url: `http://127.0.0.1:${address.port}/chat`,
     close: () => server.close(),
   };
+}
+
+async function consumeProviderStream(
+  stream: AsyncIterable<Uint8Array>,
+): Promise<void> {
+  for await (const chunk of stream) {
+    void chunk;
+  }
 }
 
 async function waitUntilHashbrownIsSettled(hashbrown: Hashbrown<any, any>) {

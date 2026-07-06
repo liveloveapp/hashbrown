@@ -10,6 +10,7 @@ export interface ConfigState {
   system: string;
   debounce: number;
   responseSchema?: s.HashbrownType;
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput: boolean;
   retries: number;
@@ -42,6 +43,7 @@ export const reducer = createReducer(
       system: action.payload.system,
       debounce: action.payload.debounce ?? state.debounce,
       responseSchema,
+      structuredOutput: action.payload.structuredOutput,
       middleware: action.payload.middleware,
       emulateStructuredOutput:
         action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
@@ -82,6 +84,8 @@ export const selectSystem = (state: ConfigState) => state.system;
 export const selectDebounce = (state: ConfigState) => state.debounce;
 export const selectResponseSchema = (state: ConfigState) =>
   state.responseSchema;
+export const selectStructuredOutput = (state: ConfigState) =>
+  state.structuredOutput;
 export const selectMiddleware = (state: ConfigState) => state.middleware;
 export const selectEmulateStructuredOutput = (state: ConfigState) =>
   state.emulateStructuredOutput;

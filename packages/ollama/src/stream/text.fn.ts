@@ -55,7 +55,7 @@ export async function* text(
   options: OpenAITextStreamOptions,
 ): AsyncIterable<Uint8Array> {
   const { request, transformRequestOptions, loadThread, saveThread } = options;
-  const { model, tools, responseFormat, system } = request;
+  const { model, tools, responseFormat, responseFormatMode, system } = request;
   const threadId = request.threadId;
   let loadedThread: Chat.Api.Message[] = [];
   let effectiveThreadId = threadId;
@@ -167,7 +167,7 @@ export async function* text(
               },
             }))
           : undefined,
-      format: responseFormat ? responseFormat : undefined,
+      format: responseFormatMode === 'json' ? 'json' : responseFormat,
     };
 
     const resolvedOptions: ChatRequest & { stream: true } =

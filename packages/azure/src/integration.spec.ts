@@ -11,6 +11,30 @@ const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
 
 jest.setTimeout(60_000);
 
+test('Azure JSON response format mode requests JSON object output', async () => {
+  let capturedResponseFormat: unknown;
+
+  await consumeProviderStream(
+    HashbrownAzure.stream.text({
+      apiKey: 'test-api-key',
+      endpoint: 'https://example.openai.azure.com/',
+      request: {
+        operation: 'generate',
+        model: 'gpt-4o@2025-01-01-preview',
+        system: 'Respond with JSON.',
+        messages: [{ role: 'user', content: 'Hello' }],
+        responseFormatMode: 'json',
+      },
+      transformRequestOptions: (options) => {
+        capturedResponseFormat = options.response_format;
+        throw new Error('stop');
+      },
+    }),
+  );
+
+  expect(capturedResponseFormat).toEqual({ type: 'json_object' });
+});
+
 test('Azure OpenAI Text Streaming', async () => {
   const server = await createServer((request) =>
     HashbrownAzure.stream.text({
@@ -351,6 +375,14 @@ async function createServer(
     url: `http://127.0.0.1:${address.port}/chat`,
     close: () => server.close(),
   };
+}
+
+async function consumeProviderStream(
+  stream: AsyncIterable<Uint8Array>,
+): Promise<void> {
+  for await (const chunk of stream) {
+    void chunk;
+  }
 }
 
 async function waitUntilHashbrownIsSettled(hashbrown: Hashbrown<any, any>) {

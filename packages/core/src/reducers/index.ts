@@ -207,6 +207,10 @@ export const selectResponseSchema = select(
   selectConfigState,
   fromConfig.selectResponseSchema,
 );
+export const selectStructuredOutput = select(
+  selectConfigState,
+  fromConfig.selectStructuredOutput,
+);
 export const selectEmulateStructuredOutput = select(
   selectConfigState,
   fromConfig.selectEmulateStructuredOutput,
