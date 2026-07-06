@@ -26,7 +26,9 @@ Streams an Ollama chat completion as a series of encoded frames. Handles content
 
 | Name                       | Type                              | Description                                                                                        |
 | -------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `turbo.apiKey`             | `string`                          | _(Optional)_ Use Ollama Turbo by providing an API key. Defaults to local Ollama via `OLLAMA_HOST`. |
+| `host`                     | `string`                          | _(Optional)_ Ollama host URL, such as `http://localhost:11434` or a container host.                |
+| `client`                   | `Ollama`                          | _(Optional)_ Preconfigured Ollama SDK client for advanced transport settings.                      |
+| `turbo.apiKey`             | `string`                          | _(Optional)_ Use Ollama Turbo by providing an API key.                                             |
 | `request`                  | `Chat.Api.CompletionCreateParams` | The chat request: model, messages, tools, system, `responseFormat`, etc.                           |
 | `transformRequestOptions`  | `function`                        | _(Optional)_ Async function to transform Ollama request options before sending (e.g., for `think` parameter). |
 
@@ -37,7 +39,7 @@ Streams an Ollama chat completion as a series of encoded frames. Handles content
 - **Response Format:** Optionally specify a JSON schema in `responseFormat` (forwarded to Ollama `format`)
 - **System Prompt:** Included as the first message if provided
 - **Streaming:** Each chunk is encoded into a resilient streaming format
-- **Local or Turbo:** Connects to local Ollama by default; set `turbo.apiKey` to use Ollama Turbo
+- **Local, Hosted, or Turbo:** Connects to the default Ollama client, a configured `host`, an explicit `client`, or Ollama Turbo
 
 ---
 
@@ -48,8 +50,10 @@ Streams an Ollama chat completion as a series of encoded frames. Handles content
 - **Response Format:** Pass a JSON schema in `responseFormat`; forwarded to Ollama as `format` for structured output.
 - **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
 - **Client Selection:**
-  - Default: local Ollama via the `ollama` Node client (honors `OLLAMA_HOST`)
-  - Turbo: set `turbo.apiKey` to route via Turbo
+  - `client`: use a preconfigured Ollama SDK client
+  - `turbo.apiKey`: route requests through Ollama Turbo
+  - `host`: create an Ollama SDK client for the configured host URL
+  - Default: use the default `ollama` Node client
 - **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
 
 ---
@@ -69,6 +73,8 @@ app.use(express.json());
 
 app.post('/chat', async (req, res) => {
   const stream = HashbrownOllama.stream.text({
+    // Optional: connect to a remote or containerized Ollama server
+    // host: 'http://ollama:11434',
     // Optional: use Ollama Turbo
     // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
     request: req.body, // must be Chat.Api.CompletionCreateParams
@@ -194,7 +200,7 @@ export default app;
 
 ### Transform Request Options
 
-The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Ollama. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
+The `transformRequestOptions` parameter allows you to intercept and modify the chat request before it's sent to Ollama. Use `host` or `client` for transport settings such as the Ollama server URL.
 
 <hb-backend-code-example>
 
