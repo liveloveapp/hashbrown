@@ -11,9 +11,9 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
+      "types": "./index.d.ts",
       "import": "./index.esm.js",
-      "require": "./index.cjs.js",
-      "types": "./index.d.ts"
+      "require": "./index.cjs.js"
     }
   },
   "files": [

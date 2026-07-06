@@ -24,6 +24,7 @@
         "outputFileName": "index",
         "outputFileExtensionForEsm": ".mjs",
         "outputFileExtensionForCjs": ".cjs",
+        "sourceMap": true,
         "useLegacyTypescriptPlugin": false,
         "assets": [
           {

@@ -259,10 +259,16 @@ const DEFAULT_CITATION_CLASS = 'hb-magic-text-citation';
 const DEFAULT_CITATION_LABEL_CLASS = 'hb-magic-text-citation-label';
 const DEFAULT_STYLES = `
   .${DEFAULT_ROOT_CLASS} .hb-magic-text-segment {
-    opacity: 1;
-    transition: opacity 400ms ease-out;
-    @starting-style {
+    animation: hb-magic-text-segment-enter 400ms ease-out;
+  }
+
+  @keyframes hb-magic-text-segment-enter {
+    from {
       opacity: 0;
+    }
+
+    to {
+      opacity: 1;
     }
   }
 
@@ -516,10 +522,7 @@ function renderDefaultCitation(
         data-magic-text-node={node.type}
         data-node-open={String(!node.closed)}
       >
-        <span
-          role="doc-noteref"
-          className={DEFAULT_CITATION_LABEL_CLASS}
-        >
+        <span role="doc-noteref" className={DEFAULT_CITATION_LABEL_CLASS}>
           {label}
         </span>
       </sup>

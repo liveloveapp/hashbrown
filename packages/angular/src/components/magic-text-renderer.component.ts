@@ -806,10 +806,16 @@ export class MagicTextRenderCitation {
   `,
   styles: `
     .hb-magic-text-segment {
-      opacity: 1;
-      transition: opacity 400ms ease-out;
-      @starting-style {
+      animation: hb-magic-text-segment-enter 400ms ease-out;
+    }
+
+    @keyframes hb-magic-text-segment-enter {
+      from {
         opacity: 0;
+      }
+
+      to {
+        opacity: 1;
       }
     }
 
