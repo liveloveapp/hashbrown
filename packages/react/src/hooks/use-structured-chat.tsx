@@ -247,6 +247,7 @@ export function useStructuredChat<
       model: options.model,
       system: options.system,
       responseSchema: schema,
+      messages: [...(options.messages ?? [])],
       tools,
       debugName: options.debugName,
       debounce: options.debounceTime,

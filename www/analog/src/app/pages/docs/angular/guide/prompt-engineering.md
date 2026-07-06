@@ -34,25 +34,24 @@ ngOnInit() {
 
 Hashbrown manages message history for you. Pass an initial message array to the `messages` option when initializing, or use the `setMessages` method to update it.
 
-```typescript
-import { HashbrownChatService, ChatMessage } from '@hashbrownai/angular';
+For persistence, pruning, and history mutation examples, see [Message History](/docs/angular/concept/message-history).
 
-const initialMessages: ChatMessage[] = [
-  { role: 'user', content: 'What is the capital of France?' }
+```ts
+import { chatResource } from '@hashbrownai/angular';
+
+const initialMessages = [
+  { role: 'user' as const, content: 'What is the capital of France?' },
 ];
 
-constructor(private chat: HashbrownChatService) {}
+const chat = chatResource({
+  model: 'gpt-4.1',
+  system: 'You are a geography expert.',
+  messages: initialMessages,
+});
 
-ngOnInit() {
-  this.chat.initialize({
-    model: 'gpt-4',
-    system: 'You are a geography expert.',
-    messages: initialMessages,
-  });
-}
-
-// To update messages later:
-// this.chat.setMessages(newMessages);
+chat.setMessages([
+  { role: 'user', content: 'What is the capital of Belgium?' },
+]);
 ```
 
 **Best Practices:**

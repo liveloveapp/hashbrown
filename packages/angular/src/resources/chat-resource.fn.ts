@@ -28,8 +28,9 @@ import { bindToolToInjector } from '../utils/create-tool.fn';
  * @param sendMessage - Send a new user message to the chat.
  * @param reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
  */
-export interface ChatResourceRef<Tools extends Chat.AnyTool>
-  extends Resource<Chat.Message<string, Tools>[]> {
+export interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
+  Chat.Message<string, Tools>[]
+> {
   /** Indicates whether the chat is currently receiving tokens. */
   isReceiving: Signal<boolean>;
   /** Indicates whether the chat is currently sending a user message. */
@@ -58,6 +59,13 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
    * @param message - The user message to send.
    */
   sendMessage: (message: Chat.UserMessage) => void;
+
+  /**
+   * Replace the current chat message history.
+   *
+   * @param messages - The new array of chat messages.
+   */
+  setMessages: (messages: Chat.Message<string, Tools>[]) => void;
 
   /**
    * Stops any currently-streaming message.
@@ -119,8 +127,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
    * @typeParam Tools - The set of tool definitions available to the chat.
    */
   messages?:
-    | Chat.Message<string, Tools>[]
-    | Signal<Chat.Message<string, Tools>[]>;
+    Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>;
 
   /**
    * The debounce time for the chat.
@@ -184,6 +191,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
         runInInjectionContext(injector, () => m(requestInit));
     }),
     system: readSignalLike(options.system),
+    messages: options.messages ? [...readSignalLike(options.messages)] : [],
     model: readSignalLike(options.model),
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     emulateStructuredOutput: config.emulateStructuredOutput,
@@ -297,6 +305,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hashbrown.sendMessage(message);
   }
 
+  function setMessages(messages: Chat.Message<string, Tools>[]) {
+    hashbrown.setMessages(messages);
+  }
+
   function stop(clearStreamingMessage = false) {
     hashbrown.stop(clearStreamingMessage);
   }
@@ -317,6 +329,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     threadSaveError,
     reload,
     sendMessage,
+    setMessages,
     stop,
     value,
     error,

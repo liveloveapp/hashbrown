@@ -236,6 +236,7 @@ export function useChat<Tools extends Chat.AnyTool>(
       debugName: options.debugName,
       model: options.model,
       system: options.system,
+      messages: [...(options.messages ?? [])],
       tools,
       debounce: options.debounceTime,
       retries: options.retries,
