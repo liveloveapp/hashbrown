@@ -274,6 +274,37 @@ test('chatResource preserves a literal empty threadId option', () => {
   );
 });
 
+test('chatResource omits threadId from runtime updates when not provided', () => {
+  fryHashbrownMock.mockReset();
+  const model = signal<ModelInput>('gpt-4.1');
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    chatResource({
+      model,
+      system: 'System A',
+    }),
+  );
+
+  model.set('gpt-4.2');
+  TestBed.flushEffects();
+  const lastOptions = getLastUpdateOptions(hashbrown);
+
+  expect(lastOptions).toEqual(
+    expect.objectContaining({
+      model: 'gpt-4.2',
+    }),
+  );
+  expect(Object.prototype.hasOwnProperty.call(lastOptions, 'threadId')).toBe(
+    false,
+  );
+});
+
 function createHashbrownStub({ messages }: { messages: unknown[] }) {
   const messagesSignal = createSignal(messages);
 
@@ -300,6 +331,14 @@ function createHashbrownStub({ messages }: { messages: unknown[] }) {
     stop: vi.fn(),
     setMessages: vi.fn((nextMessages) => messagesSignal.set(nextMessages)),
   } as never;
+}
+
+function getLastUpdateOptions(hashbrown: {
+  updateOptions: { mock: { calls: [Record<string, unknown>][] } };
+}) {
+  const calls = hashbrown.updateOptions.mock.calls;
+
+  return calls[calls.length - 1]?.[0];
 }
 
 function createSignal<T>(initialValue: T) {

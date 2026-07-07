@@ -225,10 +225,9 @@ export function chatResource<Tools extends Chat.AnyTool>(
       debugName: options.debugName,
       transport: options.transport ?? config.transport,
       ui: false,
-      threadId:
-        options.threadId !== undefined
-          ? readSignalLike(options.threadId)
-          : undefined,
+      ...(options.threadId !== undefined
+        ? { threadId: readSignalLike(options.threadId) }
+        : {}),
     });
   });
 
