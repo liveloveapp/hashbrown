@@ -6,7 +6,7 @@ import {
   s,
   type TransportOrFactory,
 } from '@hashbrownai/core';
-import { SignalLike } from '../utils/types';
+import { ReactiveOption } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { toDeepSignal } from '../utils/deep-signal';
 
@@ -72,7 +72,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * The model to use for the structured completion resource.
    */
-  model: ModelInput;
+  model: ReactiveOption<ModelInput>;
   /**
    * The input to the structured completion resource.
    */
@@ -84,7 +84,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * The system prompt to use for the structured completion resource.
    */
-  system: SignalLike<string>;
+  system: ReactiveOption<string>;
   /**
    * The tools to use for the structured completion resource.
    */
@@ -96,7 +96,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * The API URL to use for the structured completion resource.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
   /**
    * The number of retries for the structured completion resource.
    */
@@ -122,7 +122,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**

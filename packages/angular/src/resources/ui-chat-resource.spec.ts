@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResourceStatus, signal, type Signal } from '@angular/core';
-import { s } from '@hashbrownai/core';
+import { type ModelInput, s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { uiChatResource } from './ui-chat-resource.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
@@ -128,4 +128,39 @@ test('uiChatResource provides empty tag registry when assistant has no content',
 
   // Assert
   expect((message as any)[TAG_NAME_REGISTRY]).toEqual({});
+});
+
+test('uiChatResource passes reactive options through to structuredChatResource', () => {
+  // Arrange
+  structuredChatResourceMock.mockReset();
+  structuredChatResourceMock.mockReturnValue(createChatStub(signal<any[]>([])));
+  const model = signal<ModelInput>('gpt-4.1');
+  const apiUrl = signal('/ui-chat');
+  const system = signal('System prompt');
+  const threadId = signal<string | undefined>('thread-a');
+
+  // Act
+  uiChatResource({
+    components: [
+      {
+        component: class {},
+        name: 'Card',
+        description: 'Card component',
+      },
+    ],
+    model,
+    apiUrl,
+    system,
+    threadId,
+  });
+
+  // Assert
+  expect(structuredChatResourceMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      model,
+      apiUrl,
+      system: expect.any(Function),
+      threadId,
+    }),
+  );
 });

@@ -9,12 +9,12 @@ import {
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
-import { readSignalLike } from '../utils';
+import { readReactiveOption } from '../utils';
 import {
   TAG_NAME_REGISTRY,
   UiAssistantMessage,
 } from '../utils/ui-chat.helpers';
-import { SignalLike } from '../utils/types';
+import { ReactiveOption } from '../utils/types';
 import { UiChatMessageOutput } from './ui-chat-resource.fn';
 import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
 
@@ -44,12 +44,12 @@ export interface UiCompletionResourceOptions<
   /**
    * The model to use for the UI completion resource.
    */
-  model: ModelInput;
+  model: ReactiveOption<ModelInput>;
 
   /**
    * The system prompt to use for the UI completion resource.
    */
-  system: string | Signal<string> | SystemPrompt | Signal<SystemPrompt>;
+  system: ReactiveOption<string | SystemPrompt>;
 
   /**
    * The tools to use for the UI completion resource.
@@ -64,7 +64,7 @@ export interface UiCompletionResourceOptions<
   /**
    * The API URL to use for the UI completion resource.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
 
   /**
    * The number of retries for the UI completion resource.
@@ -89,7 +89,7 @@ export interface UiCompletionResourceOptions<
   /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**
@@ -141,9 +141,7 @@ export function uiCompletionResource<
   });
   const internalSchema = uiKit.schema;
   const systemAsString = computed(() => {
-    const system = readSignalLike(
-      options.system as SignalLike<string | SystemPrompt>,
-    );
+    const system = readReactiveOption(options.system);
 
     if (typeof system === 'string') {
       return system;
