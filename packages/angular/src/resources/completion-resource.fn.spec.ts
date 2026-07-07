@@ -1,9 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { s } from '@hashbrownai/core';
 import type { ModelInput } from '@hashbrownai/core';
 import { provideHashbrown } from '../providers/provide-hashbrown.fn';
-import { structuredChatResource } from './structured-chat-resource.fn';
+import { completionResource } from './completion-resource.fn';
 
 const fryHashbrownMock = vi.hoisted(() => vi.fn());
 
@@ -16,40 +15,13 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
   };
 });
 
-test('structuredChatResource passes structured output options to Hashbrown', () => {
+test('completionResource updates runtime options when option signals change', () => {
   fryHashbrownMock.mockReset();
-  fryHashbrownMock.mockImplementation((init) =>
-    createHashbrownStub({ messages: init.messages ?? [] }),
-  );
-
-  TestBed.configureTestingModule({
-    providers: [provideHashbrown({ baseUrl: '/chat' })],
-  });
-
-  TestBed.runInInjectionContext(() =>
-    structuredChatResource({
-      model: 'gpt-4.1',
-      system: 'You are a portfolio analyst.',
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
-      structuredOutput: { mode: 'json' },
-    }),
-  );
-
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
-    expect.objectContaining({
-      structuredOutput: { mode: 'json' },
-    }),
-  );
-});
-
-test('structuredChatResource updates runtime options when option signals change', () => {
-  fryHashbrownMock.mockReset();
-  const model = signal<ModelInput>('gpt-4.1');
-  const apiUrl = signal('/structured-a');
+  const model = signal('gpt-4.1');
+  const apiUrl = signal('/completion-a');
   const system = signal('System A');
   const threadId = signal<string | undefined>('thread-a');
+  const input = signal('Summarize this');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
 
@@ -58,28 +30,26 @@ test('structuredChatResource updates runtime options when option signals change'
   });
 
   TestBed.runInInjectionContext(() =>
-    structuredChatResource({
+    completionResource({
       model,
       apiUrl,
       system,
+      input,
       threadId,
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
     }),
   );
 
   expect(fryHashbrownMock).toHaveBeenCalledWith(
     expect.objectContaining({
       model: 'gpt-4.1',
-      apiUrl: '/structured-a',
+      apiUrl: '/completion-a',
       system: 'System A',
       threadId: 'thread-a',
     }),
   );
 
   model.set('gpt-4.2');
-  apiUrl.set('/structured-b');
+  apiUrl.set('/completion-b');
   system.set('System B');
   threadId.set('thread-b');
   TestBed.flushEffects();
@@ -87,20 +57,17 @@ test('structuredChatResource updates runtime options when option signals change'
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       model: 'gpt-4.2',
-      apiUrl: '/structured-b',
+      apiUrl: '/completion-b',
       system: 'System B',
       threadId: 'thread-b',
     }),
   );
 });
 
-test('structuredChatResource preserves direct model factory options', () => {
+test('completionResource accepts fallback model input signals', () => {
   fryHashbrownMock.mockReset();
-  const model = vi.fn(() => ({
-    name: 'test-model',
-    transport: vi.fn(),
-  })) as unknown as ModelInput;
-  const system = signal('System A');
+  const model = signal<ModelInput>(['gpt-4.1', 'gpt-4.1-mini']);
+  const input = signal('Summarize this');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
 
@@ -109,12 +76,49 @@ test('structuredChatResource preserves direct model factory options', () => {
   });
 
   TestBed.runInInjectionContext(() =>
-    structuredChatResource({
+    completionResource({
+      model,
+      system: 'System A',
+      input,
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      model: ['gpt-4.1', 'gpt-4.1-mini'],
+    }),
+  );
+
+  model.set(['gpt-4.2', 'gpt-4.2-mini']);
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      model: ['gpt-4.2', 'gpt-4.2-mini'],
+    }),
+  );
+});
+
+test('completionResource preserves direct model factory options', () => {
+  fryHashbrownMock.mockReset();
+  const model = vi.fn(() => ({
+    name: 'test-model',
+    transport: vi.fn(),
+  })) as unknown as ModelInput;
+  const system = signal('System A');
+  const input = signal('Summarize this');
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    completionResource({
       model,
       system,
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
+      input,
     }),
   );
 
@@ -129,9 +133,10 @@ test('structuredChatResource preserves direct model factory options', () => {
   expect(model).not.toHaveBeenCalled();
 });
 
-test('structuredChatResource preserves an empty apiUrl option', () => {
+test('completionResource preserves an empty apiUrl option', () => {
   fryHashbrownMock.mockReset();
   const apiUrl = signal('');
+  const input = signal('Summarize this');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
 
@@ -140,13 +145,11 @@ test('structuredChatResource preserves an empty apiUrl option', () => {
   });
 
   TestBed.runInInjectionContext(() =>
-    structuredChatResource({
+    completionResource({
       model: 'gpt-4.1',
       apiUrl,
       system: 'System A',
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
+      input,
     }),
   );
 
@@ -156,12 +159,12 @@ test('structuredChatResource preserves an empty apiUrl option', () => {
     }),
   );
 
-  apiUrl.set('/structured-b');
+  apiUrl.set('/completion-b');
   TestBed.flushEffects();
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      apiUrl: '/structured-b',
+      apiUrl: '/completion-b',
     }),
   );
 
@@ -175,8 +178,9 @@ test('structuredChatResource preserves an empty apiUrl option', () => {
   );
 });
 
-test('structuredChatResource preserves an empty threadId option', () => {
+test('completionResource preserves an empty threadId option', () => {
   fryHashbrownMock.mockReset();
+  const input = signal('Summarize this');
   const threadId = signal<string | undefined>('');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
@@ -186,13 +190,11 @@ test('structuredChatResource preserves an empty threadId option', () => {
   });
 
   TestBed.runInInjectionContext(() =>
-    structuredChatResource({
+    completionResource({
       model: 'gpt-4.1',
       system: 'System A',
+      input,
       threadId,
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
     }),
   );
 
@@ -221,9 +223,10 @@ test('structuredChatResource preserves an empty threadId option', () => {
   );
 });
 
-test('structuredChatResource omits threadId from runtime updates when not provided', () => {
+test('completionResource omits threadId from runtime updates when not provided', () => {
   fryHashbrownMock.mockReset();
-  const model = signal<ModelInput>('gpt-4.1');
+  const model = signal('gpt-4.1');
+  const input = signal('Summarize this');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
 
@@ -232,12 +235,10 @@ test('structuredChatResource omits threadId from runtime updates when not provid
   });
 
   TestBed.runInInjectionContext(() =>
-    structuredChatResource({
+    completionResource({
       model,
       system: 'System A',
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
+      input,
     }),
   );
 

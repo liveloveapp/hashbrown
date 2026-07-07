@@ -58,6 +58,7 @@ export {
   type UiKitInput,
   type UiKit,
   type UiKitOptions,
+  type ReactiveOption,
   type SignalLike,
   type TagNameRegistry,
   type UiAssistantMessage,

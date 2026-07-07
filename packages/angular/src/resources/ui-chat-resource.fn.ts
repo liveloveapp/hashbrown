@@ -15,7 +15,8 @@ import {
   UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
-import { readSignalLike, SignalLike } from '../utils';
+import { readReactiveOption } from '../utils';
+import { ReactiveOption } from '../utils/types';
 import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
 
 /**
@@ -44,12 +45,12 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The model to use for the UI chat resource.
    */
-  model: ModelInput;
+  model: ReactiveOption<ModelInput>;
 
   /**
    * The system prompt to use for the UI chat resource.
    */
-  system: string | Signal<string> | SystemPrompt | Signal<SystemPrompt>;
+  system: ReactiveOption<string | SystemPrompt>;
 
   /**
    * The initial messages for the UI chat resource.
@@ -78,7 +79,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The API URL to use for the UI chat resource.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
 
   /**
    * Custom transport override for the UI chat resource.
@@ -93,7 +94,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**
@@ -145,7 +146,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
   });
   const internalSchema = uiKit.schema;
   const systemAsString = computed(() => {
-    const system = readSignalLike(args.system);
+    const system = readReactiveOption(args.system);
     if (typeof system === 'string') {
       return system;
     }
