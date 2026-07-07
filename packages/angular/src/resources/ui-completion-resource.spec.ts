@@ -171,12 +171,20 @@ test('uiCompletionResource passes reactive options through to structuredCompleti
   });
 
   // Assert
-  expect(structuredCompletionResourceMock).toHaveBeenCalledWith(
+  const delegatedOptions = structuredCompletionResourceMock.mock.calls[0]?.[0];
+  const delegatedSystem = delegatedOptions?.system as Signal<string>;
+
+  expect(delegatedOptions).toEqual(
     expect.objectContaining({
       model,
       apiUrl,
-      system: expect.any(Function),
       threadId,
     }),
   );
+  expect(delegatedSystem).not.toBe(system);
+  expect(delegatedSystem()).toBe('System prompt');
+
+  system.set('Updated system prompt');
+
+  expect(delegatedSystem()).toBe('Updated system prompt');
 });
