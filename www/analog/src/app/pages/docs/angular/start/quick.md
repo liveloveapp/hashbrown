@@ -113,13 +113,14 @@ chatResource({
 
 | Option    | Type                                                                   | Required | Description                                                       |
 | --------- | ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
-| system    | string \| Signal<string>                                               | Yes      | System (assistant) prompt.                                        |
-| model     | KnownModelIds \| Signal<KnownModelIds>                                 | Yes      | Model identifier to use.                                          |
+| system    | ReactiveOption<string>                                                 | Yes      | System (assistant) prompt.                                        |
+| model     | ReactiveOption<ModelInput>                                             | Yes      | Model identifier or model input to use.                           |
 | tools     | Tools[]                                                                | No       | Array of bound tools available to the chat.                       |
 | messages  | Chat.Message<string, Tools>[] \| Signal<Chat.Message<string, Tools>[]> | No       | Initial list of chat messages.                                    |
 | debounce  | number                                                                 | No       | Debounce interval in milliseconds between user inputs.            |
 | debugName | string                                                                 | No       | Name used for debugging in logs and reactive signal labels.       |
-| apiUrl    | string                                                                 | No       | Override for the API base URL (defaults to configured `baseUrl`). |
+| apiUrl    | ReactiveOption<string>                                                 | No       | Override for the API base URL (defaults to configured `baseUrl`). |
+| threadId  | ReactiveOption<string \| undefined>                                    | No       | Thread identifier used to load or continue a conversation.        |
 
 ---
 
