@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { Chat, fryHashbrown, type TransportOrFactory } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
-import { SignalLike } from '../utils/types';
+import { ReactiveOption } from '../utils/types';
 import { readSignalLike, toNgSignal } from '../utils/signals';
 
 /**
@@ -66,7 +66,7 @@ export interface CompletionResourceOptions<Input> {
   /**
    * The model to use for the completion.
    */
-  model: SignalLike<string>;
+  model: ReactiveOption<string>;
 
   /**
    * The input to the completion.
@@ -76,12 +76,12 @@ export interface CompletionResourceOptions<Input> {
   /**
    * The system prompt to use for the completion.
    */
-  system: SignalLike<string>;
+  system: ReactiveOption<string>;
 
   /**
    * The API URL to use for the completion.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
 
   /**
    * The debug name for the completion resource.
@@ -96,7 +96,7 @@ export interface CompletionResourceOptions<Input> {
   /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**
@@ -116,7 +116,10 @@ export function completionResource<Input>(
   const config = ɵinjectHashbrownConfig();
   const hashbrown = fryHashbrown({
     debugName: options.debugName,
-    apiUrl: options.apiUrl ?? config.baseUrl,
+    apiUrl:
+      options.apiUrl !== undefined
+        ? readSignalLike(options.apiUrl)
+        : config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
@@ -127,12 +130,40 @@ export function completionResource<Input>(
     tools: [],
     retries: 3,
     transport: options.transport ?? config.transport,
-    threadId: options.threadId ? readSignalLike(options.threadId) : undefined,
+    threadId:
+      options.threadId !== undefined
+        ? readSignalLike(options.threadId)
+        : undefined,
+  });
+
+  const optionsEffect = effect(() => {
+    hashbrown.updateOptions({
+      debugName: options.debugName,
+      apiUrl:
+        options.apiUrl !== undefined
+          ? readSignalLike(options.apiUrl)
+          : config.baseUrl,
+      middleware: config.middleware?.map((m): Chat.Middleware => {
+        return (requestInit) =>
+          runInInjectionContext(injector, () => m(requestInit));
+      }),
+      model: readSignalLike(model),
+      system: readSignalLike(system),
+      tools: [],
+      retries: 3,
+      transport: options.transport ?? config.transport,
+      ...(options.threadId !== undefined
+        ? { threadId: readSignalLike(options.threadId) }
+        : {}),
+    });
   });
 
   const teardown = hashbrown.sizzle();
 
-  destroyRef.onDestroy(() => teardown());
+  destroyRef.onDestroy(() => {
+    teardown();
+    optionsEffect.destroy();
+  });
 
   const messages = toNgSignal(hashbrown.messages);
   const isReceiving = toNgSignal(hashbrown.isReceiving);
