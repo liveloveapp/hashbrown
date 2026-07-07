@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { UiAssistantMessage, UiChatSchema } from './use-ui-chat';
-import { useUiKit, type UiKitInput } from './use-ui-kit';
+import { type UiKitInput, useUiKit } from './use-ui-kit';
 import {
   useStructuredCompletion,
   type UseStructuredCompletionResult,

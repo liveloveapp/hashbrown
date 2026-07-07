@@ -21,10 +21,17 @@
         "tsConfig": "packages/react/tsconfig.lib.json",
         "outputPath": "dist/packages/react",
         "format": ["esm", "cjs"],
-        "generateExportsField": true,
+        "rollupConfig": "packages/react/package-output.config.cjs",
+        "generateExportsField": false,
+        "generatePackageJson": false,
         "sourceMap": true,
         "useLegacyTypescriptPlugin": false,
         "assets": [
+          {
+            "input": "packages/react",
+            "glob": "package.json",
+            "output": "."
+          },
           {
             "input": "packages/react",
             "glob": "LICENSE",
@@ -40,6 +47,20 @@
       "dependsOn": [
         {
           "projects": ["core"],
+          "target": "build"
+        }
+      ]
+    },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/packages/react-e2e"],
+      "options": {
+        "jestConfig": "packages/react/jest.e2e.config.ts",
+        "passWithNoTests": false
+      },
+      "dependsOn": [
+        {
+          "projects": ["react"],
           "target": "build"
         }
       ]

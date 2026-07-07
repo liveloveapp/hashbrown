@@ -11,7 +11,7 @@ import {
 import { ReactElement, useCallback, useMemo, useState } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
-import { useUiKit, type UiKitInput } from './use-ui-kit';
+import { type UiKitInput, useUiKit } from './use-ui-kit';
 
 /**
  * Represents a UI component in the chat schema with its properties and children.
