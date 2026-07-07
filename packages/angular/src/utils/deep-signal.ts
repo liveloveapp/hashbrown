@@ -70,7 +70,14 @@ export type DeepSignal<T> = Signal<T> &
  * @public
  */
 export function toDeepSignal<T>(signal: Signal<T>): DeepSignal<T> {
-  return new Proxy(signal, {
+  let previous = untracked(signal);
+  const reconciledSignal = computed(() => {
+    const next = signal();
+    previous = reconcileValue(previous, next);
+    return previous;
+  });
+
+  return new Proxy(reconciledSignal, {
     has(target: any, prop) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return !!this.get!(target, prop, undefined);
@@ -96,6 +103,56 @@ export function toDeepSignal<T>(signal: Signal<T>): DeepSignal<T> {
       return toDeepSignal(target[prop]);
     },
   });
+}
+
+function reconcileValue<T>(previous: T, next: T): T {
+  if (Object.is(previous, next)) {
+    return previous;
+  }
+
+  if (Array.isArray(previous) && Array.isArray(next)) {
+    const reconciled = next.map((value, index) =>
+      reconcileValue(previous[index], value),
+    );
+
+    return previous.length === next.length &&
+      reconciled.every((value, index) => value === previous[index])
+      ? previous
+      : (reconciled as T);
+  }
+
+  if (isRecord(previous) && isRecord(next)) {
+    const previousKeys = Reflect.ownKeys(previous);
+    const nextKeys = Reflect.ownKeys(next);
+    const reconciled = buildReconciledRecord(previous, next, nextKeys);
+
+    return previousKeys.length === nextKeys.length &&
+      nextKeys.every(
+        (key) =>
+          previousKeys.includes(key) && reconciled[key] === previous[key],
+      )
+      ? previous
+      : (reconciled as T);
+  }
+
+  return next;
+}
+
+function buildReconciledRecord(
+  previous: Record<PropertyKey, unknown>,
+  next: Record<PropertyKey, unknown>,
+  keys: PropertyKey[],
+): Record<PropertyKey, unknown> {
+  const reconciled = Object.create(Object.getPrototypeOf(next)) as Record<
+    PropertyKey,
+    unknown
+  >;
+
+  for (const key of keys) {
+    reconciled[key] = reconcileValue(previous[key], next[key]);
+  }
+
+  return reconciled;
 }
 
 const nonRecords = [

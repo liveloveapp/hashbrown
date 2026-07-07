@@ -42,6 +42,30 @@ test('creates deep signals for custom class instances', () => {
   expect(deepSig.user.firstName()).toBe('John');
 });
 
+test('preserves custom class prototypes when reconciling changed instances', () => {
+  class User {
+    constructor(readonly firstName: string) {}
+  }
+
+  class UserState {
+    constructor(
+      readonly user: User,
+      readonly version: number,
+    ) {}
+  }
+
+  const sig = signal(new UserState(new User('John'), 1));
+  const deepSig = toDeepSignal(sig);
+  const firstUser = deepSig.user();
+
+  sig.set(new UserState(new User('John'), 2));
+
+  expect(deepSig()).toBeInstanceOf(UserState);
+  expect(deepSig().user).toBeInstanceOf(User);
+  expect(deepSig().user).toBe(firstUser);
+  expect(deepSig().version).toBe(2);
+});
+
 test('allows lazy initialization', () => {
   const sig = signal(undefined as unknown as { m: { s: 't' } });
   const deepSig = toDeepSignal(sig);
