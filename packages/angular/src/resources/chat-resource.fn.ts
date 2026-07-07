@@ -186,7 +186,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
   const hashbrown = fryHashbrown({
-    apiUrl: options.apiUrl ? readSignalLike(options.apiUrl) : config.baseUrl,
+    apiUrl:
+      options.apiUrl !== undefined
+        ? readSignalLike(options.apiUrl)
+        : config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
@@ -204,7 +207,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
 
   const optionsEffect = effect(() => {
     hashbrown.updateOptions({
-      apiUrl: options.apiUrl ? readSignalLike(options.apiUrl) : config.baseUrl,
+      apiUrl:
+        options.apiUrl !== undefined
+          ? readSignalLike(options.apiUrl)
+          : config.baseUrl,
       middleware: config.middleware?.map((m): Chat.Middleware => {
         return (requestInit) =>
           runInInjectionContext(injector, () => m(requestInit));

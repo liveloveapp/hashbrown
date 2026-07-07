@@ -124,6 +124,81 @@ test('chatResource updates runtime options when option signals change', () => {
   );
 });
 
+test('chatResource preserves an empty apiUrl option', () => {
+  fryHashbrownMock.mockReset();
+  const apiUrl = signal('');
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      apiUrl,
+      system: 'System A',
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      apiUrl: '',
+    }),
+  );
+
+  apiUrl.set('/chat-b');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      apiUrl: '/chat-b',
+    }),
+  );
+
+  apiUrl.set('');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      apiUrl: '',
+    }),
+  );
+});
+
+test('chatResource preserves a literal empty apiUrl option', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      apiUrl: '',
+      system: 'System A',
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      apiUrl: '',
+    }),
+  );
+
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      apiUrl: '',
+    }),
+  );
+});
+
 function createHashbrownStub({ messages }: { messages: unknown[] }) {
   const messagesSignal = createSignal(messages);
 
