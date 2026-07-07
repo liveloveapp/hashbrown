@@ -18,7 +18,7 @@ import {
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { ReactiveOption } from '../utils/types';
-import { readSignalLike, toNgSignal } from '../utils/signals';
+import { readReactiveOption, toNgSignal } from '../utils/signals';
 
 /**
  * A reference to the completion resource.
@@ -123,21 +123,21 @@ export function completionResource<Input>(
     debugName: options.debugName,
     apiUrl:
       options.apiUrl !== undefined
-        ? readSignalLike(options.apiUrl)
+        ? readReactiveOption(options.apiUrl)
         : config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    model: readSignalLike(model),
-    system: readSignalLike(system),
+    model: readReactiveOption(model),
+    system: readReactiveOption(system),
     messages: [],
     tools: [],
     retries: 3,
     transport: options.transport ?? config.transport,
     threadId:
       options.threadId !== undefined
-        ? readSignalLike(options.threadId)
+        ? readReactiveOption(options.threadId)
         : undefined,
   });
 
@@ -146,19 +146,19 @@ export function completionResource<Input>(
       debugName: options.debugName,
       apiUrl:
         options.apiUrl !== undefined
-          ? readSignalLike(options.apiUrl)
+          ? readReactiveOption(options.apiUrl)
           : config.baseUrl,
       middleware: config.middleware?.map((m): Chat.Middleware => {
         return (requestInit) =>
           runInInjectionContext(injector, () => m(requestInit));
       }),
-      model: readSignalLike(model),
-      system: readSignalLike(system),
+      model: readReactiveOption(model),
+      system: readReactiveOption(system),
       tools: [],
       retries: 3,
       transport: options.transport ?? config.transport,
       ...(options.threadId !== undefined
-        ? { threadId: readSignalLike(options.threadId) }
+        ? { threadId: readReactiveOption(options.threadId) }
         : {}),
     });
   });

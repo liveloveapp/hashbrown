@@ -17,7 +17,11 @@ import {
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
-import { readSignalLike, toNgSignal } from '../utils/signals';
+import {
+  readReactiveOption,
+  readSignalLike,
+  toNgSignal,
+} from '../utils/signals';
 import { ReactiveOption } from '../utils/types';
 import { bindToolToInjector } from '../utils/create-tool.fn';
 
@@ -188,15 +192,15 @@ export function chatResource<Tools extends Chat.AnyTool>(
   const hashbrown = fryHashbrown({
     apiUrl:
       options.apiUrl !== undefined
-        ? readSignalLike(options.apiUrl)
+        ? readReactiveOption(options.apiUrl)
         : config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    system: readSignalLike(options.system),
+    system: readReactiveOption(options.system),
     messages: options.messages ? [...readSignalLike(options.messages)] : [],
-    model: readSignalLike(options.model),
+    model: readReactiveOption(options.model),
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     emulateStructuredOutput: config.emulateStructuredOutput,
     debugName: options.debugName,
@@ -204,7 +208,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     ui: false,
     threadId:
       options.threadId !== undefined
-        ? readSignalLike(options.threadId)
+        ? readReactiveOption(options.threadId)
         : undefined,
   });
 
@@ -212,21 +216,21 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hashbrown.updateOptions({
       apiUrl:
         options.apiUrl !== undefined
-          ? readSignalLike(options.apiUrl)
+          ? readReactiveOption(options.apiUrl)
           : config.baseUrl,
       middleware: config.middleware?.map((m): Chat.Middleware => {
         return (requestInit) =>
           runInInjectionContext(injector, () => m(requestInit));
       }),
-      system: readSignalLike(options.system),
-      model: readSignalLike(options.model),
+      system: readReactiveOption(options.system),
+      model: readReactiveOption(options.model),
       tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
       emulateStructuredOutput: config.emulateStructuredOutput,
       debugName: options.debugName,
       transport: options.transport ?? config.transport,
       ui: false,
       ...(options.threadId !== undefined
-        ? { threadId: readSignalLike(options.threadId) }
+        ? { threadId: readReactiveOption(options.threadId) }
         : {}),
     });
   });

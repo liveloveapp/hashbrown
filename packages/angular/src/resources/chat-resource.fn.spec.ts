@@ -124,6 +124,38 @@ test('chatResource updates runtime options when option signals change', () => {
   );
 });
 
+test('chatResource preserves direct model factory options', () => {
+  fryHashbrownMock.mockReset();
+  const model = vi.fn(() => ({
+    name: 'test-model',
+    transport: vi.fn(),
+  })) as unknown as ModelInput;
+  const system = signal('System A');
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    chatResource({
+      model,
+      system,
+    }),
+  );
+
+  expect(fryHashbrownMock.mock.calls[0]?.[0].model).toBe(model);
+  expect(model).not.toHaveBeenCalled();
+
+  system.set('System B');
+  TestBed.flushEffects();
+  const lastOptions = getLastUpdateOptions(hashbrown);
+
+  expect(lastOptions?.model).toBe(model);
+  expect(model).not.toHaveBeenCalled();
+});
+
 test('chatResource preserves an empty apiUrl option', () => {
   fryHashbrownMock.mockReset();
   const apiUrl = signal('');
