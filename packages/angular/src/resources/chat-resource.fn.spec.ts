@@ -199,6 +199,81 @@ test('chatResource preserves a literal empty apiUrl option', () => {
   );
 });
 
+test('chatResource preserves an empty threadId option', () => {
+  fryHashbrownMock.mockReset();
+  const threadId = signal<string | undefined>('');
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      threadId,
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+
+  threadId.set('thread-b');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: 'thread-b',
+    }),
+  );
+
+  threadId.set('');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+});
+
+test('chatResource preserves a literal empty threadId option', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      threadId: '',
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+});
+
 function createHashbrownStub({ messages }: { messages: unknown[] }) {
   const messagesSignal = createSignal(messages);
 

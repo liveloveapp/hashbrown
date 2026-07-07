@@ -202,7 +202,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
     debugName: options.debugName,
     transport: options.transport ?? config.transport,
     ui: false,
-    threadId: options.threadId ? readSignalLike(options.threadId) : undefined,
+    threadId:
+      options.threadId !== undefined
+        ? readSignalLike(options.threadId)
+        : undefined,
   });
 
   const optionsEffect = effect(() => {
@@ -222,7 +225,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
       debugName: options.debugName,
       transport: options.transport ?? config.transport,
       ui: false,
-      threadId: options.threadId ? readSignalLike(options.threadId) : undefined,
+      threadId:
+        options.threadId !== undefined
+          ? readSignalLike(options.threadId)
+          : undefined,
     });
   });
 
