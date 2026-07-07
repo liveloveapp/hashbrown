@@ -113,6 +113,18 @@ This is useful for "clear chat", "delete message", "retry from here", and "trim 
 
 ---
 
+## Order of Operations
+
+Hashbrown creates one chat instance for the resource and keeps its message history until you intentionally replace it. The `messages` option seeds the initial history only; changing the value you passed to `messages` later does not reset an active chat.
+
+Reactive options such as `model`, `system`, `apiUrl`, `threadId`, tools, and transport are applied to future requests. Updating those options does not append a message, clear history, or resend the conversation by itself.
+
+Use `sendMessage` to add a new turn, `setMessages` to replace history, and `reload` to remove the last assistant message before retrying. For completion resources, `input` is different from chat history: changing `input` synchronizes the backing single user message for the next completion.
+
+Put durable behavior and constraints in `system`. Put conversational facts, prior turns, summaries, and user-visible conversation state in message history.
+
+---
+
 ## Summarize Older Turns
 
 For long chats, keep recent messages verbatim and replace older turns with a summary. This preserves context while reducing payload size.
