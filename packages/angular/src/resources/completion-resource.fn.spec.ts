@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import type { ModelInput } from '@hashbrownai/core';
 import { provideHashbrown } from '../providers/provide-hashbrown.fn';
 import { completionResource } from './completion-resource.fn';
 
@@ -59,6 +60,41 @@ test('completionResource updates runtime options when option signals change', ()
       apiUrl: '/completion-b',
       system: 'System B',
       threadId: 'thread-b',
+    }),
+  );
+});
+
+test('completionResource accepts fallback model input signals', () => {
+  fryHashbrownMock.mockReset();
+  const model = signal<ModelInput>(['gpt-4.1', 'gpt-4.1-mini']);
+  const input = signal('Summarize this');
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    completionResource({
+      model,
+      system: 'System A',
+      input,
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      model: ['gpt-4.1', 'gpt-4.1-mini'],
+    }),
+  );
+
+  model.set(['gpt-4.2', 'gpt-4.2-mini']);
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      model: ['gpt-4.2', 'gpt-4.2-mini'],
     }),
   );
 });

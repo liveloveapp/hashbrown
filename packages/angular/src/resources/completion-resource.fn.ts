@@ -10,7 +10,12 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import { Chat, fryHashbrown, type TransportOrFactory } from '@hashbrownai/core';
+import {
+  Chat,
+  fryHashbrown,
+  type ModelInput,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { ReactiveOption } from '../utils/types';
 import { readSignalLike, toNgSignal } from '../utils/signals';
@@ -66,7 +71,7 @@ export interface CompletionResourceOptions<Input> {
   /**
    * The model to use for the completion.
    */
-  model: ReactiveOption<string>;
+  model: ReactiveOption<ModelInput>;
 
   /**
    * The input to the completion.
