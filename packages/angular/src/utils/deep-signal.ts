@@ -122,14 +122,20 @@ function reconcileValue<T>(previous: T, next: T): T {
   }
 
   if (isRecord(previous) && isRecord(next)) {
-    const previousKeys = Reflect.ownKeys(previous);
-    const nextKeys = Reflect.ownKeys(next);
-    const reconciled = buildReconciledRecord(previous, next, nextKeys);
+    const previousRecord = previous as Record<PropertyKey, unknown>;
+    const nextRecord = next as Record<PropertyKey, unknown>;
+    const previousKeys = Reflect.ownKeys(previousRecord);
+    const nextKeys = Reflect.ownKeys(nextRecord);
+    const reconciled = buildReconciledRecord(
+      previousRecord,
+      nextRecord,
+      nextKeys,
+    );
 
     return previousKeys.length === nextKeys.length &&
       nextKeys.every(
         (key) =>
-          previousKeys.includes(key) && reconciled[key] === previous[key],
+          previousKeys.includes(key) && reconciled[key] === previousRecord[key],
       )
       ? previous
       : (reconciled as T);
