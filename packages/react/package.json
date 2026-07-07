@@ -4,16 +4,15 @@
   "description": "React components for Hashbrown AI",
   "license": "MIT",
   "sideEffects": false,
-  "type": "module",
-  "module": "./index.esm.js",
-  "main": "./index.cjs.js",
+  "module": "./index.mjs",
+  "main": "./index.cjs",
   "types": "./index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
       "types": "./index.d.ts",
-      "import": "./index.esm.js",
-      "require": "./index.cjs.js"
+      "import": "./index.mjs",
+      "require": "./index.cjs"
     }
   },
   "files": [

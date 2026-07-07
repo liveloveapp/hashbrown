@@ -3,9 +3,9 @@ import {
   type ComponentTree,
   type UiKit as CoreUiKit,
   type UiKitInput as CoreUiKitInput,
+  type SystemPrompt,
   type UiWrapper,
   ɵcreateUiKit,
-  type SystemPrompt,
 } from '@hashbrownai/core';
 import { useCallback, useMemo } from 'react';
 import type { ReactElement } from 'react';

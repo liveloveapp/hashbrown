@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { s, ɵtypes, type ComponentFallbackProps } from '@hashbrownai/core';
+import { type ComponentFallbackProps, s, ɵtypes } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 
 /**
