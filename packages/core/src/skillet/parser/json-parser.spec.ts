@@ -79,6 +79,32 @@ test('parses across chunk boundaries with unicode escapes and arrays', () => {
   });
 });
 
+test('parses Japanese and Chinese string values across chunks', () => {
+  const state = createParserState();
+
+  const next = parseChunk(state, '{"ja":"こん');
+  const root = getNode(next.nodes, next.rootId);
+
+  expect(next.error).toBeNull();
+  expect(root.resolvedValue).toEqual({ ja: 'こん' });
+
+  const next2 = parseChunk(next, 'にちは","zh":"你');
+  const root2 = getNode(next2.nodes, next2.rootId);
+
+  expect(next2.error).toBeNull();
+  expect(root2.resolvedValue).toEqual({ ja: 'こんにちは', zh: '你' });
+
+  const next3 = parseChunk(next2, '好，世界"}');
+  const done = finalizeJsonParse(next3);
+
+  expect(done.error).toBeNull();
+  expect(done.isComplete).toBe(true);
+  expect(getResolvedValue(done)).toEqual({
+    ja: 'こんにちは',
+    zh: '你好，世界',
+  });
+});
+
 test('parses a string with an escape split across chunks', () => {
   const state = createParserState();
 
