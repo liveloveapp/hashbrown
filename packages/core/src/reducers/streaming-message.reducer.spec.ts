@@ -66,6 +66,39 @@ test('parses structured output from content stream', () => {
   expect(state.message?.contentResolved).toBe(firstResolved);
 });
 
+test('recovers structured output from content before trailing JSON', () => {
+  const consoleWarn = jest
+    .spyOn(console, 'warn')
+    .mockImplementation(() => undefined);
+  const responseSchema = s.object('output', {
+    ui: s.array('ui', s.object('component', {})),
+  });
+
+  try {
+    let state = startState(responseSchema, false);
+
+    state = reducer(
+      state,
+      chunkAction({
+        role: 'assistant',
+        content: '{"ui":[{}]}\n{"ui":[{}]}',
+      }),
+    );
+
+    expect(state.error).toBeUndefined();
+    expect(state.message?.contentResolved).toEqual({ ui: [{}] });
+    expect(consoleWarn).not.toHaveBeenCalled();
+
+    state = reducer(state, apiActions.generateMessageFinish());
+
+    expect(state.error).toBeUndefined();
+    expect(state.message?.contentResolved).toEqual({ ui: [{}] });
+    expect(consoleWarn).toHaveBeenCalledTimes(1);
+  } finally {
+    consoleWarn.mockRestore();
+  }
+});
+
 test('parses Standard JSON Schema structured output when complete', () => {
   const responseSchema = {
     '~standard': {
@@ -144,6 +177,57 @@ test('streams output tool arguments like a normal tool in emulated mode', () => 
 
   expect(state.toolCalls[0]?.argumentsResolved).toEqual({ answer: 'ok' });
   expect(state.message?.contentResolved).toBeUndefined();
+});
+
+test('recovers emulated structured output arguments before trailing JSON', () => {
+  const consoleWarn = jest
+    .spyOn(console, 'warn')
+    .mockImplementation(() => undefined);
+  const responseSchema = s.object('output', {
+    ui: s.array('ui', s.object('component', {})),
+  });
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    output: {
+      name: 'output',
+      description: '',
+      schema: responseSchema,
+      handler: async () => undefined,
+    },
+  };
+
+  try {
+    let state = startState(responseSchema, true, toolsByName);
+
+    state = reducer(
+      state,
+      chunkAction({
+        role: 'assistant',
+        toolCalls: [
+          {
+            index: 0,
+            id: 'call-output',
+            type: 'function',
+            function: {
+              name: 'output',
+              arguments: '{"ui":[{}]}\n{"ui":[{}]}',
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(state.error).toBeUndefined();
+    expect(state.toolCalls[0]?.argumentsResolved).toEqual({ ui: [{}] });
+    expect(consoleWarn).not.toHaveBeenCalled();
+
+    state = reducer(state, apiActions.generateMessageFinish());
+
+    expect(state.error).toBeUndefined();
+    expect(state.toolCalls[0]?.argumentsResolved).toEqual({ ui: [{}] });
+    expect(consoleWarn).toHaveBeenCalledTimes(1);
+  } finally {
+    consoleWarn.mockRestore();
+  }
 });
 
 test('streams hashbrown tool arguments and preserves identity when unchanged', () => {
@@ -247,6 +331,22 @@ test('non-hashbrown tool arguments resolve only when complete', () => {
   );
 
   expect(state.toolCalls[0]?.argumentsResolved).toEqual({ name: 'alice' });
+});
+
+test('does not recover malformed structured output before the root closes', () => {
+  const responseSchema = s.object('output', {
+    ui: s.array('ui', s.object('component', {})),
+  });
+
+  let state = startState(responseSchema, false);
+
+  state = reducer(
+    state,
+    chunkAction({ role: 'assistant', content: '{"ui":[{}],}' }),
+  );
+
+  expect(state.error).toBeInstanceOf(Error);
+  expect(state.message?.contentResolved).toBeUndefined();
 });
 
 test('defers parser errors until finish', () => {
