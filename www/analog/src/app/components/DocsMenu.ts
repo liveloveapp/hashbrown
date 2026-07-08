@@ -271,6 +271,24 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'recipes', 'json-parser']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >JSON Parser</a
+          >
+        </li>
+        @if (sdk() === 'react') {
+          <li>
+            <a
+              [routerLink]="[docsUrl(), 'recipes', 'copilotkit']"
+              routerLinkActive="active"
+              wwwSquircle="8"
+              >CopilotKit</a
+            >
+          </li>
+        }
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'recipes', 'local-models']"
             routerLinkActive="active"
             wwwSquircle="8"

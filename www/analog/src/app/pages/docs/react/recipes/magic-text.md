@@ -1,149 +1,143 @@
 ---
-title: 'Streaming Inline Markdown in React (Streamdown): Hashbrown React Docs'
+title: 'Magic Text in React: Streaming Markdown'
 meta:
   - name: description
-    content: 'React does not ship Magic Text yet. Use Streamdown as a streaming-safe Markdown renderer alongside Hashbrown chat hooks.'
----
-# Streaming Inline Markdown in React (Streamdown)
-
-<p class="subtitle">Magic Text is not available in the React SDK yet. Until it lands, use <strong>Streamdown</strong> as your streaming Markdown renderer.</p>
-
+    content: 'Use Hashbrown Magic Text in React for optimistic streaming Markdown rendering, citations, custom renderers, and exposeMarkdown().'
 ---
 
-## 0) Why Streamdown instead of Magic Text?
+# Magic Text in React
 
-Hashbrown’s React SDK does not include Magic Text today. Streamdown is a drop-in replacement for `react-markdown` that is purpose-built for AI streaming: it handles incomplete Markdown tokens, keeps output safe, and ships performance optimizations like memoized block rendering. citeturn0search1turn0search2turn0search3turn0search5
+Magic Text is Hashbrown's optimistic Markdown parser and renderer for streaming LLM output. It renders partial Markdown while text is still arriving, then converges to the final structure when the stream completes.
 
----
+Use it when you want:
 
-## 1) What Streamdown gives you
-
-- Drop-in API parity with `react-markdown`, so existing props and plugins still work. citeturn0search1
-- Streaming-friendly parsing that formats unterminated Markdown (bold, code, links, headings) as tokens arrive. citeturn0search5
-- GitHub Flavored Markdown, math via KaTeX, and Mermaid diagrams out of the box. citeturn0search1turn0search8
-- Security hardening for links/images plus Shiki-based code blocks. citeturn0search0turn0search8
+- Stable streaming Markdown without handing arbitrary HTML to the browser.
+- Inline citations that can be rendered as trusted UI.
+- Per-node renderer overrides for your design system.
+- Segment-level rendering for animation.
+- A renderer you can expose to generative UI with `exposeMarkdown()`.
 
 ---
 
-## 2) Install + Tailwind wiring
+## 1. Render Streaming Markdown
 
-<hb-code-example header="terminal">
+`MagicTextRenderer` renders Markdown from a string. Set `isComplete` when the model is done so open Markdown constructs can finalize.
 
-```sh
-npm install streamdown
-```
-
-</hb-code-example>
-
-Add Streamdown’s styles to Tailwind so components render correctly:
-
-<hb-code-example header="globals.css excerpt (Tailwind v4)">
-
-```css
-@source "../node_modules/streamdown/dist/index.js";
-```
-
-</hb-code-example>
-
-For Tailwind v3, include `./node_modules/streamdown/dist/**/*.js` in `content` (see Streamdown docs). citeturn0search6
-
----
-
-## 3) Minimal Hashbrown chat renderer
-
-Use Streamdown to render streaming assistant text from `useChat` (or any text source).
-
-<hb-code-example header="Chat.tsx">
+<hb-code-example header="AssistantMarkdown.tsx">
 
 ```tsx
-import React from 'react';
-import { useChat } from '@hashbrownai/react';
-import { Streamdown } from 'streamdown';
+import { MagicTextRenderer } from '@hashbrownai/react';
 
-export function Chat() {
-  const { messages, input, setInput, sendMessage, status } = useChat({
-    model: 'gpt-5',
-  });
-
+export function AssistantMarkdown({
+  text,
+  isComplete,
+}: {
+  text: string;
+  isComplete: boolean;
+}) {
   return (
-    <div className="chat">
-      <div className="messages">
-        {messages.map((message) => (
-          <div key={message.id} className={message.role}>
-            {message.parts
-              .filter((p) => p.type === 'text')
-              .map((p, idx) => (
-                <Streamdown key={idx}>{p.text}</Streamdown>
-              ))}
-          </div>
-        ))}
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!input.trim()) return;
-          sendMessage(input);
-        }}
-        className="composer"
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={status === 'loading'}
-          placeholder="Ask anything…"
-        />
-        <button type="submit" disabled={status === 'loading'}>
-          Send
-        </button>
-      </form>
-    </div>
+    <MagicTextRenderer
+      isComplete={isComplete}
+      caret
+      options={{ segmenter: { granularity: 'word' } }}
+    >
+      {text}
+    </MagicTextRenderer>
   );
 }
 ```
 
 </hb-code-example>
 
-Because Streamdown memoizes blocks and tolerates incomplete syntax, the UI stays stable as tokens stream. citeturn0search2turn0search5turn0search3
+`caret` shows a streaming cursor while the deepest open node is still incomplete. `options.segmenter` controls how text nodes are split for rendering and animation.
 
 ---
 
-## 4) Prompting tips for Streamdown
+## 2. Handle Links and Citations
 
-- Let the model emit **full Markdown** (headings, lists, tables). Streamdown handles GFM safely. citeturn0search1
-- Keep links to `http/https/mailto/tel`; Streamdown sanitizes content with rehype-harden defaults. citeturn0search0
-- For citations, render your own footnote or side-panel UI: have the model output `[^id]` and map IDs to URLs before handing text to Streamdown.
-- Keep chunks short to reduce reflow; Streamdown memoizes unchanged blocks automatically. citeturn0search8
+Magic Text supports normal Markdown links and citation references:
 
----
+- Inline reference: `[^source-id]`
+- Definition: `[^source-id]: Source title https://example.com`
 
-## 5) Optional custom renderers
-
-Streamdown exposes the `components` prop (same as `react-markdown`). Override nodes to align with your design system:
-
-<hb-code-example header="custom-components.tsx">
+<hb-code-example header="AssistantMarkdown.tsx">
 
 ```tsx
-import { Streamdown, type Components } from 'streamdown';
+import { MagicTextRenderer } from '@hashbrownai/react';
 
-const components: Components = {
-  a: ({ node, ...props }) => (
-    <a {...props} rel="noopener noreferrer" target="_blank" data-allow-navigation="true" />
+export function AssistantMarkdown({ text }: { text: string }) {
+  return (
+    <MagicTextRenderer
+      isComplete
+      onLinkClick={(event, url) => {
+        if (url.startsWith('http')) {
+          return;
+        }
+
+        event.preventDefault();
+      }}
+      onCitationClick={(_event, citation) => {
+        console.log('citation selected', citation);
+      }}
+    >
+      {text}
+    </MagicTextRenderer>
+  );
+}
+```
+
+</hb-code-example>
+
+Give the model a prompt pattern like this when you want citations:
+
+<hb-code-example header="system prompt excerpt">
+
+```txt
+Write in Markdown.
+
+When you make a factual claim that needs a source, add an inline citation like [^id].
+At the end, add a definition line for each citation:
+[^id]: Short source title https://full-url
+
+Do not invent URLs. Omit citations if you are unsure.
+```
+
+</hb-code-example>
+
+---
+
+## 3. Customize Node Rendering
+
+Use `nodeRenderers` when Markdown should match your product UI. The `node` renderer is a fallback for every node type that does not have a specific override.
+
+<hb-code-example header="AssistantMarkdown.tsx">
+
+```tsx
+import {
+  MagicTextRenderer,
+  createMagicTextNodeRenderers,
+} from '@hashbrownai/react';
+
+const nodeRenderers = createMagicTextNodeRenderers({
+  heading: ({ node, children }) => {
+    const Heading = `h${node.level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+
+    return <Heading className="assistant-heading">{children}</Heading>;
+  },
+  citation: ({ citation }) => (
+    <sup className="assistant-citation">
+      {citation?.number ? `[${citation.number}]` : '[?]'}
+    </sup>
   ),
-  code: ({ inline, children, ...props }) =>
-    inline ? (
-      <code className="inline-code" {...props}>
-        {children}
-      </code>
-    ) : (
-      <code className="block-code" {...props}>
-        {children}
-      </code>
-    ),
-};
+  node: ({ defaultNode }) => defaultNode,
+});
 
-export function Markdown({ children }: { children: string }) {
-  return <Streamdown components={components}>{children}</Streamdown>;
+export function AssistantMarkdown({ text }: { text: string }) {
+  return (
+    <MagicTextRenderer isComplete nodeRenderers={nodeRenderers}>
+      {text}
+    </MagicTextRenderer>
+  );
 }
 ```
 
@@ -151,18 +145,86 @@ export function Markdown({ children }: { children: string }) {
 
 ---
 
-## 6) Roadmap + migration
+## 4. Expose Markdown to Generative UI
 
-- Keep using Streamdown in React until Hashbrown ships Magic Text for React.
-- When Magic Text arrives, swap the renderer and tighten prompts to inline-only Markdown if you want Angular/React parity.
-- If you need HTML sanitization beyond Streamdown’s defaults, wrap its output in your own allow-list or keep using the `components` prop.
+Use `exposeMarkdown()` when the model should generate Markdown inside a trusted component instead of generating arbitrary HTML.
+
+<hb-code-example header="ui-kit.tsx">
+
+```tsx
+import { exposeMarkdown, useUiKit } from '@hashbrownai/react';
+
+export function useAssistantUiKit() {
+  return useUiKit({
+    components: [
+      exposeMarkdown({
+        name: 'Markdown',
+        description: 'Render Markdown content for the user.',
+        citations: true,
+        options: { segmenter: { granularity: 'word' } },
+        caret: true,
+        className: 'assistant-markdown',
+      }),
+    ],
+  });
+}
+```
+
+</hb-code-example>
+
+Pass the UI kit to `useUiChat()` or `useUiCompletion()`:
+
+<hb-code-example header="Assistant.tsx">
+
+```tsx
+import { useUiChat } from '@hashbrownai/react';
+import { useAssistantUiKit } from './ui-kit';
+
+export function Assistant() {
+  const uiKit = useAssistantUiKit();
+  const { messages, sendMessage } = useUiChat({
+    model: 'gpt-5',
+    components: [uiKit],
+  });
+
+  return (
+    <ChatView
+      messages={messages}
+      onSubmit={(message) => sendMessage(message)}
+    />
+  );
+}
+```
+
+</hb-code-example>
 
 ---
 
-## 7) Troubleshooting
+## 5. Use the Parser Directly
 
-- Blank styles? Re-check Tailwind `@source` / `content` paths. citeturn0search6
-- Missing syntax highlight? Ensure Shiki is available—Streamdown’s code blocks rely on it. citeturn0search8
-- Performance regressions? Streamdown memoizes rendering; large jumps usually mean the streamed text is mutating entire blocks—shorten chunks or debounce updates. citeturn0search3
+If you need the Magic Text AST instead of React elements, use the parser helpers from `@hashbrownai/core`.
 
-Streamdown keeps React chat UIs streaming-friendly today while we finish native Magic Text support.
+<hb-code-example header="parse.ts">
+
+```ts
+import {
+  createMagicTextParserState,
+  finalizeMagicText,
+  parseMagicTextChunk,
+} from '@hashbrownai/core';
+
+let state = createMagicTextParserState({
+  segmenter: { granularity: 'word' },
+});
+
+state = parseMagicTextChunk(state, 'Hello **wor');
+state = parseMagicTextChunk(
+  state,
+  'ld** [^docs]\n\n[^docs]: Docs https://hashbrown.dev',
+);
+state = finalizeMagicText(state);
+```
+
+</hb-code-example>
+
+The parser state includes the Markdown AST, citation metadata, warnings, and completion state.
