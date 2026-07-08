@@ -33,6 +33,22 @@ export {
   type ExperimentalEdgeLocalTransportOptions,
 } from './experimental-edge-local-transport';
 export {
+  ExperimentalWebLlmLocalTransport,
+  createExperimentalWebLlmLocalTransport,
+  detectWebLlmSupport,
+  experimentalWebLlmLocalModelSpec,
+  experimental_webllm,
+  DEFAULT_WEBLLM_MODEL,
+  type ExperimentalWebLlmLocalTransportOptions,
+  type WebLlmEngine,
+  type WebLlmChatMessage,
+  type WebLlmRequest,
+  type WebLlmResponseFormat,
+  type WebLlmCompletionChunk,
+  type WebLlmInitProgressReport,
+  type CreateWebLlmEngine,
+} from './experimental-webllm-local-transport';
+export {
   createDelegatingTransport,
   experimental_local,
   type LocalPromptAdapter,
