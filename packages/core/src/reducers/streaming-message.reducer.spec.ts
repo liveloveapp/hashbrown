@@ -66,6 +66,33 @@ test('parses structured output from content stream', () => {
   expect(state.message?.contentResolved).toBe(firstResolved);
 });
 
+test('streams Japanese and Chinese structured output from content chunks', () => {
+  const responseSchema = s.object('output', {
+    message: s.streaming.string('message'),
+  });
+
+  let state = startState(responseSchema, false);
+
+  state = reducer(
+    state,
+    chunkAction({ role: 'assistant', content: '{"message":"こん' }),
+  );
+
+  expect(state.message?.contentResolved).toEqual({ message: 'こん' });
+
+  state = reducer(state, chunkAction({ content: 'にちは、你' }));
+
+  expect(state.message?.contentResolved).toEqual({
+    message: 'こんにちは、你',
+  });
+
+  state = reducer(state, chunkAction({ content: '好"}' }));
+
+  expect(state.message?.contentResolved).toEqual({
+    message: 'こんにちは、你好',
+  });
+});
+
 test('recovers structured output from content before trailing JSON', () => {
   const consoleWarn = jest
     .spyOn(console, 'warn')
