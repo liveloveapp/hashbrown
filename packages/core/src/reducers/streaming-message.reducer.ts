@@ -93,22 +93,45 @@ function updateCache(
   return { ...cacheMap, [index]: cache };
 }
 
+function isRecoverableTrailingToken(parserState: ParserState) {
+  if (
+    parserState.error?.message !== 'Unexpected trailing token' ||
+    parserState.rootId === null
+  ) {
+    return false;
+  }
+
+  const rootNode = parserState.nodes[parserState.rootId];
+  return Boolean(rootNode?.closed && rootNode.resolvedValue !== undefined);
+}
+
+function getSchemaParserState(parserState: ParserState) {
+  return isRecoverableTrailingToken(parserState)
+    ? { ...parserState, error: null }
+    : parserState;
+}
+
 function resolveSchemaValue(
   schema: s.HashbrownType,
   parserState: ParserState,
   cache: s.FromJsonAstCache | undefined,
 ) {
-  const output = s.fromJsonAst(schema, parserState, cache);
+  const schemaParserState = getSchemaParserState(parserState);
+  const output = s.fromJsonAst(schema, schemaParserState, cache);
   const value =
     output.result.state === 'match'
       ? (output.result.value as JsonValue)
       : undefined;
+  const recoveredTrailingToken =
+    value !== undefined && isRecoverableTrailingToken(parserState);
   const hasError =
-    output.result.state === 'invalid' || Boolean(parserState.error);
+    output.result.state === 'invalid' ||
+    (Boolean(parserState.error) && !recoveredTrailingToken);
   return {
     cache: output.cache,
     value,
     hasError,
+    recoveredTrailingToken,
   };
 }
 
@@ -118,6 +141,34 @@ function resolveJsonValue(parserState: ParserState) {
   }
 
   return getResolvedValue(parserState);
+}
+
+function warnRecoveredTrailingToken(parsedData: JsonValue, extraData: string) {
+  console.warn(
+    'Hashbrown received extra data after a valid JSON value. The first value was used, but the extra data was ignored.',
+    {
+      parsedData,
+      extraData,
+      tips: [
+        'Add examples of exactly one valid JSON object to your prompt.',
+        'Ask the model not to emit multiple JSON values or split a response across JSON objects.',
+        'If the response is too long, ask the model to summarize while keeping one valid JSON object.',
+      ],
+    },
+  );
+}
+
+function warnRecoveredTrailingTokenFromSource(
+  parserState: ParserState,
+  parsedData: JsonValue,
+  source: string,
+) {
+  const parserError = parserState.error;
+  if (!parserError || !isRecoverableTrailingToken(parserState)) {
+    return;
+  }
+
+  warnRecoveredTrailingToken(parsedData, source.slice(parserError.index));
 }
 
 export const reducer = createReducer(
@@ -412,10 +463,6 @@ export const reducer = createReducer(
 
     if (responseSchema && outputParserState) {
       outputParserState = finalizeJsonParse(outputParserState);
-      if (outputParserState.error && !error) {
-        error = new Error('Invalid structured output');
-      }
-
       const output = resolveSchemaValue(
         responseSchema,
         outputParserState,
@@ -431,14 +478,27 @@ export const reducer = createReducer(
           contentResolved: output.value,
         };
       }
+      if (output.recoveredTrailingToken && output.value !== undefined) {
+        warnRecoveredTrailingTokenFromSource(
+          outputParserState,
+          output.value,
+          message?.content ?? '',
+        );
+      }
     }
 
     const finalizedToolStates: ParserMap = {};
     Object.entries(toolParserStateByIndex).forEach(([key, parserState]) => {
       const index = Number(key);
       const finalized = finalizeJsonParse(parserState);
+      const toolName = getToolCallName(state.rawToolCalls, index);
+      const tool = toolName ? toolsByName[toolName] : undefined;
+      const canRecoverTrailingToken =
+        tool &&
+        s.isHashbrownType(tool.schema) &&
+        isRecoverableTrailingToken(finalized);
       finalizedToolStates[index] = finalized;
-      if (finalized.error && !error) {
+      if (finalized.error && !canRecoverTrailingToken && !error) {
         error = new Error('Invalid tool arguments');
       }
     });
@@ -505,6 +565,13 @@ export const reducer = createReducer(
           );
           if (resolved.value !== undefined) {
             argumentsResolved = resolved.value;
+          }
+          if (resolved.recoveredTrailingToken && resolved.value !== undefined) {
+            warnRecoveredTrailingTokenFromSource(
+              parserState,
+              resolved.value,
+              argumentsString,
+            );
           }
           if (resolved.hasError && !error) {
             error = new Error(`Invalid tool arguments for ${name}`);
