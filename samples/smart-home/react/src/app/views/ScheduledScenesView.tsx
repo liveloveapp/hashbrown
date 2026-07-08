@@ -26,7 +26,6 @@ export const ScheduledScenesView = () => {
           <ScheduledScene
             key={scheduledScene.id}
             scheduledScene={scheduledScene}
-            onEdit={() => {}}
           />
         ))}
       </div>
