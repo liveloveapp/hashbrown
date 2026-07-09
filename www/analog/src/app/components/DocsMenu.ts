@@ -135,6 +135,14 @@ import { Squircle } from './Squircle';
             >API Overview</a
           >
         </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'start', 'migration']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Migration Notes</a
+          >
+        </li>
       </ul>
     </div>
     <div>
