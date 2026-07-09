@@ -47,7 +47,7 @@ We'll use `gpt-5` as our model and the OpenAI Hashbrown adapter, but you can use
 
 ## 1: Define a Prediction Schema
 
-Define the response format schema using Skillet.
+Define the response format schema using Skillet (or a Standard JSON Schema object with the `~standard` spec, which Hashbrown normalizes to Skillet).
 
 <hb-code-example header="schema">
 

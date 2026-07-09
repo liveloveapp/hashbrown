@@ -19,13 +19,13 @@ meta:
 
 | Method        | Signature                    | Example                               |
 | ------------- | ---------------------------- | ------------------------------------- |
-| `string`      | `string(desc: string)`       | `s.string('name')`                    |
-| `number`      | `number(desc: string)`       | `s.number('age')`                     |
-| `integer`     | `integer(desc: string)`      | `s.integer('count')`                  |
+| `string`      | `string(desc, constraints?)` | `s.string('name', { pattern: '^@' })` |
+| `number`      | `number(desc, constraints?)` | `s.number('age', { minimum: 0 })`     |
+| `integer`     | `integer(desc, constraints?)`| `s.integer('count', { maximum: 10 })` |
 | `boolean`     | `boolean(desc: string)`      | `s.boolean('active')`                 |
 | `literal`     | `literal<T>(value: T)`       | `s.literal('success')`                |
 | `object`      | `object(desc, shape)`        | `s.object('user', {})`                |
-| `array`       | `array(desc, item)`          | `s.array('items', s.string())`        |
+| `array`       | `array(desc, item, constraints?)` | `s.array('items', s.string(), { minItems: 1 })` |
 | `anyOf`       | `anyOf(options)`             | `s.anyOf([s.string(), s.number()])`   |
 | `enumeration` | `enumeration(desc, entries)` | `s.enumeration('status', ['a', 'b'])` |
 | `nullish`     | `nullish()`                  | `s.nullish()`                         |
@@ -157,12 +157,69 @@ const mockResult: Result = {
 
 ---
 
+## Standard JSON Schema
+
+Hashbrown can ingest Standard JSON Schema objects (the `~standard` spec) alongside Skillet when defining tools, structured outputs, and component inputs. Internally, Hashbrown normalizes Standard JSON Schema to draft-07 JSON Schema and then converts it to Skillet for streaming and validation.
+
+If you need explicit conversion, use `s.fromStandardJsonSchema(schema, { mode: 'input' | 'output' })`. To type a schema regardless of whether it is Skillet or Standard JSON Schema, use `s.InferSchemaInput<T>` and `s.InferSchemaOutput<T>`. For Standard JSON Schema types specifically, use `s.StandardJSONSchemaV1.InferInput<T>` and `s.StandardJSONSchemaV1.InferOutput<T>`.
+
+Standard JSON Schema support is limited to the Skillet-compatible subset and throws on unsupported keywords:
+
+- `string` with `pattern` and `format` (date-time, time, date, duration, email, hostname, ipv4, ipv6, uuid)
+- `number` / `integer` with `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`
+- `boolean`, `null`
+- `const` for string/number/boolean only
+- `enum` for string values only
+- `object` with `properties` (all required) and `additionalProperties: false`
+- `array` with a single `items` schema and optional `minItems`/`maxItems`
+- `anyOf` unions
+
+---
+
 ## Numeric Types
 
 Skillet supports numeric types using either the `number()` or `integer()` function.
 The `number()` function allows for floating-point numbers, while the `integer()` function restricts the value to integers.
 
-Note, Skillet currently does not support `minimum` or `maximum` values for numeric types due to the current limitations of LLMs
+Skillet also supports optional numeric constraints like `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, and `multipleOf`.
+
+---
+
+## String Constraints
+
+```ts
+s.string('Username', {
+  pattern: '^@[a-z0-9_]+$',
+  format: 'email',
+});
+```
+
+- `pattern` is enforced in Hashbrown validation.
+- `format` is forwarded to the model provider but not validated client-side.
+- Supported `format` values: `date-time`, `time`, `date`, `duration`, `email`, `hostname`, `ipv4`, `ipv6`, `uuid`.
+
+---
+
+## Numeric Constraints
+
+```ts
+s.number('Score', {
+  minimum: 0,
+  exclusiveMaximum: 10,
+  multipleOf: 0.5,
+});
+```
+
+---
+
+## Array Constraints
+
+```ts
+s.array('Tags', s.string('Tag'), {
+  minItems: 1,
+  maxItems: 5,
+});
+```
 
 ---
 

@@ -1,11 +1,13 @@
-import { Chat } from '@hashbrownai/react';
+import { Chat } from '@hashbrownai/core';
 
-export const Message = ({ message }: { message: Chat.Message }) => {
+export const Message = ({
+  message,
+}: {
+  message: Chat.Message<string, Chat.AnyTool>;
+}) => {
   const isAssistant = message.role === 'assistant';
-  const isSystem = message.role === 'system';
-  const isTool = message.role === 'tool';
 
-  if (isSystem || isTool || (isAssistant && !message.content)) {
+  if (isAssistant && !message.content) {
     return;
   }
 

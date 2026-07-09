@@ -1,0 +1,13 @@
+{
+  "fixtures": [
+    {
+      "match": { "userMessage": "return structured output" },
+      "response": {
+        "content": {
+          "text": "Hello from structured aimock.",
+          "ok": true
+        }
+      }
+    }
+  ]
+}

@@ -42,6 +42,32 @@ test('object: properties, required, additionalProperties=false', () => {
   expect(json).toMatchSnapshot();
 });
 
+test('string: pattern and format serialize', () => {
+  const schema = s.string('Handle', {
+    pattern: /^@[a-z0-9_]+$/,
+    format: 'email',
+  });
+  const json = toJsonSchema(schema);
+  expect(json).toMatchSnapshot();
+});
+
+test('number: numeric constraints serialize', () => {
+  const schema = s.number('Score', {
+    minimum: 0,
+    maximum: 10,
+    exclusiveMaximum: 9.5,
+    multipleOf: 0.5,
+  });
+  const json = toJsonSchema(schema);
+  expect(json).toMatchSnapshot();
+});
+
+test('array: minItems and maxItems serialize', () => {
+  const schema = s.array('Tags', s.string('Tag'), { minItems: 1, maxItems: 3 });
+  const json = toJsonSchema(schema);
+  expect(json).toMatchSnapshot();
+});
+
 test('defs: repeated sub-schema is extracted into $defs and referenced', () => {
   const shared = s.object('Shared Item', { x: s.number('x') });
   const schema = s.object('Root', { a: shared, b: shared });
@@ -55,7 +81,7 @@ test('anyOf: primitives are direct without wrappers', () => {
   expect(json).toMatchSnapshot();
 });
 
-test('anyOf: object options default to index wrappers', () => {
+test('anyOf: object options are direct', () => {
   const schema = s.anyOf([
     s.object('A', { a: s.number('a') }),
     s.object('B', { b: s.string('b') }),
@@ -64,7 +90,7 @@ test('anyOf: object options default to index wrappers', () => {
   expect(json).toMatchSnapshot();
 });
 
-test('anyOf: mixed options use wrappers only for complex ones', () => {
+test('anyOf: mixed options are direct', () => {
   const schema = s.anyOf([
     s.string('S'),
     s.object('A', { a: s.number('a') }),
@@ -74,7 +100,7 @@ test('anyOf: mixed options use wrappers only for complex ones', () => {
   expect(json).toMatchSnapshot();
 });
 
-test('anyOf: single unique string-literal per object uses literal envelopes, omitting discriminator inside', () => {
+test('anyOf: literal properties remain inside option objects', () => {
   const schema = s.anyOf([
     s.object('Show markdown', {
       $tagName: s.literal('app-markdown'),
@@ -95,17 +121,13 @@ test('anyOf: single unique string-literal per object uses literal envelopes, omi
       }
     >;
   };
-  const markdownWrapper = (json.anyOf as SchemaWithProps[] | undefined)?.find(
-    (entry) =>
-      entry.properties &&
-      Object.prototype.hasOwnProperty.call(entry.properties, 'app-markdown'),
+  const markdownOption = (json.anyOf as SchemaWithProps[] | undefined)?.find(
+    (entry) => entry.properties?.['$tagName'],
   );
-  expect(
-    markdownWrapper?.properties?.['app-markdown']?.properties?.['$tagName'],
-  ).toBeUndefined();
+  expect(markdownOption?.properties?.['$tagName']).toBeDefined();
 });
 
-test('anyOf: duplicate literal values fall back to index wrappers', () => {
+test('anyOf: duplicate literal values are direct', () => {
   const schema = s.anyOf([
     s.object('A', { type: s.literal('dup'), a: s.number('a') }),
     s.object('B', { type: s.literal('dup'), b: s.string('b') }),
@@ -114,7 +136,7 @@ test('anyOf: duplicate literal values fall back to index wrappers', () => {
   expect(json).toMatchSnapshot();
 });
 
-test('anyOf: multiple literals per object fall back to index wrappers', () => {
+test('anyOf: multiple literals per object are direct', () => {
   const schema = s.anyOf([
     s.object('A', { t1: s.literal('x'), t2: s.literal('y'), a: s.number('a') }),
     s.object('B', { t1: s.literal('p'), t2: s.literal('q'), b: s.string('b') }),

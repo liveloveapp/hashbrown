@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/packages/google"]
+      "manifestRootsToUpdate": ["dist/packages/google", "packages/google"]
     }
   },
   "tags": [],

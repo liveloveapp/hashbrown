@@ -4,9 +4,10 @@ import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { IResponseDeserializer, SpotifyApi } from '@spotify/web-api-ts-sdk';
+import type { Track } from '@spotify/web-api-ts-sdk';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
-import z from 'zod';
+import { z } from 'zod/v3';
 import { Client as GeniusClient } from 'genius-lyrics';
 
 const host = process.env.HOST ?? 'localhost';
@@ -110,22 +111,26 @@ mcpServer.registerTool(
  *      query:
  *        type: string
  */
+const searchInputSchema = z.object({
+  query: z.string().describe('Search keywords'),
+  type: z.enum(['track', 'artist', 'album']).optional(),
+});
+
+type SearchToolInput = z.infer<typeof searchInputSchema>;
+
 mcpServer.registerTool(
   'search',
   {
     title: 'search',
     description: 'Search tracks, artists or albums on Spotify',
-    inputSchema: {
-      query: z.string().describe('Search keywords'),
-      type: z.enum(['track', 'artist', 'album']).optional(),
-    },
+    inputSchema: searchInputSchema,
   },
-  async ({ query, type = 'track' }, context) => {
+  async ({ query, type = 'track' }: SearchToolInput, context: any) => {
     try {
       const accessToken = getAccessToken(context);
       const spotify = await getSpotifyClient(accessToken);
       const result = await spotify.search(query, [type]);
-      const minimalResult = result.tracks?.items.map((track) => ({
+      const minimalResult = result.tracks?.items.map((track: Track) => ({
         name: track.name,
         artist: track.artists[0].name,
         album: track.album.name,
@@ -160,22 +165,26 @@ mcpServer.registerTool(
  *        type: string
  */
 
+const queueTrackInputSchema = z.object({
+  uri: z
+    .string()
+    .describe('spotify:track:<id> or https://open.spotify.com/track/<id>'),
+  deviceId: z
+    .string()
+    .optional()
+    .describe('The ID of the device to queue the track on'),
+});
+
+type QueueTrackInput = z.infer<typeof queueTrackInputSchema>;
+
 mcpServer.registerTool(
   'queue_track',
   {
     title: 'Queue Track',
     description: "Add a track URI to the user's playback queue",
-    inputSchema: {
-      uri: z
-        .string()
-        .describe('spotify:track:<id> or https://open.spotify.com/track/<id>'),
-      deviceId: z
-        .string()
-        .optional()
-        .describe('The ID of the device to queue the track on'),
-    },
+    inputSchema: queueTrackInputSchema,
   },
-  async ({ uri, deviceId }, context) => {
+  async ({ uri, deviceId }: QueueTrackInput, context: any) => {
     try {
       const accessToken = getAccessToken(context);
       const spotify = await getSpotifyClient(accessToken);

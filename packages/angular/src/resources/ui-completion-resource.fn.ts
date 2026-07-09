@@ -6,18 +6,17 @@ import {
   s,
   SystemPrompt,
   type TransportOrFactory,
-  ɵui,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
-import { readSignalLike } from '../utils';
+import { readReactiveOption } from '../utils';
 import {
   TAG_NAME_REGISTRY,
-  TagNameRegistry,
   UiAssistantMessage,
 } from '../utils/ui-chat.helpers';
-import { SignalLike } from '../utils/types';
+import { ReactiveOption } from '../utils/types';
 import { UiChatMessageOutput } from './ui-chat-resource.fn';
+import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
 
 /**
  * Options for the UI completion resource.
@@ -31,7 +30,11 @@ export interface UiCompletionResourceOptions<
   /**
    * The components to use for the UI completion resource.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The signal that produces the input for the completion.
@@ -41,12 +44,12 @@ export interface UiCompletionResourceOptions<
   /**
    * The model to use for the UI completion resource.
    */
-  model: ModelInput;
+  model: ReactiveOption<ModelInput>;
 
   /**
    * The system prompt to use for the UI completion resource.
    */
-  system: string | Signal<string> | SystemPrompt | Signal<SystemPrompt>;
+  system: ReactiveOption<string | SystemPrompt>;
 
   /**
    * The tools to use for the UI completion resource.
@@ -61,7 +64,7 @@ export interface UiCompletionResourceOptions<
   /**
    * The API URL to use for the UI completion resource.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
 
   /**
    * The number of retries for the UI completion resource.
@@ -79,9 +82,14 @@ export interface UiCompletionResourceOptions<
   transport?: TransportOrFactory;
 
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
+  /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**
@@ -89,8 +97,9 @@ export interface UiCompletionResourceOptions<
  *
  * @public
  */
-export interface UiCompletionResourceRef<Tools extends Chat.AnyTool>
-  extends Resource<UiAssistantMessage<Tools> | null> {
+export interface UiCompletionResourceRef<
+  Tools extends Chat.AnyTool,
+> extends Resource<UiAssistantMessage<Tools> | null> {
   /**
    * Indicates whether the underlying completion call is currently sending a request.
    */
@@ -126,25 +135,19 @@ export function uiCompletionResource<
 >(
   options: UiCompletionResourceOptions<Input, Tools>,
 ): UiCompletionResourceRef<Tools> {
-  const flattenedComponents = computed(() =>
-    ɵui.flattenComponents(options.components),
-  );
-  const internalSchema = s.object('UI', {
-    ui: s.streaming.array(
-      'List of elements',
-      ɵui.createComponentSchema(options.components),
-    ),
+  const uiKit = createUiKit<ExposedComponent<any>>({
+    components: options.components,
+    examples: options.examples,
   });
+  const internalSchema = uiKit.schema;
   const systemAsString = computed(() => {
-    const system = readSignalLike(
-      options.system as SignalLike<string | SystemPrompt>,
-    );
+    const system = readReactiveOption(options.system);
 
     if (typeof system === 'string') {
       return system;
     }
 
-    const result = system.compile(options.components, internalSchema);
+    const result = system.compile(uiKit.components, internalSchema);
 
     if (system.diagnostics.length > 0) {
       throw new Error(
@@ -170,6 +173,7 @@ export function uiCompletionResource<
     retries: options.retries,
     debounce: options.debounce,
     transport: options.transport,
+    structuredOutput: options.structuredOutput,
     ui: true,
     threadId: options.threadId,
   });
@@ -182,14 +186,7 @@ export function uiCompletionResource<
         return null;
       }
 
-      const tagNameRegistry =
-        Array.from(flattenedComponents().values()).reduce((acc, component) => {
-          acc[component.name] = {
-            props: component.props ?? {},
-            component: component.component,
-          };
-          return acc;
-        }, {} as TagNameRegistry) ?? {};
+      const tagNameRegistry = uiKit.tagNameRegistry ?? {};
 
       return {
         role: 'assistant',

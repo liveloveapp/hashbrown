@@ -1,4 +1,8 @@
 export {
+  exposeMarkdown,
+  type ExposeMarkdownConfig,
+} from './expose-markdown.fn';
+export {
   exposeComponent,
   type ComponentPropSchema,
   type ExposedComponent,
@@ -17,6 +21,27 @@ export {
   type UseCompletionOptions,
   type UseCompletionResult,
 } from './hooks/use-completion';
+export {
+  useImperativeJsonParser,
+  type UseImperativeJsonParserResult,
+} from './hooks/use-imperative-json-parser';
+export {
+  useJsonParser,
+  type UseJsonParserResult,
+} from './hooks/use-json-parser';
+export {
+  createMagicTextNodeRenderers,
+  type MagicTextCaret,
+  type MagicTextCaretRenderProps,
+  type MagicTextCaretRenderer,
+  MagicTextRenderer,
+  type MagicTextCitationRenderData,
+  type MagicTextNodeRendererKey,
+  type MagicTextNodeRenderer,
+  type MagicTextNodeRendererProps,
+  type MagicTextNodeRenderers,
+  type MagicTextRendererProps,
+} from './magic-text-renderer';
 export { useRuntime, type UseRuntimeOptions } from './hooks/use-runtime';
 export { useRuntimeFunction } from './hooks/use-runtime-function';
 export {
@@ -29,6 +54,12 @@ export {
   type UseStructuredCompletionOptions,
   type UseStructuredCompletionResult,
 } from './hooks/use-structured-completion';
+export {
+  useUiKit,
+  type UiKit,
+  type UiKitInput,
+  type UiKitOptions,
+} from './hooks/use-ui-kit';
 export {
   useTool,
   type ToolOptions,

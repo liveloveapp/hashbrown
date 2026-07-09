@@ -158,10 +158,18 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'concept', 'message-history']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >3. Message History</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'concept', 'schema']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >3. Skillet Schema</a
+            >4. Skillet Schema</a
           >
         </li>
         <li>
@@ -169,7 +177,7 @@ import { Squircle } from './Squircle';
             [routerLink]="[docsUrl(), 'concept', 'streaming']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >4. Streaming</a
+            >5. Streaming</a
           >
         </li>
         <li>
@@ -177,7 +185,7 @@ import { Squircle } from './Squircle';
             [routerLink]="[docsUrl(), 'concept', 'functions']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >5. Tool Calling</a
+            >6. Tool Calling</a
           >
         </li>
         <li>
@@ -185,7 +193,7 @@ import { Squircle } from './Squircle';
             [routerLink]="[docsUrl(), 'concept', 'structured-output']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >6. Structured Output</a
+            >7. Structured Output</a
           >
         </li>
         <li>
@@ -193,7 +201,7 @@ import { Squircle } from './Squircle';
             [routerLink]="[docsUrl(), 'concept', 'components']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >7. Generative UI</a
+            >8. Generative UI</a
           >
         </li>
         <li>
@@ -201,7 +209,7 @@ import { Squircle } from './Squircle';
             [routerLink]="[docsUrl(), 'concept', 'runtime']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >8. JavaScript Runtime</a
+            >9. JavaScript Runtime</a
           >
         </li>
       </ol>
@@ -231,6 +239,14 @@ import { Squircle } from './Squircle';
         </li>
         <li>
           <a
+            [routerLink]="[docsUrl(), 'recipes', 'ui-kits']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >UI Kits</a
+          >
+        </li>
+        <li>
+          <a
             [routerLink]="[docsUrl(), 'recipes', 'predictive-actions']"
             routerLinkActive="active"
             wwwSquircle="8"
@@ -253,6 +269,32 @@ import { Squircle } from './Squircle';
             >Threads</a
           >
         </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'magic-text']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Magic Text</a
+          >
+        </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'recipes', 'json-parser']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >JSON Parser</a
+          >
+        </li>
+        @if (sdk() === 'react') {
+          <li>
+            <a
+              [routerLink]="[docsUrl(), 'recipes', 'copilotkit']"
+              routerLinkActive="active"
+              wwwSquircle="8"
+              >CopilotKit</a
+            >
+          </li>
+        }
         <li>
           <a
             [routerLink]="[docsUrl(), 'recipes', 'local-models']"

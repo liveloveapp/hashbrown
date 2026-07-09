@@ -1,6 +1,6 @@
 import { framesToLengthPrefixedStream } from './frames-to-length-prefixed-stream';
 import { decodeFrames } from '../frames/decode-frames';
-import { Frame } from '../frames';
+import { encodeFrame, Frame } from '../frames';
 
 test('appends a finish frame when generator completes', async () => {
   const frames = async function* (): AsyncGenerator<Frame> {
@@ -52,4 +52,41 @@ test('propagates generator errors', async () => {
       expect(frame).toBeDefined();
     }
   }).rejects.toThrow('boom');
+});
+
+test('decodes Japanese and Chinese frame content when UTF-8 bytes are split', async () => {
+  const frame: Frame = {
+    type: 'generation-chunk',
+    chunk: {
+      choices: [
+        {
+          index: 0,
+          delta: {
+            role: 'assistant',
+            content: 'こんにちは、你好',
+          },
+          finishReason: null,
+        },
+      ],
+    },
+  };
+  const encoded = encodeFrame(frame);
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const byte of encoded) {
+        controller.enqueue(Uint8Array.of(byte));
+      }
+      controller.close();
+    },
+  });
+  const abortController = new AbortController();
+  const decoded: Frame[] = [];
+
+  for await (const decodedFrame of decodeFrames(stream, {
+    signal: abortController.signal,
+  })) {
+    decoded.push(decodedFrame);
+  }
+
+  expect(decoded).toEqual([frame]);
 });

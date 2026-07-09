@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { s } from '@hashbrownai/core';
 import { createTool } from '@hashbrownai/angular';
 import { SmartHome } from '../../smart-home';
+import { z } from 'zod';
 
 export const applySceneTool = createTool({
   name: 'applyScene',

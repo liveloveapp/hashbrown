@@ -6,7 +6,7 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
-import { SignalLike } from './types';
+import type { ReactiveOption, SignalLike } from './types';
 
 export function readSignalLike<T>(signalLike: SignalLike<T>): T {
   if (isSignal(signalLike)) {
@@ -18,6 +18,16 @@ export function readSignalLike<T>(signalLike: SignalLike<T>): T {
   }
 
   return signalLike;
+}
+
+/**
+ * Reads a reactive option without invoking function values.
+ *
+ * @param option - The literal value or Angular signal to read.
+ * @returns The current option value.
+ */
+export function readReactiveOption<T>(option: ReactiveOption<T>): T {
+  return isSignal(option) ? option() : option;
 }
 
 type TeardownFn = () => void;

@@ -2,11 +2,11 @@
   "name": "angular",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/angular/src",
-  "prefix": "lib",
+  "prefix": "hb",
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/packages/angular"],
+      "manifestRootsToUpdate": ["dist/packages/angular", "packages/angular"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false

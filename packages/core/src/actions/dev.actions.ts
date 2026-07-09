@@ -11,7 +11,8 @@ export default createActionGroup('dev', {
     debounce?: number;
     messages?: Chat.AnyMessage[];
     tools?: Chat.AnyTool[];
-    responseSchema?: s.HashbrownType;
+    responseSchema?: s.SchemaOutput;
+    structuredOutput?: Chat.Api.StructuredOutputOptions;
     middleware?: Chat.Middleware[];
     emulateStructuredOutput?: boolean;
     retries?: number;
@@ -21,6 +22,8 @@ export default createActionGroup('dev', {
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];
+    responseSchema?: s.SchemaOutput;
+    toolsByName?: Record<string, Chat.Internal.Tool>;
   }>(),
   sendMessage: props<{
     message: Chat.AnyMessage;
@@ -32,7 +35,8 @@ export default createActionGroup('dev', {
     model?: ModelInput;
     system?: string;
     tools?: Chat.AnyTool[];
-    responseSchema?: s.HashbrownType;
+    responseSchema?: s.SchemaOutput;
+    structuredOutput?: Chat.Api.StructuredOutputOptions;
     middleware?: Chat.Middleware[];
     emulateStructuredOutput?: boolean;
     debounce?: number;

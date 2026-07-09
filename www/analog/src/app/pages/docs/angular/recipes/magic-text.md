@@ -1,412 +1,266 @@
 ---
-title: 'Streaming Inline Markdown with Magic Text: Hashbrown Angular Docs'
+title: 'Magic Text in Angular: Streaming Markdown'
 meta:
   - name: description
-    content: 'Build chat UIs that stream inline Markdown, citations, and custom-rendered fragments using Hashbrown Magic Text for Angular.'
----
-# Streaming Inline Markdown with Magic Text
-
-Magic Text is Hashbrown's streaming-safe inline Markdown parser. It turns partially generated text into fragments you can animate, link, and cite without letting the LLM inject arbitrary HTML. This recipe shows how to add it to an Angular chat UI, wire citations, and replace render nodes when you want full control.
-
-You should be comfortable with:
-
-- Standalone Angular components and signals
-- Basic Hashbrown Angular setup (see **[Quick Start](/docs/angular/start/quick)**)
-- Using @hashbrownai/angular!uiChatResource:function (or any streaming text source)
-
+    content: 'Use Hashbrown Magic Text in Angular for optimistic streaming Markdown rendering, citations, exposeMarkdown(), and custom renderers.'
 ---
 
-## 1) What Magic Text does (and does not do)
+# Magic Text in Angular
 
-Magic Text parses **inline-only Markdown**:
+## 1. Intro
 
-- Supported: `*em*`, `**strong**`, `` `code` ``, `[links](https://…)`, and footnote-style citations `[^id]`
-- Not supported: block elements (headings, lists, paragraphs, blockquotes)
-- Safe links: only `http`, `https`, `mailto`, `tel` protocols; others are dropped
-- Streaming-friendly: fragments carry `state: 'provisional' | 'final'` and `rev` so you can animate as text firmes up
-- Whitespace-aware: it inserts spacer nodes where needed so inline citations can sit tight against words
+Magic Text is Hashbrown's optimistic Markdown parser and renderer for streaming LLM output. It is designed to render partial Markdown while text is still arriving, then converge to the final structure as the stream completes.
 
-Because blocks are not parsed, teach the LLM to emit UI components for headings/lists and use Magic Text **only for inline runs** inside those components.
+Why this is useful in real apps:
+
+- Streaming stability: users see useful formatted output early, even before the full response is done.
+- Predictable rendering: content is parsed into trusted node types instead of arbitrary HTML.
+- Incremental updates: unchanged segments stay stable while new content streams in.
+- Animation-ready segmentation: text can be segmented (for example by word or grapheme), so you can animate newly arrived segments.
+- Citation support: markdown citations can become interactive source links in your UI.
+
+<hb-magic-text-demo></hb-magic-text-demo>
+
+If you only need streaming Markdown, you can skip citations and move to `exposeMarkdown()`.
+
+When you do want source links, Magic Text supports a citations extension:
+
+- Inline reference: `[^source-id]`
+- Definition: `[^source-id]: Source title https://example.com`
+
+Prompt pattern you can give your model:
+
+<hb-code-example header="system prompt excerpt">
+
+```txt
+Write in Markdown.
+
+When you make a factual claim that needs a source, add an inline citation like [^id].
+At the end, add a definition line for each citation:
+[^id]: Short source title https://full-url
+
+Do not invent URLs. Omit citations if you are unsure.
+```
+
+</hb-code-example>
+
+For UI resources, @hashbrownai/angular!exposeMarkdown:function can append this citation guidance automatically by setting `citations: true`.
 
 ---
 
-## 2) Drop-in renderer with custom links + citations
+## 2. `exposeMarkdown()`
 
-Start with a thin wrapper around `hb-magic-text` to keep styling and navigation rules in one place.
+`exposeMarkdown()` is the easiest way to expose streaming Markdown to model-generated UI. It exposes a constrained component where the model controls only `children` (the Markdown content).
 
-<hb-code-example header="magic-text-renderer.component.ts">
+Default renderer example:
+
+<hb-code-example header="ui-kit.ts">
 
 ```ts
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import {
-  MagicText,
-  MagicTextCitation,
-  MagicTextRenderLink,
-  MagicTextRenderCitation,
-} from '@hashbrownai/angular';
-import { RouterLink } from '@angular/router';
+import { createUiKit, exposeMarkdown } from '@hashbrownai/angular';
+
+export const uiKit = createUiKit({
+  components: [
+    exposeMarkdown({
+      citations: true,
+      options: { segmenter: { granularity: 'word' } },
+      caret: true,
+      className: 'chat-markdown',
+      onLinkClick: ({ mouseEvent, url }) => {
+        if (url.startsWith('http')) {
+          return;
+        }
+        mouseEvent.preventDefault();
+      },
+      onCitationClick: ({ citation }) => {
+        console.log('citation clicked', citation);
+      },
+    }),
+  ],
+});
+```
+
+</hb-code-example>
+
+Custom renderer example:
+
+<hb-code-example header="ui-kit.ts">
+
+```ts
+import { createUiKit, exposeMarkdown } from '@hashbrownai/angular';
+import { AppMarkdownRenderer } from './app-markdown-renderer';
+
+export const uiKit = createUiKit({
+  components: [
+    exposeMarkdown({
+      renderer: AppMarkdownRenderer,
+      citations: true,
+    }),
+  ],
+});
+```
+
+</hb-code-example>
+
+Important behavior:
+
+- With the built-in renderer, you can configure `options`, `caret`, `className`, `onLinkClick`, and `onCitationClick`.
+- If you pass `renderer`, those built-in settings are not supported. Your renderer owns display and interaction.
+- A custom renderer component must define both `text` and `isComplete` inputs.
+
+You will typically pass `exposeMarkdown()` into:
+
+- @hashbrownai/angular!createUiKit:function via `createUiKit({ components: [...] })`
+- @hashbrownai/angular!uiChatResource:function via `uiChatResource({ components: [...] })`
+- @hashbrownai/angular!uiCompletionResource:function via `uiCompletionResource({ components: [...] })`
+
+---
+
+## 3. MagicTextRenderer
+
+The renderer component is exported as `MagicText` and used as `<hb-magic-text>`.
+
+<hb-code-example header="magic-text.component.ts">
+
+```ts
+import { Component, input } from '@angular/core';
+import { MagicText } from '@hashbrownai/angular';
 
 @Component({
-  selector: 'app-magic-text-renderer',
+  selector: 'app-markdown',
+  standalone: true,
+  imports: [MagicText],
+  template: `
+    <hb-magic-text
+      [text]="text()"
+      [isComplete]="isComplete()"
+      [options]="{ segmenter: { granularity: 'word' } }"
+      [caret]="true"
+      className="app-markdown"
+    />
+  `,
+})
+export class AppMarkdown {
+  text = input.required<string>();
+  isComplete = input(false);
+}
+```
+
+</hb-code-example>
+
+Inputs and outputs:
+
+- `text` (`required`): current Markdown text (usually grows while streaming).
+- `isComplete` (`default false`): marks the current text as finalized.
+- `options`: partial parser options (`segmenter`, `enableTables`, `enableAutolinks`).
+- `caret`: `true | false | TemplateRef` to show/hide/customize streaming caret.
+- `className`: root class for styling.
+- `linkClick`: emitted for link and autolink clicks.
+- `citationClick`: emitted for citation clicks.
+
+---
+
+## 4. Custom Magic Text Renderer
+
+Wrap `<hb-magic-text>` when you need to override node rendering, text segment rendering, or caret rendering.
+
+<hb-code-example header="app-markdown-renderer.ts">
+
+```ts
+import { Component, input } from '@angular/core';
+import {
+  MagicText,
+  MagicTextRenderNode,
+  MagicTextRenderTextSegment,
+  MagicTextRenderCaret,
+} from '@hashbrownai/angular';
+
+@Component({
+  selector: 'app-markdown-renderer',
   standalone: true,
   imports: [
     MagicText,
-    MagicTextRenderLink,
-    MagicTextRenderCitation,
-    RouterLink,
+    MagicTextRenderNode,
+    MagicTextRenderTextSegment,
+    MagicTextRenderCaret,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hb-magic-text
-      class="magic-text"
-      [text]="text()"
-      [citations]="citations()"
-      [defaultLinkTarget]="defaultLinkTarget"
-      [defaultLinkRel]="defaultLinkRel"
-      (linkClick)="onLinkClick($event)"
-      (citationClick)="onCitationClick($event)"
-    >
-      <ng-template hbMagicTextRenderLink let-node>
-        @if (node.href.startsWith('/')) {
-          <a
-            class="fragment-link"
-            [routerLink]="node.href"
-            [attr.title]="node.title || null"
-            [attr.aria-label]="node.ariaLabel || null"
-            [attr.rel]="node.rel || defaultLinkRel"
-            [attr.target]="node.target || defaultLinkTarget"
-            data-allow-navigation="true"
-          >
-            {{ node.text }}
-          </a>
-        } @else {
-          <a
-            class="fragment-link"
-            [href]="node.href"
-            [attr.title]="node.title || null"
-            [attr.aria-label]="node.ariaLabel || null"
-            [attr.rel]="node.rel || defaultLinkRel"
-            [attr.target]="node.target || defaultLinkTarget"
-            data-allow-navigation="true"
-          >
-            {{ node.text }}
-          </a>
-        }
+    <hb-magic-text [text]="text()" [isComplete]="isComplete()" [caret]="true">
+      <ng-template hbMagicTextRenderNode nodeType="citation" let-node="node">
+        <sup class="citation">[{{ node.number ?? node.idRef }}]</sup>
       </ng-template>
 
-      <ng-template hbMagicTextRenderCitation let-node>
-        @if (node.citation.url) {
-          <a
-            class="citation"
-            role="doc-noteref"
-            data-allow-navigation="true"
-            [href]="node.citation.url"
-            [attr.rel]="defaultLinkRel"
-            [attr.target]="defaultLinkTarget"
-            [attr.title]="node.text"
-            [attr.aria-label]="node.text"
-          >
-            <span class="icon">❖</span>
-            <span class="sr-only">{{ node.text }}</span>
-          </a>
-        } @else {
-          <button
-            type="button"
-            class="citation citation--placeholder"
-            role="doc-noteref"
-            [attr.aria-label]="node.text"
-          >
-            <span class="citation-placeholder"></span>
-            <span class="sr-only">{{ node.text }}</span>
-          </button>
-        }
+      <ng-template hbMagicTextRenderTextSegment let-segment="segment">
+        <span class="segment" [class.ws]="segment.isWhitespace">{{
+          segment.text
+        }}</span>
+      </ng-template>
+
+      <ng-template hbMagicTextRenderCaret let-depth="depth">
+        <span class="caret" [attr.data-depth]="depth">|</span>
       </ng-template>
     </hb-magic-text>
   `,
-  styles: [
-    `
-      :host {
-        display: contents;
-      }
+})
+export class AppMarkdownRenderer {
+  text = input.required<string>();
+  isComplete = input(false);
+}
+```
 
-      .fragment-link {
-        color: var(--sunshine-yellow-dark, #f2c94c);
-      }
+</hb-code-example>
 
-      .citation {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.85em;
-      }
+Node override directives:
 
-      .citation--placeholder {
-        border: none;
-        background: transparent;
-        padding: 0;
-        color: var(--sunshine-yellow-dark, #f2c94c);
-        cursor: pointer;
-      }
+- Per-node override: `ng-template[hbMagicTextRenderNode]` with `nodeType="..."`
+- Text segment override: `ng-template[hbMagicTextRenderTextSegment]`
+- Caret override: `ng-template[hbMagicTextRenderCaret]`
 
-      .citation-placeholder {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        opacity: 0.5;
-      }
+All node types and the directive to use:
 
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        border: 0;
-      }
+| Node type value                          | Structural directive    |
+| ---------------------------------------- | ----------------------- |
+| `document`                               | `hbMagicTextRenderNode` |
+| `paragraph`                              | `hbMagicTextRenderNode` |
+| `heading`                                | `hbMagicTextRenderNode` |
+| `blockquote`                             | `hbMagicTextRenderNode` |
+| `list`                                   | `hbMagicTextRenderNode` |
+| `list-item`                              | `hbMagicTextRenderNode` |
+| `table`                                  | `hbMagicTextRenderNode` |
+| `table-row`                              | `hbMagicTextRenderNode` |
+| `table-cell`                             | `hbMagicTextRenderNode` |
+| `em`                                     | `hbMagicTextRenderNode` |
+| `strong`                                 | `hbMagicTextRenderNode` |
+| `strikethrough`                          | `hbMagicTextRenderNode` |
+| `link`                                   | `hbMagicTextRenderNode` |
+| `code-block`                             | `hbMagicTextRenderNode` |
+| `thematic-break`                         | `hbMagicTextRenderNode` |
+| `text`                                   | `hbMagicTextRenderNode` |
+| `inline-code`                            | `hbMagicTextRenderNode` |
+| `soft-break`                             | `hbMagicTextRenderNode` |
+| `hard-break`                             | `hbMagicTextRenderNode` |
+| `image`                                  | `hbMagicTextRenderNode` |
+| `autolink`                               | `hbMagicTextRenderNode` |
+| `citation`                               | `hbMagicTextRenderNode` |
+| `node` (fallback for any unhandled type) | `hbMagicTextRenderNode` |
 
-      hb-magic-text .hb-text--strong {
-        font-weight: 600;
-      }
-    `,
+To expose your custom renderer to the model, pass it to `exposeMarkdown()`:
+
+<hb-code-example header="ui-kit.ts">
+
+```ts
+import { createUiKit, exposeMarkdown } from '@hashbrownai/angular';
+import { AppMarkdownRenderer } from './app-markdown-renderer';
+
+export const uiKit = createUiKit({
+  components: [
+    exposeMarkdown({
+      renderer: AppMarkdownRenderer,
+      name: 'Markdown',
+      description: 'Render Markdown content for the user.',
+    }),
   ],
-})
-export class MagicTextRenderer {
-  readonly text = input.required<string>();
-  readonly citations = input<MagicTextCitation[]>([]);
-  protected readonly defaultLinkTarget = '_blank';
-  protected readonly defaultLinkRel = 'noopener noreferrer';
-
-  protected onLinkClick(event: unknown) {
-    // Optional: forward to telemetry/analytics or intercept navigation.
-  }
-
-  protected onCitationClick(event: unknown) {
-    // Optional: open side panel, track clicks, etc.
-  }
-}
+});
 ```
 
 </hb-code-example>
-
-`hb-magic-text` exposes content slots so you can replace how text, links, citations, or whitespace render without forking the component. It already provides `defaultLinkTarget` and `defaultLinkRel` inputs (defaults `_blank` / `noopener noreferrer`); override them instead of hard-coding values if you need `_self` navigation. Keep `ChangeDetectionStrategy.OnPush` to align with signals-based Angular best practices; if you switch `ViewEncapsulation` off, be mindful of leaking styles to the rest of the app (the snippet uses the default encapsulation).
-
----
-
-## 3) Feeding citations
-
-Magic Text emits citation fragments when it sees `[^id]` in the text. Map them to URLs with the `citations` input:
-
-<hb-code-example header="chat-message.component.ts (excerpt)">
-
-```ts
-import { Component, input } from '@angular/core';
-import { MagicTextCitation } from '@hashbrownai/angular';
-import { MagicTextRenderer } from './magic-text-renderer.component';
-
-export interface ChatMessageViewModel {
-  text: string;
-  citations: MagicTextCitation[]; // { id: 'wiki', url: 'https://en.wikipedia.org/...' }
-}
-
-@Component({
-  selector: 'app-chat-message',
-  standalone: true,
-  imports: [MagicTextRenderer],
-  template: `
-    <div class="bubble ai">
-      <app-magic-text-renderer
-        [text]="message().text"
-        [citations]="message().citations"
-      />
-    </div>
-  `,
-})
-export class ChatMessageComponent {
-  readonly message = input.required<ChatMessageViewModel>();
-}
-```
-
-</hb-code-example>
-
-If a citation ID is missing from the lookup, the renderer shows a placeholder button so you can attach a click handler or toast.
-
----
-
-## 4) Pairing Magic Text with UI chat blocks
-
-Because Magic Text is inline-only, let the LLM generate **blocks as components** and place Magic Text inside them. A minimal block palette could be:
-
-- `AppHeading` (renders `h2`)
-- `AppBulletList` (wraps list items)
-- `AppInfoCard` (for key-value summaries)
-- `AppMagicText` (the renderer above)
-
-Expose them to the LLM in your UI chat resource:
-
-<hb-code-example header="chat.resource.ts (prompt excerpt)">
-
-```ts
-const systemPrompt = `
-You render replies using these components:
-- Heading({ text }): use for titles (no Markdown headings)
-- BulletList({ items }): each item is plain text
-- InfoCard({ title, items }): show short key/value pairs
-- MagicText({ text, citations? }): inline Markdown only (no lists/paras)
-
-Rules:
-- Do not emit Markdown block syntax (no lists, headings, paragraphs).
-- Use MagicText for inline emphasis, code, links, and citations.
-- For citations, insert [^id] in text and also return citations[] with { id, url }.
-`;
-```
-
-</hb-code-example>
-
-Render the blocks in Angular, passing inline strings through Magic Text:
-
-<hb-code-example header="chat-message.blocks.ts">
-
-```ts
-import { Component, input } from '@angular/core';
-import { MagicTextRenderer } from './magic-text-renderer.component';
-
-@Component({
-  selector: 'app-heading-block',
-  standalone: true,
-  template: `<h2 class="block-heading">{{ text() }}</h2>`,
-})
-export class HeadingBlock {
-  readonly text = input.required<string>();
-}
-
-@Component({
-  selector: 'app-bullet-list-block',
-  standalone: true,
-  template: `
-    <ul class="block-list">
-      @for (item of items(); track $index) {
-        <li><app-magic-text-renderer [text]="item" /></li>
-      }
-    </ul>
-  `,
-  imports: [MagicTextRenderer],
-})
-export class BulletListBlock {
-  readonly items = input.required<string[]>();
-}
-```
-
-</hb-code-example>
-
-Now each message can be a mix of blocks, but every inline run is parsed and safely rendered by Magic Text.
-
----
-
-## 5) Prompting the LLM for good Magic Text
-
-Use these constraints in your system/developer messages:
-
-- Inline only: "Use inline Markdown for bold/italic/code/links/citations. Do not output lists, paragraphs, or headings in Markdown."
-- Citations: "Insert `[^id]` where support statements need sources. Return `citations: [{ id, url }]` alongside the text."
-- Links: "Only `http/https/mailto/tel` links are allowed."
-- Tight citations: "Place `[^id]` immediately after the fact without extra spaces."
-- Streaming friendly: "Send text in short chunks; avoid rewriting earlier text unless necessary."
-
-These prompts keep generated output aligned with what the renderer can parse.
-
----
-
-## 6) Replacing render nodes (text, links, citations, whitespace)
-
-`hb-magic-text` exposes four templates:
-
-- `hbMagicTextRenderText`
-- `hbMagicTextRenderLink`
-- `hbMagicTextRenderCitation`
-- `hbMagicTextRenderWhitespace`
-
-Example: add enter animation and inline copy button for code spans.
-
-<hb-code-example header="magic-text-override.component.ts (snippet)">
-
-```ts
-<hb-magic-text [text]="text()" [citations]="citations()">
-  <ng-template hbMagicTextRenderText let-node>
-    <span
-      class="frag"
-      [class.frag--code]="node.isCode"
-      [attr.data-state]="node.state"
-    >
-      {{ node.text }}
-      @if (node.isCode) {
-        <button type="button" (click)="copy(node.text)">Copy</button>
-      }
-    </span>
-  </ng-template>
-
-  <ng-template hbMagicTextRenderWhitespace let-position="position" let-render>
-    @if (render) {
-      <span class="space" [class.space--before]="position === 'before'"> </span>
-    }
-  </ng-template>
-</hb-magic-text>
-```
-
-</hb-code-example>
-
-Replacing templates lets you add badges, counters, or custom spacing rules without touching the parser.
-
----
-
-## 7) Lightweight animation for streaming chunks
-
-Each fragment carries `data-fragment-state="provisional|final"` and the component applies `animate.enter="hb-text--enter"` by default. To keep it lightweight:
-
-- Use CSS transitions keyed off `data-fragment-state`
-- Avoid layout-thrashing JS; rely on opacity/transform
-
-<hb-code-example header="magic-text.animations.css">
-
-```css
-hb-magic-text .hb-fragment[data-fragment-state='provisional'] {
-  opacity: 0.6;
-}
-
-hb-magic-text .hb-fragment[data-fragment-state='final'] {
-  transition: opacity 160ms ease, filter 160ms ease;
-  opacity: 1;
-}
-
-hb-magic-text .hb-text--enter {
-  animation: fade-in 220ms ease-out;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(2px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-```
-
-</hb-code-example>
-
-This matches the finance sample approach but keeps the payload tiny.
-
----
-
-## 8) Troubleshooting and limits
-
-- If block Markdown shows up in output, tighten your prompts and remind the model to use components for blocks.
-- If citations render as placeholders, ensure every `[^id]` has a matching `{ id, url }`.
-- Links without allowed protocols are dropped; double-check model prompts.
-- Extra spaces around citations? The renderer strips gaps before/after citation fragments, but custom whitespace templates can reintroduce them—mirror the default logic if you override spacing.
-
-Magic Text keeps inline content safe, styled, and stream-friendly. Pair it with a small set of trusted UI blocks, and you get rich conversational UIs without giving the LLM free-form HTML.

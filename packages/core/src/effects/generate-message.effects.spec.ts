@@ -1,4 +1,5 @@
 import { Chat } from '../models';
+import { s } from '../schema';
 import { apiActions, devActions } from '../actions';
 import {
   selectApiMessages,
@@ -8,11 +9,16 @@ import {
   selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectRawStreamingMessage,
+  selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
+  selectStreamingMessageError,
+  selectStructuredOutput,
   selectSystem,
   selectThreadId,
+  selectToolEntities,
   selectTransport,
   selectUiRequested,
 } from '../reducers';
@@ -41,8 +47,7 @@ jest.mock('../transport', () => {
   };
 });
 
-// In tests we don't care about selector input typing; loosen to avoid variance
-type SelectorKey = (state: any) => unknown;
+type SelectorKey = (state: never) => unknown;
 type ActionLike = { type: string; payload?: unknown };
 type TestHandler = {
   types: string[];
@@ -67,11 +72,16 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectDebounce, 0],
     [selectRetries, 0],
     [selectApiTools, []],
+    [selectToolEntities, {}],
     [selectSystem, 'You are a test bot'],
     [selectEmulateStructuredOutput, false],
+    [selectStructuredOutput, undefined],
     [selectThreadId, undefined],
     [selectTransport, { kind: 'test-transport' }],
     [selectUiRequested, false],
+    [selectRawStreamingMessage, null],
+    [selectRawStreamingToolCalls, []],
+    [selectStreamingMessageError, undefined],
   ]);
 
   const values = new Map<SelectorKey, unknown>([
@@ -499,6 +509,136 @@ test('updateMessagesWithDelta returns null when nothing to update', () => {
   expect(message).toBeNull();
 });
 
+test('generateMessage sends schema response format mode by default for structured output', async () => {
+  const send = mockSuccessfulSelection();
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectResponseSchema, s.object('response', {})],
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: {},
+          toolCallIds: [],
+        },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: expect.objectContaining({
+        responseFormat: expect.any(Object),
+        responseFormatMode: 'schema',
+        toolChoice: undefined,
+      }),
+    }),
+  );
+
+  teardown?.();
+});
+
+test('generateMessage sends json response format mode without provider schema', async () => {
+  const send = mockSuccessfulSelection();
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectResponseSchema, s.object('response', {})],
+      [selectStructuredOutput, { mode: 'json' }],
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: {},
+          toolCallIds: [],
+        },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: expect.objectContaining({
+        responseFormat: undefined,
+        responseFormatMode: 'json',
+        toolChoice: undefined,
+      }),
+    }),
+  );
+
+  teardown?.();
+});
+
+test('generateMessage lets resource-level tool mode override strict structured output', async () => {
+  const send = mockSuccessfulSelection();
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectResponseSchema, s.object('response', {})],
+      [selectStructuredOutput, { mode: 'tool' }],
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: {},
+          toolCallIds: [],
+        },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: expect.objectContaining({
+        responseFormat: undefined,
+        responseFormatMode: undefined,
+        toolChoice: 'required',
+      }),
+    }),
+  );
+
+  teardown?.();
+});
+
+function mockSuccessfulSelection() {
+  const ModelResolverMock = jest.mocked(ModelResolver);
+  const send = jest.fn(async () => ({
+    frames: (async function* () {
+      yield { type: 'generation-start' as const };
+      yield { type: 'generation-finish' as const };
+    })(),
+  }));
+  const selection = {
+    spec: { name: 'selected-model' },
+    transport: { send },
+    metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
+  };
+
+  ModelResolverMock.mockImplementation(
+    () =>
+      ({
+        select: jest.fn(async () => selection),
+        skipFromError: jest.fn(),
+        getMetadata: jest.fn(() => selection.metadata),
+      }) as unknown as ModelResolver,
+  );
+
+  return send;
+}
+
 describe('generateMessage effect', () => {
   const ModelResolverMock = jest.mocked(ModelResolver);
   const decodeFramesMock = jest.mocked(decodeFrames);
@@ -557,7 +697,18 @@ describe('generateMessage effect', () => {
       dispose,
     }));
 
-    const store = createTestStore();
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [
+          selectRawStreamingMessage,
+          {
+            role: 'assistant',
+            content: 'Hello',
+            toolCallIds: [],
+          },
+        ],
+      ]),
+    );
     const teardown = generateMessage(store);
 
     await store.trigger(
@@ -569,12 +720,26 @@ describe('generateMessage effect', () => {
     expect(store.actions.map((a) => a.type)).toEqual([
       apiActions.generateMessageStart.type,
       apiActions.generateMessageChunk.type,
+      apiActions.generateMessageFinish.type,
       apiActions.generateMessageSuccess.type,
       apiActions.assistantTurnFinalized.type,
     ]);
     expect(store.actions[1].payload).toMatchObject({
-      content: 'Hello',
-      role: 'assistant',
+      choices: [
+        {
+          delta: expect.objectContaining({
+            content: 'Hello',
+            role: 'assistant',
+          }),
+        },
+      ],
+    });
+    expect(store.actions[3].payload).toMatchObject({
+      message: {
+        role: 'assistant',
+        content: 'Hello',
+      },
+      toolCalls: [],
     });
     expect(dispose).toHaveBeenCalledTimes(1);
 
@@ -611,7 +776,17 @@ describe('generateMessage effect', () => {
     });
 
     const store = createTestStore(
-      new Map<SelectorKey, unknown>([[selectRetries, retries]]),
+      new Map<SelectorKey, unknown>([
+        [selectRetries, retries],
+        [
+          selectRawStreamingMessage,
+          {
+            role: 'assistant',
+            content: 'Hi after retry',
+            toolCallIds: [],
+          },
+        ],
+      ]),
     );
     const teardown = generateMessage(store);
 
@@ -626,14 +801,14 @@ describe('generateMessage effect', () => {
       apiActions.generateMessageError.type,
       apiActions.generateMessageStart.type,
       apiActions.generateMessageChunk.type,
+      apiActions.generateMessageFinish.type,
       apiActions.generateMessageSuccess.type,
       apiActions.assistantTurnFinalized.type,
       apiActions.generateMessageExhaustedRetries.type,
     ]);
-    const chunkPayload = (store.actions[2].payload ?? {}) as {
-      content?: string;
-    };
-    expect(chunkPayload.content).toBe('Hi after retry');
+    const chunkPayload = (store.actions[2].payload ??
+      {}) as Chat.Api.CompletionChunk;
+    expect(chunkPayload.choices[0]?.delta?.content).toBe('Hi after retry');
 
     teardown?.();
   });

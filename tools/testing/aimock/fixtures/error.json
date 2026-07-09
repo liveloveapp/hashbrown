@@ -1,0 +1,15 @@
+{
+  "fixtures": [
+    {
+      "match": { "userMessage": "return provider error" },
+      "response": {
+        "status": 429,
+        "error": {
+          "message": "Deterministic provider error from aimock.",
+          "type": "rate_limit_error",
+          "code": "rate_limit_exceeded"
+        }
+      }
+    }
+  ]
+}

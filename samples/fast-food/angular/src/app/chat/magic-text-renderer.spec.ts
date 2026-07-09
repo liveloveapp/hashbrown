@@ -1,143 +1,124 @@
-import { prepareMagicText, type MagicTextFragment } from '@hashbrownai/core';
+import {
+  createMagicTextParserState,
+  finalizeMagicText,
+  parseMagicTextChunk,
+  type MagicTextAstNode,
+  type MagicTextParserState,
+} from '@hashbrownai/core';
 
-type MagicTextFragmentText = Extract<MagicTextFragment, { type: 'text' }>;
+function parseMagicText(input: string): MagicTextParserState {
+  const initial = createMagicTextParserState({
+    segmenter: { granularity: 'word' },
+    enableTables: true,
+    enableAutolinks: true,
+  });
+  const parsed = parseMagicTextChunk(initial, input);
 
-type WhitespacePosition = 'before' | 'after';
-
-/**
- * Minimal re-implementation of the sample renderer's whitespace rules so we can
- * assert on the plain text value the component would produce in the DOM.
- */
-function renderMagicText(text: string): string {
-  const fragments = prepareMagicText(text).fragments;
-
-  return fragments
-    .map((fragment, index) => {
-      const before = whitespaceContext(fragments, fragment, 'before', index);
-      const after = whitespaceContext(fragments, fragment, 'after', index);
-      const content =
-        fragment.type === 'text'
-          ? normalizeFragmentText(fragment)
-          : fragment.text;
-
-      return `${before.render ? ' ' : ''}${content}${after.render ? ' ' : ''}`;
-    })
-    .join('');
+  return finalizeMagicText(parsed);
 }
 
-function whitespaceContext(
-  fragments: MagicTextFragment[],
-  fragment: MagicTextFragment,
-  position: WhitespacePosition,
-  index: number,
-) {
-  let render =
-    position === 'before'
-      ? fragment.renderWhitespace.before
-      : fragment.renderWhitespace.after;
-
-  if (position === 'before' && index === 0) {
-    render = false;
+function renderNode(
+  state: MagicTextParserState,
+  node: MagicTextAstNode | undefined,
+): string {
+  if (!node) {
+    return '';
   }
 
-  const next = fragments[index + 1];
-
-  const startsTight = (frag: MagicTextFragment | undefined): boolean =>
-    frag?.type === 'text' && /^[,.;:!?|\)\]]/.test(frag.text.trim());
-
-  const endsWithNoGap = (frag: MagicTextFragment | undefined): boolean =>
-    frag?.type === 'text' && /([\(\|])$/.test(frag.text.trim());
-
-  if (position === 'before' && startsTight(fragment)) {
-    render = false;
+  switch (node.type) {
+    case 'document':
+    case 'paragraph':
+    case 'heading':
+    case 'blockquote':
+    case 'list':
+    case 'list-item':
+    case 'table':
+    case 'table-row':
+    case 'table-cell':
+    case 'em':
+    case 'strong':
+    case 'strikethrough':
+    case 'link':
+      return node.children
+        .map((childId) =>
+          renderNode(
+            state,
+            state.nodes.find((candidate) => candidate.id === childId),
+          ),
+        )
+        .join('');
+    case 'text':
+      return node.text;
+    case 'inline-code':
+      return node.text;
+    case 'citation':
+      return `[${node.number ?? state.citations.numbers[node.idRef] ?? node.idRef}]`;
+    case 'autolink':
+      return node.text;
+    case 'soft-break':
+      return ' ';
+    case 'hard-break':
+      return '\n';
+    case 'image':
+      return node.alt;
+    case 'code-block':
+      return node.text;
+    case 'thematic-break':
+      return '';
   }
-
-  if (position === 'after' && startsTight(next)) {
-    render = false;
-  }
-
-  if (position === 'after' && endsWithNoGap(fragment)) {
-    render = false;
-  }
-
-  return { position, render, fragment, index };
 }
 
-function normalizeFragmentText(fragment: MagicTextFragmentText): string {
-  if (fragment.isCode) {
-    return fragment.text;
-  }
+function renderMagicText(input: string): string {
+  const state = parseMagicText(input);
+  const rootNode = state.nodes.find((node) => node.id === state.rootId);
 
-  let text = fragment.text.replace(/[\u00a0\u202f]/g, ' ');
-  text = text.replace(/^\s+/, '').replace(/\s+$/, '');
-
-  if (fragment.renderWhitespace.before) {
-    text = text.replace(/^\s+/, '');
-  }
-
-  if (fragment.renderWhitespace.after) {
-    text = text.replace(/\s+$/, '');
-  }
-
-  // Collapse stray spaces around punctuation and multiple runs
-  text = text
-    .replace(/\s+([,.;:!?\\)])/g, '$1')
-    .replace(/([\(])\s+/g, '$1')
-    .replace(/\s+\)/g, ')')
-    .replace(/\s*\|\s*/g, ' | ')
-    .replace(/\s+(\d)/g, ' $1')
-    .replace(/\s+([\u2014\-])\s+/g, ' $1 ')
-    .replace(/\s+/g, ' ');
-
-  return text;
+  return renderNode(state, rootNode);
 }
 
-describe('MagicTextRenderer whitespace (sample app)', () => {
-  it('keeps the space before inline links intact', () => {
-    const rendered = renderMagicText(
-      'Visit [Subway wraps](/wraps), high protein.',
-    );
+test('keeps the space before inline links intact', () => {
+  const rendered = renderMagicText(
+    'Visit [Subway wraps](/wraps), high protein.',
+  );
 
-    expect(rendered).toBe('Visit Subway wraps, high protein.');
-  });
+  expect(rendered).toBe('Visit Subway wraps, high protein.');
+});
 
-  it('keeps punctuation tight after linked text', () => {
-    const rendered = renderMagicText('Tight [link](/foo)!');
+test('keeps punctuation tight after linked text', () => {
+  const rendered = renderMagicText('Tight [link](/foo)!');
 
-    expect(rendered).toBe('Tight link!');
-  });
+  expect(rendered).toBe('Tight link!');
+});
 
-  it('preserves spacing around citations following links', () => {
-    const rendered = renderMagicText('Numbers [link](/foo)[^1] still tight.');
+test('preserves spacing around citations following links', () => {
+  const rendered = renderMagicText('Numbers [link](/foo)[^1] still tight.');
 
-    expect(rendered).toBe('Numbers link[1] still tight.');
-  });
+  expect(rendered).toBe('Numbers link[1] still tight.');
+});
 
-  it('normalizes whitespace in the Taco Bell summary sentence', () => {
-    const rendered = renderMagicText(
-      'Among the current Taco Bell favorites, the [Cinnabon Delights 12 Pack](/items/cinnabon-delights) reaches 930 calories, 53 g fat, and 59 g sugar, yet only 9 g protein. [^1]',
-    );
+test('normalizes whitespace in the Taco Bell summary sentence', () => {
+  const rendered = renderMagicText(
+    'Among the current Taco Bell favorites, the [Cinnabon Delights 12 Pack](/items/cinnabon-delights) reaches 930 calories, 53 g fat, and 59 g sugar, yet only 9 g protein. [^1]',
+  );
 
-    expect(rendered).toBe(
-      'Among the current Taco Bell favorites, the Cinnabon Delights 12 Pack reaches 930 calories, 53 g fat, and 59 g sugar, yet only 9 g protein. [1]',
-    );
-  });
+  expect(rendered).toBe(
+    'Among the current Taco Bell favorites, the Cinnabon Delights 12 Pack reaches 930 calories, 53 g fat, and 59 g sugar, yet only 9 g protein. [1]',
+  );
+});
 
-  it('keeps a space before citations after italic text', () => {
-    const rendered = renderMagicText('Finish with *italic* note [^2].');
+test('keeps a space before citations after italic text', () => {
+  const rendered = renderMagicText('Finish with *italic* note [^2].');
 
-    expect(rendered).toBe('Finish with italic note [1].');
-  });
+  expect(rendered).toBe('Finish with italic note [1].');
+});
 
-  it('keeps a space before citations after bold text', () => {
-    const rendered = renderMagicText('Finish with **bold** statement [^3].');
+test('keeps a space before citations after bold text', () => {
+  const rendered = renderMagicText('Finish with **bold** statement [^3].');
 
-    expect(rendered).toBe('Finish with bold statement [1].');
-  });
+  expect(rendered).toBe('Finish with bold statement [1].');
+});
 
-  it('keeps a space before citations after linked text', () => {
-    const rendered = renderMagicText('Link first [anchor](/a) then cite [^4].');
+test('keeps a space before citations after linked text', () => {
+  const rendered = renderMagicText('Link first [anchor](/a) then cite [^4].');
 
-    expect(rendered).toBe('Link first anchor then cite [1].');
-  });
+  expect(rendered).toBe('Link first anchor then cite [1].');
 });

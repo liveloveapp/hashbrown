@@ -22,6 +22,7 @@ export interface ToolCall {
     name: string;
     arguments: string;
   };
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -63,10 +64,7 @@ export interface ToolMessage {
  * @public
  */
 export type Message =
-  | UserMessage
-  | ErrorMessage
-  | AssistantMessage
-  | ToolMessage;
+  UserMessage | ErrorMessage | AssistantMessage | ToolMessage;
 
 /**
  * @public
@@ -94,6 +92,36 @@ export interface CompletionChunk {
 export type CompletionToolChoiceOption = 'auto' | 'none' | 'required';
 
 /**
+ * Controls how structured resource schemas are enforced by the provider.
+ *
+ * @public
+ */
+export type StructuredOutputMode = 'strict' | 'json' | 'tool';
+
+/**
+ * Options for structured output generation.
+ *
+ * @public
+ */
+export interface StructuredOutputOptions {
+  /**
+   * The structured output mode to use.
+   *
+   * - `strict` sends the schema to providers that support schema-constrained output.
+   * - `json` asks the provider for JSON without schema-constrained decoding.
+   * - `tool` uses the reserved output tool for emulated structured output.
+   */
+  mode?: StructuredOutputMode;
+}
+
+/**
+ * Provider-facing response format mode.
+ *
+ * @public
+ */
+export type ResponseFormatMode = 'schema' | 'json';
+
+/**
  * @public
  */
 export interface CompletionCreateParams {
@@ -102,6 +130,7 @@ export interface CompletionCreateParams {
   system: string;
   messages: Message[];
   responseFormat?: object;
+  responseFormatMode?: ResponseFormatMode;
   toolChoice?: CompletionToolChoiceOption;
   tools?: Tool[];
   threadId?: string;

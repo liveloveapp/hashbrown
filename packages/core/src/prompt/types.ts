@@ -1,5 +1,5 @@
-import { ComponentTree } from '../ui';
 import { HashbrownType } from '../schema/base';
+import { JsonValue } from '../skillet/parser/json-parser';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
@@ -36,7 +36,17 @@ export interface PromptDiagnostic {
 /**
  * @public
  */
-export type HBTree = ComponentTree[];
+export type PromptComponentNode = {
+  [tagName: string]: {
+    props?: Record<string, JsonValue>;
+    children?: PromptComponentNode[] | string;
+  };
+};
+
+/**
+ * @public
+ */
+export type HBTree = PromptComponentNode[];
 
 export type UiAstNode =
   | {

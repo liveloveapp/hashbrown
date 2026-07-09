@@ -43,6 +43,8 @@ We should mention here that Skillet, our LLM-optimized schema language, is **typ
 - The schema specified is a `string()`.
 - If the schema does not match the Angular component's input type, you'll see an error in both your editor and when you attempt to build the application.
 
+You can also describe component inputs with Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType). Hashbrown normalizes these to Skillet (draft-07) for streaming and validation. Unsupported keywords throw at runtime.
+
 ---
 
 ## Streaming with Skillet
@@ -171,13 +173,14 @@ chat = uiChatResource({
 | Option       | Type                                                  | Required | Description                                       |
 | ------------ | ----------------------------------------------------- | -------- | ------------------------------------------------- |
 | `components` | `ExposedComponent<any>[]`                             | Yes      | The components to use for the UI chat resource    |
-| `model`      | `KnownModelIds`                                       | Yes      | The model to use for the UI chat resource         |
-| `system`     | `string \| Signal<string>`                            | Yes      | The system prompt to use for the UI chat resource |
+| `model`      | `ReactiveOption<ModelInput>`                          | Yes      | The model to use for the UI chat resource         |
+| `system`     | `ReactiveOption<string \| SystemPrompt>`              | Yes      | The system prompt to use for the UI chat resource |
 | `messages`   | `Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[]` | No       | The initial messages for the UI chat resource     |
 | `tools`      | `Tools[]`                                             | No       | The tools to use for the UI chat resource         |
 | `debugName`  | `string`                                              | No       | The debug name for the UI chat resource           |
 | `debounce`   | `number`                                              | No       | The debounce time for the UI chat resource        |
-| `apiUrl`     | `string`                                              | No       | The API URL to use for the UI chat resource       |
+| `apiUrl`     | `ReactiveOption<string>`                              | No       | The API URL to use for the UI chat resource       |
+| `threadId`   | `ReactiveOption<string \| undefined>`                 | No       | Thread identifier used to load or continue a conversation |
 
 ---
 

@@ -1,0 +1,12 @@
+{
+  "fixtures": [
+    {
+      "match": { "userMessage": "stream deterministic text" },
+      "chunkSize": 16,
+      "streamingProfile": { "ttft": 10, "tps": 100 },
+      "response": {
+        "content": "Streaming fixture response with enough text to cross several deterministic chunk boundaries."
+      }
+    }
+  ]
+}

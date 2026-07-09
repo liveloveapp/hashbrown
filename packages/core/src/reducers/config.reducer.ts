@@ -10,6 +10,7 @@ export interface ConfigState {
   system: string;
   debounce: number;
   responseSchema?: s.HashbrownType;
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput: boolean;
   retries: number;
@@ -32,13 +33,17 @@ const initialState: ConfigState = {
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action): ConfigState => {
+    const responseSchema = action.payload.responseSchema
+      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+      : undefined;
     return {
       ...state,
       apiUrl: action.payload.apiUrl,
       model: action.payload.model,
       system: action.payload.system,
       debounce: action.payload.debounce ?? state.debounce,
-      responseSchema: action.payload.responseSchema,
+      responseSchema,
+      structuredOutput: action.payload.structuredOutput,
       middleware: action.payload.middleware,
       emulateStructuredOutput:
         action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
@@ -54,10 +59,14 @@ export const reducer = createReducer(
       'threadId',
     );
     const threadId = hasThreadId ? action.payload.threadId : state.threadId;
+    const responseSchema = action.payload.responseSchema
+      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+      : state.responseSchema;
 
     return {
       ...state,
       ...action.payload,
+      responseSchema,
       threadId,
     };
   }),
@@ -75,6 +84,8 @@ export const selectSystem = (state: ConfigState) => state.system;
 export const selectDebounce = (state: ConfigState) => state.debounce;
 export const selectResponseSchema = (state: ConfigState) =>
   state.responseSchema;
+export const selectStructuredOutput = (state: ConfigState) =>
+  state.structuredOutput;
 export const selectMiddleware = (state: ConfigState) => state.middleware;
 export const selectEmulateStructuredOutput = (state: ConfigState) =>
   state.emulateStructuredOutput;

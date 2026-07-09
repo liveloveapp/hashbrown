@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatSliderModule } from '@angular/material/slider';
-import { MagicText, type MagicTextCitation } from '@hashbrownai/angular';
+import { MagicText } from '@hashbrownai/angular';
 import { Squircle } from './Squircle';
 
 @Component({
@@ -32,7 +32,8 @@ import { Squircle } from './Squircle';
         <hb-magic-text
           class="magic"
           [text]="visibleMarkdown()"
-          [citations]="citations"
+          [isComplete]="percent() === 100"
+          [options]="{ segmenter: { granularity: 'word' } }"
         />
       </div>
 
@@ -122,27 +123,13 @@ import { Squircle } from './Squircle';
   `,
 })
 export class MagicTextDemo {
-  readonly citations: MagicTextCitation[] = [
-    {
-      id: 'wiki',
-      url: 'https://en.wikipedia.org/wiki/Waffle_House',
-    },
-    {
-      id: 'wh',
-      url: 'https://www.wafflehouse.com/pstories/waffle-house-hashbrowns/',
-    },
-    {
-      id: 'gng',
-      url: 'https://gardenandgun.com/articles/scattered-smothered-covered-chunked-too-today-in-southern-history',
-    },
-    {
-      id: 'eater',
-      url: 'https://www.eater.com/2017/5/2/15471798/waffle-house-history-menu',
-    },
-  ];
-
   readonly fullMarkdown = `
-**Hashbrowns** at [Waffle House](https://www.wafflehouse.com) started as simple scattered potatoes when the first shop opened in 1955[^wiki]; the now-iconic "scattered, smothered & covered" shorthand hit menus in February 1984[^wh]. Grill crews kept riffing until the \`all-the-way\` call piled on every topping — cheese, ham, tomatoes, jalapeños, mushrooms, chili, *and* sausage gravy — a salty love letter to late-night diners[^gng]. Today cooks still sear the potatoes on the open griddle so cheese melts while onions stay *just* caramelized[^eater].`;
+**Hashbrowns** at [Waffle House](https://www.wafflehouse.com) started as simple scattered potatoes when the first shop opened in 1955[^wiki]; the now-iconic "scattered, smothered & covered" shorthand hit menus in February 1984[^wh]. Grill crews kept riffing until the \`all-the-way\` call piled on every topping — cheese, ham, tomatoes, jalapeños, mushrooms, chili, *and* sausage gravy — a salty love letter to late-night diners[^gng]. Today cooks still sear the potatoes on the open griddle so cheese melts while onions stay *just* caramelized[^eater].
+
+[^wiki]: Wikipedia https://en.wikipedia.org/wiki/Waffle_House
+[^wh]: Waffle House https://www.wafflehouse.com/pstories/waffle-house-hashbrowns/
+[^gng]: Garden and Gun https://gardenandgun.com/articles/scattered-smothered-covered-chunked-too-today-in-southern-history
+[^eater]: Eater https://www.eater.com/2017/5/2/15471798/waffle-house-history-menu`;
 
   readonly percent = signal(100);
 

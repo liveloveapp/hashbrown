@@ -1,19 +1,18 @@
 {
   "name": "@hashbrownai/react",
-  "version": "0.4.1-alpha.1",
+  "version": "0.5.0-beta.4",
   "description": "React components for Hashbrown AI",
   "license": "MIT",
   "sideEffects": false,
-  "type": "module",
-  "module": "./index.esm.js",
-  "main": "./index.cjs.js",
+  "module": "./index.mjs",
+  "main": "./index.cjs",
   "types": "./index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "import": "./index.esm.js",
-      "require": "./index.cjs.js",
-      "types": "./index.d.ts"
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "require": "./index.cjs"
     }
   },
   "files": [
@@ -26,7 +25,7 @@
   "peerDependencies": {
     "react": ">=18 <20",
     "react-dom": ">=18 <20",
-    "@hashbrownai/core": "0.4.1-alpha.1"
+    "@hashbrownai/core": "0.5.0-beta.4"
   },
   "publishConfig": {
     "access": "public"

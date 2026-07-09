@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/packages/core"]
+      "manifestRootsToUpdate": ["dist/packages/core", "packages/core"]
     }
   },
   "tags": ["shared"],
@@ -24,6 +24,8 @@
         "outputFileName": "index",
         "outputFileExtensionForEsm": ".mjs",
         "outputFileExtensionForCjs": ".cjs",
+        "sourceMap": true,
+        "useLegacyTypescriptPlugin": false,
         "assets": [
           {
             "input": "packages/core",

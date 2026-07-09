@@ -37,8 +37,10 @@ type ThreadfulOptions = BaseAzureTextStreamOptions & ThreadPersistenceOptions;
 
 export type AzureTextStreamOptions = ThreadlessOptions | ThreadfulOptions;
 
-export interface AzureCompletionCreateParams
-  extends Omit<Chat.Api.CompletionCreateParams, 'model'> {
+export interface AzureCompletionCreateParams extends Omit<
+  Chat.Api.CompletionCreateParams,
+  'model'
+> {
   model: AzureKnownModelIds;
 }
 
@@ -60,6 +62,7 @@ export async function* text(
     model: modelAndVersion,
     tools,
     responseFormat,
+    responseFormatMode,
     system,
     toolChoice,
   } = request;
@@ -189,17 +192,7 @@ export async function* text(
             }))
           : undefined,
       tool_choice: toolChoice,
-      response_format: responseFormat
-        ? {
-            type: 'json_schema',
-            json_schema: {
-              strict: true,
-              name: 'schema',
-              description: '',
-              schema: responseFormat as Record<string, unknown>,
-            },
-          }
-        : undefined,
+      response_format: createResponseFormat(responseFormatMode, responseFormat),
     };
 
     const resolvedOptions: OpenAI.Chat.ChatCompletionCreateParams =
@@ -275,6 +268,29 @@ export async function* text(
       return;
     }
   }
+}
+
+function createResponseFormat(
+  responseFormatMode: Chat.Api.ResponseFormatMode | undefined,
+  responseFormat: object | undefined,
+): OpenAI.Chat.ChatCompletionCreateParamsStreaming['response_format'] {
+  if (responseFormatMode === 'json') {
+    return { type: 'json_object' };
+  }
+
+  if (!responseFormat) {
+    return undefined;
+  }
+
+  return {
+    type: 'json_schema',
+    json_schema: {
+      strict: true,
+      name: 'schema',
+      description: '',
+      schema: responseFormat as Record<string, unknown>,
+    },
+  };
 }
 
 function normalizeError(error: unknown): { message: string; stack?: string } {

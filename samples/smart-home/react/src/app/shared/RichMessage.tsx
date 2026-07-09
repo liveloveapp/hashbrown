@@ -1,3 +1,4 @@
+import { Chat } from '@hashbrownai/core';
 import { UiChatMessage } from '@hashbrownai/react';
 import { Button } from './button';
 import { CircleAlert } from 'lucide-react';
@@ -7,7 +8,7 @@ export const RichMessage = ({
   onRetry,
   isLast,
 }: {
-  message: UiChatMessage<any>;
+  message: UiChatMessage<Chat.AnyTool>;
   onRetry: () => void;
   isLast: boolean;
 }) => {
@@ -32,14 +33,16 @@ export const RichMessage = ({
 
   return (
     <div className={`flex w-full ${onLeft ? 'justify-start' : 'justify-end'}`}>
-      <div className={`p-2 rounded-md ${classNames}`}>
+      <div className={`min-w-0 max-w-full p-2 rounded-md ${classNames}`}>
         {message.role === 'error' && (
-          <div className="flex flex-row items-center gap-2">
-            <CircleAlert />
-            {message.content}
+          <div className="flex min-w-0 flex-row items-start gap-2">
+            <CircleAlert className="mt-0.5 shrink-0" />
+            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+              {message.content}
+            </span>
             {isLast && (
               <Button
-                className="!pt-0 !pb-0 h-auto"
+                className="!pt-0 !pb-0 h-auto shrink-0"
                 variant="ghost"
                 onClick={onRetry}
               >
@@ -54,7 +57,11 @@ export const RichMessage = ({
         )}
 
         {message.role === 'user' && (
-          <div className="flex flex-col gap-2">{message.content}</div>
+          <div className="flex flex-col gap-2">
+            {typeof message.content === 'string'
+              ? message.content
+              : JSON.stringify(message.content)}
+          </div>
         )}
       </div>
     </div>

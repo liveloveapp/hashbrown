@@ -8,7 +8,7 @@ import { JsonValue } from '../utils';
 export interface Tool {
   name: string;
   description: string;
-  schema: s.HashbrownType | object;
+  schema: s.SchemaInput;
   handler: (input: any, abortSignal: AbortSignal) => Promise<any>;
 }
 
@@ -19,9 +19,11 @@ export interface ToolCall {
   id: string;
   name: string;
   arguments: string;
+  argumentsResolved?: JsonValue;
   result?: PromiseSettledResult<any>;
   progress?: number;
   status: 'pending' | 'done';
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -30,6 +32,7 @@ export interface ToolCall {
 export interface AssistantMessage {
   role: 'assistant';
   content?: string;
+  contentResolved?: JsonValue;
   toolCallIds: string[];
 }
 

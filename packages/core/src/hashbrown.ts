@@ -18,10 +18,12 @@ import {
   selectIsSavingThread,
   selectIsSending,
   selectLastAssistantMessage,
+  selectResponseSchema,
   selectSendingError,
   selectThreadId,
   selectThreadLoadError,
   selectThreadSaveError,
+  selectToolEntities,
   selectUnifiedError,
   selectViewMessages,
 } from './reducers';
@@ -76,7 +78,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       model: ModelInput;
       system: string;
       tools: Tools[];
-      responseSchema: s.HashbrownType;
+      responseSchema: s.SchemaOutput;
+      structuredOutput: Chat.Api.StructuredOutputOptions;
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
       debounce: number;
@@ -108,6 +111,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
  *   - `messages`: Initial message history
  *   - `tools`: Array of tools to enable in the instance
  *   - `responseSchema`: JSON schema for validating structured output
+ *   - `structuredOutput`: Resource-level structured output mode
  *   - `middleware`: Middleware functions to run on messages
  *   - `emulateStructuredOutput`: Whether to emulate structured output behavior
  *   - `debounce`: Debounce interval in milliseconds for sending messages
@@ -122,6 +126,7 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
   middleware?: Chat.Middleware[];
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
   emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
@@ -133,9 +138,9 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
  * @public
  */
 export function fryHashbrown<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(init: {
   debugName?: string;
   apiUrl?: string;
@@ -144,6 +149,7 @@ export function fryHashbrown<
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
   responseSchema: Schema;
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
@@ -162,7 +168,8 @@ export function fryHashbrown(init: {
   system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
-  responseSchema?: s.HashbrownType;
+  responseSchema?: s.SchemaOutput;
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
   middleware?: Chat.Middleware[];
   emulateStructuredOutput?: boolean;
   debounce?: number;
@@ -211,6 +218,7 @@ export function fryHashbrown(init: {
       messages: init.messages as Chat.AnyMessage[],
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
+      structuredOutput: init.structuredOutput,
       middleware: init.middleware,
       emulateStructuredOutput: init.emulateStructuredOutput,
       debounce: init.debounce,
@@ -222,8 +230,14 @@ export function fryHashbrown(init: {
   );
 
   function setMessages(messages: Chat.Message<any, Chat.AnyTool>[]) {
+    const responseSchema = state.read(selectResponseSchema);
+    const toolsByName = state.read(selectToolEntities);
     state.dispatch(
-      devActions.setMessages({ messages: messages as Chat.AnyMessage[] }),
+      devActions.setMessages({
+        messages: messages as Chat.AnyMessage[],
+        responseSchema,
+        toolsByName,
+      }),
     );
   }
 
@@ -244,7 +258,8 @@ export function fryHashbrown(init: {
       model: ModelInput;
       system: string;
       tools: Chat.AnyTool[];
-      responseSchema: s.HashbrownType;
+      responseSchema: s.SchemaOutput;
+      structuredOutput: Chat.Api.StructuredOutputOptions;
       middleware: Chat.Middleware[];
       emulateStructuredOutput: boolean;
       debounce: number;

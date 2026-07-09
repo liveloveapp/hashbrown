@@ -6,7 +6,7 @@ import {
   s,
   type TransportOrFactory,
 } from '@hashbrownai/core';
-import { SignalLike } from '../utils/types';
+import { ReactiveOption } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { toDeepSignal } from '../utils/deep-signal';
 
@@ -15,8 +15,9 @@ import { toDeepSignal } from '../utils/deep-signal';
  *
  * @public
  */
-export interface StructuredCompletionResourceRef<Output>
-  extends Resource<Output | null> {
+export interface StructuredCompletionResourceRef<
+  Output,
+> extends Resource<Output | null> {
   /**
    * Indicates whether the underlying completion call is currently sending a message.
    */
@@ -66,12 +67,12 @@ export interface StructuredCompletionResourceRef<Output>
  */
 export interface StructuredCompletionResourceOptions<
   Input,
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
 > {
   /**
    * The model to use for the structured completion resource.
    */
-  model: ModelInput;
+  model: ReactiveOption<ModelInput>;
   /**
    * The input to the structured completion resource.
    */
@@ -83,7 +84,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * The system prompt to use for the structured completion resource.
    */
-  system: SignalLike<string>;
+  system: ReactiveOption<string>;
   /**
    * The tools to use for the structured completion resource.
    */
@@ -95,7 +96,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * The API URL to use for the structured completion resource.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
   /**
    * The number of retries for the structured completion resource.
    */
@@ -110,6 +111,10 @@ export interface StructuredCompletionResourceOptions<
    */
   transport?: TransportOrFactory;
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+  /**
    * Whether this completion is UI generating.
    */
   ui?: boolean;
@@ -117,7 +122,7 @@ export interface StructuredCompletionResourceOptions<
   /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**
@@ -129,8 +134,8 @@ export interface StructuredCompletionResourceOptions<
  */
 export function structuredCompletionResource<
   Input,
-  Schema extends s.HashbrownType,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Schema extends s.SchemaOutput,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
@@ -156,6 +161,7 @@ export function structuredCompletionResource<
     retries,
     debounce,
     transport: options.transport,
+    structuredOutput: options.structuredOutput,
     ui: options.ui ?? false,
     threadId: options.threadId,
   });

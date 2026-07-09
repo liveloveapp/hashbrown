@@ -1,6 +1,8 @@
 import { Chat, prompt, s } from '@hashbrownai/core';
 import {
   exposeComponent,
+  exposeMarkdown,
+  MagicTextRenderer,
   useRuntime,
   useRuntimeFunction,
   useTool,
@@ -17,6 +19,23 @@ import { RichMessage } from './RichMessage';
 import { ScrollArea } from './scrollarea';
 import { Textarea } from './textarea';
 import { Light } from '../models/light.model';
+
+const magicTextAnimationStyles = `
+.hb-chat-magic-text .hb-magic-text-segment {
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    opacity 440ms ease;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.hb-chat-magic-text .hb-magic-text-segment[data-magic-text-whitespace='true'] {
+  transition: none;
+}
+`;
 
 export const RichChatPanel = () => {
   const getLights = useTool({
@@ -115,10 +134,9 @@ export const RichChatPanel = () => {
           lightId: s.string('The id of the light'),
         },
       }),
-      exposeComponent(MarkdownComponent, {
-        name: 'Markdown',
-        description: 'Show markdown content to the user',
-        children: 'text',
+      exposeMarkdown({
+        className: 'hb-chat-magic-text',
+        caret: true,
       }),
       exposeComponent(CardComponent, {
         name: 'Card',
@@ -196,6 +214,7 @@ export const RichChatPanel = () => {
 
   return (
     <div className="flex flex-col h-full">
+      <style>{magicTextAnimationStyles}</style>
       <div className="flex flex-col flex-1 min-h-0">
         <ScrollArea className="flex-1" ref={scrollAreaRef}>
           <div className="flex flex-col gap-2 px-2">

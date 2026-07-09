@@ -8,7 +8,7 @@
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk",
       "preserveLocalDependencyProtocols": false,
-      "manifestRootsToUpdate": ["dist/packages/anthropic"]
+      "manifestRootsToUpdate": ["dist/packages/anthropic", "packages/anthropic"]
     }
   },
   "tags": [],

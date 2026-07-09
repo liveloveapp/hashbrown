@@ -18,8 +18,8 @@ import {
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
-import { readSignalLike, toNgSignal } from '../utils/signals';
-import { SignalLike } from '../utils/types';
+import { readReactiveOption, toNgSignal } from '../utils/signals';
+import { ReactiveOption } from '../utils/types';
 import { bindToolToInjector } from '../utils/create-tool.fn';
 import { toDeepSignal } from '../utils/deep-signal';
 
@@ -30,8 +30,10 @@ import { toDeepSignal } from '../utils/deep-signal';
  * @typeParam Output - The type of the output from the chat.
  * @typeParam Tools - The set of tool definitions available to the chat.
  */
-export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
-  extends Resource<Chat.Message<Output, Tools>[]> {
+export interface StructuredChatResourceRef<
+  Output,
+  Tools extends Chat.AnyTool,
+> extends Resource<Chat.Message<Output, Tools>[]> {
   /**
    * Indicates whether the underlying chat call is currently sending a message.
    */
@@ -107,19 +109,19 @@ export interface StructuredChatResourceRef<Output, Tools extends Chat.AnyTool>
  * @public
  */
 export interface StructuredChatResourceOptions<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 > {
   /**
    * The model to use for the structured chat resource.
    */
-  model: ModelInput;
+  model: ReactiveOption<ModelInput>;
 
   /**
    * The system prompt to use for the structured chat resource.
    */
-  system: string | Signal<string>;
+  system: ReactiveOption<string>;
 
   /**
    * The schema to use for the structured chat resource.
@@ -154,12 +156,16 @@ export interface StructuredChatResourceOptions<
   /**
    * The API URL to use for the structured chat resource.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
 
   /**
    * Custom transport override for the structured chat resource.
    */
   transport?: TransportOrFactory;
+  /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
   /**
    * Whether this structured chat is generating UI content.
    */
@@ -168,7 +174,7 @@ export interface StructuredChatResourceOptions<
   /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**
@@ -179,9 +185,9 @@ export interface StructuredChatResourceOptions<
  * @returns The structured chat resource.
  */
 export function structuredChatResource<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: StructuredChatResourceOptions<Schema, Tools, Output>,
 ): StructuredChatResourceRef<Output, Tools> {
@@ -189,14 +195,17 @@ export function structuredChatResource<
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
   const hashbrown = fryHashbrown<Schema, Tools, Output>({
-    apiUrl: options.apiUrl ?? config.baseUrl,
+    apiUrl:
+      options.apiUrl !== undefined
+        ? readReactiveOption(options.apiUrl)
+        : config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    system: readSignalLike(options.system),
+    system: readReactiveOption(options.system),
     messages: [...(options.messages ?? [])],
-    model: options.model,
+    model: readReactiveOption(options.model),
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     responseSchema: options.schema,
     debugName: options.debugName,
@@ -204,22 +213,27 @@ export function structuredChatResource<
     debounce: options.debounce,
     retries: options.retries,
     transport: options.transport ?? config.transport,
+    structuredOutput: options.structuredOutput,
     ui: options.ui ?? false,
-    threadId: options.threadId ? readSignalLike(options.threadId) : undefined,
+    threadId:
+      options.threadId !== undefined
+        ? readReactiveOption(options.threadId)
+        : undefined,
   });
 
   const optionsEffect = effect(() => {
-    const model = options.model;
-    const system = readSignalLike(options.system);
-    const threadId = options.threadId
-      ? readSignalLike(options.threadId)
-      : undefined;
-
     hashbrown.updateOptions({
-      model,
-      system,
+      apiUrl:
+        options.apiUrl !== undefined
+          ? readReactiveOption(options.apiUrl)
+          : config.baseUrl,
+      model: readReactiveOption(options.model),
+      system: readReactiveOption(options.system),
+      structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
-      threadId,
+      ...(options.threadId !== undefined
+        ? { threadId: readReactiveOption(options.threadId) }
+        : {}),
     });
   });
 

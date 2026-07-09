@@ -13,11 +13,16 @@ import {
   selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectRawStreamingMessage,
+  selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
+  selectStreamingMessageError,
+  selectStructuredOutput,
   selectSystem,
   selectThreadId,
+  selectToolEntities,
   selectTransport,
   selectUiRequested,
 } from '../reducers';
@@ -50,8 +55,14 @@ export const generateMessage = createEffect((store) => {
       const debounce = store.read(selectDebounce);
       const retries = store.read(selectRetries);
       const tools = store.read(selectApiTools);
+      const toolsByName = store.read(selectToolEntities);
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
+      const structuredOutput = store.read(selectStructuredOutput);
+      const structuredOutputMode = responseSchema
+        ? (structuredOutput?.mode ??
+          (emulateStructuredOutput ? 'tool' : 'strict'))
+        : undefined;
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const threadId = store.read(selectThreadId);
       const shouldLoadThread = Boolean(threadId) && messages.length === 0;
@@ -74,19 +85,24 @@ export const generateMessage = createEffect((store) => {
         system,
         messages: messagePayload,
         tools,
-        toolChoice:
-          emulateStructuredOutput && responseSchema ? 'required' : undefined,
+        toolChoice: structuredOutputMode === 'tool' ? 'required' : undefined,
         responseFormat:
-          !emulateStructuredOutput && responseSchema
+          structuredOutputMode === 'strict' && responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined,
+        responseFormatMode:
+          structuredOutputMode === 'strict'
+            ? 'schema'
+            : structuredOutputMode === 'json'
+              ? 'json'
+              : undefined,
         threadId: threadId,
       };
 
       const requestedFeatures: RequestedFeatures = {
         tools:
           Boolean(params.tools?.length) || params.toolChoice === 'required',
-        structured: Boolean(params.responseFormat),
+        structured: Boolean(params.responseFormatMode),
         ui: store.read(selectUiRequested),
         threads: Boolean(threadId),
       };
@@ -175,8 +191,6 @@ export const generateMessage = createEffect((store) => {
               },
             };
 
-            let message: Chat.Api.AssistantMessage | null = null;
-
             for await (const frame of decodeFrames(frameStream, {
               signal: AbortSignal.any([
                 cancelAbortController.signal,
@@ -190,7 +204,11 @@ export const generateMessage = createEffect((store) => {
                 }
                 case 'thread-load-success': {
                   store.dispatch(
-                    apiActions.threadLoadSuccess({ thread: frame.thread }),
+                    apiActions.threadLoadSuccess({
+                      thread: frame.thread,
+                      responseSchema,
+                      toolsByName,
+                    }),
                   );
                   if (params.operation === 'load-thread') {
                     return;
@@ -207,14 +225,29 @@ export const generateMessage = createEffect((store) => {
                   throw new Error(frame.error);
                 }
                 case 'generation-start': {
-                  store.dispatch(apiActions.generateMessageStart());
+                  store.dispatch(
+                    apiActions.generateMessageStart({
+                      responseSchema,
+                      emulateStructuredOutput,
+                      toolsByName:
+                        emulateStructuredOutput && responseSchema
+                          ? {
+                              ...toolsByName,
+                              output: {
+                                name: 'output',
+                                description:
+                                  'Reserved tool for emulated structured output.',
+                                schema: s.normalizeSchemaOutput(responseSchema),
+                                handler: async () => undefined,
+                              },
+                            }
+                          : toolsByName,
+                    }),
+                  );
                   break;
                 }
                 case 'generation-chunk': {
-                  message = updateAssistantMessage(message, frame.chunk);
-                  if (message) {
-                    store.dispatch(apiActions.generateMessageChunk(message));
-                  }
+                  store.dispatch(apiActions.generateMessageChunk(frame.chunk));
                   break;
                 }
                 case 'thread-save-success': {
@@ -243,11 +276,31 @@ export const generateMessage = createEffect((store) => {
                   throw new Error(frame.error);
                 }
                 case 'generation-finish': {
-                  if (message) {
+                  store.dispatch(apiActions.generateMessageFinish());
+
+                  const streamingError = store.read(
+                    selectStreamingMessageError,
+                  );
+                  if (streamingError) {
                     store.dispatch(
-                      apiActions.generateMessageSuccess(
-                        message as unknown as Chat.Api.AssistantMessage,
-                      ),
+                      apiActions.generateMessageError(streamingError),
+                    );
+                    break;
+                  }
+
+                  const streamingMessage = store.read(
+                    selectRawStreamingMessage,
+                  );
+                  const streamingToolCalls = store.read(
+                    selectRawStreamingToolCalls,
+                  );
+
+                  if (streamingMessage) {
+                    store.dispatch(
+                      apiActions.generateMessageSuccess({
+                        message: streamingMessage,
+                        toolCalls: streamingToolCalls,
+                      }),
                     );
                   } else {
                     store.dispatch(

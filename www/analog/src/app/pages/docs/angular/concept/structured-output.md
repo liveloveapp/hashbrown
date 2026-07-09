@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Specify the JSON schema of the model response.'
 ---
+
 # Structured Output
 
 <p class="subtitle">Specify the JSON schema of the model response.</p>
@@ -56,7 +57,7 @@ export class App {
 </hb-code-example>
 
 1. The @hashbrownai/angular!structuredChatResource:function function is used to create a chat resource that can parse user input and return structured data.
-2. The `schema` option defines the expected structure of the response using Hashbrown's Skillet schema language.
+2. The `schema` option defines the expected structure of the response using Skillet (or a Standard JSON Schema object that Hashbrown normalizes to Skillet).
 3. The resource `value()` contains the structured output, which can be used directly in your application.
 
 Here is the expected `content` value:
@@ -70,19 +71,57 @@ Here is the expected `content` value:
 
 ---
 
+### Schema Inputs
+
+The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `~standard` spec, e.g. Zod/ArkType), or raw JSON Schema objects. Standard JSON Schema inputs are normalized to Skillet (draft-07) before streaming and validation. Unsupported keywords throw at runtime.
+
+---
+
+### Structured Output Modes
+
+Structured resources use provider schema enforcement by default. For very large or complex schemas, you can ask the provider for JSON without sending the full schema, while Hashbrown still parses, streams, validates, and retries locally.
+
+<hb-code-example header="use JSON mode for a complex schema">
+
+```ts
+chat = structuredChatResource({
+  model: 'gpt-4.1',
+  system: 'Return a dashboard configuration for the current user.',
+  schema: dashboardSchema,
+  structuredOutput: { mode: 'json' },
+  retries: 2,
+});
+```
+
+</hb-code-example>
+
+The available modes are:
+
+| Mode     | Behavior                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------- |
+| `strict` | Default. Sends the schema to providers that support schema-constrained structured output.    |
+| `json`   | Requests JSON output without sending the provider schema. Hashbrown still validates locally. |
+| `tool`   | Uses Hashbrown's reserved output tool for emulated structured output.                        |
+
+Provider support differs. OpenAI and Azure use JSON object mode, Google sets the response MIME type to JSON, Ollama uses `format: 'json'`, and Writer omits `response_format` because its SDK currently supports only `text` and `json_schema`.
+
+---
+
 ### `StructuredChatResourceOptions`
 
-| Option      | Type                                     | Required | Description                                               |
-| ----------- | ---------------------------------------- | -------- | --------------------------------------------------------- |
-| `model`     | `KnownModelIds \| Signal<KnownModelIds>` | Yes      | The model to use for the structured chat resource         |
-| `system`    | `string \| Signal<string>`               | Yes      | The system prompt to use for the structured chat resource |
-| `schema`    | `Schema`                                 | Yes      | The schema to use for the structured chat resource        |
-| `tools`     | `Tools[]`                                | No       | The tools to use for the structured chat resource         |
-| `messages`  | `Chat.Message<Output, Tools>[]`          | No       | The initial messages for the structured chat resource     |
-| `debugName` | `string`                                 | No       | The debug name for the structured chat resource           |
-| `debounce`  | `number`                                 | No       | The debounce time for the structured chat resource        |
-| `retries`   | `number`                                 | No       | The number of retries for the structured chat resource    |
-| `apiUrl`    | `string`                                 | No       | The API URL to use for the structured chat resource       |
+| Option             | Type                                     | Required | Description                                                     |
+| ------------------ | ---------------------------------------- | -------- | --------------------------------------------------------------- |
+| `model`            | `ReactiveOption<ModelInput>`             | Yes      | The model to use for the structured chat resource               |
+| `system`           | `ReactiveOption<string>`                 | Yes      | The system prompt to use for the structured chat resource       |
+| `schema`           | `s.SchemaOutput`                         | Yes      | The schema to use for the structured chat resource              |
+| `tools`            | `Tools[]`                                | No       | The tools to use for the structured chat resource               |
+| `messages`         | `Chat.Message<Output, Tools>[]`          | No       | The initial messages for the structured chat resource           |
+| `debugName`        | `string`                                 | No       | The debug name for the structured chat resource                 |
+| `debounce`         | `number`                                 | No       | The debounce time for the structured chat resource              |
+| `retries`          | `number`                                 | No       | The number of retries for the structured chat resource          |
+| `apiUrl`           | `ReactiveOption<string>`                 | No       | The API URL to use for the structured chat resource             |
+| `threadId`         | `ReactiveOption<string \| undefined>`    | No       | Thread identifier used to load or continue a conversation       |
+| `structuredOutput` | `StructuredOutputOptions`                | No       | Controls how the provider is asked to produce structured output |
 
 ---
 
@@ -167,15 +206,17 @@ When the user types a scene name, the LLM will predict which lights should be ad
 
 ### `StructuredCompletionResourceOptions`
 
-| Option      | Type                                 | Required | Description                                                     |
-| ----------- | ------------------------------------ | -------- | --------------------------------------------------------------- |
-| `model`     | `KnownModelIds`                      | Yes      | The model to use for the structured completion resource         |
-| `input`     | `Signal<null \| undefined \| Input>` | Yes      | The input to the structured completion resource                 |
-| `schema`    | `Schema`                             | Yes      | The schema to use for the structured completion resource        |
-| `system`    | `SignalLike<string>`                 | Yes      | The system prompt to use for the structured completion resource |
-| `tools`     | `Chat.AnyTool[]`                     | No       | The tools to use for the structured completion resource         |
-| `debugName` | `string`                             | No       | The debug name for the structured completion resource           |
-| `apiUrl`    | `string`                             | No       | The API URL to use for the structured completion resource       |
+| Option             | Type                                      | Required | Description                                                     |
+| ------------------ | ----------------------------------------- | -------- | --------------------------------------------------------------- |
+| `model`            | `ReactiveOption<ModelInput>`              | Yes      | The model to use for the structured completion resource         |
+| `input`            | `Signal<null \| undefined \| Input>`      | Yes      | The input to the structured completion resource                 |
+| `schema`           | `s.SchemaOutput`                          | Yes      | The schema to use for the structured completion resource        |
+| `system`           | `ReactiveOption<string>`                  | Yes      | The system prompt to use for the structured completion resource |
+| `tools`            | `Chat.AnyTool[]`                          | No       | The tools to use for the structured completion resource         |
+| `debugName`        | `string`                                  | No       | The debug name for the structured completion resource           |
+| `apiUrl`           | `ReactiveOption<string>`                  | No       | The API URL to use for the structured completion resource       |
+| `threadId`         | `ReactiveOption<string \| undefined>`     | No       | Thread identifier used to load or continue a conversation       |
+| `structuredOutput` | `StructuredOutputOptions`                 | No       | Controls how the provider is asked to produce structured output |
 
 ---
 

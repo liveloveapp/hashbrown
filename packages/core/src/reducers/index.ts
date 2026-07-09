@@ -25,6 +25,43 @@ type State = Prettify<{
   [P in keyof typeof reducers]: ReturnType<(typeof reducers)[P]>;
 }>;
 
+function applyEmulatedOutputToMessage(
+  message: Chat.Internal.Message,
+  toolCalls: Record<string, Chat.Internal.ToolCall>,
+  responseSchema: s.HashbrownType | undefined,
+  emulateStructuredOutput: boolean | undefined,
+): Chat.Internal.Message {
+  if (!emulateStructuredOutput || !responseSchema) {
+    return message;
+  }
+
+  if (message.role !== 'assistant') {
+    return message;
+  }
+
+  const outputToolCall = message.toolCallIds
+    .map((toolCallId) => toolCalls[toolCallId])
+    .find((toolCall) => toolCall?.name === 'output');
+
+  if (!outputToolCall) {
+    return message;
+  }
+
+  const rawArguments = outputToolCall.arguments;
+  const content =
+    typeof rawArguments === 'string'
+      ? rawArguments
+      : JSON.stringify(rawArguments);
+  const contentResolved =
+    outputToolCall.argumentsResolved ?? message.contentResolved;
+
+  return {
+    ...message,
+    content,
+    contentResolved,
+  };
+}
+
 /**
  * Messages
  */
@@ -70,6 +107,18 @@ export const selectExhaustedRetries = select(
  */
 export const selectStreamingMessageState = (state: State) =>
   state.streamingMessage;
+export const selectRawStreamingMessage = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectRawStreamingMessage,
+);
+export const selectRawStreamingToolCalls = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectRawStreamingToolCalls,
+);
+export const selectStreamingMessageError = select(
+  selectStreamingMessageState,
+  fromStreamingMessage.selectStreamingMessageError,
+);
 export const selectStreamingMessage = select(
   selectStreamingMessageState,
   fromStreamingMessage.selectStreamingMessage,
@@ -158,6 +207,10 @@ export const selectResponseSchema = select(
   selectConfigState,
   fromConfig.selectResponseSchema,
 );
+export const selectStructuredOutput = select(
+  selectConfigState,
+  fromConfig.selectStructuredOutput,
+);
 export const selectEmulateStructuredOutput = select(
   selectConfigState,
   fromConfig.selectEmulateStructuredOutput,
@@ -179,10 +232,16 @@ const selectNonStreamingViewMessages = select(
   selectToolCallEntities,
   selectTools,
   selectResponseSchema,
-  (messages, toolCalls, tools, responseSchema) => {
+  selectEmulateStructuredOutput,
+  (messages, toolCalls, tools, responseSchema, emulateStructuredOutput) => {
     return messages.flatMap((message): Chat.AnyMessage[] =>
       Chat.helpers.toViewMessagesFromInternal(
-        message,
+        applyEmulatedOutputToMessage(
+          message,
+          toolCalls,
+          responseSchema,
+          emulateStructuredOutput,
+        ),
         toolCalls,
         tools,
         responseSchema,
@@ -196,11 +255,23 @@ const selectStreamingViewMessages = select(
   selectStreamingToolCallEntities,
   selectTools,
   selectResponseSchema,
-  (streamingMessage, streamingToolCalls, tools, responseSchema) => {
+  selectEmulateStructuredOutput,
+  (
+    streamingMessage,
+    streamingToolCalls,
+    tools,
+    responseSchema,
+    emulateStructuredOutput,
+  ) => {
     return (streamingMessage ? [streamingMessage] : []).flatMap(
       (message): Chat.AnyMessage[] =>
         Chat.helpers.toViewMessagesFromInternal(
-          message,
+          applyEmulatedOutputToMessage(
+            message,
+            streamingToolCalls,
+            responseSchema,
+            emulateStructuredOutput,
+          ),
           streamingToolCalls,
           tools,
           responseSchema,

@@ -50,7 +50,14 @@ export async function* text(
     loadThread,
     saveThread,
   } = options;
-  const { model, tools, responseFormat, toolChoice, system } = request;
+  const {
+    model,
+    tools,
+    responseFormat,
+    responseFormatMode,
+    toolChoice,
+    system,
+  } = request;
   const threadId = request.threadId;
   let loadedThread: Chat.Api.Message[] = [];
   let effectiveThreadId = threadId;
@@ -171,17 +178,7 @@ export async function* text(
             }))
           : undefined,
       tool_choice: toolChoice,
-      response_format: responseFormat
-        ? {
-            type: 'json_schema',
-            json_schema: {
-              strict: true,
-              name: 'schema',
-              description: '',
-              schema: responseFormat as Record<string, unknown>,
-            },
-          }
-        : undefined,
+      response_format: createResponseFormat(responseFormatMode, responseFormat),
     };
 
     const resolvedOptions: OpenAI.Chat.ChatCompletionCreateParams =
@@ -260,6 +257,29 @@ export async function* text(
       return;
     }
   }
+}
+
+function createResponseFormat(
+  responseFormatMode: Chat.Api.ResponseFormatMode | undefined,
+  responseFormat: object | undefined,
+): OpenAI.Chat.ChatCompletionCreateParamsStreaming['response_format'] {
+  if (responseFormatMode === 'json') {
+    return { type: 'json_object' };
+  }
+
+  if (!responseFormat) {
+    return undefined;
+  }
+
+  return {
+    type: 'json_schema',
+    json_schema: {
+      strict: true,
+      name: 'schema',
+      description: '',
+      schema: responseFormat as Record<string, unknown>,
+    },
+  };
 }
 
 function normalizeError(error: unknown): { message: string; stack?: string } {

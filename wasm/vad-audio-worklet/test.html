@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>VAD Audio Worklet</title>
+    <style>
+      #vad {
+        font-size: 32px;
+        font-weight: bold;
+      }
+      #vad.voice {
+        color: #28a745;
+      }
+      #vad.no-voice {
+        color: #6c757d;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>VAD Audio Worklet</h1>
+    <button onclick="start()">Start</button>
+    <button onclick="stop()" id="stopBtn" disabled>Stop</button>
+    <label
+      >Mode:
+      <select id="modeSelect">
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+      </select></label
+    >
+    <div id="vad">Not Recording</div>
+    <script type="module">
+      let M,
+        audioContext,
+        microphoneSource,
+        workletNode,
+        isRunning = false;
+
+      window.logVADDecisionFromWorklet = (decision) => {
+        const el = document.getElementById('vad');
+        if (decision === 1) {
+          el.textContent = 'VOICE';
+          el.className = 'voice';
+        } else {
+          el.textContent = 'NO VOICE';
+          el.className = 'no-voice';
+        }
+      };
+
+      const origAddModule = AudioWorklet.prototype.addModule;
+      AudioWorklet.prototype.addModule = function (u) {
+        const fixedUrl =
+          (u.endsWith('.aw.js') || u.endsWith('.ww.js')) &&
+          !u.includes('./output/') &&
+          !u.includes('/output/')
+            ? './output/' + u
+            : u;
+        return origAddModule.call(this, new URL(fixedUrl, location).href);
+      };
+
+      async function connectMicrophone() {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        microphoneSource = audioContext.createMediaStreamSource(stream);
+        const nodeHandle = window._emscriptenWorkletNode;
+        if (!M.EmAudio || !M.EmAudio[nodeHandle]) {
+          throw new Error('Worklet node not available');
+        }
+        workletNode = M.EmAudio[nodeHandle];
+        microphoneSource.connect(workletNode);
+        workletNode.connect(audioContext.destination);
+      }
+
+      M = await (
+        await import('./output/vad_audio_worklet.js')
+      ).default({
+        locateFile: (p) =>
+          p.match(/\.(wasm|aw\.js|ww\.js)$/) ? './output/' + p : p,
+        mainScriptUrlOrBlob: new URL('./output/vad_audio_worklet.js', location)
+          .href,
+      });
+
+      window.start = async () => {
+        if (isRunning) return;
+        M._main();
+        const checkReady = setInterval(async () => {
+          if (!window.audioWorkletReady) return;
+          if (!window.vadModeInitialized) {
+            M.cwrap('SetVADMode', 'number', ['number'])(
+              parseInt(document.getElementById('modeSelect').value),
+            );
+            window.vadModeInitialized = true;
+          }
+          audioContext =
+            window.audioWorkletNativeContext ||
+            (M.EmAudio &&
+              window._emscriptenAudioContextHandle &&
+              M.EmAudio[window._emscriptenAudioContextHandle]) ||
+            (M.EmAudio &&
+              window._emscriptenWorkletNode &&
+              M.EmAudio[window._emscriptenWorkletNode]?.context);
+          if (!audioContext) return;
+          M.cwrap('ResumeAudioContext', null, [])();
+          await connectMicrophone();
+          clearInterval(checkReady);
+          isRunning = true;
+          document.querySelector('button').disabled = true;
+          document.getElementById('stopBtn').disabled = false;
+          document.getElementById('vad').textContent = 'Recording...';
+        }, 500);
+        setTimeout(() => {
+          clearInterval(checkReady);
+          if (!isRunning)
+            document.getElementById('vad').textContent = 'Error: Timeout';
+        }, 10000);
+      };
+
+      window.stop = () => {
+        if (!isRunning) return;
+        microphoneSource?.disconnect();
+        workletNode?.disconnect();
+        audioContext?.close();
+        if (M?.cwrap) {
+          M.cwrap('CleanupVAD', null, [])();
+        }
+        microphoneSource = workletNode = audioContext = null;
+        isRunning = false;
+        window.vadModeInitialized = false;
+        document.querySelector('button').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        const el = document.getElementById('vad');
+        el.textContent = 'Not Recording';
+        el.className = '';
+      };
+
+      document
+        .getElementById('modeSelect')
+        .addEventListener('change', function () {
+          if (M?.cwrap) {
+            M.cwrap('SetVADMode', 'number', ['number'])(parseInt(this.value));
+          }
+        });
+    </script>
+  </body>
+</html>

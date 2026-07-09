@@ -7,10 +7,7 @@ import { MagicTextRenderer } from '../magic-text-renderer';
   preserveWhitespaces: false,
   template: `
     <p class="paragraph">
-      <app-magic-text-renderer
-        [text]="text()"
-        [citations]="citations()"
-      ></app-magic-text-renderer>
+      <app-magic-text-renderer [text]="text()"></app-magic-text-renderer>
     </p>
   `,
   host: {

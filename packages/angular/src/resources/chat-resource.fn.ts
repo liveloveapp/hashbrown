@@ -2,6 +2,7 @@
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   Injector,
   Resource,
@@ -16,8 +17,12 @@ import {
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
-import { readSignalLike, toNgSignal } from '../utils/signals';
-import { SignalLike } from '../utils/types';
+import {
+  readReactiveOption,
+  readSignalLike,
+  toNgSignal,
+} from '../utils/signals';
+import { ReactiveOption } from '../utils/types';
 import { bindToolToInjector } from '../utils/create-tool.fn';
 
 /**
@@ -28,8 +33,9 @@ import { bindToolToInjector } from '../utils/create-tool.fn';
  * @param sendMessage - Send a new user message to the chat.
  * @param reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
  */
-export interface ChatResourceRef<Tools extends Chat.AnyTool>
-  extends Resource<Chat.Message<string, Tools>[]> {
+export interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
+  Chat.Message<string, Tools>[]
+> {
   /** Indicates whether the chat is currently receiving tokens. */
   isReceiving: Signal<boolean>;
   /** Indicates whether the chat is currently sending a user message. */
@@ -58,6 +64,13 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool>
    * @param message - The user message to send.
    */
   sendMessage: (message: Chat.UserMessage) => void;
+
+  /**
+   * Replace the current chat message history.
+   *
+   * @param messages - The new array of chat messages.
+   */
+  setMessages: (messages: Chat.Message<string, Tools>[]) => void;
 
   /**
    * Stops any currently-streaming message.
@@ -99,12 +112,12 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The system prompt to use for the chat.
    */
-  system: string | Signal<string>;
+  system: ReactiveOption<string>;
 
   /**
    * The model to use for the chat.
    */
-  model: ModelInput | Signal<ModelInput>;
+  model: ReactiveOption<ModelInput>;
 
   /**
    * The tools to use for the chat.
@@ -119,8 +132,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
    * @typeParam Tools - The set of tool definitions available to the chat.
    */
   messages?:
-    | Chat.Message<string, Tools>[]
-    | Signal<Chat.Message<string, Tools>[]>;
+    Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>;
 
   /**
    * The debounce time for the chat.
@@ -135,7 +147,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * The API URL to use for the chat.
    */
-  apiUrl?: string;
+  apiUrl?: ReactiveOption<string>;
 
   /**
    * Custom transport to use for this chat resource.
@@ -145,7 +157,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
   /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
-  threadId?: SignalLike<string | undefined>;
+  threadId?: ReactiveOption<string | undefined>;
 }
 
 /**
@@ -178,24 +190,57 @@ export function chatResource<Tools extends Chat.AnyTool>(
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
   const hashbrown = fryHashbrown({
-    apiUrl: options.apiUrl ?? config.baseUrl,
+    apiUrl:
+      options.apiUrl !== undefined
+        ? readReactiveOption(options.apiUrl)
+        : config.baseUrl,
     middleware: config.middleware?.map((m): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    system: readSignalLike(options.system),
-    model: readSignalLike(options.model),
+    system: readReactiveOption(options.system),
+    messages: options.messages ? [...readSignalLike(options.messages)] : [],
+    model: readReactiveOption(options.model),
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     emulateStructuredOutput: config.emulateStructuredOutput,
     debugName: options.debugName,
     transport: options.transport ?? config.transport,
     ui: false,
-    threadId: readSignalLike(options.threadId),
+    threadId:
+      options.threadId !== undefined
+        ? readReactiveOption(options.threadId)
+        : undefined,
+  });
+
+  const optionsEffect = effect(() => {
+    hashbrown.updateOptions({
+      apiUrl:
+        options.apiUrl !== undefined
+          ? readReactiveOption(options.apiUrl)
+          : config.baseUrl,
+      middleware: config.middleware?.map((m): Chat.Middleware => {
+        return (requestInit) =>
+          runInInjectionContext(injector, () => m(requestInit));
+      }),
+      system: readReactiveOption(options.system),
+      model: readReactiveOption(options.model),
+      tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
+      emulateStructuredOutput: config.emulateStructuredOutput,
+      debugName: options.debugName,
+      transport: options.transport ?? config.transport,
+      ui: false,
+      ...(options.threadId !== undefined
+        ? { threadId: readReactiveOption(options.threadId) }
+        : {}),
+    });
   });
 
   const teardown = hashbrown.sizzle();
 
-  destroyRef.onDestroy(() => teardown());
+  destroyRef.onDestroy(() => {
+    teardown();
+    optionsEffect.destroy();
+  });
 
   const value = toNgSignal(
     hashbrown.messages,
@@ -297,6 +342,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hashbrown.sendMessage(message);
   }
 
+  function setMessages(messages: Chat.Message<string, Tools>[]) {
+    hashbrown.setMessages(messages);
+  }
+
   function stop(clearStreamingMessage = false) {
     hashbrown.stop(clearStreamingMessage);
   }
@@ -317,6 +366,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     threadSaveError,
     reload,
     sendMessage,
+    setMessages,
     stop,
     value,
     error,

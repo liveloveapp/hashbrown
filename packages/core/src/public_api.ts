@@ -18,7 +18,22 @@ export {
 } from './runtime';
 export * from './schema';
 export * as ɵui from './ui';
-export type { Component, ComponentPropSchema } from './ui/expose-component';
+export type {
+  Component,
+  ComponentFallbackProps,
+  ComponentNode,
+  ComponentPropSchema,
+  ComponentTree,
+  ComponentTreeSchema,
+  UiWrapper,
+} from './ui/expose-component';
+export type { UiKit, UiKitInput, UiKitOptions } from './ui/ui-kit';
+export type {
+  UiKit as ɵUiKit,
+  UiKitInput as ɵUiKitInput,
+  UiKitOptions as ɵUiKitOptions,
+} from './ui/ui-kit';
+export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { mergeMessagesForThread } from './utils/threading';
 export type {
@@ -32,15 +47,33 @@ export type { ModelInput } from './transport/model-spec';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
 export {
-  prepareMagicText,
-  type MagicTextFragment,
-  type MagicTextFragmentText,
-  type MagicTextFragmentCitation,
-  type MagicTextResult,
-  type MagicTextHasWhitespace,
-  type MagicTextTag,
-} from './utils/magic-text';
+  createMagicTextParserState,
+  finalizeMagicText,
+  parseMagicTextChunk,
+  type CitationDefinition,
+  type CitationState,
+  type MagicTextAstNode,
+  type MagicTextNodeType,
+  type MagicTextParserOptions,
+  type MagicTextParserState,
+  type MagicTextWarning,
+  type ParseMode,
+  type SegmenterOptions,
+  type TextSegment,
+} from './magic-text';
 export {
   mergeToolCalls,
   updateAssistantMessage,
 } from './utils/assistant-message';
+export {
+  createParserState,
+  finalizeJsonParse,
+  getResolvedValue,
+  parseChunk,
+  type JsonAstNode,
+  type JsonAstType,
+  type JsonResolvedValue,
+  type JsonValue,
+  type ParserError,
+  type ParserState,
+} from './skillet/parser/json-parser';

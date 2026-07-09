@@ -26,9 +26,9 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
  * @typeParam Output - The type of the output from the chat.
  */
 export interface UseStructuredChatOptions<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 > {
   /**
    * The LLM model to use for the chat.
@@ -78,6 +78,12 @@ export interface UseStructuredChatOptions<
    * Optional transport override for this hook.
    */
   transport?: TransportOrFactory;
+
+  /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
   /**
    * Whether this structured chat is expected to produce UI elements.
    */
@@ -218,9 +224,9 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
  * ```
  */
 export function useStructuredChat<
-  Schema extends s.HashbrownType,
+  Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
-  Output extends s.Infer<Schema> = s.Infer<Schema>,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(
   options: UseStructuredChatOptions<Schema, Tools, Output>,
 ): UseStructuredChatResult<Output, Tools> {
@@ -247,11 +253,13 @@ export function useStructuredChat<
       model: options.model,
       system: options.system,
       responseSchema: schema,
+      messages: [...(options.messages ?? [])],
       tools,
       debugName: options.debugName,
       debounce: options.debounceTime,
       retries: options.retries,
       transport: options.transport ?? config.transport,
+      structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
       threadId: options.threadId,
     });
@@ -284,6 +292,7 @@ export function useStructuredChat<
       debounce: options.debounceTime,
       retries: options.retries,
       transport: options.transport ?? config.transport,
+      structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
       threadId: options.threadId,
     });
@@ -300,6 +309,7 @@ export function useStructuredChat<
     options.debounceTime,
     options.retries,
     options.transport,
+    options.structuredOutput,
     options.ui,
     options.threadId,
   ]);
@@ -317,9 +327,7 @@ export function useStructuredChat<
   );
   const error = useHashbrownSignal(hashbrown.current.error);
   const sendingError = useHashbrownSignal(hashbrown.current.sendingError);
-  const generatingError = useHashbrownSignal(
-    hashbrown.current.generatingError,
-  );
+  const generatingError = useHashbrownSignal(hashbrown.current.generatingError);
   const lastAssistantMessage = useHashbrownSignal(
     hashbrown.current.lastAssistantMessage,
   );

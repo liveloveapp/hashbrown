@@ -118,17 +118,10 @@ export async function* text(
       tool_choice: request.toolChoice
         ? { value: request.toolChoice }
         : undefined,
-      response_format: request.responseFormat
-        ? {
-            type: 'json_schema',
-            json_schema: {
-              strict: true,
-              name: 'schema',
-              description: '',
-              schema: request.responseFormat,
-            },
-          }
-        : undefined,
+      response_format: createResponseFormat(
+        request.responseFormatMode,
+        request.responseFormat,
+      ),
       tools:
         request.tools && request.tools.length > 0
           ? request.tools.map((tool) => ({
@@ -206,7 +199,12 @@ export async function* text(
             index: choice.index,
             delta: {
               ...choice.delta,
-              toolCalls: choice.delta.tool_calls ?? undefined,
+              toolCalls: choice.delta.tool_calls
+                ? choice.delta.tool_calls.map((toolCall, toolCallIndex) => ({
+                    ...toolCall,
+                    index: toolCall.index ?? toolCallIndex,
+                  }))
+                : undefined,
             },
             finishReason: choice.finish_reason,
           }),
@@ -257,4 +255,29 @@ export async function* text(
       });
     }
   }
+}
+
+function createResponseFormat(
+  responseFormatMode: Chat.Api.ResponseFormatMode | undefined,
+  responseFormat: object | undefined,
+): Writer.Chat.ChatChatParams['response_format'] {
+  if (responseFormatMode === 'json') {
+    // Writer supports text or json_schema response formats, so JSON mode
+    // relies on Hashbrown's prompt guidance and local parsing.
+    return undefined;
+  }
+
+  if (!responseFormat) {
+    return undefined;
+  }
+
+  return {
+    type: 'json_schema',
+    json_schema: {
+      strict: true,
+      name: 'schema',
+      description: '',
+      schema: responseFormat,
+    },
+  };
 }

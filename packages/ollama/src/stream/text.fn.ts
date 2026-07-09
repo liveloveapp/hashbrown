@@ -9,13 +9,26 @@ import OllamaClient, { ChatRequest, Message, Ollama, ToolCall } from 'ollama';
 import { FunctionParameters } from 'openai/resources/shared';
 
 type BaseOllamaTextStreamOptions = {
+  /**
+   * Preconfigured Ollama SDK client for advanced transport settings.
+   * Takes precedence over `turbo` and `host`.
+   */
+  client?: Ollama;
+  /**
+   * Ollama host URL used to create an SDK client when `client` and `turbo`
+   * are omitted.
+   */
+  host?: string;
+  /**
+   * Ollama Turbo credentials. Takes precedence over `host` when `client` is
+   * omitted.
+   */
   turbo?: { apiKey: string };
   request: Chat.Api.CompletionCreateParams;
   transformRequestOptions?: (
     options: ChatRequest & { stream: true },
   ) =>
-    | (ChatRequest & { stream: true })
-    | Promise<ChatRequest & { stream: true }>;
+    (ChatRequest & { stream: true }) | Promise<ChatRequest & { stream: true }>;
 };
 
 type ThreadPersistenceOptions = {
@@ -41,9 +54,8 @@ export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
 export async function* text(
   options: OpenAITextStreamOptions,
 ): AsyncIterable<Uint8Array> {
-  const { turbo, request, transformRequestOptions, loadThread, saveThread } =
-    options;
-  const { model, tools, responseFormat, system } = request;
+  const { request, transformRequestOptions, loadThread, saveThread } = options;
+  const { model, tools, responseFormat, responseFormatMode, system } = request;
   const threadId = request.threadId;
   let loadedThread: Chat.Api.Message[] = [];
   let effectiveThreadId = threadId;
@@ -121,17 +133,15 @@ export async function* text(
               content: message.content ?? '',
               tool_calls:
                 message.toolCalls && message.toolCalls.length > 0
-                  ? message.toolCalls.map(
-                      (toolCall): ToolCall => ({
-                        ...toolCall,
-                        function: {
-                          ...toolCall.function,
-                          arguments: toolCall.function.arguments as unknown as {
-                            [key: string]: any;
-                          },
-                        },
-                      }),
-                    )
+                  ? message.toolCalls.map((toolCall): ToolCall => ({
+                      ...toolCall,
+                      function: {
+                        ...toolCall.function,
+                        arguments: normalizeToolArguments(
+                          toolCall.function.arguments,
+                        ),
+                      },
+                    }))
                   : undefined,
             };
           }
@@ -157,7 +167,7 @@ export async function* text(
               },
             }))
           : undefined,
-      format: responseFormat ? responseFormat : undefined,
+      format: responseFormatMode === 'json' ? 'json' : responseFormat,
     };
 
     const resolvedOptions: ChatRequest & { stream: true } =
@@ -165,14 +175,7 @@ export async function* text(
         ? await transformRequestOptions(baseOptions)
         : baseOptions;
 
-    const client = turbo
-      ? new Ollama({
-          host: 'https://ollama.com',
-          headers: {
-            Authorization: `Bearer ${turbo.apiKey}`,
-          },
-        })
-      : OllamaClient;
+    const client = getClient(options);
 
     const stream = await client.chat(resolvedOptions);
 
@@ -192,7 +195,7 @@ export async function* text(
                 index,
                 function: {
                   ...toolCall.function,
-                  arguments: toolCall.function.arguments as any,
+                  arguments: toolCall.function.arguments as unknown as string,
                 },
               })),
             },
@@ -253,9 +256,58 @@ export async function* text(
   }
 }
 
+function getClient(options: OpenAITextStreamOptions): Ollama {
+  if (options.client) {
+    return options.client;
+  }
+
+  if (options.turbo) {
+    return new Ollama({
+      host: 'https://ollama.com',
+      headers: {
+        Authorization: `Bearer ${options.turbo.apiKey}`,
+      },
+    });
+  }
+
+  if (options.host) {
+    return new Ollama({
+      host: options.host,
+    });
+  }
+
+  return OllamaClient;
+}
+
 function normalizeError(error: unknown): { message: string; stack?: string } {
   if (error instanceof Error) {
     return { message: error.message, stack: error.stack };
   }
   return { message: String(error) };
+}
+
+function normalizeToolArguments(args: unknown): Record<string, unknown> {
+  if (args && typeof args === 'object') {
+    return args as Record<string, unknown>;
+  }
+
+  if (typeof args === 'string') {
+    try {
+      let parsed: unknown = JSON.parse(args);
+      if (typeof parsed === 'string') {
+        try {
+          parsed = JSON.parse(parsed);
+        } catch {
+          // Keep the original parsed string if it isn't valid JSON.
+        }
+      }
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Fall through to empty object when args are not valid JSON.
+    }
+  }
+
+  return {};
 }

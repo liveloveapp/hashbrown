@@ -2,27 +2,20 @@
 import {
   Chat,
   type ModelInput,
-  s,
   SystemPrompt,
   type TransportOrFactory,
-  ɵui,
 } from '@hashbrownai/core';
 import {
-  createElement,
   Dispatch,
   ReactElement,
-  ReactNode,
   SetStateAction,
   useCallback,
   useMemo,
   useState,
 } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
-import {
-  UiAssistantMessage,
-  UiChatSchema,
-  UiChatSchemaComponent,
-} from './use-ui-chat';
+import { UiAssistantMessage, UiChatSchema } from './use-ui-chat';
+import { type UiKitInput, useUiKit } from './use-ui-kit';
 import {
   useStructuredCompletion,
   type UseStructuredCompletionResult,
@@ -55,7 +48,11 @@ export interface UiCompletionOptions<
   /**
    * The components that can be rendered by the completion.
    */
-  components: ExposedComponent<any>[];
+  components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Optional prompt-based UI examples to include in the wrapper schema description.
+   */
+  examples?: SystemPrompt;
 
   /**
    * The tools to make available to the completion.
@@ -83,6 +80,11 @@ export interface UiCompletionOptions<
   transport?: TransportOrFactory;
 
   /**
+   * Controls how the provider is asked to produce structured output.
+   */
+  structuredOutput?: Chat.Api.StructuredOutputOptions;
+
+  /**
    * Optional thread identifier used to load or continue an existing conversation.
    */
   threadId?: string;
@@ -93,8 +95,10 @@ export interface UiCompletionOptions<
  *
  * @public
  */
-export interface UseUiCompletionResult<Tools extends Chat.AnyTool>
-  extends Omit<UseStructuredCompletionResult<UiChatSchema>, 'output'> {
+export interface UseUiCompletionResult<Tools extends Chat.AnyTool> extends Omit<
+  UseStructuredCompletionResult<UiChatSchema>,
+  'output'
+> {
   /**
    * The assistant message that contains the rendered UI elements.
    */
@@ -110,7 +114,7 @@ export interface UseUiCompletionResult<Tools extends Chat.AnyTool>
   /**
    * Updates the available components for future completions.
    */
-  setComponents: Dispatch<SetStateAction<ExposedComponent<any>[]>>;
+  setComponents: Dispatch<SetStateAction<UiKitInput<ExposedComponent<any>>[]>>;
 }
 
 /**
@@ -126,30 +130,22 @@ export const useUiCompletion = <
 ): UseUiCompletionResult<Tools> => {
   const {
     components: initialComponents,
+    examples,
     system,
     tools,
     ...completionOptions
   } = options;
   const [components, setComponents] = useState(initialComponents);
-  const [flattenedComponents] = useState(
-    ɵui.flattenComponents(initialComponents),
-  );
+  const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
 
-  const uiSchema = useMemo(() => {
-    return s.object('UI', {
-      ui: s.streaming.array(
-        'List of elements',
-        ɵui.createComponentSchema(components),
-      ),
-    });
-  }, [components]);
+  const uiSchema = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
 
   const systemAsString = useMemo(() => {
     if (typeof system === 'string') {
       return system;
     }
 
-    const compiled = system.compile(components, uiSchema);
+    const compiled = system.compile(uiKit.components, uiSchema);
 
     if (system.diagnostics.length > 0) {
       throw new Error(
@@ -158,7 +154,7 @@ export const useUiCompletion = <
     }
 
     return compiled;
-  }, [system, components, uiSchema]);
+  }, [system, uiSchema, uiKit.components]);
 
   const structured = useStructuredCompletion<Input, typeof uiSchema>({
     ...completionOptions,
@@ -169,40 +165,16 @@ export const useUiCompletion = <
   });
 
   const buildContent = useCallback(
-    (
-      nodes: string | Array<UiChatSchemaComponent>,
-      parentKey = '',
-    ): ReactElement[] | string => {
-      if (typeof nodes === 'string') {
-        return nodes;
+    (content: string | UiChatSchema): ReactElement[] | string => {
+      if (typeof content === 'string') {
+        return content;
       }
-
-      const elements = nodes.map((node, index) => {
-        const key = `${parentKey}_${index}`;
-        const { $tag, $props, $children } = node;
-        const componentType = flattenedComponents.get($tag)?.component;
-
-        if ($tag && componentType) {
-          const children: ReactNode[] | string | null = node.$children
-            ? buildContent($children, key)
-            : null;
-
-          return createElement(componentType, {
-            ...$props,
-            children,
-            key,
-          });
-        }
-
-        throw new Error(`Unknown element type. ${$tag}`);
-      });
-
-      return elements;
+      return uiKit.render(content);
     },
-    [flattenedComponents],
+    [uiKit],
   );
 
-  const rawOutput = structured.output;
+  const rawOutput = structured.output as UiChatSchema | null;
 
   const message = useMemo(() => {
     if (!rawOutput) {
@@ -213,7 +185,7 @@ export const useUiCompletion = <
       role: 'assistant' as const,
       content: rawOutput,
       toolCalls: [],
-      ui: rawOutput.ui ? buildContent(rawOutput.ui) : null,
+      ui: rawOutput ? buildContent(rawOutput) : null,
     } as UiAssistantMessage<Tools>;
   }, [rawOutput, buildContent]);
 
