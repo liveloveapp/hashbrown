@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { Squircle } from './Squircle';
 import { RouterLink } from '@angular/router';
+import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-announcement',
@@ -8,9 +9,9 @@ import { RouterLink } from '@angular/router';
   template: `
     @if (showAnnouncement) {
       <div class="alert" wwwSquircle="0 0 8 8">
-        <a routerLink="/blog/2025-12-16-hashbrown-v-0-4-0">
-          <strong>New!</strong> Hashbrown v0.4 brings Magic Text, local models,
-          and new adapters
+        <a [routerLink]="uiKitsDocsUrl()">
+          <strong>New!</strong> Hashbrown v0.5 brings UI Kits, a streaming JSON
+          parser, and structured outputs
         </a>
         <button
           class="close"
@@ -135,7 +136,11 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class Announcement {
-  currentAnnouncementDate = new Date('2025-12-15');
+  private configService = inject(ConfigService);
+  uiKitsDocsUrl = computed(
+    () => `/docs/${this.configService.sdk()}/recipes/ui-kits`,
+  );
+  currentAnnouncementDate = new Date('2026-07-09');
   showAnnouncement = false;
 
   constructor() {
