@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
@@ -91,3 +91,13 @@ jobs:
               }
               throw error;
             }
+
+  deploy-cloudflare-production:
+    name: Deploy Cloudflare production
+    if: github.ref_name == 'npm/latest'
+    needs: publish
+    uses: ./.github/workflows/cloudflare-production.yml
+    with:
+      deploy_samples: true
+      deploy_www: true
+    secrets: inherit
