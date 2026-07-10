@@ -1,6 +1,30 @@
 name: Deploy Cloudflare Production
 
 on:
+  workflow_call:
+    inputs:
+      deploy_samples:
+        description: 'Deploy the sample Cloudflare Pages projects'
+        required: false
+        type: boolean
+        default: true
+      deploy_www:
+        description: 'Deploy the docs website Cloudflare Pages project'
+        required: false
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      deploy_samples:
+        description: 'Deploy the sample Cloudflare Pages projects'
+        required: false
+        type: boolean
+        default: true
+      deploy_www:
+        description: 'Deploy the docs website Cloudflare Pages project'
+        required: false
+        type: boolean
+        default: true
   push:
     branches:
       - cloudflare-production
@@ -30,27 +54,50 @@ jobs:
         run: npm ci
 
       - name: Build apps for Pages
-        run: npx nx run-many -t build --configuration=production -p finance-angular fast-food-angular fast-food-cloudflare smart-home-angular www
+        env:
+          DEPLOY_SAMPLES: ${{ toJSON(inputs.deploy_samples) == 'null' || inputs.deploy_samples }}
+          DEPLOY_WWW: ${{ toJSON(inputs.deploy_www) == 'null' || inputs.deploy_www }}
+        run: |
+          projects=()
+
+          if [[ "$DEPLOY_SAMPLES" == "true" ]]; then
+            projects+=(finance-angular fast-food-angular fast-food-cloudflare smart-home-angular)
+          fi
+
+          if [[ "$DEPLOY_WWW" == "true" ]]; then
+            projects+=(www)
+          fi
+
+          if [[ "${#projects[@]}" -eq 0 ]]; then
+            echo "At least one of deploy_samples or deploy_www must be true."
+            exit 1
+          fi
+
+          npx nx run-many -t build --configuration=production -p "${projects[@]}"
 
       - name: Deploy Finance (production)
+        if: ${{ toJSON(inputs.deploy_samples) == 'null' || inputs.deploy_samples }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler pages deploy dist/samples/finance/angular/browser --project-name="hashbrown-finance"
 
       - name: Deploy Smart Home (production)
+        if: ${{ toJSON(inputs.deploy_samples) == 'null' || inputs.deploy_samples }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler pages deploy dist/samples/smart-home/angular/browser --project-name="hashbrown-smart-home"
 
       - name: Deploy Fast Food (production)
+        if: ${{ toJSON(inputs.deploy_samples) == 'null' || inputs.deploy_samples }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler pages deploy dist/samples/fast-food/angular/browser --project-name="hashbrown-fast-food"
 
       - name: Deploy Docs (production)
+        if: ${{ toJSON(inputs.deploy_www) == 'null' || inputs.deploy_www }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
