@@ -29,7 +29,7 @@ The npm publishing workflow will continue to configure the npm registry and cach
 
 ## Verification
 
-Run `npm ci` with Node 24.18.0 and retain lockfile changes only if npm produces a necessary deterministic update. Validate all modified workflows with `actionlint` and Prettier. Run the repository's PR CI command set under Node 24, including affected lint, test, and build targets. Run `git diff --check` before integration.
+Run `npm ci` with Node 24.18.0 and retain lockfile changes only if npm produces a necessary deterministic update. Validate all modified workflows with the locally available `actionlint` binary and Prettier. Because `.nvmrc` is not an Nx affected input, run `npx nx run-many -t lint,test,build,e2e --all --parallel=3` under Node 24 instead of relying on affected-project detection. Run `git diff --check` before integration.
 
 ## Rollback
 
