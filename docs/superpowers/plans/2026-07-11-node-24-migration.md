@@ -136,6 +136,7 @@ If it did not change, do not create a commit.
 **Files:**
 - Verify: `.nvmrc`
 - Verify: `.github/workflows/*.yml`
+- Review: complete committed patch
 
 - [ ] **Step 1: Re-run static validation**
 
@@ -143,9 +144,10 @@ Run:
 
 ```bash
 actionlint .github/workflows/*.yml
-test "$(cat .nvmrc)" = "v24.18.0"
+cmp -s .nvmrc <(printf 'v24.18.0\n')
 npx prettier --check .github/workflows/npm-publish.yml .github/workflows/pr-main.yml .github/workflows/nightly.yml
-git diff --check
+git diff --check origin/main...HEAD
+if rg -n "v22\\.14\\.0|node-version: 22\\.x|setup-node@v3" .nvmrc .github/workflows; then exit 1; fi
 ```
 
 Expected: all commands exit 0.
@@ -158,6 +160,7 @@ Run:
 git status --short
 git log --oneline origin/main..HEAD
 git diff --stat origin/main...HEAD
+git diff origin/main...HEAD
 ```
 
-Expected: no uncommitted files; commits contain only the approved design, plan, Node migration, and any required lockfile refresh.
+Expected: no uncommitted files; the history and complete committed patch contain only the approved design, plan, Node migration, and any required compatibility fix.
