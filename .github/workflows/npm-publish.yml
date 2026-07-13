@@ -46,15 +46,12 @@ jobs:
           case "${GITHUB_REF_NAME}" in
             npm/preview)
               echo "dist_tag=next" >> "$GITHUB_OUTPUT"
-              echo "create_release=false" >> "$GITHUB_OUTPUT"
               ;;
             npm/latest)
               echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
-              echo "create_release=true" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
-              echo "create_release=false" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -68,34 +65,10 @@ jobs:
         run: npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer --parallel=3
 
       - name: Publish packages
-        run: npx nx release publish --tag=${{ steps.channel.outputs.dist_tag }}
+        run: npx nx release publish --tag=${{ steps.channel.outputs.dist_tag }} --access=public --parallel=1
 
-      - name: Create GitHub release
-        if: steps.channel.outputs.create_release == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const tagName = context.ref.replace('refs/tags/', '');
-            const releaseName = `Hashbrown npm latest (${tagName})`;
-
-            try {
-              await github.rest.repos.createRelease({
-                owner,
-                repo,
-                tag_name: tagName,
-                name: releaseName,
-                body: 'Automated npm publish triggered by tag push.',
-                draft: false,
-                prerelease: false,
-              });
-            } catch (error) {
-              if (error.status === 422) {
-                core.warning('Release already exists for this tag; skipping creation.');
-                return;
-              }
-              throw error;
-            }
+      - name: Verify npm release
+        run: node scripts/verify-npm-release.mjs --tag=${{ steps.channel.outputs.dist_tag }}
 
   deploy-cloudflare-production:
     name: Deploy Cloudflare production

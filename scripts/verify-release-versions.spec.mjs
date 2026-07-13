@@ -68,6 +68,9 @@ async function createWorkspace({
         type: 'git',
         url: EXPECTED_REPOSITORY_URL,
       },
+      publishConfig: packageInfo.publishConfig ?? {
+        access: 'public',
+      },
       dependencies: packageInfo.dependencies,
       peerDependencies: packageInfo.peerDependencies,
     });
@@ -171,7 +174,10 @@ test('ignores private Hashbrown packages outside the release set', async () => {
 
   const result = await verifyReleaseVersions({ workspaceRoot });
 
-  assert.deepEqual(result.packages, ['@hashbrownai/core', '@hashbrownai/react']);
+  assert.deepEqual(result.packages, [
+    '@hashbrownai/core',
+    '@hashbrownai/react',
+  ]);
 });
 
 test('rejects release packages that publish from a non-dist package root', async () => {
@@ -248,5 +254,30 @@ test('rejects release packages whose repository URL does not match the trusted p
   await assert.rejects(
     verifyReleaseVersions({ workspaceRoot }),
     /@hashbrownai\/core repository URL must be https:\/\/github\.com\/liveloveapp\/hashbrown\.git/,
+  );
+});
+
+test('rejects release packages that are not configured for public npm publishing', async () => {
+  const workspaceRoot = await createWorkspace({
+    packages: {
+      'packages/core': {
+        name: '@hashbrownai/core',
+        version: '0.5.0',
+        publishRoot: 'dist/packages/core',
+        publishConfig: {
+          access: 'restricted',
+        },
+      },
+      'packages/react': {
+        name: '@hashbrownai/react',
+        version: '0.5.0',
+        publishRoot: 'dist/packages/react',
+      },
+    },
+  });
+
+  await assert.rejects(
+    verifyReleaseVersions({ workspaceRoot }),
+    /@hashbrownai\/core must set publishConfig\.access to "public"/,
   );
 });

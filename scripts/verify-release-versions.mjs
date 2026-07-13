@@ -102,13 +102,17 @@ export async function verifyReleaseVersions({
   const releaseProjects = nxJson.release?.projects;
 
   if (!Array.isArray(releaseProjects) || releaseProjects.length === 0) {
-    throw new Error('nx.json release.projects must list release package roots.');
+    throw new Error(
+      'nx.json release.projects must list release package roots.',
+    );
   }
 
   const projects = await findProjects(workspaceRoot);
   const releaseProjectRoots = new Set(releaseProjects);
   const releaseProjectNames = new Set(
-    releaseProjects.map((projectRoot) => projectRoot.replace(/^packages\//, '')),
+    releaseProjects.map((projectRoot) =>
+      projectRoot.replace(/^packages\//, ''),
+    ),
   );
   const omittedPublicPackages = [];
 
@@ -156,7 +160,9 @@ export async function verifyReleaseVersions({
     const projectName = projectRoot.replace(/^packages\//, '');
     const project = projects.get(projectName);
     if (!project) {
-      throw new Error(`Release project "${projectName}" does not have a project.json.`);
+      throw new Error(
+        `Release project "${projectName}" does not have a project.json.`,
+      );
     }
 
     const packageInfo = await getPackageForProject(project);
@@ -195,6 +201,7 @@ export async function verifyReleaseVersions({
       packageJsonPath: packageInfo.packageJsonPath,
       packageName: packageInfo.packageName,
       projectName: packageInfo.projectName,
+      publishConfigAccess: packageInfo.packageJson.publishConfig?.access,
       repositoryUrl: getRepositoryUrl(packageInfo.packageJson),
       version: packageInfo.version,
       internalDependencies: getInternalDependencies(packageInfo),
@@ -227,11 +234,20 @@ export async function verifyReleaseVersions({
       );
     }
 
-    for (const [dependencyName, dependencyVersion] of pkg.internalDependencies) {
-      if (
-        packageNames.has(dependencyName) &&
-        dependencyVersion !== version
-      ) {
+    if (pkg.publishConfigAccess !== 'public') {
+      throw new Error(
+        `${pkg.packageName} must set publishConfig.access to "public" in ${relative(
+          workspaceRoot,
+          pkg.packageJsonPath,
+        )}.`,
+      );
+    }
+
+    for (const [
+      dependencyName,
+      dependencyVersion,
+    ] of pkg.internalDependencies) {
+      if (packageNames.has(dependencyName) && dependencyVersion !== version) {
         throw new Error(
           `${pkg.packageName} depends on ${dependencyName} at ${dependencyVersion}, expected ${version}.`,
         );
@@ -241,7 +257,9 @@ export async function verifyReleaseVersions({
 
   const tag = normalizeTag(expectedTag);
   if (tag && tag !== `v${version}`) {
-    throw new Error(`Release tag ${tag} does not match package version ${version}.`);
+    throw new Error(
+      `Release tag ${tag} does not match package version ${version}.`,
+    );
   }
 
   return {
@@ -268,7 +286,9 @@ function parseArgs(argv) {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const result = await verifyReleaseVersions(parseArgs(process.argv.slice(2)));
+    const result = await verifyReleaseVersions(
+      parseArgs(process.argv.slice(2)),
+    );
     console.log(
       `Hashbrown release is atomic at ${result.version}: ${result.packages.join(', ')}`,
     );
