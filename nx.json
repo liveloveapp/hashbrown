@@ -71,7 +71,7 @@
       "packages/writer"
     ],
     "version": {
-      "preVersionCommand": "npx nx run-many -t build"
+      "preVersionCommand": "npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer"
     }
   },
   "generators": {
