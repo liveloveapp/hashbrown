@@ -80,7 +80,6 @@
     "zone.js": "~0.15.1"
   },
   "devDependencies": {
-    "-": "^0.0.1",
     "@analogjs/platform": "^2.6.2",
     "@analogjs/vite-plugin-angular": "^2.6.2",
     "@analogjs/vitest-angular": "^2.6.2",

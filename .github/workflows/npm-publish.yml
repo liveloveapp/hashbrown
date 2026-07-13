@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
   group: npm-publish
@@ -24,14 +25,14 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version-file: '.nvmrc'
           registry-url: https://registry.npmjs.org
           cache: npm
 
-      - name: Configure npm auth token
-        run: npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
+      - name: Install npm 11 for trusted publishing
+        run: npm install -g npm@11
 
       - name: Determine affected base
         uses: nrwl/nx-set-shas@v3
@@ -45,49 +46,36 @@ jobs:
           case "${GITHUB_REF_NAME}" in
             npm/preview)
               echo "dist_tag=next" >> "$GITHUB_OUTPUT"
-              echo "create_release=false" >> "$GITHUB_OUTPUT"
               ;;
             npm/latest)
               echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
-              echo "create_release=true" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
-              echo "create_release=false" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
       - name: Lint and test affected projects
         run: npx nx affected -t lint,test --parallel=3
 
+      - name: Verify atomic release versions
+        run: node scripts/verify-release-versions.mjs
+
+      - name: Build release packages
+        run: npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer --parallel=3
+
       - name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx nx release publish --tag=${{ steps.channel.outputs.dist_tag }}
+        run: npx nx release publish --tag=${{ steps.channel.outputs.dist_tag }} --access=public --parallel=1
 
-      - name: Create GitHub release
-        if: steps.channel.outputs.create_release == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const tagName = context.ref.replace('refs/tags/', '');
-            const releaseName = `Hashbrown npm latest (${tagName})`;
+      - name: Verify npm release
+        run: node scripts/verify-npm-release.mjs --tag=${{ steps.channel.outputs.dist_tag }}
 
-            try {
-              await github.rest.repos.createRelease({
-                owner,
-                repo,
-                tag_name: tagName,
-                name: releaseName,
-                body: 'Automated npm publish triggered by tag push.',
-                draft: false,
-                prerelease: false,
-              });
-            } catch (error) {
-              if (error.status === 422) {
-                core.warning('Release already exists for this tag; skipping creation.');
-                return;
-              }
-              throw error;
-            }
+  deploy-cloudflare-production:
+    name: Deploy Cloudflare production
+    if: github.ref_name == 'npm/latest'
+    needs: publish
+    uses: ./.github/workflows/cloudflare-production.yml
+    with:
+      deploy_samples: true
+      deploy_www: true
+    secrets: inherit

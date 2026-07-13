@@ -10,7 +10,6 @@ type FeatureListItem = {
   videoUrl?: SafeResourceUrl;
   docsPath?: string[];
   preview?: true;
-  isNew?: true;
   imageUrl: string;
 };
 
@@ -48,7 +47,6 @@ type FeatureListItem = {
             [videoUrl]="feature.videoUrl"
             [docsPath]="feature.docsPath"
             [preview]="feature.preview ?? false"
-            [isNew]="feature.isNew ?? false"
             (watchDemo)="onWatchDemo($event)"
           />
         }
@@ -199,12 +197,19 @@ export class Features {
     {
       title: 'Generative User Interfaces',
       description:
-        "Expose your React or Angular components and let Hashbrown use an LLM to serve dynamic views. You stay in control of the ingredients, deciding exactly what can and can't be generated.",
+        'Expose a set of trusted React or Angular components and let Hashbrown use an LLM to compose dynamic views. You stay in control of the ingredients, deciding exactly which components can and cannot be generated.',
       docsPath: ['concept', 'components'],
       imageUrl: '/image/landing-page/features/generative-user-interfaces.svg',
       videoUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
         'https://www.loom.com/embed/00f9bc82287b400f9ac37714262e4955?sid=78eb2d30-e541-412a-981a-428860ce4665',
       ),
+    },
+    {
+      title: 'UI Kits',
+      description:
+        'Package your trusted components into reusable generative UI building blocks. A UI Kit bundles the schema Hashbrown needs to generate UI with the renderer it needs to turn a resolved value into React or Angular elements, so you can share it across chat, completions, and direct rendering.',
+      docsPath: ['recipes', 'ui-kits'],
+      imageUrl: '/image/landing-page/features/generative-user-interfaces.svg',
     },
     {
       title: 'Client-side Tool Calling',
@@ -216,7 +221,7 @@ export class Features {
     {
       title: 'Structured Data',
       description:
-        'Hashbrown comes with Skillet, a schema language that makes it simple to get structured data from LLMs. It is fully type safe and works for component props, structured outputs, and tool definitions, always served just right.',
+        'Hashbrown comes with Skillet, a schema language that makes it simple to get structured data from LLMs. Its streaming JSON parser turns partial model output into type-safe structured outputs, component props, and tool arguments, always served just right.',
       docsPath: ['concept', 'schema'],
       imageUrl: '/image/landing-page/features/structured-data.svg',
       videoUrl: this.sanitizer.bypassSecurityTrustResourceUrl(
@@ -260,7 +265,6 @@ export class Features {
         "Keep network calls small and lightweight while managing token consumption using Hashbrown's built-in threads support. Cache and recall LLM messages with minimal loading code.",
       docsPath: ['recipes', 'threads'],
       imageUrl: '/image/landing-page/features/threads.svg',
-      isNew: true,
     },
     {
       title: 'Markdown Streaming',
@@ -268,7 +272,6 @@ export class Features {
         "Stream and animate inline markdown with Magic Text, Hashbrown's headless markdown parser. Let LLMs cite their sources with full citation support.",
       docsPath: ['recipes', 'magic-text'],
       imageUrl: '/image/landing-page/features/magic-text.svg',
-      isNew: true,
     },
     {
       title: 'Local Models',
@@ -276,7 +279,6 @@ export class Features {
         'Hashbrown can connect with experimental local small language models in Chrome and Edge to generate completions and power lightweight chat experiences, with no roundtrip to the server.',
       docsPath: ['recipes', 'local-models'],
       imageUrl: '/image/landing-page/features/local-models.svg',
-      isNew: true,
     },
     {
       title: 'Listen To & Generate Speech',

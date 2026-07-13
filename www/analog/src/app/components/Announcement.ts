@@ -8,9 +8,9 @@ import { RouterLink } from '@angular/router';
   template: `
     @if (showAnnouncement) {
       <div class="alert" wwwSquircle="0 0 8 8">
-        <a routerLink="/blog/2025-12-16-hashbrown-v-0-4-0">
-          <strong>New!</strong> Hashbrown v0.4 brings Magic Text, local models,
-          and new adapters
+        <a routerLink="/blog/2026-07-09-hashbrown-v-0-5-0">
+          <strong>New!</strong> Hashbrown v0.5 brings UI Kits, a streaming JSON
+          parser, and structured outputs
         </a>
         <button
           class="close"
@@ -135,7 +135,7 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class Announcement {
-  currentAnnouncementDate = new Date('2025-12-15');
+  currentAnnouncementDate = new Date('2026-07-09T18:00:00Z');
   showAnnouncement = false;
 
   constructor() {

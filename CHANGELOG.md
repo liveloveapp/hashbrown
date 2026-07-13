@@ -1,3 +1,26 @@
+## 0.5.0 (2026-07-09)
+
+### 🚀 Features
+
+- add Ollama client options ([#476](https://github.com/liveloveapp/hashbrown/pull/476), [#471](https://github.com/liveloveapp/hashbrown/issues/471))
+- support documented message history ([#477](https://github.com/liveloveapp/hashbrown/pull/477), [#329](https://github.com/liveloveapp/hashbrown/issues/329))
+- add structured output modes ([#479](https://github.com/liveloveapp/hashbrown/pull/479), [#467](https://github.com/liveloveapp/hashbrown/issues/467))
+- support reactive Angular resource options ([0ba61ca](https://github.com/liveloveapp/hashbrown/commit/0ba61ca))
+- **google:** add Vertex AI authentication support ([#470](https://github.com/liveloveapp/hashbrown/pull/470), [#469](https://github.com/liveloveapp/hashbrown/issues/469))
+- **vox:** Adds @hashbrownai/vox, an AudioWorklet WASM WebRTC-based VAD for Voice Integration ([#412](https://github.com/liveloveapp/hashbrown/pull/412), [#381](https://github.com/liveloveapp/hashbrown/issues/381))
+
+### 🩹 Fixes
+
+- ship react as dual package ([590f655](https://github.com/liveloveapp/hashbrown/commit/590f655))
+- **core:** recover structured output with trailing JSON ([802a25e](https://github.com/liveloveapp/hashbrown/commit/802a25e))
+- **sample:** wrap smart home react chat errors ([#487](https://github.com/liveloveapp/hashbrown/pull/487), [#204](https://github.com/liveloveapp/hashbrown/issues/204))
+
+### ❤️ Thank You
+
+- Brian Love @blove
+- Michał Kotas @michalkotas
+- U.G. Wilson
+
 ## 0.5.0-beta.4 (2026-02-12)
 
 ### 🚀 Features
