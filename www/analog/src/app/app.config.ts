@@ -3,7 +3,6 @@ import {
   provideContent,
   withMarkdownRenderer,
 } from '@analogjs/content';
-import { withShikiHighlighter } from '@analogjs/content/shiki-highlighter';
 import {
   provideFileRouter,
   requestContextInterceptor,
@@ -79,10 +78,10 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([requestContextInterceptor]),
     ),
     provideAnimations(),
-    provideContent(withMarkdownRenderer(), withShikiHighlighter()),
+    provideContent(withMarkdownRenderer()),
     provideAppInitializer(() => {
       const highlighterService = inject(HighlighterService);
-      return highlighterService.loadHighlighter();
+      highlighterService.loadHighlighter();
     }),
     provideMarkdown(),
     provideHashbrown({
