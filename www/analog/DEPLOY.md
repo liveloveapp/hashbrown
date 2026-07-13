@@ -10,11 +10,11 @@ Cloudflare Pages now hosts the `www` site. The Pages configuration is stored in 
 - Set `OPENAI_API_KEY` in the Pages project environment variables. The `/_/chat` Nitro route reads it from the Pages environment.
 
 ## Deploy from the Dashboard
-1) Create/point a Pages project at this repository.  
-2) Build command: `npx nx run www:build:production`  
-3) Output directory: `dist/www/analog/analog/public`  
-4) Add `OPENAI_API_KEY` (and any future provider keys) under *Settings → Environment Variables*.  
-5) Deploy – Pages will bundle the `_worker.js` automatically using `wrangler.toml`.
+1. Create/point a Pages project at this repository.
+2. Build command: `npx nx run www:build:production`
+3. Output directory: `dist/www/analog/analog/public`
+4. Add `OPENAI_API_KEY` (and any future provider keys) under *Settings → Environment Variables*.
+5. Deploy – Pages will bundle the `_worker.js` automatically using `wrangler.toml`.
 
 ## Deploy from the CLI
 - Ensure `wrangler` is authenticated (`npx wrangler login` or `npx wrangler login --scopes=d1:write` if needed).

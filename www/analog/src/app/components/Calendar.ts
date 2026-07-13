@@ -10,7 +10,7 @@ import {
  *
  * • shows the **current month** (uses the user’s local time‑zone)
  * • draws a light‑gray grid (no outer border, no weekday header)
- * • highlights any dates passed through `highlightDates`
+ * • highlights any dates passed through `highlightDates`
  *
  * Usage:
  * <div style="width:300px;height:300px">

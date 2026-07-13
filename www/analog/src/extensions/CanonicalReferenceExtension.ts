@@ -27,7 +27,7 @@ function assertIsCanonicalReferenceToken(
   }
 }
 
-const CANONICAL_REFERENCE_REGEX = /@?[\w\/-]+![\w]+:[\w]+/;
+const CANONICAL_REFERENCE_REGEX = /@?[\w/-]+![\w]+:[\w]+/;
 
 export const CanonicalReferenceExtension: TokenizerExtension &
   RendererExtension = {

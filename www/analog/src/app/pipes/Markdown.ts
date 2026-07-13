@@ -12,7 +12,7 @@ export const CanonicalReferenceExtension = {
   name: 'canonicalReference',
   level: 'inline',
   tokenizer(src: string): any {
-    const rule = /@?[\w\/]+![\w]+:[\w]+/;
+    const rule = /@?[\w/]+![\w]+:[\w]+/;
     const match = rule.exec(src);
     if (match) {
       const parsed = new ParsedCanonicalReference(
