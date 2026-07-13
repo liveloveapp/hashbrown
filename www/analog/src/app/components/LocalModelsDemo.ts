@@ -9,7 +9,7 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { structuredCompletionResource } from '@hashbrownai/angular';
-import { s, experimental_local } from '@hashbrownai/core';
+import { experimental_local, s } from '@hashbrownai/core';
 
 const LocalSummarySchema = s.object('Support reply draft', {
   tone: s.streaming.string('Overall sentiment tone'),
@@ -276,7 +276,6 @@ export class LocalModelsDemo {
     effect(() => {
       const err = this.summary.error();
       if (err) {
-        // eslint-disable-next-line no-console
         console.error('Local models demo error', err);
       }
     });

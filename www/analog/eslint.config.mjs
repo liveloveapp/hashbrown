@@ -2,6 +2,9 @@ import baseConfig from '../../eslint.config.mjs';
 import angularPlugin from '@angular-eslint/eslint-plugin';
 
 export default [
+  {
+    ignores: ['**/*.html'],
+  },
   ...baseConfig,
   {
     files: ['**/*.json'],
@@ -30,14 +33,5 @@ export default [
         },
       ],
     },
-  },
-  {
-    files: ['*.html'],
-    extends: ['plugin:@nx/angular-template'],
-    rules: {},
-  },
-  {
-    files: ['*.md'],
-    extends: ['plugin:markdown/recommended'],
   },
 ];

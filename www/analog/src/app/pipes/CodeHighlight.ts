@@ -10,7 +10,7 @@ export class CodeHighlight implements PipeTransform {
   domSanitizer = inject(DomSanitizer);
   highlighterService = inject(HighlighterService);
 
-  transform(code: string, lang: string = 'typescript') {
+  transform(code: string, lang = 'typescript') {
     return this.domSanitizer.bypassSecurityTrustHtml(
       this.highlighterService.getHighlighter().codeToHtml(code, {
         lang,

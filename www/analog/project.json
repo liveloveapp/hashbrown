@@ -57,6 +57,10 @@
         "passWithNoTests": true
       }
     },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
     "collect-docs": {
       "executor": "nx:run-script",
       "options": {
@@ -120,7 +124,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build:production"],
       "options": {
-        "command": "npx wrangler pages deploy dist/www/analog/analog/public"
+        "command": "npx wrangler pages deploy dist/www/analog/analog/public --commit-dirty=true"
       }
     }
   }
