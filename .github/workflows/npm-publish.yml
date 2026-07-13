@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
   group: npm-publish
@@ -30,8 +31,8 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
-      - name: Configure npm auth token
-        run: npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
+      - name: Install npm 11 for trusted publishing
+        run: npm install -g npm@11
 
       - name: Determine affected base
         uses: nrwl/nx-set-shas@v3
@@ -60,9 +61,13 @@ jobs:
       - name: Lint and test affected projects
         run: npx nx affected -t lint,test --parallel=3
 
+      - name: Verify atomic release versions
+        run: node scripts/verify-release-versions.mjs
+
+      - name: Build release packages
+        run: npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer --parallel=3
+
       - name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx nx release publish --tag=${{ steps.channel.outputs.dist_tag }}
 
       - name: Create GitHub release

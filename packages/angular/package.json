@@ -1,16 +1,16 @@
 {
   "name": "@hashbrownai/angular",
-  "version": "0.5.0-beta.4",
+  "version": "0.5.0",
   "description": "Angular bindings for Hashbrown AI",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hashbrownai/hashbrown.git",
+    "url": "https://github.com/liveloveapp/hashbrown.git",
     "directory": "packages/angular"
   },
   "peerDependencies": {
     "@angular/core": "^20.0.0 || ^21.0.0",
-    "@hashbrownai/core": "0.5.0-beta.4",
+    "@hashbrownai/core": "0.5.0",
     "@angular/common": "^20.0.0 || ^21.0.0"
   },
   "sideEffects": false,
