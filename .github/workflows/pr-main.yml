@@ -34,3 +34,27 @@ jobs:
 
       - name: Lint, test, build, and e2e affected projects
         run: npx nx affected -t lint,test,build,e2e --parallel=3
+
+  angular-22-consumer:
+    name: Packed Angular 22 consumer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packed dependencies
+        run: npx nx run-many -t build --projects=core,angular
+
+      - name: Verify clean Angular 22 consumer
+        run: node scripts/verify-angular-22-consumer.mjs
