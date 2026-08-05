@@ -23,7 +23,6 @@ const PRODUCTION_STATUS_LABELS = Object.freeze({
 });
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const DEFAULT_GITHUB_REQUEST_TIMEOUT_MS = 15_000;
-const DEFAULT_MAX_COMMENT_PAGES = 10;
 const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
 const GITHUB_REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const RUNTIME_ENVIRONMENT_KEYS = Object.freeze([
@@ -42,7 +41,24 @@ const RUNTIME_ENVIRONMENT_KEYS = Object.freeze([
   'TERM',
   'NO_COLOR',
   'FORCE_COLOR',
+  'NODE_OPTIONS',
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'NO_PROXY',
+  'http_proxy',
+  'https_proxy',
+  'no_proxy',
+  'NODE_EXTRA_CA_CERTS',
+  'SSL_CERT_FILE',
+  'SSL_CERT_DIR',
 ]);
+const CONFIG_ENVIRONMENT_PREFIXES = Object.freeze([
+  'NX_',
+  'NPM_CONFIG_',
+  'npm_config_',
+]);
+const SENSITIVE_CONFIG_KEY_PATTERN =
+  /(?:^|_)(?:AUTH|CREDENTIALS?|KEYS?|PASSWORD|SECRETS?|TOKENS?)(?:_|$)/i;
 
 function validateCommitSha(name, sha) {
   if (typeof sha !== 'string' || !COMMIT_SHA_PATTERN.test(sha)) {
@@ -153,11 +169,52 @@ function validateGitHubRepository(repository) {
 function selectRuntimeEnvironment(env) {
   return Object.freeze(
     Object.fromEntries(
-      RUNTIME_ENVIRONMENT_KEYS.flatMap((key) =>
-        typeof env[key] === 'string' ? [[key, env[key]]] : [],
-      ),
+      Object.entries(env).filter(([key, value]) => {
+        if (typeof value !== 'string') {
+          return false;
+        }
+
+        if (RUNTIME_ENVIRONMENT_KEYS.includes(key) || key.startsWith('VITE_')) {
+          return true;
+        }
+
+        return (
+          CONFIG_ENVIRONMENT_PREFIXES.some((prefix) =>
+            key.startsWith(prefix),
+          ) && !SENSITIVE_CONFIG_KEY_PATTERN.test(key)
+        );
+      }),
     ),
   );
+}
+
+/** Formats nested deployment failures for readable command-line diagnostics. */
+export function formatCliError(error) {
+  const lines = [];
+  const seen = new Set();
+  const visit = (value, depth) => {
+    const prefix = depth === 0 ? '' : `${'  '.repeat(depth)}- `;
+
+    if (value instanceof AggregateError && seen.has(value)) {
+      lines.push(`${prefix}[Circular aggregate error]`);
+      return;
+    }
+
+    const message = value instanceof Error ? value.message : String(value);
+    lines.push(`${prefix}${message}`);
+
+    if (value instanceof AggregateError) {
+      seen.add(value);
+
+      for (const nestedError of value.errors) {
+        visit(nestedError, depth + 1);
+      }
+    }
+  };
+
+  visit(error, 0);
+
+  return lines.join('\n');
 }
 
 /** Builds, deploys, and reports affected pull request previews. */
@@ -442,8 +499,8 @@ export function wranglerDeployArgs(target, { branch, sha }) {
   validateNonEmptyString('Commit SHA', sha);
 
   return Object.freeze([
-    '--yes',
-    'wrangler@4.114.0',
+    '--no-install',
+    'wrangler',
     'pages',
     'deploy',
     target.outputDirectory,
@@ -455,9 +512,25 @@ export function wranglerDeployArgs(target, { branch, sha }) {
 }
 
 /** Creates a spawn-based subprocess runner with normalized result objects. */
-export function createSubprocessRunner(spawnImpl = spawn) {
+export function createSubprocessRunner(
+  spawnImpl = spawn,
+  {
+    killTimeoutMs = 5_000,
+    setTimeoutImpl = setTimeout,
+    clearTimeoutImpl = clearTimeout,
+  } = {},
+) {
   if (typeof spawnImpl !== 'function') {
     throw new TypeError('spawnImpl must be a function.');
+  }
+
+  validatePositiveInteger('Subprocess kill timeout', killTimeoutMs);
+
+  if (
+    typeof setTimeoutImpl !== 'function' ||
+    typeof clearTimeoutImpl !== 'function'
+  ) {
+    throw new TypeError('Subprocess timer adapters must be functions.');
   }
 
   return async function runSubprocess(command, args, options = {}) {
@@ -484,29 +557,72 @@ export function createSubprocessRunner(spawnImpl = spawn) {
       let stdout = '';
       let stderr = '';
       let settled = false;
+      let streamFailure;
+      let killTimer;
       const settle = (result) => {
         if (!settled) {
           settled = true;
+
+          if (killTimer !== undefined) {
+            clearTimeoutImpl(killTimer);
+          }
+
           resolveResult(result);
         }
+      };
+      const terminateAfterStreamFailure = (streamName, error) => {
+        if (streamFailure !== undefined) {
+          return;
+        }
+
+        streamFailure = `${streamName} stream failed: ${error.message}`;
+
+        try {
+          child.kill('SIGTERM');
+        } catch (killError) {
+          streamFailure += `; SIGTERM failed: ${killError.message}`;
+        }
+
+        if (settled) {
+          return;
+        }
+
+        killTimer = setTimeoutImpl(() => {
+          try {
+            child.kill('SIGKILL');
+          } catch (killError) {
+            streamFailure += `; SIGKILL failed: ${killError.message}`;
+          }
+        }, killTimeoutMs);
+        killTimer?.unref?.();
       };
 
       child.stdout?.on('data', (chunk) => {
         stdout += chunk.toString();
       });
       child.stdout?.on('error', (error) => {
-        settle(processFailure(command, args, error.message));
+        terminateAfterStreamFailure('stdout', error);
       });
       child.stderr?.on('data', (chunk) => {
         stderr += chunk.toString();
       });
       child.stderr?.on('error', (error) => {
-        settle(processFailure(command, args, error.message));
+        terminateAfterStreamFailure('stderr', error);
       });
       child.on('error', (error) => {
+        if (streamFailure !== undefined) {
+          streamFailure += `; process error: ${error.message}`;
+          return;
+        }
+
         settle(processFailure(command, args, error.message));
       });
       child.on('close', (code) => {
+        if (streamFailure !== undefined) {
+          settle(processFailure(command, args, streamFailure));
+          return;
+        }
+
         if (code === 0) {
           settle(Object.freeze({ ok: true, stdout, stderr }));
           return;
@@ -526,7 +642,6 @@ export function createGitHubClient({
   token,
   repository,
   requestTimeoutMs = DEFAULT_GITHUB_REQUEST_TIMEOUT_MS,
-  maxCommentPages = DEFAULT_MAX_COMMENT_PAGES,
 }) {
   if (typeof fetchImpl !== 'function') {
     throw new TypeError('fetchImpl must be a function.');
@@ -535,7 +650,6 @@ export function createGitHubClient({
   validateNonEmptyString('GitHub token', token);
   validateGitHubRepository(repository);
   validatePositiveInteger('GitHub request timeout', requestTimeoutMs);
-  validatePositiveInteger('GitHub comment page limit', maxCommentPages);
 
   const request = async (method, path, body) => {
     const response = await fetchImpl(
@@ -580,14 +694,44 @@ export function createGitHubClient({
 
     async findPreviewComment(prNumber) {
       validatePositiveInteger('PR number', prNumber);
+      const seenCommentIds = new Set();
+      let page = 1;
 
-      for (let page = 1; page <= maxCommentPages; page += 1) {
+      while (true) {
         const path = `/issues/${prNumber}/comments?per_page=100&page=${page}`;
         const response = await request('GET', path);
         const comments = await response.json();
 
-        if (!Array.isArray(comments)) {
+        if (!Array.isArray(comments) || comments.length > 100) {
           throw new TypeError('Malformed GitHub comments response.');
+        }
+
+        if (
+          comments.some(
+            (comment) => !Number.isInteger(comment?.id) || comment.id <= 0,
+          )
+        ) {
+          throw new TypeError(
+            'GitHub comments must have positive integer ids.',
+          );
+        }
+
+        const pageCommentIds = new Set(comments.map((comment) => comment.id));
+
+        if (pageCommentIds.size !== comments.length) {
+          throw new TypeError('GitHub comment ids must be unique per page.');
+        }
+
+        const newCommentIds = [...pageCommentIds].filter(
+          (commentId) => !seenCommentIds.has(commentId),
+        );
+
+        if (comments.length > 0 && newCommentIds.length === 0) {
+          throw new Error('GitHub comment pagination made no progress.');
+        }
+
+        for (const commentId of newCommentIds) {
+          seenCommentIds.add(commentId);
         }
 
         const comment = comments.find(
@@ -606,11 +750,9 @@ export function createGitHubClient({
         if (comments.length < 100) {
           return null;
         }
-      }
 
-      throw new Error(
-        `GitHub comment pagination exceeded ${maxCommentPages} pages.`,
-      );
+        page += 1;
+      }
     },
 
     async createPreviewComment({ prNumber, body }) {
@@ -777,7 +919,7 @@ async function main() {
       createRuntimeDependencies(),
     );
   } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
+    console.error(formatCliError(error));
     process.exitCode = 1;
   }
 }

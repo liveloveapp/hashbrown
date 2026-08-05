@@ -12,6 +12,7 @@ import {
   createRuntimeDependencies,
   createSubprocessRunner,
   executeDeployCommand,
+  formatCliError,
   nxAffectedArgs,
   parseDeployArgs,
   runPreviewDeployment,
@@ -35,6 +36,7 @@ function createSpawnResult({
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
+    child.kill = () => true;
 
     queueMicrotask(() => {
       if (error) {
@@ -1087,6 +1089,58 @@ test('parses the exact preview and production CLI forms', () => {
   assert.equal(Object.isFrozen(production), true);
 });
 
+test('execution rejects parser-valid short SHAs before calling dependencies', async () => {
+  const calls = [];
+  const dependencies = new Proxy(
+    {},
+    {
+      get() {
+        calls.push('dependency');
+        return async () => undefined;
+      },
+    },
+  );
+
+  await assert.rejects(
+    executeDeployCommand(
+      ['preview', '--base', 'a', '--head', 'b', '--pr', '42'],
+      dependencies,
+    ),
+    /Base SHA must be 7-64 hexadecimal characters/,
+  );
+  await assert.rejects(
+    executeDeployCommand(['production', '--sha', 'abc'], dependencies),
+    /Production SHA must be 7-64 hexadecimal characters/,
+  );
+  assert.deepEqual(calls, []);
+});
+
+test('formats nested aggregate errors with every underlying CLI cause', () => {
+  const error = new AggregateError(
+    [
+      new Error('deployment failed'),
+      new AggregateError(
+        [new TypeError('comment failed'), 'summary failed'],
+        'reporting failed',
+      ),
+    ],
+    'Cloudflare deployment failed',
+  );
+
+  const message = formatCliError(error);
+
+  assert.equal(
+    message,
+    [
+      'Cloudflare deployment failed',
+      '  - deployment failed',
+      '  - reporting failed',
+      '    - comment failed',
+      '    - summary failed',
+    ].join('\n'),
+  );
+});
+
 test('rejects unknown, missing, reordered, and malformed CLI arguments', () => {
   const invalidArguments = [
     [],
@@ -1117,8 +1171,8 @@ test('builds exact safe Wrangler and Nx affected argument arrays', () => {
   const nx = nxAffectedArgs({ baseSha: 'a', headSha: 'b' });
 
   assert.deepEqual(wrangler, [
-    '--yes',
-    'wrangler@4.114.0',
+    '--no-install',
+    'wrangler',
     'pages',
     'deploy',
     PAGES_TARGETS[0].outputDirectory,
@@ -1140,6 +1194,11 @@ test('builds exact safe Wrangler and Nx affected argument arrays', () => {
   ]);
   assert.equal(Object.isFrozen(wrangler), true);
   assert.equal(Object.isFrozen(nx), true);
+  assert.equal(wrangler.includes('--yes'), false);
+  assert.equal(
+    wrangler.some((argument) => argument.includes('@4.114.0')),
+    false,
+  );
 });
 
 test('normalizes successful and failed subprocess completion without rejecting', async () => {
@@ -1195,6 +1254,53 @@ test('normalizes stdout and stderr stream errors without rejecting', async () =>
   assert.match(stdoutResult.error, /stdout stream failed/);
   assert.equal(stderrResult.ok, false);
   assert.match(stderrResult.error, /stderr stream failed/);
+});
+
+test('terminates a child after a stream error and resolves only after close', async () => {
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  const lifecycle = [];
+  let fallback;
+  child.kill = (signal) => {
+    lifecycle.push(['kill', signal]);
+    return true;
+  };
+  const runSubprocess = createSubprocessRunner(() => child, {
+    killTimeoutMs: 25,
+    setTimeoutImpl(callback, timeout) {
+      lifecycle.push(['timeout', timeout]);
+      fallback = callback;
+      return { unref: () => lifecycle.push('unref') };
+    },
+    clearTimeoutImpl() {
+      lifecycle.push('clear-timeout');
+    },
+  });
+  let resolved = false;
+
+  const resultPromise = runSubprocess('tool', ['argument']).then((result) => {
+    resolved = true;
+    return result;
+  });
+  child.stdout.emit('error', new Error('stdout stream failed'));
+  await Promise.resolve();
+
+  assert.equal(resolved, false);
+  assert.deepEqual(lifecycle, [['kill', 'SIGTERM'], ['timeout', 25], 'unref']);
+
+  fallback();
+  await Promise.resolve();
+
+  assert.equal(resolved, false);
+  assert.deepEqual(lifecycle.at(-1), ['kill', 'SIGKILL']);
+
+  child.emit('close', null, 'SIGKILL');
+  const result = await resultPromise;
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /stdout stream failed/);
+  assert.equal(lifecycle.at(-1), 'clear-timeout');
 });
 
 test('GitHub client reads a pull request head and rejects malformed responses', async () => {
@@ -1321,7 +1427,42 @@ test('GitHub client stops comment pagination after a full page then an empty pag
   );
 });
 
-test('GitHub client rejects after the bounded number of full comment pages', async () => {
+test('GitHub client finds a marker beyond ten full comment pages', async () => {
+  const calls = [];
+  const client = createGitHubClient({
+    fetchImpl: async (...args) => {
+      calls.push(args);
+      const page = calls.length;
+
+      if (page === 11) {
+        return jsonResponse([
+          {
+            id: 1001,
+            body: PREVIEW_COMMENT_MARKER,
+            user: { login: 'github-actions[bot]' },
+          },
+        ]);
+      }
+
+      return jsonResponse(
+        Array.from({ length: 100 }, (_, index) => ({
+          id: (page - 1) * 100 + index + 1,
+          body: 'ordinary comment',
+          user: { login: 'github-actions[bot]' },
+        })),
+      );
+    },
+    token: 'secret',
+    repository: 'hashbrownai/hashbrown',
+  });
+
+  const comment = await client.findPreviewComment(42);
+
+  assert.deepEqual(comment, { id: 1001 });
+  assert.equal(calls.length, 11);
+});
+
+test('GitHub client rejects a repeated full comment page without progress', async () => {
   const fullPage = Array.from({ length: 100 }, (_, index) => ({
     id: index + 1,
     body: 'ordinary comment',
@@ -1335,12 +1476,11 @@ test('GitHub client rejects after the bounded number of full comment pages', asy
     },
     token: 'secret',
     repository: 'hashbrownai/hashbrown',
-    maxCommentPages: 2,
   });
 
   await assert.rejects(
     client.findPreviewComment(42),
-    /GitHub comment pagination exceeded 2 pages/,
+    /GitHub comment pagination made no progress/,
   );
   assert.equal(calls.length, 2);
 });
@@ -1359,6 +1499,30 @@ test('GitHub client rejects malformed comment arrays without another request', a
   await assert.rejects(
     client.findPreviewComment(42),
     /Malformed GitHub comments response/,
+  );
+  assert.equal(calls.length, 1);
+});
+
+test('GitHub client rejects comment pages without valid positive integer ids', async () => {
+  const calls = [];
+  const client = createGitHubClient({
+    fetchImpl: async (...args) => {
+      calls.push(args);
+      return jsonResponse([
+        {
+          id: '101',
+          body: PREVIEW_COMMENT_MARKER,
+          user: { login: 'github-actions[bot]' },
+        },
+      ]);
+    },
+    token: 'secret',
+    repository: 'hashbrownai/hashbrown',
+  });
+
+  await assert.rejects(
+    client.findPreviewComment(42),
+    /GitHub comments must have positive integer ids/,
   );
   assert.equal(calls.length, 1);
 });
@@ -1481,13 +1645,26 @@ test('runtime dependencies use safe subprocess arguments and append the step sum
       HOME: '/home/runner',
       CI: 'true',
       LANG: 'C.UTF-8',
+      VITE_FIREBASE_API_KEY: 'public-api-key',
+      VITE_FIREBASE_APP_ID: 'public-app-id',
+      VITE_FIREBASE_PROJECT_ID: 'public-project-id',
+      NX_DAEMON: 'false',
+      NPM_CONFIG_CACHE: '/home/runner/.npm',
+      npm_config_loglevel: 'warn',
+      NODE_OPTIONS: '--max-old-space-size=4096',
+      HTTPS_PROXY: 'https://proxy.example.com',
+      NO_PROXY: 'localhost,127.0.0.1',
+      NODE_EXTRA_CA_CERTS: '/etc/ssl/custom.pem',
       GITHUB_TOKEN: 'secret',
       GITHUB_REPOSITORY: 'hashbrownai/hashbrown',
       GITHUB_STEP_SUMMARY: '/tmp/summary.md',
       CLOUDFLARE_API_TOKEN: 'cloudflare-token',
       CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account',
       ACTIONS_RUNTIME_TOKEN: 'actions-secret',
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'oidc-secret',
       NX_CLOUD_ACCESS_TOKEN: 'nx-secret',
+      NX_CLOUD_ENCRYPTION_KEY: 'nx-encryption-secret',
+      NPM_CONFIG_AUTH_TOKEN: 'npm-secret',
       CUSTOM_SECRET: 'custom-secret',
     },
   });
@@ -1532,6 +1709,16 @@ test('runtime dependencies use safe subprocess arguments and append the step sum
     HOME: '/home/runner',
     CI: 'true',
     LANG: 'C.UTF-8',
+    VITE_FIREBASE_API_KEY: 'public-api-key',
+    VITE_FIREBASE_APP_ID: 'public-app-id',
+    VITE_FIREBASE_PROJECT_ID: 'public-project-id',
+    NX_DAEMON: 'false',
+    NPM_CONFIG_CACHE: '/home/runner/.npm',
+    npm_config_loglevel: 'warn',
+    NODE_OPTIONS: '--max-old-space-size=4096',
+    HTTPS_PROXY: 'https://proxy.example.com',
+    NO_PROXY: 'localhost,127.0.0.1',
+    NODE_EXTRA_CA_CERTS: '/etc/ssl/custom.pem',
   };
   assert.deepEqual(
     spawnCalls.slice(0, 3).map(([, , options]) => options.env),
