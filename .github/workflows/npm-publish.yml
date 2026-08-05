@@ -69,13 +69,3 @@ jobs:
 
       - name: Verify npm release
         run: node scripts/verify-npm-release.mjs --tag=${{ steps.channel.outputs.dist_tag }}
-
-  deploy-cloudflare-production:
-    name: Deploy Cloudflare production
-    if: github.ref_name == 'npm/latest'
-    needs: publish
-    uses: ./.github/workflows/cloudflare-production.yml
-    with:
-      deploy_samples: true
-      deploy_www: true
-    secrets: inherit
