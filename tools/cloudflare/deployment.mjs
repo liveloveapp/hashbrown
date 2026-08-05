@@ -53,11 +53,14 @@ export function validatePagesTargets(targets) {
 
   const ids = new Set();
   const nxProjects = new Set();
+  const cloudflareProjects = new Set();
 
   for (const target of targets) {
     for (const field of REQUIRED_TARGET_FIELDS) {
       if (typeof target?.[field] !== 'string' || target[field].trim() === '') {
-        throw new TypeError(`Pages target ${field} must be a non-empty string.`);
+        throw new TypeError(
+          `Pages target ${field} must be a non-empty string.`,
+        );
       }
     }
 
@@ -71,8 +74,15 @@ export function validatePagesTargets(targets) {
       );
     }
 
+    if (cloudflareProjects.has(target.cloudflareProject)) {
+      throw new TypeError(
+        `Duplicate Pages deployment destination: ${target.cloudflareProject}.`,
+      );
+    }
+
     ids.add(target.id);
     nxProjects.add(target.nxProject);
+    cloudflareProjects.add(target.cloudflareProject);
   }
 }
 
@@ -86,7 +96,8 @@ export function selectPreviewTargets({
 }) {
   const invalidatesAllTargets = changedFiles.some(
     (file) =>
-      GLOBAL_INVALIDATOR_FILES.has(file) || file.startsWith('tools/cloudflare/'),
+      GLOBAL_INVALIDATOR_FILES.has(file) ||
+      file.startsWith('tools/cloudflare/'),
   );
 
   if (invalidatesAllTargets) {

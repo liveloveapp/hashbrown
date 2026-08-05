@@ -128,6 +128,30 @@ test('selects every injected target for each global invalidator', () => {
   }
 });
 
+test('does not select all targets for global invalidator path near-misses', () => {
+  const targets = [
+    createTarget({ id: 'first', nxProject: 'first-app' }),
+    createTarget({ id: 'second', nxProject: 'second-app' }),
+  ];
+  const changedFiles = [
+    'nx.json/child',
+    '.github/workflows/pr-main.yml.bak',
+    'tools/cloudflarex/file.mjs',
+  ];
+
+  const results = changedFiles.map((changedFile) =>
+    selectPreviewTargets({
+      affectedProjects: [],
+      changedFiles: [changedFile],
+      targets,
+    }),
+  );
+
+  for (const result of results) {
+    assert.deepEqual(result, []);
+  }
+});
+
 test('selects no targets for an unrelated changed project', () => {
   const selection = {
     affectedProjects: ['kitchen-sink-angular'],
@@ -172,7 +196,10 @@ test('rejects an empty target manifest', () => {
 
   const validate = () => validatePagesTargets(targets);
 
-  assert.throws(validate);
+  assert.throws(validate, {
+    name: 'TypeError',
+    message: 'Pages targets must be a non-empty array.',
+  });
 });
 
 test('rejects duplicate target ids', () => {
@@ -183,7 +210,10 @@ test('rejects duplicate target ids', () => {
 
   const validate = () => validatePagesTargets(targets);
 
-  assert.throws(validate);
+  assert.throws(validate, {
+    name: 'TypeError',
+    message: 'Duplicate Pages target id: example.',
+  });
 });
 
 test('rejects duplicate target Nx projects', () => {
@@ -194,7 +224,24 @@ test('rejects duplicate target Nx projects', () => {
 
   const validate = () => validatePagesTargets(targets);
 
-  assert.throws(validate);
+  assert.throws(validate, {
+    name: 'TypeError',
+    message: 'Duplicate Pages target Nx project: example-app.',
+  });
+});
+
+test('rejects duplicate Cloudflare deployment destinations', () => {
+  const targets = [
+    createTarget({ id: 'first', nxProject: 'first-app' }),
+    createTarget({ id: 'second', nxProject: 'second-app' }),
+  ];
+
+  const validate = () => validatePagesTargets(targets);
+
+  assert.throws(validate, {
+    name: 'TypeError',
+    message: 'Duplicate Pages deployment destination: hashbrown-example.',
+  });
 });
 
 test('rejects targets with missing required fields', () => {
@@ -205,18 +252,22 @@ test('rejects targets with missing required fields', () => {
     'cloudflareProject',
     'outputDirectory',
   ];
-  const targets = requiredFields.map((missingField) =>
-    Object.fromEntries(
-      Object.entries(createTarget()).filter(([field]) => field !== missingField),
+  const invalidTargets = requiredFields.map((field) => ({
+    field,
+    target: Object.fromEntries(
+      Object.entries(createTarget()).filter(
+        ([targetField]) => targetField !== field,
+      ),
     ),
-  );
+  }));
 
-  const validations = targets.map(
-    (target) => () => validatePagesTargets([target]),
-  );
+  for (const { field, target } of invalidTargets) {
+    const validate = () => validatePagesTargets([target]);
 
-  for (const validate of validations) {
-    assert.throws(validate);
+    assert.throws(validate, {
+      name: 'TypeError',
+      message: `Pages target ${field} must be a non-empty string.`,
+    });
   }
 });
 
@@ -228,16 +279,17 @@ test('rejects targets with empty required fields', () => {
     'cloudflareProject',
     'outputDirectory',
   ];
-  const targets = requiredFields.flatMap((field) => [
-    createTarget({ [field]: '' }),
-    createTarget({ [field]: '   ' }),
+  const invalidTargets = requiredFields.flatMap((field) => [
+    { field, target: createTarget({ [field]: '' }) },
+    { field, target: createTarget({ [field]: '   ' }) },
   ]);
 
-  const validations = targets.map(
-    (target) => () => validatePagesTargets([target]),
-  );
+  for (const { field, target } of invalidTargets) {
+    const validate = () => validatePagesTargets([target]);
 
-  for (const validate of validations) {
-    assert.throws(validate);
+    assert.throws(validate, {
+      name: 'TypeError',
+      message: `Pages target ${field} must be a non-empty string.`,
+    });
   }
 });
