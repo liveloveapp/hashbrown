@@ -160,7 +160,13 @@ export function previewUrl(target, prNumber) {
 }
 
 /** Renders ordered Cloudflare Pages preview results as a Markdown comment. */
-export function renderPreviewComment({ headSha, prNumber, results }) {
+export function renderPreviewComment({
+  headSha,
+  prNumber,
+  results,
+  targets = PAGES_TARGETS,
+}) {
+  validatePagesTargets(targets);
   previewBranch(prNumber);
 
   if (typeof headSha !== 'string' || !HEAD_SHA_PATTERN.test(headSha)) {
@@ -191,7 +197,7 @@ export function renderPreviewComment({ headSha, prNumber, results }) {
       );
     }
 
-    const targetIndex = PAGES_TARGETS.findIndex(
+    const targetIndex = targets.findIndex(
       (target) => target.id === result.targetId,
     );
 
@@ -209,7 +215,7 @@ export function renderPreviewComment({ headSha, prNumber, results }) {
 
     return {
       result,
-      target: PAGES_TARGETS[targetIndex],
+      target: targets[targetIndex],
       targetIndex,
     };
   });

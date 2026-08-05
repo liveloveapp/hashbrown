@@ -530,6 +530,73 @@ test('renders preview results in Pages target manifest order', () => {
   );
 });
 
+test('renders preview results against an injected target manifest', () => {
+  const targets = Object.freeze([
+    Object.freeze(
+      createTarget({
+        id: 'first',
+        displayName: 'First App',
+        nxProject: 'first-app',
+        cloudflareProject: 'hashbrown-first',
+      }),
+    ),
+    Object.freeze(
+      createTarget({
+        id: 'second',
+        displayName: 'Second App',
+        nxProject: 'second-app',
+        cloudflareProject: 'hashbrown-second',
+      }),
+    ),
+  ]);
+  const results = [
+    { targetId: 'second', status: 'success' },
+    { targetId: 'first', status: 'success' },
+  ];
+
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+    targets,
+  });
+
+  assert.ok(
+    comment.indexOf('| First App |') < comment.indexOf('| Second App |'),
+  );
+  assert.match(comment, /https:\/\/pr-42\.hashbrown-first\.pages\.dev/);
+  assert.match(comment, /https:\/\/pr-42\.hashbrown-second\.pages\.dev/);
+  assert.deepEqual(targets, [
+    createTarget({
+      id: 'first',
+      displayName: 'First App',
+      nxProject: 'first-app',
+      cloudflareProject: 'hashbrown-first',
+    }),
+    createTarget({
+      id: 'second',
+      displayName: 'Second App',
+      nxProject: 'second-app',
+      cloudflareProject: 'hashbrown-second',
+    }),
+  ]);
+});
+
+test('validates an injected target manifest before rendering', () => {
+  const render = () =>
+    renderPreviewComment({
+      headSha: 'abcdef123456',
+      prNumber: 42,
+      results: [{ targetId: 'docs', status: 'success' }],
+      targets: [],
+    });
+
+  assert.throws(render, {
+    name: 'TypeError',
+    message: 'Pages targets must be a non-empty array.',
+  });
+});
+
 test('renders an exact ordered preview comment for mixed results', () => {
   const results = [
     { targetId: 'smart-home', status: 'deploy-failed' },

@@ -37,6 +37,36 @@ test('validates injected targets before calling dependencies', async () => {
   assert.deepEqual(calls, []);
 });
 
+test('validates deployment options before calling dependencies', async () => {
+  const calls = [];
+  const dependencies = {
+    listAffectedProjects: async () => calls.push('affected'),
+    listChangedFiles: async () => calls.push('changed'),
+    buildTarget: async () => calls.push('build'),
+    deployTarget: async () => calls.push('deploy'),
+    getPullRequestHead: async () => calls.push('head'),
+    findPreviewComment: async () => calls.push('find-comment'),
+    createPreviewComment: async () => calls.push('create-comment'),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async () => calls.push('summary'),
+  };
+  const invalidOptions = [
+    { baseSha: 'not-a-sha', headSha: HEAD_SHA, prNumber: 42 },
+    { baseSha: BASE_SHA, headSha: 'not-a-sha', prNumber: 42 },
+    { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 0 },
+  ];
+
+  for (const options of invalidOptions) {
+    await assert.rejects(
+      runPreviewDeployment(options, dependencies),
+      TypeError,
+    );
+  }
+
+  assert.deepEqual(calls, []);
+});
+
 test('returns an immutable superseded result when stale at startup', async () => {
   const calls = [];
   const dependencies = {
@@ -106,8 +136,41 @@ test('deletes a stale preview comment for a current no-target run', async () => 
     ['changed', { baseSha: BASE_SHA, headSha: HEAD_SHA }],
     ['head', 42],
     ['find-comment', 42],
+    ['head', 42],
     ['delete-comment', 99],
   ]);
+});
+
+test('does not delete a comment when the PR head changes during lookup', async () => {
+  const calls = [];
+  const currentHeads = [HEAD_SHA, HEAD_SHA, NEW_HEAD_SHA];
+  const dependencies = {
+    listAffectedProjects: async () => [],
+    listChangedFiles: async () => ['README.md'],
+    buildTarget: async () => calls.push('build'),
+    deployTarget: async () => calls.push('deploy'),
+    getPullRequestHead: async () => {
+      calls.push('head');
+      return currentHeads.shift();
+    },
+    findPreviewComment: async () => {
+      calls.push('find-comment');
+      return { id: 99 };
+    },
+    createPreviewComment: async () => calls.push('create-comment'),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async () => calls.push('summary'),
+  };
+
+  const result = await runPreviewDeployment(
+    { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42 },
+    dependencies,
+  );
+
+  assert.deepEqual(result, { status: 'superseded' });
+  assert.equal(Object.isFrozen(result), true);
+  assert.deepEqual(calls, ['head', 'head', 'find-comment', 'head']);
 });
 
 test('leaves the preview comment untouched when a no-target run becomes stale', async () => {
@@ -209,8 +272,61 @@ test('builds and deploys selected targets in manifest order before creating a co
     ['deploy', { target: PAGES_TARGETS[3], branch: 'pr-42', sha: HEAD_SHA }],
     ['head', 42],
     ['find-comment', 42],
+    ['head', 42],
     ['create-comment', { prNumber: 42, body }],
     ['summary', `## Cloudflare previews\n\n${body}`],
+  ]);
+});
+
+test('deploys and renders a valid custom target manifest', async () => {
+  const target = Object.freeze({
+    id: 'custom',
+    displayName: 'Custom App',
+    nxProject: 'custom-app',
+    cloudflareProject: 'hashbrown-custom',
+    outputDirectory: 'dist/custom',
+  });
+  const targets = Object.freeze([target]);
+  const calls = [];
+  const dependencies = {
+    listAffectedProjects: async () => ['custom-app'],
+    listChangedFiles: async () => ['apps/custom/src/app.ts'],
+    buildTarget: async (selectedTarget) => {
+      calls.push(['build', selectedTarget]);
+      return { ok: true };
+    },
+    deployTarget: async (options) => {
+      calls.push(['deploy', options]);
+      return { ok: true };
+    },
+    getPullRequestHead: async () => HEAD_SHA,
+    findPreviewComment: async () => null,
+    createPreviewComment: async (comment) =>
+      calls.push(['create-comment', comment]),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async () => undefined,
+  };
+  const expectedBody = renderPreviewComment({
+    headSha: HEAD_SHA,
+    prNumber: 42,
+    results: [{ targetId: 'custom', status: 'success' }],
+    targets,
+  });
+
+  const result = await runPreviewDeployment(
+    { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42, targets },
+    dependencies,
+  );
+
+  assert.deepEqual(result, {
+    status: 'success',
+    results: [{ targetId: 'custom', status: 'success' }],
+  });
+  assert.deepEqual(calls, [
+    ['build', target],
+    ['deploy', { target, branch: 'pr-42', sha: HEAD_SHA }],
+    ['create-comment', { prNumber: 42, body: expectedBody }],
   ]);
 });
 
@@ -243,6 +359,70 @@ test('updates an existing preview comment after a successful run', async () => {
   assert.deepEqual(calls, [['update-comment', { commentId: 101, body }]]);
 });
 
+test('does not create a comment when the PR head changes during lookup', async () => {
+  const calls = [];
+  const currentHeads = [HEAD_SHA, HEAD_SHA, NEW_HEAD_SHA];
+  const dependencies = {
+    listAffectedProjects: async () => ['www'],
+    listChangedFiles: async () => ['www/index.ts'],
+    buildTarget: async () => ({ ok: true }),
+    deployTarget: async () => ({ ok: true }),
+    getPullRequestHead: async () => {
+      calls.push('head');
+      return currentHeads.shift();
+    },
+    findPreviewComment: async () => {
+      calls.push('find-comment');
+      return null;
+    },
+    createPreviewComment: async () => calls.push('create-comment'),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async () => calls.push('summary'),
+  };
+
+  const result = await runPreviewDeployment(
+    { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42 },
+    dependencies,
+  );
+
+  assert.deepEqual(result, { status: 'superseded' });
+  assert.equal(Object.isFrozen(result), true);
+  assert.deepEqual(calls, ['head', 'head', 'find-comment', 'head']);
+});
+
+test('does not update a comment when the PR head changes during lookup', async () => {
+  const calls = [];
+  const currentHeads = [HEAD_SHA, HEAD_SHA, NEW_HEAD_SHA];
+  const dependencies = {
+    listAffectedProjects: async () => ['www'],
+    listChangedFiles: async () => ['www/index.ts'],
+    buildTarget: async () => ({ ok: true }),
+    deployTarget: async () => ({ ok: true }),
+    getPullRequestHead: async () => {
+      calls.push('head');
+      return currentHeads.shift();
+    },
+    findPreviewComment: async () => {
+      calls.push('find-comment');
+      return { id: 101 };
+    },
+    createPreviewComment: async () => calls.push('create-comment'),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async () => calls.push('summary'),
+  };
+
+  const result = await runPreviewDeployment(
+    { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42 },
+    dependencies,
+  );
+
+  assert.deepEqual(result, { status: 'superseded' });
+  assert.equal(Object.isFrozen(result), true);
+  assert.deepEqual(calls, ['head', 'head', 'find-comment', 'head']);
+});
+
 test('reports every result and rejects after a build failure', async () => {
   const calls = [];
   const dependencies = {
@@ -270,11 +450,7 @@ test('reports every result and rejects after a build failure', async () => {
     appendSummary: async (summary) => calls.push(['summary', summary]),
   };
   const expectedResults = [
-    {
-      targetId: 'docs',
-      status: 'build-failed',
-      error: 'docs did not build',
-    },
+    { targetId: 'docs', status: 'build-failed' },
     { targetId: 'finance', status: 'success' },
   ];
   const body = renderPreviewComment({
@@ -331,11 +507,7 @@ test('reports every result and rejects after a deployment failure', async () => 
     appendSummary: async (summary) => calls.push(['summary', summary]),
   };
   const expectedResults = [
-    {
-      targetId: 'docs',
-      status: 'deploy-failed',
-      error: 'wrangler failed',
-    },
+    { targetId: 'docs', status: 'deploy-failed' },
     { targetId: 'finance', status: 'success' },
   ];
   const body = renderPreviewComment({

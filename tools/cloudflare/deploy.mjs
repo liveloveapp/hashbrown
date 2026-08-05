@@ -6,8 +6,15 @@ import {
   validatePagesTargets,
 } from './deployment.mjs';
 
+const COMMIT_SHA_PATTERN = /^[0-9a-f]{7,64}$/i;
 const SUPERSEDED_RESULT = Object.freeze({ status: 'superseded' });
 const NO_TARGETS_RESULT = Object.freeze({ status: 'no-targets' });
+
+function validateCommitSha(name, sha) {
+  if (typeof sha !== 'string' || !COMMIT_SHA_PATTERN.test(sha)) {
+    throw new TypeError(`${name} SHA must be 7-64 hexadecimal characters.`);
+  }
+}
 
 function freezeResults(results) {
   return Object.freeze(results.map((result) => Object.freeze(result)));
@@ -34,6 +41,9 @@ export async function runPreviewDeployment(
   dependencies,
 ) {
   validatePagesTargets(targets);
+  validateCommitSha('Base', baseSha);
+  validateCommitSha('Head', headSha);
+  const branch = previewBranch(prNumber);
 
   const currentHeadSha = await dependencies.getPullRequestHead(prNumber);
 
@@ -58,6 +68,11 @@ export async function runPreviewDeployment(
     }
 
     const comment = await dependencies.findPreviewComment(prNumber);
+    const mutationHeadSha = await dependencies.getPullRequestHead(prNumber);
+
+    if (mutationHeadSha !== headSha) {
+      return SUPERSEDED_RESULT;
+    }
 
     if (comment !== null) {
       await dependencies.deletePreviewComment(comment.id);
@@ -66,7 +81,6 @@ export async function runPreviewDeployment(
     return NO_TARGETS_RESULT;
   }
 
-  const branch = previewBranch(prNumber);
   const results = [];
   const failures = [];
 
@@ -113,8 +127,14 @@ export async function runPreviewDeployment(
     headSha,
     prNumber,
     results: previewResults,
+    targets,
   });
   const comment = await dependencies.findPreviewComment(prNumber);
+  const mutationHeadSha = await dependencies.getPullRequestHead(prNumber);
+
+  if (mutationHeadSha !== headSha) {
+    return SUPERSEDED_RESULT;
+  }
 
   if (comment === null) {
     await dependencies.createPreviewComment({ prNumber, body });
