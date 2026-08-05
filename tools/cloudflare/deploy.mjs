@@ -52,13 +52,36 @@ const RUNTIME_ENVIRONMENT_KEYS = Object.freeze([
   'SSL_CERT_FILE',
   'SSL_CERT_DIR',
 ]);
-const CONFIG_ENVIRONMENT_PREFIXES = Object.freeze([
-  'NX_',
-  'NPM_CONFIG_',
-  'npm_config_',
+const SAFE_NX_ENVIRONMENT_KEYS = Object.freeze([
+  'NX_DAEMON',
+  'NX_PARALLEL',
+  'NX_TASKS_RUNNER_DYNAMIC_OUTPUT',
+  'NX_VERBOSE_LOGGING',
 ]);
-const SENSITIVE_CONFIG_KEY_PATTERN =
-  /(?:^|_)(?:AUTH|CREDENTIALS?|KEYS?|PASSWORD|SECRETS?|TOKENS?)(?:_|$)/i;
+const SAFE_NPM_CONFIG_ENVIRONMENT_KEYS = Object.freeze([
+  'NPM_CONFIG_AUDIT',
+  'NPM_CONFIG_CACHE',
+  'NPM_CONFIG_CAFILE',
+  'NPM_CONFIG_COLOR',
+  'NPM_CONFIG_FUND',
+  'NPM_CONFIG_LOGLEVEL',
+  'NPM_CONFIG_OFFLINE',
+  'NPM_CONFIG_PREFER_OFFLINE',
+  'NPM_CONFIG_PROGRESS',
+  'NPM_CONFIG_REGISTRY',
+  'NPM_CONFIG_STRICT_SSL',
+  'npm_config_audit',
+  'npm_config_cache',
+  'npm_config_cafile',
+  'npm_config_color',
+  'npm_config_fund',
+  'npm_config_loglevel',
+  'npm_config_offline',
+  'npm_config_prefer_offline',
+  'npm_config_progress',
+  'npm_config_registry',
+  'npm_config_strict_ssl',
+]);
 
 function validateCommitSha(name, sha) {
   if (typeof sha !== 'string' || !COMMIT_SHA_PATTERN.test(sha)) {
@@ -179,9 +202,8 @@ function selectRuntimeEnvironment(env) {
         }
 
         return (
-          CONFIG_ENVIRONMENT_PREFIXES.some((prefix) =>
-            key.startsWith(prefix),
-          ) && !SENSITIVE_CONFIG_KEY_PATTERN.test(key)
+          SAFE_NX_ENVIRONMENT_KEYS.includes(key) ||
+          SAFE_NPM_CONFIG_ENVIRONMENT_KEYS.includes(key)
         );
       }),
     ),
