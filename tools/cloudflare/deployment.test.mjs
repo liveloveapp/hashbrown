@@ -328,6 +328,175 @@ test('formats a stable Cloudflare Pages preview URL', () => {
   assert.equal(url, 'https://pr-42.hashbrown-www.pages.dev');
 });
 
+test('rejects missing or malformed Pages targets for preview URLs', () => {
+  const malformedTargets = [undefined, null, 'docs', [], new Date(0)];
+
+  for (const target of malformedTargets) {
+    const formatUrl = () => previewUrl(target, 42);
+
+    assert.throws(formatUrl, {
+      name: 'TypeError',
+      message: 'Pages target must be a plain object.',
+    });
+  }
+});
+
+test('rejects invalid Cloudflare Pages project slugs for preview URLs', () => {
+  const invalidSlugs = [
+    undefined,
+    null,
+    '',
+    '   ',
+    'Hashbrown-www',
+    'hashbrown_www',
+  ];
+
+  for (const cloudflareProject of invalidSlugs) {
+    const target = { cloudflareProject };
+    const formatUrl = () => previewUrl(target, 42);
+
+    assert.throws(formatUrl, {
+      name: 'TypeError',
+      message:
+        'Pages target cloudflareProject must be a lowercase Pages project slug.',
+    });
+  }
+});
+
+test('rejects invalid head SHAs for preview comments', () => {
+  const invalidHeadShas = [
+    undefined,
+    '',
+    'abcdef',
+    'a'.repeat(65),
+    'abcdef\n1',
+    'abcdef`1',
+    'abcdefg',
+  ];
+
+  for (const headSha of invalidHeadShas) {
+    const render = () =>
+      renderPreviewComment({
+        headSha,
+        prNumber: 42,
+        results: [{ targetId: 'docs', status: 'success' }],
+      });
+
+    assert.throws(render, {
+      name: 'TypeError',
+      message: 'Head SHA must be 7-64 hexadecimal characters.',
+    });
+  }
+});
+
+test('rejects non-array preview results', () => {
+  const invalidResults = [undefined, null, 'results', {}];
+
+  for (const results of invalidResults) {
+    const render = () =>
+      renderPreviewComment({
+        headSha: 'abcdef123456',
+        prNumber: 42,
+        results,
+      });
+
+    assert.throws(render, {
+      name: 'TypeError',
+      message: 'Preview results must be a non-empty array.',
+    });
+  }
+});
+
+test('rejects empty preview results', () => {
+  const results = [];
+
+  const render = () =>
+    renderPreviewComment({
+      headSha: 'abcdef123456',
+      prNumber: 42,
+      results,
+    });
+
+  assert.throws(render, {
+    name: 'TypeError',
+    message: 'Preview results must be a non-empty array.',
+  });
+});
+
+test('rejects null or malformed preview result entries', () => {
+  const malformedResults = [null, 'docs', [], new Date(0)];
+
+  for (const result of malformedResults) {
+    const render = () =>
+      renderPreviewComment({
+        headSha: 'abcdef123456',
+        prNumber: 42,
+        results: [result],
+      });
+
+    assert.throws(render, {
+      name: 'TypeError',
+      message: 'Preview result at index 0 must be a plain object.',
+    });
+  }
+});
+
+test('rejects preview results with missing or empty target ids', () => {
+  const invalidTargetIds = [undefined, null, '', '   ', 42];
+
+  for (const targetId of invalidTargetIds) {
+    const render = () =>
+      renderPreviewComment({
+        headSha: 'abcdef123456',
+        prNumber: 42,
+        results: [{ targetId, status: 'success' }],
+      });
+
+    assert.throws(render, {
+      name: 'TypeError',
+      message: 'Preview result at index 0 targetId must be a non-empty string.',
+    });
+  }
+});
+
+test('rejects duplicate preview result target ids', () => {
+  const results = [
+    { targetId: 'docs', status: 'success' },
+    { targetId: 'docs', status: 'build-failed' },
+  ];
+
+  const render = () =>
+    renderPreviewComment({
+      headSha: 'abcdef123456',
+      prNumber: 42,
+      results,
+    });
+
+  assert.throws(render, {
+    name: 'TypeError',
+    message: 'Duplicate preview result target id: docs.',
+  });
+});
+
+test('validates preview comment pull request numbers before rendering failures', () => {
+  const results = [
+    { targetId: 'docs', status: 'build-failed' },
+    { targetId: 'finance', status: 'deploy-failed' },
+  ];
+
+  const render = () =>
+    renderPreviewComment({
+      headSha: 'abcdef123456',
+      prNumber: 0,
+      results,
+    });
+
+  assert.throws(render, {
+    name: 'TypeError',
+    message: 'PR number must be a positive integer.',
+  });
+});
+
 test('renders the preview comment marker exactly once', () => {
   const results = [{ targetId: 'docs', status: 'success' }];
 
@@ -358,6 +527,32 @@ test('renders preview results in Pages target manifest order', () => {
   assert.ok(comment.indexOf('| Docs |') < comment.indexOf('| Fast Food |'));
   assert.ok(
     comment.indexOf('| Fast Food |') < comment.indexOf('| Smart Home |'),
+  );
+});
+
+test('renders an exact ordered preview comment for mixed results', () => {
+  const results = [
+    { targetId: 'smart-home', status: 'deploy-failed' },
+    { targetId: 'finance', status: 'build-failed' },
+    { targetId: 'docs', status: 'success' },
+  ];
+
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+  });
+
+  assert.equal(
+    comment,
+    `<!-- hashbrown-cloudflare-preview -->
+Commit: \`abcdef1\`
+
+| Site | Status | Preview |
+| --- | --- | --- |
+| Docs | Ready | [Preview](https://pr-42.hashbrown-www.pages.dev) |
+| Finance | Build failed | |
+| Smart Home | Deployment failed | |`,
   );
 });
 
@@ -430,7 +625,7 @@ test('rejects preview results with unknown target ids', () => {
 });
 
 test('rejects preview results with unknown statuses', () => {
-  const unknownStatuses = ['pending', 'toString'];
+  const unknownStatuses = [undefined, 'pending', 'toString'];
 
   for (const status of unknownStatuses) {
     const results = [{ targetId: 'docs', status }];

@@ -19,6 +19,20 @@ const PREVIEW_RESULT_STATUS_LABELS = Object.freeze({
   'deploy-failed': 'Deployment failed',
 });
 
+const CLOUDFLARE_PROJECT_PATTERN = /^[a-z0-9-]+$/;
+const HEAD_SHA_PATTERN = /^[0-9a-f]{7,64}$/i;
+
+/** Returns whether a value is a plain object. */
+function isPlainObject(value) {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+
+  return prototype === Object.prototype || prototype === null;
+}
+
 /** Marker used to identify the Cloudflare preview pull request comment. */
 export const PREVIEW_COMMENT_MARKER = '<!-- hashbrown-cloudflare-preview -->';
 
@@ -129,12 +143,54 @@ export function previewBranch(prNumber) {
 
 /** Returns the stable Cloudflare Pages branch alias URL for a target. */
 export function previewUrl(target, prNumber) {
+  if (!isPlainObject(target)) {
+    throw new TypeError('Pages target must be a plain object.');
+  }
+
+  if (
+    typeof target.cloudflareProject !== 'string' ||
+    !CLOUDFLARE_PROJECT_PATTERN.test(target.cloudflareProject)
+  ) {
+    throw new TypeError(
+      'Pages target cloudflareProject must be a lowercase Pages project slug.',
+    );
+  }
+
   return `https://${previewBranch(prNumber)}.${target.cloudflareProject}.pages.dev`;
 }
 
 /** Renders ordered Cloudflare Pages preview results as a Markdown comment. */
 export function renderPreviewComment({ headSha, prNumber, results }) {
-  const resolvedResults = results.map((result) => {
+  previewBranch(prNumber);
+
+  if (typeof headSha !== 'string' || !HEAD_SHA_PATTERN.test(headSha)) {
+    throw new TypeError('Head SHA must be 7-64 hexadecimal characters.');
+  }
+
+  if (!Array.isArray(results) || results.length === 0) {
+    throw new TypeError('Preview results must be a non-empty array.');
+  }
+
+  const targetIds = new Set();
+  const resolvedResults = results.map((result, index) => {
+    if (!isPlainObject(result)) {
+      throw new TypeError(
+        `Preview result at index ${index} must be a plain object.`,
+      );
+    }
+
+    if (typeof result.targetId !== 'string' || result.targetId.trim() === '') {
+      throw new TypeError(
+        `Preview result at index ${index} targetId must be a non-empty string.`,
+      );
+    }
+
+    if (!Object.hasOwn(PREVIEW_RESULT_STATUS_LABELS, result.status)) {
+      throw new TypeError(
+        `Unknown preview result status: ${String(result.status)}.`,
+      );
+    }
+
     const targetIndex = PAGES_TARGETS.findIndex(
       (target) => target.id === result.targetId,
     );
@@ -143,9 +199,13 @@ export function renderPreviewComment({ headSha, prNumber, results }) {
       throw new TypeError(`Unknown Pages target id: ${result.targetId}.`);
     }
 
-    if (!Object.hasOwn(PREVIEW_RESULT_STATUS_LABELS, result.status)) {
-      throw new TypeError(`Unknown preview result status: ${result.status}.`);
+    if (targetIds.has(result.targetId)) {
+      throw new TypeError(
+        `Duplicate preview result target id: ${result.targetId}.`,
+      );
     }
+
+    targetIds.add(result.targetId);
 
     return {
       result,
