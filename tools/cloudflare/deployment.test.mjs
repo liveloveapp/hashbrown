@@ -313,6 +313,52 @@ test('rejects invalid Cloudflare Pages project slugs in target manifests', () =>
   }
 });
 
+test('rejects unsafe Nx project command arguments in target manifests', () => {
+  const invalidProjects = [
+    '-example',
+    'example app',
+    '../example',
+    'example/app',
+    '@scope/example',
+    'example?configuration=unsafe',
+  ];
+
+  for (const nxProject of invalidProjects) {
+    const validate = () => validatePagesTargets([createTarget({ nxProject })]);
+
+    assert.throws(validate, {
+      name: 'TypeError',
+      message: 'Pages target nxProject must be a safe Nx project name.',
+    });
+  }
+});
+
+test('rejects unsafe output directories in target manifests', () => {
+  const invalidDirectories = [
+    '-dist/example',
+    '/dist/example',
+    'C:\\dist\\example',
+    'dist\\example',
+    '.',
+    '..',
+    'dist/../example',
+    'dist/./example',
+    'dist//example',
+    'dist/example?configuration=unsafe',
+  ];
+
+  for (const outputDirectory of invalidDirectories) {
+    const validate = () =>
+      validatePagesTargets([createTarget({ outputDirectory })]);
+
+    assert.throws(validate, {
+      name: 'TypeError',
+      message:
+        'Pages target outputDirectory must be a safe repository-relative path.',
+    });
+  }
+});
+
 test('formats a stable preview branch for a pull request', () => {
   const prNumber = 42;
 

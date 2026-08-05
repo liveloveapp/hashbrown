@@ -21,6 +21,8 @@ const PREVIEW_RESULT_STATUS_LABELS = Object.freeze({
 
 const CLOUDFLARE_PROJECT_PATTERN = /^[a-z0-9-]+$/;
 const HEAD_SHA_PATTERN = /^[0-9a-f]{7,64}$/i;
+const NX_PROJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const OUTPUT_DIRECTORY_SEGMENT_PATTERN = /^[A-Za-z0-9._@-]+$/;
 
 /** Returns whether a value is a plain object. */
 function isPlainObject(value) {
@@ -40,6 +42,35 @@ function validateCloudflareProject(cloudflareProject) {
   ) {
     throw new TypeError(
       'Pages target cloudflareProject must be a lowercase Pages project slug.',
+    );
+  }
+}
+
+function validateNxProject(nxProject) {
+  if (!NX_PROJECT_PATTERN.test(nxProject)) {
+    throw new TypeError(
+      'Pages target nxProject must be a safe Nx project name.',
+    );
+  }
+}
+
+function validateOutputDirectory(outputDirectory) {
+  const segments = outputDirectory.split('/');
+  const isUnsafe =
+    outputDirectory.startsWith('-') ||
+    outputDirectory.startsWith('/') ||
+    outputDirectory.includes('\\') ||
+    segments.some(
+      (segment) =>
+        segment === '' ||
+        segment === '.' ||
+        segment === '..' ||
+        !OUTPUT_DIRECTORY_SEGMENT_PATTERN.test(segment),
+    );
+
+  if (isUnsafe) {
+    throw new TypeError(
+      'Pages target outputDirectory must be a safe repository-relative path.',
     );
   }
 }
@@ -99,6 +130,8 @@ export function validatePagesTargets(targets) {
     }
 
     validateCloudflareProject(target.cloudflareProject);
+    validateNxProject(target.nxProject);
+    validateOutputDirectory(target.outputDirectory);
 
     if (ids.has(target.id)) {
       throw new TypeError(`Duplicate Pages target id: ${target.id}.`);

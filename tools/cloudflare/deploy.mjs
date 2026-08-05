@@ -22,6 +22,27 @@ const PRODUCTION_STATUS_LABELS = Object.freeze({
   'deploy-failed': 'Deployment failed',
 });
 const GITHUB_API_BASE_URL = 'https://api.github.com';
+const DEFAULT_GITHUB_REQUEST_TIMEOUT_MS = 15_000;
+const DEFAULT_MAX_COMMENT_PAGES = 10;
+const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
+const GITHUB_REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+$/;
+const RUNTIME_ENVIRONMENT_KEYS = Object.freeze([
+  'PATH',
+  'HOME',
+  'USER',
+  'LOGNAME',
+  'SHELL',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'CI',
+  'LANG',
+  'LC_ALL',
+  'TZ',
+  'TERM',
+  'NO_COLOR',
+  'FORCE_COLOR',
+]);
 
 function validateCommitSha(name, sha) {
   if (typeof sha !== 'string' || !COMMIT_SHA_PATTERN.test(sha)) {
@@ -46,6 +67,18 @@ function createFailureError(environment, failures) {
     .join('; ');
 
   return new Error(`Cloudflare ${environment} deployment failed: ${details}`);
+}
+
+function throwCollectedErrors(errors, message) {
+  if (errors.length === 0) {
+    return;
+  }
+
+  if (errors.length === 1) {
+    throw errors[0];
+  }
+
+  throw new AggregateError(errors, message);
 }
 
 function renderProductionSummary(results, targets) {
@@ -99,12 +132,32 @@ function validatePositiveInteger(name, value) {
 }
 
 function validateGitHubRepository(repository) {
-  if (
-    typeof repository !== 'string' ||
-    !/^[^/\s]+\/[^/\s]+$/.test(repository)
-  ) {
-    throw new TypeError('GitHub repository must use the owner/name format.');
+  if (typeof repository !== 'string') {
+    throw new TypeError('GitHub repository must use safe owner/name segments.');
   }
+
+  const segments = repository.split('/');
+  const [owner, name] = segments;
+
+  if (
+    segments.length !== 2 ||
+    !GITHUB_OWNER_PATTERN.test(owner) ||
+    !GITHUB_REPOSITORY_PATTERN.test(name) ||
+    name === '.' ||
+    name === '..'
+  ) {
+    throw new TypeError('GitHub repository must use safe owner/name segments.');
+  }
+}
+
+function selectRuntimeEnvironment(env) {
+  return Object.freeze(
+    Object.fromEntries(
+      RUNTIME_ENVIRONMENT_KEYS.flatMap((key) =>
+        typeof env[key] === 'string' ? [[key, env[key]]] : [],
+      ),
+    ),
+  );
 }
 
 /** Builds, deploys, and reports affected pull request previews. */
@@ -189,36 +242,48 @@ export async function runPreviewDeployment(
   }
 
   const previewResults = freezeResults(results);
-  const latestHeadSha = await dependencies.getPullRequestHead(prNumber);
-
-  if (latestHeadSha !== headSha) {
-    return SUPERSEDED_RESULT;
-  }
-
   const body = renderPreviewComment({
     headSha,
     prNumber,
     results: previewResults,
     targets,
   });
-  const comment = await dependencies.findPreviewComment(prNumber);
-  const mutationHeadSha = await dependencies.getPullRequestHead(prNumber);
+  const errors =
+    failures.length === 0 ? [] : [createFailureError('preview', failures)];
 
-  if (mutationHeadSha !== headSha) {
-    return SUPERSEDED_RESULT;
+  try {
+    const latestHeadSha = await dependencies.getPullRequestHead(prNumber);
+
+    if (latestHeadSha !== headSha) {
+      return SUPERSEDED_RESULT;
+    }
+
+    const comment = await dependencies.findPreviewComment(prNumber);
+    const mutationHeadSha = await dependencies.getPullRequestHead(prNumber);
+
+    if (mutationHeadSha !== headSha) {
+      return SUPERSEDED_RESULT;
+    }
+
+    if (comment === null) {
+      await dependencies.createPreviewComment({ prNumber, body });
+    } else {
+      await dependencies.updatePreviewComment({ commentId: comment.id, body });
+    }
+  } catch (error) {
+    errors.push(error);
   }
 
-  if (comment === null) {
-    await dependencies.createPreviewComment({ prNumber, body });
-  } else {
-    await dependencies.updatePreviewComment({ commentId: comment.id, body });
+  try {
+    await dependencies.appendSummary(renderSummary(body));
+  } catch (error) {
+    errors.push(error);
   }
 
-  await dependencies.appendSummary(renderSummary(body));
-
-  if (failures.length > 0) {
-    throw createFailureError('preview', failures);
-  }
+  throwCollectedErrors(
+    errors,
+    'Cloudflare preview deployment and reporting failed.',
+  );
 
   return Object.freeze({ status: 'success', results: previewResults });
 }
@@ -252,10 +317,20 @@ export async function runProductionDeployment(
 
   if (failures.length > 0) {
     const productionResults = freezeResults(buildResults);
-    await dependencies.appendSummary(
-      renderProductionSummary(productionResults, targets),
+    const errors = [createFailureError('production', failures)];
+
+    try {
+      await dependencies.appendSummary(
+        renderProductionSummary(productionResults, targets),
+      );
+    } catch (error) {
+      errors.push(error);
+    }
+
+    throwCollectedErrors(
+      errors,
+      'Cloudflare production deployment and reporting failed.',
     );
-    throw createFailureError('production', failures);
   }
 
   const deploymentResults = [];
@@ -284,13 +359,21 @@ export async function runProductionDeployment(
   }
 
   const productionResults = freezeResults(deploymentResults);
-  await dependencies.appendSummary(
-    renderProductionSummary(productionResults, targets),
-  );
+  const errors =
+    failures.length === 0 ? [] : [createFailureError('production', failures)];
 
-  if (failures.length > 0) {
-    throw createFailureError('production', failures);
+  try {
+    await dependencies.appendSummary(
+      renderProductionSummary(productionResults, targets),
+    );
+  } catch (error) {
+    errors.push(error);
   }
+
+  throwCollectedErrors(
+    errors,
+    'Cloudflare production deployment and reporting failed.',
+  );
 
   return Object.freeze({ status: 'success', results: productionResults });
 }
@@ -359,7 +442,8 @@ export function wranglerDeployArgs(target, { branch, sha }) {
   validateNonEmptyString('Commit SHA', sha);
 
   return Object.freeze([
-    'wrangler',
+    '--yes',
+    'wrangler@4.114.0',
     'pages',
     'deploy',
     target.outputDirectory,
@@ -410,8 +494,14 @@ export function createSubprocessRunner(spawnImpl = spawn) {
       child.stdout?.on('data', (chunk) => {
         stdout += chunk.toString();
       });
+      child.stdout?.on('error', (error) => {
+        settle(processFailure(command, args, error.message));
+      });
       child.stderr?.on('data', (chunk) => {
         stderr += chunk.toString();
+      });
+      child.stderr?.on('error', (error) => {
+        settle(processFailure(command, args, error.message));
       });
       child.on('error', (error) => {
         settle(processFailure(command, args, error.message));
@@ -422,7 +512,8 @@ export function createSubprocessRunner(spawnImpl = spawn) {
           return;
         }
 
-        const detail = stderr.trim() || `process exited with code ${code}`;
+        const detail =
+          stderr.trim() || stdout.trim() || `process exited with code ${code}`;
         settle(processFailure(command, args, detail));
       });
     });
@@ -430,19 +521,28 @@ export function createSubprocessRunner(spawnImpl = spawn) {
 }
 
 /** Creates a minimal GitHub client for preview-head and comment operations. */
-export function createGitHubClient({ fetchImpl, token, repository }) {
+export function createGitHubClient({
+  fetchImpl,
+  token,
+  repository,
+  requestTimeoutMs = DEFAULT_GITHUB_REQUEST_TIMEOUT_MS,
+  maxCommentPages = DEFAULT_MAX_COMMENT_PAGES,
+}) {
   if (typeof fetchImpl !== 'function') {
     throw new TypeError('fetchImpl must be a function.');
   }
 
   validateNonEmptyString('GitHub token', token);
   validateGitHubRepository(repository);
+  validatePositiveInteger('GitHub request timeout', requestTimeoutMs);
+  validatePositiveInteger('GitHub comment page limit', maxCommentPages);
 
   const request = async (method, path, body) => {
     const response = await fetchImpl(
       `${GITHUB_API_BASE_URL}/repos/${repository}${path}`,
       {
         method,
+        signal: AbortSignal.timeout(requestTimeoutMs),
         headers: {
           accept: 'application/vnd.github+json',
           authorization: `Bearer ${token}`,
@@ -480,9 +580,8 @@ export function createGitHubClient({ fetchImpl, token, repository }) {
 
     async findPreviewComment(prNumber) {
       validatePositiveInteger('PR number', prNumber);
-      let page = 1;
 
-      while (true) {
+      for (let page = 1; page <= maxCommentPages; page += 1) {
         const path = `/issues/${prNumber}/comments?per_page=100&page=${page}`;
         const response = await request('GET', path);
         const comments = await response.json();
@@ -507,9 +606,11 @@ export function createGitHubClient({ fetchImpl, token, repository }) {
         if (comments.length < 100) {
           return null;
         }
-
-        page += 1;
       }
+
+      throw new Error(
+        `GitHub comment pagination exceeded ${maxCommentPages} pages.`,
+      );
     },
 
     async createPreviewComment({ prNumber, body }) {
@@ -540,6 +641,7 @@ export function createRuntimeDependencies({
 } = {}) {
   validateNonEmptyString('GITHUB_STEP_SUMMARY', env.GITHUB_STEP_SUMMARY);
   const runSubprocess = createSubprocessRunner(spawnImpl);
+  const runtimeEnvironment = selectRuntimeEnvironment(env);
   let github;
   const getGitHub = () => {
     github ??= createGitHubClient({
@@ -554,7 +656,9 @@ export function createRuntimeDependencies({
   return Object.freeze({
     async listAffectedProjects(range) {
       const result = assertProcessSucceeded(
-        await runSubprocess('npx', nxAffectedArgs(range)),
+        await runSubprocess('npx', nxAffectedArgs(range), {
+          env: runtimeEnvironment,
+        }),
         'Nx affected projects failed',
       );
 
@@ -580,11 +684,11 @@ export function createRuntimeDependencies({
       validateNonEmptyString('Base SHA', baseSha);
       validateNonEmptyString('Head SHA', headSha);
       const result = assertProcessSucceeded(
-        await runSubprocess('git', [
-          'diff',
-          '--name-only',
-          `${baseSha}...${headSha}`,
-        ]),
+        await runSubprocess(
+          'git',
+          ['diff', '--name-only', `${baseSha}...${headSha}`],
+          { env: runtimeEnvironment },
+        ),
         'Changed-file lookup failed',
       );
       const files = result.stdout
@@ -596,16 +700,36 @@ export function createRuntimeDependencies({
     },
 
     buildTarget(target) {
-      return runSubprocess('npx', [
-        'nx',
-        'build',
-        target.nxProject,
-        '--configuration=production',
-      ]);
+      return runSubprocess(
+        'npx',
+        ['nx', 'build', target.nxProject, '--configuration=production'],
+        { env: runtimeEnvironment },
+      );
     },
 
-    deployTarget({ target, branch, sha }) {
-      return runSubprocess('npx', wranglerDeployArgs(target, { branch, sha }));
+    async deployTarget({ target, branch, sha }) {
+      try {
+        validateNonEmptyString(
+          'CLOUDFLARE_API_TOKEN',
+          env.CLOUDFLARE_API_TOKEN,
+        );
+        validateNonEmptyString(
+          'CLOUDFLARE_ACCOUNT_ID',
+          env.CLOUDFLARE_ACCOUNT_ID,
+        );
+      } catch (error) {
+        return Object.freeze({ ok: false, error: error.message });
+      }
+
+      const cloudflareEnvironment = Object.freeze({
+        ...runtimeEnvironment,
+        CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN,
+        CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+      });
+
+      return runSubprocess('npx', wranglerDeployArgs(target, { branch, sha }), {
+        env: cloudflareEnvironment,
+      });
     },
 
     async getPullRequestHead(prNumber) {

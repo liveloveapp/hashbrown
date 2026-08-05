@@ -23,7 +23,14 @@ const BASE_SHA = '1111111111111111111111111111111111111111';
 const HEAD_SHA = 'abcdef123456abcdef123456abcdef123456abcd';
 const NEW_HEAD_SHA = '2222222222222222222222222222222222222222';
 
-function createSpawnResult({ code = 0, stdout = '', stderr = '', error } = {}) {
+function createSpawnResult({
+  code = 0,
+  stdout = '',
+  stderr = '',
+  error,
+  stdoutError,
+  stderrError,
+} = {}) {
   return () => {
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
@@ -41,6 +48,14 @@ function createSpawnResult({ code = 0, stdout = '', stderr = '', error } = {}) {
 
       if (stderr) {
         child.stderr.emit('data', Buffer.from(stderr));
+      }
+
+      if (stdoutError) {
+        child.stdout.emit('error', stdoutError);
+      }
+
+      if (stderrError) {
+        child.stderr.emit('error', stderrError);
       }
 
       child.emit('close', code);
@@ -72,7 +87,12 @@ test('validates injected targets before calling dependencies', async () => {
     deletePreviewComment: async () => calls.push('delete-comment'),
     appendSummary: async () => calls.push('summary'),
   };
-  const invalidTargets = [[], [{ ...PAGES_TARGETS[0], outputDirectory: '' }]];
+  const invalidTargets = [
+    [],
+    [{ ...PAGES_TARGETS[0], outputDirectory: '' }],
+    [{ ...PAGES_TARGETS[0], nxProject: '--help' }],
+    [{ ...PAGES_TARGETS[0], outputDirectory: '../dist/www' }],
+  ];
 
   for (const targets of invalidTargets) {
     await assert.rejects(
@@ -656,6 +676,7 @@ test('does not publish a comment when the run becomes stale after deployment', a
 
 test('propagates preview comment creation failures', async () => {
   const error = new Error('create failed');
+  const calls = [];
   const dependencies = {
     listAffectedProjects: async () => ['www'],
     listChangedFiles: async () => ['www/index.ts'],
@@ -664,11 +685,12 @@ test('propagates preview comment creation failures', async () => {
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => null,
     createPreviewComment: async () => {
+      calls.push('create-comment');
       throw error;
     },
     updatePreviewComment: async () => undefined,
     deletePreviewComment: async () => undefined,
-    appendSummary: async () => undefined,
+    appendSummary: async () => calls.push('summary'),
   };
 
   const deployment = runPreviewDeployment(
@@ -677,6 +699,91 @@ test('propagates preview comment creation failures', async () => {
   );
 
   await assert.rejects(deployment, (received) => received === error);
+  assert.deepEqual(calls, ['create-comment', 'summary']);
+});
+
+test('aggregates preview deployment, comment, and summary failures after attempting reports', async () => {
+  const commentError = new Error('comment failed');
+  const summaryError = new Error('summary failed');
+  const calls = [];
+  const dependencies = {
+    listAffectedProjects: async () => ['www'],
+    listChangedFiles: async () => ['www/index.ts'],
+    buildTarget: async () => ({ ok: false, error: 'build failed' }),
+    deployTarget: async () => ({ ok: true }),
+    getPullRequestHead: async () => HEAD_SHA,
+    findPreviewComment: async () => null,
+    createPreviewComment: async () => {
+      calls.push('comment');
+      throw commentError;
+    },
+    updatePreviewComment: async () => undefined,
+    deletePreviewComment: async () => undefined,
+    appendSummary: async () => {
+      calls.push('summary');
+      throw summaryError;
+    },
+  };
+
+  const deployment = runPreviewDeployment(
+    { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42 },
+    dependencies,
+  );
+
+  await assert.rejects(deployment, (error) => {
+    assert.equal(error instanceof AggregateError, true);
+    assert.equal(error.errors.length, 3);
+    assert.match(error.errors[0].message, /Docs build: build failed/);
+    assert.strictEqual(error.errors[1], commentError);
+    assert.strictEqual(error.errors[2], summaryError);
+    return true;
+  });
+  assert.deepEqual(calls, ['comment', 'summary']);
+});
+
+test('preserves preview failures when the post-deployment head lookup and summary fail', async () => {
+  const headError = new Error('head lookup failed');
+  const summaryError = new Error('summary failed');
+  const calls = [];
+  let headLookups = 0;
+  const dependencies = {
+    listAffectedProjects: async () => ['www'],
+    listChangedFiles: async () => ['www/index.ts'],
+    buildTarget: async () => ({ ok: false, error: 'build failed' }),
+    deployTarget: async () => ({ ok: true }),
+    getPullRequestHead: async () => {
+      headLookups += 1;
+
+      if (headLookups === 1) {
+        return HEAD_SHA;
+      }
+
+      throw headError;
+    },
+    findPreviewComment: async () => calls.push('find-comment'),
+    createPreviewComment: async () => calls.push('create-comment'),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async () => {
+      calls.push('summary');
+      throw summaryError;
+    },
+  };
+
+  const deployment = runPreviewDeployment(
+    { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42 },
+    dependencies,
+  );
+
+  await assert.rejects(deployment, (error) => {
+    assert.equal(error instanceof AggregateError, true);
+    assert.equal(error.errors.length, 3);
+    assert.match(error.errors[0].message, /Docs build: build failed/);
+    assert.strictEqual(error.errors[1], headError);
+    assert.strictEqual(error.errors[2], summaryError);
+    return true;
+  });
+  assert.deepEqual(calls, ['summary']);
 });
 
 test('propagates preview comment update failures', async () => {
@@ -778,6 +885,14 @@ test('validates production options before calling dependencies', async () => {
     {
       sha: HEAD_SHA,
       targets: [{ ...PAGES_TARGETS[0], cloudflareProject: 'Invalid.Project' }],
+    },
+    {
+      sha: HEAD_SHA,
+      targets: [{ ...PAGES_TARGETS[0], nxProject: '--help' }],
+    },
+    {
+      sha: HEAD_SHA,
+      targets: [{ ...PAGES_TARGETS[0], outputDirectory: '/tmp/www' }],
     },
   ];
 
@@ -907,6 +1022,48 @@ test('continues production deployments after a failure and rejects after reporti
   assert.match(calls.at(-1)[1], /\| Finance \| Ready \|/);
 });
 
+test('aggregates production deployment and summary failures', async () => {
+  const summaryError = new Error('summary failed');
+  const dependencies = {
+    buildTarget: async () => ({ ok: true }),
+    deployTarget: async () => ({ ok: false, error: 'wrangler failed' }),
+    appendSummary: async () => {
+      throw summaryError;
+    },
+  };
+
+  const deployment = runProductionDeployment(
+    { sha: HEAD_SHA, targets: [PAGES_TARGETS[0]] },
+    dependencies,
+  );
+
+  await assert.rejects(deployment, (error) => {
+    assert.equal(error instanceof AggregateError, true);
+    assert.equal(error.errors.length, 2);
+    assert.match(error.errors[0].message, /Docs deploy: wrangler failed/);
+    assert.strictEqual(error.errors[1], summaryError);
+    return true;
+  });
+});
+
+test('propagates a lone production summary failure', async () => {
+  const summaryError = new Error('summary failed');
+  const dependencies = {
+    buildTarget: async () => ({ ok: true }),
+    deployTarget: async () => ({ ok: true }),
+    appendSummary: async () => {
+      throw summaryError;
+    },
+  };
+
+  const deployment = runProductionDeployment(
+    { sha: HEAD_SHA, targets: [PAGES_TARGETS[0]] },
+    dependencies,
+  );
+
+  await assert.rejects(deployment, (error) => error === summaryError);
+});
+
 test('parses the exact preview and production CLI forms', () => {
   const preview = parseDeployArgs([
     'preview',
@@ -960,7 +1117,8 @@ test('builds exact safe Wrangler and Nx affected argument arrays', () => {
   const nx = nxAffectedArgs({ baseSha: 'a', headSha: 'b' });
 
   assert.deepEqual(wrangler, [
-    'wrangler',
+    '--yes',
+    'wrangler@4.114.0',
     'pages',
     'deploy',
     PAGES_TARGETS[0].outputDirectory,
@@ -1011,6 +1169,34 @@ test('normalizes successful and failed subprocess completion without rejecting',
   assert.match(spawnFailureResult.error, /spawn failed/);
 });
 
+test('uses stdout diagnostics when a failed subprocess has no stderr', async () => {
+  const runSubprocess = createSubprocessRunner(
+    createSpawnResult({ code: 2, stdout: 'stdout diagnostic\n' }),
+  );
+
+  const result = await runSubprocess('tool', ['argument']);
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /stdout diagnostic/);
+});
+
+test('normalizes stdout and stderr stream errors without rejecting', async () => {
+  const stdoutRunner = createSubprocessRunner(
+    createSpawnResult({ stdoutError: new Error('stdout stream failed') }),
+  );
+  const stderrRunner = createSubprocessRunner(
+    createSpawnResult({ stderrError: new Error('stderr stream failed') }),
+  );
+
+  const stdoutResult = await stdoutRunner('tool', ['stdout']);
+  const stderrResult = await stderrRunner('tool', ['stderr']);
+
+  assert.equal(stdoutResult.ok, false);
+  assert.match(stdoutResult.error, /stdout stream failed/);
+  assert.equal(stderrResult.ok, false);
+  assert.match(stderrResult.error, /stderr stream failed/);
+});
+
 test('GitHub client reads a pull request head and rejects malformed responses', async () => {
   const responses = [
     jsonResponse({ head: { sha: HEAD_SHA } }),
@@ -1036,6 +1222,41 @@ test('GitHub client reads a pull request head and rejects malformed responses', 
   );
   assert.equal(calls[0][1].method, 'GET');
   assert.equal(calls[0][1].headers.authorization, 'Bearer secret');
+  assert.equal(calls[0][1].signal instanceof AbortSignal, true);
+});
+
+test('GitHub client rejects unsafe repository names before fetching', () => {
+  const calls = [];
+  const invalidRepositories = [
+    './repo',
+    '../repo',
+    'owner/.',
+    'owner/..',
+    '-owner/repo',
+    'owner-/repo',
+    'owner/repo?query=true',
+    'owner/repo#fragment',
+    'owner/repo/child',
+    'owner name/repo',
+    'owner/repo name',
+  ];
+
+  for (const repository of invalidRepositories) {
+    assert.throws(
+      () =>
+        createGitHubClient({
+          fetchImpl: async (...args) => calls.push(args),
+          token: 'secret',
+          repository,
+        }),
+      {
+        name: 'TypeError',
+        message: 'GitHub repository must use safe owner/name segments.',
+      },
+    );
+  }
+
+  assert.deepEqual(calls, []);
 });
 
 test('GitHub client paginates comments and only returns the bot marker', async () => {
@@ -1069,6 +1290,102 @@ test('GitHub client paginates comments and only returns the bot marker', async (
     'https://api.github.com/repos/hashbrownai/hashbrown/issues/42/comments?per_page=100&page=1',
     'https://api.github.com/repos/hashbrownai/hashbrown/issues/42/comments?per_page=100&page=2',
   ]);
+});
+
+test('GitHub client stops comment pagination after a full page then an empty page', async () => {
+  const pages = [
+    Array.from({ length: 100 }, (_, index) => ({
+      id: index + 1,
+      body: 'ordinary comment',
+      user: { login: 'github-actions[bot]' },
+    })),
+    [],
+  ];
+  const calls = [];
+  const client = createGitHubClient({
+    fetchImpl: async (...args) => {
+      calls.push(args);
+      return jsonResponse(pages.shift());
+    },
+    token: 'secret',
+    repository: 'hashbrownai/hashbrown',
+  });
+
+  const comment = await client.findPreviewComment(42);
+
+  assert.equal(comment, null);
+  assert.equal(calls.length, 2);
+  assert.equal(
+    calls.every(([, options]) => options.signal instanceof AbortSignal),
+    true,
+  );
+});
+
+test('GitHub client rejects after the bounded number of full comment pages', async () => {
+  const fullPage = Array.from({ length: 100 }, (_, index) => ({
+    id: index + 1,
+    body: 'ordinary comment',
+    user: { login: 'github-actions[bot]' },
+  }));
+  const calls = [];
+  const client = createGitHubClient({
+    fetchImpl: async (...args) => {
+      calls.push(args);
+      return jsonResponse(fullPage);
+    },
+    token: 'secret',
+    repository: 'hashbrownai/hashbrown',
+    maxCommentPages: 2,
+  });
+
+  await assert.rejects(
+    client.findPreviewComment(42),
+    /GitHub comment pagination exceeded 2 pages/,
+  );
+  assert.equal(calls.length, 2);
+});
+
+test('GitHub client rejects malformed comment arrays without another request', async () => {
+  const calls = [];
+  const client = createGitHubClient({
+    fetchImpl: async (...args) => {
+      calls.push(args);
+      return jsonResponse({ comments: [] });
+    },
+    token: 'secret',
+    repository: 'hashbrownai/hashbrown',
+  });
+
+  await assert.rejects(
+    client.findPreviewComment(42),
+    /Malformed GitHub comments response/,
+  );
+  assert.equal(calls.length, 1);
+});
+
+test('GitHub client cancels a request after its timeout', async () => {
+  let requestSignal;
+  const client = createGitHubClient({
+    fetchImpl: async (_url, options) => {
+      requestSignal = options.signal;
+
+      return new Promise((_resolve, reject) => {
+        requestSignal.addEventListener(
+          'abort',
+          () => reject(requestSignal.reason),
+          { once: true },
+        );
+      });
+    },
+    token: 'secret',
+    repository: 'hashbrownai/hashbrown',
+    requestTimeoutMs: 5,
+  });
+
+  await assert.rejects(client.getPullRequestHead(42), {
+    name: 'TimeoutError',
+  });
+  assert.equal(requestSignal.aborted, true);
 });
 
 test('GitHub client creates, updates, and deletes preview comments', async () => {
@@ -1160,9 +1477,18 @@ test('runtime dependencies use safe subprocess arguments and append the step sum
     fetchImpl: async () => jsonResponse({}),
     appendFileImpl: async (...args) => appendCalls.push(args),
     env: {
+      PATH: '/injected/bin',
+      HOME: '/home/runner',
+      CI: 'true',
+      LANG: 'C.UTF-8',
       GITHUB_TOKEN: 'secret',
       GITHUB_REPOSITORY: 'hashbrownai/hashbrown',
       GITHUB_STEP_SUMMARY: '/tmp/summary.md',
+      CLOUDFLARE_API_TOKEN: 'cloudflare-token',
+      CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account',
+      ACTIONS_RUNTIME_TOKEN: 'actions-secret',
+      NX_CLOUD_ACCESS_TOKEN: 'nx-secret',
+      CUSTOM_SECRET: 'custom-secret',
     },
   });
 
@@ -1201,6 +1527,26 @@ test('runtime dependencies use safe subprocess arguments and append the step sum
       ],
     ],
   );
+  const nonsecretEnvironment = {
+    PATH: '/injected/bin',
+    HOME: '/home/runner',
+    CI: 'true',
+    LANG: 'C.UTF-8',
+  };
+  assert.deepEqual(
+    spawnCalls.slice(0, 3).map(([, , options]) => options.env),
+    [nonsecretEnvironment, nonsecretEnvironment, nonsecretEnvironment],
+  );
+  assert.deepEqual(spawnCalls[3][2].env, {
+    ...nonsecretEnvironment,
+    CLOUDFLARE_API_TOKEN: 'cloudflare-token',
+    CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account',
+  });
+  assert.equal(
+    spawnCalls.every(([, , options]) => options.env.GITHUB_TOKEN === undefined),
+    true,
+  );
+  assert.equal(spawnResults.length, 0);
   assert.deepEqual(appendCalls, [['/tmp/summary.md', 'summary\n', 'utf8']]);
 });
 
@@ -1221,6 +1567,8 @@ test('runtime dependencies reject malformed command output and missing GitHub en
     fetchImpl: async () => jsonResponse({}),
     appendFileImpl: async () => undefined,
     env: {
+      CLOUDFLARE_API_TOKEN: 'cloudflare-token',
+      CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account',
       GITHUB_TOKEN: 'secret',
       GITHUB_REPOSITORY: 'hashbrownai/hashbrown',
       GITHUB_STEP_SUMMARY: '/tmp/summary.md',
@@ -1238,7 +1586,11 @@ test('runtime production dependencies do not require preview-only GitHub credent
     spawnImpl: createSpawnResult(),
     fetchImpl: async () => jsonResponse({}),
     appendFileImpl: async () => undefined,
-    env: { GITHUB_STEP_SUMMARY: '/tmp/summary.md' },
+    env: {
+      GITHUB_STEP_SUMMARY: '/tmp/summary.md',
+      CLOUDFLARE_API_TOKEN: 'cloudflare-token',
+      CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account',
+    },
   });
 
   const result = await runProductionDeployment(
