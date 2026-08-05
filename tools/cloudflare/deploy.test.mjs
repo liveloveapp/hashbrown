@@ -37,6 +37,37 @@ test('validates injected targets before calling dependencies', async () => {
   assert.deepEqual(calls, []);
 });
 
+test('rejects an invalid Cloudflare project slug before calling dependencies', async () => {
+  const calls = [];
+  const dependencies = {
+    listAffectedProjects: async () => calls.push('affected'),
+    listChangedFiles: async () => calls.push('changed'),
+    buildTarget: async () => calls.push('build'),
+    deployTarget: async () => calls.push('deploy'),
+    getPullRequestHead: async () => calls.push('head'),
+    findPreviewComment: async () => calls.push('find-comment'),
+    createPreviewComment: async () => calls.push('create-comment'),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async () => calls.push('summary'),
+  };
+  const targets = [{ ...PAGES_TARGETS[0], cloudflareProject: 'Hashbrown-www' }];
+
+  await assert.rejects(
+    runPreviewDeployment(
+      { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42, targets },
+      dependencies,
+    ),
+    {
+      name: 'TypeError',
+      message:
+        'Pages target cloudflareProject must be a lowercase Pages project slug.',
+    },
+  );
+
+  assert.deepEqual(calls, []);
+});
+
 test('validates deployment options before calling dependencies', async () => {
   const calls = [];
   const dependencies = {

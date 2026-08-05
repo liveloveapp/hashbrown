@@ -33,6 +33,17 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+function validateCloudflareProject(cloudflareProject) {
+  if (
+    typeof cloudflareProject !== 'string' ||
+    !CLOUDFLARE_PROJECT_PATTERN.test(cloudflareProject)
+  ) {
+    throw new TypeError(
+      'Pages target cloudflareProject must be a lowercase Pages project slug.',
+    );
+  }
+}
+
 /** Marker used to identify the Cloudflare preview pull request comment. */
 export const PREVIEW_COMMENT_MARKER = '<!-- hashbrown-cloudflare-preview -->';
 
@@ -86,6 +97,8 @@ export function validatePagesTargets(targets) {
         );
       }
     }
+
+    validateCloudflareProject(target.cloudflareProject);
 
     if (ids.has(target.id)) {
       throw new TypeError(`Duplicate Pages target id: ${target.id}.`);
@@ -147,14 +160,7 @@ export function previewUrl(target, prNumber) {
     throw new TypeError('Pages target must be a plain object.');
   }
 
-  if (
-    typeof target.cloudflareProject !== 'string' ||
-    !CLOUDFLARE_PROJECT_PATTERN.test(target.cloudflareProject)
-  ) {
-    throw new TypeError(
-      'Pages target cloudflareProject must be a lowercase Pages project slug.',
-    );
-  }
+  validateCloudflareProject(target.cloudflareProject);
 
   return `https://${previewBranch(prNumber)}.${target.cloudflareProject}.pages.dev`;
 }

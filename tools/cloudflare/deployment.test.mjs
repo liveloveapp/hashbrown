@@ -298,6 +298,21 @@ test('rejects targets with empty required fields', () => {
   }
 });
 
+test('rejects invalid Cloudflare Pages project slugs in target manifests', () => {
+  const invalidSlugs = ['Hashbrown-example', 'hashbrown_example'];
+
+  for (const cloudflareProject of invalidSlugs) {
+    const validate = () =>
+      validatePagesTargets([createTarget({ cloudflareProject })]);
+
+    assert.throws(validate, {
+      name: 'TypeError',
+      message:
+        'Pages target cloudflareProject must be a lowercase Pages project slug.',
+    });
+  }
+});
+
 test('formats a stable preview branch for a pull request', () => {
   const prNumber = 42;
 
