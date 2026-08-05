@@ -3,6 +3,10 @@ import test from 'node:test';
 
 import {
   PAGES_TARGETS,
+  PREVIEW_COMMENT_MARKER,
+  previewBranch,
+  previewUrl,
+  renderPreviewComment,
   selectPreviewTargets,
   validatePagesTargets,
 } from './deployment.mjs';
@@ -292,4 +296,172 @@ test('rejects targets with empty required fields', () => {
       message: `Pages target ${field} must be a non-empty string.`,
     });
   }
+});
+
+test('formats a stable preview branch for a pull request', () => {
+  const prNumber = 42;
+
+  const branch = previewBranch(prNumber);
+
+  assert.equal(branch, 'pr-42');
+});
+
+test('rejects invalid pull request numbers for preview branches', () => {
+  const invalidPrNumbers = [0, -1, 1.5, '42', null, undefined, Number.NaN];
+
+  for (const prNumber of invalidPrNumbers) {
+    const formatBranch = () => previewBranch(prNumber);
+
+    assert.throws(formatBranch, {
+      name: 'TypeError',
+      message: 'PR number must be a positive integer.',
+    });
+  }
+});
+
+test('formats a stable Cloudflare Pages preview URL', () => {
+  const target = PAGES_TARGETS[0];
+  const prNumber = 42;
+
+  const url = previewUrl(target, prNumber);
+
+  assert.equal(url, 'https://pr-42.hashbrown-www.pages.dev');
+});
+
+test('renders the preview comment marker exactly once', () => {
+  const results = [{ targetId: 'docs', status: 'success' }];
+
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+  });
+  const markerMatches = comment.match(/<!-- hashbrown-cloudflare-preview -->/g);
+
+  assert.equal(PREVIEW_COMMENT_MARKER, '<!-- hashbrown-cloudflare-preview -->');
+  assert.equal(markerMatches?.length, 1);
+});
+
+test('renders preview results in Pages target manifest order', () => {
+  const results = [
+    { targetId: 'smart-home', status: 'success' },
+    { targetId: 'docs', status: 'success' },
+    { targetId: 'fast-food', status: 'success' },
+  ];
+
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+  });
+
+  assert.ok(comment.indexOf('| Docs |') < comment.indexOf('| Fast Food |'));
+  assert.ok(
+    comment.indexOf('| Fast Food |') < comment.indexOf('| Smart Home |'),
+  );
+});
+
+test('renders successful results with stable linked preview URLs', () => {
+  const results = [{ targetId: 'docs', status: 'success' }];
+
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+  });
+
+  assert.match(
+    comment,
+    /\| Docs \| Ready \| \[[^\]]+\]\(https:\/\/pr-42\.hashbrown-www\.pages\.dev\) \|/,
+  );
+});
+
+test('renders failed results without preview links', () => {
+  const results = [
+    { targetId: 'finance', status: 'deploy-failed' },
+    { targetId: 'docs', status: 'build-failed' },
+  ];
+
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+  });
+  const docsRow = comment
+    .split('\n')
+    .find((line) => line.startsWith('| Docs |'));
+  const financeRow = comment
+    .split('\n')
+    .find((line) => line.startsWith('| Finance |'));
+
+  assert.equal(docsRow, '| Docs | Build failed | |');
+  assert.equal(financeRow, '| Finance | Deployment failed | |');
+  assert.doesNotMatch(docsRow, /https:\/\//);
+  assert.doesNotMatch(financeRow, /https:\/\//);
+});
+
+test('renders the seven-character head SHA above the results table', () => {
+  const results = [{ targetId: 'docs', status: 'success' }];
+
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+  });
+
+  assert.ok(comment.indexOf('`abcdef1`') < comment.indexOf('| Site |'));
+  assert.doesNotMatch(comment, /abcdef12/);
+});
+
+test('rejects preview results with unknown target ids', () => {
+  const results = [{ targetId: 'unknown', status: 'success' }];
+
+  const render = () =>
+    renderPreviewComment({
+      headSha: 'abcdef123456',
+      prNumber: 42,
+      results,
+    });
+
+  assert.throws(render, {
+    name: 'TypeError',
+    message: 'Unknown Pages target id: unknown.',
+  });
+});
+
+test('rejects preview results with unknown statuses', () => {
+  const unknownStatuses = ['pending', 'toString'];
+
+  for (const status of unknownStatuses) {
+    const results = [{ targetId: 'docs', status }];
+    const render = () =>
+      renderPreviewComment({
+        headSha: 'abcdef123456',
+        prNumber: 42,
+        results,
+      });
+
+    assert.throws(render, {
+      name: 'TypeError',
+      message: `Unknown preview result status: ${status}.`,
+    });
+  }
+});
+
+test('does not mutate preview results while rendering in manifest order', () => {
+  const results = Object.freeze([
+    Object.freeze({ targetId: 'finance', status: 'deploy-failed' }),
+    Object.freeze({ targetId: 'docs', status: 'success' }),
+  ]);
+
+  renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results,
+  });
+
+  assert.deepEqual(results, [
+    { targetId: 'finance', status: 'deploy-failed' },
+    { targetId: 'docs', status: 'success' },
+  ]);
 });

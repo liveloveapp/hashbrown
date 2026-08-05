@@ -13,6 +13,15 @@ const REQUIRED_TARGET_FIELDS = [
   'outputDirectory',
 ];
 
+const PREVIEW_RESULT_STATUS_LABELS = Object.freeze({
+  success: 'Ready',
+  'build-failed': 'Build failed',
+  'deploy-failed': 'Deployment failed',
+});
+
+/** Marker used to identify the Cloudflare preview pull request comment. */
+export const PREVIEW_COMMENT_MARKER = '<!-- hashbrown-cloudflare-preview -->';
+
 /** Ordered Cloudflare Pages deployment targets. */
 export const PAGES_TARGETS = Object.freeze([
   Object.freeze({
@@ -107,4 +116,62 @@ export function selectPreviewTargets({
   const affectedProjectSet = new Set(affectedProjects);
 
   return targets.filter((target) => affectedProjectSet.has(target.nxProject));
+}
+
+/** Returns the stable Cloudflare preview branch for a pull request. */
+export function previewBranch(prNumber) {
+  if (!Number.isInteger(prNumber) || prNumber <= 0) {
+    throw new TypeError('PR number must be a positive integer.');
+  }
+
+  return `pr-${prNumber}`;
+}
+
+/** Returns the stable Cloudflare Pages branch alias URL for a target. */
+export function previewUrl(target, prNumber) {
+  return `https://${previewBranch(prNumber)}.${target.cloudflareProject}.pages.dev`;
+}
+
+/** Renders ordered Cloudflare Pages preview results as a Markdown comment. */
+export function renderPreviewComment({ headSha, prNumber, results }) {
+  const resolvedResults = results.map((result) => {
+    const targetIndex = PAGES_TARGETS.findIndex(
+      (target) => target.id === result.targetId,
+    );
+
+    if (targetIndex === -1) {
+      throw new TypeError(`Unknown Pages target id: ${result.targetId}.`);
+    }
+
+    if (!Object.hasOwn(PREVIEW_RESULT_STATUS_LABELS, result.status)) {
+      throw new TypeError(`Unknown preview result status: ${result.status}.`);
+    }
+
+    return {
+      result,
+      target: PAGES_TARGETS[targetIndex],
+      targetIndex,
+    };
+  });
+  const orderedResults = resolvedResults.toSorted(
+    (left, right) => left.targetIndex - right.targetIndex,
+  );
+  const rows = orderedResults.map(({ result, target }) => {
+    const status = PREVIEW_RESULT_STATUS_LABELS[result.status];
+
+    if (result.status !== 'success') {
+      return `| ${target.displayName} | ${status} | |`;
+    }
+
+    return `| ${target.displayName} | ${status} | [Preview](${previewUrl(target, prNumber)}) |`;
+  });
+
+  return [
+    PREVIEW_COMMENT_MARKER,
+    `Commit: \`${headSha.slice(0, 7)}\``,
+    '',
+    '| Site | Status | Preview |',
+    '| --- | --- | --- |',
+    ...rows,
+  ].join('\n');
 }
