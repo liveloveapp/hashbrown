@@ -36,9 +36,11 @@ Each package must have an npm trusted publisher entry with:
 4. Run local verification:
 
 ```sh
-node --test scripts/deploy-smoke.spec.mjs scripts/verify-release-versions.spec.mjs scripts/verify-npm-release.spec.mjs
+node --test scripts/verify-release-versions.spec.mjs scripts/verify-npm-release.spec.mjs
 node scripts/verify-release-versions.mjs --tag vX.Y.Z
-actionlint .github/workflows/npm-publish.yml .github/workflows/cloudflare-production.yml
+actionlint .github/workflows/*.yml
+npx nx test cloudflare-deployment
+npx nx lint cloudflare-deployment
 npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer --parallel=3
 npx nx run-many -t test -p angular anthropic azure bedrock core google ollama openai writer --parallel=3
 npx nx run-many -t lint -p angular anthropic azure bedrock core google ollama openai --parallel=3
@@ -82,8 +84,15 @@ The `NPM Publish` workflow should:
 1. Build release packages.
 2. Publish serially with npm trusted publishing.
 3. Verify every package exists on npm with the expected dist tag.
-4. Deploy production Cloudflare Pages.
-5. Smoke test production URLs.
+
+Cloudflare production deployment is independent of npm tags and package
+publishing. Immediately before production starts, the `PR / Main CI` workflow
+checks whether the validated SHA is still the current `main` SHA. A run already
+superseded at that check skips production. A push after the check does not stop
+the active deployment; workflow concurrency allows a later run to deploy
+afterward if it passes validation and is still current at its check. Production
+publishes all four Pages projects. A release tag does not trigger or repeat that
+deployment.
 
 After the workflow succeeds, verify the GitHub release remains attached to the
 version tag:

@@ -7,6 +7,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: pr-main-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -19,6 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,5 +37,113 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test Cloudflare deployment tooling
+        run: npx nx test cloudflare-deployment
+
       - name: Lint, test, build, and e2e affected projects
         run: npx nx affected -t lint,test,build,e2e --parallel=3
+
+  cloudflare-preview:
+    name: Cloudflare Preview
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy affected previews
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node tools/cloudflare/deploy.mjs preview
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"
+          --pr "${{ github.event.pull_request.number }}"
+
+  cloudflare-production:
+    name: Cloudflare Production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check whether commit is current main
+        id: current-main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+
+          if [[ "$current_sha" == "$EXPECTED_SHA" ]]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping superseded production deployment: main is now $current_sha."
+          fi
+
+      - name: Deploy production
+        if: steps.current-main.outputs.current == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node tools/cloudflare/deploy.mjs production --sha "${{ github.sha }}"
+
+  pr-gate:
+    name: PR Gate
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: [ci, cloudflare-preview]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs
+        env:
+          CI_RESULT: ${{ needs.ci.result }}
+          PREVIEW_RESULT: ${{ needs.cloudflare-preview.result }}
+        run: |
+          if [[ "$CI_RESULT" != "success" ]]; then
+            echo "Validation result: $CI_RESULT"
+            exit 1
+          fi
+
+          if [[ "$PREVIEW_RESULT" != "success" && "$PREVIEW_RESULT" != "skipped" ]]; then
+            echo "Preview result: $PREVIEW_RESULT"
+            exit 1
+          fi
