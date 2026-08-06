@@ -86,11 +86,13 @@ The `NPM Publish` workflow should:
 3. Verify every package exists on npm with the expected dist tag.
 
 Cloudflare production deployment is independent of npm tags and package
-publishing. The `PR / Main CI` workflow deploys all four Pages projects from a
-validated `main` SHA only if it is still the current `main` SHA immediately
-before production. Any run superseded by a later push skips production
-deployment, regardless of whether that later push subsequently passes
-validation. A release tag does not trigger or repeat that deployment.
+publishing. Immediately before production starts, the `PR / Main CI` workflow
+checks whether the validated SHA is still the current `main` SHA. A run already
+superseded at that check skips production. A push after the check does not stop
+the active deployment; workflow concurrency allows a later run to deploy
+afterward if it passes validation and is still current at its check. Production
+publishes all four Pages projects. A release tag does not trigger or repeat that
+deployment.
 
 After the workflow succeeds, verify the GitHub release remains attached to the
 version tag:
