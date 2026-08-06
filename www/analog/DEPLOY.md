@@ -16,7 +16,7 @@ Cloudflare Pages now hosts the `www` site. The Pages configuration is stored in 
 The `PR / Main CI` workflow validates changes before deploying Cloudflare Pages.
 
 - For pull requests from branches in this repository, the workflow builds and deploys only affected Pages applications after validation succeeds. It updates one pull request comment with the preview URLs.
-- Same-repository branches are the trusted preview boundary because preview deployment requires Cloudflare credentials. Pull requests from forks do not receive credentials or Pages previews.
+- Same-repository branches are the trusted preview boundary because preview deployment requires Cloudflare credentials. Pull requests from forks and Dependabot pull requests do not receive credentials or Pages previews.
 - Immediately before production starts, the workflow checks whether the validated SHA is still the current `main` SHA. A run already superseded at that check skips production. A push after the check does not stop the active deployment; workflow concurrency allows a later run to deploy afterward if it passes validation and is still current at its check. Production publishes all four Pages projects: the documentation site, finance sample, fast-food sample, and smart-home sample.
 - Each Cloudflare Pages project's production branch must be `main`.
 - npm package publishing is independent of Cloudflare deployment. Publishing or moving an npm trigger tag does not deploy Pages.

@@ -47,7 +47,8 @@ jobs:
     name: Cloudflare Preview
     if: >-
       github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
     needs: ci
     runs-on: ubuntu-latest
     permissions:
