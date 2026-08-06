@@ -86,9 +86,10 @@ The `NPM Publish` workflow should:
 3. Verify every package exists on npm with the expected dist tag.
 
 Cloudflare production deployment is independent of npm tags and package
-publishing. The `PR / Main CI` workflow deploys all four Pages projects after a
-push to `main` passes validation. A release tag does not trigger or repeat that
-deployment.
+publishing. The `PR / Main CI` workflow deploys all four Pages projects from the
+newest validated commit on `main`; superseded queued runs skip deployment when
+they are no longer the current `main` commit. A release tag does not trigger or
+repeat that deployment.
 
 After the workflow succeeds, verify the GitHub release remains attached to the
 version tag:

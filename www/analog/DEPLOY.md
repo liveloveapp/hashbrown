@@ -17,14 +17,14 @@ The `PR / Main CI` workflow validates changes before deploying Cloudflare Pages.
 
 - For pull requests from branches in this repository, the workflow builds and deploys only affected Pages applications after validation succeeds. It updates one pull request comment with the preview URLs.
 - Same-repository branches are the trusted preview boundary because preview deployment requires Cloudflare credentials. Pull requests from forks do not receive credentials or Pages previews.
-- After a push to `main` passes validation, the workflow deploys all four production Pages projects: the documentation site, finance sample, fast-food sample, and smart-home sample.
+- The newest validated commit on `main` deploys all four production Pages projects: the documentation site, finance sample, fast-food sample, and smart-home sample. Superseded queued runs skip deployment when they are no longer the current `main` commit.
 - Each Cloudflare Pages project's production branch must be `main`.
 - npm package publishing is independent of Cloudflare deployment. Publishing or moving an npm trigger tag does not deploy Pages.
 
 ## Manual Deployment
 
 - Ensure Wrangler is authenticated (`npx wrangler login` or `npx wrangler login --scopes=d1:write` if needed).
-- Run `npx nx deploy www` to build for production and deploy the documentation site to Cloudflare Pages using `wrangler.toml`.
+- Run `npx nx deploy www` to build for production and deploy the documentation output to Cloudflare Pages through Wrangler.
 
 ## Local Preview
 
