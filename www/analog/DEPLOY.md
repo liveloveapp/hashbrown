@@ -17,7 +17,7 @@ The `PR / Main CI` workflow validates changes before deploying Cloudflare Pages.
 
 - For pull requests from branches in this repository, the workflow builds and deploys only affected Pages applications after validation succeeds. It updates one pull request comment with the preview URLs.
 - Same-repository branches are the trusted preview boundary because preview deployment requires Cloudflare credentials. Pull requests from forks do not receive credentials or Pages previews.
-- The newest validated commit on `main` deploys all four production Pages projects: the documentation site, finance sample, fast-food sample, and smart-home sample. Superseded queued runs skip deployment when they are no longer the current `main` commit.
+- A validated `main` SHA deploys only if it is still the current `main` SHA immediately before production. When it deploys, the workflow publishes all four production Pages projects: the documentation site, finance sample, fast-food sample, and smart-home sample. Any run superseded by a later push skips production deployment, regardless of whether that later push subsequently passes validation.
 - Each Cloudflare Pages project's production branch must be `main`.
 - npm package publishing is independent of Cloudflare deployment. Publishing or moving an npm trigger tag does not deploy Pages.
 
