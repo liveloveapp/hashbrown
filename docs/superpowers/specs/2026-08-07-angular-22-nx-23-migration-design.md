@@ -101,9 +101,11 @@ to the latest Angular 22 patch and apply the Angular 22 migrations.
 Align the ecosystem to Angular 22. The selected versions as of 2026-08-07 are
 Nx 23.1.1, Angular framework 22.1.1, Angular build tooling 22.1.3, and Angular
 Material/CDK 22.1.1. Planning will confirm these exact versions have not been
-superseded before the first package change. Do not add `@angular/cli`; it is not
-currently installed, and the workspace uses the existing Angular Devkit,
-schematic, and build packages through Nx.
+superseded before the first package change. Do not retain `@angular/cli` in the
+final manifest; it is not currently needed by the workspace. A matching Angular
+CLI and `angular-eslint` meta-package may be installed only as temporary
+migration tooling so the Angular ESLint migrations can run, and both must be
+removed before final dependency-tree validation.
 
 The compatibility set includes:
 
