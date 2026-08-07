@@ -1,5 +1,21 @@
 # GitHub Actions and Dependency Security Maintenance
 
+## Execution Outcome (Authoritative)
+
+> **Completed with dependency refresh discarded.** The GitHub Actions v7 and
+> audit-triage work was completed. The planned `package.json` and
+> `package-lock.json` refresh was attempted only in disposable, restorable
+> diagnostics; those attempts introduced or revealed invalid mixed Nx/SWC peer
+> dependency trees, so every dependency change was discarded. `package.json`
+> and `package-lock.json` remain unchanged. All dependency-edit steps described
+> below are superseded and must not be executed. The authoritative follow-up is
+> `docs/security/dependency-audit-2026-08-07.md`, beginning with a fully aligned
+> patched Nx migration.
+
+The remainder of this document is retained only as historical design and
+execution context. Where it proposes dependency edits, the outcome above takes
+precedence.
+
 ## Goal
 
 Remove the GitHub Actions Node 20 runtime warnings and reduce the current npm

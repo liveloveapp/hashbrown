@@ -1,5 +1,21 @@
 # GitHub Actions and Dependency Security Maintenance Implementation Plan
 
+## Execution Outcome (Authoritative)
+
+> **Completed with dependency refresh discarded.** The GitHub Actions v7 and
+> audit-triage work was completed. The planned `package.json` and
+> `package-lock.json` refresh was attempted only in disposable, restorable
+> diagnostics; those attempts introduced or revealed invalid mixed Nx/SWC peer
+> dependency trees, so every dependency change was discarded. `package.json`
+> and `package-lock.json` remain unchanged. All dependency-edit steps in this
+> plan are superseded and must not be executed. The authoritative follow-up is
+> `docs/security/dependency-audit-2026-08-07.md`, beginning with a fully aligned
+> patched Nx migration.
+
+This plan is retained only as historical execution context. It is not an
+active runbook; in particular, Task 3 and every instruction to modify or
+regenerate dependency files are superseded by the outcome above.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Remove GitHub Actions runtime deprecation warnings and reduce npm audit findings with compatible dependency updates.
@@ -104,7 +120,13 @@ git add .github/workflows/pr-main.yml .github/workflows/npm-publish.yml .github/
 git commit -m "ci: update GitHub actions to Node 24 runtimes"
 ```
 
-### Task 3: Refresh compatible vulnerable dependencies
+### Task 3: Refresh compatible vulnerable dependencies (Superseded - Do Not Execute)
+
+> **Historical record only:** Do not execute any step in Task 3. Disposable,
+> restorable diagnostics found invalid mixed Nx/SWC peer dependency trees, all
+> resulting dependency changes were discarded, and `package.json` and
+> `package-lock.json` remain unchanged. Follow
+> `docs/security/dependency-audit-2026-08-07.md` instead.
 
 **Files:**
 
