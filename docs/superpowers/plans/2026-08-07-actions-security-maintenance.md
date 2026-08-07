@@ -23,6 +23,7 @@
 ### Task 1: Protect the workflow runtime versions
 
 **Files:**
+
 - Modify: `tools/cloudflare/workflow.test.mjs`
 
 - [ ] **Step 1: Write the failing regression test**
@@ -72,6 +73,7 @@ git commit -m "test: require Node 24 GitHub actions"
 ### Task 2: Upgrade GitHub-owned actions
 
 **Files:**
+
 - Modify: `.github/workflows/pr-main.yml`
 - Modify: `.github/workflows/npm-publish.yml`
 - Modify: `.github/workflows/nightly.yml`
@@ -105,6 +107,7 @@ git commit -m "ci: update GitHub actions to Node 24 runtimes"
 ### Task 3: Refresh compatible vulnerable dependencies
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
@@ -193,6 +196,7 @@ git commit -m "chore: refresh compatible security fixes"
 ### Task 4: Document residual audit findings
 
 **Files:**
+
 - Create: `docs/security/dependency-audit-2026-08-07.md`
 
 - [ ] **Step 1: Write the audit record**
@@ -219,6 +223,7 @@ git commit -m "docs: triage residual dependency advisories"
 ### Task 5: Verify and publish the maintenance pull request
 
 **Files:**
+
 - Verify all changed files.
 
 - [ ] **Step 1: Run repository-specific deployment tests**
