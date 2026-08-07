@@ -19,6 +19,14 @@
   "engines": {
     "node": ">=18"
   },
+  "peerDependencies": {
+    "@mlc-ai/web-llm": "*"
+  },
+  "peerDependenciesMeta": {
+    "@mlc-ai/web-llm": {
+      "optional": true
+    }
+  },
   "keywords": [
     "hashbrown",
     "generative-ui",

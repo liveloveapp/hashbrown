@@ -8,6 +8,11 @@ import {
   ExperimentalEdgeLocalTransport,
   type ExperimentalEdgeLocalTransportOptions,
 } from './experimental-edge-local-transport';
+import {
+  detectWebLlmSupport,
+  ExperimentalWebLlmLocalTransport,
+  type ExperimentalWebLlmLocalTransportOptions,
+} from './experimental-webllm-local-transport';
 import { type DetectionResult, type ModelSpecFactory } from './model-spec';
 import {
   type Transport,
@@ -21,7 +26,10 @@ import { TransportError } from './transport-error';
  * Supported local prompt adapters.
  * @alpha
  */
-export type LocalPromptAdapterName = 'chrome-local' | 'edge-local';
+export type LocalPromptAdapterName =
+  | 'chrome-local'
+  | 'edge-local'
+  | 'webllm-local';
 
 type ExperimentalLocalTransportEvents =
   ExperimentalChromeLocalTransportOptions['events'];
@@ -33,6 +41,12 @@ type ExperimentalLocalTransportEvents =
 export interface ExperimentalLocalTransportOptions {
   chrome?: ExperimentalChromeLocalTransportOptions;
   edge?: ExperimentalEdgeLocalTransportOptions;
+  /**
+   * WebLLM (`@mlc-ai/web-llm`, WebGPU) adapter options. WebLLM is NOT in the
+   * default selection order because it can trigger a multi-GB model download;
+   * opt in explicitly via `order: ['webllm-local', ...]`.
+   */
+  webllm?: ExperimentalWebLlmLocalTransportOptions;
   events?: ExperimentalLocalTransportEvents;
   order?: LocalPromptAdapterName[];
 }
@@ -188,6 +202,9 @@ function createAdapters(
       if (name === 'edge-local') {
         return createEdgeAdapter(options);
       }
+      if (name === 'webllm-local') {
+        return createWebLlmAdapter(options);
+      }
       return undefined;
     })
     .filter(Boolean) as LocalPromptAdapter[];
@@ -268,6 +285,19 @@ function createEdgeAdapter(
   };
 }
 
+function createWebLlmAdapter(
+  options: ExperimentalLocalTransportOptions,
+): LocalPromptAdapter {
+  const transport = new ExperimentalWebLlmLocalTransport(options.webllm ?? {});
+
+  return {
+    name: 'webllm-local',
+    detect: () => detectWebLlmSupport(),
+    send: (request) => transport.send(request),
+    teardown: () => transport.destroy?.(),
+  };
+}
+
 function mergeEvents(
   shared?: ExperimentalLocalTransportEvents,
   scoped?: ExperimentalLocalTransportEvents,
@@ -295,6 +325,7 @@ function filterLocalOptions(
     events: candidate.events,
     chrome: candidate.chrome,
     edge: candidate.edge,
+    webllm: candidate.webllm,
     order: candidate.order,
   };
 }
