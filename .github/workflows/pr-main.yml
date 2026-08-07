@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate dependency tree
+        run: npm ls --all
+
       - name: Test Cloudflare deployment tooling
         run: npx nx test cloudflare-deployment
 

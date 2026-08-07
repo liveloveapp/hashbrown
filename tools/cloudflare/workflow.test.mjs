@@ -52,6 +52,56 @@ function findActionReferences(path, contents) {
   return references;
 }
 
+test('validates the dependency tree before CI workspace checks', async () => {
+  const workflow = await readFile(workflowPath, 'utf8');
+  const ciJobStart = workflow.indexOf('\n  ci:\n');
+  const ciJobEnd = workflow.indexOf('\n  cloudflare-preview:\n', ciJobStart);
+
+  assert.notEqual(ciJobStart, -1, 'expected the ci job to exist');
+  assert.notEqual(ciJobEnd, -1, 'expected the ci job to have a clear boundary');
+
+  const ciJob = workflow.slice(ciJobStart, ciJobEnd);
+  const installDependencies = ciJob.indexOf('        run: npm ci\n');
+  const validateDependencyTree = ciJob.indexOf(
+    '      - name: Validate dependency tree\n        run: npm ls --all\n',
+  );
+  const validateCloudflareTooling = ciJob.indexOf(
+    '        run: npx nx test cloudflare-deployment\n',
+  );
+  const validateAffectedWorkspace = ciJob.indexOf(
+    '        run: npx nx affected -t lint,test,build,e2e --parallel=3\n',
+  );
+
+  assert.notEqual(installDependencies, -1, 'expected npm ci in the ci job');
+  assert.notEqual(
+    validateDependencyTree,
+    -1,
+    'expected a named npm ls --all validation step in the ci job',
+  );
+  assert.notEqual(
+    validateCloudflareTooling,
+    -1,
+    'expected Cloudflare tooling validation in the ci job',
+  );
+  assert.notEqual(
+    validateAffectedWorkspace,
+    -1,
+    'expected affected workspace validation in the ci job',
+  );
+  assert.ok(
+    validateDependencyTree > installDependencies,
+    'expected dependency-tree validation after npm ci',
+  );
+  assert.ok(
+    validateDependencyTree < validateCloudflareTooling,
+    'expected dependency-tree validation before Cloudflare tooling validation',
+  );
+  assert.ok(
+    validateDependencyTree < validateAffectedWorkspace,
+    'expected dependency-tree validation before affected workspace validation',
+  );
+});
+
 test('allows production deployment from a main push or manual dispatch', async () => {
   const workflow = await readFile(workflowPath, 'utf8');
 
