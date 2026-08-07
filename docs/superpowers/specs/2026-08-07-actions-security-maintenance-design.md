@@ -31,14 +31,16 @@ The pull request will not:
 
 ## Implementation
 
-All three workflows will use the current official major versions of GitHub's
-checkout and Node setup actions. Existing workflow regression tests will be
-extended only if they currently assert action versions or deployment behavior.
+All three workflows will use v7 of GitHub's checkout and Node setup actions.
+Existing workflow regression tests will verify every reference, rather than
+only checking that each workflow contains at least one current reference.
 
-The dependency lockfile will be refreshed from the existing manifest. Each
-resulting direct dependency change will be reviewed before it is kept. Changes
-that cross a declared range or introduce an incompatible peer dependency will
-be reverted from this pull request and listed as follow-up work instead.
+Compatible direct dependency minimums will be raised within their existing
+major release lines, then the dependency lockfile will be regenerated with the
+Node and npm versions used by CI. Each resulting direct dependency change will
+be reviewed before it is kept. Changes that cross a compatible release line or
+introduce an incompatible peer dependency will be reverted from this pull
+request and listed as follow-up work instead.
 
 ## Validation
 
@@ -58,6 +60,10 @@ clean-state check.
 
 ## Follow-Up Boundary
 
-Residual findings will be grouped by upgrade boundary, especially Nx, React
-Router, Analog, and build-only tooling. Those migrations should be handled in
-separate pull requests with their own compatibility testing.
+Residual findings will be recorded in
+`docs/security/dependency-audit-2026-08-07.md` and grouped by upgrade boundary,
+especially Nx, React Router, Analog, and build-only tooling. Those migrations
+should be handled in separate pull requests with their own compatibility
+testing. After merge, only
+`/Users/blove/repos/hashbrown/.worktrees/cloudflare-deployment-implementation`
+will be removed.
