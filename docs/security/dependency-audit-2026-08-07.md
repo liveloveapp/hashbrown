@@ -19,27 +19,40 @@ Diagnostics used Node.js v24.18.0 and npm 11.16.0.
 | Full       |    99 |   5 |       36 |   57 |        1 |
 | Production |    28 |   2 |        5 |   21 |        0 |
 
-The sole critical finding is Velocity.js 2.1.6. It is development-only through
-Serverless Offline 14.7.4 and is not part of the deployed application runtime.
-It still affects local and CI development surfaces and therefore remains a
-required remediation item.
+`npm audit --omit=dev` follows package metadata and dependency paths; it does
+not prove that a package is reachable in a deployed bundle. Repository use
+provides a more specific exposure classification:
 
-The production audit groups findings through Analog content and router
-packages, the Angular 20.3.25 runtime, Model Context Protocol SDK 1.29.0, Nx and
-Devkit packages, Mermaid 10.9.6, and PostCSS 8.5.16 and its transitive
-dependencies. Some paths are exercised during builds or development-server
-operation, while others can reach deployed runtime code. Build and development
-exposure is distinct from deployed runtime exposure, but neither category is
-dismissed by this triage.
+- **Deployed browser or server runtime:** Angular 20.3.25 runtime packages are
+  used by deployed applications. Analog content and router packages are
+  imported by the `www` app, including its server entry points.
+- **Sample runtime:** Model Context Protocol SDK 1.29.0 is imported by Spotify
+  sample client and server code. Spotify is not one of the four current
+  Cloudflare production deployments.
+- **Build and development tooling:** Nx and Devkit packages and PostCSS 8.5.16
+  paths are used in build or development workflows. The sole critical finding,
+  Velocity.js 2.1.6 through Serverless Offline 14.7.4, is development-only. It
+  still affects local and CI development surfaces and requires remediation.
+- **Removal candidate:** No Mermaid 10.9.6 source import was found in the
+  repository. Its need should be verified and it should be removed if unused,
+  rather than assumed to be deployed.
 
 ## Dependency Tree Caveat
 
 The baseline peer dependency tree is not known to be healthy. A reused install
-contained 17 extraneous nested packages and could allow `npm ls` to pass. A
-clean npm 11 install from the committed lockfile instead reports invalid mixed
-Nx and SWC peer dependencies. Results from the reused installation are
-therefore not evidence that the committed dependency tree can be reproduced
-cleanly.
+contained 17 extraneous nested packages and could allow `npm ls` to pass. The
+reproducible clean baseline check with Node.js 24 and npm 11 is:
+
+```sh
+npm ci
+npm ls --all
+```
+
+This clean-install check from the committed lockfile produced the invalid mixed
+Nx and SWC peer result. No retained artifact from that run is available, so
+future migration pull requests must rerun the check and preserve its result in
+CI. Results from the reused installation are not evidence that the committed
+dependency tree can be reproduced cleanly.
 
 ## Disposable Resolution Experiments
 
@@ -78,9 +91,11 @@ baseline.
 
 ## Remediation Order
 
-1. Align or migrate the entire Nx toolchain first. Nx 23 is the likely target
-   because the applicable advisories require it. Validate every affected lint,
-   test, build, and end-to-end target after the migration.
+1. Align or migrate the entire Nx toolchain first. npm currently proposes
+   Nx 23.1.1 for this mixed manifest, but the migration must evaluate the lowest
+   supported, fully aligned patched Nx release, including patched Nx 22, before
+   choosing Nx 22 or Nx 23. Validate every affected lint, test, build, and
+   end-to-end target after the migration.
 2. Update the Angular runtime to 20.3.27 and align the Angular build tooling.
 3. Refresh Model Context Protocol SDK 1.30, Mermaid 10.9.8, PostCSS 8.5.26,
    Serverless Offline 14.8 with Velocity.js 2.1.7, and Verdaccio 6.9.2, then
