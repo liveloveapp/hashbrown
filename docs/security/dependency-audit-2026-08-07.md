@@ -24,8 +24,12 @@ not prove that a package is reachable in a deployed bundle. Repository use
 provides a more specific exposure classification:
 
 - **Deployed browser or server runtime:** Angular 20.3.25 runtime packages are
-  used by deployed applications. Analog content and router packages are
-  imported by the `www` app, including its server entry points.
+  used by deployed applications.
+- **Deployed application with unverified vulnerable-path reachability:** Analog
+  content and router packages are used by the deployed `www` application,
+  including its server entry points, but the audit advisory path runs through
+  `sharp`. Whether that vulnerable `sharp` path is reachable in the deployed
+  application remains unverified pending bundle and runtime-path inspection.
 - **Sample runtime:** Model Context Protocol SDK 1.29.0 is imported by Spotify
   sample client and server code. Spotify is not one of the four current
   Cloudflare production deployments.
@@ -97,9 +101,10 @@ baseline.
    choosing Nx 22 or Nx 23. Validate every affected lint, test, build, and
    end-to-end target after the migration.
 2. Update the Angular runtime to 20.3.27 and align the Angular build tooling.
-3. Refresh Model Context Protocol SDK 1.30, Mermaid 10.9.8, PostCSS 8.5.26,
-   Serverless Offline 14.8 with Velocity.js 2.1.7, and Verdaccio 6.9.2, then
-   re-run full and production audits.
+3. Refresh Model Context Protocol SDK 1.30, PostCSS 8.5.26, Serverless Offline
+   14.8 with Velocity.js 2.1.7, and Verdaccio 6.9.2. Remove Mermaid if confirmed
+   unused; otherwise upgrade it to 10.9.8. Then re-run full and production
+   audits.
 4. Handle compatibility work separately for React Router 7, SWC CLI 0.8.1,
    esbuild 0.28.1, Analog and its platform dependencies, exact-pinned Wrangler,
    and the Serverless downgrade advisory.
