@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "HashbrownSample": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:65524;http://localhost:65525"
+    }
+  }
+}
