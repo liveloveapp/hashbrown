@@ -1,10 +1,9 @@
-import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
 
 @Component({
   selector: 'spot-loader',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="loader-container">
       <div class="progress-bar">

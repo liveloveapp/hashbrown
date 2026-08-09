@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -21,7 +20,7 @@ import { RruleDetailSection } from './rrule-detail-section';
   selector: 'app-rrule-visualization',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RruleDetailSection],
+  imports: [RruleDetailSection],
   template: `
     <div class="container">
       <div class="summary">

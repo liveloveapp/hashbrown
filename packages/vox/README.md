@@ -78,13 +78,13 @@ These notes summarize everything needed to make the package build, ship assets, 
   - `sideEffects: false`
   - Entrypoints: `main` → `index.cjs`, `module` → `index.mjs`, `types` → `index.d.ts`
   - Export map includes:
-    - `.` → `index.{cjs,mjs,d.ts}`
+    - `.` → `index.cjs`, `index.mjs`, and `index.d.ts`
     - `./loader` → `assets/vad_audio_worklet.single.js`
     - `./loader-single` → `assets/vad_audio_worklet.single.js`
     - `./package.json`
   - `files`: `README.md`, `LICENSE`, `package.json`, `index.*`, `assets/**/*`
 - Rollup (Nx):
-  - Emits `index.{cjs,mjs}` + types and copies `packages/vox/src/assets/**/*` to `dist/packages/vox/assets/`.
+  - Emits `index.cjs` and `index.mjs` + types and copies `packages/vox/src/assets/**/*` to `dist/packages/vox/assets/`.
   - `tsconfig` uses `module: esnext` so rollup can emit both CJS/ESM.
   - Asset sources live in `packages/vox/src/assets/`; the embedded loader is generated postbuild from `wasm/bin/vad-audio-worklet`.
 

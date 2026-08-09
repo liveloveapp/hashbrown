@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'smart-home-react',
   preset: '../../../jest.preset.js',
   transform: {

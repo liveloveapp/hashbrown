@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 
 import analog from '@analogjs/platform';
+import angular from '@analogjs/vite-plugin-angular';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
@@ -24,6 +25,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [
+      angular(),
       analog({
         apiPrefix: '_',
         content: {

@@ -3,6 +3,7 @@ import { CanonicalReference } from '../models/api-report.models';
 import { SymbolLink } from './SymbolLink';
 
 @Component({
+  selector: 'www-markdown-symbol-link',
   imports: [SymbolLink],
   template: ` <www-symbol-link [reference]="reference" /> `,
   encapsulation: ViewEncapsulation.None,

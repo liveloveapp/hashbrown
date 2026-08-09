@@ -248,6 +248,7 @@ test('exposeMarkdown throws when custom renderer is combined with built-in optio
 });
 
 @Component({
+  selector: 'hb-markdown-render-host',
   standalone: true,
   imports: [RenderMessageComponent],
   template: `<hb-render-message [ui]="ui()" [uiKit]="uiKit" />`,

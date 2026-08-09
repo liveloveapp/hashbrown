@@ -255,7 +255,105 @@ test('structuredChatResource omits threadId from runtime updates when not provid
   );
 });
 
-function createHashbrownStub({ messages }: { messages: unknown[] }) {
+test('structuredChatResource exposes a terminal error when retries are disabled', () => {
+  fryHashbrownMock.mockReset();
+  const failure = new Error('Invalid request');
+  const hashbrown = createHashbrownStub({
+    messages: [],
+    error: failure,
+    exhaustedRetries: false,
+  });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredChatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      schema: s.object('risk summary', {
+        risk: s.string('Risk level'),
+      }),
+      retries: 0,
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({ retries: 0 }),
+  );
+  expect(resource.error()).toBe(failure);
+  expect(resource.status()).toBe('error');
+  expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
+  expect(() => resource.value()).toThrow(failure);
+});
+
+test('structuredChatResource reload removes the last assistant response without mutating history', () => {
+  fryHashbrownMock.mockReset();
+  const messages = [
+    { role: 'user' as const, content: 'Summarize this' },
+    {
+      role: 'assistant' as const,
+      content: { risk: 'low' },
+      toolCalls: [],
+    },
+  ];
+  const originalMessages = structuredClone(messages);
+  const hashbrown = createHashbrownStub({ messages });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredChatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      schema: s.object('risk summary', {
+        risk: s.string('Risk level'),
+      }),
+    }),
+  );
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(true);
+  expect(hashbrown.setMessages).toHaveBeenCalledTimes(1);
+  expect(hashbrown.setMessages).toHaveBeenCalledWith([messages[0]]);
+  expect(messages).toEqual(originalMessages);
+});
+
+test('structuredChatResource reload returns false when messages are empty', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredChatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      schema: s.object('risk summary', {
+        risk: s.string('Risk level'),
+      }),
+    }),
+  );
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(false);
+  expect(hashbrown.setMessages).not.toHaveBeenCalled();
+});
+
+function createHashbrownStub({
+  messages,
+  error,
+  exhaustedRetries = false,
+}: {
+  messages: unknown[];
+  error?: Error;
+  exhaustedRetries?: boolean;
+}) {
   const messagesSignal = createSignal(messages);
 
   return {
@@ -265,8 +363,8 @@ function createHashbrownStub({ messages }: { messages: unknown[] }) {
     isGenerating: createSignal(false),
     isRunningToolCalls: createSignal(false),
     isLoading: createSignal(false),
-    exhaustedRetries: createSignal(false),
-    error: createSignal(undefined),
+    exhaustedRetries: createSignal(exhaustedRetries),
+    error: createSignal(error),
     sendingError: createSignal(undefined),
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),

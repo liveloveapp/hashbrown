@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'fast-food-angular',
   preset: '../../../jest.preset.js',
   testEnvironment: 'node',

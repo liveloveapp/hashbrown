@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterModule } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,7 +14,6 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule,
     RouterModule,
     MatToolbarModule,
     MatButtonModule,
@@ -92,10 +91,11 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 })
 export class AppComponent {
   store = inject(Store);
+  iconRegistry = inject(MatIconRegistry);
   isChatPanelOpen = this.store.selectSignal(selectIsChatPanelOpen);
 
-  constructor(iconRegistry: MatIconRegistry) {
-    iconRegistry.setDefaultFontSetClass('material-symbols-outlined');
+  constructor() {
+    this.iconRegistry.setDefaultFontSetClass('material-symbols-outlined');
   }
 
   toggleChatPanel() {

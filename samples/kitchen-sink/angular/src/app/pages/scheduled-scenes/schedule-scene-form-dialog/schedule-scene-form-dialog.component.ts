@@ -20,7 +20,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { Store } from '@ngrx/store';
-import { Scene } from '../../../models/scene.model';
 import { selectAllScenes } from '../../../store';
 import { ScheduledScene, Weekday } from '../../../models/scheduled-scene.model';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -96,16 +95,20 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
         </mat-form-field>
 
         <span>Recurrence</span>
-        <div
-          *ngFor="let checkbox of checkboxesFormArray.controls; let i = index"
-        >
-          <input
-            type="checkbox"
-            [formControl]="checkbox"
-            id="checkbox-{{ i }}"
-          />
-          <label for="checkbox-{{ i }}">{{ weekdays[i] | titlecase }}</label>
-        </div>
+        @for (
+          checkbox of checkboxesFormArray.controls;
+          track checkbox;
+          let i = $index
+        ) {
+          <div>
+            <input
+              type="checkbox"
+              [formControl]="checkbox"
+              id="checkbox-{{ i }}"
+            />
+            <label for="checkbox-{{ i }}">{{ weekdays[i] | titlecase }}</label>
+          </div>
+        }
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">

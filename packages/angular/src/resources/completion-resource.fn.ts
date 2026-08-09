@@ -19,6 +19,10 @@ import {
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { ReactiveOption } from '../utils/types';
 import { readReactiveOption, toNgSignal } from '../utils/signals';
+import {
+  createResourceSnapshot,
+  createResourceValue,
+} from './create-resource-snapshot.fn';
 
 /**
  * A reference to the completion resource.
@@ -202,32 +206,26 @@ export function completionResource<Input>(
     options.debugName && `${options.debugName}.error`,
   );
 
-  const exhaustedRetries = toNgSignal(
-    hashbrown.exhaustedRetries,
-    options.debugName && `${options.debugName}.exhaustedRetries`,
-  );
-
   effect(() => {
     const _messages = internalMessages();
 
     hashbrown.setMessages(_messages);
   });
 
-  const value = computed(
+  const rawValue = computed(
     () => {
       const lastMessage = messages()[messages().length - 1];
 
       if (
         lastMessage &&
         lastMessage.role === 'assistant' &&
-        lastMessage.content &&
         typeof lastMessage.content === 'string'
       ) {
         return lastMessage.content;
       }
       return null;
     },
-    { debugName: options.debugName && `${options.debugName}.value` },
+    { debugName: options.debugName && `${options.debugName}.rawValue` },
   );
 
   const status = computed((): ResourceStatus => {
@@ -235,18 +233,61 @@ export function completionResource<Input>(
       return 'loading';
     }
 
-    if (exhaustedRetries()) {
+    if (error()) {
       return 'error';
+    }
+
+    if (rawValue() !== null) {
+      return 'resolved';
     }
 
     return 'idle';
   });
+  const value = createResourceValue(
+    rawValue,
+    status,
+    error,
+    options.debugName && `${options.debugName}.value`,
+  );
+  const snapshot = createResourceSnapshot(
+    value,
+    status,
+    error,
+    options.debugName && `${options.debugName}.snapshot`,
+  );
   const reload = () => {
+    const currentMessages = messages();
+    const lastMessage = currentMessages[currentMessages.length - 1];
+
+    if (!lastMessage) {
+      return false;
+    }
+
+    const requestMessages =
+      lastMessage.role === 'assistant'
+        ? currentMessages.slice(0, -1)
+        : currentMessages;
+    const lastRequestMessage = requestMessages.findLast(
+      (message) => message.role !== 'error',
+    );
+
+    if (lastRequestMessage?.role !== 'user') {
+      return false;
+    }
+
+    if (lastMessage.role === 'assistant') {
+      hashbrown.setMessages(requestMessages);
+
+      return true;
+    }
+
+    hashbrown.resendMessages();
+
     return true;
   };
 
   function hasValue(this: CompletionResourceRef) {
-    return Boolean(value());
+    return status() !== 'error' && rawValue() !== null;
   }
 
   function stop(clearStreamingMessage = false) {
@@ -255,6 +296,7 @@ export function completionResource<Input>(
 
   return {
     value,
+    snapshot,
     status,
     error,
     isLoading,

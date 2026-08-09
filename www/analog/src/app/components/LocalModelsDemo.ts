@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { structuredCompletionResource } from '@hashbrownai/angular';
 import { experimental_local, s } from '@hashbrownai/core';
@@ -20,7 +20,7 @@ const LocalSummarySchema = s.object('Support reply draft', {
 @Component({
   selector: 'www-local-models-demo',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="card">

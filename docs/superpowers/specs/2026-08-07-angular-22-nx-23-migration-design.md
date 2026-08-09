@@ -87,10 +87,18 @@ ngx-markdown 21.x. Analog 3 supports Angular 21 and Marked 18, while
 ngx-markdown 21 supports Angular 21 and Marked 17 or 18. This ordering makes the
 Stage 1 peer tree valid before Angular advances to 22.
 
+Angular 21's build tooling requires Vitest 4, so align Vitest and its installed
+companions at 4.1.10 during this stage while retaining Vite 7.3.6. Align the
+existing SWC CLI with Chokidar 5, and satisfy Analog's pinned Nitro/Unstorage
+optional peers with exact Jiti and LRU Cache versions. Storybook's Nx 22
+migration must retain a declared `@storybook/react-vite` framework package and
+must pass its inferred lint and static-build targets.
+
 The stage is complete only when a clean install succeeds, the dependency tree
-is valid, and the complete workspace validation suite passes. This checkpoint
-ensures Angular 21 migrations are not skipped or conflated with Angular 22
-changes.
+is valid, and the complete workspace validation suite passes, including the
+Angular API report and Storybook-specific lint and static-build targets. This
+checkpoint ensures Angular 21 migrations are not skipped or conflated with
+Angular 22 changes.
 
 ### Stage 2: Move to Nx 23 and Angular 22
 

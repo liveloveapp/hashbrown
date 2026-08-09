@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -55,7 +54,7 @@ const Markdown = exposeComponent(MarkdownComponent, {
 @Component({
   selector: 'app-ui-chat-demo',
   standalone: true,
-  imports: [CommonModule, FormsModule, RenderMessageComponent],
+  imports: [FormsModule, RenderMessageComponent],
   template: `
     <section class="ui-chat-demo">
       <header>

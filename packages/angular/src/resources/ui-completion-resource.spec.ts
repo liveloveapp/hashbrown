@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResourceStatus, signal, type Signal } from '@angular/core';
+import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
 import { type ModelInput, s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { uiCompletionResource } from './ui-completion-resource.fn';
@@ -15,11 +15,15 @@ const structuredCompletionResourceMock = vi.mocked(
   structuredCompletionResource,
 );
 
-const createCompletionStub = (valueSignal: Signal<any | null>) => {
+const createCompletionStub = (
+  valueSignal: Signal<any | null>,
+  status = signal<ResourceStatus>('idle'),
+  error = signal<Error | undefined>(undefined),
+) => {
   return {
     value: valueSignal,
-    status: signal<ResourceStatus>('idle'),
-    error: signal<Error | undefined>(undefined),
+    status,
+    error,
     isLoading: signal(false),
     reload: vi.fn(),
     stop: vi.fn(),
@@ -187,4 +191,73 @@ test('uiCompletionResource passes reactive options through to structuredCompleti
   system.set('Updated system prompt');
 
   expect(delegatedSystem()).toBe('Updated system prompt');
+});
+
+test('uiCompletionResource snapshot uses the exposed assistant message', () => {
+  structuredCompletionResourceMock.mockReset();
+  const status = signal<ResourceStatus>('resolved');
+  const error = signal<Error | undefined>(undefined);
+  structuredCompletionResourceMock.mockReturnValue(
+    createCompletionStub(signal({ ui: [] }), status, error),
+  );
+
+  const resource = uiCompletionResource({
+    components: [
+      {
+        component: class {},
+        name: 'Card',
+        description: 'Card component',
+      },
+    ],
+    input: signal('Describe a component'),
+    model: 'gpt-4.1',
+    system: 'System prompt',
+  });
+
+  expect(resource.status()).toBe(status());
+  expect(resource.error()).toBe(error());
+  expect(resource.snapshot()).toEqual({
+    status: 'resolved',
+    value: resource.value(),
+  });
+  expect(resource.snapshot()).toEqual({
+    status: 'resolved',
+    value: expect.objectContaining({ role: 'assistant', toolCalls: [] }),
+  });
+});
+
+test('uiCompletionResource propagates terminal errors through value', () => {
+  structuredCompletionResourceMock.mockReset();
+  const failure = new Error('UI completion failed');
+  const status = signal<ResourceStatus>('resolved');
+  const error = signal<Error | undefined>(undefined);
+  const completionValue = signal<any | null>({ ui: [] });
+  const value = computed(() => {
+    if (status() === 'error') {
+      throw error();
+    }
+
+    return completionValue();
+  });
+  structuredCompletionResourceMock.mockReturnValue(
+    createCompletionStub(value, status, error),
+  );
+  const resource = uiCompletionResource({
+    components: [
+      {
+        component: class {},
+        name: 'Card',
+        description: 'Card component',
+      },
+    ],
+    input: signal('Describe a component'),
+    model: 'gpt-4.1',
+    system: 'System prompt',
+  });
+
+  error.set(failure);
+  status.set('error');
+
+  expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
+  expect(() => resource.value()).toThrow(failure);
 });

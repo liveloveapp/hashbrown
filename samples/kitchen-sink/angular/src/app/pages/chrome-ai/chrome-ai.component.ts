@@ -24,12 +24,12 @@ import { chatResource } from '@hashbrownai/angular';
       <div class="status-panel">
         <p><strong>Resource status:</strong> {{ chromeChat.status() }}</p>
         <p><strong>Availability:</strong> {{ availabilityStatus() }}</p>
-        <p *ngIf="downloadProgress() as pct">
-          <strong>Download progress:</strong> {{ pct }}%
-        </p>
-        <p class="error" *ngIf="chromeChat.error() as err">
-          <strong>Error:</strong> {{ err.message }}
-        </p>
+        @if (downloadProgress(); as pct) {
+          <p><strong>Download progress:</strong> {{ pct }}%</p>
+        }
+        @if (chromeChat.error(); as err) {
+          <p class="error"><strong>Error:</strong> {{ err.message }}</p>
+        }
       </div>
 
       <label class="sr-only" for="prompt-input">Prompt</label>
@@ -55,19 +55,19 @@ import { chatResource } from '@hashbrownai/angular';
 
       <section class="messages">
         <h2>Conversation</h2>
-        <div
-          class="message"
-          *ngFor="let message of chromeChat.value(); index as idx"
-          [attr.data-role]="message.role"
-        >
-          <header>
-            {{ message.role | titlecase }}
-          </header>
-          <pre>{{ formatContent(message) }}</pre>
-        </div>
-        <p *ngIf="chromeChat.value().length === 0" class="hint">
-          Send a message above to see the streaming response.
-        </p>
+        @for (message of chromeChat.value(); track message; let idx = $index) {
+          <div class="message" [attr.data-role]="message.role">
+            <header>
+              {{ message.role | titlecase }}
+            </header>
+            <pre>{{ formatContent(message) }}</pre>
+          </div>
+        }
+        @if (chromeChat.value().length === 0) {
+          <p class="hint">
+            Send a message above to see the streaming response.
+          </p>
+        }
       </section>
     </section>
   `,

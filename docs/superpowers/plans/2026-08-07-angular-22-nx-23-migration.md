@@ -46,22 +46,24 @@ Confirm these versions with `npm view` immediately before changing the
 manifest. Use these versions unless a newer patch in the same selected line is
 available and has compatible peers.
 
-| Package set                 | Stage 1                   | Stage 2/final          |
-| --------------------------- | ------------------------- | ---------------------- |
-| Nx and all `@nx/*` packages | `22.7.8`                  | `23.1.1`               |
-| Angular framework           | `21.2.19`                 | `22.1.1`               |
-| Angular build/devkit        | `21.2.20`                 | `22.1.3`               |
-| Angular Material/CDK        | `21.2.14`                 | `22.1.1`               |
-| TypeScript                  | `5.9.3`                   | `6.0.3`                |
-| Angular ESLint scoped set   | `21.4.0`                  | `22.1.0`               |
-| NgRx                        | `21.1.1`                  | exact `22.0.0-rc.0`    |
-| Analog first-party set      | exact `3.0.0-alpha.64`    | exact `3.0.0-alpha.64` |
-| ngx-markdown                | `21.3.0`                  | `22.0.0`               |
-| Marked                      | `18.0.9`                  | `18.0.9`               |
-| Vite / Vitest               | `7.3.6` / `3.2.7`         | `8.2.1` / `4.1.10`     |
-| `@vitejs/plugin-react`      | existing compatible patch | `6.0.5`                |
-| Zone.js                     | `0.16.2`                  | `0.16.2`               |
-| SWC register/core           | migration-compatible      | `1.12.1` / `1.15.47`   |
+| Package set                 | Stage 1                       | Stage 2/final                  |
+| --------------------------- | ----------------------------- | ------------------------------ |
+| Nx and all `@nx/*` packages | `22.7.8`                      | `23.1.1`                       |
+| Angular framework           | `21.2.19`                     | `22.1.1`                       |
+| Angular build/devkit        | `21.2.20`                     | `22.1.3`                       |
+| Angular Material/CDK        | `21.2.14`                     | `22.1.1`                       |
+| TypeScript                  | `5.9.3`                       | `6.0.3`                        |
+| Angular ESLint scoped set   | `21.4.0`                      | `22.1.0`                       |
+| NgRx                        | `21.1.1`                      | exact `22.0.0-rc.0`            |
+| Analog first-party set      | exact `3.0.0-alpha.64`        | exact `3.0.0-alpha.64`         |
+| ngx-markdown                | `21.3.0`                      | `22.0.0`                       |
+| Marked                      | `18.0.9`                      | `18.0.9`                       |
+| Vite / Vitest               | `7.3.6` / `4.1.10`            | `8.2.1` / `4.1.10`             |
+| `@vitejs/plugin-react`      | existing compatible patch     | `6.0.5`                        |
+| Zone.js                     | `0.16.2`                      | `0.16.2`                       |
+| SWC CLI/register/core       | `0.8.1` / `1.12.1` / `1.15.8` | `0.8.1` / `1.12.1` / `1.15.47` |
+| Jiti / LRU Cache            | `2.7.0` / `11.2.6`            | `2.7.0` / `11.2.6`             |
+| Storybook / React Vite      | `10.5.7` / `10.5.7`           | `10.5.7` / `10.5.7`            |
 
 Do not retain `@angular/cli` in the final manifest, use `--force` or
 `legacy-peer-deps`, add npm overrides, publish packages, or retain an invalid
@@ -141,8 +143,9 @@ git commit -m "ci: validate the npm dependency tree"
 - [ ] **Step 1: Reconfirm Stage 1 package versions**
 
 Run `npm view` for Nx 22, Angular 21 framework/build/Material, Angular ESLint
-21, NgRx 21, ngx-markdown 21, TypeScript 5.9, Analog alpha, and Marked 18.
-Record any newer patch chosen in the commit message body and audit document.
+21, NgRx 21, ngx-markdown 21, TypeScript 5.9, Analog alpha, Marked 18, Vitest,
+SWC, Jiti, LRU Cache, and Storybook. Record any newer patch chosen in the commit
+message body and audit document.
 
 - [ ] **Step 2: Generate the Nx 22 migration**
 
@@ -167,7 +170,11 @@ Pin these existing first-party Analog dependencies exactly to
 `3.0.0-alpha.64`: `@analogjs/content`, `@analogjs/platform`,
 `@analogjs/router`, `@analogjs/vite-plugin-angular`, and
 `@analogjs/vitest-angular`. Set Marked to 18.0.9 and retain compatible Marked
-plugins. Keep Vite 7.3.6 and Vitest 3.2.7 for this checkpoint.
+plugins. Keep Vite 7.3.6 and align Vitest, `@vitest/coverage-v8`, and
+`@vitest/ui` at 4.1.10 because Angular build 21 requires Vitest 4. Align
+`@swc/cli` at 0.8.1 for Chokidar 5 compatibility, `jiti` at 2.7.0, and
+`lru-cache` at 11.2.6 for the pinned Analog peer tree. Align Storybook and the
+declared `@storybook/react-vite` framework at 10.5.7.
 
 Remove `@angular-architects/ngrx-toolkit` and `ngrx-toolkit` only after a fresh
 repository search reconfirms they have no source/config imports. Retain and
@@ -216,11 +223,21 @@ Run:
 
 ```sh
 npx nx run-many -t lint,test,build,e2e --parallel=3 --outputStyle=static
+npx nx run-many -t typecheck --parallel=3 --outputStyle=static
+npx nx eslint:lint smart-home-react --outputStyle=static
+npx nx build-storybook smart-home-react --outputStyle=static
+npx nx build-api-report angular --outputStyle=static
 ```
 
 Expected: every available target passes. Restore only tracked generated data
 or metadata files changed as a side effect of successful targets. Never discard
 migration source/config changes merely because they are broad.
+
+The workspace intentionally has no root `tsconfig.json`, so retain Nx's
+recommended `sync.disabledTaskSyncGenerators` entry for
+`@nx/js:typescript-sync`. The pre-existing inferred `tsc:typecheck` target
+assumes Nx's full project-reference architecture and is not a migration gate;
+the explicit `typecheck` targets and package builds remain required.
 
 - [ ] **Step 7: Commit the Stage 1 checkpoint**
 

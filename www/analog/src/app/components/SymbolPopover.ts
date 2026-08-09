@@ -10,6 +10,7 @@ export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
 );
 
 @Component({
+  selector: 'www-symbol-popover',
   imports: [SymbolHeader, SymbolApi, SymbolSummary, Squircle],
   template: `
     <div

@@ -17,6 +17,7 @@ import {
 import { ReactiveOption } from '../utils/types';
 import { UiChatMessageOutput } from './ui-chat-resource.fn';
 import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
+import { createResourceSnapshot } from './create-resource-snapshot.fn';
 
 /**
  * Options for the UI completion resource.
@@ -197,13 +198,20 @@ export function uiCompletionResource<
     },
     { debugName: options.debugName && `${options.debugName}.value` },
   );
+  const snapshot = createResourceSnapshot(
+    value,
+    completion.status,
+    completion.error,
+    options.debugName && `${options.debugName}.snapshot`,
+  );
 
   function hasValue(this: UiCompletionResourceRef<Tools>) {
-    return value() !== null;
+    return completion.status() !== 'error' && value() !== null;
   }
 
   return {
     value,
+    snapshot,
     status: completion.status,
     error: completion.error,
     isLoading: completion.isLoading,

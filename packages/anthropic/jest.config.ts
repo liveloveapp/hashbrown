@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'anthropic',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
