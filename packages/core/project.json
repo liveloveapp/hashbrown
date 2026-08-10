@@ -54,23 +54,25 @@
         "passWithNoTests": true
       }
     },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/packages/core-e2e"],
+      "dependsOn": [
+        {
+          "projects": ["core"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "jestConfig": "packages/core/jest.e2e.config.ts",
+        "passWithNoTests": false
+      }
+    },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
       "options": {
         "packageRoot": "dist/packages/core"
-      }
-    },
-    "parser-test-server": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "ts-node packages/core/src/streaming-json-parser/test/server.ts"
-      }
-    },
-    "parser-test-client": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "ts-node packages/core/src/streaming-json-parser/test/client.ts"
       }
     },
     "build-api-report": {

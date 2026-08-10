@@ -130,6 +130,12 @@ The compatibility set includes:
   `22.0.0-rc.0`
 - SWC packages compatible with the selected Nx 23 release
 
+Narrow the published `@hashbrownai/angular` peers to Angular 22. Angular 22's
+partial compiler emits the `ChangeDetectionStrategy.Eager` member added in
+Angular 21.2, and an Angular 20 final-artifact consumer build confirms that an
+older linker rejects that metadata. Advertising Angular 20 or early Angular 21
+compatibility would therefore be incorrect.
+
 Remove `@angular-architects/ngrx-toolkit`, `ngrx-toolkit`, and the
 `angular-eslint` meta-package after confirming again that no source or
 configuration imports them. Retain the scoped Angular ESLint plugin and parser
@@ -143,7 +149,10 @@ Add `npm ls --all` immediately after `npm ci` in the `ci` job of
 `.github/workflows/pr-main.yml`. This makes an invalid peer tree a required
 validation failure before builds or deployments proceed. Update
 `tools/cloudflare/workflow.test.mjs` so this step cannot be removed or moved
-after workspace validation accidentally.
+after workspace validation accidentally. The affected-project gate runs the
+standard lint, test, typecheck, build, and e2e targets. A separate CI step runs
+the smart-home React sample's inferred ESLint and Storybook targets, whose names
+are not covered by the standard target set.
 
 Record full and production npm audit totals after migration and compare them
 with the pre-migration baseline. Audit totals are diagnostic rather than a
@@ -164,11 +173,18 @@ Each major-version checkpoint runs:
 3. `npx nx sync:check`
 4. Every available `lint`, `test`, `build`, and `e2e` target across the
    workspace
+5. Every available inferred `typecheck` target, plus the smart-home React
+   sample's inferred ESLint and Storybook targets that use nonstandard names
 
 After the final migration, also run:
 
 - API report builds for all published packages that define the target
-- Core parser client and server tests
+- The Core Skillet streaming JSON parser Jest suite. The obsolete socket client
+  and server harness targets, whose sources were removed before this migration,
+  are retired.
+- The Core pack-and-consume e2e test for generated chunks and ESM/CJS entrypoints
+- The Angular final-artifact e2e check that enforces the Angular 22 peer boundary
+  required by its `Eager` change-detection metadata
 - Cloudflare workflow tests and actionlint
 - Formatting checks for every changed file
 - Full and production npm audits

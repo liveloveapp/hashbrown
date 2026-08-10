@@ -69,7 +69,10 @@ test('validates the dependency tree before CI workspace checks', async () => {
     '        run: npx nx test cloudflare-deployment\n',
   );
   const validateAffectedWorkspace = ciJob.indexOf(
-    '        run: npx nx affected -t lint,test,build,e2e --parallel=3\n',
+    '        run: npx nx affected -t lint,test,typecheck,build,e2e --parallel=3\n',
+  );
+  const validateSmartHomeTooling = ciJob.indexOf(
+    '        run: npx nx run-many -t eslint:lint,build-storybook -p smart-home-react --parallel=2\n',
   );
 
   assert.notEqual(installDependencies, -1, 'expected npm ci in the ci job');
@@ -88,6 +91,11 @@ test('validates the dependency tree before CI workspace checks', async () => {
     -1,
     'expected affected workspace validation in the ci job',
   );
+  assert.notEqual(
+    validateSmartHomeTooling,
+    -1,
+    'expected smart-home React tooling validation in the ci job',
+  );
   assert.ok(
     validateDependencyTree > installDependencies,
     'expected dependency-tree validation after npm ci',
@@ -99,6 +107,10 @@ test('validates the dependency tree before CI workspace checks', async () => {
   assert.ok(
     validateDependencyTree < validateAffectedWorkspace,
     'expected dependency-tree validation before affected workspace validation',
+  );
+  assert.ok(
+    validateDependencyTree < validateSmartHomeTooling,
+    'expected dependency-tree validation before smart-home React tooling validation',
   );
 });
 

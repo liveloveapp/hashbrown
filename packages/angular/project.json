@@ -43,6 +43,18 @@
     "test": {
       "executor": "@analogjs/vitest-angular:test"
     },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": ["angular"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "node --test packages/angular/e2e/package-compatibility.e2e.test.mjs"
+      }
+    },
     "build-api-report": {
       "executor": "nx:run-commands",
       "dependsOn": [

@@ -31,6 +31,7 @@
         "{workspaceRoot}/.eslintrc.json",
         "{workspaceRoot}/.eslintignore",
         "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/eslint.angular.config.mjs",
         "{workspaceRoot}/tools/eslint-rules/**/*"
       ]
     },

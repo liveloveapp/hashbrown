@@ -295,7 +295,9 @@ keep `@swc/cli` within Nx 23's supported `<0.9.0` range.
 
 Complete these `package.json` edits before installing dependencies. The
 Angular 21-era NgRx and ngx-markdown peers cannot be installed beside Angular
-22 by npm 11.
+22 by npm 11. Narrow the published Angular package's framework peers to
+`^22.0.0`; Angular 22 partial declarations emit the `Eager` change-detection
+member that older Angular linkers do not support.
 
 - [ ] **Step 3: Install migration tooling and run official migrations**
 
@@ -343,6 +345,9 @@ Run:
 
 ```sh
 npx nx run-many -t lint,test,build,e2e --parallel=3 --outputStyle=static
+npx nx run-many -t typecheck --parallel=3 --outputStyle=static
+npx nx eslint:lint smart-home-react --outputStyle=static
+npx nx build-storybook smart-home-react --outputStyle=static
 ```
 
 Investigate every new warning attributable to the migration. Restore only
@@ -437,22 +442,28 @@ sync drift.
 
 ```sh
 npx nx run-many -t lint,test,build,e2e --parallel=3 --outputStyle=static
+npx nx run-many -t typecheck --parallel=3 --outputStyle=static
+npx nx eslint:lint smart-home-react --outputStyle=static
+npx nx build-storybook smart-home-react --outputStyle=static
 ```
 
-Expected: every available target succeeds.
+Expected: every available target succeeds, including inferred typecheck, ESLint,
+and Storybook targets that are not covered by the standard target names.
 
 - [ ] **Step 3: Run published-package validation**
 
 ```sh
 npx nx run-many -t build-api-report -p core react angular openai anthropic azure bedrock google ollama writer --parallel=3
-npx nx parser-test-client core
-npx nx parser-test-server core
+npx nx test core --testPathPatterns=packages/core/src/skillet/parser/json-parser.spec.ts
+npx nx e2e core
+npx nx e2e angular
 npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer --parallel=3
 node scripts/verify-release-versions.mjs
 ```
 
-Expected: API reports, parser compatibility, release builds, and atomic release
-metadata checks pass without publishing.
+Expected: API reports, parser compatibility, Core package consumption, the
+Angular 22 package boundary, release builds, and atomic release metadata checks
+pass without publishing.
 
 - [ ] **Step 4: Run deployment and formatting validation**
 

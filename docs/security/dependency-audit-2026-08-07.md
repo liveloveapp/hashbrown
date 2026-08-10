@@ -136,6 +136,65 @@ used to distinguish lockfile changes from advisory-feed drift.
   React Router 6, `undici` under Miniflare and Serverless, `uuid` under SockJS,
   and the remaining Nx `brace-expansion` path.
 
+### Advisory Identity Delta
+
+The same-feed comparison introduced only `GHSA-5qjj-4xww-7phc`, classified
+above. The following advisory identities were removed from the migrated lock;
+they are grouped by severity and attributed package for readability:
+
+- **critical, velocityjs:** `GHSA-7gfh-x38p-prh3`
+- **high, @angular/common:** `GHSA-jhpw-976m-542j`
+- **high, @angular/compiler, @angular/core:** `GHSA-jj27-h5hq-8x99`
+- **high, @angular/platform-server:** `GHSA-vpx6-8pjr-4g3v`
+- **high, adm-zip:** `GHSA-xcpc-8h2w-3j85`
+- **high, axios:** `GHSA-gcfj-64vw-6mp9`
+- **high, brace-expansion:** `GHSA-3jxr-9vmj-r5cp`, `GHSA-mh99-v99m-4gvg`
+- **high, fast-uri:** `GHSA-7p8r-x3mc-p8w7`, `GHSA-v2hh-gcrm-f6hx`
+- **high, http-proxy-middleware:** `GHSA-gcq2-9pq2-cxqm`
+- **high, ip-address:** `GHSA-mwp4-54f8-5fhr`
+- **high, js-yaml:** `GHSA-52cp-r559-cp3m`, `GHSA-5p4m-2wfm-xmqj`
+- **high, koa:** `GHSA-7gcc-r8m5-44qm`
+- **high, minimatch:** `GHSA-23c5-xmqv-rm74`, `GHSA-3ppc-4f35-3m26`,
+  `GHSA-7r86-cg39-jmmj`
+- **high, nanoid:** `GHSA-28wg-ghj8-5hjv`, `GHSA-2v37-7h3g-55p8`
+- **high, nx:** `GHSA-vp3h-ghgh-jr7g`
+- **high, picomatch:** `GHSA-c2c7-rcm5-vvqj`
+- **high, postcss:** `GHSA-r28c-9q8g-f849`
+- **high, serialize-javascript:** `GHSA-5c6j-r48x-rmvq`
+- **high, sharp:** `GHSA-f88m-g3jw-g9cj`
+- **high, svgo:** `GHSA-2p49-hgcm-8545`
+- **high, ws:** `GHSA-96hv-2xvq-fx4p`
+- **moderate, @hono/node-server:** `GHSA-frvp-7c67-39w9`
+- **moderate, axios:** `GHSA-42h9-826w-cgv3`, `GHSA-7q8q-rj6j-mhjq`,
+  `GHSA-f4gw-2p7v-4548`, `GHSA-hcpx-6fm6-wx23`, `GHSA-jqh4-m9w3-8hp9`,
+  `GHSA-mmx7-hfxf-jppx`, `GHSA-mwf2-3pr3-8698`, `GHSA-pmv8-rq9r-6j72`,
+  `GHSA-xj6q-8x83-jv6g`
+- **moderate, dompurify:** `GHSA-55q2-fjhq-7xh7`
+- **moderate, esbuild:** `GHSA-67mh-4wv8-2f99`
+- **moderate, file-type:** `GHSA-5v7r-6r5c-r473`, `GHSA-j47w-4g3g-c36v`
+- **moderate, hono:** `GHSA-54fx-42gc-7vw4`, `GHSA-8j4g-w8fx-2239`,
+  `GHSA-f23p-vx2j-j53r`
+- **moderate, http-proxy-middleware:** `GHSA-64mm-vxmg-q3vj`
+- **moderate, ip-address:** `GHSA-22jq-vg5j-6vgg`, `GHSA-4xrf-jv44-h6hh`
+- **moderate, js-yaml:** `GHSA-h67p-54hq-rp68`
+- **moderate, koa:** `GHSA-g8mr-fgfg-5qpc`
+- **moderate, mermaid:** `GHSA-2v8p-3f2j-5mp7`, `GHSA-6x64-9x62-f2gx`
+- **moderate, nx:** `GHSA-g2r8-wvmj-jf5w`
+- **moderate, picomatch:** `GHSA-3v7f-55p6-f55p`
+- **moderate, postcss:** `GHSA-fxqj-rqcc-2cmp`
+- **moderate, qs:** `GHSA-q8mj-m7cp-5q26`
+- **moderate, serialize-javascript:** `GHSA-qj8w-gfj5-8c6v`
+- **moderate, tar:** `GHSA-r292-9mhp-454m`
+- **moderate, webpack-dev-server:** `GHSA-f5vj-f2hx-8m93`,
+  `GHSA-m28w-2pqf-7qgj`
+- **moderate, ws:** `GHSA-58qx-3vcg-4xpx`
+- **low, @babel/core:** `GHSA-4x5r-pxfx-6jf8`
+- **low, body-parser:** `GHSA-v422-hmwv-36x6`
+- **low, dompurify:** `GHSA-c2j3-45gr-mqc4`
+- **low, esbuild:** `GHSA-g7r4-m6w7-qqqr`
+- **low, hono:** `GHSA-79qm-7rj5-m7r9`
+- **low, mermaid:** `GHSA-c4c3-pg64-4m4v`
+
 ## Remediation Order
 
 1. Upgrade Nx when a supported Nx 23 patch replaces its nested

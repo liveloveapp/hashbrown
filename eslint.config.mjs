@@ -7,6 +7,7 @@ export default [
   {
     ignores: [
       '**/dist/**',
+      '**/storybook-static/**',
       'node_modules/**',
       '**/vite.config.*.timestamp*',
       '**/vitest.config.*.timestamp*',
