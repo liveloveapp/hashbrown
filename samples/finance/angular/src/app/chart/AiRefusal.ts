@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { s } from '@hashbrownai/core';
 import { ComponentPropSchema } from '@hashbrownai/angular';
 import { AiToastNotification } from './AiToastNotification';
@@ -6,6 +6,7 @@ import { AiToastNotification } from './AiToastNotification';
 @Component({
   selector: 'app-ai-refusal',
   imports: [AiToastNotification],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-ai-toast-notification
       [title]="title()"

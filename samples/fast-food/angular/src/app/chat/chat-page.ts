@@ -5,6 +5,7 @@ import {
   inject,
   model,
   signal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import {
   RenderMessageComponent,
@@ -54,6 +55,7 @@ import { ChatKit } from './chat-kit';
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .initial-chat-state {
       padding: 24px;

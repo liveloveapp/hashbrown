@@ -1,4 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ConfigService } from '../../services/ConfigService';
 import { Squircle } from '../Squircle';
@@ -81,6 +87,7 @@ import { Scene } from '../hashy-skates/Scene';
       }
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

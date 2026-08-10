@@ -106,7 +106,7 @@ export interface UseUiCompletionResult<Tools extends Chat.AnyTool> extends Omit<
   /**
    * The rendered React elements produced by the completion.
    */
-  ui: ReactElement[] | null;
+  ui: ReactElement<any>[] | null;
   /**
    * The raw structured output returned by the model before rendering components.
    */
@@ -165,7 +165,7 @@ export const useUiCompletion = <
   });
 
   const buildContent = useCallback(
-    (content: string | UiChatSchema): ReactElement[] | string => {
+    (content: string | UiChatSchema): ReactElement<any>[] | string => {
       if (typeof content === 'string') {
         return content;
       }

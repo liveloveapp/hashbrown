@@ -337,7 +337,118 @@ test('chatResource omits threadId from runtime updates when not provided', () =>
   );
 });
 
-function createHashbrownStub({ messages }: { messages: unknown[] }) {
+test('chatResource throws from value and snapshots a terminal error', () => {
+  fryHashbrownMock.mockReset();
+  const failure = new Error('Chat request failed');
+  const hashbrown = createHashbrownStub({ messages: [], error: failure });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+    }),
+  );
+
+  expect(resource.status()).toBe('error');
+  expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
+  expect(() => resource.value()).toThrow(failure);
+});
+
+test('chatResource keeps stale messages readable while loading with an error', () => {
+  fryHashbrownMock.mockReset();
+  const messages = [
+    {
+      role: 'assistant' as const,
+      content: 'Stale response',
+      toolCalls: [],
+    },
+  ];
+  const hashbrown = createHashbrownStub({
+    messages,
+    error: new Error('Stale error'),
+    isLoading: true,
+  });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+    }),
+  );
+
+  expect(resource.status()).toBe('loading');
+  expect(resource.value()).toEqual(messages);
+  expect(resource.snapshot()).toEqual({ status: 'loading', value: messages });
+});
+
+test('chatResource reload removes the last assistant response without mutating history', () => {
+  fryHashbrownMock.mockReset();
+  const messages = [
+    { role: 'user' as const, content: 'Summarize this' },
+    {
+      role: 'assistant' as const,
+      content: 'Completed response',
+      toolCalls: [],
+    },
+  ];
+  const originalMessages = structuredClone(messages);
+  const hashbrown = createHashbrownStub({ messages });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+    }),
+  );
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(true);
+  expect(hashbrown.setMessages).toHaveBeenCalledTimes(1);
+  expect(hashbrown.setMessages).toHaveBeenCalledWith([messages[0]]);
+  expect(messages).toEqual(originalMessages);
+});
+
+test('chatResource reload returns false when messages are empty', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+    }),
+  );
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(false);
+  expect(hashbrown.setMessages).not.toHaveBeenCalled();
+});
+
+function createHashbrownStub({
+  messages,
+  error,
+  isLoading = false,
+}: {
+  messages: unknown[];
+  error?: Error;
+  isLoading?: boolean;
+}) {
   const messagesSignal = createSignal(messages);
 
   return {
@@ -346,9 +457,9 @@ function createHashbrownStub({ messages }: { messages: unknown[] }) {
     isSending: createSignal(false),
     isGenerating: createSignal(false),
     isRunningToolCalls: createSignal(false),
-    isLoading: createSignal(false),
+    isLoading: createSignal(isLoading),
     exhaustedRetries: createSignal(false),
-    error: createSignal(undefined),
+    error: createSignal(error),
     sendingError: createSignal(undefined),
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),

@@ -1,4 +1,10 @@
-import { Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+} from '@angular/core';
 import {
   takeUntilDestroyed,
   toObservable,
@@ -34,6 +40,7 @@ export const routeMeta: RouteMeta = {
       <www-symbol [summary]="summary" />
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [Symbol],
 })
 export default class SubpackageSymbolPage {

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { ApiMemberSummary } from '../models/api-report.models';
 import { CodeExample } from './CodeExample';
 import { SymbolApi } from './SymbolApi';
@@ -90,6 +90,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
       }
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

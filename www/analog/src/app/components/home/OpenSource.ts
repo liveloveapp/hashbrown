@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ChevronRight } from '../../icons/ChevronRight';
 import { Squircle } from '../Squircle';
 import { LLA } from '../../icons/LLA';
@@ -179,6 +179,7 @@ import { LLA } from '../../icons/LLA';
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

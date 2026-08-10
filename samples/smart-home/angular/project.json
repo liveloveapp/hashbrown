@@ -9,6 +9,7 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/samples/smart-home/angular",
         "browser": "samples/smart-home/angular/src/main.ts",
@@ -44,12 +45,12 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
       "options": {
         "port": 4900,
         "proxyConfig": "samples/smart-home/angular/proxy.conf.json"
@@ -61,8 +62,7 @@
         "development": {
           "buildTarget": "smart-home-angular:build:development"
         }
-      },
-      "defaultConfiguration": "development"
+      }
     },
     "extract-i18n": {
       "executor": "@angular/build:extract-i18n",

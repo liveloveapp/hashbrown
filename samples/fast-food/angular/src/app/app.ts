@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatIconRegistry } from '@angular/material/icon';
 
@@ -6,6 +6,7 @@ import { MatIconRegistry } from '@angular/material/icon';
   imports: [RouterModule],
   selector: 'app-root',
   template: ` <router-outlet></router-outlet>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: ``,
 })
 export class App {

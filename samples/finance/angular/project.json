@@ -9,6 +9,7 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/samples/finance/angular",
         "browser": "samples/finance/angular/src/main.ts",
@@ -42,12 +43,12 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
       "options": {
         "port": 4600,
         "proxyConfig": "samples/finance/angular/proxy.conf.json"
@@ -59,8 +60,7 @@
         "development": {
           "buildTarget": "finance-angular:build:development"
         }
-      },
-      "defaultConfiguration": "development"
+      }
     },
     "deploy": {
       "executor": "nx:run-commands",

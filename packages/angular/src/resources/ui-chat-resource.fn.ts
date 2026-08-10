@@ -18,6 +18,7 @@ import {
 import { readReactiveOption } from '../utils';
 import { ReactiveOption } from '../utils/types';
 import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
+import { createResourceSnapshot } from './create-resource-snapshot.fn';
 
 /**
  * @public
@@ -211,11 +212,18 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
   const lastAssistantMessage = computed(() => {
     return value().findLast((message) => message.role === 'assistant');
   });
+  const snapshot = createResourceSnapshot(
+    value,
+    chat.status,
+    chat.error,
+    args.debugName && `${args.debugName}.snapshot`,
+  );
 
   return {
     ...chat,
     hasValue: chat.hasValue as any,
     value,
+    snapshot,
     lastAssistantMessage,
   };
 }

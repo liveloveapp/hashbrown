@@ -6,6 +6,7 @@ import {
   input,
   signal,
   viewChild,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
@@ -41,6 +42,7 @@ import { MatIcon } from '@angular/material/icon';
     '[class.success]': 'type() === "success"',
     '[class.info]': 'type() === "info"',
   },
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

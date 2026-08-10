@@ -9,6 +9,7 @@ import {
 import { ReactiveOption } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { toDeepSignal } from '../utils/deep-signal';
+import { createResourceSnapshot } from './create-resource-snapshot.fn';
 
 /**
  * A reference to the structured completion resource.
@@ -183,11 +184,12 @@ export function structuredCompletionResource<
 
   const valueSignal = computed(
     () => {
-      const lastMessage = resource.value()[resource.value().length - 1];
+      const messages = resource.value();
+      const lastMessage = messages[messages.length - 1];
       if (
         lastMessage &&
         lastMessage.role === 'assistant' &&
-        lastMessage.content &&
+        lastMessage.content !== undefined &&
         lastMessage.content !== null
       ) {
         return lastMessage.content;
@@ -203,13 +205,20 @@ export function structuredCompletionResource<
   const isLoading = resource.isLoading;
   const reload = resource.reload;
   const stop = resource.stop;
+  const snapshot = createResourceSnapshot(
+    value,
+    status,
+    error,
+    debugName && `${debugName}.snapshot`,
+  );
 
   function hasValue(this: StructuredCompletionResourceRef<Output>) {
-    return Boolean(valueSignal());
+    return status() !== 'error' && valueSignal() !== null;
   }
 
   return {
     value,
+    snapshot,
     status,
     error,
     isLoading,

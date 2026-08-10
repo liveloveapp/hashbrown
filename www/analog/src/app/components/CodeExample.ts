@@ -1,4 +1,11 @@
-import { Component, ElementRef, inject, input, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  inject,
+  input,
+  viewChild,
+} from '@angular/core';
 import { Copy } from '../icons/Copy';
 import { PlayerPlay } from '../icons/PlayerPlay';
 import { Squircle } from './Squircle';
@@ -36,6 +43,7 @@ import { ToastService } from '../services/ToastService';
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

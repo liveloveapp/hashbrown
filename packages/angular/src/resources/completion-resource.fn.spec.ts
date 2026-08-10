@@ -256,7 +256,202 @@ test('completionResource omits threadId from runtime updates when not provided',
   );
 });
 
-function createHashbrownStub({ messages }: { messages: unknown[] }) {
+test('completionResource exposes a resolved snapshot after a successful completion', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({
+    messages: [{ role: 'assistant', content: 'Completed response' }],
+  });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+
+  expect(resource.value()).toBe('Completed response');
+  expect(resource.status()).toBe('resolved');
+  expect(resource.error()).toBeUndefined();
+  expect(resource.snapshot()).toEqual({
+    status: 'resolved',
+    value: 'Completed response',
+  });
+});
+
+test('completionResource retains a successful empty string', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({
+    messages: [{ role: 'assistant', content: '' }],
+  });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+
+  expect(resource.value()).toBe('');
+  expect(resource.status()).toBe('resolved');
+  expect(resource.hasValue()).toBe(true);
+  expect(resource.snapshot()).toEqual({ status: 'resolved', value: '' });
+});
+
+test('completionResource exposes a non-retryable terminal error', () => {
+  fryHashbrownMock.mockReset();
+  const failure = new Error('Request cannot be retried');
+  const hashbrown = createHashbrownStub({
+    messages: [],
+    error: failure,
+    exhaustedRetries: false,
+  });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+
+  expect(resource.error()).toBe(failure);
+  expect(resource.status()).toBe('error');
+  expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
+  expect(() => resource.value()).toThrow(failure);
+});
+
+test('completionResource reloads a resolved completion without mutating message history', () => {
+  fryHashbrownMock.mockReset();
+  const messages = [
+    { role: 'user' as const, content: 'Summarize this' },
+    { role: 'assistant' as const, content: 'Completed response' },
+  ];
+  const originalMessages = structuredClone(messages);
+  const hashbrown = createHashbrownStub({ messages });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+  hashbrown.setMessages.mockClear();
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(true);
+  expect(hashbrown.setMessages).toHaveBeenCalledTimes(1);
+  expect(hashbrown.setMessages).toHaveBeenCalledWith([messages[0]]);
+  expect(hashbrown.resendMessages).not.toHaveBeenCalled();
+  expect(messages).toEqual(originalMessages);
+});
+
+test('completionResource retries a failed completion with user-only history', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({
+    messages: [{ role: 'user', content: 'Summarize this' }],
+    error: new Error('Request failed'),
+  });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+  hashbrown.setMessages.mockClear();
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(true);
+  expect(hashbrown.resendMessages).toHaveBeenCalledTimes(1);
+  expect(hashbrown.setMessages).not.toHaveBeenCalled();
+});
+
+test('completionResource reload returns false when there is no request', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input: signal<string | null>(null),
+    }),
+  );
+  hashbrown.setMessages.mockClear();
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(false);
+  expect(hashbrown.setMessages).not.toHaveBeenCalled();
+  expect(hashbrown.resendMessages).not.toHaveBeenCalled();
+});
+
+test('completionResource reload does not resend an already-answered history', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({
+    messages: [
+      { role: 'user', content: 'Summarize this' },
+      { role: 'assistant', content: 'Completed response' },
+      { role: 'error', content: 'Follow-up operation failed' },
+    ],
+    error: new Error('Follow-up operation failed'),
+  });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+  hashbrown.setMessages.mockClear();
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(false);
+  expect(hashbrown.setMessages).not.toHaveBeenCalled();
+  expect(hashbrown.resendMessages).not.toHaveBeenCalled();
+});
+
+function createHashbrownStub({
+  messages,
+  error,
+  exhaustedRetries = false,
+}: {
+  messages: unknown[];
+  error?: Error;
+  exhaustedRetries?: boolean;
+}) {
   const messagesSignal = createSignal(messages);
 
   return {
@@ -266,8 +461,8 @@ function createHashbrownStub({ messages }: { messages: unknown[] }) {
     isGenerating: createSignal(false),
     isRunningToolCalls: createSignal(false),
     isLoading: createSignal(false),
-    exhaustedRetries: createSignal(false),
-    error: createSignal(undefined),
+    exhaustedRetries: createSignal(exhaustedRetries),
+    error: createSignal(error),
     sendingError: createSignal(undefined),
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),

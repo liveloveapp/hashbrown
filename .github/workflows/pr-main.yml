@@ -37,11 +37,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate dependency tree
+        run: npm ls --all
+
       - name: Test Cloudflare deployment tooling
         run: npx nx test cloudflare-deployment
 
-      - name: Lint, test, build, and e2e affected projects
-        run: npx nx affected -t lint,test,build,e2e --parallel=3
+      - name: Validate affected projects
+        run: npx nx affected -t lint,test,typecheck,build,e2e --parallel=3
+
+      - name: Validate smart-home React tooling
+        run: npx nx run-many -t eslint:lint,build-storybook -p smart-home-react --parallel=2
 
   cloudflare-preview:
     name: Cloudflare Preview
@@ -51,6 +57,7 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]'
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -89,6 +96,7 @@ jobs:
       github.event_name == 'workflow_dispatch'
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:

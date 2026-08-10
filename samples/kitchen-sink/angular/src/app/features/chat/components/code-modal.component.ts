@@ -1,4 +1,11 @@
-import { Component, effect, inject, Signal, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  signal,
+  Signal,
+} from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { codeToHtml } from 'shiki';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -11,6 +18,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
       <div [innerHTML]="html()" class="code-modal-content"></div>
     </mat-dialog-content>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     mat-dialog-content {
       padding: 16px;

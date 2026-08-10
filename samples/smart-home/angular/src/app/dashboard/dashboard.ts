@@ -1,4 +1,9 @@
-import { afterNextRender, Component, inject } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+} from '@angular/core';
 import { Overlay } from '@angular/cdk/overlay';
 import { LightCard } from '../lights/light-card';
 import { SmartHome } from '../smart-home';
@@ -48,6 +53,7 @@ import { openWelcomeOverlay } from './welcome';
     </main>
     <app-chat-panel />
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: grid;

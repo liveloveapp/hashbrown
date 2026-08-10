@@ -4,7 +4,6 @@
   "sourceRoot": "packages/vox/src",
   "projectType": "library",
   "tags": [],
-  "// targets": "to see all targets run: nx show project vox --web",
   "targets": {
     "build": {
       "executor": "@nx/rollup:rollup",
@@ -15,11 +14,19 @@
         "outputPath": "dist/packages/vox",
         "format": ["esm", "cjs"],
         "outputFileName": "index",
-        "outputFileExtensionForEsm": ".mjs",
-        "outputFileExtensionForCjs": ".cjs",
-        "useLegacyTypescriptPlugin": false,
+        "rollupConfig": "packages/vox/rollup.config.cjs",
+        "generatePackageJson": false,
         "assets": [
-          { "input": "packages/vox", "glob": "*.md", "output": "." },
+          {
+            "input": "packages/vox",
+            "glob": "*.md",
+            "output": "."
+          },
+          {
+            "input": "packages/vox",
+            "glob": "package.json",
+            "output": "."
+          },
           {
             "input": "packages/vox/src/assets",
             "glob": "**/*",
@@ -42,6 +49,20 @@
       "options": {
         "jestConfig": "packages/vox/jest.config.ts",
         "passWithNoTests": true
+      }
+    },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/packages/vox-e2e"],
+      "dependsOn": [
+        {
+          "projects": ["vox"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "jestConfig": "packages/vox/jest.e2e.config.ts",
+        "passWithNoTests": false
       }
     }
   }

@@ -1,5 +1,10 @@
 import { httpResource } from '@angular/common/http';
-import { Component, effect, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  signal,
+} from '@angular/core';
 import { StarShine } from '../icons/StarShine';
 import { Squircle } from './Squircle';
 
@@ -26,6 +31,7 @@ import { Squircle } from './Squircle';
       </div>
     </a>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     a {
       display: inline-flex;

@@ -23,17 +23,16 @@
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
     },
-    "@nx/vite:test": {
-      "cache": true,
-      "inputs": ["default", "^production"]
-    },
     "@nx/eslint:lint": {
       "cache": true,
       "inputs": [
         "default",
+        "^default",
         "{workspaceRoot}/.eslintrc.json",
         "{workspaceRoot}/.eslintignore",
-        "{workspaceRoot}/eslint.config.mjs"
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/eslint.angular.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*"
       ]
     },
     "@nx/esbuild:esbuild": {
@@ -55,6 +54,10 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
+    },
+    "@nx/vitest:test": {
+      "cache": true,
+      "inputs": ["default", "^production"]
     }
   },
   "release": {
@@ -74,10 +77,13 @@
       "preVersionCommand": "npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer"
     }
   },
+  "sync": {
+    "disabledTaskSyncGenerators": ["@nx/js:typescript-sync"]
+  },
   "generators": {
     "@nx/angular:library": {
       "linter": "eslint",
-      "unitTestRunner": "vitest"
+      "unitTestRunner": "vitest-analog"
     },
     "@nx/angular:component": {
       "style": "css"
@@ -133,7 +139,6 @@
       "plugin": "@nx/vite/plugin",
       "options": {
         "buildTargetName": "build",
-        "testTargetName": "test",
         "serveTargetName": "serve",
         "devTargetName": "dev",
         "previewTargetName": "preview",
@@ -141,6 +146,12 @@
         "typecheckTargetName": "typecheck",
         "buildDepsTargetName": "build-deps",
         "watchDepsTargetName": "watch-deps"
+      }
+    },
+    {
+      "plugin": "@nx/vitest",
+      "options": {
+        "testTargetName": "test"
       }
     },
     {
@@ -182,6 +193,7 @@
     },
     {
       "plugin": "@nx/rollup/plugin",
+      "exclude": ["packages/vox/rollup.config.cjs"],
       "options": {
         "buildTargetName": "build",
         "buildDepsTargetName": "build-deps",

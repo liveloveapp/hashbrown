@@ -1,4 +1,9 @@
-import { Component, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+} from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { Chat } from '@hashbrownai/core';
@@ -48,6 +53,7 @@ import { MatDialog } from '@angular/material/dialog';
       justify-content: center;
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   host: {
     '(click)': 'open()',
   },

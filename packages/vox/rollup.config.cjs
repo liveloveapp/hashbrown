@@ -1,23 +1,22 @@
-const { withNx } = require('@nx/rollup/with-nx');
+module.exports = (config) => {
+  if (!config.output) {
+    return config;
+  }
 
-module.exports = withNx(
-  {
-    main: './src/index.ts',
-    outputPath: '../../dist/packages/vox',
-    tsConfig: './tsconfig.lib.json',
-    compiler: 'swc',
-    format: ['cjs', 'esm'],
-    outputFileName: 'index',
-    outputFileExtensionForEsm: '.mjs',
-    outputFileExtensionForCjs: '.cjs',
-    assets: [
-      { input: '{projectRoot}', output: '.', glob: '*.md' },
-      { input: 'packages/vox/src/assets', output: 'assets', glob: '**/*' },
-    ],
-  },
-  {
-    // Provide additional rollup configuration here. See: https://rollupjs.org/configuration-options
-    // e.g.
-    // output: { sourcemap: true },
-  },
-);
+  const outputs = Array.isArray(config.output)
+    ? config.output
+    : [config.output];
+
+  return {
+    ...config,
+    output: outputs.map((output) => {
+      const extension = output.format === 'cjs' ? 'cjs' : 'mjs';
+
+      return {
+        ...output,
+        entryFileNames: `[name].${extension}`,
+        chunkFileNames: `[name]-[hash].${extension}`,
+      };
+    }),
+  };
+};

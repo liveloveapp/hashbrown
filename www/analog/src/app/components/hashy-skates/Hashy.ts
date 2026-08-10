@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
   // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'svg:g[hb-hashy-skates-hashy]',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <svg:path
       fill="#774625"

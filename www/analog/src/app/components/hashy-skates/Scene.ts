@@ -1,4 +1,10 @@
-import { Component, effect, ElementRef, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  ElementRef,
+  inject,
+} from '@angular/core';
 import { fromEvent, tap } from 'rxjs';
 import { Clouds } from './Clouds';
 import { Forest } from './Forest';
@@ -23,6 +29,7 @@ import { Shadow } from './Shadow';
       <svg:g hb-hashy-skates-skateboard></svg:g>
     </svg:svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     svg {
       width: 100%;

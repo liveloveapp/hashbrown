@@ -3,6 +3,7 @@
 This file defines how agents should work in this repository. Keep changes aligned with Hashbrown's docs and current project conventions.
 
 ## Code Quality
+
 - Prefer immutability, POJOs, and pure functions. Avoid mutating inputs and shared state.
 - Write failing tests first, then make them pass.
 - Tests use top-level `test(...)` only. Do not use `describe`, `it`, `beforeEach`, or `afterEach`.
@@ -29,22 +30,24 @@ This file defines how agents should work in this repository. Keep changes aligne
 - Public types in React/Angular should not expose `ɵ`-prefixed types in their signatures. It's okay for React/Angular to call `ɵ`-prefixed functions internally, but public type signatures must reference non-ɵ types (prefer core public types over ɵ types).
 
 ## Running builds/tests/etc
+
 - This is an Nx monorepo.
 - Use `npx nx <target> <project>` for all Nx commands.
 - For any code change, run build, test, and lint for each affected package before final response. Report failures and warnings.
 
 ### Root
+
 - `@hashbrownai/source`
   - `npx nx local-registry @hashbrownai/source`
 
 ### Packages (libraries)
+
 - `core`
   - `npx nx build core`
   - `npx nx test core`
+  - `npx nx e2e core`
   - `npx nx lint core`
   - `npx nx build-api-report core`
-  - `npx nx parser-test-client core`
-  - `npx nx parser-test-server core`
   - `npx nx nx-release-publish core`
 - `react`
   - `npx nx build react`
@@ -53,6 +56,7 @@ This file defines how agents should work in this repository. Keep changes aligne
 - `angular`
   - `npx nx build angular`
   - `npx nx test angular`
+  - `npx nx e2e angular`
   - `npx nx lint angular`
   - `npx nx build-api-report angular`
   - `npx nx nx-release-publish angular`
@@ -106,6 +110,7 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx nx-release-publish writer`
 
 ### Samples / apps
+
 - `fast-food-angular`
   - `npx nx build fast-food-angular`
   - `npx nx serve fast-food-angular`
@@ -177,10 +182,12 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx serve spotify-server`
 
 ### Docs site
+
 - `www`
   - `npx nx build www`
   - `npx nx serve www`
   - `npx nx test www`
+  - `npx nx e2e www`
   - `npx nx deploy www`
   - `npx nx collect-docs www`
   - `npx nx generate-llms www`
@@ -188,6 +195,7 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx translate-docs www`
 
 ## Definitions (from docs in www)
+
 - **Hashbrown**: An open source framework for building generative user interfaces in React and Angular. It is headless, platform-agnostic, and built for streaming.
 - **Generative UI**: The model renders UI by selecting from a controlled set of trusted components you explicitly expose. Hashbrown renders only those components, with props validated by schemas.
 - **Skillet schema language**: A Zod-like, LLM-optimized schema language that is strongly typed, limited to LLM-supported constructs, and designed for streaming.
@@ -197,6 +205,7 @@ This file defines how agents should work in this repository. Keep changes aligne
 - **Streaming**: Hashbrown processes model output as it arrives; Skillet supports streaming strings, arrays, and objects to power real-time UI updates.
 
 ## Test Style Example
+
 Use top-level `test(...)` with arrange/act/assert separated by blank lines.
 
 ```ts

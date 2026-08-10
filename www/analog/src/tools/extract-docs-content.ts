@@ -40,7 +40,7 @@ const PACKAGES_TO_PARSE: ApiPackage[] = [
   {
     name: '@hashbrownai/angular',
     alias: 'angular',
-    entryPoint: 'dist/packages/angular/index.d.ts',
+    entryPoint: 'dist/packages/angular/types/hashbrownai-angular.d.ts',
   },
   {
     name: '@hashbrownai/core',

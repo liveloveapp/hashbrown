@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { s } from '@hashbrownai/core';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -38,6 +38,7 @@ export const LightListIconSchema = s.enumeration('Icon for a Group of Lights', [
       <ng-content></ng-content>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

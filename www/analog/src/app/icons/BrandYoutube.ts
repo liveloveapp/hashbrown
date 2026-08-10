@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Source: https://tablericons.com/icon/brand-youtube
@@ -23,6 +23,7 @@ import { Component, input } from '@angular/core';
       <path d="M10 9l5 3l-5 3z" />
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

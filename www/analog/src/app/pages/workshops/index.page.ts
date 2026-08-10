@@ -1,6 +1,6 @@
 import { injectContentFiles } from '@analogjs/content';
 import { RouteMeta } from '@analogjs/router';
-import { Component, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Squircle } from '../../components/Squircle';
 import { TheGravy } from '../../components/TheGravy';
@@ -65,6 +65,7 @@ export const routeMeta: RouteMeta = {
     </div>
     <www-the-gravy id="dd18d015-795c-4c3b-a7c1-3c6f73caa7f0" />
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

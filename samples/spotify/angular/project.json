@@ -9,6 +9,7 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/samples/spotify/angular",
         "browser": "samples/spotify/angular/src/main.ts",
@@ -44,12 +45,13 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "dependsOn": ["spotify-server:serve"],
       "options": {
         "port": 5100,
         "host": "127.0.0.1",
@@ -62,9 +64,7 @@
         "development": {
           "buildTarget": "spotify-angular:build:development"
         }
-      },
-      "defaultConfiguration": "development",
-      "dependsOn": ["spotify-server:serve"]
+      }
     },
     "extract-i18n": {
       "executor": "@angular/build:extract-i18n",

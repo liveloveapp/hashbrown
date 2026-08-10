@@ -1,9 +1,15 @@
-import { Component, effect, input } from '@angular/core';
+import {
+  Component,
+  effect,
+  input,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { JsonResolvedValue } from 'packages/core/src/skillet/parser/json-parser';
 
 @Component({
   selector: 'app-chart-ghost-loader',
   template: ` <section class="chart-wrapper">Generating chart...</section> `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

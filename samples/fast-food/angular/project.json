@@ -9,6 +9,7 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/samples/fast-food/angular",
         "browser": "samples/fast-food/angular/src/main.ts",
@@ -42,12 +43,12 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
       "options": {
         "port": 4700,
         "proxyConfig": "samples/fast-food/angular/proxy.conf.json"
@@ -59,8 +60,7 @@
         "development": {
           "buildTarget": "fast-food-angular:build:development"
         }
-      },
-      "defaultConfiguration": "development"
+      }
     },
     "test": {
       "executor": "@nx/jest:jest",

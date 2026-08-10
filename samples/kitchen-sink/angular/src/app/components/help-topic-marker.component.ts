@@ -1,15 +1,15 @@
-import { CommonModule } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 @Component({
   selector: 'app-help-topic-marker',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="container">
       <span>{{ markerLabel() }} </span>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .container {
       width: 36px;

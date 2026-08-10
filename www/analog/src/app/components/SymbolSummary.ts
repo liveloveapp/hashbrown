@@ -1,4 +1,9 @@
-import { Component, input, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  ViewEncapsulation,
+} from '@angular/core';
 import { ApiMember } from '../models/api-report.models';
 import { Markdown } from '../pipes/Markdown';
 
@@ -11,6 +16,7 @@ import { Markdown } from '../pipes/Markdown';
     }
   `,
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

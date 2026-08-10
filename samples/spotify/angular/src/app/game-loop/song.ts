@@ -1,4 +1,11 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { ChatService } from '../services/chat';
 import { SpotifyService } from '../services/spotify';
 
@@ -21,6 +28,7 @@ import { SpotifyService } from '../services/spotify';
       <p>{{ artist() }}</p>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .song {
       display: grid;

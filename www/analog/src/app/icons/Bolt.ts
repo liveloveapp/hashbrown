@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Source: https://tablericons.com/icon/bolt
@@ -20,6 +20,7 @@ import { Component, input } from '@angular/core';
       <path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11" />
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

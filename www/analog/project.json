@@ -8,6 +8,15 @@
     "build": {
       "executor": "@analogjs/platform:vite",
       "defaultConfiguration": "production",
+      "outputs": ["{workspaceRoot}/dist/www/analog"],
+      "dependsOn": ["collect-docs", "generate-llms"],
+      "options": {
+        "main": "www/analog/src/main.ts",
+        "configFile": "www/analog/vite.config.ts",
+        "outputPath": "../../dist/www/analog/client",
+        "tsConfig": "www/analog/tsconfig.app.json",
+        "styles": ["@angular/cdk/overlay-prebuilt.css"]
+      },
       "configurations": {
         "development": {
           "mode": "development"
@@ -16,21 +25,7 @@
           "sourcemap": false,
           "mode": "production"
         }
-      },
-      "outputs": [
-        "{options.outputPath}",
-        "{workspaceRoot}/dist/www/analog/.nitro",
-        "{workspaceRoot}/dist/www/analog/ssr",
-        "{workspaceRoot}/dist/www/analog/analog"
-      ],
-      "options": {
-        "main": "www/analog/src/main.ts",
-        "configFile": "www/analog/vite.config.ts",
-        "outputPath": "dist/www/analog/client",
-        "tsConfig": "www/analog/tsconfig.app.json",
-        "styles": ["@angular/cdk/overlay-prebuilt.css"]
-      },
-      "dependsOn": ["collect-docs", "generate-llms"]
+      }
     },
     "serve": {
       "executor": "@analogjs/platform:vite-dev-server",
@@ -57,21 +52,28 @@
         "passWithNoTests": true
       }
     },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "node --test www/analog/e2e/*.e2e.test.mjs"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"]
     },
     "collect-docs": {
       "executor": "nx:run-script",
-      "options": {
-        "script": "collect-docs"
-      },
       "dependsOn": [
         {
           "projects": ["angular", "core", "react"],
           "target": "build"
         }
-      ]
+      ],
+      "options": {
+        "script": "collect-docs"
+      }
     },
     "generate-llms": {
       "executor": "nx:run-commands",
@@ -82,9 +84,6 @@
     },
     "review-docs": {
       "executor": "nx:run-script",
-      "options": {
-        "script": "review-docs"
-      },
       "dependsOn": [
         {
           "projects": [
@@ -98,13 +97,13 @@
           ],
           "target": "build-api-report"
         }
-      ]
+      ],
+      "options": {
+        "script": "review-docs"
+      }
     },
     "translate-docs": {
       "executor": "nx:run-script",
-      "options": {
-        "script": "translate-docs"
-      },
       "dependsOn": [
         {
           "projects": [
@@ -118,13 +117,16 @@
           ],
           "target": "build-api-report"
         }
-      ]
+      ],
+      "options": {
+        "script": "translate-docs"
+      }
     },
     "deploy": {
       "executor": "nx:run-commands",
-      "dependsOn": ["build:production"],
+      "dependsOn": ["build"],
       "options": {
-        "command": "npx wrangler pages deploy dist/www/analog/analog/public --commit-dirty=true"
+        "command": "npx wrangler --cwd=www/analog pages deploy ../../dist/www/analog --project-name=hashbrown-www --commit-dirty=true --no-bundle"
       }
     }
   }

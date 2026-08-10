@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResourceStatus, signal, type Signal } from '@angular/core';
+import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
 import { type ModelInput, s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { uiChatResource } from './ui-chat-resource.fn';
@@ -13,11 +13,15 @@ vi.mock('./structured-chat-resource.fn', () => ({
 
 const structuredChatResourceMock = vi.mocked(structuredChatResource);
 
-const createChatStub = (valueSignal: Signal<any[]>) => {
+const createChatStub = (
+  valueSignal: Signal<any[]>,
+  status = signal<ResourceStatus>('idle'),
+  error = signal<Error | undefined>(undefined),
+) => {
   return {
     value: valueSignal,
-    status: signal<ResourceStatus>('idle'),
-    error: signal<Error | undefined>(undefined),
+    status,
+    error,
     isLoading: signal(false),
     isSending: signal(false),
     isReceiving: signal(false),
@@ -171,4 +175,83 @@ test('uiChatResource passes reactive options through to structuredChatResource',
   system.set('Updated system prompt');
 
   expect(delegatedSystem()).toBe('Updated system prompt');
+});
+
+test('uiChatResource snapshot uses the exposed decorated messages', () => {
+  structuredChatResourceMock.mockReset();
+  const status = signal<ResourceStatus>('resolved');
+  const error = signal<Error | undefined>(undefined);
+  const messages = signal<any[]>([
+    {
+      role: 'assistant',
+      content: { ui: [] },
+      toolCalls: [],
+    },
+  ]);
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(messages, status, error),
+  );
+
+  const resource = uiChatResource({
+    components: [
+      {
+        component: class {},
+        name: 'Card',
+        description: 'Card component',
+      },
+    ],
+    model: 'gpt-4.1',
+    system: 'System prompt',
+  });
+
+  expect(resource.status()).toBe(status());
+  expect(resource.error()).toBe(error());
+  expect(resource.snapshot()).toEqual({
+    status: 'resolved',
+    value: resource.value(),
+  });
+  expect(
+    (resource.snapshot() as { value: any[] }).value[0][TAG_NAME_REGISTRY],
+  ).toBeDefined();
+});
+
+test('uiChatResource propagates terminal errors through value', () => {
+  structuredChatResourceMock.mockReset();
+  const failure = new Error('UI chat failed');
+  const status = signal<ResourceStatus>('resolved');
+  const error = signal<Error | undefined>(undefined);
+  const messages = signal<any[]>([
+    {
+      role: 'assistant',
+      content: { ui: [] },
+      toolCalls: [],
+    },
+  ]);
+  const value = computed(() => {
+    if (status() === 'error') {
+      throw error();
+    }
+
+    return messages();
+  });
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(value, status, error),
+  );
+  const resource = uiChatResource({
+    components: [
+      {
+        component: class {},
+        name: 'Card',
+        description: 'Card component',
+      },
+    ],
+    model: 'gpt-4.1',
+    system: 'System prompt',
+  });
+
+  error.set(failure);
+  status.set('error');
+
+  expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
+  expect(() => resource.value()).toThrow(failure);
 });

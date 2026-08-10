@@ -1,18 +1,38 @@
 /// <reference types="vitest" />
 
 import analog from '@analogjs/platform';
+import angular from '@analogjs/vite-plugin-angular';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   return {
     root: __dirname,
     cacheDir: `../../node_modules/.vite`,
 
+    environments: {
+      client: {
+        build: {
+          rollupOptions: {
+            input: resolve(__dirname, 'index.html'),
+          },
+        },
+      },
+      ssr: {
+        build: {
+          rollupOptions: {
+            output: {
+              entryFileNames: '[name].mjs',
+            },
+          },
+        },
+      },
+    },
     build: {
       outDir: '../../dist/www/client',
       reportCompressedSize: true,
@@ -23,9 +43,17 @@ export default defineConfig(({ mode }) => {
         allow: ['.'],
       },
     },
+    ssr: {
+      noExternal: [/^rxjs(?:\/.*)?$/],
+    },
     plugins: [
+      angular(),
       analog({
         apiPrefix: '_',
+        index:
+          command === 'build' && mode === 'production'
+            ? resolve(__dirname, '../../dist/www/analog/index.html')
+            : undefined,
         content: {
           highlighter: 'shiki',
           shikiOptions: {
@@ -44,25 +72,29 @@ export default defineConfig(({ mode }) => {
             ],
           },
         },
-        nitro: {
-          preset: 'cloudflare-pages',
-          compatibilityDate: '2024-05-07',
-          alias: {
-            '@hashbrownai/angular': resolve(
-              __dirname,
-              '../../packages/angular/src/index.ts',
-            ),
-            '@hashbrownai/core': resolve(
-              __dirname,
-              '../../packages/core/src/index.ts',
-            ),
-            '@hashbrownai/openai': resolve(
-              __dirname,
-              '../../packages/openai/src/index.ts',
-            ),
-          },
-        },
       }),
+      ...(mode === 'test'
+        ? []
+        : nitro({
+            preset: 'cloudflare-pages',
+            renderer: {
+              template: resolve(__dirname, 'index.html'),
+            },
+            alias: {
+              '@hashbrownai/angular': resolve(
+                __dirname,
+                '../../packages/angular/src/index.ts',
+              ),
+              '@hashbrownai/core': resolve(
+                __dirname,
+                '../../packages/core/src/index.ts',
+              ),
+              '@hashbrownai/openai': resolve(
+                __dirname,
+                '../../packages/openai/src/index.ts',
+              ),
+            },
+          })),
       nxViteTsPaths(),
       hashbrownStackblitzPlugin(),
     ],

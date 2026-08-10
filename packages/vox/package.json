@@ -22,11 +22,13 @@
       "default": "./index.cjs"
     },
     "./loader": {
+      "types": "./assets/vad_audio_worklet.single.d.ts",
       "import": "./assets/vad_audio_worklet.single.js",
       "require": "./assets/vad_audio_worklet.single.js",
       "default": "./assets/vad_audio_worklet.single.js"
     },
     "./loader-single": {
+      "types": "./assets/vad_audio_worklet.single.d.ts",
       "import": "./assets/vad_audio_worklet.single.js",
       "require": "./assets/vad_audio_worklet.single.js",
       "default": "./assets/vad_audio_worklet.single.js"

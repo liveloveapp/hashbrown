@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResourceStatus, signal, type Signal } from '@angular/core';
+import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { ModelInput } from '@hashbrownai/core';
 import { s } from '@hashbrownai/core';
@@ -13,11 +13,15 @@ vi.mock('./structured-chat-resource.fn', () => ({
 
 const structuredChatResourceMock = vi.mocked(structuredChatResource);
 
-const createChatStub = (valueSignal: Signal<any[]>) => {
+const createChatStub = (
+  valueSignal: Signal<any[]>,
+  status = signal<ResourceStatus>('idle'),
+  error = signal<Error | undefined>(undefined),
+) => {
   return {
     value: valueSignal,
-    status: signal<ResourceStatus>('idle'),
-    error: signal<Error | undefined>(undefined),
+    status,
+    error,
     isLoading: signal(false),
     isSending: signal(false),
     isReceiving: signal(false),
@@ -75,4 +79,107 @@ test('structuredCompletionResource passes reactive options through to structured
       threadId,
     }),
   );
+});
+
+test('structuredCompletionResource snapshot uses the exposed completion value', () => {
+  structuredChatResourceMock.mockReset();
+  const completion = { summary: 'Completed response' };
+  const status = signal<ResourceStatus>('resolved');
+  const error = signal<Error | undefined>(undefined);
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(
+      signal<any[]>([{ role: 'assistant', content: completion }]),
+      status,
+      error,
+    ),
+  );
+
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredCompletionResource({
+      model: 'gpt-4.1',
+      system: 'System prompt',
+      input: signal('Summarize this'),
+      schema: s.object('summary', {
+        summary: s.string('Summary'),
+      }),
+    }),
+  );
+
+  expect(resource.value()).toBe(completion);
+  expect(resource.status()).toBe(status());
+  expect(resource.error()).toBe(error());
+  expect(resource.snapshot()).toEqual({
+    status: 'resolved',
+    value: completion,
+  });
+});
+
+test.each([
+  { label: 'false', output: false },
+  { label: 'zero', output: 0 },
+  { label: 'an empty string', output: '' },
+])('structuredCompletionResource retains $label output', ({ output }) => {
+  structuredChatResourceMock.mockReset();
+  const status = signal<ResourceStatus>('resolved');
+  const error = signal<Error | undefined>(undefined);
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(
+      signal<any[]>([{ role: 'assistant', content: output }]),
+      status,
+      error,
+    ),
+  );
+
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredCompletionResource({
+      model: 'gpt-4.1',
+      system: 'System prompt',
+      input: signal('Return a falsey value'),
+      schema: s.anyOf([
+        s.boolean('Boolean output'),
+        s.number('Number output'),
+        s.string('String output'),
+      ]),
+    }),
+  );
+
+  expect(resource.value()).toBe(output);
+  expect(resource.hasValue()).toBe(true);
+  expect(resource.snapshot()).toEqual({ status: 'resolved', value: output });
+});
+
+test('structuredCompletionResource propagates terminal errors through value', () => {
+  structuredChatResourceMock.mockReset();
+  const failure = new Error('Structured completion failed');
+  const status = signal<ResourceStatus>('resolved');
+  const error = signal<Error | undefined>(undefined);
+  const messages = signal<any[]>([
+    { role: 'assistant', content: { summary: 'Completed response' } },
+  ]);
+  const value = computed(() => {
+    if (status() === 'error') {
+      throw error();
+    }
+
+    return messages();
+  });
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(value, status, error),
+  );
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredCompletionResource({
+      model: 'gpt-4.1',
+      system: 'System prompt',
+      input: signal('Summarize this'),
+      schema: s.object('summary', {
+        summary: s.string('Summary'),
+      }),
+    }),
+  );
+
+  error.set(failure);
+  status.set('error');
+
+  expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
+  expect(() => resource.value()).toThrow(failure);
 });

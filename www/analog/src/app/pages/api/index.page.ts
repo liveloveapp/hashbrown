@@ -1,5 +1,11 @@
 import { RouteMeta } from '@analogjs/router';
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { KindChip } from '../../components/KindChip';
 import { SymbolChip } from '../../components/SymbolChip';
 import { Search } from '../../icons/Search';
@@ -67,6 +73,7 @@ export const routeMeta: RouteMeta = {
       }
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

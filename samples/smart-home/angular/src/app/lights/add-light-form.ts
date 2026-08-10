@@ -1,11 +1,12 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
   inject,
   viewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { structuredCompletionResource } from '@hashbrownai/angular';
 import {
   FormControl,
@@ -26,7 +27,6 @@ import { Suggestor } from '../suggestions/suggestor';
 @Component({
   selector: 'app-add-light-form',
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -82,6 +82,7 @@ import { Suggestor } from '../suggestions/suggestor';
       </form>
     </mat-dialog-content>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       form {

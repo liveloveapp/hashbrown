@@ -1,4 +1,9 @@
-import { Component, input, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  ViewEncapsulation,
+} from '@angular/core';
 import { MarkdownComponent as NgxMarkdownComponent } from 'ngx-markdown';
 
 @Component({
@@ -7,6 +12,7 @@ import { MarkdownComponent as NgxMarkdownComponent } from 'ngx-markdown';
   imports: [NgxMarkdownComponent],
   template: '<markdown [data]="data()" class="app-markdown"></markdown>',
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .app-markdown {
       display: block;

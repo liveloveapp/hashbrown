@@ -1,4 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
 import { structuredCompletionResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
@@ -94,6 +99,7 @@ The dashboard should be a JSON object with the following properties:
       }
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

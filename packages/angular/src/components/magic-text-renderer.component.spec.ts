@@ -16,9 +16,7 @@ function renderMagicText(input: {
   isComplete?: boolean;
   options?: {
     segmenter?:
-      | false
-      | true
-      | { granularity?: 'grapheme' | 'word' | 'sentence' };
+      false | true | { granularity?: 'grapheme' | 'word' | 'sentence' };
   };
   caret?: boolean;
 }) {
@@ -224,6 +222,7 @@ test('renders unresolved citations as plain superscript references', () => {
 });
 
 @Component({
+  selector: 'hb-paragraph-override-host',
   standalone: true,
   imports: [MagicText, MagicTextRenderNode],
   template: `
@@ -263,6 +262,7 @@ test('uses type-specific node override templates', () => {
 });
 
 @Component({
+  selector: 'hb-fallback-override-host',
   standalone: true,
   imports: [MagicText, MagicTextRenderNode],
   template: `
@@ -296,6 +296,7 @@ test('uses fallback node template when no type-specific template exists', () => 
 });
 
 @Component({
+  selector: 'hb-text-segment-override-host',
   standalone: true,
   imports: [MagicText, MagicTextRenderTextSegment],
   template: `
@@ -331,6 +332,7 @@ test('uses text segment override templates', () => {
 });
 
 @Component({
+  selector: 'hb-citation-override-host',
   standalone: true,
   imports: [MagicText, MagicTextRenderCitation],
   template: `
@@ -376,6 +378,7 @@ test('uses citation override template with resolved citation context', () => {
 });
 
 @Component({
+  selector: 'hb-caret-override-host',
   standalone: true,
   imports: [MagicText, MagicTextRenderCaret],
   template: `
@@ -413,6 +416,7 @@ test('uses custom caret template while incomplete', () => {
 });
 
 @Component({
+  selector: 'hb-caret-input-template-host',
   standalone: true,
   imports: [MagicText],
   template: `

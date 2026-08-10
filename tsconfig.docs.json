@@ -19,7 +19,9 @@
     "strict": true,
     "types": ["node"],
     "paths": {
-      "@hashbrownai/angular": ["dist/packages/angular/index.d.ts"],
+      "@hashbrownai/angular": [
+        "dist/packages/angular/types/hashbrownai-angular.d.ts"
+      ],
       "@hashbrownai/core": ["dist/packages/core/index.d.ts"],
       "@hashbrownai/react": ["dist/packages/react/index.d.ts"],
       "@hashbrownai/azure": ["dist/packages/azure/src/index.d.ts"],

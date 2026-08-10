@@ -1,4 +1,10 @@
-import { Component, HostListener, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  input,
+  output,
+} from '@angular/core';
 import { Close } from '../icons/Close';
 
 @Component({
@@ -27,6 +33,7 @@ import { Close } from '../icons/Close';
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .backdrop {

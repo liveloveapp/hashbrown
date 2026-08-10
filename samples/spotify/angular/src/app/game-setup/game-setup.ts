@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {
   createTool,
   exposeComponent,
@@ -42,6 +42,7 @@ import { LoaderComponent } from '../loader';
       }
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [{ provide: ChatService, useExisting: GameSetupComponent }],
 })
 export class GameSetupComponent implements ChatService {

@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   ApplicationRef,
+  ChangeDetectionStrategy,
   Component,
   computed,
   EmbeddedViewRef,
@@ -34,6 +35,7 @@ import type { UiKit } from '../utils/ui-kit.fn';
 @Component({
   selector: 'hb-render-message',
   imports: [NgComponentOutlet, NgTemplateOutlet],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <ng-template #nodeTemplateRef let-node="node">
       <ng-template #childrenTemplateRef>

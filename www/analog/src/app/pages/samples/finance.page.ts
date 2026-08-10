@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Header } from '../../components/Header';
 import { Squircle } from '../../components/Squircle';
 
@@ -10,6 +10,7 @@ import { Squircle } from '../../components/Squircle';
       <iframe src="https://finance.hashbrown.dev"></iframe>
     </main>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

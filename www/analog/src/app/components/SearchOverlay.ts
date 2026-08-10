@@ -10,6 +10,7 @@ import {
 } from '@angular/cdk/overlay';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
   effect,
   ElementRef,
@@ -86,7 +87,8 @@ interface SitemapEntry {
 
 const DOCS_FILES = import.meta.glob('/src/app/pages/docs/**/*.md', {
   eager: true,
-  as: 'raw',
+  query: '?raw',
+  import: 'default',
 });
 
 const SITEMAP: SitemapEntry[] = Object.entries(DOCS_FILES).map(
@@ -161,6 +163,7 @@ const API_REFERENCES_MARKDOWN = formatMarkdownTable(API_REFERENCES, [
     <p>API REFERENCES</p>
     <ng-content />
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;
@@ -195,6 +198,7 @@ class ApiResults {}
       </div>
     </a>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;
@@ -278,6 +282,7 @@ class ApiResult {
     <p>DOCS</p>
     <ng-content />
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;
@@ -309,6 +314,7 @@ class DocResults {}
       </div>
     </a>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;
@@ -369,6 +375,7 @@ class DocResult {
 @Component({
   selector: 'www-markdown',
   imports: [MarkdownPipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<div [innerHTML]="content() | markdown"></div>`,
 })
 class Markdown {
@@ -462,6 +469,7 @@ class Markdown {
       </div>
     </ng-template>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

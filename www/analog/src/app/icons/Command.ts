@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Source: https://tablericons.com/icon/command
@@ -22,6 +22,7 @@ import { Component, input } from '@angular/core';
       />
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

@@ -6,7 +6,8 @@ export default [
   ...nx.configs['flat/javascript'],
   {
     ignores: [
-      'dist/**',
+      '**/dist/**',
+      '**/storybook-static/**',
       'node_modules/**',
       '**/vite.config.*.timestamp*',
       '**/vitest.config.*.timestamp*',
@@ -47,7 +48,6 @@ export default [
       '**/*.jsx',
       '**/*.cjs',
       '**/*.mjs',
-      '**/*.json',
     ],
     // Override or add rules here
     rules: {

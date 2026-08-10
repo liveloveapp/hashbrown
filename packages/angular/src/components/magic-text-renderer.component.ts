@@ -1,4 +1,4 @@
-import { NgTemplateOutlet } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -151,7 +151,7 @@ export class MagicTextRenderCitation {
 /** @public */
 @Component({
   selector: 'hb-magic-text',
-  imports: [NgTemplateOutlet],
+  imports: [NgClass, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
@@ -796,7 +796,11 @@ export class MagicTextRenderCitation {
       }
     </ng-template>
 
-    <div class="hb-magic-text-root" [class]="className()" data-magic-text-root>
+    <div
+      class="hb-magic-text-root"
+      [ngClass]="className()"
+      data-magic-text-root
+    >
       @if (rootNode(); as root) {
         <ng-container
           *ngTemplateOutlet="nodeTemplateRef; context: { node: root }"

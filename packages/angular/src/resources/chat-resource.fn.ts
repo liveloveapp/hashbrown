@@ -24,6 +24,10 @@ import {
 } from '../utils/signals';
 import { ReactiveOption } from '../utils/types';
 import { bindToolToInjector } from '../utils/create-tool.fn';
+import {
+  createResourceSnapshot,
+  createResourceValue,
+} from './create-resource-snapshot.fn';
 
 /**
  * Represents the reactive chat resource, including current messages and control methods.
@@ -242,9 +246,9 @@ export function chatResource<Tools extends Chat.AnyTool>(
     optionsEffect.destroy();
   });
 
-  const value = toNgSignal(
+  const rawValue = toNgSignal(
     hashbrown.messages,
-    options.debugName && `${options.debugName}.value`,
+    options.debugName && `${options.debugName}.rawValue`,
   );
   const isReceiving = toNgSignal(
     hashbrown.isReceiving,
@@ -309,7 +313,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
         return 'error';
       }
 
-      const hasAssistantMessage = value().some(
+      const hasAssistantMessage = rawValue().some(
         (message) => message.role === 'assistant',
       );
 
@@ -321,12 +325,25 @@ export function chatResource<Tools extends Chat.AnyTool>(
     },
     { debugName: options.debugName && `${options.debugName}.status` },
   );
+  const value = createResourceValue(
+    rawValue,
+    status,
+    error,
+    options.debugName && `${options.debugName}.value`,
+  );
+  const snapshot = createResourceSnapshot(
+    value,
+    status,
+    error,
+    options.debugName && `${options.debugName}.snapshot`,
+  );
 
   function reload() {
-    const lastMessage = value()[value().length - 1];
+    const messages = rawValue();
+    const lastMessage = messages[messages.length - 1];
 
-    if (lastMessage.role === 'assistant') {
-      hashbrown.setMessages(value().slice(0, -1));
+    if (lastMessage?.role === 'assistant') {
+      hashbrown.setMessages(messages.slice(0, -1));
 
       return true;
     }
@@ -335,7 +352,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
   }
 
   function hasValue() {
-    return value().some((message) => message.role === 'assistant');
+    return (
+      status() !== 'error' &&
+      rawValue().some((message) => message.role === 'assistant')
+    );
   }
 
   function sendMessage(message: Chat.UserMessage) {
@@ -352,6 +372,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
 
   return {
     hasValue: hasValue as any,
+    snapshot,
     status,
     isReceiving,
     isSending,

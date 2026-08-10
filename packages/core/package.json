@@ -6,7 +6,7 @@
   "sideEffects": false,
   "files": [
     "src/**/*",
-    "index.*",
+    "index*.*",
     "LICENSE",
     "package.json",
     "README.md",

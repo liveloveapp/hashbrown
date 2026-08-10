@@ -1,5 +1,5 @@
 import { RouteMeta } from '@analogjs/router';
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
@@ -32,6 +32,7 @@ export const routeMeta: RouteMeta = {
     </main>
     <www-footer />
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

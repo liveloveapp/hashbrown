@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`anyOf: object options are direct 1`] = `
+exports[`anyOf: duplicate literal values are direct 1`] = `
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "anyOf": [
@@ -12,8 +12,14 @@ exports[`anyOf: object options are direct 1`] = `
           "description": "a",
           "type": "number",
         },
+        "type": {
+          "const": "dup",
+          "description": "dup",
+          "type": "string",
+        },
       },
       "required": [
+        "type",
         "a",
       ],
       "type": "object",
@@ -26,57 +32,17 @@ exports[`anyOf: object options are direct 1`] = `
           "description": "b",
           "type": "string",
         },
-      },
-      "required": [
-        "b",
-      ],
-      "type": "object",
-    },
-  ],
-}
-`;
-
-exports[`anyOf: primitives are direct without wrappers 1`] = `
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "anyOf": [
-    {
-      "description": "N",
-      "type": "number",
-    },
-    {
-      "description": "S",
-      "type": "string",
-    },
-  ],
-}
-`;
-
-exports[`anyOf: mixed options are direct 1`] = `
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "anyOf": [
-    {
-      "description": "S",
-      "type": "string",
-    },
-    {
-      "additionalProperties": false,
-      "description": "A",
-      "properties": {
-        "a": {
-          "description": "a",
-          "type": "number",
+        "type": {
+          "const": "dup",
+          "description": "dup",
+          "type": "string",
         },
       },
       "required": [
-        "a",
+        "type",
+        "b",
       ],
       "type": "object",
-    },
-    {
-      "description": "N",
-      "type": "number",
     },
   ],
 }
@@ -150,10 +116,14 @@ exports[`anyOf: literal properties remain inside option objects 1`] = `
 }
 `;
 
-exports[`anyOf: duplicate literal values are direct 1`] = `
+exports[`anyOf: mixed options are direct 1`] = `
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "anyOf": [
+    {
+      "description": "S",
+      "type": "string",
+    },
     {
       "additionalProperties": false,
       "description": "A",
@@ -162,37 +132,15 @@ exports[`anyOf: duplicate literal values are direct 1`] = `
           "description": "a",
           "type": "number",
         },
-        "type": {
-          "const": "dup",
-          "description": "dup",
-          "type": "string",
-        },
       },
       "required": [
-        "type",
         "a",
       ],
       "type": "object",
     },
     {
-      "additionalProperties": false,
-      "description": "B",
-      "properties": {
-        "b": {
-          "description": "b",
-          "type": "string",
-        },
-        "type": {
-          "const": "dup",
-          "description": "dup",
-          "type": "string",
-        },
-      },
-      "required": [
-        "type",
-        "b",
-      ],
-      "type": "object",
+      "description": "N",
+      "type": "number",
     },
   ],
 }
@@ -258,6 +206,81 @@ exports[`anyOf: multiple literals per object are direct 1`] = `
 }
 `;
 
+exports[`anyOf: object options are direct 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "description": "A",
+      "properties": {
+        "a": {
+          "description": "a",
+          "type": "number",
+        },
+      },
+      "required": [
+        "a",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "description": "B",
+      "properties": {
+        "b": {
+          "description": "b",
+          "type": "string",
+        },
+      },
+      "required": [
+        "b",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`anyOf: primitives are direct without wrappers 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "description": "N",
+      "type": "number",
+    },
+    {
+      "description": "S",
+      "type": "string",
+    },
+  ],
+}
+`;
+
+exports[`array: minItems and maxItems serialize 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "__wrappedPrimitive": {
+      "description": "Tags",
+      "items": {
+        "description": "Tag",
+        "type": "string",
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "type": "array",
+    },
+  },
+  "required": [
+    "__wrappedPrimitive",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`defs: repeated sub-schema is extracted into $defs and referenced 1`] = `
 {
   "$defs": {
@@ -305,6 +328,27 @@ exports[`descriptionToCamelCase variants snapshot 1`] = `
   "kebab-case and snake_case": "kebabCaseAndSnakeCase",
   "multi    space	 and
 lines": "multiSpaceAndLines",
+}
+`;
+
+exports[`number: numeric constraints serialize 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "__wrappedPrimitive": {
+      "description": "Score",
+      "exclusiveMaximum": 9.5,
+      "maximum": 10,
+      "minimum": 0,
+      "multipleOf": 0.5,
+      "type": "number",
+    },
+  },
+  "required": [
+    "__wrappedPrimitive",
+  ],
+  "type": "object",
 }
 `;
 
@@ -379,50 +423,6 @@ exports[`string: pattern and format serialize 1`] = `
       "format": "email",
       "pattern": "^@[a-z0-9_]+$",
       "type": "string",
-    },
-  },
-  "required": [
-    "__wrappedPrimitive",
-  ],
-  "type": "object",
-}
-`;
-
-exports[`number: numeric constraints serialize 1`] = `
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
-  "properties": {
-    "__wrappedPrimitive": {
-      "description": "Score",
-      "exclusiveMaximum": 9.5,
-      "maximum": 10,
-      "minimum": 0,
-      "multipleOf": 0.5,
-      "type": "number",
-    },
-  },
-  "required": [
-    "__wrappedPrimitive",
-  ],
-  "type": "object",
-}
-`;
-
-exports[`array: minItems and maxItems serialize 1`] = `
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
-  "properties": {
-    "__wrappedPrimitive": {
-      "description": "Tags",
-      "items": {
-        "description": "Tag",
-        "type": "string",
-      },
-      "maxItems": 3,
-      "minItems": 1,
-      "type": "array",
     },
   },
   "required": [

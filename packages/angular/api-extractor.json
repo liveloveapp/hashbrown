@@ -3,5 +3,5 @@
   "compiler": {
     "tsconfigFilePath": "<projectFolder>/tsconfig.docs.json"
   },
-  "mainEntryPointFilePath": "../../dist/packages/angular/index.d.ts"
+  "mainEntryPointFilePath": "../../dist/packages/angular/types/hashbrownai-angular.d.ts"
 }

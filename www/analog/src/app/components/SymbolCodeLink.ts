@@ -1,9 +1,15 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 import { Code } from '../icons/Code';
 
 @Component({
   selector: 'www-symbol-code-link',
   imports: [Code],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <a [href]="url()" target="_blank">
       <www-code />

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Source: https://tablericons.com/icon/arrow-up-right
@@ -21,6 +21,7 @@ import { Component, input } from '@angular/core';
       <path d="M8 7l9 0l0 9"></path>
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

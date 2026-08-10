@@ -1,4 +1,4 @@
-import { Component, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, output } from '@angular/core';
 
 @Component({
   selector: 'app-chat-prompts',
@@ -7,6 +7,7 @@ import { Component, output } from '@angular/core';
       <button (click)="selectPrompt.emit(prompt)">"{{ prompt }}"</button>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

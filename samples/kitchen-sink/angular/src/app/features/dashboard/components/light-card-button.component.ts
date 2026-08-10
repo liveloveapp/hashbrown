@@ -1,4 +1,11 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Store } from '@ngrx/store';
 import { selectLightEntities } from '../../../store';
@@ -33,6 +40,7 @@ export const LightIconSchema = s.enumeration(
     '[class.on]': 'light().brightness > 0',
     '[class.off]': 'light().brightness === 0',
   },
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     button {
       display: grid;

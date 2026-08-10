@@ -1,5 +1,11 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  output,
+} from '@angular/core';
 
 @Component({
   selector: 'www-kind-chip',
@@ -48,6 +54,7 @@ import { Component, computed, input, output } from '@angular/core';
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [NgClass],
 })
 export class KindChip {

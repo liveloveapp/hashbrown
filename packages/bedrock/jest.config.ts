@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'bedrock',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',

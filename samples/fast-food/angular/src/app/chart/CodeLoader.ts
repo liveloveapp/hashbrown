@@ -6,6 +6,7 @@ import {
   ElementRef,
   inject,
   input,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 
 @Component({
@@ -15,6 +16,7 @@ import {
       <div class="line" [style.width.ch]="line / 2"></div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       width: 240px;

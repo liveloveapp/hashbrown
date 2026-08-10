@@ -1,4 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  Component,
+  computed,
+  input,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MagicTextRenderer } from '../magic-text-renderer';
 
 @Component({
@@ -13,6 +18,7 @@ import { MagicTextRenderer } from '../magic-text-renderer';
       }
     </ol>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

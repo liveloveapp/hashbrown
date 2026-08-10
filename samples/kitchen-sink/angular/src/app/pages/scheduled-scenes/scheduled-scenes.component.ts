@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SmartHomeService } from '../../services/smart-home.service';
@@ -77,6 +77,7 @@ import { MatIconModule } from '@angular/material/icon';
       </mat-card>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .scheduled-scenes-container {

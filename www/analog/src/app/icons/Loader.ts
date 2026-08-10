@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Source: https://tablericons.com/icon/loader-2
@@ -20,6 +20,7 @@ import { Component, input } from '@angular/core';
       <path d="M12 3a9 9 0 1 0 9 9" />
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

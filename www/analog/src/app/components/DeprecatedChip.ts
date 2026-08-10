@@ -1,10 +1,11 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'www-deprecated-chip',
   imports: [MatTooltipModule],
   template: ` <span [matTooltip]="reason()">Deprecated</span> `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

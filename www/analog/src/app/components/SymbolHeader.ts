@@ -1,5 +1,10 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 import {
   ApiMember,
   ParsedCanonicalReference,
@@ -23,6 +28,7 @@ import { SymbolCodeLink } from './SymbolCodeLink';
       </div>
     </header>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

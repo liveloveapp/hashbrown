@@ -22,10 +22,12 @@ import {
         (input)="handleValueChange(textareaElement.value)"
         class="predictive-textarea"
       ></textarea>
-      <div class="prediction-overlay" *ngIf="displayedPrediction()">
-        <span class="current-text">{{ value() }}</span>
-        <span class="prediction-text">{{ displayedPrediction() }}</span>
-      </div>
+      @if (displayedPrediction()) {
+        <div class="prediction-overlay">
+          <span class="current-text">{{ value() }}</span>
+          <span class="prediction-text">{{ displayedPrediction() }}</span>
+        </div>
+      }
     </div>
   `,
   styles: `

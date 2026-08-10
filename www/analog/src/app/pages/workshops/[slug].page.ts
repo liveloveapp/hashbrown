@@ -4,7 +4,7 @@ import {
   MarkdownComponent,
 } from '@analogjs/content';
 import { RouteMeta } from '@analogjs/router';
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRouteSnapshot } from '@angular/router';
 import { CoursesMenu } from '../../components/CoursesMenu';
@@ -66,6 +66,7 @@ export const routeMeta: RouteMeta = {
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

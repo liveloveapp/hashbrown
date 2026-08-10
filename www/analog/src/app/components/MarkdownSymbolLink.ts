@@ -1,11 +1,18 @@
-import { Component, Input, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Input,
+  ViewEncapsulation,
+} from '@angular/core';
 import { CanonicalReference } from '../models/api-report.models';
 import { SymbolLink } from './SymbolLink';
 
 @Component({
+  selector: 'www-markdown-symbol-link',
   imports: [SymbolLink],
   template: ` <www-symbol-link [reference]="reference" /> `,
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       hb-markdown-symbol-link a {

@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
   inject,
   viewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -26,7 +27,6 @@ import { LightsPageActions } from './actions/lights-page.actions';
   selector: 'app-light-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -90,6 +90,7 @@ import { LightsPageActions } from './actions/lights-page.actions';
       </mat-card>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .form-container {

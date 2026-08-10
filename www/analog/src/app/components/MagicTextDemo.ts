@@ -5,14 +5,14 @@ import {
   signal,
   ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatSliderModule } from '@angular/material/slider';
 import { MagicText } from '@hashbrownai/angular';
 import { Squircle } from './Squircle';
 
 @Component({
   selector: 'www-magic-text-demo',
-  imports: [CommonModule, MatSliderModule, MagicText, Squircle],
+  imports: [MatSliderModule, MagicText, Squircle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `

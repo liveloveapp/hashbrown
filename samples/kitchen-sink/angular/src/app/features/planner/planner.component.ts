@@ -1,4 +1,11 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { lastValueFrom } from 'rxjs';
 import { s } from '@hashbrownai/core';
 import {
@@ -46,6 +53,7 @@ import { SmartHomeService } from '../../services/smart-home.service';
       }
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: grid;

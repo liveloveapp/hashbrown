@@ -7,7 +7,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "types": ["node", "aws-lambda"],
-    "strict": true
+    "strict": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*.ts", "serverless.ts"]
 }

@@ -25,7 +25,6 @@
         "outputFileExtensionForEsm": ".mjs",
         "outputFileExtensionForCjs": ".cjs",
         "sourceMap": true,
-        "useLegacyTypescriptPlugin": false,
         "assets": [
           {
             "input": "packages/core",
@@ -55,6 +54,20 @@
         "passWithNoTests": true
       }
     },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/packages/core-e2e"],
+      "dependsOn": [
+        {
+          "projects": ["core"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "jestConfig": "packages/core/jest.e2e.config.ts",
+        "passWithNoTests": false
+      }
+    },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],
@@ -62,30 +75,18 @@
         "packageRoot": "dist/packages/core"
       }
     },
-    "parser-test-server": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "ts-node packages/core/src/streaming-json-parser/test/server.ts"
-      }
-    },
-    "parser-test-client": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "ts-node packages/core/src/streaming-json-parser/test/client.ts"
-      }
-    },
     "build-api-report": {
       "executor": "nx:run-commands",
-      "options": {
-        "command": "npx api-extractor run --local --config packages/core/api-extractor.json",
-        "parallel": true
-      },
       "dependsOn": [
         {
           "projects": ["core"],
           "target": "build"
         }
-      ]
+      ],
+      "options": {
+        "command": "npx api-extractor run --local --config packages/core/api-extractor.json",
+        "parallel": true
+      }
     }
   }
 }

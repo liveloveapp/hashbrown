@@ -28,14 +28,18 @@
       "@hashbrownai/testing/aimock": ["tools/testing/aimock/index.ts"],
       "@hashbrownai/vox": ["packages/vox/src/index.ts"],
       "@hashbrownai/vox/loader": [
-        "packages/vox/src/assets/vad_audio_worklet.single.js"
+        "packages/vox/src/assets/vad_audio_worklet.single"
       ],
       "@hashbrownai/vox/loader-single": [
-        "packages/vox/src/assets/vad_audio_worklet.single.js"
+        "packages/vox/src/assets/vad_audio_worklet.single"
       ],
       "@hashbrownai/writer": ["packages/writer/src/index.ts"],
       "tater-js": ["packages/streaming-json-parser/index.ts"]
-    }
+    },
+    "noUncheckedSideEffectImports": false,
+    "types": ["*"],
+    "esModuleInterop": false,
+    "ignoreDeprecations": "6.0"
   },
   "angularCompilerOptions": {
     "strict": true,

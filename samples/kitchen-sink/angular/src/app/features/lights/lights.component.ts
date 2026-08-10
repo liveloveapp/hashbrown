@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+
 import { MatSliderModule } from '@angular/material/slider';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,7 +18,6 @@ import { LightListComponent } from './light-list.component';
   selector: 'app-lights',
   standalone: true,
   imports: [
-    CommonModule,
     MatSliderModule,
     MatCardModule,
     MatButtonModule,
@@ -47,6 +46,7 @@ import { LightListComponent } from './light-list.component';
       </button>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

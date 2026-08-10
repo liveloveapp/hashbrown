@@ -1,5 +1,10 @@
 import { NgClass } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
 import { NavigationList } from './NavigationList';
 import { Section } from '../models/menu.models';
 import { ApiService } from '../services/ApiService';
@@ -16,6 +21,7 @@ import { ApiService } from '../services/ApiService';
       />
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;
