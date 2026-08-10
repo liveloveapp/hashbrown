@@ -74,6 +74,9 @@ export default defineConfig(({ command, mode }) => {
         ? []
         : nitro({
             preset: 'cloudflare-pages',
+            renderer: {
+              template: resolve(__dirname, 'index.html'),
+            },
             alias: {
               '@hashbrownai/angular': resolve(
                 __dirname,
