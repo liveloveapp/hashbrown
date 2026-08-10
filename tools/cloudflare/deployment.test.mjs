@@ -17,6 +17,9 @@ const createTarget = (overrides = {}) => ({
   nxProject: 'example-app',
   cloudflareProject: 'hashbrown-example',
   outputDirectory: 'dist/example',
+  productionUrl: 'https://example.hashbrown.dev',
+  smokePath: '/',
+  smokeText: '<title>Example</title>',
   ...overrides,
 });
 
@@ -28,6 +31,9 @@ test('defines the ordered Pages deployment manifest', () => {
       nxProject: 'www',
       cloudflareProject: 'hashbrown-www',
       outputDirectory: 'dist/www/analog',
+      productionUrl: 'https://hashbrown.dev',
+      smokePath: '/docs/angular/start/quick',
+      smokeText: 'Angular Quick Start',
       wranglerConfigDirectory: 'www/analog',
     },
     {
@@ -36,6 +42,9 @@ test('defines the ordered Pages deployment manifest', () => {
       nxProject: 'finance-angular',
       cloudflareProject: 'hashbrown-finance',
       outputDirectory: 'dist/samples/finance/angular/browser',
+      productionUrl: 'https://finance.hashbrown.dev',
+      smokePath: '/',
+      smokeText: '<title>Finance Sample</title>',
     },
     {
       id: 'fast-food',
@@ -43,6 +52,9 @@ test('defines the ordered Pages deployment manifest', () => {
       nxProject: 'fast-food-angular',
       cloudflareProject: 'hashbrown-fast-food',
       outputDirectory: 'dist/samples/fast-food/angular/browser',
+      productionUrl: 'https://fast-food.hashbrown.dev',
+      smokePath: '/',
+      smokeText: '<title>Fast Food Nutrition Sample</title>',
     },
     {
       id: 'smart-home',
@@ -50,6 +62,9 @@ test('defines the ordered Pages deployment manifest', () => {
       nxProject: 'smart-home-angular',
       cloudflareProject: 'hashbrown-smart-home',
       outputDirectory: 'dist/samples/smart-home/angular/browser',
+      productionUrl: 'https://smart-home.hashbrown.dev',
+      smokePath: '/',
+      smokeText: '<title>Smart Home</title>',
     },
   ];
 
@@ -249,6 +264,29 @@ test('rejects duplicate Cloudflare deployment destinations', () => {
   });
 });
 
+test('rejects duplicate production deployment URLs', () => {
+  const targets = [
+    createTarget({
+      id: 'first',
+      nxProject: 'first-app',
+      cloudflareProject: 'hashbrown-first',
+    }),
+    createTarget({
+      id: 'second',
+      nxProject: 'second-app',
+      cloudflareProject: 'hashbrown-second',
+    }),
+  ];
+
+  const validate = () => validatePagesTargets(targets);
+
+  assert.throws(validate, {
+    name: 'TypeError',
+    message:
+      'Duplicate Pages production deployment destination: https://example.hashbrown.dev.',
+  });
+});
+
 test('rejects targets with missing required fields', () => {
   const requiredFields = [
     'id',
@@ -256,6 +294,9 @@ test('rejects targets with missing required fields', () => {
     'nxProject',
     'cloudflareProject',
     'outputDirectory',
+    'productionUrl',
+    'smokePath',
+    'smokeText',
   ];
   const invalidTargets = requiredFields.map((field) => ({
     field,
@@ -283,6 +324,9 @@ test('rejects targets with empty required fields', () => {
     'nxProject',
     'cloudflareProject',
     'outputDirectory',
+    'productionUrl',
+    'smokePath',
+    'smokeText',
   ];
   const invalidTargets = requiredFields.flatMap((field) => [
     { field, target: createTarget({ [field]: '' }) },
@@ -381,6 +425,50 @@ test('rejects unsafe Wrangler config directories in target manifests', () => {
       name: 'TypeError',
       message:
         'Pages target wranglerConfigDirectory must be a safe repository-relative path.',
+    });
+  }
+});
+
+test('rejects invalid production URLs in target manifests', () => {
+  const invalidUrls = [
+    'http://example.hashbrown.dev',
+    'https://user@example.hashbrown.dev',
+    'https://example.hashbrown.dev:4443',
+    'https://example.hashbrown.dev/path',
+    'https://example.hashbrown.dev?preview=true',
+    'https://example.hashbrown.dev#fragment',
+    'https://example.com',
+    'not-a-url',
+  ];
+
+  for (const productionUrl of invalidUrls) {
+    const validate = () =>
+      validatePagesTargets([createTarget({ productionUrl })]);
+
+    assert.throws(validate, {
+      name: 'TypeError',
+      message:
+        'Pages target productionUrl must be an HTTPS hashbrown.dev origin.',
+    });
+  }
+});
+
+test('rejects unsafe smoke paths in target manifests', () => {
+  const invalidPaths = [
+    'docs/start',
+    '//example.com/path',
+    '/docs/../admin',
+    '/docs?preview=true',
+    '/docs#fragment',
+    '/docs\\start',
+  ];
+
+  for (const smokePath of invalidPaths) {
+    const validate = () => validatePagesTargets([createTarget({ smokePath })]);
+
+    assert.throws(validate, {
+      name: 'TypeError',
+      message: 'Pages target smokePath must be a safe absolute path.',
     });
   }
 });
@@ -625,6 +713,7 @@ test('renders preview results against an injected target manifest', () => {
         displayName: 'First App',
         nxProject: 'first-app',
         cloudflareProject: 'hashbrown-first',
+        productionUrl: 'https://first.hashbrown.dev',
       }),
     ),
     Object.freeze(
@@ -633,6 +722,7 @@ test('renders preview results against an injected target manifest', () => {
         displayName: 'Second App',
         nxProject: 'second-app',
         cloudflareProject: 'hashbrown-second',
+        productionUrl: 'https://second.hashbrown.dev',
       }),
     ),
   ]);
@@ -659,12 +749,14 @@ test('renders preview results against an injected target manifest', () => {
       displayName: 'First App',
       nxProject: 'first-app',
       cloudflareProject: 'hashbrown-first',
+      productionUrl: 'https://first.hashbrown.dev',
     }),
     createTarget({
       id: 'second',
       displayName: 'Second App',
       nxProject: 'second-app',
       cloudflareProject: 'hashbrown-second',
+      productionUrl: 'https://second.hashbrown.dev',
     }),
   ]);
 });
@@ -747,6 +839,19 @@ test('renders failed results without preview links', () => {
   assert.equal(financeRow, '| Finance | Deployment failed | |');
   assert.doesNotMatch(docsRow, /https:\/\//);
   assert.doesNotMatch(financeRow, /https:\/\//);
+});
+
+test('renders a smoke-failed preview with its stable URL', () => {
+  const comment = renderPreviewComment({
+    headSha: 'abcdef123456',
+    prNumber: 42,
+    results: [{ targetId: 'smart-home', status: 'smoke-failed' }],
+  });
+
+  assert.match(
+    comment,
+    /\| Smart Home \| Smoke test failed \| \[Preview\]\(https:\/\/pr-42\.hashbrown-smart-home\.pages\.dev\) \|/,
+  );
 });
 
 test('renders the seven-character head SHA above the results table', () => {

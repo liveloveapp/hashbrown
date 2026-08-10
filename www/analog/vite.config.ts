@@ -43,6 +43,9 @@ export default defineConfig(({ command, mode }) => {
         allow: ['.'],
       },
     },
+    ssr: {
+      noExternal: [/^rxjs(?:\/.*)?$/],
+    },
     plugins: [
       angular(),
       analog({

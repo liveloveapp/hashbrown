@@ -123,6 +123,50 @@ test('allows production deployment from a main push or manual dispatch', async (
   );
 });
 
+test('keeps preview smoke validation inside the affected-aware deploy command', async () => {
+  const workflow = await readFile(workflowPath, 'utf8');
+  const previewJobStart = workflow.indexOf('\n  cloudflare-preview:\n');
+  const previewJobEnd = workflow.indexOf(
+    '\n  cloudflare-production:\n',
+    previewJobStart,
+  );
+
+  assert.notEqual(previewJobStart, -1, 'expected the preview job to exist');
+  assert.notEqual(
+    previewJobEnd,
+    -1,
+    'expected the preview job to have a clear boundary',
+  );
+
+  const previewJob = workflow.slice(previewJobStart, previewJobEnd);
+
+  assert.match(previewJob, /node tools\/cloudflare\/deploy\.mjs preview/);
+  assert.doesNotMatch(previewJob, /Diagnose Docs preview runtime/);
+  assert.doesNotMatch(previewJob, /wrangler pages deployment tail/);
+  assert.doesNotMatch(previewJob, /\bcurl\b/);
+});
+
+test('bounds preview and production deployment jobs with workflow deadlines', async () => {
+  const workflow = await readFile(workflowPath, 'utf8');
+  const previewJobStart = workflow.indexOf('\n  cloudflare-preview:\n');
+  const productionJobStart = workflow.indexOf('\n  cloudflare-production:\n');
+  const gateJobStart = workflow.indexOf('\n  pr-gate:\n');
+
+  assert.notEqual(previewJobStart, -1, 'expected the preview job to exist');
+  assert.notEqual(
+    productionJobStart,
+    -1,
+    'expected the production job to exist',
+  );
+  assert.notEqual(gateJobStart, -1, 'expected the PR gate job to exist');
+
+  const previewJob = workflow.slice(previewJobStart, productionJobStart);
+  const productionJob = workflow.slice(productionJobStart, gateJobStart);
+
+  assert.match(previewJob, /\n {4}timeout-minutes: 20\n/);
+  assert.match(productionJob, /\n {4}timeout-minutes: 20\n/);
+});
+
 test('requires actions/checkout and actions/setup-node references to use v7', async () => {
   const workflowEntries = await readdir(workflowDirectoryPath, {
     withFileTypes: true,

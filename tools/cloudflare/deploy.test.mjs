@@ -10,11 +10,13 @@ import {
 import {
   createGitHubClient,
   createRuntimeDependencies,
+  createSmokeTester,
   createSubprocessRunner,
   executeDeployCommand,
   formatCliError,
   nxAffectedArgs,
   parseDeployArgs,
+  parseWranglerDeploymentUrl,
   runPreviewDeployment,
   runProductionDeployment,
   wranglerDeployArgs,
@@ -73,6 +75,26 @@ function jsonResponse(body, { status = 200 } = {}) {
     status,
     json: async () => body,
   };
+}
+
+function textResponse(body, { status = 200 } = {}) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => body,
+  };
+}
+
+async function successfulSmokeTarget() {
+  return { ok: true };
+}
+
+function immutableDeploymentUrl(target) {
+  return `https://deployment-${target.id}.${target.cloudflareProject}.pages.dev`;
+}
+
+function successfulDeployment(target) {
+  return { ok: true, deploymentUrl: immutableDeploymentUrl(target) };
 }
 
 test('validates injected targets before calling dependencies', async () => {
@@ -314,7 +336,7 @@ test('leaves the preview comment untouched when a no-target run becomes stale', 
   assert.deepEqual(calls, ['head', 'affected', 'changed', 'head']);
 });
 
-test('builds and deploys selected targets in manifest order before creating a comment', async () => {
+test('deploys every selected target before smoking immutable and stable URLs', async () => {
   const calls = [];
   const dependencies = {
     listAffectedProjects: async (range) => {
@@ -331,6 +353,10 @@ test('builds and deploys selected targets in manifest order before creating a co
     },
     deployTarget: async (options) => {
       calls.push(['deploy', options]);
+      return successfulDeployment(options.target);
+    },
+    smokeTarget: async (options) => {
+      calls.push(['smoke', options]);
       return { ok: true };
     },
     getPullRequestHead: async (prNumber) => {
@@ -366,7 +392,7 @@ test('builds and deploys selected targets in manifest order before creating a co
   assert.equal(Object.isFrozen(result), true);
   assert.equal(Object.isFrozen(result.results), true);
   assert.equal(result.results.every(Object.isFrozen), true);
-  assert.deepEqual(calls, [
+  assert.deepEqual(calls.slice(0, 7), [
     ['head', 42],
     ['affected', { baseSha: BASE_SHA, headSha: HEAD_SHA }],
     ['changed', { baseSha: BASE_SHA, headSha: HEAD_SHA }],
@@ -374,6 +400,20 @@ test('builds and deploys selected targets in manifest order before creating a co
     ['deploy', { target: PAGES_TARGETS[0], branch: 'pr-42', sha: HEAD_SHA }],
     ['build', 'smart-home'],
     ['deploy', { target: PAGES_TARGETS[3], branch: 'pr-42', sha: HEAD_SHA }],
+  ]);
+  assert.deepEqual(
+    calls
+      .filter(([operation]) => operation === 'smoke')
+      .map(([, { target, baseUrl }]) => [target.id, baseUrl])
+      .sort(),
+    [
+      ['docs', immutableDeploymentUrl(PAGES_TARGETS[0])],
+      ['docs', 'https://pr-42.hashbrown-www.pages.dev'],
+      ['smart-home', immutableDeploymentUrl(PAGES_TARGETS[3])],
+      ['smart-home', 'https://pr-42.hashbrown-smart-home.pages.dev'],
+    ].sort(),
+  );
+  assert.deepEqual(calls.slice(-5), [
     ['head', 42],
     ['find-comment', 42],
     ['head', 42],
@@ -389,6 +429,9 @@ test('deploys and renders a valid custom target manifest', async () => {
     nxProject: 'custom-app',
     cloudflareProject: 'hashbrown-custom',
     outputDirectory: 'dist/custom',
+    productionUrl: 'https://custom.hashbrown.dev',
+    smokePath: '/',
+    smokeText: '<title>Custom App</title>',
   });
   const targets = Object.freeze([target]);
   const calls = [];
@@ -401,8 +444,9 @@ test('deploys and renders a valid custom target manifest', async () => {
     },
     deployTarget: async (options) => {
       calls.push(['deploy', options]);
-      return { ok: true };
+      return successfulDeployment(options.target);
     },
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => null,
     createPreviewComment: async (comment) =>
@@ -440,7 +484,8 @@ test('updates an existing preview comment after a successful run', async () => {
     listAffectedProjects: async () => ['finance-angular'],
     listChangedFiles: async () => ['samples/finance/angular/src/app.ts'],
     buildTarget: async () => ({ ok: true }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => ({ id: 101 }),
     createPreviewComment: async () => calls.push('create-comment'),
@@ -470,7 +515,8 @@ test('does not create a comment when the PR head changes during lookup', async (
     listAffectedProjects: async () => ['www'],
     listChangedFiles: async () => ['www/index.ts'],
     buildTarget: async () => ({ ok: true }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => {
       calls.push('head');
       return currentHeads.shift();
@@ -502,7 +548,8 @@ test('does not update a comment when the PR head changes during lookup', async (
     listAffectedProjects: async () => ['www'],
     listChangedFiles: async () => ['www/index.ts'],
     buildTarget: async () => ({ ok: true }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => {
       calls.push('head');
       return currentHeads.shift();
@@ -543,8 +590,9 @@ test('reports every result and rejects after a build failure', async () => {
     },
     deployTarget: async ({ target }) => {
       calls.push(['deploy', target.id]);
-      return { ok: true };
+      return successfulDeployment(target);
     },
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => null,
     createPreviewComment: async ({ body }) =>
@@ -600,8 +648,9 @@ test('reports every result and rejects after a deployment failure', async () => 
       calls.push(['deploy', target.id]);
       return target.id === 'docs'
         ? { ok: false, error: 'wrangler failed' }
-        : { ok: true };
+        : successfulDeployment(target);
     },
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => null,
     createPreviewComment: async ({ body }) =>
@@ -642,6 +691,115 @@ test('reports every result and rejects after a deployment failure', async () => 
   ]);
 });
 
+test('treats a successful deploy without an immutable URL as a deploy failure', async () => {
+  const calls = [];
+  const dependencies = {
+    listAffectedProjects: async () => ['www'],
+    listChangedFiles: async () => ['www/index.ts'],
+    buildTarget: async () => ({ ok: true }),
+    deployTarget: async () => ({ ok: true }),
+    smokeTarget: async () => calls.push('smoke'),
+    getPullRequestHead: async () => HEAD_SHA,
+    findPreviewComment: async () => null,
+    createPreviewComment: async () => undefined,
+    updatePreviewComment: async () => undefined,
+    deletePreviewComment: async () => undefined,
+    appendSummary: async () => undefined,
+  };
+
+  await assert.rejects(
+    runPreviewDeployment(
+      { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42 },
+      dependencies,
+    ),
+    /Docs deploy: deployment result did not include an immutable URL/,
+  );
+
+  assert.deepEqual(calls, []);
+});
+
+test('reports every result and rejects after a preview smoke failure', async () => {
+  const calls = [];
+  const dependencies = {
+    listAffectedProjects: async () => ['www', 'finance-angular'],
+    listChangedFiles: async () => [
+      'www/index.ts',
+      'samples/finance/angular/src/app.ts',
+    ],
+    buildTarget: async (target) => {
+      calls.push(['build', target.id]);
+      return { ok: true };
+    },
+    deployTarget: async ({ target }) => {
+      calls.push(['deploy', target.id]);
+      return successfulDeployment(target);
+    },
+    smokeTarget: async ({ target, baseUrl }) => {
+      calls.push(['smoke', target.id, baseUrl]);
+      return target.id === 'docs' && baseUrl === immutableDeploymentUrl(target)
+        ? { ok: false, error: 'immutable quick start returned 500' }
+        : { ok: true };
+    },
+    getPullRequestHead: async () => HEAD_SHA,
+    findPreviewComment: async () => null,
+    createPreviewComment: async ({ body }) =>
+      calls.push(['create-comment', body]),
+    updatePreviewComment: async () => calls.push('update-comment'),
+    deletePreviewComment: async () => calls.push('delete-comment'),
+    appendSummary: async (summary) => calls.push(['summary', summary]),
+  };
+  const expectedResults = [
+    { targetId: 'docs', status: 'smoke-failed' },
+    { targetId: 'finance', status: 'success' },
+  ];
+  const body = renderPreviewComment({
+    headSha: HEAD_SHA,
+    prNumber: 42,
+    results: expectedResults,
+  });
+
+  await assert.rejects(
+    runPreviewDeployment(
+      { baseSha: BASE_SHA, headSha: HEAD_SHA, prNumber: 42 },
+      dependencies,
+    ),
+    {
+      name: 'Error',
+      message:
+        'Cloudflare preview deployment failed: Docs smoke test: immutable quick start returned 500',
+    },
+  );
+
+  assert.deepEqual(calls.slice(0, 4), [
+    ['build', 'docs'],
+    ['deploy', 'docs'],
+    ['build', 'finance'],
+    ['deploy', 'finance'],
+  ]);
+  assert.deepEqual(
+    calls.filter(([operation]) => operation === 'smoke').sort(),
+    [
+      ['smoke', 'docs', immutableDeploymentUrl(PAGES_TARGETS[0])],
+      ['smoke', 'docs', 'https://pr-42.hashbrown-www.pages.dev'],
+      ['smoke', 'finance', immutableDeploymentUrl(PAGES_TARGETS[1])],
+      ['smoke', 'finance', 'https://pr-42.hashbrown-finance.pages.dev'],
+    ].sort(),
+  );
+  assert.deepEqual(
+    calls.filter(
+      ([operation, targetId]) => operation === 'smoke' && targetId === 'docs',
+    ),
+    [
+      ['smoke', 'docs', immutableDeploymentUrl(PAGES_TARGETS[0])],
+      ['smoke', 'docs', 'https://pr-42.hashbrown-www.pages.dev'],
+    ],
+  );
+  assert.deepEqual(calls.slice(-2), [
+    ['create-comment', body],
+    ['summary', `## Cloudflare previews\n\n${body}`],
+  ]);
+});
+
 test('does not publish a comment when the run becomes stale after deployment', async () => {
   const calls = [];
   const currentHeads = [HEAD_SHA, NEW_HEAD_SHA];
@@ -652,10 +810,11 @@ test('does not publish a comment when the run becomes stale after deployment', a
       calls.push('build');
       return { ok: true };
     },
-    deployTarget: async () => {
+    deployTarget: async ({ target }) => {
       calls.push('deploy');
-      return { ok: true };
+      return successfulDeployment(target);
     },
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => {
       calls.push('head');
       return currentHeads.shift();
@@ -684,7 +843,8 @@ test('propagates preview comment creation failures', async () => {
     listAffectedProjects: async () => ['www'],
     listChangedFiles: async () => ['www/index.ts'],
     buildTarget: async () => ({ ok: true }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => null,
     createPreviewComment: async () => {
@@ -713,7 +873,8 @@ test('aggregates preview deployment, comment, and summary failures after attempt
     listAffectedProjects: async () => ['www'],
     listChangedFiles: async () => ['www/index.ts'],
     buildTarget: async () => ({ ok: false, error: 'build failed' }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => null,
     createPreviewComment: async () => {
@@ -753,7 +914,8 @@ test('preserves preview failures when the post-deployment head lookup and summar
     listAffectedProjects: async () => ['www'],
     listChangedFiles: async () => ['www/index.ts'],
     buildTarget: async () => ({ ok: false, error: 'build failed' }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => {
       headLookups += 1;
 
@@ -795,7 +957,8 @@ test('propagates preview comment update failures', async () => {
     listAffectedProjects: async () => ['www'],
     listChangedFiles: async () => ['www/index.ts'],
     buildTarget: async () => ({ ok: true }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => ({ id: 99 }),
     createPreviewComment: async () => undefined,
@@ -821,6 +984,7 @@ test('propagates preview comment deletion failures', async () => {
     listChangedFiles: async () => ['README.md'],
     buildTarget: async () => ({ ok: true }),
     deployTarget: async () => ({ ok: true }),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => ({ id: 99 }),
     createPreviewComment: async () => undefined,
@@ -853,7 +1017,8 @@ test('does not mutate preview inputs or injected target arrays', async () => {
     listAffectedProjects: async () => affectedProjects,
     listChangedFiles: async () => changedFiles,
     buildTarget: async () => ({ ok: true }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     getPullRequestHead: async () => HEAD_SHA,
     findPreviewComment: async () => null,
     createPreviewComment: async () => undefined,
@@ -909,7 +1074,7 @@ test('validates production options before calling dependencies', async () => {
   assert.deepEqual(calls, []);
 });
 
-test('builds every production target before deploying in manifest order', async () => {
+test('deploys every production target before smoking immutable and public URLs', async () => {
   const targets = Object.freeze([PAGES_TARGETS[0], PAGES_TARGETS[1]]);
   const options = Object.freeze({ sha: HEAD_SHA, targets });
   const calls = [];
@@ -920,6 +1085,10 @@ test('builds every production target before deploying in manifest order', async 
     },
     deployTarget: async (deployment) => {
       calls.push(['deploy', deployment]);
+      return successfulDeployment(deployment.target);
+    },
+    smokeTarget: async (smoke) => {
+      calls.push(['smoke', smoke]);
       return { ok: true };
     },
     appendSummary: async (summary) => calls.push(['summary', summary]),
@@ -943,9 +1112,22 @@ test('builds every production target before deploying in manifest order', async 
     ['deploy', { target: PAGES_TARGETS[0], branch: 'main', sha: HEAD_SHA }],
     ['deploy', { target: PAGES_TARGETS[1], branch: 'main', sha: HEAD_SHA }],
   ]);
-  assert.match(calls[4][1], /^## Cloudflare production\n/);
-  assert.match(calls[4][1], /\| Docs \| Ready \|/);
-  assert.match(calls[4][1], /\| Finance \| Ready \|/);
+  assert.deepEqual(
+    calls
+      .filter(([operation]) => operation === 'smoke')
+      .map(([, { target, baseUrl }]) => [target.id, baseUrl])
+      .sort(),
+    [
+      ['docs', immutableDeploymentUrl(PAGES_TARGETS[0])],
+      ['docs', 'https://hashbrown.dev'],
+      ['finance', immutableDeploymentUrl(PAGES_TARGETS[1])],
+      ['finance', 'https://finance.hashbrown.dev'],
+    ].sort(),
+  );
+  assert.equal(calls.at(-1)[0], 'summary');
+  assert.match(calls.at(-1)[1], /^## Cloudflare production\n/);
+  assert.match(calls.at(-1)[1], /\| Docs \| Ready \|/);
+  assert.match(calls.at(-1)[1], /\| Finance \| Ready \|/);
   assert.deepEqual(options, { sha: HEAD_SHA, targets });
   assert.deepEqual(targets, [PAGES_TARGETS[0], PAGES_TARGETS[1]]);
 });
@@ -998,8 +1180,9 @@ test('continues production deployments after a failure and rejects after reporti
       calls.push(['deploy', target.id]);
       return target.id === 'docs'
         ? { ok: false, error: 'wrangler failed' }
-        : { ok: true };
+        : successfulDeployment(target);
     },
+    smokeTarget: successfulSmokeTarget,
     appendSummary: async (summary) => calls.push(['summary', summary]),
   };
 
@@ -1022,6 +1205,71 @@ test('continues production deployments after a failure and rejects after reporti
   ]);
   assert.equal(calls.at(-1)[0], 'summary');
   assert.match(calls.at(-1)[1], /\| Docs \| Deployment failed \|/);
+  assert.match(calls.at(-1)[1], /\| Finance \| Ready \|/);
+});
+
+test('continues production deployments after a smoke failure and rejects after reporting', async () => {
+  const calls = [];
+  const dependencies = {
+    buildTarget: async (target) => {
+      calls.push(['build', target.id]);
+      return { ok: true };
+    },
+    deployTarget: async ({ target }) => {
+      calls.push(['deploy', target.id]);
+      return successfulDeployment(target);
+    },
+    smokeTarget: async ({ target, baseUrl }) => {
+      calls.push(['smoke', target.id, baseUrl]);
+
+      if (target.id !== 'docs') {
+        return { ok: true };
+      }
+
+      return baseUrl === target.productionUrl
+        ? { ok: false, error: 'custom domain quick start returned 502' }
+        : { ok: false, error: 'immutable quick start returned 500' };
+    },
+    appendSummary: async (summary) => calls.push(['summary', summary]),
+  };
+
+  await assert.rejects(
+    runProductionDeployment(
+      { sha: HEAD_SHA, targets: [PAGES_TARGETS[0], PAGES_TARGETS[1]] },
+      dependencies,
+    ),
+    {
+      message:
+        'Cloudflare production deployment failed: Docs smoke test: immutable quick start returned 500; custom domain quick start returned 502',
+    },
+  );
+
+  assert.deepEqual(calls.slice(0, 4), [
+    ['build', 'docs'],
+    ['build', 'finance'],
+    ['deploy', 'docs'],
+    ['deploy', 'finance'],
+  ]);
+  assert.deepEqual(
+    calls.filter(([operation]) => operation === 'smoke').sort(),
+    [
+      ['smoke', 'docs', immutableDeploymentUrl(PAGES_TARGETS[0])],
+      ['smoke', 'docs', 'https://hashbrown.dev'],
+      ['smoke', 'finance', immutableDeploymentUrl(PAGES_TARGETS[1])],
+      ['smoke', 'finance', 'https://finance.hashbrown.dev'],
+    ].sort(),
+  );
+  assert.deepEqual(
+    calls.filter(
+      ([operation, targetId]) => operation === 'smoke' && targetId === 'docs',
+    ),
+    [
+      ['smoke', 'docs', immutableDeploymentUrl(PAGES_TARGETS[0])],
+      ['smoke', 'docs', 'https://hashbrown.dev'],
+    ],
+  );
+  assert.equal(calls.at(-1)[0], 'summary');
+  assert.match(calls.at(-1)[1], /\| Docs \| Smoke test failed \|/);
   assert.match(calls.at(-1)[1], /\| Finance \| Ready \|/);
 });
 
@@ -1053,7 +1301,8 @@ test('propagates a lone production summary failure', async () => {
   const summaryError = new Error('summary failed');
   const dependencies = {
     buildTarget: async () => ({ ok: true }),
-    deployTarget: async () => ({ ok: true }),
+    deployTarget: async ({ target }) => successfulDeployment(target),
+    smokeTarget: successfulSmokeTarget,
     appendSummary: async () => {
       throw summaryError;
     },
@@ -1204,6 +1453,63 @@ test('builds exact safe Wrangler and Nx affected argument arrays', () => {
   );
 });
 
+test('parses Wrangler immutable deployment URLs without accepting the branch alias', () => {
+  const output = [
+    '\x1b[32mDeployment complete! Take a peek over at https://abc123.hashbrown-www.pages.dev\x1b[39m',
+    'Deployment alias URL: https://pr-42.hashbrown-www.pages.dev',
+  ].join('\n');
+
+  const deploymentUrl = parseWranglerDeploymentUrl(output, PAGES_TARGETS[0], {
+    branch: 'pr-42',
+  });
+
+  assert.equal(deploymentUrl, 'https://abc123.hashbrown-www.pages.dev');
+});
+
+test('rejects Wrangler output without a valid immutable URL for the target', () => {
+  const invalidDeployments = [
+    {
+      branch: 'pr-42',
+      output: 'Deployment alias URL: https://pr-42.hashbrown-www.pages.dev',
+    },
+    {
+      branch: 'pr-42',
+      output:
+        'Deployment complete! Take a peek over at https://pr-42.hashbrown-www.pages.dev',
+    },
+    {
+      branch: 'main',
+      output:
+        'Deployment complete! Take a peek over at https://main.hashbrown-www.pages.dev',
+    },
+    {
+      branch: 'pr-42',
+      output:
+        'Deployment complete! Take a peek over at https://abc123.hashbrown-finance.pages.dev',
+    },
+    {
+      branch: 'pr-42',
+      output:
+        'Deployment complete! Take a peek over at https://abc123.hashbrown-www.pages.dev:4443',
+    },
+    {
+      branch: 'pr-42',
+      output:
+        'Deployment complete! Take a peek over at https://abc123.hashbrown-www.pages.dev/path',
+    },
+  ];
+
+  for (const { branch, output } of invalidDeployments) {
+    const parse = () =>
+      parseWranglerDeploymentUrl(output, PAGES_TARGETS[0], { branch });
+
+    assert.throws(parse, {
+      name: 'Error',
+      message: 'Wrangler did not report an immutable deployment URL for Docs.',
+    });
+  }
+});
+
 test('rejects an empty derived Wrangler output directory', () => {
   const target = {
     ...PAGES_TARGETS[0],
@@ -1342,6 +1648,169 @@ test('terminates a child after a stream error and resolves only after close', as
   assert.equal(result.ok, false);
   assert.match(result.error, /stdout stream failed/);
   assert.equal(lifecycle.at(-1), 'clear-timeout');
+});
+
+test('smoke tester retries transient failures and verifies the configured response text', async () => {
+  const calls = [];
+  const delays = [];
+  const responses = [
+    new Error('network unavailable'),
+    textResponse('temporarily unavailable', { status: 503 }),
+    textResponse('<main>Angular Quick Start</main>'),
+  ];
+  const smokeTarget = createSmokeTester({
+    fetchImpl: async (url, options) => {
+      calls.push([url, options]);
+      const response = responses.shift();
+
+      if (response instanceof Error) {
+        throw response;
+      }
+
+      return response;
+    },
+    attempts: 3,
+    retryDelayMs: 25,
+    requestTimeoutMs: 100,
+    delayImpl: async (milliseconds) => delays.push(milliseconds),
+  });
+
+  const result = await smokeTarget({
+    target: PAGES_TARGETS[0],
+    baseUrl: 'https://pr-42.hashbrown-www.pages.dev',
+  });
+
+  assert.deepEqual(result, { ok: true });
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(calls.length, 3);
+  assert.equal(
+    calls.every(
+      ([url]) =>
+        url ===
+        'https://pr-42.hashbrown-www.pages.dev/docs/angular/start/quick',
+    ),
+    true,
+  );
+  assert.equal(
+    calls.every(([, options]) => options.signal instanceof AbortSignal),
+    true,
+  );
+  assert.equal(
+    calls.every(([, options]) => options.redirect === 'error'),
+    true,
+  );
+  assert.deepEqual(delays, [25, 25]);
+  assert.equal(responses.length, 0);
+});
+
+test('smoke tester returns a bounded failure when the response marker never appears', async () => {
+  const calls = [];
+  const smokeTarget = createSmokeTester({
+    fetchImpl: async (url) => {
+      calls.push(url);
+      return textResponse('<title>Unexpected page</title>');
+    },
+    attempts: 2,
+    retryDelayMs: 1,
+    requestTimeoutMs: 100,
+    delayImpl: async () => undefined,
+  });
+
+  const result = await smokeTarget({
+    target: PAGES_TARGETS[1],
+    baseUrl: 'https://pr-42.hashbrown-finance.pages.dev',
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(
+    result.error,
+    /https:\/\/pr-42\.hashbrown-finance\.pages\.dev\/ failed after 2 attempts/,
+  );
+  assert.match(result.error, /Finance Sample/);
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(calls.length, 2);
+});
+
+test('smoke tester bounds an individual request with an abort signal', async () => {
+  let requestSignal;
+  const smokeTarget = createSmokeTester({
+    fetchImpl: async (_url, options) => {
+      requestSignal = options.signal;
+
+      return new Promise((_resolve, reject) => {
+        requestSignal.addEventListener(
+          'abort',
+          () => reject(requestSignal.reason),
+          { once: true },
+        );
+      });
+    },
+    attempts: 1,
+    retryDelayMs: 1,
+    requestTimeoutMs: 5,
+    delayImpl: async () => undefined,
+  });
+
+  const result = await smokeTarget({
+    target: PAGES_TARGETS[0],
+    baseUrl: 'https://pr-42.hashbrown-www.pages.dev',
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /failed after 1 attempt:/);
+  assert.equal(requestSignal.aborted, true);
+});
+
+test('smoke tester rejects base URLs outside the configured Pages destinations', async () => {
+  const smokeTarget = createSmokeTester({
+    fetchImpl: async () => {
+      throw new Error('fetch should not run');
+    },
+    attempts: 1,
+    retryDelayMs: 1,
+    requestTimeoutMs: 5,
+    delayImpl: async () => undefined,
+  });
+
+  const invalidBaseUrls = [
+    'https://example.com',
+    'https://abc123.hashbrown-www.pages.dev:4443',
+    'https://hashbrown.dev:4443',
+  ];
+
+  for (const baseUrl of invalidBaseUrls) {
+    const smoke = () =>
+      smokeTarget({
+        target: PAGES_TARGETS[0],
+        baseUrl,
+      });
+
+    await assert.rejects(smoke, {
+      name: 'TypeError',
+      message:
+        'Smoke test base URL must belong to the target Pages project or production origin.',
+    });
+  }
+});
+
+test('smoke tester rejects a response larger than its configured byte limit', async () => {
+  const smokeTarget = createSmokeTester({
+    fetchImpl: async () =>
+      textResponse(`${'x'.repeat(33)}<title>Finance Sample</title>`),
+    attempts: 1,
+    retryDelayMs: 1,
+    requestTimeoutMs: 100,
+    maxResponseBytes: 32,
+    delayImpl: async () => undefined,
+  });
+
+  const result = await smokeTarget({
+    target: PAGES_TARGETS[1],
+    baseUrl: 'https://pr-42.hashbrown-finance.pages.dev',
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /response exceeded 32 bytes/);
 });
 
 test('GitHub client reads a pull request head and rejects malformed responses', async () => {
@@ -1671,15 +2140,22 @@ test('runtime dependencies use safe subprocess arguments and append the step sum
     createSpawnResult({ stdout: '["www","finance-angular"]' }),
     createSpawnResult({ stdout: 'www/index.ts\nREADME.md\n' }),
     createSpawnResult(),
-    createSpawnResult(),
+    createSpawnResult({
+      stdout:
+        'Deployment complete! Take a peek over at https://abc123.hashbrown-www.pages.dev\n',
+    }),
   ];
   const appendCalls = [];
+  const fetchCalls = [];
   const dependencies = createRuntimeDependencies({
     spawnImpl: (...args) => {
       spawnCalls.push(args);
       return spawnResults.shift()();
     },
-    fetchImpl: async () => jsonResponse({}),
+    fetchImpl: async (...args) => {
+      fetchCalls.push(args);
+      return textResponse('<main>Angular Quick Start</main>');
+    },
     appendFileImpl: async (...args) => appendCalls.push(args),
     env: {
       PATH: '/injected/bin',
@@ -1734,12 +2210,28 @@ test('runtime dependencies use safe subprocess arguments and append the step sum
     branch: 'main',
     sha: 'abc',
   });
+  const smoke = await dependencies.smokeTarget({
+    target: PAGES_TARGETS[0],
+    baseUrl: 'https://hashbrown.dev',
+  });
   await dependencies.appendSummary('summary');
 
   assert.deepEqual(affected, ['www', 'finance-angular']);
   assert.deepEqual(changed, ['www/index.ts', 'README.md']);
   assert.equal(build.ok, true);
-  assert.equal(deploy.ok, true);
+  assert.deepEqual(deploy, {
+    ok: true,
+    stdout:
+      'Deployment complete! Take a peek over at https://abc123.hashbrown-www.pages.dev\n',
+    stderr: '',
+    deploymentUrl: 'https://abc123.hashbrown-www.pages.dev',
+  });
+  assert.equal(smoke.ok, true);
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(
+    fetchCalls[0][0],
+    'https://hashbrown.dev/docs/angular/start/quick',
+  );
   assert.deepEqual(
     spawnCalls.map(([command, args]) => [command, args]),
     [
@@ -1824,9 +2316,16 @@ test('runtime dependencies reject malformed command output and missing GitHub en
 });
 
 test('runtime production dependencies do not require preview-only GitHub credentials', async () => {
+  const spawnResults = [
+    createSpawnResult(),
+    createSpawnResult({
+      stdout:
+        'Deployment complete! Take a peek over at https://abc123.hashbrown-www.pages.dev\n',
+    }),
+  ];
   const dependencies = createRuntimeDependencies({
-    spawnImpl: createSpawnResult(),
-    fetchImpl: async () => jsonResponse({}),
+    spawnImpl: () => spawnResults.shift()(),
+    fetchImpl: async () => textResponse('<main>Angular Quick Start</main>'),
     appendFileImpl: async () => undefined,
     env: {
       GITHUB_STEP_SUMMARY: '/tmp/summary.md',
@@ -1850,6 +2349,30 @@ test('runtime production dependencies do not require preview-only GitHub credent
   );
 });
 
+test('runtime deployment fails when Wrangler omits its immutable URL', async () => {
+  const dependencies = createRuntimeDependencies({
+    spawnImpl: createSpawnResult({ stdout: 'Deployment complete.\n' }),
+    fetchImpl: async () => textResponse('<main>Angular Quick Start</main>'),
+    appendFileImpl: async () => undefined,
+    env: {
+      GITHUB_STEP_SUMMARY: '/tmp/summary.md',
+      CLOUDFLARE_API_TOKEN: 'cloudflare-token',
+      CLOUDFLARE_ACCOUNT_ID: 'cloudflare-account',
+    },
+  });
+
+  const result = await dependencies.deployTarget({
+    target: PAGES_TARGETS[0],
+    branch: 'main',
+    sha: HEAD_SHA,
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    error: 'Wrangler did not report an immutable deployment URL for Docs.',
+  });
+});
+
 test('executeDeployCommand dispatches production and preview modes', async () => {
   const productionCalls = [];
   const productionDependencies = {
@@ -1859,8 +2382,9 @@ test('executeDeployCommand dispatches production and preview modes', async () =>
     },
     deployTarget: async ({ target }) => {
       productionCalls.push(['deploy', target.id]);
-      return { ok: true };
+      return successfulDeployment(target);
     },
+    smokeTarget: successfulSmokeTarget,
     appendSummary: async () => productionCalls.push('summary'),
   };
   const previewCalls = [];

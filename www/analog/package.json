@@ -25,7 +25,6 @@
     "marked": "18.0.9",
     "marked-highlight": "^2.2.4",
     "shiki": "^1.29.2",
-    "zone.js": "0.16.2",
     "dotenv": "^16.6.1",
     "h3": "2.0.1-rc.26",
     "@analogjs/vitest-angular": "3.0.0-alpha.64",

@@ -11,15 +11,20 @@ const REQUIRED_TARGET_FIELDS = [
   'nxProject',
   'cloudflareProject',
   'outputDirectory',
+  'productionUrl',
+  'smokePath',
+  'smokeText',
 ];
 
 const PREVIEW_RESULT_STATUS_LABELS = Object.freeze({
   success: 'Ready',
   'build-failed': 'Build failed',
   'deploy-failed': 'Deployment failed',
+  'smoke-failed': 'Smoke test failed',
 });
 
 const CLOUDFLARE_PROJECT_PATTERN = /^[a-z0-9-]+$/;
+const HASHBROWN_PRODUCTION_HOST = 'hashbrown.dev';
 const HEAD_SHA_PATTERN = /^[0-9a-f]{7,64}$/i;
 const NX_PROJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const OUTPUT_DIRECTORY_SEGMENT_PATTERN = /^[A-Za-z0-9._@-]+$/;
@@ -80,6 +85,55 @@ function validateOutputDirectory(outputDirectory) {
   validateRepositoryRelativeDirectory('outputDirectory', outputDirectory);
 }
 
+function validateProductionUrl(productionUrl) {
+  let url;
+
+  try {
+    url = new URL(productionUrl);
+  } catch {
+    throw new TypeError(
+      'Pages target productionUrl must be an HTTPS hashbrown.dev origin.',
+    );
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.port !== '' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    url.origin !== productionUrl ||
+    (url.hostname !== HASHBROWN_PRODUCTION_HOST &&
+      !url.hostname.endsWith(`.${HASHBROWN_PRODUCTION_HOST}`))
+  ) {
+    throw new TypeError(
+      'Pages target productionUrl must be an HTTPS hashbrown.dev origin.',
+    );
+  }
+}
+
+function validateSmokePath(smokePath) {
+  const baseUrl = 'https://smoke.invalid';
+  let url;
+
+  try {
+    url = new URL(smokePath, baseUrl);
+  } catch {
+    throw new TypeError('Pages target smokePath must be a safe absolute path.');
+  }
+
+  if (
+    !smokePath.startsWith('/') ||
+    smokePath.startsWith('//') ||
+    smokePath.includes('\\') ||
+    url.origin !== baseUrl ||
+    url.pathname !== smokePath ||
+    url.search !== '' ||
+    url.hash !== ''
+  ) {
+    throw new TypeError('Pages target smokePath must be a safe absolute path.');
+  }
+}
+
 /** Marker used to identify the Cloudflare preview pull request comment. */
 export const PREVIEW_COMMENT_MARKER = '<!-- hashbrown-cloudflare-preview -->';
 
@@ -91,6 +145,9 @@ export const PAGES_TARGETS = Object.freeze([
     nxProject: 'www',
     cloudflareProject: 'hashbrown-www',
     outputDirectory: 'dist/www/analog',
+    productionUrl: 'https://hashbrown.dev',
+    smokePath: '/docs/angular/start/quick',
+    smokeText: 'Angular Quick Start',
     wranglerConfigDirectory: 'www/analog',
   }),
   Object.freeze({
@@ -99,6 +156,9 @@ export const PAGES_TARGETS = Object.freeze([
     nxProject: 'finance-angular',
     cloudflareProject: 'hashbrown-finance',
     outputDirectory: 'dist/samples/finance/angular/browser',
+    productionUrl: 'https://finance.hashbrown.dev',
+    smokePath: '/',
+    smokeText: '<title>Finance Sample</title>',
   }),
   Object.freeze({
     id: 'fast-food',
@@ -106,6 +166,9 @@ export const PAGES_TARGETS = Object.freeze([
     nxProject: 'fast-food-angular',
     cloudflareProject: 'hashbrown-fast-food',
     outputDirectory: 'dist/samples/fast-food/angular/browser',
+    productionUrl: 'https://fast-food.hashbrown.dev',
+    smokePath: '/',
+    smokeText: '<title>Fast Food Nutrition Sample</title>',
   }),
   Object.freeze({
     id: 'smart-home',
@@ -113,6 +176,9 @@ export const PAGES_TARGETS = Object.freeze([
     nxProject: 'smart-home-angular',
     cloudflareProject: 'hashbrown-smart-home',
     outputDirectory: 'dist/samples/smart-home/angular/browser',
+    productionUrl: 'https://smart-home.hashbrown.dev',
+    smokePath: '/',
+    smokeText: '<title>Smart Home</title>',
   }),
 ]);
 
@@ -125,6 +191,7 @@ export function validatePagesTargets(targets) {
   const ids = new Set();
   const nxProjects = new Set();
   const cloudflareProjects = new Set();
+  const productionUrls = new Set();
 
   for (const target of targets) {
     for (const field of REQUIRED_TARGET_FIELDS) {
@@ -138,6 +205,8 @@ export function validatePagesTargets(targets) {
     validateCloudflareProject(target.cloudflareProject);
     validateNxProject(target.nxProject);
     validateOutputDirectory(target.outputDirectory);
+    validateProductionUrl(target.productionUrl);
+    validateSmokePath(target.smokePath);
 
     if (target.wranglerConfigDirectory !== undefined) {
       validateRepositoryRelativeDirectory(
@@ -162,9 +231,16 @@ export function validatePagesTargets(targets) {
       );
     }
 
+    if (productionUrls.has(target.productionUrl)) {
+      throw new TypeError(
+        `Duplicate Pages production deployment destination: ${target.productionUrl}.`,
+      );
+    }
+
     ids.add(target.id);
     nxProjects.add(target.nxProject);
     cloudflareProjects.add(target.cloudflareProject);
+    productionUrls.add(target.productionUrl);
   }
 }
 
@@ -277,7 +353,7 @@ export function renderPreviewComment({
   const rows = orderedResults.map(({ result, target }) => {
     const status = PREVIEW_RESULT_STATUS_LABELS[result.status];
 
-    if (result.status !== 'success') {
+    if (result.status === 'build-failed' || result.status === 'deploy-failed') {
       return `| ${target.displayName} | ${status} | |`;
     }
 
