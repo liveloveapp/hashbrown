@@ -19,6 +19,25 @@ test('production build creates a deployable Cloudflare Pages artifact', async ()
   );
 });
 
+test('production HTML references a built favicon', async () => {
+  const html = await readFile(
+    new URL('index.html', deploymentDirectory),
+    'utf8',
+  );
+
+  const faviconPath = html.match(
+    /<link\b(?=[^>]*\brel=["']icon["'])(?=[^>]*\bhref=["'](\/[^"']+)["'])[^>]*>/,
+  )?.[1];
+  const faviconExists = faviconPath
+    ? await stat(new URL(faviconPath.slice(1), deploymentDirectory)).then(
+        (favicon) => favicon.isFile(),
+        () => false,
+      )
+    : false;
+
+  assert.equal(faviconExists, true);
+});
+
 test('production worker renders dynamic pages with built client assets', async () => {
   const worker = (
     await import(new URL('_worker.js/index.js', deploymentDirectory))
