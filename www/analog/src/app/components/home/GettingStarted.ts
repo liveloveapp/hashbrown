@@ -32,7 +32,7 @@ function exampleReducer(
 }
 
 const angular: Record<string, Example[]> = Object.entries(
-  import.meta.glob('/src/content/getting-started/angular/**/*.md', {
+  import.meta.glob('/src/examples/getting-started/angular/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -40,7 +40,7 @@ const angular: Record<string, Example[]> = Object.entries(
 ).reduce(exampleReducer, {} as Record<string, Example[]>);
 
 const react: Record<string, Example[]> = Object.entries(
-  import.meta.glob('/src/content/getting-started/react/**/*.md', {
+  import.meta.glob('/src/examples/getting-started/react/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -53,7 +53,7 @@ const sdkExamplesSources: Record<string, Record<string, Example[]>> = {
 };
 
 const openaiExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/getting-started/openai/**/*.md', {
+  import.meta.glob('/src/examples/getting-started/openai/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -64,7 +64,7 @@ const openaiExamples: [string, string][] = Object.entries(
 ]);
 
 const googleExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/getting-started/google/**/*.md', {
+  import.meta.glob('/src/examples/getting-started/google/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',
@@ -75,7 +75,7 @@ const googleExamples: [string, string][] = Object.entries(
 ]);
 
 const writerExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/content/getting-started/writer/**/*.md', {
+  import.meta.glob('/src/examples/getting-started/writer/**/*.md', {
     eager: true,
     query: 'raw',
     import: 'default',

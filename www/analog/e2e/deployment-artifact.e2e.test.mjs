@@ -19,6 +19,85 @@ test('production build creates a deployable Cloudflare Pages artifact', async ()
   );
 });
 
+test('production worker renders dynamic pages with built client assets', async () => {
+  const worker = (
+    await import(new URL('_worker.js/index.js', deploymentDirectory))
+  ).default;
+  const routes = [
+    {
+      path: '/docs/angular/start/quick',
+      expectedContent: 'Angular Quick Start',
+    },
+    {
+      path: '/blog/2026-07-09-hashbrown-v-0-5-0',
+      expectedContent:
+        'Hashbrown v0.5 makes generative UI easier to build, stream, and reuse',
+    },
+  ];
+  const environment = {
+    ASSETS: {
+      fetch: async () => new Response('Not found', { status: 404 }),
+    },
+  };
+  const context = { waitUntil: () => undefined };
+
+  const responses = await Promise.all(
+    routes.map(({ path }) =>
+      worker.fetch(
+        new Request(new URL(path, 'https://hashbrown.dev')),
+        environment,
+        context,
+      ),
+    ),
+  );
+  const pages = await Promise.all(
+    responses.map(async (response, index) => ({
+      expectedContent: routes[index].expectedContent,
+      html: await response.text(),
+      status: response.status,
+    })),
+  );
+
+  for (const page of pages) {
+    const moduleScript = page.html.match(
+      /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']([^"']+)["'])[^>]*>/,
+    );
+
+    assert.equal(page.status, 200);
+    assert.ok(moduleScript);
+    assert.match(moduleScript[1], /^\/assets\/[^"']+\.js$/);
+    assert.equal(
+      (
+        await stat(new URL(moduleScript[1].slice(1), deploymentDirectory))
+      ).isFile(),
+      true,
+    );
+    assert.match(page.html, new RegExp(page.expectedContent));
+    assert.doesNotMatch(page.html, /\/src\/(?:main\.ts|styles\.css)/);
+  }
+});
+
+test('production worker does not render internal code examples as content routes', async () => {
+  const worker = (
+    await import(new URL('_worker.js/index.js', deploymentDirectory))
+  ).default;
+
+  const response = await worker.fetch(
+    new Request(
+      'https://hashbrown.dev/getting-started/angular/generative-ui/app',
+    ),
+    {
+      ASSETS: {
+        fetch: async () => new Response('Not found', { status: 404 }),
+      },
+    },
+    { waitUntil: () => undefined },
+  );
+  const html = await response.text();
+
+  assert.doesNotMatch(html, /exposeComponent\(LoginViewComponent/);
+});
+
 test('Wrangler deploys the production build directory', async () => {
   const config = await readFile(
     new URL('../wrangler.toml', import.meta.url),

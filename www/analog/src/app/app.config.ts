@@ -8,6 +8,7 @@ import {
   requestContextInterceptor,
   withExtraRoutes,
 } from '@analogjs/router';
+import { withContentRoutes } from '@analogjs/router/content';
 import {
   provideHttpClient,
   withFetch,
@@ -50,6 +51,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
     provideFileRouter(
+      withContentRoutes(),
       withExtraRoutes([
         {
           path: 'blog',

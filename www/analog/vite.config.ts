@@ -10,11 +10,29 @@ import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   return {
     root: __dirname,
     cacheDir: `../../node_modules/.vite`,
 
+    environments: {
+      client: {
+        build: {
+          rollupOptions: {
+            input: resolve(__dirname, 'index.html'),
+          },
+        },
+      },
+      ssr: {
+        build: {
+          rollupOptions: {
+            output: {
+              entryFileNames: '[name].mjs',
+            },
+          },
+        },
+      },
+    },
     build: {
       outDir: '../../dist/www/client',
       reportCompressedSize: true,
@@ -29,6 +47,10 @@ export default defineConfig(({ mode }) => {
       angular(),
       analog({
         apiPrefix: '_',
+        index:
+          command === 'build' && mode === 'production'
+            ? resolve(__dirname, '../../dist/www/analog/index.html')
+            : undefined,
         content: {
           highlighter: 'shiki',
           shikiOptions: {
