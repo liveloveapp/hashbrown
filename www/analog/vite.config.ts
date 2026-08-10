@@ -48,23 +48,25 @@ export default defineConfig(({ mode }) => {
           },
         },
       }),
-      nitro({
-        preset: 'cloudflare-pages',
-        alias: {
-          '@hashbrownai/angular': resolve(
-            __dirname,
-            '../../packages/angular/src/index.ts',
-          ),
-          '@hashbrownai/core': resolve(
-            __dirname,
-            '../../packages/core/src/index.ts',
-          ),
-          '@hashbrownai/openai': resolve(
-            __dirname,
-            '../../packages/openai/src/index.ts',
-          ),
-        },
-      }),
+      ...(mode === 'test'
+        ? []
+        : nitro({
+            preset: 'cloudflare-pages',
+            alias: {
+              '@hashbrownai/angular': resolve(
+                __dirname,
+                '../../packages/angular/src/index.ts',
+              ),
+              '@hashbrownai/core': resolve(
+                __dirname,
+                '../../packages/core/src/index.ts',
+              ),
+              '@hashbrownai/openai': resolve(
+                __dirname,
+                '../../packages/openai/src/index.ts',
+              ),
+            },
+          })),
       nxViteTsPaths(),
       hashbrownStackblitzPlugin(),
     ],

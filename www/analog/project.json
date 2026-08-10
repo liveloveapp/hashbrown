@@ -56,7 +56,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
       "options": {
-        "command": "node --test www/analog/e2e/deployment-artifact.e2e.test.mjs"
+        "command": "node --test www/analog/e2e/*.e2e.test.mjs"
       }
     },
     "lint": {
