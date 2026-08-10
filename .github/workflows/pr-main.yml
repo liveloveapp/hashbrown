@@ -88,6 +88,32 @@ jobs:
           --head "${{ github.event.pull_request.head.sha }}"
           --pr "${{ github.event.pull_request.number }}"
 
+      - name: Diagnose Docs preview runtime
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          preview_url="https://pr-${{ github.event.pull_request.number }}.hashbrown-www.pages.dev"
+          log_file="$(mktemp)"
+          response_file="$(mktemp)"
+
+          timeout 45s npx wrangler pages deployment tail "$preview_url" \
+            --format=pretty --status=error > "$log_file" 2>&1 &
+          tail_pid="$!"
+
+          sleep 8
+          status="$(curl --silent --show-error --output "$response_file" \
+            --write-out '%{http_code}' \
+            "$preview_url/docs/angular/start/quick")"
+          sleep 8
+
+          kill "$tail_pid" 2>/dev/null || true
+          wait "$tail_pid" || true
+          cat "$log_file"
+          cat "$response_file"
+
+          test "$status" = 200
+
   cloudflare-production:
     name: Cloudflare Production
     if: >-
