@@ -94,6 +94,7 @@ test('validates injected targets before calling dependencies', async () => {
     [{ ...PAGES_TARGETS[0], outputDirectory: '' }],
     [{ ...PAGES_TARGETS[0], nxProject: '--help' }],
     [{ ...PAGES_TARGETS[0], outputDirectory: '../dist/www' }],
+    [{ ...PAGES_TARGETS[0], wranglerConfigDirectory: '../www/analog' }],
   ];
 
   for (const targets of invalidTargets) {
@@ -1173,13 +1174,15 @@ test('builds exact safe Wrangler and Nx affected argument arrays', () => {
   assert.deepEqual(wrangler, [
     '--no-install',
     'wrangler',
+    '--cwd=www/analog',
     'pages',
     'deploy',
-    PAGES_TARGETS[0].outputDirectory,
+    '../../dist/www/analog',
     '--project-name=hashbrown-www',
     '--branch=main',
     '--commit-hash=abc',
     '--commit-dirty=true',
+    '--no-bundle',
   ]);
   assert.deepEqual(nx, [
     'nx',
@@ -1199,6 +1202,44 @@ test('builds exact safe Wrangler and Nx affected argument arrays', () => {
     wrangler.some((argument) => argument.includes('@4.114.0')),
     false,
   );
+});
+
+test('rejects an empty derived Wrangler output directory', () => {
+  const target = {
+    ...PAGES_TARGETS[0],
+    outputDirectory: 'www/analog',
+    wranglerConfigDirectory: 'www/analog',
+  };
+
+  const act = () =>
+    wranglerDeployArgs(target, {
+      branch: 'main',
+      sha: 'abc',
+    });
+
+  assert.throws(act, {
+    name: 'TypeError',
+    message: 'Wrangler output directory must be a safe positional argument.',
+  });
+});
+
+test('rejects an option-like derived Wrangler output directory', () => {
+  const target = {
+    ...PAGES_TARGETS[0],
+    outputDirectory: 'www/--help',
+    wranglerConfigDirectory: 'www',
+  };
+
+  const act = () =>
+    wranglerDeployArgs(target, {
+      branch: 'main',
+      sha: 'abc',
+    });
+
+  assert.throws(act, {
+    name: 'TypeError',
+    message: 'Wrangler output directory must be a safe positional argument.',
+  });
 });
 
 test('normalizes successful and failed subprocess completion without rejecting', async () => {

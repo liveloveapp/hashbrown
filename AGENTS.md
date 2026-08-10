@@ -187,6 +187,7 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx build www`
   - `npx nx serve www`
   - `npx nx test www`
+  - `npx nx e2e www`
   - `npx nx deploy www`
   - `npx nx collect-docs www`
   - `npx nx generate-llms www`

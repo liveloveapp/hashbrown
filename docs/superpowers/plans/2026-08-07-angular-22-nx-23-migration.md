@@ -56,6 +56,8 @@ available and has compatible peers.
 | Angular ESLint scoped set   | `21.4.0`                      | `22.1.0`                       |
 | NgRx                        | `21.1.1`                      | exact `22.0.0-rc.0`            |
 | Analog first-party set      | exact `3.0.0-alpha.64`        | exact `3.0.0-alpha.64`         |
+| Nitro                       | transitive prerelease         | exact `3.0.260522-beta`        |
+| H3                          | transitive prerelease         | exact override `2.0.1-rc.26`   |
 | ngx-markdown                | `21.3.0`                      | `22.0.0`                       |
 | Marked                      | `18.0.9`                      | `18.0.9`                       |
 | Vite / Vitest               | `7.3.6` / `4.1.10`            | `8.2.1` / `4.1.10`             |
@@ -470,12 +472,14 @@ pass without publishing.
 ```sh
 npx nx lint cloudflare-deployment
 npx nx test cloudflare-deployment
+npx nx e2e www
 actionlint
 git diff --name-only --diff-filter=ACMR -z origin/main...HEAD | xargs -0 npx prettier --check --ignore-unknown
 git diff --check
 ```
 
-Expected: all commands pass. Confirm `.github/workflows/npm-publish.yml`
+Expected: all commands pass, including the Docs prebuilt worker and generated
+Wrangler configuration assertions. Confirm `.github/workflows/npm-publish.yml`
 remains tag-triggered, OIDC-enabled, and independent of Cloudflare deployment.
 
 - [ ] **Step 5: Review all generated side effects and final diff**

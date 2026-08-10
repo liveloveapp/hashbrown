@@ -3,6 +3,7 @@
 import analog from '@analogjs/platform';
 import angular from '@analogjs/vite-plugin-angular';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
@@ -46,23 +47,22 @@ export default defineConfig(({ mode }) => {
             ],
           },
         },
-        nitro: {
-          preset: 'cloudflare-pages',
-          compatibilityDate: '2024-05-07',
-          alias: {
-            '@hashbrownai/angular': resolve(
-              __dirname,
-              '../../packages/angular/src/index.ts',
-            ),
-            '@hashbrownai/core': resolve(
-              __dirname,
-              '../../packages/core/src/index.ts',
-            ),
-            '@hashbrownai/openai': resolve(
-              __dirname,
-              '../../packages/openai/src/index.ts',
-            ),
-          },
+      }),
+      nitro({
+        preset: 'cloudflare-pages',
+        alias: {
+          '@hashbrownai/angular': resolve(
+            __dirname,
+            '../../packages/angular/src/index.ts',
+          ),
+          '@hashbrownai/core': resolve(
+            __dirname,
+            '../../packages/core/src/index.ts',
+          ),
+          '@hashbrownai/openai': resolve(
+            __dirname,
+            '../../packages/openai/src/index.ts',
+          ),
         },
       }),
       nxViteTsPaths(),

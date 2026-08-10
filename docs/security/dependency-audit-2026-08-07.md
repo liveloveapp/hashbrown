@@ -28,6 +28,8 @@ dependency downgrade was used.
 | TypeScript                 | `6.0.3`                        |
 | SWC CLI/register/core      | `0.8.1` / `1.12.1` / `1.15.47` |
 | First-party Analog set     | exact `3.0.0-alpha.64`         |
+| Nitro                      | exact `3.0.260522-beta`        |
+| H3                         | exact override `2.0.1-rc.26`   |
 | NgRx set                   | exact `22.0.0-rc.0`            |
 
 The install was verified in an isolated `/tmp` checkout where `nx` was not

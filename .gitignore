@@ -50,6 +50,7 @@ packages/angular/coverage
 
 # Nitro
 .nitro
+.wrangler
 
 # Vite
 vite.config.*.timestamp*

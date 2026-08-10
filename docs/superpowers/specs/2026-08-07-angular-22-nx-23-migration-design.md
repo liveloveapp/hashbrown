@@ -9,7 +9,11 @@ Nx ecosystems, and leave the repository with a reproducible dependency tree.
 
 NgRx 22 and the Analog 3 line are not yet stable. The migration will pin all
 NgRx packages to `22.0.0-rc.0` and all first-party Analog packages to
-`3.0.0-alpha.64` until follow-ups replace those pins with stable releases.
+`3.0.0-alpha.64`. Analog 3's split Vite integration also requires an explicit
+Nitro plugin, so Nitro will be pinned to `3.0.260522-beta` until follow-ups
+replace these prerelease pins with stable releases. Nitro's H3 dependency will
+also be held to `2.0.1-rc.26` with a root override so lockfile regeneration
+cannot move the server API beneath the Docs app.
 
 ## Context
 
@@ -45,6 +49,11 @@ otherwise-unused Angular CLI peer, so it will be removed while the scoped
   SWC, and other packages required by the migration.
 - Pin every NgRx package to exactly `22.0.0-rc.0`.
 - Pin every first-party Analog package to exactly `3.0.0-alpha.64`.
+- Pin Nitro to exactly `3.0.260522-beta` and configure its Cloudflare Pages
+  Vite plugin explicitly.
+- Override H3 to exactly `2.0.1-rc.26` at the install root.
+- Load Nitro's generated Wrangler deployment configuration and upload its
+  multi-module worker without an additional Wrangler bundling pass.
 - Remove unused NgRx toolkit packages that do not support Angular 22.
 - Remove the unused `angular-eslint` meta-package without removing the scoped
   lint plugins and parser used by Nx and workspace lint configuration.
@@ -123,6 +132,9 @@ The compatibility set includes:
   meta-package
 - Analog Content, Platform, Router, Vite Plugin Angular, and Vitest Angular
   remain pinned exactly to `3.0.0-alpha.64`
+- Nitro remains pinned exactly to `3.0.260522-beta` and owns generation of the
+  Cloudflare Pages worker bundle
+- H3 remains pinned exactly to `2.0.1-rc.26` through the root install override
 - Vite 8.x and Vitest 4.x
 - `@vitejs/plugin-react` 6.x for Vite 8 compatibility
 - ngx-markdown 22.x and Marked 18.x, with compatible Marked plugins
@@ -185,6 +197,9 @@ After the final migration, also run:
 - The Core pack-and-consume e2e test for generated chunks and ESM/CJS entrypoints
 - The Angular final-artifact e2e check that enforces the Angular 22 peer boundary
   required by its `Eager` change-detection metadata
+- The Docs final-artifact e2e check that requires the Cloudflare worker entry
+  point, rendered site entry page, generated Wrangler redirect, and Node.js
+  compatibility flag
 - Cloudflare workflow tests and actionlint
 - Formatting checks for every changed file
 - Full and production npm audits

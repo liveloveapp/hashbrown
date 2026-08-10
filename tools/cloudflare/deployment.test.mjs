@@ -27,7 +27,8 @@ test('defines the ordered Pages deployment manifest', () => {
       displayName: 'Docs',
       nxProject: 'www',
       cloudflareProject: 'hashbrown-www',
-      outputDirectory: 'dist/www/analog/analog/public',
+      outputDirectory: 'dist/www/analog',
+      wranglerConfigDirectory: 'www/analog',
     },
     {
       id: 'finance',
@@ -355,6 +356,31 @@ test('rejects unsafe output directories in target manifests', () => {
       name: 'TypeError',
       message:
         'Pages target outputDirectory must be a safe repository-relative path.',
+    });
+  }
+});
+
+test('rejects unsafe Wrangler config directories in target manifests', () => {
+  const invalidDirectories = [
+    '',
+    '-www/analog',
+    '/www/analog',
+    'www\\analog',
+    '.',
+    '..',
+    'www/../analog',
+    'www/./analog',
+    'www//analog',
+  ];
+
+  for (const wranglerConfigDirectory of invalidDirectories) {
+    const validate = () =>
+      validatePagesTargets([createTarget({ wranglerConfigDirectory })]);
+
+    assert.throws(validate, {
+      name: 'TypeError',
+      message:
+        'Pages target wranglerConfigDirectory must be a safe repository-relative path.',
     });
   }
 });

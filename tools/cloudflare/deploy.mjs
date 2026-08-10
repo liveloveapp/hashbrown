@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { appendFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { posix, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -520,16 +520,30 @@ export function wranglerDeployArgs(target, { branch, sha }) {
   validateNonEmptyString('Cloudflare branch', branch);
   validateNonEmptyString('Commit SHA', sha);
 
+  const outputDirectory = target.wranglerConfigDirectory
+    ? posix.relative(target.wranglerConfigDirectory, target.outputDirectory)
+    : target.outputDirectory;
+
+  if (outputDirectory === '' || outputDirectory.startsWith('-')) {
+    throw new TypeError(
+      'Wrangler output directory must be a safe positional argument.',
+    );
+  }
+
   return Object.freeze([
     '--no-install',
     'wrangler',
+    ...(target.wranglerConfigDirectory
+      ? [`--cwd=${target.wranglerConfigDirectory}`]
+      : []),
     'pages',
     'deploy',
-    target.outputDirectory,
+    outputDirectory,
     `--project-name=${target.cloudflareProject}`,
     `--branch=${branch}`,
     `--commit-hash=${sha}`,
     '--commit-dirty=true',
+    '--no-bundle',
   ]);
 }
 

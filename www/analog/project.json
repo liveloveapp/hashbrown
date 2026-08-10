@@ -8,17 +8,12 @@
     "build": {
       "executor": "@analogjs/platform:vite",
       "defaultConfiguration": "production",
-      "outputs": [
-        "{options.outputPath}",
-        "{workspaceRoot}/dist/www/analog/.nitro",
-        "{workspaceRoot}/dist/www/analog/ssr",
-        "{workspaceRoot}/dist/www/analog/analog"
-      ],
+      "outputs": ["{workspaceRoot}/dist/www/analog"],
       "dependsOn": ["collect-docs", "generate-llms"],
       "options": {
         "main": "www/analog/src/main.ts",
         "configFile": "www/analog/vite.config.ts",
-        "outputPath": "dist/www/analog/client",
+        "outputPath": "../../dist/www/analog/client",
         "tsConfig": "www/analog/tsconfig.app.json",
         "styles": ["@angular/cdk/overlay-prebuilt.css"]
       },
@@ -55,6 +50,13 @@
       "outputs": ["{projectRoot}/coverage"],
       "options": {
         "passWithNoTests": true
+      }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "node --test www/analog/e2e/deployment-artifact.e2e.test.mjs"
       }
     },
     "lint": {
@@ -122,9 +124,9 @@
     },
     "deploy": {
       "executor": "nx:run-commands",
-      "dependsOn": ["build:production"],
+      "dependsOn": ["build"],
       "options": {
-        "command": "npx wrangler pages deploy dist/www/analog/analog/public --commit-dirty=true"
+        "command": "npx wrangler --cwd=www/analog pages deploy ../../dist/www/analog --project-name=hashbrown-www --commit-dirty=true --no-bundle"
       }
     }
   }

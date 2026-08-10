@@ -54,12 +54,13 @@ function validateNxProject(nxProject) {
   }
 }
 
-function validateOutputDirectory(outputDirectory) {
-  const segments = outputDirectory.split('/');
+function validateRepositoryRelativeDirectory(field, directory) {
+  const segments = typeof directory === 'string' ? directory.split('/') : [];
   const isUnsafe =
-    outputDirectory.startsWith('-') ||
-    outputDirectory.startsWith('/') ||
-    outputDirectory.includes('\\') ||
+    typeof directory !== 'string' ||
+    directory.startsWith('-') ||
+    directory.startsWith('/') ||
+    directory.includes('\\') ||
     segments.some(
       (segment) =>
         segment === '' ||
@@ -70,9 +71,13 @@ function validateOutputDirectory(outputDirectory) {
 
   if (isUnsafe) {
     throw new TypeError(
-      'Pages target outputDirectory must be a safe repository-relative path.',
+      `Pages target ${field} must be a safe repository-relative path.`,
     );
   }
+}
+
+function validateOutputDirectory(outputDirectory) {
+  validateRepositoryRelativeDirectory('outputDirectory', outputDirectory);
 }
 
 /** Marker used to identify the Cloudflare preview pull request comment. */
@@ -85,7 +90,8 @@ export const PAGES_TARGETS = Object.freeze([
     displayName: 'Docs',
     nxProject: 'www',
     cloudflareProject: 'hashbrown-www',
-    outputDirectory: 'dist/www/analog/analog/public',
+    outputDirectory: 'dist/www/analog',
+    wranglerConfigDirectory: 'www/analog',
   }),
   Object.freeze({
     id: 'finance',
@@ -132,6 +138,13 @@ export function validatePagesTargets(targets) {
     validateCloudflareProject(target.cloudflareProject);
     validateNxProject(target.nxProject);
     validateOutputDirectory(target.outputDirectory);
+
+    if (target.wranglerConfigDirectory !== undefined) {
+      validateRepositoryRelativeDirectory(
+        'wranglerConfigDirectory',
+        target.wranglerConfigDirectory,
+      );
+    }
 
     if (ids.has(target.id)) {
       throw new TypeError(`Duplicate Pages target id: ${target.id}.`);

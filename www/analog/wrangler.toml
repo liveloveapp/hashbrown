@@ -1,3 +1,4 @@
 name = "hashbrown-www"
 compatibility_date = "2024-12-01"
-pages_build_output_dir = "dist/www/analog/analog/public"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "../../dist/www/analog"

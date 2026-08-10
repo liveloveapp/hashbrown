@@ -184,6 +184,7 @@
     "lru-cache": "11.2.6",
     "lucide-react": "^0.488.0",
     "ng-packagr": "22.1.1",
+    "nitro": "3.0.260522-beta",
     "nx": "23.1.1",
     "nx-ignore": "^19.8.0",
     "openai": "^6.45.0",
@@ -217,6 +218,9 @@
     "writer-sdk": "^2.3.2",
     "zod-v4": "npm:zod@^4.4.3",
     "zustand": "^5.0.14"
+  },
+  "overrides": {
+    "h3": "2.0.1-rc.26"
   },
   "optionalDependencies": {
     "@rollup/rollup-darwin-arm64": "4.50.0",
