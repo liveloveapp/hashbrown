@@ -1,4 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  Component,
+  computed,
+  input,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { createTextFragments } from './text-fragments';
 
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -51,6 +56,7 @@ type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
       }
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -150,6 +150,7 @@ import { Suggestor } from '../suggestions/suggestor';
       </mat-dialog-actions>
     </form>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     h2 {
       padding-bottom: 0;

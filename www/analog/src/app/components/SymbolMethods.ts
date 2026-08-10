@@ -1,4 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 import {
   ApiExcerptToken,
   ApiExcerptTokenKind,
@@ -60,6 +65,7 @@ import { SymbolUsageNotes } from './SymbolUsageNotes';
       </www-code-example>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

@@ -1,13 +1,14 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   inject,
   OnDestroy,
   PLATFORM_ID,
-  Signal,
   signal,
+  Signal,
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -37,6 +38,7 @@ type Heading = { level: number; text: string; id: string; url: string };
       style="position:absolute;bottom:0;width:1px;height:1px;"
     ></div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

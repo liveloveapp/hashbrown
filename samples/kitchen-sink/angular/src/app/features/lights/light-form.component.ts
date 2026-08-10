@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
@@ -89,6 +90,7 @@ import { LightsPageActions } from './actions/lights-page.actions';
       </mat-card>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .form-container {

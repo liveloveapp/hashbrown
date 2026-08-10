@@ -1,5 +1,6 @@
 import { ComponentPortal } from '@angular/cdk/portal';
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -24,6 +25,7 @@ import { SYMBOl_POPOVER_REF, SymbolPopover } from './SymbolPopover';
   imports: [RouterLink],
   // prettier-ignore
   template: `@if (isPrivate() || isUnknown()) {{{ displayText() }}} @else if (shouldUseExternalLink()) {<a [href]="url()" target="_blank">{{ displayText() }}</a>} @else {<a [routerLink]="url()" #internalSymbolLink>{{ displayText() }}</a>}`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     a {
       color: inherit;

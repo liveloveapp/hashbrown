@@ -7,6 +7,7 @@ import {
   inject,
   signal,
   viewChild,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { Chart as ChartJS } from 'chart.js/auto';
 import { Chat } from './Chat';
@@ -79,6 +80,7 @@ import { openWelcomeOverlay } from './Welcome';
       <button class="open-code-modal" (click)="openCodeModal()">Code</button>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: grid;

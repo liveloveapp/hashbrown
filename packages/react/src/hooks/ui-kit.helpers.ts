@@ -7,12 +7,12 @@ export function renderUiNodes(
   nodes: string | Array<ComponentNode>,
   registry: ReadonlyMap<string, ExposedComponent<any>>,
   parentKey = '',
-): ReactElement[] | string {
+): ReactElement<any>[] | string {
   if (typeof nodes === 'string') {
     return nodes;
   }
 
-  return nodes.reduce<ReactElement[]>((acc, element, index) => {
+  return nodes.reduce<ReactElement<any>[]>((acc, element, index) => {
     const key = `${parentKey}_${index}`;
     const entries = Object.entries(element ?? {});
     if (entries.length === 0) {

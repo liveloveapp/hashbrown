@@ -1,4 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ArrowUpRight } from '../icons/ArrowUpRight';
 import { BrandBlueSky } from '../icons/BrandBlueSky';
@@ -110,6 +115,7 @@ import { ConfigService } from '../services/ConfigService';
     </footer>
     <div class="stripe"></div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       position: relative;

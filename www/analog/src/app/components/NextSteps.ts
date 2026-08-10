@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
   selector: 'www-next-steps',
@@ -7,6 +7,7 @@ import { Component } from '@angular/core';
       <ng-content></ng-content>
     </ul>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

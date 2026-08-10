@@ -35,7 +35,11 @@
       ],
       "@hashbrownai/writer": ["packages/writer/src/index.ts"],
       "tater-js": ["packages/streaming-json-parser/index.ts"]
-    }
+    },
+    "noUncheckedSideEffectImports": false,
+    "types": ["*"],
+    "esModuleInterop": false,
+    "ignoreDeprecations": "6.0"
   },
   "angularCompilerOptions": {
     "strict": true,

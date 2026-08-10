@@ -1,4 +1,11 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SafeResourceUrl } from '@angular/platform-browser';
 import { ConfigService } from '../../services/ConfigService';
@@ -53,6 +60,7 @@ import { Squircle } from '../Squircle';
       }
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

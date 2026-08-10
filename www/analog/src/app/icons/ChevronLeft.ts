@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Source:https://tablericons.com/icon/chevron-left
@@ -20,6 +20,7 @@ import { Component, input } from '@angular/core';
       <path d="M15 6l-6 6l6 6" />
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

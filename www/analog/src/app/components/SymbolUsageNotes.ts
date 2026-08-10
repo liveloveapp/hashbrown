@@ -1,4 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 import { ApiMember } from '../models/api-report.models';
 import { Markdown } from '../pipes/Markdown';
 
@@ -13,6 +18,7 @@ import { Markdown } from '../pipes/Markdown';
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .notes {

@@ -1,4 +1,9 @@
-import { Component, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  signal,
+} from '@angular/core';
 
 @Component({
   selector: 'spot-player-turn',
@@ -27,6 +32,7 @@ import { Component, input, signal } from '@angular/core';
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .player-turn-preview {
       position: fixed;

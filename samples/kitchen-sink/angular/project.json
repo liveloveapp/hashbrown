@@ -7,8 +7,9 @@
   "tags": [],
   "targets": {
     "build": {
-      "executor": "@angular-devkit/build-angular:application",
+      "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/samples/kitchen-sink/angular",
         "index": "samples/kitchen-sink/angular/src/index.html",
@@ -46,11 +47,15 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "serve": {
-      "executor": "@angular-devkit/build-angular:dev-server",
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "samples/kitchen-sink/angular/proxy.conf.json",
+        "host": "0.0.0.0"
+      },
       "configurations": {
         "production": {
           "buildTarget": "kitchen-sink-angular:build:production"
@@ -58,15 +63,10 @@
         "development": {
           "buildTarget": "kitchen-sink-angular:build:development"
         }
-      },
-      "defaultConfiguration": "development",
-      "options": {
-        "proxyConfig": "samples/kitchen-sink/angular/proxy.conf.json",
-        "host": "0.0.0.0"
       }
     },
     "extract-i18n": {
-      "executor": "@angular-devkit/build-angular:extract-i18n",
+      "executor": "@angular/build:extract-i18n",
       "options": {
         "buildTarget": "kitchen-sink-angular:build"
       }

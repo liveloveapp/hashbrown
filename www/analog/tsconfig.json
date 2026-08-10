@@ -24,7 +24,8 @@
     "noFallthroughCasesInSwitch": true,
     "module": "preserve",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "ignoreDeprecations": "6.0"
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

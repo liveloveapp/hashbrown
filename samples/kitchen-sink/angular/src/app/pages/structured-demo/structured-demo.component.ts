@@ -1,5 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { structuredCompletionResource } from '@hashbrownai/angular';
 import {
@@ -43,8 +49,7 @@ const itinerarySchema = s.object('Weekend itinerary', {
       downloadProgress = {{ downloadProgress() }};
       downloadRequired = {{ downloadRequired() }};
       sessionState = {{ sessionState() }};
-      </pre
-      >
+      </pre>
 
       <form>
         <label for="destination">Where would you like to go?</label>
@@ -103,6 +108,7 @@ const itinerarySchema = s.object('Weekend itinerary', {
       }
     </section>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .structured-demo {
       display: flex;

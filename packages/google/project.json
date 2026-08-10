@@ -62,16 +62,16 @@
     },
     "build-api-report": {
       "executor": "nx:run-commands",
-      "options": {
-        "command": "npx api-extractor run --local --config packages/google/api-extractor.json",
-        "parallel": true
-      },
       "dependsOn": [
         {
           "projects": ["google"],
           "target": "build"
         }
-      ]
+      ],
+      "options": {
+        "command": "npx api-extractor run --local --config packages/google/api-extractor.json",
+        "parallel": true
+      }
     }
   }
 }

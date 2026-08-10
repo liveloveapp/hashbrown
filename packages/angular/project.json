@@ -17,6 +17,7 @@
     "build": {
       "executor": "@nx/angular:package",
       "outputs": ["{workspaceRoot}/dist/packages/angular"],
+      "defaultConfiguration": "production",
       "options": {
         "project": "packages/angular/ng-package.json"
       },
@@ -27,8 +28,7 @@
         "development": {
           "tsConfig": "packages/angular/tsconfig.lib.json"
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
@@ -45,16 +45,16 @@
     },
     "build-api-report": {
       "executor": "nx:run-commands",
-      "options": {
-        "command": "npx api-extractor run --local --config packages/angular/api-extractor.json",
-        "parallel": true
-      },
       "dependsOn": [
         {
           "projects": ["angular"],
           "target": "build"
         }
-      ]
+      ],
+      "options": {
+        "command": "npx api-extractor run --local --config packages/angular/api-extractor.json",
+        "parallel": true
+      }
     }
   }
 }

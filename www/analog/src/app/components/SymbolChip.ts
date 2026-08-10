@@ -1,5 +1,10 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   MinimizedApiMemberSummary,
@@ -40,6 +45,7 @@ import {
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [RouterLink, NgClass],
 })
 export class SymbolChip {

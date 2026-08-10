@@ -1,4 +1,9 @@
-import { Component, inject, InjectionToken } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  InjectionToken,
+} from '@angular/core';
 import { ApiMemberSummary } from '../models/api-report.models';
 import { SymbolApi } from './SymbolApi';
 import { SymbolHeader } from './SymbolHeader';
@@ -30,6 +35,7 @@ export const SYMBOl_POPOVER_REF = new InjectionToken<ApiMemberSummary>(
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { Chat } from '@hashbrownai/core';
 import { MarkdownComponent } from 'ngx-markdown';
 
@@ -20,6 +20,7 @@ import { MarkdownComponent } from 'ngx-markdown';
       }
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

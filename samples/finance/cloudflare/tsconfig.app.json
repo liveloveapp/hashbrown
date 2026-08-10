@@ -6,5 +6,13 @@
     "types": ["node"],
     "resolveJsonModule": true
   },
-  "include": ["../angular/functions/**/*.ts", "../angular/functions/**/*.json"]
+  "include": ["../angular/functions/**/*.ts", "../angular/functions/**/*.json"],
+  "angularCompilerOptions": {
+    "extendedDiagnostics": {
+      "checks": {
+        "nullishCoalescingNotNullable": "suppress",
+        "optionalChainNotNullable": "suppress"
+      }
+    }
+  }
 }

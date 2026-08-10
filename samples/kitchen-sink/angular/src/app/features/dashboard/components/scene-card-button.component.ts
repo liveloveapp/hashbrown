@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+} from '@angular/core';
 import { Store } from '@ngrx/store';
 import { selectScenesEntities } from '../../../store';
 import { ScenesPageActions } from '../../scenes/actions/scenes-page.actions';
@@ -54,6 +60,7 @@ import {
       text-align: left;
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   animations: [
     trigger('bounce', [
       transition('default => active', [

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import {
   exposeComponent,
   RenderMessageComponent,
@@ -47,6 +47,7 @@ const chartTypeHints: ChartType[] = [
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .initial-chat-state {
       padding: 24px;

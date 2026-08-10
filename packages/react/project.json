@@ -16,6 +16,12 @@
     "build": {
       "executor": "@nx/rollup:rollup",
       "outputs": ["{options.outputPath}"],
+      "dependsOn": [
+        {
+          "projects": ["core"],
+          "target": "build"
+        }
+      ],
       "options": {
         "main": "packages/react/src/index.ts",
         "tsConfig": "packages/react/tsconfig.lib.json",
@@ -25,7 +31,6 @@
         "generateExportsField": false,
         "generatePackageJson": false,
         "sourceMap": true,
-        "useLegacyTypescriptPlugin": false,
         "assets": [
           {
             "input": "packages/react",
@@ -43,27 +48,21 @@
             "output": "."
           }
         ]
-      },
-      "dependsOn": [
-        {
-          "projects": ["core"],
-          "target": "build"
-        }
-      ]
+      }
     },
     "e2e": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/packages/react-e2e"],
-      "options": {
-        "jestConfig": "packages/react/jest.e2e.config.ts",
-        "passWithNoTests": false
-      },
       "dependsOn": [
         {
           "projects": ["react"],
           "target": "build"
         }
-      ]
+      ],
+      "options": {
+        "jestConfig": "packages/react/jest.e2e.config.ts",
+        "passWithNoTests": false
+      }
     },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
@@ -74,16 +73,16 @@
     },
     "build-api-report": {
       "executor": "nx:run-commands",
-      "options": {
-        "command": "npx api-extractor run --local --config packages/react/api-extractor.json",
-        "parallel": true
-      },
       "dependsOn": [
         {
           "projects": ["react"],
           "target": "build"
         }
-      ]
+      ],
+      "options": {
+        "command": "npx api-extractor run --local --config packages/react/api-extractor.json",
+        "parallel": true
+      }
     }
   }
 }

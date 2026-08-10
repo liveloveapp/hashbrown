@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 @Component({
   selector: 'app-help-topic-marker',
@@ -9,6 +9,7 @@ import { Component, input } from '@angular/core';
       <span>{{ markerLabel() }} </span>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .container {
       width: 36px;

@@ -1,4 +1,9 @@
-import { Component, output, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  output,
+  viewChild,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
@@ -30,6 +35,7 @@ import { CdkTextareaAutosize, TextFieldModule } from '@angular/cdk/text-field';
       <mat-icon>send</mat-icon>
     </button>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

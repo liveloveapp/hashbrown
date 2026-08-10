@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { GameSetupComponent } from './game-setup/game-setup';
 import { McpServerService } from './services/mcp-server';
 import { SpotifyService } from './services/spotify';
@@ -15,6 +15,7 @@ import { SpotifyService } from './services/spotify';
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

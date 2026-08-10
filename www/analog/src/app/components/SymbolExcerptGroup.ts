@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Squircle } from './Squircle';
 
 @Component({
@@ -14,6 +14,7 @@ import { Squircle } from './Squircle';
       <ng-content />
     </div>
   </div>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

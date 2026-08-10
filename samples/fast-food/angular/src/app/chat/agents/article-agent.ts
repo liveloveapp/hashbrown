@@ -1,6 +1,12 @@
 import { structuredCompletionResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
-import { Component, effect, input, output } from '@angular/core';
+import {
+  Component,
+  effect,
+  input,
+  output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { searchFastFoodItemsTool } from '../tools/search-fast-food-items';
 
 export interface Article {
@@ -38,6 +44,7 @@ const resultSchema = s.object('The Result', {
 
 @Component({
   selector: 'app-article-agent',
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     @if (agent.isSending()) {
       Thinking...

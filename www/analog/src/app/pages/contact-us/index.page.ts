@@ -1,4 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { addDoc, collection, getFirestore } from 'firebase/firestore';
 import { Footer } from '../../components/Footer';
@@ -42,9 +47,12 @@ export const routeMeta: RouteMeta = {
           <h1>Contact sales</h1>
           <p>
             Tell us a little bit more about your organization and we'll get in
-            touch with you. You can also reach our sales team directly at <a href="mailto:hello@liveloveapp.com">hello@liveloveapp.com</a>.
+            touch with you. You can also reach our sales team directly at
+            <a href="mailto:hello@liveloveapp.com">hello@liveloveapp.com</a>.
           </p>
-          <p><a href="https://liveloveapp.com">Learn more about LiveLoveApp</a></p>
+          <p>
+            <a href="https://liveloveapp.com">Learn more about LiveLoveApp</a>
+          </p>
         </div>
         <div class="contact-us">
           @if (status() === STATUS.SUCCESS) {
@@ -62,7 +70,12 @@ export const routeMeta: RouteMeta = {
               </div>
               <div>
                 <label for="email">Company Email</label>
-                <input id="email" type="email" formControlName="email" required />
+                <input
+                  id="email"
+                  type="email"
+                  formControlName="email"
+                  required
+                />
                 @if (form.get('email')?.invalid && form.get('email')?.touched) {
                   @if (form.get('email')?.errors?.['required']) {
                     <p class="error">Email is required.</p>
@@ -85,7 +98,9 @@ export const routeMeta: RouteMeta = {
                 wwwSquircle="8"
               >
                 {{
-                  status() === STATUS.IN_PROGRESS ? 'Sending...' : 'Send Message'
+                  status() === STATUS.IN_PROGRESS
+                    ? 'Sending...'
+                    : 'Send Message'
                 }}
               </button>
             </form>
@@ -95,6 +110,7 @@ export const routeMeta: RouteMeta = {
       <www-footer />
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

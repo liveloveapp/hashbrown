@@ -1,4 +1,10 @@
-import { Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+} from '@angular/core';
 import { RouterLink, UrlTree } from '@angular/router';
 import { ConfigService } from '../services/ConfigService';
 
@@ -12,6 +18,7 @@ import { ConfigService } from '../services/ConfigService';
       </a>
     </li>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

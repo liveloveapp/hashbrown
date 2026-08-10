@@ -1,4 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 import { ApiMember } from '../models/api-report.models';
 import { InlineMarkdown } from '../pipes/InlineMarkdown';
 import { SymbolExcerpt } from './SymbolExcerpt';
@@ -24,6 +29,7 @@ import { SymbolExcerpt } from './SymbolExcerpt';
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       :host {

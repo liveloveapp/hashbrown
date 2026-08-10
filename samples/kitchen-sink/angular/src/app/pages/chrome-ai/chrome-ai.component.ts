@@ -1,5 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   Chat,
@@ -71,6 +76,7 @@ import { chatResource } from '@hashbrownai/angular';
       </section>
     </section>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .chrome-ai {

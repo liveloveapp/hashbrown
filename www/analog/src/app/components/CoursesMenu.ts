@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Sell } from '../icons/Sell';
 import { Squircle } from './Squircle';
@@ -64,6 +64,7 @@ import { Squircle } from './Squircle';
       >
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

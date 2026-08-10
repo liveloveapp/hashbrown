@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
   selector: 'app-home-openai',
@@ -15,6 +15,7 @@ import { Component } from '@angular/core';
       transition: fill 0.2s ease-in-out;
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <svg
       width="48"

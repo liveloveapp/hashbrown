@@ -5,7 +5,13 @@ import {
   transition,
   trigger,
 } from '@angular/animations';
-import { Component, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { SmartHome } from '../smart-home';
 import { Squircle } from '../squircle';
 
@@ -48,6 +54,7 @@ import { Squircle } from '../squircle';
       white-space: nowrap;
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   animations: [
     trigger('bounce', [
       transition('default => active', [

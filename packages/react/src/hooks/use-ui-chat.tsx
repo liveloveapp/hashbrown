@@ -37,7 +37,7 @@ export type UiChatSchema = UiWrapper;
 export type UiAssistantMessage<Tools extends Chat.AnyTool> =
   Chat.AssistantMessage<UiChatSchema, Tools> & {
     /** The rendered React elements from the assistant's response */
-    ui: ReactElement[] | null;
+    ui: ReactElement<any>[] | null;
   };
 
 /**
@@ -192,7 +192,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
   });
 
   const buildContent = useCallback(
-    (content: string | UiChatSchema): ReactElement[] | string => {
+    (content: string | UiChatSchema): ReactElement<any>[] | string => {
       if (typeof content === 'string') {
         return content;
       }

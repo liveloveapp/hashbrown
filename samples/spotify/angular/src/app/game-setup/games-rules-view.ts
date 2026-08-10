@@ -1,4 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ChatService } from '../services/chat';
 import { structuredCompletionResource } from '@hashbrownai/angular';
@@ -36,6 +42,7 @@ import { s } from '@hashbrownai/core';
       <button (click)="onConfirmRules(rulesResult)">Next</button>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

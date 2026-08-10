@@ -1,7 +1,12 @@
 import { injectContentFiles, MarkdownComponent } from '@analogjs/content';
 import { contentFileResource } from '@analogjs/content/resources';
 import { RouteMeta } from '@analogjs/router';
-import { Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, ActivatedRouteSnapshot } from '@angular/router';
 import { Youtube } from '../../components/Youtube';
 import { PostAttributes } from '../../models/blog.models';
@@ -75,6 +80,7 @@ export const routeMeta: RouteMeta = {
       }
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

@@ -1,5 +1,11 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import {
   ApiExcerptToken,
@@ -64,6 +70,7 @@ export const SymbolApiDensity = {
       }
     </www-symbol-excerpt-group>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

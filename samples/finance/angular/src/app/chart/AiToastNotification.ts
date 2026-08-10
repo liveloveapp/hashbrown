@@ -1,4 +1,10 @@
-import { Component, ElementRef, inject, input } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  inject,
+  input,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MagicText, MagicTextRenderTextSegment } from '@hashbrownai/angular';
@@ -37,6 +43,7 @@ import { MagicText, MagicTextRenderTextSegment } from '@hashbrownai/angular';
     '[class.success]': 'type() === "success"',
     '[class.info]': 'type() === "info"',
   },
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

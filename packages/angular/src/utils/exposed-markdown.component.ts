@@ -1,5 +1,6 @@
 import { NgComponentOutlet } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   inject,
@@ -47,8 +48,7 @@ export type ɵExposeMarkdownCustomRuntimeConfig = {
 };
 
 export type ɵExposeMarkdownRuntimeConfig =
-  | ɵExposeMarkdownBuiltInRuntimeConfig
-  | ɵExposeMarkdownCustomRuntimeConfig;
+  ɵExposeMarkdownBuiltInRuntimeConfig | ɵExposeMarkdownCustomRuntimeConfig;
 
 export const ɵHB_EXPOSE_MARKDOWN_CONFIG =
   new InjectionToken<ɵExposeMarkdownRuntimeConfig>('HB_EXPOSE_MARKDOWN_CONFIG');
@@ -57,6 +57,7 @@ export const ɵHB_EXPOSE_MARKDOWN_CONFIG =
   selector: 'hb-exposed-markdown',
   standalone: true,
   imports: [MagicText],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <hb-magic-text
       [text]="text()"
@@ -103,6 +104,7 @@ export class ɵExposedMarkdownComponent {
   selector: 'hb-exposed-markdown-custom-renderer',
   standalone: true,
   imports: [NgComponentOutlet],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <ng-container
       *ngComponentOutlet="

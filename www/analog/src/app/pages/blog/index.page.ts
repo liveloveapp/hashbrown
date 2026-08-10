@@ -1,6 +1,11 @@
 import { injectContentFiles } from '@analogjs/content';
 import { RouteMeta } from '@analogjs/router';
-import { Component, computed, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  signal,
+} from '@angular/core';
 import { PostPreview } from '../../components/PostPreview';
 import { Filter, filter, PostAttributes } from '../../models/blog.models';
 
@@ -49,6 +54,7 @@ export const routeMeta: RouteMeta = {
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

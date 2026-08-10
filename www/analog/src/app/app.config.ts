@@ -19,7 +19,10 @@ import {
   provideAppInitializer,
   provideZonelessChangeDetection,
 } from '@angular/core';
-import { provideClientHydration } from '@angular/platform-browser';
+import {
+  provideClientHydration,
+  withNoIncrementalHydration,
+} from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import {
   ActivatedRouteSnapshot,
@@ -72,7 +75,7 @@ export const appConfig: ApplicationConfig = {
         anchorScrolling: 'enabled',
       }),
     ),
-    provideClientHydration(),
+    provideClientHydration(withNoIncrementalHydration()),
     provideHttpClient(
       withFetch(),
       withInterceptors([requestContextInterceptor]),

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { SpotifyService } from '../services/spotify';
 import { ChatService } from '../services/chat';
 
@@ -6,6 +6,7 @@ import { ChatService } from '../services/chat';
   imports: [],
   selector: 'spot-login-view',
   template: ` <button (click)="login()">Login with Spotify</button> `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: ``,
 })
 export class LoginViewComponent {

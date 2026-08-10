@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   afterNextRender,
+  ChangeDetectionStrategy,
   Component,
   computed,
   inject,
@@ -85,6 +86,7 @@ import { LoaderComponent } from '../loader';
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     form {
       width: 100%;

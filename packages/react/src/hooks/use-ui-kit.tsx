@@ -72,7 +72,7 @@ export type UiKit<T extends ExposedComponent<any>> = CoreUiKit<T> & {
   /**
    * Render a resolved UI wrapper object into React elements.
    */
-  render: (value: UiWrapper) => ReactElement[];
+  render: (value: UiWrapper) => ReactElement<any>[];
 };
 
 /**
@@ -100,7 +100,7 @@ export function useUiKit<T extends ExposedComponent<any>>(
       if (isComplete) {
         uiKit.schema.validate(value);
       }
-      return renderUiNodes(nodes, uiKit.registry) as ReactElement[];
+      return renderUiNodes(nodes, uiKit.registry) as ReactElement<any>[];
     },
     [uiKit],
   );

@@ -1,4 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
 import { Feature } from './Feature';
 import { Squircle } from '../Squircle';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -74,6 +79,7 @@ type FeatureListItem = {
       </www-video-overlay>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       width: 100%;

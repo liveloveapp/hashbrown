@@ -1,9 +1,14 @@
-import { Component, NO_ERRORS_SCHEMA } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  NO_ERRORS_SCHEMA,
+} from '@angular/core';
 
 @Component({
   // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'svg:g[hb-hashy-skates-clouds]',
   schemas: [NO_ERRORS_SCHEMA],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <svg:path
       fill="#D8ECEF"

@@ -1,4 +1,10 @@
-import { Component, computed, input, resource } from '@angular/core';
+import {
+  Component,
+  computed,
+  input,
+  resource,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { Article, ArticleAgent } from './agents/article-agent';
 import { GeneratedArticle } from './generated-article';
 
@@ -17,6 +23,7 @@ const ARTICLE_RESOURCE_KEY = 'article';
       <app-generated-article [article]="article()!" />
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [ArticleAgent],
 })
 export class ArticlePage {

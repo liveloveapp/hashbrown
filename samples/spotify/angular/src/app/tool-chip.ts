@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { Chat } from '@hashbrownai/core';
 
 @Component({
@@ -22,6 +22,7 @@ import { Chat } from '@hashbrownai/core';
       </div>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

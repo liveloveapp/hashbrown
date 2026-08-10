@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
@@ -81,6 +82,7 @@ import { Suggestor } from '../suggestions/suggestor';
       </form>
     </mat-dialog-content>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       form {

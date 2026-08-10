@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import {
@@ -12,6 +12,7 @@ import { MarkdownComponent as NgxMarkdownComponent } from 'ngx-markdown';
 @Component({
   selector: 'app-markdown',
   imports: [NgxMarkdownComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: '<markdown [data]="content()"></markdown>',
 })
 export class MarkdownComponent {
@@ -30,6 +31,7 @@ export class MarkdownComponent {
       </mat-card-content>
     </mat-card>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MatCardModule],
 })
 export class CardComponent {
@@ -104,6 +106,7 @@ const Markdown = exposeComponent(MarkdownComponent, {
       </div>
     </section>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .ui-chat-demo {

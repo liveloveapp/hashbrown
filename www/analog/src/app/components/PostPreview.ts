@@ -1,6 +1,6 @@
 import { ContentFile } from '@analogjs/content';
 import { DatePipe } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BrandYoutube } from '../icons/BrandYoutube';
 import { PostAttributes } from '../models/blog.models';
@@ -42,6 +42,7 @@ type Size = 'sm' | 'lg';
       </div>
     </a>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

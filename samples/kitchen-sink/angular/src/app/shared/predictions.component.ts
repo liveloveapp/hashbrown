@@ -1,4 +1,10 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { s } from '@hashbrownai/core';
 import { Store } from '@ngrx/store';
@@ -331,6 +337,7 @@ const PREDICTIONS_SCHEMA = s.anyOf([
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MatIconModule],
 })
 export class PredictionsComponent {

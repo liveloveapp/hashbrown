@@ -1,4 +1,9 @@
-import { Component, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  signal,
+} from '@angular/core';
 import { ChevronDown } from '../icons/ChevronDown';
 
 @Component({
@@ -16,6 +21,7 @@ import { ChevronDown } from '../icons/ChevronDown';
       <ng-content></ng-content>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: flex;

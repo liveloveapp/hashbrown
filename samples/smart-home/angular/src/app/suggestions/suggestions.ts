@@ -1,4 +1,10 @@
-import { Component, computed, inject, Signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  Signal,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { SmartHome } from '../smart-home';
 import { Suggestor } from './suggestor';
@@ -220,6 +226,7 @@ import { Light, Scene, SceneLight } from '../types';
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MatIconModule],
 })
 export class Suggestions {

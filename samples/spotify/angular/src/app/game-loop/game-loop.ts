@@ -1,4 +1,10 @@
-import { Component, effect, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+} from '@angular/core';
 import {
   exposeComponent,
   RenderMessageComponent,
@@ -20,6 +26,7 @@ import { ChatService } from '../services/chat';
       <hb-render-message [message]="message" />
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [
     {
       provide: ChatService,

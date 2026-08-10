@@ -1,4 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
@@ -41,6 +46,7 @@ import { AddSceneForm } from '../scenes/add-scene-form';
       </div>
     </ng-template>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .fab-actions {
       display: flex;

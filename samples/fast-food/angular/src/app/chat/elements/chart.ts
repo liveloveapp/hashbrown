@@ -6,6 +6,7 @@ import {
   inject,
   input,
   viewChild,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { Chart as ChartJS } from 'chart.js/auto';
 import type { ChartType } from 'chart.js';
@@ -300,6 +301,7 @@ renderChart({
       }
     </section>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

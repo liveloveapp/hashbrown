@@ -1,5 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
   HostListener,
   inject,
@@ -42,6 +43,7 @@ import { ToastContainer } from './components/ToastContainer';
       <www-toast-container />
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     :host {
       display: block;

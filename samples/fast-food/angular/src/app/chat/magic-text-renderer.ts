@@ -1,4 +1,10 @@
-import { Component, inject, input, ViewEncapsulation } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  ViewEncapsulation,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import {
   MagicText,
   type MagicTextCitationRenderContext,
@@ -158,6 +164,7 @@ import { LinkClickHandler } from './link-click-handler';
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   encapsulation: ViewEncapsulation.None,
 })
 export class MagicTextRenderer {
