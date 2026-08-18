@@ -17,6 +17,7 @@ export {
   type RuntimeRef,
 } from './runtime';
 export * from './schema';
+export type { JsonResolvedValue } from './schema/base';
 export * as ɵui from './ui';
 export type {
   Component,
@@ -65,15 +66,3 @@ export {
   mergeToolCalls,
   updateAssistantMessage,
 } from './utils/assistant-message';
-export {
-  createParserState,
-  finalizeJsonParse,
-  getResolvedValue,
-  parseChunk,
-  type JsonAstNode,
-  type JsonAstType,
-  type JsonResolvedValue,
-  type JsonValue,
-  type ParserError,
-  type ParserState,
-} from './skillet/parser/json-parser';

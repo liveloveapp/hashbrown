@@ -4,7 +4,7 @@ import {
   input,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { JsonResolvedValue } from 'packages/core/src/skillet/parser/json-parser';
+import type { JsonResolvedValue } from '@hashbrownai/core';
 
 @Component({
   selector: 'app-chart-ghost-loader',

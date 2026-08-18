@@ -12,6 +12,7 @@ import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 type PackageJson = {
+  dependencies?: Record<string, string>;
   main?: string;
   module?: string;
   types?: string;
@@ -57,6 +58,11 @@ function createPackageSandbox(): string {
   cpSync(reactDistPath, join(scopePath, 'react'), { recursive: true });
   cpSync(coreDistPath, join(scopePath, 'core'), { recursive: true });
   symlinkSync(
+    join(workspaceRoot, 'node_modules/@cacheplane'),
+    join(nodeModulesPath, '@cacheplane'),
+    'dir',
+  );
+  symlinkSync(
     join(workspaceRoot, 'node_modules/react'),
     join(nodeModulesPath, 'react'),
     'dir',
@@ -75,6 +81,7 @@ test('published React package metadata exposes ESM and CJS entrypoints', () => {
   expect(packageJson.types).toBe('./index.d.ts');
   expect(packageJson.module).toBe('./index.mjs');
   expect(packageJson.main).toBe('./index.cjs');
+  expect(packageJson.dependencies?.['@cacheplane/partial-json']).toBe('0.2.2');
   expect(packageJson.exports?.['.']).toEqual({
     types: './index.d.ts',
     import: './index.mjs',

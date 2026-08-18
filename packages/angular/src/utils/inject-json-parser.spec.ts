@@ -8,12 +8,12 @@ test('injectJsonParser parses growing json signals', () => {
   const parser = injectJsonParser(json, schema);
 
   expect(parser.value()).toBe('he');
-  expect(parser.parserState().isComplete).toBe(false);
+  expect(parser.parserState().complete).toBe(false);
 
   json.set('"hello"');
 
   expect(parser.value()).toBe('hello');
-  expect(parser.parserState().isComplete).toBe(true);
+  expect(parser.parserState().complete).toBe(true);
 });
 
 test('injectJsonParser resets when json changes are not prefix updates', () => {
@@ -26,7 +26,7 @@ test('injectJsonParser resets when json changes are not prefix updates', () => {
   json.set('"yo"');
 
   expect(parser.value()).toBe('yo');
-  expect(parser.parserState().isComplete).toBe(true);
+  expect(parser.parserState().complete).toBe(true);
 });
 
 test('injectJsonParser re-resolves when schema changes without resetting parser state', () => {
@@ -55,12 +55,12 @@ test('injectJsonParser resolves root value when no schema and json is partial', 
   const parser = injectJsonParser(json);
 
   expect(parser.value()).toEqual([1]);
-  expect(parser.parserState().isComplete).toBe(false);
+  expect(parser.parserState().complete).toBe(false);
 
   json.set('[1,2]');
 
   expect(parser.value()).toEqual([1, 2]);
-  expect(parser.parserState().isComplete).toBe(true);
+  expect(parser.parserState().complete).toBe(true);
 });
 
 test('injectJsonParser resolves partial string value when no schema', () => {
@@ -68,10 +68,19 @@ test('injectJsonParser resolves partial string value when no schema', () => {
   const parser = injectJsonParser(json);
 
   expect(parser.value()).toBe('he');
-  expect(parser.parserState().isComplete).toBe(false);
+  expect(parser.parserState().complete).toBe(false);
 
   json.set('"hello"');
 
   expect(parser.value()).toBe('hello');
-  expect(parser.parserState().isComplete).toBe(true);
+  expect(parser.parserState().complete).toBe(true);
+});
+
+test('injectJsonParser suppresses a completed root when trailing input is invalid', () => {
+  const json = signal('{"a":1} trailing');
+
+  const parser = injectJsonParser(json);
+
+  expect(parser.value()).toBeUndefined();
+  expect(parser.error()).toBeDefined();
 });

@@ -1,23 +1,24 @@
 import { computed, isSignal, linkedSignal, type Signal } from '@angular/core';
 import {
-  createParserState,
-  parseChunk,
-  type ParserError,
-  type ParserState,
-  s,
-} from '@hashbrownai/core';
+  create,
+  push,
+  resolve,
+  type StreamError,
+  type StreamState,
+} from '@cacheplane/partial-json';
+import { s } from '@hashbrownai/core';
 
 interface JsonParserSession<Output> {
-  parserState: ParserState;
+  parserState: StreamState;
   cache: s.FromJsonAstCache | undefined;
   value: Output | undefined;
-  error: ParserError | Error | undefined;
+  error: StreamError | Error | undefined;
   json: string;
   schemaKey: string | null;
 }
 
 const createSession = <Output>(): JsonParserSession<Output> => ({
-  parserState: createParserState(),
+  parserState: create(),
   cache: undefined,
   value: undefined,
   error: undefined,
@@ -34,9 +35,9 @@ function getSchemaKey(schema?: s.HashbrownType<unknown>) {
 }
 
 function resolveSchemaError(
-  parserError: ParserError | null,
+  parserError: StreamError | null,
   isInvalid: boolean,
-  previousError: ParserError | Error | undefined,
+  previousError: StreamError | Error | undefined,
 ) {
   if (parserError) {
     return parserError;
@@ -49,12 +50,8 @@ function resolveSchemaError(
   return previousError ?? new Error('Schema invalid');
 }
 
-function getParserResolvedValue<Output>(state: ParserState) {
-  if (state.error || state.rootId === null) {
-    return undefined;
-  }
-
-  return state.nodes[state.rootId]?.resolvedValue as Output | undefined;
+function getParserResolvedValue<Output>(state: StreamState) {
+  return resolve(state) as Output | undefined;
 }
 
 function readSchema<Output>(
@@ -104,12 +101,11 @@ function resolveNextSession<Output>(
     if (json.startsWith(baseSession.json)) {
       const chunk = json.slice(baseSession.json.length);
       if (chunk.length > 0) {
-        nextParserState = parseChunk(baseSession.parserState, chunk);
+        nextParserState = push(baseSession.parserState, chunk);
       }
     } else {
-      const resetState = createParserState();
-      nextParserState =
-        json.length > 0 ? parseChunk(resetState, json) : resetState;
+      const resetState = create();
+      nextParserState = json.length > 0 ? push(resetState, json) : resetState;
       nextCache = undefined;
       nextValue = undefined;
       nextError = undefined;
@@ -155,7 +151,7 @@ export interface JsonParserRef<Output> {
   /**
    * The current streaming JSON parser state.
    */
-  parserState: Signal<ParserState>;
+  parserState: Signal<StreamState>;
 
   /**
    * The latest resolved value produced by the schema or parser state.
@@ -165,7 +161,7 @@ export interface JsonParserRef<Output> {
   /**
    * The current parser or schema error, if any.
    */
-  error: Signal<ParserError | Error | undefined>;
+  error: Signal<StreamError | Error | undefined>;
 }
 
 /**
@@ -188,9 +184,7 @@ export function injectJsonParser<Schema extends s.HashbrownType>(
  * @public
  * @param json - Signal containing the full JSON string that grows over time.
  */
-export function injectJsonParser(
-  json: Signal<string>,
-): JsonParserRef<unknown>;
+export function injectJsonParser(json: Signal<string>): JsonParserRef<unknown>;
 
 /**
  * Create a prop-driven streaming JSON parser backed by Angular signals without schema-based value resolution.

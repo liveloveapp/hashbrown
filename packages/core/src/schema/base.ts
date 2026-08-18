@@ -14,11 +14,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type {
-  JsonAstNode,
-  JsonResolvedValue,
-  ParserError,
-} from '../skillet/parser/json-parser';
+import type { AstNode, StreamError } from '@cacheplane/partial-json';
 import { internal } from './constants';
 import {
   emptyCache,
@@ -43,6 +39,20 @@ import {
  * @internal
  */
 export { internal, PRIMITIVE_WRAPPER_FIELD_NAME } from './constants';
+
+/**
+ * JSON value that may be partially resolved while parsing.
+ *
+ * @public
+ */
+export type JsonResolvedValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonResolvedValue[]
+  | { [key: string]: JsonResolvedValue }
+  | undefined;
 
 type TypeInternals = {
   definition: HashbrownTypeDefinition;
@@ -198,8 +208,9 @@ export interface HashbrownType<out Result = unknown> {
 /**
  * @internal
  */
-export interface HashbrownTypeInternals<out Result = unknown>
-  extends HashbrownType<Result> {
+export interface HashbrownTypeInternals<
+  out Result = unknown,
+> extends HashbrownType<Result> {
   definition: HashbrownTypeDefinition;
   result: Result;
 }
@@ -232,18 +243,16 @@ export const HashbrownType: HashbrownTypeCtor<HashbrownType> =
   });
 
 export type FromJsonAstInput = {
-  nodes: JsonAstNode[];
+  nodes: AstNode[];
   rootId: number | null;
-  error: ParserError | null;
+  error: StreamError | null;
   cache?: FromJsonAstCache;
   schemaId: number;
   schema: HashbrownType;
 };
 
 export type FromJsonAstResult<T> =
-  | { state: 'match'; value: T }
-  | { state: 'no-match' }
-  | { state: 'invalid' };
+  { state: 'match'; value: T } | { state: 'no-match' } | { state: 'invalid' };
 
 export type FromJsonAstCache = {
   byNodeId: Record<number, JsonResolvedValue>;
@@ -426,24 +435,25 @@ export const StringType: HashbrownTypeCtor<StringType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'string') {
+      if (!node || node.kind !== 'string') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      const stringNode = node as Extract<JsonAstNode, { type: 'string' }>;
+      const stringNode = node as Extract<AstNode, { kind: 'string' }>;
       if (schema[internal].definition.streaming) {
-        const value = node.closed ? node.resolvedValue : stringNode.buffer;
+        const value =
+          node.status === 'complete' ? node.value : stringNode.buffer;
         if (value === undefined) {
           return { result: { state: 'no-match' }, cache };
         }
         return { result: { state: 'match', value }, cache };
       }
 
-      if (!node.closed || node.resolvedValue === undefined) {
+      if (node.status !== 'complete' || node.value === undefined) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      return { result: { state: 'match', value: node.resolvedValue }, cache };
+      return { result: { state: 'match', value: node.value }, cache };
     };
   },
   validateImpl: (schema: any, definition, object: unknown, path: string[]) => {
@@ -554,24 +564,24 @@ export const LiteralType: HashbrownTypeCtor<LiteralType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || !node.closed || node.resolvedValue === undefined) {
+      if (!node || node.status !== 'complete' || node.value === undefined) {
         return { result: { state: 'no-match' }, cache };
       }
 
       const expected = schema[internal].definition.value;
-      if (node.resolvedValue !== expected) {
+      if (node.value !== expected) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (typeof expected === 'string' && node.type !== 'string') {
+      if (typeof expected === 'string' && node.kind !== 'string') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (typeof expected === 'number' && node.type !== 'number') {
+      if (typeof expected === 'number' && node.kind !== 'number') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (typeof expected === 'boolean' && node.type !== 'boolean') {
+      if (typeof expected === 'boolean' && node.kind !== 'boolean') {
         return { result: { state: 'no-match' }, cache };
       }
 
@@ -678,15 +688,15 @@ export const NumberType: HashbrownTypeCtor<NumberType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'number') {
+      if (!node || node.kind !== 'number') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (!node.closed || node.resolvedValue === undefined) {
+      if (node.status !== 'complete' || node.value === undefined) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      return { result: { state: 'match', value: node.resolvedValue }, cache };
+      return { result: { state: 'match', value: node.value }, cache };
     };
   },
   validateImpl: (schema, definition, object, path) => {
@@ -767,15 +777,15 @@ export const BooleanType: HashbrownTypeCtor<BooleanType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'boolean') {
+      if (!node || node.kind !== 'boolean') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (!node.closed || node.resolvedValue === undefined) {
+      if (node.status !== 'complete' || node.value === undefined) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      return { result: { state: 'match', value: node.resolvedValue }, cache };
+      return { result: { state: 'match', value: node.value }, cache };
     };
   },
   validateImpl: (schema, definition, object, path) => {
@@ -871,19 +881,19 @@ export const IntegerType: HashbrownTypeCtor<IntegerType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'number') {
+      if (!node || node.kind !== 'number') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (!node.closed || node.resolvedValue === undefined) {
+      if (node.status !== 'complete' || node.value === undefined) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (!Number.isInteger(node.resolvedValue)) {
+      if (!Number.isInteger(node.value)) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      return { result: { state: 'match', value: node.resolvedValue }, cache };
+      return { result: { state: 'match', value: node.value }, cache };
     };
   },
   validateImpl: (schema, definition, object, path) => {
@@ -1018,7 +1028,7 @@ ${' '.repeat(depth)}}`;
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'object') {
+      if (!node || node.kind !== 'object') {
         return { result: { state: 'no-match' }, cache };
       }
 
@@ -1052,10 +1062,10 @@ ${' '.repeat(depth)}}`;
           ? (cachedObject as Record<string, JsonResolvedValue>)
           : undefined;
       const resolvedRecord =
-        node.resolvedValue &&
-        typeof node.resolvedValue === 'object' &&
-        !Array.isArray(node.resolvedValue)
-          ? (node.resolvedValue as Record<string, JsonResolvedValue>)
+        node.value &&
+        typeof node.value === 'object' &&
+        !Array.isArray(node.value)
+          ? (node.value as Record<string, JsonResolvedValue>)
           : undefined;
       let nextCache = cache;
 
@@ -1141,8 +1151,8 @@ ${' '.repeat(depth)}}`;
       }
 
       let candidate = resultValue;
-      if (node.resolvedValue) {
-        const reused = reuseCachedObject(node.resolvedValue, resultValue);
+      if (node.value) {
+        const reused = reuseCachedObject(node.value, resultValue);
         if (reused) {
           candidate = reused;
         }
@@ -1223,8 +1233,9 @@ export function object<Shape extends Record<string, any>>(
  * --------------------------------------
  */
 
-interface ArrayTypeDefinition<out Item extends HashbrownType = HashbrownType>
-  extends HashbrownTypeDefinition {
+interface ArrayTypeDefinition<
+  out Item extends HashbrownType = HashbrownType,
+> extends HashbrownTypeDefinition {
   type: 'array';
   element: Item;
   minItems?: number;
@@ -1234,16 +1245,18 @@ interface ArrayTypeDefinition<out Item extends HashbrownType = HashbrownType>
 /**
  * @internal
  */
-export interface ArrayTypeInternals<Item extends HashbrownType = HashbrownType>
-  extends HashbrownTypeInternals<Item[internal]['result'][]> {
+export interface ArrayTypeInternals<
+  Item extends HashbrownType = HashbrownType,
+> extends HashbrownTypeInternals<Item[internal]['result'][]> {
   definition: ArrayTypeDefinition<Item>;
 }
 
 /**
  * @public
  */
-export interface ArrayType<Item extends HashbrownType = HashbrownType>
-  extends HashbrownType {
+export interface ArrayType<
+  Item extends HashbrownType = HashbrownType,
+> extends HashbrownType {
   [internal]: ArrayTypeInternals<Item>;
 }
 
@@ -1291,12 +1304,12 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'array') {
+      if (!node || node.kind !== 'array') {
         return { result: { state: 'no-match' }, cache };
       }
 
       const isStreamingSchema = schema[internal].definition.streaming;
-      if (!isStreamingSchema && !node.closed) {
+      if (!isStreamingSchema && node.status !== 'complete') {
         return { result: { state: 'no-match' }, cache };
       }
 
@@ -1328,8 +1341,8 @@ export const ArrayType: HashbrownTypeCtor<ArrayType> = HashbrownTypeCtor({
       }
 
       let candidate = values;
-      if (Array.isArray(node.resolvedValue)) {
-        const reused = reuseCachedArray(node.resolvedValue, values);
+      if (Array.isArray(node.value)) {
+        const reused = reuseCachedArray(node.value, values);
         if (reused) {
           candidate = reused;
         }
@@ -1419,8 +1432,9 @@ interface AnyOfTypeDefinition<
 /**
  * @internal
  */
-export interface AnyOfTypeInternals<Options extends readonly HashbrownType[]>
-  extends HashbrownTypeInternals<Options[number][internal]['result']> {
+export interface AnyOfTypeInternals<
+  Options extends readonly HashbrownType[],
+> extends HashbrownTypeInternals<Options[number][internal]['result']> {
   definition: AnyOfTypeDefinition<Options>;
 }
 
@@ -1565,8 +1579,9 @@ type NodeResult<Inner extends HashbrownType> = {
   value?: Inner[internal]['result'];
 };
 
-interface NodeTypeDefinition<Inner extends HashbrownType = HashbrownType>
-  extends HashbrownTypeDefinition {
+interface NodeTypeDefinition<
+  Inner extends HashbrownType = HashbrownType,
+> extends HashbrownTypeDefinition {
   type: 'node';
   inner: Inner;
 }
@@ -1574,16 +1589,18 @@ interface NodeTypeDefinition<Inner extends HashbrownType = HashbrownType>
 /**
  * @internal
  */
-export interface NodeTypeInternals<Inner extends HashbrownType = HashbrownType>
-  extends HashbrownTypeInternals<NodeResult<Inner>> {
+export interface NodeTypeInternals<
+  Inner extends HashbrownType = HashbrownType,
+> extends HashbrownTypeInternals<NodeResult<Inner>> {
   definition: NodeTypeDefinition<Inner>;
 }
 
 /**
  * @public
  */
-export interface NodeType<Inner extends HashbrownType = HashbrownType>
-  extends HashbrownType<NodeResult<Inner>> {
+export interface NodeType<
+  Inner extends HashbrownType = HashbrownType,
+> extends HashbrownType<NodeResult<Inner>> {
   [internal]: NodeTypeInternals<Inner>;
 }
 
@@ -1634,8 +1651,8 @@ export const NodeType: HashbrownTypeCtor<NodeType> = HashbrownTypeCtor({
         result: {
           state: 'match',
           value: {
-            complete: node.closed,
-            partialValue: node.resolvedValue,
+            complete: node.status === 'complete',
+            partialValue: node.value,
             value,
           },
         },
@@ -1701,8 +1718,9 @@ export function node<Inner extends HashbrownType>(
 /**
  * @internal
  */
-interface EnumTypeDefinition<out Entries extends readonly any[]>
-  extends HashbrownTypeDefinition {
+interface EnumTypeDefinition<
+  out Entries extends readonly any[],
+> extends HashbrownTypeDefinition {
   type: 'enum';
   entries: Entries;
 }
@@ -1710,16 +1728,18 @@ interface EnumTypeDefinition<out Entries extends readonly any[]>
 /**
  * @internal
  */
-export interface EnumTypeInternals<Result extends readonly any[]>
-  extends HashbrownTypeInternals<Result[number]> {
+export interface EnumTypeInternals<
+  Result extends readonly any[],
+> extends HashbrownTypeInternals<Result[number]> {
   definition: EnumTypeDefinition<Result>;
 }
 
 /**
  * @public
  */
-export interface EnumType<Entries extends readonly string[] = readonly string[]>
-  extends HashbrownType {
+export interface EnumType<
+  Entries extends readonly string[] = readonly string[],
+> extends HashbrownType {
   /**
    * @internal
    */
@@ -1754,19 +1774,19 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'string') {
+      if (!node || node.kind !== 'string') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (!node.closed || node.resolvedValue === undefined) {
+      if (node.status !== 'complete' || node.value === undefined) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (!schema[internal].definition.entries.includes(node.resolvedValue)) {
+      if (!schema[internal].definition.entries.includes(node.value)) {
         return { result: { state: 'no-match' }, cache };
       }
 
-      return { result: { state: 'match', value: node.resolvedValue }, cache };
+      return { result: { state: 'match', value: node.value }, cache };
     };
   },
   validateImpl: (schema, definition, object, path) => {
@@ -1851,11 +1871,11 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor({
       }
 
       const node = getNode(input.nodes, input.rootId);
-      if (!node || node.type !== 'null') {
+      if (!node || node.kind !== 'null') {
         return { result: { state: 'no-match' }, cache };
       }
 
-      if (!node.closed || node.resolvedValue === undefined) {
+      if (node.status !== 'complete' || node.value === undefined) {
         return { result: { state: 'no-match' }, cache };
       }
 

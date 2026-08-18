@@ -45,6 +45,7 @@
     "@angular/platform-browser-dynamic": "22.1.1",
     "@angular/platform-server": "22.1.1",
     "@angular/router": "22.1.1",
+    "@cacheplane/partial-json": "0.2.2",
     "@google/genai": "^1.52.0",
     "@jitl/quickjs-singlefile-browser-debug-asyncify": "0.31.0",
     "@ngrx/effects": "22.0.0-rc.0",

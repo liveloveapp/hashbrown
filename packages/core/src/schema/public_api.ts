@@ -40,6 +40,7 @@ export {
   type FromJsonAstOutput,
   type FromJsonAstResult,
   type Infer,
+  type JsonResolvedValue,
   type Schema,
 } from './base';
 export { fromJsonAst } from './from-json-ast';

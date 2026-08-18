@@ -34,12 +34,12 @@ test('injectImperativeJsonParser streams partial string values', () => {
 
   expect(parser.value()).toBe('he');
   expect(parser.error()).toBeUndefined();
-  expect(parser.parserState().isComplete).toBe(false);
+  expect(parser.parserState().complete).toBe(false);
 
   parser.parseChunk('llo"');
 
   expect(parser.value()).toBe('hello');
-  expect(parser.parserState().isComplete).toBe(true);
+  expect(parser.parserState().complete).toBe(true);
 });
 
 test('injectImperativeJsonParser preserves streaming array identity when no new match', () => {
@@ -69,6 +69,15 @@ test('injectImperativeJsonParser exposes parser errors without schema', () => {
   expect(parser.parserState().error).not.toBeNull();
 });
 
+test('injectImperativeJsonParser suppresses a completed root when trailing input is invalid', () => {
+  const parser = injectImperativeJsonParser();
+
+  parser.parseChunk('{"a":1} trailing');
+
+  expect(parser.value()).toBeUndefined();
+  expect(parser.error()).toBeDefined();
+});
+
 test('injectImperativeJsonParser resolves root value when no schema and JSON completes', () => {
   const parser = injectImperativeJsonParser();
 
@@ -76,7 +85,7 @@ test('injectImperativeJsonParser resolves root value when no schema and JSON com
 
   expect(parser.value()).toEqual({ a: 1 });
   expect(parser.error()).toBeUndefined();
-  expect(parser.parserState().isComplete).toBe(true);
+  expect(parser.parserState().complete).toBe(true);
 });
 
 test('injectImperativeJsonParser returns root resolvedValue even when JSON is incomplete', () => {
@@ -85,7 +94,7 @@ test('injectImperativeJsonParser returns root resolvedValue even when JSON is in
   parser.parseChunk('[1,');
 
   expect(parser.value()).toEqual([1]);
-  expect(parser.parserState().isComplete).toBe(false);
+  expect(parser.parserState().complete).toBe(false);
 });
 
 test('injectImperativeJsonParser returns partial root string when JSON is incomplete', () => {
@@ -94,7 +103,7 @@ test('injectImperativeJsonParser returns partial root string when JSON is incomp
   parser.parseChunk('"he');
 
   expect(parser.value()).toBe('he');
-  expect(parser.parserState().isComplete).toBe(false);
+  expect(parser.parserState().complete).toBe(false);
 });
 
 test('injectImperativeJsonParser reset clears resolved value', () => {

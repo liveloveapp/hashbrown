@@ -41,14 +41,14 @@ test('useImperativeJsonParser streams partial string values', () => {
 
   expect(result.current.value).toBe('he');
   expect(result.current.error).toBeUndefined();
-  expect(result.current.parserState.isComplete).toBe(false);
+  expect(result.current.parserState.complete).toBe(false);
 
   act(() => {
     result.current.parseChunk('llo"');
   });
 
   expect(result.current.value).toBe('hello');
-  expect(result.current.parserState.isComplete).toBe(true);
+  expect(result.current.parserState.complete).toBe(true);
 });
 
 test('useImperativeJsonParser preserves streaming array identity when no new match', () => {
@@ -111,6 +111,17 @@ test('useImperativeJsonParser exposes parser errors without schema', () => {
   expect(result.current.parserState.error).not.toBeNull();
 });
 
+test('useImperativeJsonParser suppresses a completed root when trailing input is invalid', () => {
+  const { result } = renderHook(() => useImperativeJsonParser());
+
+  act(() => {
+    result.current.parseChunk('{"a":1} trailing');
+  });
+
+  expect(result.current.value).toBeUndefined();
+  expect(result.current.error).toBeDefined();
+});
+
 test('useImperativeJsonParser resolves root value when no schema and JSON completes', () => {
   const { result } = renderHook(() => useImperativeJsonParser());
 
@@ -120,7 +131,7 @@ test('useImperativeJsonParser resolves root value when no schema and JSON comple
 
   expect(result.current.value).toEqual({ a: 1 });
   expect(result.current.error).toBeUndefined();
-  expect(result.current.parserState.isComplete).toBe(true);
+  expect(result.current.parserState.complete).toBe(true);
 });
 
 test('useImperativeJsonParser returns root resolvedValue even when JSON is incomplete', () => {
@@ -131,7 +142,7 @@ test('useImperativeJsonParser returns root resolvedValue even when JSON is incom
   });
 
   expect(result.current.value).toEqual([1]);
-  expect(result.current.parserState.isComplete).toBe(false);
+  expect(result.current.parserState.complete).toBe(false);
 });
 
 test('useImperativeJsonParser returns root partial value when JSON is incomplete', () => {
@@ -142,7 +153,7 @@ test('useImperativeJsonParser returns root partial value when JSON is incomplete
   });
 
   expect(result.current.value).toBe('he');
-  expect(result.current.parserState.isComplete).toBe(false);
+  expect(result.current.parserState.complete).toBe(false);
 });
 
 test('useImperativeJsonParser reset clears resolved value', () => {

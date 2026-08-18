@@ -1,14 +1,11 @@
-import type {
-  JsonAstNode,
-  JsonResolvedValue,
-  ParserError,
-} from '../skillet/parser/json-parser';
+import type { AstNode, StreamError } from '@cacheplane/partial-json';
 import { internal, PRIMITIVE_WRAPPER_FIELD_NAME } from './constants';
 import type {
   FromJsonAstCache,
   FromJsonAstInput,
   FromJsonAstOutput,
   HashbrownType,
+  JsonResolvedValue,
 } from './base';
 
 export const emptyCache: FromJsonAstCache = {
@@ -20,10 +17,7 @@ export function ensureCache(cache?: FromJsonAstCache): FromJsonAstCache {
   return cache ?? emptyCache;
 }
 
-export function getNode(
-  nodes: JsonAstNode[],
-  id: number | null,
-): JsonAstNode | null {
+export function getNode(nodes: AstNode[], id: number | null): AstNode | null {
   if (id === null) {
     return null;
   }
@@ -151,7 +145,7 @@ export function resolveSchemaAtNode<T extends HashbrownType>(
 }
 
 export function unwrapPrimitiveWrapper(
-  nodes: JsonAstNode[],
+  nodes: AstNode[],
   rootId: number | null,
   schemaType: string,
   primitiveWrapperField: string,
@@ -165,7 +159,7 @@ export function unwrapPrimitiveWrapper(
   }
 
   const root = nodes[rootId];
-  if (!root || root.type !== 'object') {
+  if (!root || root.kind !== 'object') {
     return rootId;
   }
 
@@ -184,9 +178,9 @@ export function unwrapPrimitiveWrapper(
 export function fromJsonAst<T extends HashbrownType>(
   schema: T,
   state: {
-    nodes: JsonAstNode[];
+    nodes: AstNode[];
     rootId: number | null;
-    error: ParserError | null;
+    error: StreamError | null;
   },
   cache?: FromJsonAstCache,
 ): FromJsonAstOutput<T['~schema']['result']> {

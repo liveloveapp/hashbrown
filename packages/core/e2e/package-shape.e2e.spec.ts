@@ -83,25 +83,40 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
           );
           const packageJson = require(packageJsonPath);
           const cjs = require('@hashbrownai/core');
+          const cjsPartialJson = require('@cacheplane/partial-json');
           const esm = await import(
             pathToFileURL(join(dirname(packageJsonPath), packageJson.module))
           );
+          const esmPartialJson = await import('@cacheplane/partial-json');
 
-          for (const [format, core] of [
-            ['CJS', cjs],
-            ['ESM', esm],
+          for (const [format, core, partialJson] of [
+            ['CJS', cjs, cjsPartialJson],
+            ['ESM', esm, esmPartialJson],
           ]) {
-            const parsed = core.finalizeJsonParse(
-              core.parseChunk(
-                core.createParserState(),
-                '{"value":2}',
-              ),
+            const legacyExports = [
+              'createParserState',
+              'finalizeJsonParse',
+              'getResolvedValue',
+              'parseChunk',
+            ].filter((name) => name in core);
+            const parsed = partialJson.finish(
+              partialJson.push(partialJson.create(), '{"value":2}'),
             );
-            const value = core.getResolvedValue(parsed);
+            const schema = core.s.object('result', {
+              value: core.s.number('value'),
+            });
+            const output = core.s.fromJsonAst(schema, parsed);
 
-            if (parsed.error || value.value !== 2) {
+            if (
+              legacyExports.length > 0 ||
+              output.result.state !== 'match' ||
+              output.result.value.value !== 2
+            ) {
               throw new Error(
-                \`\${format} parser returned \${JSON.stringify(value)}\`,
+                \`\${format} parser boundary returned \${JSON.stringify({
+                  legacyExports,
+                  output,
+                })}\`,
               );
             }
           }
