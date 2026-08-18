@@ -26,7 +26,7 @@ import { MagicText, MagicTextRenderTextSegment } from '@hashbrownai/angular';
         <hb-magic-text
           [text]="message()"
           [isComplete]="true"
-          [options]="magicTextOptions"
+          [segmenter]="magicTextSegmenter"
           [caret]="false"
         >
           <ng-template hbMagicTextRenderTextSegment let-context>
@@ -140,7 +140,7 @@ export class AiToastNotification {
   message = input.required<string>();
   type = input.required<'refusal' | 'success' | 'info'>();
   host = inject<ElementRef<HTMLElement>>(ElementRef);
-  readonly magicTextOptions = { segmenter: { granularity: 'word' as const } };
+  readonly magicTextSegmenter = { granularity: 'word' as const };
 
   onClose() {
     this.host.nativeElement.classList.add('closing');

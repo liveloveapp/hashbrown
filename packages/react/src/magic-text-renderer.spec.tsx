@@ -7,11 +7,10 @@ import {
 
 test('MagicTextRenderer renders markdown blocks and citations from the AST', () => {
   const { container } = render(
-    <MagicTextRenderer
-      isComplete
-      options={{ segmenter: false }}
-    >
-      {'# Title\n\n- one\n- two\n\nCite [^ref]\n\n[^ref]: Ref https://hashbrown.dev'}
+    <MagicTextRenderer isComplete segmenter={false}>
+      {
+        '# Title\n\n- one\n- two\n\nCite [^ref]\n\n[^ref]: Ref https://hashbrown.dev'
+      }
     </MagicTextRenderer>,
   );
 
@@ -29,7 +28,9 @@ test('MagicTextRenderer renders markdown blocks and citations from the AST', () 
 
 test('MagicTextRenderer creates one span per parsed text segment', () => {
   const { container } = render(
-    <MagicTextRenderer options={{ segmenter: { granularity: 'grapheme' } }}>ab</MagicTextRenderer>,
+    <MagicTextRenderer segmenter={{ granularity: 'grapheme' }}>
+      ab
+    </MagicTextRenderer>,
   );
 
   const segments = container.querySelectorAll('span.hb-magic-text-segment');
@@ -41,10 +42,7 @@ test('MagicTextRenderer creates one span per parsed text segment', () => {
 
 test('MagicTextRenderer prefixes word joiner before punctuation after citations', () => {
   const { container } = render(
-    <MagicTextRenderer
-      isComplete
-      options={{ segmenter: { granularity: 'word' } }}
-    >
+    <MagicTextRenderer isComplete segmenter={{ granularity: 'word' }}>
       {'Alpha[^a]; beta\n\n[^a]: Source https://hashbrown.dev'}
     </MagicTextRenderer>,
   );
@@ -61,17 +59,16 @@ test('MagicTextRenderer prefixes word joiner before punctuation after citations'
 
 test('MagicTextRenderer keeps unresolved citation punctuation glued', () => {
   const { container } = render(
-    <MagicTextRenderer
-      isComplete
-      options={{ segmenter: { granularity: 'word' } }}
-    >
+    <MagicTextRenderer isComplete segmenter={{ granularity: 'word' }}>
       {'Alpha[^missing].'}
     </MagicTextRenderer>,
   );
 
-  const unresolvedCitation = container.querySelector('sup[data-magic-text-node="citation"]');
+  const unresolvedCitation = container.querySelector(
+    'sup[data-magic-text-node="citation-reference"]',
+  );
   const unresolvedCitationButton = container.querySelector(
-    'sup[data-magic-text-node="citation"] button',
+    'sup[data-magic-text-node="citation-reference"] button',
   );
   const segments = Array.from(
     container.querySelectorAll('span.hb-magic-text-segment'),
@@ -87,14 +84,20 @@ test('MagicTextRenderer keeps unresolved citation punctuation glued', () => {
 
 test('MagicTextRenderer preserves existing segment dom identity across updates', () => {
   const { container, rerender } = render(
-    <MagicTextRenderer options={{ segmenter: { granularity: 'grapheme' } }}>ab</MagicTextRenderer>,
+    <MagicTextRenderer segmenter={{ granularity: 'grapheme' }}>
+      ab
+    </MagicTextRenderer>,
   );
 
-  const initialSegments = container.querySelectorAll('span.hb-magic-text-segment');
+  const initialSegments = container.querySelectorAll(
+    'span.hb-magic-text-segment',
+  );
   const firstSegmentBefore = initialSegments[0];
 
   rerender(
-    <MagicTextRenderer options={{ segmenter: { granularity: 'grapheme' } }}>abc</MagicTextRenderer>,
+    <MagicTextRenderer segmenter={{ granularity: 'grapheme' }}>
+      abc
+    </MagicTextRenderer>,
   );
 
   const nextSegments = container.querySelectorAll('span.hb-magic-text-segment');
@@ -106,14 +109,20 @@ test('MagicTextRenderer preserves existing segment dom identity across updates',
 
 test('MagicTextRenderer keeps optimistic word-tail segment identity as it grows', () => {
   const { container, rerender } = render(
-    <MagicTextRenderer options={{ segmenter: { granularity: 'word' } }}>hello wo</MagicTextRenderer>,
+    <MagicTextRenderer segmenter={{ granularity: 'word' }}>
+      hello wo
+    </MagicTextRenderer>,
   );
 
-  const firstSegments = container.querySelectorAll('span.hb-magic-text-segment');
+  const firstSegments = container.querySelectorAll(
+    'span.hb-magic-text-segment',
+  );
   const tailBefore = firstSegments[2];
 
   rerender(
-    <MagicTextRenderer options={{ segmenter: { granularity: 'word' } }}>hello world</MagicTextRenderer>,
+    <MagicTextRenderer segmenter={{ granularity: 'word' }}>
+      hello world
+    </MagicTextRenderer>,
   );
 
   const nextSegments = container.querySelectorAll('span.hb-magic-text-segment');
@@ -126,12 +135,14 @@ test('MagicTextRenderer keeps optimistic word-tail segment identity as it grows'
 
 test('MagicTextRenderer renders a caret at the end of an open paragraph when enabled', () => {
   const { container } = render(
-    <MagicTextRenderer caret options={{ segmenter: false }}>
+    <MagicTextRenderer caret segmenter={false}>
       {'streaming paragraph'}
     </MagicTextRenderer>,
   );
 
-  const paragraph = container.querySelector('p[data-magic-text-node="paragraph"]');
+  const paragraph = container.querySelector(
+    'p[data-magic-text-node="paragraph"]',
+  );
   const caret = container.querySelector('[data-magic-text-caret]');
 
   expect(paragraph?.textContent).toBe('streaming paragraph');
@@ -141,13 +152,13 @@ test('MagicTextRenderer renders a caret at the end of an open paragraph when ena
 
 test('MagicTextRenderer hides the caret once parsing is complete', () => {
   const { container, rerender } = render(
-    <MagicTextRenderer caret options={{ segmenter: false }}>
+    <MagicTextRenderer caret segmenter={false}>
       {'streaming paragraph'}
     </MagicTextRenderer>,
   );
 
   rerender(
-    <MagicTextRenderer caret isComplete options={{ segmenter: false }}>
+    <MagicTextRenderer caret isComplete segmenter={false}>
       {'streaming paragraph'}
     </MagicTextRenderer>,
   );
@@ -159,16 +170,44 @@ test('MagicTextRenderer hides the caret once parsing is complete', () => {
 
 test('MagicTextRenderer does not render caret when only document root remains open', () => {
   const { container } = render(
-    <MagicTextRenderer caret options={{ segmenter: false }}>
-      {'Paragraph\n\n[^source'}
+    <MagicTextRenderer caret segmenter={false}>
+      {'Paragraph\n\n'}
     </MagicTextRenderer>,
   );
 
-  const paragraph = container.querySelector('p[data-magic-text-node="paragraph"]');
+  const paragraph = container.querySelector(
+    'p[data-magic-text-node="paragraph"]',
+  );
   const caret = container.querySelector('[data-magic-text-caret]');
 
   expect(paragraph?.textContent).toBe('Paragraph');
   expect(caret).toBeNull();
+});
+
+test('MagicTextRenderer renders the caret inside streaming leaf nodes', () => {
+  const cases = [
+    ['`code', 'inline-code'],
+    ['$$x', 'math-display'],
+    ['<div>\ncontent', 'html-block'],
+    ['https://example.com', 'autolink'],
+  ] as const;
+
+  for (const [text, nodeType] of cases) {
+    const { container, unmount } = render(
+      <MagicTextRenderer caret segmenter={false}>
+        {text}
+      </MagicTextRenderer>,
+    );
+    const node = container.querySelector(
+      `[data-magic-text-node="${nodeType}"]`,
+    );
+    const caret = container.querySelector('[data-magic-text-caret]');
+
+    expect(node).not.toBeNull();
+    expect(caret).not.toBeNull();
+    expect(node?.contains(caret)).toBe(true);
+    unmount();
+  }
 });
 
 test('MagicTextRenderer allows overriding individual node renderers by node type', () => {
@@ -182,7 +221,7 @@ test('MagicTextRenderer allows overriding individual node renderers by node type
         text: ({ node }) => (
           <mark data-custom-node="text">{node.text.toUpperCase()}</mark>
         ),
-        citation: ({ citation }) => (
+        citationReference: ({ citation }) => (
           <button type="button" data-custom-node="citation">
             {citation?.id}
           </button>
@@ -193,9 +232,15 @@ test('MagicTextRenderer allows overriding individual node renderers by node type
     </MagicTextRenderer>,
   );
 
-  const customParagraph = container.querySelector('section[data-custom-node="paragraph"]');
-  const customText = container.querySelectorAll('mark[data-custom-node="text"]');
-  const customCitation = container.querySelector('button[data-custom-node="citation"]');
+  const customParagraph = container.querySelector(
+    'section[data-custom-node="paragraph"]',
+  );
+  const customText = container.querySelectorAll(
+    'mark[data-custom-node="text"]',
+  );
+  const customCitation = container.querySelector(
+    'button[data-custom-node="citation"]',
+  );
 
   expect(customParagraph).not.toBeNull();
   expect(customText[0]?.textContent).toBe('HELLO ');
@@ -273,12 +318,18 @@ const x = 1;
   const markdownLink = container.querySelector('a[href="https://example.com"]');
   const autolink = container.querySelector('a[href="https://hashbrown.dev"]');
   const image = container.querySelector('img');
-  const inlineCode = container.querySelector('code[data-magic-text-node="inline-code"]');
+  const inlineCode = container.querySelector(
+    'code[data-magic-text-node="inline-code"]',
+  );
   const emphasis = container.querySelector('em');
   const strong = container.querySelector('strong');
   const strike = container.querySelector('s');
-  const hardBreak = container.querySelector('br[data-magic-text-node="hard-break"]');
-  const thematicBreak = container.querySelector('hr[data-magic-text-node="thematic-break"]');
+  const hardBreak = container.querySelector(
+    'br[data-magic-text-node="hard-break"]',
+  );
+  const thematicBreak = container.querySelector(
+    'hr[data-magic-text-node="thematic-break"]',
+  );
   const codeBlock = container.querySelector('pre code[data-code-info="ts"]');
   const segments = container.querySelectorAll('span.hb-magic-text-segment');
 
@@ -305,6 +356,75 @@ const x = 1;
   expect(thematicBreak).not.toBeNull();
   expect(codeBlock?.textContent).toContain('const x = 1;');
   expect(segments.length).toBeGreaterThan(0);
+});
+
+test('MagicTextRenderer renders Cacheplane task, reference, math, and HTML nodes', () => {
+  const { container } = render(
+    <MagicTextRenderer isComplete segmenter={false}>
+      {`- [x] done
+
+[reference][id]
+
+[id]: https://example.com "title"
+
+$x$
+
+$$y$$
+
+<span data-injected-html>safe</span>
+
+<div>block</div>`}
+    </MagicTextRenderer>,
+  );
+
+  const task = container.querySelector('li input[type="checkbox"]');
+  const reference = container.querySelector(
+    'a[data-magic-text-node="link-reference"]',
+  );
+  const inlineMath = container.querySelector(
+    '[data-magic-text-node="math-inline"]',
+  );
+  const displayMath = container.querySelector(
+    '[data-magic-text-node="math-display"]',
+  );
+  const inlineHtml = container.querySelector(
+    '[data-magic-text-node="html-inline"]',
+  );
+  const blockHtml = container.querySelector(
+    '[data-magic-text-node="html-block"]',
+  );
+
+  expect(task).toHaveProperty('checked', true);
+  expect(task).toHaveProperty('disabled', true);
+  expect(reference?.getAttribute('href')).toBe('https://example.com');
+  expect(reference?.getAttribute('title')).toBe('title');
+  expect(inlineMath?.textContent).toBe('$x$');
+  expect(displayMath?.textContent).toBe('$$y$$');
+  expect(inlineHtml?.textContent).toBe('<span data-injected-html>');
+  expect(blockHtml?.textContent).toBe('<div>block</div>');
+  expect(container.querySelector('[data-injected-html]')).toBeNull();
+});
+
+test('MagicTextRenderer removes unsafe link, citation, and image URLs', () => {
+  const { container } = render(
+    <MagicTextRenderer isComplete segmenter={false}>
+      {`[link](javascript:alert)
+
+![image](data:text/html,unsafe)
+
+Cite [^bad]
+
+[^bad]: [Source](vbscript:unsafe)`}
+    </MagicTextRenderer>,
+  );
+
+  const link = container.querySelector('[data-magic-text-node="link"]');
+  const image = container.querySelector('[data-magic-text-node="image"]');
+  const citation = container.querySelector('sup a[role="doc-noteref"]');
+
+  expect(link?.getAttribute('href')).toBeNull();
+  expect(image?.getAttribute('src')).toBeNull();
+  expect(citation).toBeNull();
 });
 
 test('MagicTextRenderer calls link click callback for links and autolinks', () => {
@@ -381,8 +501,12 @@ test('MagicTextRenderer override receives and can reuse default node', () => {
     </MagicTextRenderer>,
   );
 
-  const wrapper = container.querySelector('[data-custom-node="strong-wrapper"]');
-  const defaultStrong = container.querySelector('strong[data-magic-text-node="strong"]');
+  const wrapper = container.querySelector(
+    '[data-custom-node="strong-wrapper"]',
+  );
+  const defaultStrong = container.querySelector(
+    'strong[data-magic-text-node="strong"]',
+  );
 
   expect(wrapper).not.toBeNull();
   expect(defaultStrong?.textContent).toBe('bold');
@@ -402,7 +526,9 @@ test('MagicTextRenderer applies node fallback renderer when a type-specific rend
     </MagicTextRenderer>,
   );
 
-  const fallbackTextWrapper = container.querySelector('span[data-fallback-node="text"]');
+  const fallbackTextWrapper = container.querySelector(
+    'span[data-fallback-node="text"]',
+  );
 
   expect(fallbackTextWrapper).not.toBeNull();
 });
@@ -412,7 +538,9 @@ test('createMagicTextNodeRenderers returns a typed renderer map', () => {
     <MagicTextRenderer
       isComplete
       nodeRenderers={createMagicTextNodeRenderers({
-        paragraph: ({ children }) => <section data-helper="paragraph">{children}</section>,
+        paragraph: ({ children }) => (
+          <section data-helper="paragraph">{children}</section>
+        ),
       })}
     >
       {'hello'}
@@ -439,7 +567,9 @@ test('MagicTextRenderer uses the latest click callbacks after rerender', () => {
         callsA.push(citation.id);
       }}
     >
-      {'[link](https://example.com)\n\ncite [^ref]\n\n[^ref]: Ref https://hashbrown.dev'}
+      {
+        '[link](https://example.com)\n\ncite [^ref]\n\n[^ref]: Ref https://hashbrown.dev'
+      }
     </MagicTextRenderer>,
   );
 
@@ -455,7 +585,9 @@ test('MagicTextRenderer uses the latest click callbacks after rerender', () => {
         callsB.push(citation.id);
       }}
     >
-      {'[link](https://example.com)\n\ncite [^ref]\n\n[^ref]: Ref https://hashbrown.dev'}
+      {
+        '[link](https://example.com)\n\ncite [^ref]\n\n[^ref]: Ref https://hashbrown.dev'
+      }
     </MagicTextRenderer>,
   );
 
@@ -504,6 +636,14 @@ test('MagicTextRenderer invokes overrides for every node type in a rich document
       seenTypes.add(node.type);
       return defaultNode;
     },
+    mathDisplay: ({ node, defaultNode }) => {
+      seenTypes.add(node.type);
+      return defaultNode;
+    },
+    htmlBlock: ({ node, defaultNode }) => {
+      seenTypes.add(node.type);
+      return defaultNode;
+    },
     table: ({ node, defaultNode }) => {
       seenTypes.add(node.type);
       return defaultNode;
@@ -524,7 +664,7 @@ test('MagicTextRenderer invokes overrides for every node type in a rich document
       seenTypes.add(node.type);
       return defaultNode;
     },
-    em: ({ node, defaultNode }) => {
+    emphasis: ({ node, defaultNode }) => {
       seenTypes.add(node.type);
       return defaultNode;
     },
@@ -537,6 +677,14 @@ test('MagicTextRenderer invokes overrides for every node type in a rich document
       return defaultNode;
     },
     inlineCode: ({ node, defaultNode }) => {
+      seenTypes.add(node.type);
+      return defaultNode;
+    },
+    mathInline: ({ node, defaultNode }) => {
+      seenTypes.add(node.type);
+      return defaultNode;
+    },
+    htmlInline: ({ node, defaultNode }) => {
       seenTypes.add(node.type);
       return defaultNode;
     },
@@ -556,11 +704,15 @@ test('MagicTextRenderer invokes overrides for every node type in a rich document
       seenTypes.add(node.type);
       return defaultNode;
     },
+    linkReference: ({ node, defaultNode }) => {
+      seenTypes.add(node.type);
+      return defaultNode;
+    },
     autolink: ({ node, defaultNode }) => {
       seenTypes.add(node.type);
       return defaultNode;
     },
-    citation: ({ node, defaultNode }) => {
+    citationReference: ({ node, defaultNode }) => {
       seenTypes.add(node.type);
       return defaultNode;
     },
@@ -580,12 +732,19 @@ test('MagicTextRenderer invokes overrides for every node type in a rich document
 | v1 | v2 |
 
 [link](https://example.com)
+[reference][id]
+
+[id]: https://example.com/reference
 https://hashbrown.dev
 ![alt](https://images.example.com/p.png)
-\`inline\` *em* **strong** ~~strike~~
+\`inline\` *em* **strong** ~~strike~~ $x$ <span>
 soft
 break  
 hard
+
+$$y$$
+
+<div>block</div>
 
 ---
 
@@ -607,21 +766,26 @@ cite [^ref]
     'list',
     'list-item',
     'code-block',
+    'math-display',
+    'html-block',
     'table',
     'table-row',
     'table-cell',
     'thematic-break',
     'text',
-    'em',
+    'emphasis',
     'strong',
     'strikethrough',
     'inline-code',
+    'math-inline',
+    'html-inline',
     'soft-break',
     'hard-break',
     'image',
     'link',
+    'link-reference',
     'autolink',
-    'citation',
+    'citation-reference',
   ];
 
   expect([...seenTypes].sort()).toEqual(allTypes.sort());

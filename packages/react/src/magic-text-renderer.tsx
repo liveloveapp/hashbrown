@@ -1,16 +1,22 @@
-import type {
-  CitationDefinition,
-  CitationState,
-  MagicTextAstNode,
-  MagicTextNodeType,
-  MagicTextParserOptions,
-  TextSegment,
+import {
+  type CitationDefinition,
+  type MarkdownCitationReferenceNode,
+  type MarkdownDocumentNode,
+  type MarkdownNode,
+  type MarkdownNodeType,
+  type PartialMarkdownParserOptions,
+} from '@cacheplane/partial-markdown';
+import {
+  type SegmenterOptions,
+  type TextSegment,
+  ɵcreateTextSegments,
+  ɵsanitizeUrl,
 } from '@hashbrownai/core';
 import {
+  createElement,
   Fragment,
   type MouseEvent,
   type ReactNode,
-  useMemo,
   useRef,
 } from 'react';
 import { useMagicTextParser } from './hooks/use-magic-text-parser';
@@ -24,6 +30,7 @@ export interface MagicTextCitationRenderData {
   id: string;
   number: number | string;
   definition?: CitationDefinition;
+  url?: string;
 }
 
 /**
@@ -32,57 +39,31 @@ export interface MagicTextCitationRenderData {
  * @public
  */
 export interface MagicTextRendererProps {
-  /**
-   * Full markdown source that grows over time.
-   */
+  /** Full Markdown source that grows over time. */
   children: string;
-
-  /**
-   * Optional parser option overrides.
-   */
-  options?: Partial<MagicTextParserOptions>;
-
-  /**
-   * When `true`, finalizes the parser state after applying the latest text.
-   */
+  /** Optional Cacheplane parser options. */
+  parserOptions?: PartialMarkdownParserOptions;
+  /** Optional text segmentation used for streaming animations. */
+  segmenter?: SegmenterOptions;
+  /** When true, finalizes the parser state after applying the latest text. */
   isComplete?: boolean;
-
-  /**
-   * Caret rendering behavior for streaming output.
-   *
-   * - `false`/`undefined`: no caret
-   * - `true`: render the default caret
-   * - `ReactNode`: render a custom caret node
-   * - function: render a custom caret node from parser state
-   */
+  /** Caret rendering behavior for streaming output. */
   caret?: MagicTextCaret;
-
-  /**
-   * Optional class applied to the root element.
-   */
+  /** Optional class applied to the root element. */
   className?: string;
-
-  /**
-   * Called when a link or autolink is clicked.
-   */
+  /** Called when a link or autolink is clicked. */
   onLinkClick?: (
     event: MouseEvent<HTMLAnchorElement>,
     url: string,
-    node: MagicTextAstNode,
+    node: MarkdownNode,
   ) => void;
-
-  /**
-   * Called when a citation reference is clicked.
-   */
+  /** Called when a citation reference is clicked. */
   onCitationClick?: (
     event: MouseEvent<HTMLAnchorElement>,
     citation: MagicTextCitationRenderData,
-    node: MagicTextAstNode,
+    node: MarkdownCitationReferenceNode,
   ) => void;
-
-  /**
-   * Optional custom renderers keyed by Magic Text node type.
-   */
+  /** Optional custom renderers keyed by Markdown node type. */
   nodeRenderers?: MagicTextNodeRenderers;
 }
 
@@ -92,81 +73,45 @@ export interface MagicTextRendererProps {
  * @public
  */
 export interface MagicTextNodeRendererProps<
-  TNode extends MagicTextAstNode = MagicTextAstNode,
+  TNode extends MarkdownNode = MarkdownNode,
 > {
-  /**
-   * The immutable AST node being rendered.
-   */
+  /** The Cacheplane Markdown node being rendered. */
   node: TNode;
-
-  /**
-   * Already-rendered child content for container nodes.
-   */
+  /** Already-rendered child content for container nodes. */
   children: ReactNode;
-
-  /**
-   * Default element tree produced by `MagicTextRenderer` for this node.
-   */
+  /** Default element tree produced for this node. */
   defaultNode: ReactNode;
-
-  /**
-   * Citation metadata when rendering a citation node.
-   */
+  /** Citation metadata when rendering a citation reference. */
   citation?: MagicTextCitationRenderData;
 }
 
-/**
- * Custom renderer callback for a specific Magic Text node.
- *
- * @public
- */
-export type MagicTextNodeRenderer<
-  TNode extends MagicTextAstNode = MagicTextAstNode,
-> = (props: MagicTextNodeRendererProps<TNode>) => ReactNode;
+/** Custom renderer callback for a specific Markdown node. @public */
+export type MagicTextNodeRenderer<TNode extends MarkdownNode = MarkdownNode> = (
+  props: MagicTextNodeRendererProps<TNode>,
+) => ReactNode;
 
-/**
- * Render context supplied to caret renderer callbacks.
- *
- * @public
- */
+/** Render context supplied to caret renderer callbacks. @public */
 export interface MagicTextCaretRenderProps {
-  /**
-   * Whether the parser state is complete for the current source text.
-   */
+  /** Whether the parser state is complete. */
   isComplete: boolean;
-
-  /**
-   * The deepest currently open AST node, if any.
-   */
-  openNode: MagicTextAstNode | null;
+  /** The deepest currently streaming Markdown node, if any. */
+  openNode: MarkdownNode | null;
 }
 
-/**
- * Callback type for custom caret renderers.
- *
- * @public
- */
+/** Callback type for custom caret renderers. @public */
 export type MagicTextCaretRenderer = (
   props: MagicTextCaretRenderProps,
 ) => ReactNode;
 
-/**
- * Supported caret prop values.
- *
- * @public
- */
+/** Supported caret prop values. @public */
 export type MagicTextCaret = boolean | ReactNode | MagicTextCaretRenderer;
 
-type MagicTextNodeOfType<TNodeType extends MagicTextNodeType> = Extract<
-  MagicTextAstNode,
-  { type: TNodeType }
+type MarkdownNodeOfType<TType extends MarkdownNodeType> = Extract<
+  MarkdownNode,
+  { type: TType }
 >;
 
-/**
- * Supported key names for `nodeRenderers`.
- *
- * @public
- */
+/** Supported key names for `nodeRenderers`. @public */
 export type MagicTextNodeRendererKey =
   | 'node'
   | 'document'
@@ -176,64 +121,66 @@ export type MagicTextNodeRendererKey =
   | 'list'
   | 'listItem'
   | 'codeBlock'
+  | 'mathDisplay'
+  | 'htmlBlock'
   | 'table'
   | 'tableRow'
   | 'tableCell'
   | 'thematicBreak'
   | 'text'
-  | 'em'
+  | 'emphasis'
   | 'strong'
   | 'strikethrough'
   | 'inlineCode'
+  | 'mathInline'
+  | 'htmlInline'
   | 'softBreak'
   | 'hardBreak'
   | 'image'
   | 'link'
+  | 'linkReference'
   | 'autolink'
-  | 'citation';
+  | 'citationReference';
 
 type MagicTextNodeByRendererKey = {
-  node: MagicTextAstNode;
-  document: MagicTextNodeOfType<'document'>;
-  paragraph: MagicTextNodeOfType<'paragraph'>;
-  heading: MagicTextNodeOfType<'heading'>;
-  blockquote: MagicTextNodeOfType<'blockquote'>;
-  list: MagicTextNodeOfType<'list'>;
-  listItem: MagicTextNodeOfType<'list-item'>;
-  codeBlock: MagicTextNodeOfType<'code-block'>;
-  table: MagicTextNodeOfType<'table'>;
-  tableRow: MagicTextNodeOfType<'table-row'>;
-  tableCell: MagicTextNodeOfType<'table-cell'>;
-  thematicBreak: MagicTextNodeOfType<'thematic-break'>;
-  text: MagicTextNodeOfType<'text'>;
-  em: MagicTextNodeOfType<'em'>;
-  strong: MagicTextNodeOfType<'strong'>;
-  strikethrough: MagicTextNodeOfType<'strikethrough'>;
-  inlineCode: MagicTextNodeOfType<'inline-code'>;
-  softBreak: MagicTextNodeOfType<'soft-break'>;
-  hardBreak: MagicTextNodeOfType<'hard-break'>;
-  image: MagicTextNodeOfType<'image'>;
-  link: MagicTextNodeOfType<'link'>;
-  autolink: MagicTextNodeOfType<'autolink'>;
-  citation: MagicTextNodeOfType<'citation'>;
+  node: MarkdownNode;
+  document: MarkdownNodeOfType<'document'>;
+  paragraph: MarkdownNodeOfType<'paragraph'>;
+  heading: MarkdownNodeOfType<'heading'>;
+  blockquote: MarkdownNodeOfType<'blockquote'>;
+  list: MarkdownNodeOfType<'list'>;
+  listItem: MarkdownNodeOfType<'list-item'>;
+  codeBlock: MarkdownNodeOfType<'code-block'>;
+  mathDisplay: MarkdownNodeOfType<'math-display'>;
+  htmlBlock: MarkdownNodeOfType<'html-block'>;
+  table: MarkdownNodeOfType<'table'>;
+  tableRow: MarkdownNodeOfType<'table-row'>;
+  tableCell: MarkdownNodeOfType<'table-cell'>;
+  thematicBreak: MarkdownNodeOfType<'thematic-break'>;
+  text: MarkdownNodeOfType<'text'>;
+  emphasis: MarkdownNodeOfType<'emphasis'>;
+  strong: MarkdownNodeOfType<'strong'>;
+  strikethrough: MarkdownNodeOfType<'strikethrough'>;
+  inlineCode: MarkdownNodeOfType<'inline-code'>;
+  mathInline: MarkdownNodeOfType<'math-inline'>;
+  htmlInline: MarkdownNodeOfType<'html-inline'>;
+  softBreak: MarkdownNodeOfType<'soft-break'>;
+  hardBreak: MarkdownNodeOfType<'hard-break'>;
+  image: MarkdownNodeOfType<'image'>;
+  link: MarkdownNodeOfType<'link'>;
+  linkReference: MarkdownNodeOfType<'link-reference'>;
+  autolink: MarkdownNodeOfType<'autolink'>;
+  citationReference: MarkdownNodeOfType<'citation-reference'>;
 };
 
-/**
- * Custom renderers keyed by camelCase node names.
- *
- * @public
- */
+/** Custom renderers keyed by camelCase node names. @public */
 export type MagicTextNodeRenderers = Partial<{
   [TKey in MagicTextNodeRendererKey]: MagicTextNodeRenderer<
     MagicTextNodeByRendererKey[TKey]
   >;
 }>;
 
-/**
- * Helper for creating typed Magic Text node renderer maps.
- *
- * @public
- */
+/** Helper for creating typed Magic Text node renderer maps. @public */
 export function createMagicTextNodeRenderers<T extends MagicTextNodeRenderers>(
   renderers: T,
 ): T {
@@ -241,8 +188,8 @@ export function createMagicTextNodeRenderers<T extends MagicTextNodeRenderers>(
 }
 
 type RenderContext = {
-  nodeById: Map<number, MagicTextAstNode>;
-  citations: CitationState;
+  citations: Map<string, CitationDefinition>;
+  segmenter: SegmenterOptions;
   onLinkClickRef: { current: MagicTextRendererProps['onLinkClick'] };
   onCitationClickRef: { current: MagicTextRendererProps['onCitationClick'] };
   nodeRenderers?: MagicTextNodeRenderers;
@@ -250,8 +197,26 @@ type RenderContext = {
   caretNode: ReactNode;
 };
 
-type MagicTextTextNode = Extract<MagicTextAstNode, { type: 'text' }>;
-type MagicTextCitationNode = Extract<MagicTextAstNode, { type: 'citation' }>;
+type ContainerNode = Extract<
+  MarkdownNode,
+  {
+    type:
+      | 'document'
+      | 'paragraph'
+      | 'heading'
+      | 'blockquote'
+      | 'list'
+      | 'list-item'
+      | 'table'
+      | 'table-row'
+      | 'table-cell'
+      | 'emphasis'
+      | 'strong'
+      | 'strikethrough'
+      | 'link'
+      | 'link-reference';
+  }
+>;
 
 const WORD_JOINER = '\u2060';
 const DEFAULT_ROOT_CLASS = 'hb-magic-text-root';
@@ -263,19 +228,11 @@ const DEFAULT_STYLES = `
   }
 
   @keyframes hb-magic-text-segment-enter {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
-  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_CLASS} {
-    vertical-align: baseline;
-  }
-
+  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_CLASS} { vertical-align: baseline; }
   .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_LABEL_CLASS} {
     display: inline-flex;
     align-items: center;
@@ -293,54 +250,13 @@ const DEFAULT_STYLES = `
     transform: translateY(-0.15em);
   }
 `;
-
-const DEFAULT_STYLES_FALLBACK = `
-  .${DEFAULT_ROOT_CLASS} .hb-magic-text-segment {
-    opacity: 1;
-    transition: opacity 400ms ease-out;
-  }
-
-  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_CLASS} {
-    vertical-align: baseline;
-  }
-
-  .${DEFAULT_ROOT_CLASS} .${DEFAULT_CITATION_LABEL_CLASS} {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    inline-size: 1.4em;
-    block-size: 1.4em;
-    border-radius: 999px;
-    border: 1px solid hsl(0 0% 50% / 0.35);
-    background-color: hsl(0 0% 50% / 0.16);
-    color: inherit;
-    font-size: 0.7em;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-    text-decoration: none;
-    transform: translateY(-0.15em);
-  }
-`;
-
-type ContainerNodeType = Extract<
-  MagicTextNodeType,
-  | 'document'
-  | 'paragraph'
-  | 'heading'
-  | 'blockquote'
-  | 'list'
-  | 'list-item'
-  | 'table'
-  | 'table-row'
-  | 'table-cell'
-  | 'em'
-  | 'strong'
-  | 'strikethrough'
-  | 'link'
->;
+const DEFAULT_STYLES_FALLBACK = DEFAULT_STYLES.replace(
+  'animation: hb-magic-text-segment-enter 400ms ease-out;',
+  'opacity: 1; transition: opacity 400ms ease-out;',
+);
 
 const NODE_TYPE_TO_RENDERER_KEY: Record<
-  MagicTextNodeType,
+  MarkdownNodeType,
   MagicTextNodeRendererKey
 > = {
   document: 'document',
@@ -350,24 +266,29 @@ const NODE_TYPE_TO_RENDERER_KEY: Record<
   list: 'list',
   'list-item': 'listItem',
   'code-block': 'codeBlock',
+  'math-display': 'mathDisplay',
+  'html-block': 'htmlBlock',
   table: 'table',
   'table-row': 'tableRow',
   'table-cell': 'tableCell',
   'thematic-break': 'thematicBreak',
   text: 'text',
-  em: 'em',
+  emphasis: 'emphasis',
   strong: 'strong',
   strikethrough: 'strikethrough',
   'inline-code': 'inlineCode',
+  'math-inline': 'mathInline',
+  'html-inline': 'htmlInline',
   'soft-break': 'softBreak',
   'hard-break': 'hardBreak',
   image: 'image',
   link: 'link',
+  'link-reference': 'linkReference',
   autolink: 'autolink',
-  citation: 'citation',
+  'citation-reference': 'citationReference',
 };
 
-function renderWithOverride<TNode extends MagicTextAstNode>(
+function renderWithOverride<TNode extends MarkdownNode>(
   node: TNode,
   context: RenderContext,
   defaultNode: ReactNode,
@@ -377,40 +298,28 @@ function renderWithOverride<TNode extends MagicTextAstNode>(
   const rendererKey = NODE_TYPE_TO_RENDERER_KEY[node.type];
   const renderer = (context.nodeRenderers?.[rendererKey] ??
     context.nodeRenderers?.node) as MagicTextNodeRenderer<TNode> | undefined;
-
-  if (!renderer) {
-    return defaultNode;
-  }
-
-  return renderer({
-    node,
-    children,
-    defaultNode,
-    citation,
-  });
+  return renderer
+    ? renderer({ node, children, defaultNode, citation })
+    : defaultNode;
 }
 
 function renderChildren(
-  node: { children: number[] },
+  node: ContainerNode,
   context: RenderContext,
 ): ReactNode {
-  return node.children.map((childId) => {
-    const childNode = context.nodeById.get(childId);
-
-    if (!childNode) {
-      return null;
-    }
-
-    return <Fragment key={childId}>{renderNode(childNode, context)}</Fragment>;
-  });
+  return node.children.map((child, index) => (
+    <Fragment key={child.id}>
+      {renderNode(
+        child,
+        context,
+        index > 0 && node.children[index - 1]?.type === 'citation-reference',
+      )}
+    </Fragment>
+  ));
 }
 
 function renderCaret(nodeId: number, context: RenderContext): ReactNode {
-  if (context.caretTargetNodeId !== nodeId) {
-    return null;
-  }
-
-  return <Fragment key={`caret-${nodeId}`}>{context.caretNode}</Fragment>;
+  return context.caretTargetNodeId === nodeId ? context.caretNode : null;
 }
 
 function renderDefaultCaret(): ReactNode {
@@ -437,27 +346,22 @@ function resolveCaretNode(
   caret: MagicTextCaret | undefined,
   props: MagicTextCaretRenderProps,
 ): ReactNode {
-  if (caret === undefined || caret === false || caret === null) {
-    return null;
-  }
-
-  if (caret === true) {
-    return renderDefaultCaret();
-  }
-
-  if (typeof caret === 'function') {
-    return caret(props);
-  }
-
-  return caret;
+  if (caret === undefined || caret === false || caret === null) return null;
+  if (caret === true) return renderDefaultCaret();
+  return typeof caret === 'function' ? caret(props) : caret;
 }
 
-function renderTextSegments(node: MagicTextTextNode): ReactNode {
-  if (node.text.length === 0) {
-    return null;
-  }
-
-  if (node.segments.length === 0) {
+function renderTextSegments(
+  node: MarkdownNodeOfType<'text'>,
+  context: RenderContext,
+  noBreakBefore: boolean,
+): ReactNode {
+  if (node.text.length === 0) return null;
+  const segments = ɵcreateTextSegments(node.text, 0, {
+    segmenter: context.segmenter,
+    hasWarnedSegmenterUnavailable: false,
+  }).segments;
+  if (segments.length === 0) {
     return (
       <span
         key={`segment-${node.id}-full`}
@@ -465,26 +369,28 @@ function renderTextSegments(node: MagicTextTextNode): ReactNode {
         data-magic-text-segment-kind="full"
         data-magic-text-whitespace="false"
       >
-        {node.text}
+        {noBreakBefore ? `${WORD_JOINER}${node.text}` : node.text}
       </span>
     );
   }
 
-  return node.segments.map((segment: TextSegment) => (
+  return segments.map((segment: TextSegment, index) => (
     <span
       key={`segment-${node.id}-${segment.start}-${segment.kind}`}
       className="hb-magic-text-segment"
       data-magic-text-segment-kind={segment.kind}
       data-magic-text-whitespace={String(segment.isWhitespace)}
     >
-      {segment.noBreakBefore ? `${WORD_JOINER}${segment.text}` : segment.text}
+      {noBreakBefore && index === 0
+        ? `${WORD_JOINER}${segment.text}`
+        : segment.text}
     </span>
   ));
 }
 
 function handleLinkClick(
   context: RenderContext,
-  node: MagicTextAstNode,
+  node: MarkdownNode,
   url: string,
 ) {
   return (event: MouseEvent<HTMLAnchorElement>) => {
@@ -492,68 +398,76 @@ function handleLinkClick(
   };
 }
 
-function getCitationRenderData(
-  node: MagicTextCitationNode,
-  context: RenderContext,
-): MagicTextCitationRenderData {
-  const number =
-    node.number ?? context.citations.numbers[node.idRef] ?? node.idRef;
-  const definition = context.citations.definitions[node.idRef];
-  return {
-    id: node.idRef,
-    number,
-    definition,
-  } satisfies MagicTextCitationRenderData;
+function findCitationUrl(definition?: CitationDefinition): string | undefined {
+  const url = definition?.children.find(
+    (
+      node,
+    ): node is MarkdownNodeOfType<'link'> | MarkdownNodeOfType<'autolink'> =>
+      node.type === 'link' || node.type === 'autolink',
+  )?.url;
+
+  return url ? ɵsanitizeUrl(url) : undefined;
 }
 
-function renderDefaultCitation(
-  node: MagicTextCitationNode,
+function getCitationRenderData(
+  node: MarkdownCitationReferenceNode,
   context: RenderContext,
-  citation: MagicTextCitationRenderData,
+): MagicTextCitationRenderData {
+  const definition = context.citations.get(node.refId);
+  return {
+    id: node.refId,
+    number: node.index,
+    definition,
+    url: findCitationUrl(definition),
+  };
+}
+
+function renderCitation(
+  node: MarkdownCitationReferenceNode,
+  context: RenderContext,
 ): ReactNode {
+  const citation = getCitationRenderData(node, context);
   const label = String(citation.number);
-  const href = citation.definition?.url;
-
-  if (!href) {
-    return (
-      <sup
-        key={node.id}
-        className={DEFAULT_CITATION_CLASS}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        <span role="doc-noteref" className={DEFAULT_CITATION_LABEL_CLASS}>
-          {label}
-        </span>
-      </sup>
-    );
-  }
-
-  return (
+  const content = citation.url ? (
+    <a
+      href={citation.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      role="doc-noteref"
+      className={DEFAULT_CITATION_LABEL_CLASS}
+      onClick={(event) =>
+        context.onCitationClickRef.current?.(event, citation, node)
+      }
+    >
+      {label}
+    </a>
+  ) : (
+    <span role="doc-noteref" className={DEFAULT_CITATION_LABEL_CLASS}>
+      {label}
+    </span>
+  );
+  const defaultNode = (
     <sup
       key={node.id}
       className={DEFAULT_CITATION_CLASS}
       data-magic-text-node={node.type}
-      data-node-open={String(!node.closed)}
+      data-node-open={String(node.status !== 'complete')}
     >
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        role="doc-noteref"
-        className={DEFAULT_CITATION_LABEL_CLASS}
-        onClick={(event) => {
-          context.onCitationClickRef.current?.(event, citation, node);
-        }}
-      >
-        {label}
-      </a>
+      {content}
     </sup>
   );
+  return renderWithOverride(node, context, defaultNode, null, citation);
+}
+
+function nodeAttrs(node: MarkdownNode) {
+  return {
+    'data-magic-text-node': node.type,
+    'data-node-open': String(node.status !== 'complete'),
+  };
 }
 
 function renderContainerNode(
-  node: Extract<MagicTextAstNode, { type: ContainerNodeType }>,
+  node: ContainerNode,
   context: RenderContext,
 ): ReactNode {
   const children = (
@@ -562,376 +476,251 @@ function renderContainerNode(
       {renderCaret(node.id, context)}
     </>
   );
-
-  if (node.type === 'document') {
-    return renderWithOverride(
-      node,
-      context,
-      <Fragment key={node.id}>{children}</Fragment>,
-      children,
-    );
-  }
-
-  if (node.type === 'paragraph') {
-    const defaultNode = (
-      <p
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </p>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'heading') {
-    const headingTag = `h${node.level}` as const;
-    const defaultNode =
-      headingTag === 'h1' ? (
-        <h1
-          key={node.id}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
-        >
-          {children}
-        </h1>
-      ) : headingTag === 'h2' ? (
-        <h2
-          key={node.id}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
-        >
-          {children}
-        </h2>
-      ) : headingTag === 'h3' ? (
-        <h3
-          key={node.id}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
-        >
-          {children}
-        </h3>
-      ) : headingTag === 'h4' ? (
-        <h4
-          key={node.id}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
-        >
-          {children}
-        </h4>
-      ) : headingTag === 'h5' ? (
-        <h5
-          key={node.id}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
-        >
-          {children}
-        </h5>
-      ) : (
-        <h6
-          key={node.id}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
-        >
-          {children}
-        </h6>
-      );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'blockquote') {
-    const defaultNode = (
-      <blockquote
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </blockquote>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'list') {
-    if (node.ordered) {
-      const defaultNode = (
-        <ol
-          key={node.id}
-          start={node.start ?? undefined}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
+  let defaultNode: ReactNode;
+  switch (node.type) {
+    case 'document':
+      defaultNode = <Fragment key={node.id}>{children}</Fragment>;
+      break;
+    case 'paragraph':
+      defaultNode = <p {...nodeAttrs(node)}>{children}</p>;
+      break;
+    case 'heading': {
+      defaultNode = createElement(`h${node.level}`, nodeAttrs(node), children);
+      break;
+    }
+    case 'blockquote':
+      defaultNode = <blockquote {...nodeAttrs(node)}>{children}</blockquote>;
+      break;
+    case 'list': {
+      const List = node.ordered ? 'ol' : 'ul';
+      defaultNode = (
+        <List
+          {...nodeAttrs(node)}
+          {...(node.ordered ? { start: node.start ?? undefined } : {})}
           data-list-tight={String(node.tight)}
         >
           {children}
-        </ol>
+        </List>
       );
-      return renderWithOverride(node, context, defaultNode, children);
+      break;
     }
-
-    const defaultNode = (
-      <ul
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-        data-list-tight={String(node.tight)}
-      >
-        {children}
-      </ul>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'list-item') {
-    const defaultNode = (
-      <li
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </li>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'table') {
-    const defaultNode = (
-      <table
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        <tbody>{children}</tbody>
-      </table>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'table-row') {
-    const defaultNode = (
-      <tr
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </tr>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'table-cell') {
-    const parent =
-      node.parentId == null ? undefined : context.nodeById.get(node.parentId);
-    const isHeaderRow = parent?.type === 'table-row' && parent.isHeader;
-    if (isHeaderRow) {
-      const defaultNode = (
-        <th
-          key={node.id}
-          data-magic-text-node={node.type}
-          data-node-open={String(!node.closed)}
+    case 'list-item':
+      defaultNode = (
+        <li {...nodeAttrs(node)}>
+          {node.task ? (
+            <input
+              type="checkbox"
+              checked={node.task.checked}
+              readOnly
+              disabled
+            />
+          ) : null}
+          {children}
+        </li>
+      );
+      break;
+    case 'table':
+      defaultNode = (
+        <table {...nodeAttrs(node)}>
+          <tbody>{children}</tbody>
+        </table>
+      );
+      break;
+    case 'table-row':
+      defaultNode = <tr {...nodeAttrs(node)}>{children}</tr>;
+      break;
+    case 'table-cell': {
+      const Cell =
+        node.parent?.type === 'table-row' && node.parent.isHeader ? 'th' : 'td';
+      defaultNode = (
+        <Cell
+          {...nodeAttrs(node)}
+          style={{ textAlign: node.alignment ?? undefined }}
         >
           {children}
-        </th>
+        </Cell>
       );
-      return renderWithOverride(node, context, defaultNode, children);
+      break;
     }
-
-    const defaultNode = (
-      <td
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </td>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
+    case 'emphasis':
+      defaultNode = <em {...nodeAttrs(node)}>{children}</em>;
+      break;
+    case 'strong':
+      defaultNode = <strong {...nodeAttrs(node)}>{children}</strong>;
+      break;
+    case 'strikethrough':
+      defaultNode = <s {...nodeAttrs(node)}>{children}</s>;
+      break;
+    case 'link':
+      defaultNode = (
+        <a
+          {...nodeAttrs(node)}
+          href={ɵsanitizeUrl(node.url)}
+          title={node.title || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleLinkClick(context, node, node.url)}
+        >
+          {children}
+        </a>
+      );
+      break;
+    case 'link-reference':
+      defaultNode = node.resolved ? (
+        <a
+          {...nodeAttrs(node)}
+          href={ɵsanitizeUrl(node.url)}
+          title={node.title || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleLinkClick(context, node, node.url)}
+        >
+          {children}
+        </a>
+      ) : (
+        <span {...nodeAttrs(node)}>{children}</span>
+      );
+      break;
   }
-
-  if (node.type === 'em') {
-    const defaultNode = (
-      <em
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </em>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'strong') {
-    const defaultNode = (
-      <strong
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </strong>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'strikethrough') {
-    const defaultNode = (
-      <s
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {children}
-      </s>
-    );
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  const defaultNode = (
-    <a
-      key={node.id}
-      href={node.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={node.title}
-      onClick={handleLinkClick(context, node, node.url)}
-      data-magic-text-node={node.type}
-      data-node-open={String(!node.closed)}
-    >
-      {children}
-    </a>
-  );
   return renderWithOverride(node, context, defaultNode, children);
 }
 
-function renderNode(node: MagicTextAstNode, context: RenderContext): ReactNode {
-  if (
-    node.type === 'document' ||
-    node.type === 'paragraph' ||
-    node.type === 'heading' ||
-    node.type === 'blockquote' ||
-    node.type === 'list' ||
-    node.type === 'list-item' ||
-    node.type === 'table' ||
-    node.type === 'table-row' ||
-    node.type === 'table-cell' ||
-    node.type === 'em' ||
-    node.type === 'strong' ||
-    node.type === 'strikethrough' ||
-    node.type === 'link'
-  ) {
-    return renderContainerNode(node, context);
+function renderNode(
+  node: MarkdownNode,
+  context: RenderContext,
+  noBreakBefore = false,
+): ReactNode {
+  if ('children' in node) {
+    return renderContainerNode(node as ContainerNode, context);
   }
 
-  if (node.type === 'code-block') {
-    const defaultNode = (
-      <pre
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        <code data-code-info={node.info ?? undefined}>
-          {node.text}
+  let defaultNode: ReactNode;
+  let children: ReactNode = null;
+  switch (node.type) {
+    case 'code-block':
+      children = node.text;
+      defaultNode = (
+        <pre {...nodeAttrs(node)}>
+          <code data-code-info={node.language || undefined}>
+            {children}
+            {renderCaret(node.id, context)}
+          </code>
+        </pre>
+      );
+      break;
+    case 'math-display':
+      children = `${node.delimiter === '$$' ? '$$' : '\\['}${node.text}${node.delimiter === '$$' ? '$$' : '\\]'}`;
+      defaultNode = (
+        <div {...nodeAttrs(node)}>
+          {children}
+          {renderCaret(node.id, context)}
+        </div>
+      );
+      break;
+    case 'html-block':
+      children = node.raw;
+      defaultNode = (
+        <pre {...nodeAttrs(node)}>
+          {children}
+          {renderCaret(node.id, context)}
+        </pre>
+      );
+      break;
+    case 'thematic-break':
+      defaultNode = <hr {...nodeAttrs(node)} />;
+      break;
+    case 'text':
+      children = renderTextSegments(node, context, noBreakBefore);
+      defaultNode = (
+        <Fragment key={node.id}>
+          {children}
+          {renderCaret(node.id, context)}
+        </Fragment>
+      );
+      break;
+    case 'inline-code':
+      children = node.text;
+      defaultNode = (
+        <code {...nodeAttrs(node)}>
+          {children}
           {renderCaret(node.id, context)}
         </code>
-      </pre>
-    );
-    return renderWithOverride(node, context, defaultNode);
+      );
+      break;
+    case 'math-inline':
+      children = `${node.delimiter === '$' ? '$' : '\\('}${node.text}${node.delimiter === '$' ? '$' : '\\)'}`;
+      defaultNode = (
+        <span {...nodeAttrs(node)}>
+          {children}
+          {renderCaret(node.id, context)}
+        </span>
+      );
+      break;
+    case 'html-inline':
+      children = node.raw;
+      defaultNode = (
+        <span {...nodeAttrs(node)}>
+          {children}
+          {renderCaret(node.id, context)}
+        </span>
+      );
+      break;
+    case 'soft-break':
+      children = '\n';
+      defaultNode = <Fragment key={node.id}>{children}</Fragment>;
+      break;
+    case 'hard-break':
+      defaultNode = <br {...nodeAttrs(node)} />;
+      break;
+    case 'image':
+      defaultNode = (
+        <img
+          {...nodeAttrs(node)}
+          src={ɵsanitizeUrl(node.url)}
+          alt={node.alt}
+          title={node.title || undefined}
+        />
+      );
+      break;
+    case 'autolink':
+      children = node.text;
+      defaultNode = (
+        <a
+          {...nodeAttrs(node)}
+          href={ɵsanitizeUrl(node.url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleLinkClick(context, node, node.url)}
+        >
+          {children}
+          {renderCaret(node.id, context)}
+        </a>
+      );
+      break;
+    case 'citation-reference':
+      return renderCitation(node, context);
+    default:
+      return null;
   }
-
-  if (node.type === 'thematic-break') {
-    const defaultNode = (
-      <hr
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      />
-    );
-    return renderWithOverride(node, context, defaultNode);
-  }
-
-  if (node.type === 'text') {
-    const children = renderTextSegments(node);
-    const defaultNode = <Fragment key={node.id}>{children}</Fragment>;
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'inline-code') {
-    const defaultNode = (
-      <code
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {node.text}
-      </code>
-    );
-    return renderWithOverride(node, context, defaultNode, node.text);
-  }
-
-  if (node.type === 'soft-break') {
-    const children = '\n';
-    const defaultNode = <Fragment key={node.id}>{children}</Fragment>;
-    return renderWithOverride(node, context, defaultNode, children);
-  }
-
-  if (node.type === 'hard-break') {
-    const defaultNode = (
-      <br
-        key={node.id}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      />
-    );
-    return renderWithOverride(node, context, defaultNode);
-  }
-
-  if (node.type === 'image') {
-    const defaultNode = (
-      <img
-        key={node.id}
-        src={node.url}
-        alt={node.alt}
-        title={node.title}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      />
-    );
-    return renderWithOverride(node, context, defaultNode);
-  }
-
-  if (node.type === 'autolink') {
-    const defaultNode = (
-      <a
-        key={node.id}
-        href={node.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={handleLinkClick(context, node, node.url)}
-        data-magic-text-node={node.type}
-        data-node-open={String(!node.closed)}
-      >
-        {node.text}
-      </a>
-    );
-    return renderWithOverride(node, context, defaultNode, node.text);
-  }
-
-  const citation = getCitationRenderData(node, context);
-  const defaultNode = renderDefaultCitation(node, context, citation);
-  return renderWithOverride(node, context, defaultNode, null, citation);
+  return renderWithOverride(node, context, defaultNode, children);
 }
 
-/**
- * React renderer for streaming Magic Text parser output.
- *
- * @public
- */
+function findDeepestOpenNode(node: MarkdownNode | null): MarkdownNode | null {
+  if (!node || node.status === 'complete') return null;
+  if ('children' in node) {
+    for (let index = node.children.length - 1; index >= 0; index -= 1) {
+      const child = findDeepestOpenNode(node.children[index] ?? null);
+      if (child) return child;
+    }
+  }
+  return node.type === 'document' ? null : node;
+}
+
+/** React renderer for streaming Cacheplane Markdown output. @public */
 export function MagicTextRenderer({
   children,
-  options,
+  parserOptions,
+  segmenter = true,
   isComplete = false,
   caret,
   className,
@@ -939,56 +728,33 @@ export function MagicTextRenderer({
   onCitationClick,
   nodeRenderers,
 }: MagicTextRendererProps) {
-  const text = children ?? '';
-  const parserState = useMagicTextParser(text, options, isComplete);
-  const onLinkClickRef =
-    useRef<MagicTextRendererProps['onLinkClick']>(onLinkClick);
-  const onCitationClickRef =
-    useRef<MagicTextRendererProps['onCitationClick']>(onCitationClick);
+  const parserResult = useMagicTextParser(
+    children ?? '',
+    parserOptions,
+    isComplete,
+  );
+  const rootNode: MarkdownDocumentNode | null = parserResult.rootNode;
+  const onLinkClickRef = useRef(onLinkClick);
+  const onCitationClickRef = useRef(onCitationClick);
   onLinkClickRef.current = onLinkClick;
   onCitationClickRef.current = onCitationClick;
 
-  const nodeById = useMemo(() => {
-    const map = new Map<number, MagicTextAstNode>();
-
-    for (const node of parserState.nodes) {
-      map.set(node.id, node);
-    }
-
-    return map;
-  }, [parserState.nodes]);
-
-  const context = useMemo(() => {
-    const openNode = findDeepestOpenRenderableNode(parserState.stack, nodeById);
-    const caretNode = resolveCaretNode(caret, {
-      isComplete: parserState.isComplete,
-      openNode,
-    });
-    const caretTargetNodeId =
-      !parserState.isComplete && openNode != null && caretNode != null
-        ? openNode.id
-        : null;
-
-    return {
-      nodeById,
-      citations: parserState.citations,
-      onLinkClickRef,
-      onCitationClickRef,
-      nodeRenderers,
-      caretTargetNodeId,
-      caretNode,
-    };
-  }, [
-    nodeById,
-    parserState.citations,
-    parserState.isComplete,
-    parserState.stack,
+  const openNode = findDeepestOpenNode(rootNode);
+  const caretNode = resolveCaretNode(caret, {
+    isComplete: parserResult.isComplete,
+    openNode,
+  });
+  const context = {
+    citations: rootNode?.citations ?? new Map<string, CitationDefinition>(),
+    segmenter,
+    onLinkClickRef,
+    onCitationClickRef,
     nodeRenderers,
-    caret,
-  ]);
+    caretTargetNodeId:
+      !parserResult.isComplete && openNode && caretNode ? openNode.id : null,
+    caretNode,
+  } satisfies RenderContext;
 
-  const rootNode =
-    parserState.rootId == null ? undefined : nodeById.get(parserState.rootId);
   const rootClassName = className
     ? `${DEFAULT_ROOT_CLASS} ${className}`
     : DEFAULT_ROOT_CLASS;
@@ -997,35 +763,12 @@ export function MagicTextRenderer({
       ? DEFAULT_STYLES_FALLBACK
       : DEFAULT_STYLES;
 
-  if (!rootNode) {
-    return (
-      <>
-        <style>{styleText}</style>
-        <div className={rootClassName} data-magic-text-root />
-      </>
-    );
-  }
-
   return (
     <>
       <style>{styleText}</style>
       <div className={rootClassName} data-magic-text-root>
-        {renderNode(rootNode, context)}
+        {rootNode ? renderNode(rootNode, context) : null}
       </div>
     </>
   );
-}
-
-function findDeepestOpenRenderableNode(
-  stack: number[],
-  nodeById: Map<number, MagicTextAstNode>,
-): MagicTextAstNode | null {
-  for (let index = stack.length - 1; index >= 0; index -= 1) {
-    const candidate = nodeById.get(stack[index]) ?? null;
-    if (candidate && candidate.type !== 'document') {
-      return candidate;
-    }
-  }
-
-  return null;
 }

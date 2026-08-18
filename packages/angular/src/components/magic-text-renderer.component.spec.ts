@@ -14,10 +14,7 @@ import {
 function renderMagicText(input: {
   text: string;
   isComplete?: boolean;
-  options?: {
-    segmenter?:
-      false | true | { granularity?: 'grapheme' | 'word' | 'sentence' };
-  };
+  segmenter?: false | true | { granularity?: 'grapheme' | 'word' | 'sentence' };
   caret?: boolean;
 }) {
   TestBed.configureTestingModule({
@@ -29,8 +26,8 @@ function renderMagicText(input: {
   if (input.isComplete !== undefined) {
     fixture.componentRef.setInput('isComplete', input.isComplete);
   }
-  if (input.options !== undefined) {
-    fixture.componentRef.setInput('options', input.options);
+  if (input.segmenter !== undefined) {
+    fixture.componentRef.setInput('segmenter', input.segmenter);
   }
   if (input.caret !== undefined) {
     fixture.componentRef.setInput('caret', input.caret);
@@ -45,7 +42,7 @@ test('renders markdown blocks and citations from the AST', () => {
   const fixture = renderMagicText({
     text: '# Title\n\n- one\n- two\n\nCite [^ref]\n\n[^ref]: Ref https://hashbrown.dev',
     isComplete: true,
-    options: { segmenter: false },
+    segmenter: false,
   });
 
   const host = fixture.nativeElement as HTMLElement;
@@ -64,7 +61,7 @@ test('renders markdown blocks and citations from the AST', () => {
 test('creates one span per parsed text segment', () => {
   const fixture = renderMagicText({
     text: 'ab',
-    options: { segmenter: { granularity: 'grapheme' } },
+    segmenter: { granularity: 'grapheme' },
   });
 
   const segments = (fixture.nativeElement as HTMLElement).querySelectorAll(
@@ -80,7 +77,7 @@ test('prefixes word joiner before punctuation after citations', () => {
   const fixture = renderMagicText({
     text: 'Alpha[^a]; beta\n\n[^a]: Source https://hashbrown.dev',
     isComplete: true,
-    options: { segmenter: { granularity: 'word' } },
+    segmenter: { granularity: 'word' },
   });
   const segments = Array.from(
     (fixture.nativeElement as HTMLElement).querySelectorAll(
@@ -97,7 +94,7 @@ test('prefixes word joiner before punctuation after citations', () => {
 test('preserves existing segment DOM identity across updates', () => {
   const fixture = renderMagicText({
     text: 'ab',
-    options: { segmenter: { granularity: 'grapheme' } },
+    segmenter: { granularity: 'grapheme' },
   });
 
   const host = fixture.nativeElement as HTMLElement;
@@ -113,10 +110,30 @@ test('preserves existing segment DOM identity across updates', () => {
   expect(after).toBe(before);
 });
 
+test('renders structural nodes added by prefix updates', () => {
+  const fixture = renderMagicText({
+    text: 'first',
+    segmenter: false,
+  });
+
+  const host = fixture.nativeElement as HTMLElement;
+
+  fixture.componentRef.setInput('text', 'first\n\nsecond');
+  fixture.detectChanges();
+
+  const paragraphs = host.querySelectorAll(
+    'p[data-magic-text-node="paragraph"]',
+  );
+
+  expect(paragraphs).toHaveLength(2);
+  expect(paragraphs[0]?.textContent).toBe('first');
+  expect(paragraphs[1]?.textContent).toBe('second');
+});
+
 test('keeps optimistic word-tail segment identity as it grows', () => {
   const fixture = renderMagicText({
     text: 'hello wo',
-    options: { segmenter: { granularity: 'word' } },
+    segmenter: { granularity: 'word' },
   });
 
   const host = fixture.nativeElement as HTMLElement;
@@ -137,7 +154,7 @@ test('keeps optimistic word-tail segment identity as it grows', () => {
 test('renders a caret while incomplete and hides it when complete', () => {
   const fixture = renderMagicText({
     text: 'streaming paragraph',
-    options: { segmenter: false },
+    segmenter: false,
     caret: true,
   });
 
@@ -156,8 +173,8 @@ test('renders a caret while incomplete and hides it when complete', () => {
 
 test('does not render caret when only document root remains open', () => {
   const fixture = renderMagicText({
-    text: 'Paragraph\n\n[^source',
-    options: { segmenter: false },
+    text: 'Paragraph\n\n',
+    segmenter: false,
     caret: true,
   });
 
@@ -172,7 +189,7 @@ test('does not render caret when only document root remains open', () => {
 test('does not render caret when caret input is false', () => {
   const fixture = renderMagicText({
     text: 'streaming paragraph',
-    options: { segmenter: false },
+    segmenter: false,
     caret: false,
   });
 
@@ -183,23 +200,53 @@ test('does not render caret when caret input is false', () => {
   expect(caret).toBeNull();
 });
 
+test('renders the caret inside streaming leaf nodes', () => {
+  const cases = [
+    ['`code', 'inline-code'],
+    ['$$x', 'math-display'],
+    ['<div>\ncontent', 'html-block'],
+    ['https://example.com', 'autolink'],
+  ] as const;
+
+  TestBed.configureTestingModule({ imports: [MagicText] });
+
+  for (const [text, nodeType] of cases) {
+    const fixture = TestBed.createComponent(MagicText);
+    fixture.componentRef.setInput('text', text);
+    fixture.componentRef.setInput('segmenter', false);
+    fixture.componentRef.setInput('caret', true);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const node = host.querySelector(`[data-magic-text-node="${nodeType}"]`);
+    const caret = host.querySelector('[data-magic-text-caret]');
+
+    expect(node).not.toBeNull();
+    expect(caret).not.toBeNull();
+    expect(node?.contains(caret)).toBe(true);
+  }
+});
+
 test('table header detection handles both header and non-header parents', () => {
   const fixture = renderMagicText({
     text: '| a | b |\n| - | - |\n| c | d |',
     isComplete: true,
-    options: { segmenter: false },
+    segmenter: false,
   });
   const component = fixture.componentInstance as unknown as {
     getNodeById: (nodeId: number) => unknown;
-    isTableHeaderCell: (node: { parentId: number | null }) => boolean;
+    isTableHeaderCell: (node: { parent: unknown }) => boolean;
   };
   const originalGetNodeById = component.getNodeById;
 
   component.getNodeById = () => ({ type: 'table-row', isHeader: true });
-  const headerCell = component.isTableHeaderCell({ parentId: 10 });
+  const headerCell = component.isTableHeaderCell({
+    parent: { type: 'table-row', isHeader: true },
+  });
 
   component.getNodeById = () => ({ type: 'table-row', isHeader: false });
-  const bodyCell = component.isTableHeaderCell({ parentId: 10 });
+  const bodyCell = component.isTableHeaderCell({
+    parent: { type: 'table-row', isHeader: false },
+  });
 
   component.getNodeById = originalGetNodeById;
 
@@ -211,7 +258,7 @@ test('renders unresolved citations as plain superscript references', () => {
   const fixture = renderMagicText({
     text: 'Cite [^missing]',
     isComplete: true,
-    options: { segmenter: false },
+    segmenter: false,
   });
 
   const unresolvedCitation = (
@@ -221,18 +268,95 @@ test('renders unresolved citations as plain superscript references', () => {
   expect(unresolvedCitation?.textContent).toBe('1');
 });
 
+test('renders Cacheplane task, reference, math, and HTML nodes', () => {
+  const fixture = renderMagicText({
+    text: `- [x] done
+
+[reference][id]
+
+[id]: https://example.com "title"
+
+$x$
+
+$$y$$
+
+<span data-injected-html>safe</span>
+
+<div>block</div>`,
+    isComplete: true,
+    segmenter: false,
+  });
+  const host = fixture.nativeElement as HTMLElement;
+  const task = host.querySelector(
+    'li input[type="checkbox"]',
+  ) as HTMLInputElement | null;
+  const reference = host.querySelector(
+    'a[data-magic-text-node="link-reference"]',
+  );
+  const inlineMath = host.querySelector('[data-magic-text-node="math-inline"]');
+  const displayMath = host.querySelector(
+    '[data-magic-text-node="math-display"]',
+  );
+  const inlineHtml = host.querySelector('[data-magic-text-node="html-inline"]');
+  const blockHtml = host.querySelector('[data-magic-text-node="html-block"]');
+
+  expect(task?.checked).toBe(true);
+  expect(task?.disabled).toBe(true);
+  expect(reference?.getAttribute('href')).toBe('https://example.com');
+  expect(reference?.getAttribute('title')).toBe('title');
+  expect(inlineMath?.textContent).toBe('$x$');
+  expect(displayMath?.textContent).toBe('$$y$$');
+  expect(inlineHtml?.textContent).toBe('<span data-injected-html>');
+  expect(blockHtml?.textContent).toBe('<div>block</div>');
+  expect(host.querySelector('[data-injected-html]')).toBeNull();
+});
+
+test('removes unsafe link, citation, and image URLs', () => {
+  const fixture = renderMagicText({
+    text: `[link](javascript:alert)
+
+![image](data:text/html,unsafe)
+
+Cite [^bad]
+
+[^bad]: [Source](vbscript:unsafe)`,
+    isComplete: true,
+    segmenter: false,
+  });
+  const host = fixture.nativeElement as HTMLElement;
+  const link = host.querySelector('[data-magic-text-node="link"]');
+  const image = host.querySelector('[data-magic-text-node="image"]');
+  const citation = host.querySelector('sup a[role="doc-noteref"]');
+
+  expect(link?.getAttribute('href')).toBeNull();
+  expect(image?.getAttribute('src')).toBeNull();
+  expect(citation).toBeNull();
+});
+
+test('renders Cacheplane table-cell alignment', () => {
+  const fixture = renderMagicText({
+    text: '| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |',
+    isComplete: true,
+    segmenter: false,
+  });
+  const cells = (fixture.nativeElement as HTMLElement).querySelectorAll('td');
+
+  expect((cells[0] as HTMLElement | undefined)?.style.textAlign).toBe('left');
+  expect((cells[1] as HTMLElement | undefined)?.style.textAlign).toBe('center');
+  expect((cells[2] as HTMLElement | undefined)?.style.textAlign).toBe('right');
+});
+
 @Component({
   selector: 'hb-paragraph-override-host',
   standalone: true,
   imports: [MagicText, MagicTextRenderNode],
   template: `
-    <hb-magic-text
-      [text]="text()"
-      [isComplete]="true"
-      [options]="{ segmenter: false }"
-    >
+    <hb-magic-text [text]="text()" [isComplete]="true" [segmenter]="false">
       <ng-template hbMagicTextRenderNode nodeType="paragraph" let-node="node">
-        <section data-custom-node="paragraph" [attr.data-open]="!node.closed">
+        <section
+          data-custom-node="paragraph"
+          [attr.data-open]="node.status !== 'complete'"
+        >
           custom paragraph
         </section>
       </ng-template>
@@ -266,11 +390,7 @@ test('uses type-specific node override templates', () => {
   standalone: true,
   imports: [MagicText, MagicTextRenderNode],
   template: `
-    <hb-magic-text
-      [text]="text()"
-      [isComplete]="true"
-      [options]="{ segmenter: false }"
-    >
+    <hb-magic-text [text]="text()" [isComplete]="true" [segmenter]="false">
       <ng-template hbMagicTextRenderNode nodeType="node" let-node="node">
         <span [attr.data-fallback-node]="node.type"></span>
       </ng-template>
@@ -303,7 +423,7 @@ test('uses fallback node template when no type-specific template exists', () => 
     <hb-magic-text
       [text]="text()"
       [isComplete]="true"
-      [options]="{ segmenter: { granularity: 'grapheme' } }"
+      [segmenter]="{ granularity: 'grapheme' }"
     >
       <ng-template hbMagicTextRenderTextSegment let-segment="segment">
         <mark data-custom-segment>{{ segment.text }}</mark>
@@ -336,11 +456,7 @@ test('uses text segment override templates', () => {
   standalone: true,
   imports: [MagicText, MagicTextRenderCitation],
   template: `
-    <hb-magic-text
-      [text]="text()"
-      [isComplete]="true"
-      [options]="{ segmenter: false }"
-    >
+    <hb-magic-text [text]="text()" [isComplete]="true" [segmenter]="false">
       <ng-template
         hbMagicTextRenderCitation
         let-citation="citation"
@@ -382,11 +498,7 @@ test('uses citation override template with resolved citation context', () => {
   standalone: true,
   imports: [MagicText, MagicTextRenderCaret],
   template: `
-    <hb-magic-text
-      [text]="text()"
-      [options]="{ segmenter: false }"
-      [caret]="true"
-    >
+    <hb-magic-text [text]="text()" [segmenter]="false" [caret]="true">
       <ng-template hbMagicTextRenderCaret let-node="node">
         <span data-custom-caret [attr.data-open-node]="node.id">|</span>
       </ng-template>
@@ -423,11 +535,7 @@ test('uses custom caret template while incomplete', () => {
     <ng-template #inputCaret let-node="node">
       <span data-input-caret [attr.data-node-id]="node.id">*</span>
     </ng-template>
-    <hb-magic-text
-      [text]="text()"
-      [options]="{ segmenter: false }"
-      [caret]="inputCaret"
-    />
+    <hb-magic-text [text]="text()" [segmenter]="false" [caret]="inputCaret" />
   `,
 })
 class CaretInputTemplateHostComponent {
@@ -453,7 +561,7 @@ test('emits linkClick and citationClick events', () => {
   const fixture = renderMagicText({
     text: '[link](https://example.com) [^ref]\n\n[^ref]: Ref https://hashbrown.dev',
     isComplete: true,
-    options: { segmenter: false },
+    segmenter: false,
   });
 
   const linkEvents: MagicTextLinkClickEvent[] = [];
@@ -495,17 +603,17 @@ test('MagicText helper APIs return expected render contexts', () => {
   const fixture = renderMagicText({
     text: 'hello',
     isComplete: true,
-    options: { segmenter: false },
+    segmenter: false,
   });
 
   const component = fixture.componentInstance as unknown as {
-    parserState: () => { nodes: Array<{ type: string }> };
+    rootNode: () => { children: Array<{ type: string }> } | null;
     getNodeRenderContext: (node: unknown) => { renderChildren: () => unknown };
     isTableHeaderCell: (node: unknown) => boolean;
   };
   const paragraph = component
-    .parserState()
-    .nodes.find((node) => node.type === 'paragraph');
+    .rootNode()
+    ?.children.find((node) => node.type === 'paragraph');
 
   if (!paragraph) {
     throw new Error('Expected paragraph node');
@@ -515,7 +623,7 @@ test('MagicText helper APIs return expected render contexts', () => {
   const renderedChildren = context.renderChildren();
   const isHeaderWithoutParent = component.isTableHeaderCell({
     type: 'table-cell',
-    parentId: null,
+    parent: null,
   });
 
   expect(Array.isArray(renderedChildren)).toBe(true);

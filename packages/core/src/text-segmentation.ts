@@ -1,16 +1,43 @@
-import type { SegmenterOptions, TextSegment } from './types';
+type SegmentGranularity = 'grapheme' | 'word' | 'sentence';
 
 /**
- * Computes parse-time text segments for animation and incremental rendering.
+ * Text segmentation configuration for streaming presentation.
+ * @public
+ */
+export type SegmenterOptions =
+  | false
+  | true
+  | {
+      locale?: string;
+      granularity?: SegmentGranularity;
+    };
+
+/**
+ * A stable text segment used by streaming renderers.
+ * @public
+ */
+export type TextSegment = {
+  text: string;
+  /** Start offset relative to the text value supplied for segmentation. */
+  start: number;
+  /** End offset relative to the text value supplied for segmentation. */
+  end: number;
+  kind: SegmentGranularity;
+  isWhitespace: boolean;
+};
+
+/**
+ * Computes text segments for animation and incremental rendering.
  *
  * @param text - Raw text content for a single text node.
- * @param absoluteStart - Absolute source index where `text` begins.
+ * @param baseOffset - Offset added to each segment position.
  * @param context - Parse context containing segmenter options and warning state.
  * @returns Segment list or empty list when segmentation is disabled/unavailable.
+ * @internal
  */
 export function createSegments(
   text: string,
-  absoluteStart: number,
+  baseOffset: number,
   options: {
     segmenter: SegmenterOptions;
     hasWarnedSegmenterUnavailable: boolean;
@@ -36,7 +63,7 @@ export function createSegments(
     if (!options.hasWarnedSegmenterUnavailable) {
       return {
         segments: [],
-        warning: { code: 'segmenter_unavailable', at: absoluteStart },
+        warning: { code: 'segmenter_unavailable', at: baseOffset },
         hasWarnedSegmenterUnavailable: true,
       };
     }
@@ -59,7 +86,7 @@ export function createSegments(
 
   for (const segment of segmenter.segment(text)) {
     const segmentText = segment.segment;
-    const start = absoluteStart + segment.index;
+    const start = baseOffset + segment.index;
 
     segments.push({
       text: segmentText,

@@ -5,5 +5,8 @@
     "entryFile": "src/index.ts"
   },
   "assets": ["README.md"],
-  "allowedNonPeerDependencies": ["@cacheplane/partial-json"]
+  "allowedNonPeerDependencies": [
+    "@cacheplane/partial-json",
+    "@cacheplane/partial-markdown"
+  ]
 }

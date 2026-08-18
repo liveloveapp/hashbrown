@@ -1,26 +1,23 @@
 import {
-  createMagicTextParserState,
-  finalizeMagicText,
-  parseMagicTextChunk,
-  type MagicTextAstNode,
-  type MagicTextParserState,
-} from '@hashbrownai/core';
+  create,
+  finish,
+  push,
+  resolve,
+  type MarkdownDocumentNode,
+  type MarkdownNode,
+} from '@cacheplane/partial-markdown';
 
-function parseMagicText(input: string): MagicTextParserState {
-  const initial = createMagicTextParserState({
-    segmenter: { granularity: 'word' },
-    enableTables: true,
-    enableAutolinks: true,
-  });
-  const parsed = parseMagicTextChunk(initial, input);
+function parseMagicText(input: string): MarkdownDocumentNode {
+  const parsed = push(create(), input);
+  const root = resolve(finish(parsed));
+  if (!root) {
+    throw new Error('Expected parsed Markdown root');
+  }
 
-  return finalizeMagicText(parsed);
+  return root;
 }
 
-function renderNode(
-  state: MagicTextParserState,
-  node: MagicTextAstNode | undefined,
-): string {
+function renderNode(node: MarkdownNode | undefined): string {
   if (!node) {
     return '';
   }
@@ -35,24 +32,18 @@ function renderNode(
     case 'table':
     case 'table-row':
     case 'table-cell':
-    case 'em':
+    case 'emphasis':
     case 'strong':
     case 'strikethrough':
     case 'link':
-      return node.children
-        .map((childId) =>
-          renderNode(
-            state,
-            state.nodes.find((candidate) => candidate.id === childId),
-          ),
-        )
-        .join('');
+    case 'link-reference':
+      return node.children.map((child) => renderNode(child)).join('');
     case 'text':
       return node.text;
     case 'inline-code':
       return node.text;
-    case 'citation':
-      return `[${node.number ?? state.citations.numbers[node.idRef] ?? node.idRef}]`;
+    case 'citation-reference':
+      return `[${node.index}]`;
     case 'autolink':
       return node.text;
     case 'soft-break':
@@ -62,17 +53,22 @@ function renderNode(
     case 'image':
       return node.alt;
     case 'code-block':
+    case 'math-display':
       return node.text;
+    case 'math-inline':
+      return node.text;
+    case 'html-block':
+    case 'html-inline':
+      return node.raw;
     case 'thematic-break':
       return '';
   }
 }
 
 function renderMagicText(input: string): string {
-  const state = parseMagicText(input);
-  const rootNode = state.nodes.find((node) => node.id === state.rootId);
+  const rootNode = parseMagicText(input);
 
-  return renderNode(state, rootNode);
+  return renderNode(rootNode);
 }
 
 test('keeps the space before inline links intact', () => {

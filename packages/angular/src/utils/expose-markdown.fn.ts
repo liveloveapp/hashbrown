@@ -1,5 +1,6 @@
 import { type Provider, reflectComponentType } from '@angular/core';
-import { type MagicTextParserOptions, s } from '@hashbrownai/core';
+import type { PartialMarkdownParserOptions } from '@cacheplane/partial-markdown';
+import { s, type SegmenterOptions } from '@hashbrownai/core';
 import {
   type MagicTextCitationClickEvent,
   type MagicTextLinkClickEvent,
@@ -32,7 +33,8 @@ const CITATION_DESCRIPTION_SUFFIX = [
 
 /** @public */
 export type MagicTextExposeInputs = {
-  options?: Partial<MagicTextParserOptions>;
+  parserOptions?: PartialMarkdownParserOptions;
+  segmenter?: SegmenterOptions;
   caret?: boolean;
   className?: string;
 };
@@ -59,7 +61,8 @@ export type ExposeMarkdownBuiltInRendererConfig = MagicTextExposeInputs & {
  */
 export type ExposeMarkdownCustomRendererConfig = {
   renderer: MagicTextRendererComponentType;
-  options?: never;
+  parserOptions?: never;
+  segmenter?: never;
   caret?: never;
   className?: never;
   onLinkClick?: never;
@@ -146,7 +149,8 @@ export function exposeMarkdown(
   }
 
   const runtimeConfig: ɵExposeMarkdownBuiltInRuntimeConfig = {
-    options: config.options,
+    parserOptions: config.parserOptions,
+    segmenter: config.segmenter,
     caret: config.caret ?? true,
     className: config.className,
     onLinkClick: config.onLinkClick,
@@ -191,7 +195,8 @@ function validateCustomRenderer(
 
 function validateCustomRendererConfig(config: ExposeMarkdownConfig): void {
   const hasDisallowedSettings =
-    config.options !== undefined ||
+    config.parserOptions !== undefined ||
+    config.segmenter !== undefined ||
     config.caret !== undefined ||
     config.className !== undefined ||
     config.onLinkClick !== undefined ||
@@ -199,7 +204,7 @@ function validateCustomRendererConfig(config: ExposeMarkdownConfig): void {
 
   if (hasDisallowedSettings) {
     throw new Error(
-      'When `renderer` is provided, `options`, `caret`, `className`, `onLinkClick`, and `onCitationClick` are not supported.',
+      'When `renderer` is provided, `parserOptions`, `segmenter`, `caret`, `className`, `onLinkClick`, and `onCitationClick` are not supported.',
     );
   }
 }
