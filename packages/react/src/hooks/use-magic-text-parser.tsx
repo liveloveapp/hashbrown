@@ -1,182 +1,212 @@
 import {
-  createMagicTextParserState,
-  finalizeMagicText,
-  type MagicTextParserOptions,
-  type MagicTextParserState,
-  parseMagicTextChunk,
-} from '@hashbrownai/core';
-import { useMemo, useRef } from 'react';
+  createPartialMarkdownParser,
+  type MarkdownDocumentNode,
+  type PartialMarkdownParser,
+  type PartialMarkdownParserOptions,
+} from '@cacheplane/partial-markdown';
+import {
+  useLayoutEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+
+type NormalizedParserOptions = {
+  math: {
+    dollar: boolean;
+    bracket: boolean;
+  };
+};
 
 interface MagicTextParserSession {
-  parserState: MagicTextParserState;
+  parser: PartialMarkdownParser;
   text: string;
   optionsKey: string;
   isCompleteInput: boolean;
+  parserComplete: boolean;
 }
 
-const DEFAULT_OPTIONS: MagicTextParserOptions = {
-  segmenter: true,
-  enableTables: true,
-  enableAutolinks: true,
-};
+interface MagicTextParserResult {
+  rootNode: MarkdownDocumentNode | null;
+  isComplete: boolean;
+}
+
+interface MagicTextParserStore {
+  getSession(): MagicTextParserSession;
+  getSnapshot(): number;
+  subscribe(listener: () => void): () => void;
+  update(
+    text: string,
+    options: NormalizedParserOptions,
+    optionsKey: string,
+    isCompleteInput: boolean,
+  ): void;
+}
 
 function normalizeOptions(
-  options?: Partial<MagicTextParserOptions>,
-): MagicTextParserOptions {
+  dollarMath: boolean,
+  bracketMath: boolean,
+): NormalizedParserOptions {
   return {
-    segmenter: options?.segmenter ?? DEFAULT_OPTIONS.segmenter,
-    enableTables: options?.enableTables ?? DEFAULT_OPTIONS.enableTables,
-    enableAutolinks: options?.enableAutolinks ?? DEFAULT_OPTIONS.enableAutolinks,
+    math: {
+      dollar: dollarMath,
+      bracket: bracketMath,
+    },
   };
 }
 
-function getSegmenterKey(segmenter: MagicTextParserOptions['segmenter']): string {
-  if (segmenter === true || segmenter === false) {
-    return String(segmenter);
-  }
-
-  const locale = segmenter.locale ?? '';
-  const granularity = segmenter.granularity ?? 'word';
-  return `object:${locale}:${granularity}`;
-}
-
-function getOptionsKey(options: MagicTextParserOptions): string {
-  return `${getSegmenterKey(options.segmenter)}|tables:${String(options.enableTables)}|autolinks:${String(options.enableAutolinks)}`;
-}
-
-function parseFullText(
-  text: string,
-  options: MagicTextParserOptions,
-  isCompleteInput: boolean,
-): MagicTextParserState {
-  const initialState = createMagicTextParserState(options);
-  const parsedState = text.length > 0 ? parseMagicTextChunk(initialState, text) : initialState;
-
-  return isCompleteInput ? finalizeMagicText(parsedState) : parsedState;
+function getOptionsKey(options: NormalizedParserOptions): string {
+  return `math:dollar:${String(options.math.dollar)}:bracket:${String(options.math.bracket)}`;
 }
 
 function createSession(
   text: string,
-  options: MagicTextParserOptions,
+  options: NormalizedParserOptions,
   optionsKey: string,
   isCompleteInput: boolean,
 ): MagicTextParserSession {
+  const parser = createPartialMarkdownParser(options);
+  if (text.length > 0) {
+    parser.push(text);
+  }
+  if (isCompleteInput) {
+    parser.finish();
+  }
+
   return {
-    parserState: parseFullText(text, options, isCompleteInput),
+    parser,
     text,
     optionsKey,
     isCompleteInput,
+    parserComplete: isCompleteInput,
   };
 }
 
 function resolveNextSession(
   previous: MagicTextParserSession,
   text: string,
-  options: MagicTextParserOptions,
+  options: NormalizedParserOptions,
   optionsKey: string,
   isCompleteInput: boolean,
 ): MagicTextParserSession {
-  const optionsChanged = previous.optionsKey !== optionsKey;
-  const completionChanged = previous.isCompleteInput !== isCompleteInput;
-
-  if (optionsChanged) {
+  if (previous.optionsKey !== optionsKey) {
     return createSession(text, options, optionsKey, isCompleteInput);
   }
 
   const textChanged = text !== previous.text;
+  const completionChanged = previous.isCompleteInput !== isCompleteInput;
   if (!textChanged && !completionChanged) {
     return previous;
   }
 
-  if (!textChanged && completionChanged) {
-    const parserState = isCompleteInput
-      ? finalizeMagicText(previous.parserState)
-      : parseMagicTextChunk(previous.parserState, '');
+  if (!textChanged) {
+    if (isCompleteInput && !previous.parserComplete) {
+      previous.parser.finish();
+    }
 
     return {
       ...previous,
-      parserState,
       isCompleteInput,
+      parserComplete: previous.parserComplete || isCompleteInput,
     };
   }
 
-  let nextParserState: MagicTextParserState;
-
-  if (text.startsWith(previous.text)) {
-    const suffix = text.slice(previous.text.length);
-    nextParserState =
-      suffix.length > 0 ? parseMagicTextChunk(previous.parserState, suffix) : previous.parserState;
-  } else {
-    nextParserState = parseFullText(text, options, false);
+  const canAppend = !previous.parserComplete && text.startsWith(previous.text);
+  const next = canAppend
+    ? previous
+    : createSession(text, options, optionsKey, false);
+  if (canAppend) {
+    next.parser.push(text.slice(previous.text.length));
   }
-
   if (isCompleteInput) {
-    nextParserState = finalizeMagicText(nextParserState);
+    next.parser.finish();
   }
 
   return {
-    parserState: nextParserState,
+    ...next,
     text,
     optionsKey,
     isCompleteInput,
+    parserComplete: isCompleteInput,
+  };
+}
+
+function createParserStore(
+  initialSession: MagicTextParserSession,
+): MagicTextParserStore {
+  let session = initialSession;
+  let revision = 0;
+  const listeners = new Set<() => void>();
+
+  return {
+    getSession: () => session,
+    getSnapshot: () => revision,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    update: (text, options, optionsKey, isCompleteInput) => {
+      const next = resolveNextSession(
+        session,
+        text,
+        options,
+        optionsKey,
+        isCompleteInput,
+      );
+      if (next === session) {
+        return;
+      }
+
+      session = next;
+      revision += 1;
+      for (const listener of listeners) {
+        listener();
+      }
+    },
   };
 }
 
 /**
- * Internal prop-driven hook for streaming Magic Text parsing in React.
+ * Internal prop-driven hook for Cacheplane's identity-preserving Markdown parser.
  *
- * @param text - Full markdown text that typically grows over time.
- * @param options - Optional parser option overrides.
+ * @param text - Full Markdown text that typically grows over time.
+ * @param options - Optional Cacheplane parser options.
  * @param isCompleteInput - When true, finalizes the parse state for the current text.
- * @returns The current immutable Magic Text parser state.
+ * @returns The current live Cacheplane root and completion state.
  */
 export function useMagicTextParser(
   text: string,
-  options?: Partial<MagicTextParserOptions>,
+  options?: PartialMarkdownParserOptions,
   isCompleteInput = false,
-): MagicTextParserState {
-  const sessionRef = useRef<MagicTextParserSession | null>(null);
-  const segmenter = options?.segmenter;
-  const segmenterKind =
-    typeof segmenter === 'object' && segmenter !== null
-      ? 'object'
-      : String(segmenter ?? true);
-  const segmenterLocale =
-    typeof segmenter === 'object' && segmenter !== null
-      ? (segmenter.locale ?? '')
-      : '';
-  const segmenterGranularity =
-    typeof segmenter === 'object' && segmenter !== null
-      ? (segmenter.granularity ?? 'word')
-      : '';
+): MagicTextParserResult {
+  const dollarMath = options?.math?.dollar ?? true;
+  const bracketMath = options?.math?.bracket ?? true;
   const normalizedOptions = useMemo(
-    () => normalizeOptions(options),
-    [
-      options?.enableAutolinks,
-      options?.enableTables,
-      segmenterKind,
-      segmenterLocale,
-      segmenterGranularity,
-    ],
+    () => normalizeOptions(dollarMath, bracketMath),
+    [dollarMath, bracketMath],
   );
   const optionsKey = getOptionsKey(normalizedOptions);
+  const [store] = useState(() =>
+    createParserStore(
+      createSession(text, normalizedOptions, optionsKey, isCompleteInput),
+    ),
+  );
+  useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+    store.getSnapshot,
+  );
 
-  const session = useMemo(() => {
-    const previous =
-      sessionRef.current ??
-      createSession(text, normalizedOptions, optionsKey, isCompleteInput);
+  // Cacheplane mutates nodes to preserve identity, so advance it only after
+  // React commits the corresponding props. The store update rerenders before paint.
+  useLayoutEffect(() => {
+    store.update(text, normalizedOptions, optionsKey, isCompleteInput);
+  }, [store, text, normalizedOptions, optionsKey, isCompleteInput]);
 
-    const next = resolveNextSession(
-      previous,
-      text,
-      normalizedOptions,
-      optionsKey,
-      isCompleteInput,
-    );
+  const session = store.getSession();
 
-    sessionRef.current = next;
-    return next;
-  }, [text, normalizedOptions, optionsKey, isCompleteInput]);
-
-  return session.parserState;
+  return {
+    rootNode: session.parser.root,
+    isComplete: session.parserComplete,
+  };
 }

@@ -1,4 +1,4 @@
-import { createSegments } from './segments';
+import { createSegments } from './text-segmentation';
 
 test('returns empty segments when segmentation is disabled', () => {
   const result = createSegments('hello', 0, {

@@ -23,7 +23,7 @@ import { LinkClickHandler } from './link-click-handler';
       [text]="text()"
       [isComplete]="isComplete()"
       [caret]="false"
-      [options]="magicTextOptions"
+      [segmenter]="magicTextSegmenter"
       (linkClick)="handleLinkClick($event)"
     >
       <ng-template
@@ -32,7 +32,7 @@ import { LinkClickHandler } from './link-click-handler';
         let-label="label"
       >
         @if (citation.url; as citationUrl) {
-          <sup class="citation-node" data-magic-text-node="citation">
+          <sup class="citation-node" data-magic-text-node="citation-reference">
             <a
               class="citation"
               role="doc-noteref"
@@ -50,7 +50,7 @@ import { LinkClickHandler } from './link-click-handler';
             </a>
           </sup>
         } @else {
-          <sup class="citation-node" data-magic-text-node="citation">
+          <sup class="citation-node" data-magic-text-node="citation-reference">
             <span
               class="citation citation--placeholder"
               role="doc-noteref"
@@ -172,7 +172,7 @@ export class MagicTextRenderer {
 
   readonly text = input.required<string>();
   readonly isComplete = input(false);
-  readonly magicTextOptions = { segmenter: { granularity: 'word' as const } };
+  readonly magicTextSegmenter = { granularity: 'word' as const };
 
   handleLinkClick(event: MagicTextLinkClickEvent) {
     if (event.url) {

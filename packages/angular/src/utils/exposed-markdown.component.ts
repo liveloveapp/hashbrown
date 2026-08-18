@@ -10,8 +10,9 @@ import {
 } from '@angular/core';
 import {
   type JsonResolvedValue,
-  type MagicTextParserOptions,
+  type SegmenterOptions,
 } from '@hashbrownai/core';
+import type { PartialMarkdownParserOptions } from '@cacheplane/partial-markdown';
 import {
   MagicText,
   type MagicTextCitationClickEvent,
@@ -36,7 +37,8 @@ export type ɵMarkdownNodeProp = {
 
 export type ɵExposeMarkdownBuiltInRuntimeConfig = {
   renderer?: undefined;
-  options?: Partial<MagicTextParserOptions>;
+  parserOptions?: PartialMarkdownParserOptions;
+  segmenter?: SegmenterOptions;
   caret: boolean;
   className?: string;
   onLinkClick?: (event: MagicTextLinkClickEvent) => void;
@@ -62,7 +64,8 @@ export const ɵHB_EXPOSE_MARKDOWN_CONFIG =
     <hb-magic-text
       [text]="text()"
       [isComplete]="isComplete()"
-      [options]="options()"
+      [parserOptions]="parserOptions()"
+      [segmenter]="segmenter()"
       [caret]="caret()"
       [className]="className()"
       (linkClick)="handleLinkClick($event)"
@@ -87,7 +90,8 @@ export class ɵExposedMarkdownComponent {
   });
 
   isComplete = computed(() => this.children()?.complete ?? false);
-  options = computed(() => this.config.options);
+  parserOptions = computed(() => this.config.parserOptions);
+  segmenter = computed(() => this.config.segmenter ?? true);
   caret = computed(() => this.config.caret);
   className = computed(() => this.config.className);
 

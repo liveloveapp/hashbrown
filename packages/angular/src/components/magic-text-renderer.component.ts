@@ -14,25 +14,41 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import {
-  type MagicTextAstNode,
-  type MagicTextNodeType,
-  type MagicTextParserOptions,
+  type SegmenterOptions,
   type TextSegment,
+  ɵcreateTextSegments,
+  ɵsanitizeUrl,
 } from '@hashbrownai/core';
+import {
+  type CitationDefinition,
+  type MarkdownAutolinkNode,
+  type MarkdownCitationReferenceNode,
+  type MarkdownLinkNode,
+  type MarkdownLinkReferenceNode,
+  type MarkdownMathDisplayNode,
+  type MarkdownMathInlineNode,
+  type MarkdownNode,
+  type MarkdownNodeType,
+  type MarkdownTableCellNode,
+  type MarkdownTextNode,
+  type PartialMarkdownParserOptions,
+} from '@cacheplane/partial-markdown';
 import { injectMagicTextParser } from '../utils/inject-magic-text-parser.fn';
 
-type MagicTextLinkNode = Extract<MagicTextAstNode, { type: 'link' }>;
-type MagicTextAutolinkNode = Extract<MagicTextAstNode, { type: 'autolink' }>;
-type MagicTextCitationNode = Extract<MagicTextAstNode, { type: 'citation' }>;
+type MagicTextLinkNode =
+  MarkdownLinkNode | MarkdownAutolinkNode | MarkdownLinkReferenceNode;
+type MagicTextCitationNode = MarkdownCitationReferenceNode;
 
 const WORD_JOINER = '\u2060';
 
-type MagicTextNodeTemplateType = MagicTextNodeType | 'node';
+type MagicTextNodeTemplateType = MarkdownNodeType | 'node';
 
-type CitationRenderData = {
+/** Metadata available when a citation node is rendered. @public */
+export type MagicTextCitationRenderData = {
   id: string;
   number: number | string;
   text?: string;
+  definition?: CitationDefinition;
   url?: string;
 };
 
@@ -40,19 +56,19 @@ type CitationRenderData = {
 export type MagicTextLinkClickEvent = {
   mouseEvent: MouseEvent;
   url: string;
-  node: MagicTextLinkNode | MagicTextAutolinkNode;
+  node: MagicTextLinkNode;
 };
 
 /** @public */
 export type MagicTextCitationClickEvent = {
   mouseEvent: MouseEvent;
-  citation: CitationRenderData;
+  citation: MagicTextCitationRenderData;
   node: MagicTextCitationNode;
 };
 
 /** @public */
 export type MagicTextNodeRenderContext = {
-  node: MagicTextAstNode;
+  node: MarkdownNode;
   isOpen: boolean;
   isComplete: boolean;
   renderChildren: () => unknown;
@@ -60,21 +76,21 @@ export type MagicTextNodeRenderContext = {
 
 /** @public */
 export type MagicTextTextSegmentRenderContext = {
-  node: Extract<MagicTextAstNode, { type: 'text' }>;
+  node: MarkdownTextNode;
   segment: TextSegment;
   index: number;
 };
 
 /** @public */
 export type MagicTextCaretContext = {
-  node: MagicTextAstNode;
+  node: MarkdownNode;
   depth: number;
 };
 
 /** @public */
 export type MagicTextCitationRenderContext = {
   node: MagicTextCitationNode;
-  citation: CitationRenderData;
+  citation: MagicTextCitationRenderData;
   label: string;
   isOpen: boolean;
   isComplete: boolean;
@@ -428,6 +444,14 @@ export class MagicTextRenderCitation {
                 [attr.data-magic-text-node]="node.type"
                 [attr.data-node-open]="isNodeOpen(node)"
               >
+                @if (node.task) {
+                  <input
+                    type="checkbox"
+                    [checked]="node.task.checked"
+                    disabled
+                    readonly
+                  />
+                }
                 @for (childId of getChildren(node); track childId) {
                   <ng-container
                     *ngTemplateOutlet="
@@ -497,6 +521,7 @@ export class MagicTextRenderCitation {
             @case ('table-cell') {
               @if (isTableHeaderCell(node)) {
                 <th
+                  [style.text-align]="node.alignment"
                   [attr.data-magic-text-node]="node.type"
                   [attr.data-node-open]="isNodeOpen(node)"
                 >
@@ -518,6 +543,7 @@ export class MagicTextRenderCitation {
                 </th>
               } @else {
                 <td
+                  [style.text-align]="node.alignment"
                   [attr.data-magic-text-node]="node.type"
                   [attr.data-node-open]="isNodeOpen(node)"
                 >
@@ -540,7 +566,7 @@ export class MagicTextRenderCitation {
               }
             }
 
-            @case ('em') {
+            @case ('emphasis') {
               <em
                 [attr.data-magic-text-node]="node.type"
                 [attr.data-node-open]="isNodeOpen(node)"
@@ -611,7 +637,7 @@ export class MagicTextRenderCitation {
 
             @case ('link') {
               <a
-                [attr.href]="node.url"
+                [attr.href]="getSafeUrl(node.url)"
                 target="_blank"
                 rel="noopener noreferrer"
                 [attr.title]="node.title ?? null"
@@ -637,12 +663,49 @@ export class MagicTextRenderCitation {
               </a>
             }
 
+            @case ('link-reference') {
+              @if (node.resolved) {
+                <a
+                  [attr.href]="getSafeUrl(node.url)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.title]="node.title || null"
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                  (click)="handleLinkClick($event, node, node.url)"
+                >
+                  @for (childId of getChildren(node); track childId) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        nodeTemplateRef;
+                        context: { node: getNodeById(childId) }
+                      "
+                    />
+                  }
+                </a>
+              } @else {
+                <span
+                  [attr.data-magic-text-node]="node.type"
+                  [attr.data-node-open]="isNodeOpen(node)"
+                >
+                  @for (childId of getChildren(node); track childId) {
+                    <ng-container
+                      *ngTemplateOutlet="
+                        nodeTemplateRef;
+                        context: { node: getNodeById(childId) }
+                      "
+                    />
+                  }
+                </span>
+              }
+            }
+
             @case ('code-block') {
               <pre
                 [attr.data-magic-text-node]="node.type"
                 [attr.data-node-open]="isNodeOpen(node)"
               >
-                <code [attr.data-code-info]="node.info ?? null">
+                <code [attr.data-code-info]="node.language || null">
                   {{ node.text }}
                   <ng-container
                     *ngTemplateOutlet="
@@ -654,6 +717,26 @@ export class MagicTextRenderCitation {
               </pre>
             }
 
+            @case ('math-display') {
+              <div
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+              >
+                <span [textContent]="renderDisplayMath(node)"></span>
+                <ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+                />
+              </div>
+            }
+
+            @case ('html-block') {
+              <!-- prettier-ignore -->
+              <pre [attr.data-magic-text-node]="node.type" [attr.data-node-open]="isNodeOpen(node)"><span [textContent]="node.raw"></span><ng-container *ngTemplateOutlet="resolveCaretTemplate(defaultCaretTemplate); context: getCaretContext(node)" /></pre>
+            }
+
             @case ('thematic-break') {
               <hr
                 [attr.data-magic-text-node]="node.type"
@@ -662,47 +745,87 @@ export class MagicTextRenderCitation {
             }
 
             @case ('text') {
-              @if (node.text.length && node.segments.length) {
-                @for (
-                  segment of node.segments;
-                  track segment.start + ':' + segment.kind
-                ) {
-                  @if (textSegmentTemplate(); as textSegmentTpl) {
-                    <ng-container
-                      *ngTemplateOutlet="
-                        textSegmentTpl;
-                        context: {
-                          node: node,
-                          segment: segment,
-                          index: $index,
-                        }
-                      "
-                    />
-                  } @else {
-                    <span
-                      class="hb-magic-text-segment"
-                      [attr.data-magic-text-segment-kind]="segment.kind"
-                      [attr.data-magic-text-whitespace]="segment.isWhitespace"
-                      >{{ renderSegmentText(segment) }}</span
-                    >
+              @if (getTextSegments(node); as segments) {
+                @if (segments.length) {
+                  @for (
+                    segment of segments;
+                    track segment.start + ':' + segment.kind
+                  ) {
+                    @if (textSegmentTemplate(); as textSegmentTpl) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          textSegmentTpl;
+                          context: {
+                            node: node,
+                            segment: segment,
+                            index: $index,
+                          }
+                        "
+                      />
+                    } @else {
+                      <span
+                        class="hb-magic-text-segment"
+                        [attr.data-magic-text-segment-kind]="segment.kind"
+                        [attr.data-magic-text-whitespace]="segment.isWhitespace"
+                        >{{ renderSegmentText(node, segment, $index) }}</span
+                      >
+                    }
                   }
+                } @else if (node.text.length) {
+                  <span
+                    class="hb-magic-text-segment"
+                    data-magic-text-segment-kind="full"
+                    data-magic-text-whitespace="false"
+                    >{{ renderFullText(node) }}</span
+                  >
                 }
-              } @else if (node.text.length) {
-                <span
-                  class="hb-magic-text-segment"
-                  data-magic-text-segment-kind="full"
-                  data-magic-text-whitespace="false"
-                  >{{ node.text }}</span
-                >
               }
+
+              <ng-container
+                *ngTemplateOutlet="
+                  resolveCaretTemplate(defaultCaretTemplate);
+                  context: getCaretContext(node)
+                "
+              />
             }
 
             @case ('inline-code') {
               <code
                 [attr.data-magic-text-node]="node.type"
                 [attr.data-node-open]="isNodeOpen(node)"
-                >{{ node.text }}</code
-              >
+                >{{ node.text
+                }}<ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+              /></code>
+            }
+
+            @case ('math-inline') {
+              <span
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+                >{{ renderInlineMath(node)
+                }}<ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+              /></span>
+            }
+
+            @case ('html-inline') {
+              <span
+                [attr.data-magic-text-node]="node.type"
+                [attr.data-node-open]="isNodeOpen(node)"
+                >{{ node.raw
+                }}<ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+              /></span>
             }
 
             @case ('soft-break') {
@@ -721,7 +844,7 @@ export class MagicTextRenderCitation {
 
             @case ('image') {
               <img
-                [attr.src]="node.url"
+                [attr.src]="getSafeUrl(node.url)"
                 [attr.alt]="node.alt"
                 [attr.title]="node.title ?? null"
                 [attr.data-magic-text-node]="node.type"
@@ -731,17 +854,22 @@ export class MagicTextRenderCitation {
 
             @case ('autolink') {
               <a
-                [attr.href]="node.url"
+                [attr.href]="getSafeUrl(node.url)"
                 target="_blank"
                 rel="noopener noreferrer"
                 [attr.data-magic-text-node]="node.type"
                 [attr.data-node-open]="isNodeOpen(node)"
                 (click)="handleLinkClick($event, node, node.url)"
-                >{{ node.text }}</a
-              >
+                >{{ node.text
+                }}<ng-container
+                  *ngTemplateOutlet="
+                    resolveCaretTemplate(defaultCaretTemplate);
+                    context: getCaretContext(node)
+                  "
+              /></a>
             }
 
-            @case ('citation') {
+            @case ('citation-reference') {
               @if (citationTemplate(); as citationTpl) {
                 <ng-container
                   *ngTemplateOutlet="
@@ -870,9 +998,12 @@ class MagicTextComponent {
   /**
    * Optional parser configuration overrides.
    */
-  readonly options = input<Partial<MagicTextParserOptions> | undefined>(
-    undefined,
-  );
+  readonly parserOptions = input<PartialMarkdownParserOptions | undefined>();
+
+  /**
+   * Optional text segmentation used for streaming animations.
+   */
+  readonly segmenter = input<SegmenterOptions>(true);
 
   /**
    * Caret visibility for streaming content.
@@ -904,32 +1035,26 @@ class MagicTextComponent {
   private readonly parser = injectMagicTextParser(
     computed(() => this.text() ?? ''),
     computed(() => this.isComplete()),
-    computed(() => this.options()),
+    computed(() => this.parserOptions()),
   );
 
-  protected readonly parserState = this.parser.parserState;
   protected readonly nodeById = this.parser.nodeById;
   protected readonly rootNode = this.parser.rootNode;
 
-  protected readonly openNodeId = computed(() => {
-    const stack = this.parserState().stack;
-    const nodeById = this.nodeById();
-    for (let index = stack.length - 1; index >= 0; index -= 1) {
-      const candidate = nodeById.get(stack[index]);
-      if (candidate && candidate.type !== 'document') {
-        return candidate.id;
-      }
-    }
-
-    return null;
-  });
+  protected readonly openNodeId = computed(
+    () => this.parser.openNode()?.id ?? null,
+  );
 
   protected readonly openNodeDepthById = computed(() => {
-    const stack = this.parserState().stack;
     const map = new Map<number, number>();
-
-    for (let index = 0; index < stack.length; index += 1) {
-      map.set(stack[index], index);
+    let node = this.parser.openNode();
+    const path: MarkdownNode[] = [];
+    while (node && node.type !== 'document') {
+      path.unshift(node);
+      node = node.parent;
+    }
+    for (let index = 0; index < path.length; index += 1) {
+      map.set(path[index].id, index);
     }
 
     return map;
@@ -963,35 +1088,32 @@ class MagicTextComponent {
     return this.nodeTemplateMap().get(type);
   }
 
-  protected getNodeById(nodeId: number): MagicTextAstNode | null {
+  protected getNodeById(nodeId: number): MarkdownNode | null {
     return this.nodeById().get(nodeId) ?? null;
   }
 
-  protected getChildren(node: MagicTextAstNode): readonly number[] {
-    return 'children' in node ? node.children : [];
+  protected getChildren(node: MarkdownNode): readonly number[] {
+    return 'children' in node ? node.children.map((child) => child.id) : [];
   }
 
-  protected isNodeOpen(node: MagicTextAstNode): boolean {
-    return !node.closed;
+  protected isNodeOpen(node: MarkdownNode): boolean {
+    return node.status !== 'complete';
   }
 
   protected getNodeRenderContext(
-    node: MagicTextAstNode,
+    node: MarkdownNode,
   ): MagicTextNodeRenderContext {
     return {
       node,
-      isOpen: !node.closed,
-      isComplete: this.parserState().isComplete,
-      renderChildren: () =>
-        this.getChildren(node)
-          .map((childId) => this.getNodeById(childId))
-          .filter((child): child is MagicTextAstNode => child !== null),
+      isOpen: node.status !== 'complete',
+      isComplete: this.parser.isComplete(),
+      renderChildren: () => ('children' in node ? node.children : []),
     };
   }
 
-  protected getNodeTemplateOutletContext(node: MagicTextAstNode): {
+  protected getNodeTemplateOutletContext(node: MarkdownNode): {
     $implicit: MagicTextNodeRenderContext;
-    node: MagicTextAstNode;
+    node: MarkdownNode;
     isOpen: boolean;
     isComplete: boolean;
     renderChildren: () => unknown;
@@ -1004,19 +1126,12 @@ class MagicTextComponent {
     };
   }
 
-  protected isTableHeaderCell(
-    node: Extract<MagicTextAstNode, { type: 'table-cell' }>,
-  ): boolean {
-    if (node.parentId == null) {
-      return false;
-    }
-
-    const parent = this.getNodeById(node.parentId);
-    return parent?.type === 'table-row' && parent.isHeader;
+  protected isTableHeaderCell(node: MarkdownTableCellNode): boolean {
+    return node.parent?.type === 'table-row' && node.parent.isHeader;
   }
 
   protected shouldRenderCaret(nodeId: number): boolean {
-    if (this.parserState().isComplete) {
+    if (this.parser.isComplete()) {
       return false;
     }
 
@@ -1028,7 +1143,7 @@ class MagicTextComponent {
     return this.openNodeId() === nodeId;
   }
 
-  protected getCaretContext(node: MagicTextAstNode): MagicTextCaretContext {
+  protected getCaretContext(node: MarkdownNode): MagicTextCaretContext {
     return {
       node,
       depth: this.openNodeDepthById().get(node.id) ?? -1,
@@ -1048,22 +1163,27 @@ class MagicTextComponent {
 
   protected handleLinkClick(
     mouseEvent: MouseEvent,
-    node: MagicTextLinkNode | MagicTextAutolinkNode,
+    node: MagicTextLinkNode,
     url: string,
   ): void {
     this.linkClick.emit({ mouseEvent, url, node });
   }
 
-  protected getCitation(node: MagicTextCitationNode): CitationRenderData {
-    const citations = this.parserState().citations;
-    const number = node.number ?? citations.numbers[node.idRef] ?? node.idRef;
-    const definition = citations.definitions[node.idRef];
+  protected getCitation(
+    node: MagicTextCitationNode,
+  ): MagicTextCitationRenderData {
+    const definition = this.rootNode()?.citations.get(node.refId);
 
     return {
-      id: node.idRef,
-      number,
-      text: definition?.text,
-      url: definition?.url,
+      id: node.refId,
+      number: node.index,
+      definition,
+      text: definition ? getNodeText(definition.children) : undefined,
+      url: this.getSafeUrl(
+        definition?.children.find(
+          (child) => child.type === 'link' || child.type === 'autolink',
+        )?.url,
+      ),
     };
   }
 
@@ -1078,15 +1198,15 @@ class MagicTextComponent {
       node,
       citation: this.getCitation(node),
       label: this.getCitationLabel(node),
-      isOpen: !node.closed,
-      isComplete: this.parserState().isComplete,
+      isOpen: node.status !== 'complete',
+      isComplete: this.parser.isComplete(),
     };
   }
 
   protected getCitationTemplateOutletContext(node: MagicTextCitationNode): {
     $implicit: MagicTextCitationRenderContext;
     node: MagicTextCitationNode;
-    citation: CitationRenderData;
+    citation: MagicTextCitationRenderData;
     label: string;
     isOpen: boolean;
     isComplete: boolean;
@@ -1110,11 +1230,66 @@ class MagicTextComponent {
     });
   }
 
-  protected renderSegmentText(segment: TextSegment): string {
-    return segment.noBreakBefore
+  protected getTextSegments(node: MarkdownTextNode): TextSegment[] {
+    return ɵcreateTextSegments(node.text, 0, {
+      segmenter: this.segmenter(),
+      hasWarnedSegmenterUnavailable: false,
+    }).segments;
+  }
+
+  protected getSafeUrl(url: string | undefined): string | undefined {
+    return url ? ɵsanitizeUrl(url) : undefined;
+  }
+
+  protected renderSegmentText(
+    node: MarkdownTextNode,
+    segment: TextSegment,
+    index: number,
+  ): string {
+    return index === 0 && this.shouldPreventBreakBefore(node)
       ? `${WORD_JOINER}${segment.text}`
       : segment.text;
   }
+
+  protected renderFullText(node: MarkdownTextNode): string {
+    return this.shouldPreventBreakBefore(node)
+      ? `${WORD_JOINER}${node.text}`
+      : node.text;
+  }
+
+  protected renderDisplayMath(node: MarkdownMathDisplayNode): string {
+    const [opener, closer] =
+      node.delimiter === '$$' ? ['$$', '$$'] : ['\\[', '\\]'];
+    return `${opener}${node.text}${closer}`;
+  }
+
+  protected renderInlineMath(node: MarkdownMathInlineNode): string {
+    const [opener, closer] =
+      node.delimiter === '$' ? ['$', '$'] : ['\\(', '\\)'];
+    return `${opener}${node.text}${closer}`;
+  }
+
+  private shouldPreventBreakBefore(node: MarkdownTextNode): boolean {
+    const siblings =
+      node.parent && 'children' in node.parent ? node.parent.children : [];
+    const index = node.index;
+    return (
+      index !== null &&
+      index > 0 &&
+      siblings[index - 1]?.type === 'citation-reference'
+    );
+  }
+}
+
+function getNodeText(nodes: readonly MarkdownNode[]): string {
+  return nodes
+    .map((node) => {
+      if ('text' in node && typeof node.text === 'string') {
+        return node.text;
+      }
+      return 'children' in node ? getNodeText(node.children) : '';
+    })
+    .join('');
 }
 
 export { MagicTextComponent as MagicText };

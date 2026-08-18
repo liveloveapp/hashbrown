@@ -36,6 +36,7 @@ export type {
 } from './ui/ui-kit';
 export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
+export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
 export { mergeMessagesForThread } from './utils/threading';
 export type {
   AzureKnownModelIds,
@@ -48,20 +49,10 @@ export type { ModelInput } from './transport/model-spec';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
 export {
-  createMagicTextParserState,
-  finalizeMagicText,
-  parseMagicTextChunk,
-  type CitationDefinition,
-  type CitationState,
-  type MagicTextAstNode,
-  type MagicTextNodeType,
-  type MagicTextParserOptions,
-  type MagicTextParserState,
-  type MagicTextWarning,
-  type ParseMode,
+  createSegments as ɵcreateTextSegments,
   type SegmenterOptions,
   type TextSegment,
-} from './magic-text';
+} from './text-segmentation';
 export {
   mergeToolCalls,
   updateAssistantMessage,

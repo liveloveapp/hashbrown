@@ -1,67 +1,63 @@
-import { computed, isSignal, linkedSignal, type Signal } from '@angular/core';
 import {
-  createMagicTextParserState,
-  finalizeMagicText,
-  type MagicTextAstNode,
-  type MagicTextParserOptions,
-  type MagicTextParserState,
-  parseMagicTextChunk,
-} from '@hashbrownai/core';
+  createPartialMarkdownParser,
+  type MarkdownDocumentNode,
+  type MarkdownNode,
+  type PartialMarkdownParser,
+  type PartialMarkdownParserOptions,
+} from '@cacheplane/partial-markdown';
+import { computed, isSignal, linkedSignal, type Signal } from '@angular/core';
+
+type NormalizedParserOptions = {
+  math: {
+    dollar: boolean;
+    bracket: boolean;
+  };
+};
 
 interface MagicTextParserSession {
-  parserState: MagicTextParserState;
+  parser: PartialMarkdownParser;
   text: string;
   optionsKey: string;
   isCompleteInput: boolean;
+  parserComplete: boolean;
 }
 
-const DEFAULT_OPTIONS: MagicTextParserOptions = {
-  segmenter: true,
-  enableTables: true,
-  enableAutolinks: true,
-};
-
 /**
- * A reference to a prop-driven streaming Magic Text parser backed by Angular signals.
+ * A reference to a prop-driven Cacheplane Markdown parser backed by Angular signals.
  *
  * @public
  */
 export interface MagicTextParserRef {
-  /**
-   * The current immutable parser state.
-   */
-  parserState: Signal<MagicTextParserState>;
+  /** The current identity-preserving Cacheplane parser. */
+  parser: Signal<PartialMarkdownParser>;
 
-  /**
-   * Lookup map for AST nodes by id.
-   */
-  nodeById: Signal<Map<number, MagicTextAstNode>>;
+  /** Whether the current parser has been finalized. */
+  isComplete: Signal<boolean>;
 
-  /**
-   * Current root node, if available.
-   */
-  rootNode: Signal<MagicTextAstNode | null>;
+  /** Lookup map for Markdown nodes by id. */
+  nodeById: Signal<Map<number, MarkdownNode>>;
 
-  /**
-   * Deepest currently open node, if any.
-   */
-  openNode: Signal<MagicTextAstNode | null>;
+  /** Current root node, if available. */
+  rootNode: Signal<MarkdownDocumentNode | null>;
+
+  /** Deepest currently streaming node, excluding the document root. */
+  openNode: Signal<MarkdownNode | null>;
 }
 
 /**
- * Create a prop-driven Magic Text parser backed by Angular signals.
+ * Create a prop-driven Cacheplane Markdown parser backed by Angular signals.
  *
  * @public
- * @param text - Signal containing the full markdown text that grows over time.
+ * @param text - Signal containing the full Markdown text that grows over time.
  * @param isComplete - Optional completion signal; when true, finalizes parser state.
- * @param options - Optional parser option overrides (value or signal).
+ * @param options - Optional Cacheplane parser options (value or signal).
  */
 export function injectMagicTextParser(
   text: Signal<string>,
   isComplete?: Signal<boolean>,
   options?:
-    | Partial<MagicTextParserOptions>
-    | Signal<Partial<MagicTextParserOptions> | undefined>,
+    | PartialMarkdownParserOptions
+    | Signal<PartialMarkdownParserOptions | undefined>,
 ): MagicTextParserRef {
   const source = computed(() => {
     const optionsValue = normalizeOptions(readOptions(options));
@@ -77,7 +73,7 @@ export function injectMagicTextParser(
     {
       text: string;
       isCompleteInput: boolean;
-      options: MagicTextParserOptions;
+      options: NormalizedParserOptions;
       optionsKey: string;
     },
     MagicTextParserSession
@@ -103,45 +99,63 @@ export function injectMagicTextParser(
     },
   });
 
-  const parserState = computed(() => session().parserState);
+  const parser = computed(() => session().parser, { equal: () => false });
+  const parserComplete = computed(() => session().parserComplete);
+  const rootNode = computed(() => session().parser.root, { equal: () => false });
   const nodeById = computed(() => {
-    const map = new Map<number, MagicTextAstNode>();
-
-    for (const node of parserState().nodes) {
+    const current = session();
+    const map = new Map<number, MarkdownNode>();
+    const visit = (node: MarkdownNode) => {
       map.set(node.id, node);
+      if ('children' in node) {
+        for (const child of node.children) {
+          visit(child);
+        }
+      }
+    };
+    const root = current.parser.root;
+    if (root) {
+      visit(root);
     }
 
     return map;
   });
-
-  const rootNode = computed(() => {
-    const state = parserState();
-    return state.rootId == null ? null : (nodeById().get(state.rootId) ?? null);
-  });
-
-  const openNode = computed(() => {
-    const stack = parserState().stack;
-    if (!stack.length) {
-      return null;
-    }
-
-    const id = stack[stack.length - 1];
-    return nodeById().get(id) ?? null;
-  });
+  const openNode = computed(
+    () => findDeepestOpenNode(session().parser.root),
+    { equal: () => false },
+  );
 
   return {
-    parserState,
+    parser,
+    isComplete: parserComplete,
     nodeById,
     rootNode,
     openNode,
   };
 }
 
+function findDeepestOpenNode(node: MarkdownNode | null): MarkdownNode | null {
+  if (!node || node.status === 'complete') {
+    return null;
+  }
+
+  if ('children' in node) {
+    for (let index = node.children.length - 1; index >= 0; index -= 1) {
+      const openChild = findDeepestOpenNode(node.children[index] ?? null);
+      if (openChild) {
+        return openChild;
+      }
+    }
+  }
+
+  return node.type === 'document' ? null : node;
+}
+
 function readOptions(
   options?:
-    | Partial<MagicTextParserOptions>
-    | Signal<Partial<MagicTextParserOptions> | undefined>,
-): Partial<MagicTextParserOptions> | undefined {
+    | PartialMarkdownParserOptions
+    | Signal<PartialMarkdownParserOptions | undefined>,
+): PartialMarkdownParserOptions | undefined {
   if (!options) {
     return undefined;
   }
@@ -150,109 +164,88 @@ function readOptions(
 }
 
 function normalizeOptions(
-  options?: Partial<MagicTextParserOptions>,
-): MagicTextParserOptions {
+  options?: PartialMarkdownParserOptions,
+): NormalizedParserOptions {
   return {
-    segmenter: options?.segmenter ?? DEFAULT_OPTIONS.segmenter,
-    enableTables: options?.enableTables ?? DEFAULT_OPTIONS.enableTables,
-    enableAutolinks:
-      options?.enableAutolinks ?? DEFAULT_OPTIONS.enableAutolinks,
+    math: {
+      dollar: options?.math?.dollar ?? true,
+      bracket: options?.math?.bracket ?? true,
+    },
   };
 }
 
-function getSegmenterKey(
-  segmenter: MagicTextParserOptions['segmenter'],
-): string {
-  if (segmenter === true || segmenter === false) {
-    return String(segmenter);
-  }
-
-  const locale = segmenter.locale ?? '';
-  const granularity = segmenter.granularity ?? 'word';
-  return `object:${locale}:${granularity}`;
-}
-
-function getOptionsKey(options: MagicTextParserOptions): string {
-  return `${getSegmenterKey(options.segmenter)}|tables:${String(options.enableTables)}|autolinks:${String(options.enableAutolinks)}`;
-}
-
-function parseFullText(
-  text: string,
-  options: MagicTextParserOptions,
-  isCompleteInput: boolean,
-): MagicTextParserState {
-  const initialState = createMagicTextParserState(options);
-  const parsedState =
-    text.length > 0 ? parseMagicTextChunk(initialState, text) : initialState;
-
-  return isCompleteInput ? finalizeMagicText(parsedState) : parsedState;
+function getOptionsKey(options: NormalizedParserOptions): string {
+  return `math:dollar:${String(options.math.dollar)}:bracket:${String(options.math.bracket)}`;
 }
 
 function createSession(
   text: string,
-  options: MagicTextParserOptions,
+  options: NormalizedParserOptions,
   optionsKey: string,
   isCompleteInput: boolean,
 ): MagicTextParserSession {
+  const parser = createPartialMarkdownParser(options);
+  if (text.length > 0) {
+    parser.push(text);
+  }
+  if (isCompleteInput) {
+    parser.finish();
+  }
+
   return {
-    parserState: parseFullText(text, options, isCompleteInput),
+    parser,
     text,
     optionsKey,
     isCompleteInput,
+    parserComplete: isCompleteInput,
   };
 }
 
 function resolveNextSession(
   previous: MagicTextParserSession,
   text: string,
-  options: MagicTextParserOptions,
+  options: NormalizedParserOptions,
   optionsKey: string,
   isCompleteInput: boolean,
 ): MagicTextParserSession {
-  const optionsChanged = previous.optionsKey !== optionsKey;
-  const completionChanged = previous.isCompleteInput !== isCompleteInput;
-
-  if (optionsChanged) {
+  if (previous.optionsKey !== optionsKey) {
     return createSession(text, options, optionsKey, isCompleteInput);
   }
 
   const textChanged = text !== previous.text;
+  const completionChanged = previous.isCompleteInput !== isCompleteInput;
   if (!textChanged && !completionChanged) {
     return previous;
   }
 
-  if (!textChanged && completionChanged) {
-    const parserState = isCompleteInput
-      ? finalizeMagicText(previous.parserState)
-      : previous.parserState;
+  if (!textChanged) {
+    if (isCompleteInput && !previous.parserComplete) {
+      previous.parser.finish();
+    }
 
     return {
       ...previous,
-      parserState,
       isCompleteInput,
+      parserComplete: previous.parserComplete || isCompleteInput,
     };
   }
 
-  let nextParserState: MagicTextParserState;
-
-  if (text.startsWith(previous.text)) {
-    const suffix = text.slice(previous.text.length);
-    nextParserState =
-      suffix.length > 0
-        ? parseMagicTextChunk(previous.parserState, suffix)
-        : previous.parserState;
-  } else {
-    nextParserState = parseFullText(text, options, false);
+  const canAppend = !previous.parserComplete && text.startsWith(previous.text);
+  const next = canAppend
+    ? previous
+    : createSession(text, options, optionsKey, false);
+  if (canAppend) {
+    next.parser.push(text.slice(previous.text.length));
   }
-
   if (isCompleteInput) {
-    nextParserState = finalizeMagicText(nextParserState);
+    next.parser.finish();
   }
 
   return {
-    parserState: nextParserState,
+    ...next,
     text,
     optionsKey,
     isCompleteInput,
+    parserComplete: isCompleteInput,
   };
 }

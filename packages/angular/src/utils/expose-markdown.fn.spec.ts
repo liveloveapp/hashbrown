@@ -78,7 +78,7 @@ test('exposeMarkdown uses custom description verbatim', () => {
 });
 
 test('exposeMarkdown maps node value and completion state to built-in MagicText', () => {
-  const component = exposeMarkdown({ options: { segmenter: false } });
+  const component = exposeMarkdown({ segmenter: false });
 
   const fixture = TestBed.configureTestingModule({
     imports: [component.component],
@@ -102,7 +102,7 @@ test('exposeMarkdown maps node value and completion state to built-in MagicText'
 });
 
 test('exposeMarkdown uses partial markdown text when node value is absent', () => {
-  const component = exposeMarkdown({ options: { segmenter: false } });
+  const component = exposeMarkdown({ segmenter: false });
 
   const fixture = TestBed.configureTestingModule({
     imports: [component.component],
@@ -123,7 +123,7 @@ test('exposeMarkdown uses partial markdown text when node value is absent', () =
 });
 
 test('exposeMarkdown finalizes built-in rendering when children node is complete', () => {
-  const component = exposeMarkdown({ options: { segmenter: false } });
+  const component = exposeMarkdown({ segmenter: false });
 
   const fixture = TestBed.configureTestingModule({
     imports: [component.component],
@@ -235,15 +235,15 @@ test('exposeMarkdown throws when custom renderer is missing isComplete input', (
   );
 });
 
-test('exposeMarkdown throws when custom renderer is combined with built-in options', () => {
+test('exposeMarkdown throws when custom renderer is combined with built-in settings', () => {
   const act = () =>
     exposeMarkdown({
       renderer: CustomMarkdownRendererComponent,
-      options: { segmenter: false },
+      segmenter: false,
     } as unknown as Parameters<typeof exposeMarkdown>[0]);
 
   expect(act).toThrow(
-    'When `renderer` is provided, `options`, `caret`, `className`, `onLinkClick`, and `onCitationClick` are not supported.',
+    'When `renderer` is provided, `parserOptions`, `segmenter`, `caret`, `className`, `onLinkClick`, and `onCitationClick` are not supported.',
   );
 });
 
@@ -257,7 +257,7 @@ class MarkdownRenderHostComponent {
   uiKit = createUiKit({
     components: [
       exposeMarkdown({
-        options: { segmenter: false },
+        segmenter: false,
         onLinkClick: (event) => {
           event.mouseEvent.preventDefault();
           this.linkClicks.update((count) => count + 1);

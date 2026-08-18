@@ -5,6 +5,7 @@ export {
   MagicTextRenderNode,
   MagicTextRenderTextSegment,
   type MagicTextCitationClickEvent,
+  type MagicTextCitationRenderData,
   type MagicTextCitationRenderContext,
   type MagicTextLinkClickEvent,
   type MagicTextCaretContext,
