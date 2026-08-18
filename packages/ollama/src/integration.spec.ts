@@ -96,10 +96,9 @@ test('Ollama tool calling emits tool call deltas', async () => {
     toolCallDeltas.some((toolCall) => toolCall.function?.name === 'lookup'),
   ).toBe(true);
   expect(
-    JSON.stringify(
-      toolCallDeltas.map((toolCall) => toolCall.function?.arguments ?? ''),
-    ),
-  ).toContain('hashbrown');
+    toolCallDeltas.find((toolCall) => toolCall.function?.name === 'lookup')
+      ?.function?.arguments as unknown,
+  ).toEqual({ query: 'hashbrown' });
 });
 
 test('Ollama structured output fixture emits JSON text content', async () => {
