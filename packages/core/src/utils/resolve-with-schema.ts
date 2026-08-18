@@ -1,16 +1,12 @@
 import { s } from '../schema';
-import {
-  createParserState,
-  finalizeJsonParse,
-  parseChunk,
-} from '../skillet/parser/json-parser';
+import { create, finish, push } from '@cacheplane/partial-json';
 import { JsonValue } from './types';
 
 export function resolveWithSchema(
   schema: s.HashbrownType,
   input: string,
 ): JsonValue | undefined {
-  const state = finalizeJsonParse(parseChunk(createParserState(), input));
+  const state = finish(push(create(), input));
   const output = s.fromJsonAst(schema, state);
   if (output.result.state !== 'match') {
     return undefined;

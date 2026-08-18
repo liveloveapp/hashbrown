@@ -5,7 +5,7 @@ import {
   isNodeType,
   isObjectType,
 } from '../schema/base';
-import { JsonValue } from '../skillet/parser/json-parser';
+import type { JsonValue } from '../utils/types';
 import { ExposedComponent } from '../ui';
 import type {
   HBTree,

@@ -1,5 +1,5 @@
 import { HashbrownType } from '../schema/base';
-import { JsonValue } from '../skillet/parser/json-parser';
+import type { JsonValue } from '../utils/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { JsonResolvedValue, JsonValue } from '../skillet/parser/json-parser';
+import type { JsonResolvedValue } from '../schema/base';
+import type { JsonValue } from '../utils/types';
 import { s } from '../schema';
 import { Prettify } from '../utils';
 

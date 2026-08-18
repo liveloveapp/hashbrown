@@ -1,16 +1,17 @@
 import { signal, type Signal } from '@angular/core';
 import {
-  createParserState,
-  parseChunk,
-  type ParserError,
-  type ParserState,
-  s,
-} from '@hashbrownai/core';
+  create,
+  push,
+  resolve,
+  type StreamError,
+  type StreamState,
+} from '@cacheplane/partial-json';
+import { s } from '@hashbrownai/core';
 
 function resolveSchemaError(
-  parserError: ParserError | null,
+  parserError: StreamError | null,
   isInvalid: boolean,
-  previousError: ParserError | Error | undefined,
+  previousError: StreamError | Error | undefined,
 ) {
   if (parserError) {
     return parserError;
@@ -23,12 +24,8 @@ function resolveSchemaError(
   return previousError ?? new Error('Schema invalid');
 }
 
-function getParserResolvedValue<Output>(state: ParserState) {
-  if (state.error || state.rootId === null) {
-    return undefined;
-  }
-
-  return state.nodes[state.rootId]?.resolvedValue as Output | undefined;
+function getParserResolvedValue<Output>(state: StreamState) {
+  return resolve(state) as Output | undefined;
 }
 
 /**
@@ -41,7 +38,7 @@ export interface ImperativeJsonParserRef<Output> {
   /**
    * The current streaming JSON parser state.
    */
-  parserState: Signal<ParserState>;
+  parserState: Signal<StreamState>;
 
   /**
    * The latest resolved value produced by the schema or parser state.
@@ -51,7 +48,7 @@ export interface ImperativeJsonParserRef<Output> {
   /**
    * The current parser or schema error, if any.
    */
-  error: Signal<ParserError | Error | undefined>;
+  error: Signal<StreamError | Error | undefined>;
 
   /**
    * Apply a JSON chunk to the parser.
@@ -86,14 +83,14 @@ export function injectImperativeJsonParser<Schema extends s.HashbrownType>(
 export function injectImperativeJsonParser<Output = unknown>(
   schema?: s.HashbrownType<Output>,
 ): ImperativeJsonParserRef<Output> {
-  const parserState = signal(createParserState());
+  const parserState = signal(create());
   const cache = signal<s.FromJsonAstCache | undefined>(undefined);
   const value = signal<Output | undefined>(undefined);
-  const error = signal<ParserError | Error | undefined>(undefined);
+  const error = signal<StreamError | Error | undefined>(undefined);
 
   const parseChunkHandler = (chunk: string) => {
     const currentState = parserState();
-    const nextParserState = parseChunk(currentState, chunk);
+    const nextParserState = push(currentState, chunk);
     if (nextParserState === currentState) {
       return;
     }
@@ -124,7 +121,7 @@ export function injectImperativeJsonParser<Output = unknown>(
   };
 
   const reset = () => {
-    parserState.set(createParserState());
+    parserState.set(create());
     cache.set(undefined);
     value.set(undefined);
     error.set(undefined);

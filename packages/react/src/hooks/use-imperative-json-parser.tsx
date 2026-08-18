@@ -1,21 +1,22 @@
 import {
-  createParserState,
-  parseChunk,
-  type ParserError,
-  type ParserState,
-  s,
-} from '@hashbrownai/core';
+  create,
+  push,
+  resolve,
+  type StreamError,
+  type StreamState,
+} from '@cacheplane/partial-json';
+import { s } from '@hashbrownai/core';
 import { useCallback, useRef, useState } from 'react';
 
 interface JsonParserSession<Output> {
-  parserState: ParserState;
+  parserState: StreamState;
   cache: s.FromJsonAstCache | undefined;
   value: Output | undefined;
-  error: ParserError | Error | undefined;
+  error: StreamError | Error | undefined;
 }
 
 const createSession = <Output,>(): JsonParserSession<Output> => ({
-  parserState: createParserState(),
+  parserState: create(),
   cache: undefined,
   value: undefined,
   error: undefined,
@@ -29,18 +30,14 @@ function getSchemaKey(schema?: s.HashbrownType<unknown>) {
   return JSON.stringify(s.toJsonSchema(schema));
 }
 
-function getParserResolvedValue<Output>(state: ParserState) {
-  if (state.error || state.rootId === null) {
-    return undefined;
-  }
-
-  return state.nodes[state.rootId]?.resolvedValue as Output | undefined;
+function getParserResolvedValue<Output>(state: StreamState) {
+  return resolve(state) as Output | undefined;
 }
 
 function resolveSchemaError(
-  parserError: ParserError | null,
+  parserError: StreamError | null,
   isInvalid: boolean,
-  previousError: ParserError | Error | undefined,
+  previousError: StreamError | Error | undefined,
 ) {
   if (parserError) {
     return parserError;
@@ -63,7 +60,7 @@ export interface UseImperativeJsonParserResult<Output> {
   /**
    * The current streaming JSON parser state.
    */
-  parserState: ParserState;
+  parserState: StreamState;
 
   /**
    * The latest resolved value produced by the schema or parser state.
@@ -73,7 +70,7 @@ export interface UseImperativeJsonParserResult<Output> {
   /**
    * The current parser or schema error, if any.
    */
-  error: ParserError | Error | undefined;
+  error: StreamError | Error | undefined;
 
   /**
    * Apply a JSON chunk to the parser.
@@ -123,7 +120,7 @@ export function useImperativeJsonParser<Output = unknown>(
         }
 
         const baseSession = shouldReset ? createSession<Output>() : previous;
-        const nextParserState = parseChunk(baseSession.parserState, chunk);
+        const nextParserState = push(baseSession.parserState, chunk);
         if (nextParserState === baseSession.parserState) {
           return shouldReset ? baseSession : previous;
         }
@@ -152,11 +149,17 @@ export function useImperativeJsonParser<Output = unknown>(
           };
         }
 
-        const output = s.fromJsonAst(schema, nextParserState, baseSession.cache);
+        const output = s.fromJsonAst(
+          schema,
+          nextParserState,
+          baseSession.cache,
+        );
         const result = output.result;
         const isMatch = result.state === 'match';
         const isInvalid = result.state === 'invalid';
-        const nextValue = isMatch ? (result.value as Output) : baseSession.value;
+        const nextValue = isMatch
+          ? (result.value as Output)
+          : baseSession.value;
         const nextError = resolveSchemaError(
           nextParserState.error,
           isInvalid,
@@ -190,7 +193,7 @@ export function useImperativeJsonParser<Output = unknown>(
     setSession(createSession());
   }, []);
 
- return {
+  return {
     parserState: session.parserState,
     value: session.value,
     error: session.error,

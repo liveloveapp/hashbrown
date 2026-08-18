@@ -19,5 +19,7 @@ test('published package declares the Angular 22 compatibility boundary', async (
 
   assert.equal(packageJson.peerDependencies['@angular/core'], '^22.0.0');
   assert.equal(packageJson.peerDependencies['@angular/common'], '^22.0.0');
+  assert.equal(packageJson.dependencies['@cacheplane/partial-json'], '0.2.2');
+  assert.match(bundle, /from '@cacheplane\/partial-json'/);
   assert.match(bundle, /ChangeDetectionStrategy\.Eager/);
 });

@@ -5,14 +5,14 @@ import { mergeToolCalls } from '../utils/assistant-message';
 import { JsonValue } from '../utils';
 import { s } from '../schema';
 import {
-  createParserState,
-  finalizeJsonParse,
-  getResolvedValue,
-  parseChunk,
-  type ParserState,
-} from '../skillet/parser/json-parser';
+  create,
+  finish,
+  push,
+  resolve,
+  type StreamState,
+} from '@cacheplane/partial-json';
 
-type ParserMap = Record<number, ParserState>;
+type ParserMap = Record<number, StreamState>;
 type CacheMap = Record<number, s.FromJsonAstCache>;
 type ToolCallIndexMap = Record<string, number>;
 
@@ -20,7 +20,7 @@ export interface StreamingMessageState {
   message: Chat.Internal.AssistantMessage | null;
   toolCalls: Chat.Internal.ToolCall[];
   rawToolCalls: Chat.Api.ToolCall[];
-  outputParserState?: ParserState;
+  outputParserState?: StreamState;
   outputCache?: s.FromJsonAstCache;
   toolParserStateByIndex: ParserMap;
   toolCacheByIndex: CacheMap;
@@ -46,8 +46,8 @@ export const initialState: StreamingMessageState = {
   error: undefined,
 };
 
-function ensureParserState(state: ParserState | undefined) {
-  return state ?? createParserState();
+function ensureParserState(state: StreamState | undefined) {
+  return state ?? create();
 }
 
 function getToolCallName(
@@ -73,7 +73,7 @@ function updateToolParserState(
   delta: string,
 ) {
   const current = ensureParserState(parserStates[index]);
-  const next = parseChunk(current, delta);
+  const next = push(current, delta);
   if (next === current) {
     return parserStates;
   }
@@ -93,19 +93,21 @@ function updateCache(
   return { ...cacheMap, [index]: cache };
 }
 
-function isRecoverableTrailingToken(parserState: ParserState) {
+function isRecoverableTrailingToken(parserState: StreamState) {
   if (
-    parserState.error?.message !== 'Unexpected trailing token' ||
+    parserState.error?.message !== 'Unexpected token after root value' ||
     parserState.rootId === null
   ) {
     return false;
   }
 
   const rootNode = parserState.nodes[parserState.rootId];
-  return Boolean(rootNode?.closed && rootNode.resolvedValue !== undefined);
+  return Boolean(
+    rootNode?.status === 'complete' && rootNode.value !== undefined,
+  );
 }
 
-function getSchemaParserState(parserState: ParserState) {
+function getSchemaParserState(parserState: StreamState) {
   return isRecoverableTrailingToken(parserState)
     ? { ...parserState, error: null }
     : parserState;
@@ -113,7 +115,7 @@ function getSchemaParserState(parserState: ParserState) {
 
 function resolveSchemaValue(
   schema: s.HashbrownType,
-  parserState: ParserState,
+  parserState: StreamState,
   cache: s.FromJsonAstCache | undefined,
 ) {
   const schemaParserState = getSchemaParserState(parserState);
@@ -135,12 +137,12 @@ function resolveSchemaValue(
   };
 }
 
-function resolveJsonValue(parserState: ParserState) {
-  if (parserState.error || !parserState.isComplete) {
+function resolveJsonValue(parserState: StreamState) {
+  if (parserState.error || !parserState.complete) {
     return undefined;
   }
 
-  return getResolvedValue(parserState);
+  return resolve(parserState);
 }
 
 function warnRecoveredTrailingToken(parsedData: JsonValue, extraData: string) {
@@ -159,7 +161,7 @@ function warnRecoveredTrailingToken(parsedData: JsonValue, extraData: string) {
 }
 
 function warnRecoveredTrailingTokenFromSource(
-  parserState: ParserState,
+  parserState: StreamState,
   parsedData: JsonValue,
   source: string,
 ) {
@@ -331,7 +333,7 @@ export const reducer = createReducer(
       nextContent += deltaContent;
 
       if (responseSchema && deltaContent) {
-        const nextOutputState = parseChunk(
+        const nextOutputState = push(
           ensureParserState(outputParserState),
           deltaContent,
         );
@@ -462,7 +464,7 @@ export const reducer = createReducer(
     let message = state.message;
 
     if (responseSchema && outputParserState) {
-      outputParserState = finalizeJsonParse(outputParserState);
+      outputParserState = finish(outputParserState);
       const output = resolveSchemaValue(
         responseSchema,
         outputParserState,
@@ -490,7 +492,7 @@ export const reducer = createReducer(
     const finalizedToolStates: ParserMap = {};
     Object.entries(toolParserStateByIndex).forEach(([key, parserState]) => {
       const index = Number(key);
-      const finalized = finalizeJsonParse(parserState);
+      const finalized = finish(parserState);
       const toolName = getToolCallName(state.rawToolCalls, index);
       const tool = toolName ? toolsByName[toolName] : undefined;
       const canRecoverTrailingToken =

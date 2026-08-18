@@ -16,8 +16,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "@cacheplane/partial-json": "0.2.2"
+  },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "keywords": [
     "hashbrown",

@@ -1,15 +1,15 @@
 import * as s from './public_api';
 import {
-  createParserState,
-  finalizeJsonParse,
-  parseChunk,
-  type ParserState,
-} from '../skillet/parser/json-parser';
+  create,
+  finish,
+  push,
+  type StreamState,
+} from '@cacheplane/partial-json';
 import { HashbrownTypeCtor, PRIMITIVE_WRAPPER_FIELD_NAME } from './base';
 import { Component, createComponentSchema, ExposedComponent } from '../ui';
 
 function parseChunkResult<T extends s.HashbrownType>(schema: T, input: string) {
-  const state = parseChunk(createParserState(), input);
+  const state = push(create(), input);
   return s.fromJsonAst(schema, state);
 }
 
@@ -17,7 +17,7 @@ function parseCompleteResult<T extends s.HashbrownType>(
   schema: T,
   input: string,
 ) {
-  const state = finalizeJsonParse(parseChunk(createParserState(), input));
+  const state = finish(push(create(), input));
   return s.fromJsonAst(schema, state);
 }
 
@@ -39,11 +39,11 @@ function expectInvalid<T>(output: s.FromJsonAstOutput<T>) {
 
 function applyChunk<T extends s.HashbrownType>(
   schema: T,
-  state: ParserState,
+  state: StreamState,
   cache: s.FromJsonAstCache | undefined,
   chunk: string,
 ) {
-  const nextState = parseChunk(state, chunk);
+  const nextState = push(state, chunk);
   const output = s.fromJsonAst(schema, nextState, cache);
   return {
     state: nextState,
@@ -371,7 +371,7 @@ test('Streaming object preserves initialized identity across chunks', () => {
     b: s.streaming.array('b', s.string('b')),
   });
 
-  const initialState = createParserState();
+  const initialState = create();
 
   const firstResult = applyChunk(
     schema,
@@ -485,7 +485,7 @@ test('streaming string resolves open nodes while non-streaming waits for close',
   const streamingSchema = s.streaming.string('streaming');
   const nonStreamingSchema = s.string('non-streaming');
 
-  let state = createParserState();
+  let state = create();
   let cache: s.FromJsonAstCache | undefined;
 
   let result = applyChunk(streamingSchema, state, cache, '"he');
@@ -512,7 +512,7 @@ test('streaming string resolves open nodes while non-streaming waits for close',
 test('streaming array emits elements incrementally and caches when nothing new matches', () => {
   const schema = s.streaming.array('arr', s.string('str'));
 
-  let state = createParserState();
+  let state = create();
   let cache: s.FromJsonAstCache | undefined;
 
   let result = applyChunk(schema, state, cache, '["a","b');
@@ -532,7 +532,7 @@ test('streaming array emits elements incrementally and caches when nothing new m
 test('non-streaming array requires a closed array', () => {
   const schema = s.array('arr', s.number('num'));
 
-  let state = createParserState();
+  let state = create();
 
   let result = applyChunk(schema, state, undefined, '[1,2,');
   state = result.state;
@@ -548,7 +548,7 @@ test('non-streaming object matches when all keys are present even if open', () =
     a: s.number('a'),
   });
 
-  const result = applyChunk(schema, createParserState(), undefined, '{"a":1,');
+  const result = applyChunk(schema, create(), undefined, '{"a":1,');
   expect(result.result).toEqual({ state: 'match', value: { a: 1 } });
 });
 
@@ -558,12 +558,7 @@ test('non-streaming object initializes missing streaming string keys', () => {
     count: s.number('count'),
   });
 
-  const result = applyChunk(
-    schema,
-    createParserState(),
-    undefined,
-    '{"count":1,',
-  );
+  const result = applyChunk(schema, create(), undefined, '{"count":1,');
 
   expect(result.result).toEqual({
     state: 'match',
@@ -577,12 +572,7 @@ test('non-streaming object initializes missing streaming array keys', () => {
     count: s.number('count'),
   });
 
-  const result = applyChunk(
-    schema,
-    createParserState(),
-    undefined,
-    '{"count":1,',
-  );
+  const result = applyChunk(schema, create(), undefined, '{"count":1,');
 
   expect(result.result).toEqual({
     state: 'match',
@@ -598,12 +588,7 @@ test('non-streaming object initializes missing streaming object keys', () => {
     count: s.number('count'),
   });
 
-  const result = applyChunk(
-    schema,
-    createParserState(),
-    undefined,
-    '{"count":1,',
-  );
+  const result = applyChunk(schema, create(), undefined, '{"count":1,');
 
   expect(result.result).toEqual({
     state: 'match',
@@ -617,7 +602,7 @@ test('non-streaming object requires all keys to be present', () => {
     b: s.number('b'),
   });
 
-  const state = parseChunk(createParserState(), '{"a":1,');
+  const state = push(create(), '{"a":1,');
   const result = s.fromJsonAst(schema, state, undefined);
   expect(result.result.state).toBe('no-match');
 });
@@ -625,7 +610,7 @@ test('non-streaming object requires all keys to be present', () => {
 test('match with null is distinct from no-match', () => {
   const schema = s.nullish();
 
-  let state = createParserState();
+  let state = create();
 
   let result = applyChunk(schema, state, undefined, 'nu');
   state = result.state;
@@ -645,7 +630,7 @@ test('anyOf picks the first match and propagates invalid parser states', () => {
     s.streaming.string('second'),
   ]);
 
-  const state = parseChunk(createParserState(), '"hi');
+  const state = push(create(), '"hi');
   const orderedResult = s.fromJsonAst(ordered, state, undefined);
   expect(orderedResult.result.state).toBe('match');
   if (orderedResult.result.state === 'match') {
@@ -656,7 +641,7 @@ test('anyOf picks the first match and propagates invalid parser states', () => {
     });
   }
 
-  const errorState = parseChunk(createParserState(), '{"a":1,]');
+  const errorState = push(create(), '{"a":1,]');
   expect(errorState.error).not.toBeNull();
   const invalidResult = s.fromJsonAst(ordered, errorState, undefined);
   expect(invalidResult.result.state).toBe('invalid');
@@ -665,7 +650,7 @@ test('anyOf picks the first match and propagates invalid parser states', () => {
 test('node exposes parser state even when inner schema does not match', () => {
   const schema = s.node(s.string('inner'));
 
-  let state = createParserState();
+  let state = create();
 
   let result = applyChunk(schema, state, undefined, '"he');
   state = result.state;
