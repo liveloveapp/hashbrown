@@ -1,3 +1,4 @@
+import { EventType } from '@ag-ui/core';
 import { apiActions, devActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
@@ -111,44 +112,29 @@ test('selectViewMessages uses streaming output tool arguments', () => {
 
   state = reduceAll(
     state,
-    apiActions.generateMessageChunk({
-      choices: [
-        {
-          index: 0,
-          delta: {
-            role: 'assistant',
-            toolCalls: [
-              {
-                index: 0,
-                id: 'call-output',
-                type: 'function',
-                function: { name: 'output', arguments: '{"text":"he' },
-              },
-            ],
-          },
-          finishReason: null,
-        },
-      ],
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-output',
+      toolCallName: 'output',
+      parentMessageId: 'message-1',
     }),
   );
 
   state = reduceAll(
     state,
-    apiActions.generateMessageChunk({
-      choices: [
-        {
-          index: 0,
-          delta: {
-            toolCalls: [
-              {
-                index: 0,
-                function: { arguments: 'llo"}' },
-              },
-            ],
-          },
-          finishReason: null,
-        },
-      ],
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'call-output',
+      delta: '{"text":"he',
+    }),
+  );
+
+  state = reduceAll(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'call-output',
+      delta: 'llo"}',
     }),
   );
 

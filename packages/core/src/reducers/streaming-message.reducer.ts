@@ -1,9 +1,4 @@
-import { createReducer, on, select } from '../utils/micro-ngrx';
-import { Chat } from '../models';
-import { apiActions, devActions } from '../actions';
-import { mergeToolCalls } from '../utils/assistant-message';
-import { JsonValue } from '../utils';
-import { s } from '../schema';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
   create,
   finish,
@@ -11,20 +6,25 @@ import {
   resolve,
   type StreamState,
 } from '@cacheplane/partial-json';
+import { apiActions, devActions } from '../actions';
+import { Chat } from '../models';
+import { s } from '../schema';
+import { JsonValue } from '../utils';
+import { createReducer, on, select } from '../utils/micro-ngrx';
 
-type ParserMap = Record<number, StreamState>;
-type CacheMap = Record<number, s.FromJsonAstCache>;
-type ToolCallIndexMap = Record<string, number>;
+type ParserMap = Record<string, StreamState>;
+type CacheMap = Record<string, s.FromJsonAstCache>;
 
 export interface StreamingMessageState {
   message: Chat.Internal.AssistantMessage | null;
+  messageId?: string;
+  activeToolCallId?: string;
   toolCalls: Chat.Internal.ToolCall[];
-  rawToolCalls: Chat.Api.ToolCall[];
   outputParserState?: StreamState;
   outputCache?: s.FromJsonAstCache;
-  toolParserStateByIndex: ParserMap;
-  toolCacheByIndex: CacheMap;
-  toolCallIndexById: ToolCallIndexMap;
+  toolParserStateById: ParserMap;
+  toolCacheById: CacheMap;
+  finalizedToolCallIds: Record<string, true>;
   configSnapshot?: {
     responseSchema?: s.HashbrownType;
     emulateStructuredOutput: boolean;
@@ -35,62 +35,20 @@ export interface StreamingMessageState {
 
 export const initialState: StreamingMessageState = {
   message: null,
+  messageId: undefined,
+  activeToolCallId: undefined,
   toolCalls: [],
-  rawToolCalls: [],
   outputParserState: undefined,
   outputCache: undefined,
-  toolParserStateByIndex: {},
-  toolCacheByIndex: {},
-  toolCallIndexById: {},
+  toolParserStateById: {},
+  toolCacheById: {},
+  finalizedToolCallIds: {},
   configSnapshot: undefined,
   error: undefined,
 };
 
 function ensureParserState(state: StreamState | undefined) {
   return state ?? create();
-}
-
-function getToolCallName(
-  mergedToolCalls: Chat.Api.ToolCall[],
-  index: number | undefined,
-  fallback?: string,
-) {
-  if (fallback) {
-    return fallback;
-  }
-
-  if (index === undefined) {
-    return undefined;
-  }
-
-  const existing = mergedToolCalls.find((call) => call.index === index);
-  return existing?.function?.name;
-}
-
-function updateToolParserState(
-  parserStates: ParserMap,
-  index: number,
-  delta: string,
-) {
-  const current = ensureParserState(parserStates[index]);
-  const next = push(current, delta);
-  if (next === current) {
-    return parserStates;
-  }
-
-  return { ...parserStates, [index]: next };
-}
-
-function updateCache(
-  cacheMap: CacheMap,
-  index: number,
-  cache: s.FromJsonAstCache,
-) {
-  if (cacheMap[index] === cache) {
-    return cacheMap;
-  }
-
-  return { ...cacheMap, [index]: cache };
 }
 
 function isRecoverableTrailingToken(parserState: StreamState) {
@@ -173,6 +131,458 @@ function warnRecoveredTrailingTokenFromSource(
   warnRecoveredTrailingToken(parsedData, source.slice(parserError.index));
 }
 
+function getToolCallMetadata(rawEvent: unknown) {
+  if (!rawEvent || typeof rawEvent !== 'object' || Array.isArray(rawEvent)) {
+    return undefined;
+  }
+
+  const hashbrown = (rawEvent as Record<string, unknown>)['hashbrown'];
+  if (!hashbrown || typeof hashbrown !== 'object' || Array.isArray(hashbrown)) {
+    return undefined;
+  }
+
+  const metadata = (hashbrown as Record<string, unknown>)['metadata'];
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return undefined;
+  }
+
+  return metadata as Record<string, unknown>;
+}
+
+function startTextMessage(
+  state: StreamingMessageState,
+  event: Extract<AGUIEvent, { type: EventType.TEXT_MESSAGE_START }>,
+): StreamingMessageState {
+  if (event.role !== 'assistant') {
+    return state;
+  }
+
+  if (state.message && state.messageId === event.messageId) {
+    return state;
+  }
+
+  return {
+    ...state,
+    messageId: event.messageId,
+    message: state.message ?? {
+      role: 'assistant',
+      content: '',
+      toolCallIds: state.toolCalls.map((toolCall) => toolCall.id),
+    },
+  };
+}
+
+function appendTextContent(
+  state: StreamingMessageState,
+  event: Extract<AGUIEvent, { type: EventType.TEXT_MESSAGE_CONTENT }>,
+): StreamingMessageState {
+  if (
+    !state.message ||
+    state.messageId !== event.messageId ||
+    event.delta.length === 0
+  ) {
+    return state;
+  }
+
+  const responseSchema = state.configSnapshot?.responseSchema;
+  const content = (state.message.content ?? '') + event.delta;
+  let message: Chat.Internal.AssistantMessage = {
+    ...state.message,
+    content,
+  };
+  let outputParserState = state.outputParserState;
+  let outputCache = state.outputCache;
+  let error = state.error;
+
+  if (responseSchema) {
+    outputParserState = push(ensureParserState(outputParserState), event.delta);
+    const output = resolveSchemaValue(
+      responseSchema,
+      outputParserState,
+      outputCache,
+    );
+    outputCache = output.cache;
+    if (output.hasError && !error) {
+      error = new Error('Invalid structured output');
+    }
+    if (output.value !== undefined) {
+      message = {
+        ...message,
+        contentResolved: output.value,
+      };
+    }
+  }
+
+  return {
+    ...state,
+    message,
+    outputParserState,
+    outputCache,
+    error,
+  };
+}
+
+function startToolCall(
+  state: StreamingMessageState,
+  event: Extract<AGUIEvent, { type: EventType.TOOL_CALL_START }>,
+): StreamingMessageState {
+  if (state.toolCalls.some((toolCall) => toolCall.id === event.toolCallId)) {
+    return state.activeToolCallId === event.toolCallId
+      ? state
+      : { ...state, activeToolCallId: event.toolCallId };
+  }
+
+  const toolCalls = [
+    ...state.toolCalls,
+    {
+      id: event.toolCallId,
+      name: event.toolCallName,
+      arguments: '',
+      status: 'pending' as const,
+      metadata: getToolCallMetadata(event.rawEvent),
+    },
+  ];
+  const message = state.message ?? {
+    role: 'assistant' as const,
+    content: '',
+    toolCallIds: [],
+  };
+
+  return {
+    ...state,
+    messageId: state.messageId ?? event.parentMessageId,
+    activeToolCallId: event.toolCallId,
+    message: {
+      ...message,
+      toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+    },
+    toolCalls,
+  };
+}
+
+function appendToolArguments(
+  state: StreamingMessageState,
+  event: Extract<AGUIEvent, { type: EventType.TOOL_CALL_ARGS }>,
+): StreamingMessageState {
+  const toolCallIndex = state.toolCalls.findIndex(
+    (toolCall) => toolCall.id === event.toolCallId,
+  );
+  if (toolCallIndex === -1) {
+    return state;
+  }
+
+  const toolCall = state.toolCalls[toolCallIndex];
+  if (!toolCall) {
+    return state;
+  }
+
+  const incomingMetadata = getToolCallMetadata(event.rawEvent);
+  if (event.delta.length === 0 && !incomingMetadata) {
+    return state;
+  }
+
+  const argumentsString = toolCall.arguments + event.delta;
+  const metadata = incomingMetadata
+    ? { ...(toolCall.metadata ?? {}), ...incomingMetadata }
+    : toolCall.metadata;
+  const tool = state.configSnapshot?.toolsByName[toolCall.name];
+  let argumentsResolved = toolCall.argumentsResolved;
+  let toolParserStateById = state.toolParserStateById;
+  let toolCacheById = state.toolCacheById;
+  let error = state.error;
+
+  if (tool && event.delta.length > 0) {
+    const parserState = push(
+      ensureParserState(toolParserStateById[event.toolCallId]),
+      event.delta,
+    );
+    toolParserStateById = {
+      ...toolParserStateById,
+      [event.toolCallId]: parserState,
+    };
+
+    if (s.isHashbrownType(tool.schema)) {
+      const resolved = resolveSchemaValue(
+        tool.schema,
+        parserState,
+        toolCacheById[event.toolCallId],
+      );
+      toolCacheById = {
+        ...toolCacheById,
+        [event.toolCallId]: resolved.cache,
+      };
+      if (resolved.value !== undefined) {
+        argumentsResolved = resolved.value;
+      }
+      if (resolved.hasError && !error) {
+        error = new Error(`Invalid tool arguments for ${toolCall.name}`);
+      }
+    } else if (parserState.error && !error) {
+      error = new Error(`Invalid tool arguments for ${toolCall.name}`);
+    } else {
+      const resolvedValue = resolveJsonValue(parserState);
+      if (resolvedValue !== undefined) {
+        argumentsResolved = resolvedValue;
+      }
+    }
+  }
+
+  const toolCalls = state.toolCalls.map((current, index) =>
+    index === toolCallIndex
+      ? {
+          ...current,
+          arguments: argumentsString,
+          argumentsResolved,
+          metadata,
+        }
+      : current,
+  );
+
+  return {
+    ...state,
+    activeToolCallId: event.toolCallId,
+    toolCalls,
+    toolParserStateById,
+    toolCacheById,
+    error,
+  };
+}
+
+function applyTextMessageChunk(
+  state: StreamingMessageState,
+  event: Extract<AGUIEvent, { type: EventType.TEXT_MESSAGE_CHUNK }>,
+): StreamingMessageState {
+  const messageId = event.messageId ?? state.messageId;
+  if (!messageId) {
+    return state;
+  }
+
+  let next = state;
+  if (!state.message || state.messageId !== messageId) {
+    next = startTextMessage(state, {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId,
+      role: event.role ?? 'assistant',
+      name: event.name,
+      rawEvent: event.rawEvent,
+      timestamp: event.timestamp,
+    });
+  }
+
+  if (event.delta === undefined) {
+    return next;
+  }
+
+  return appendTextContent(next, {
+    type: EventType.TEXT_MESSAGE_CONTENT,
+    messageId,
+    delta: event.delta,
+    rawEvent: event.rawEvent,
+    timestamp: event.timestamp,
+  });
+}
+
+function applyToolCallChunk(
+  state: StreamingMessageState,
+  event: Extract<AGUIEvent, { type: EventType.TOOL_CALL_CHUNK }>,
+): StreamingMessageState {
+  const toolCallId = event.toolCallId ?? state.activeToolCallId;
+  if (!toolCallId) {
+    return state;
+  }
+
+  let next = state;
+  const existing = state.toolCalls.some(
+    (toolCall) => toolCall.id === toolCallId,
+  );
+  if (!existing) {
+    if (!event.toolCallName) {
+      return state;
+    }
+    next = startToolCall(state, {
+      type: EventType.TOOL_CALL_START,
+      toolCallId,
+      toolCallName: event.toolCallName,
+      parentMessageId: event.parentMessageId,
+      rawEvent: event.rawEvent,
+      timestamp: event.timestamp,
+    });
+  } else if (state.activeToolCallId !== toolCallId) {
+    next = { ...state, activeToolCallId: toolCallId };
+  }
+
+  if (event.delta === undefined && event.rawEvent === undefined) {
+    return next;
+  }
+
+  return appendToolArguments(next, {
+    type: EventType.TOOL_CALL_ARGS,
+    toolCallId,
+    delta: event.delta ?? '',
+    rawEvent: event.rawEvent,
+    timestamp: event.timestamp,
+  });
+}
+
+function finalizeOutput(state: StreamingMessageState): StreamingMessageState {
+  const responseSchema = state.configSnapshot?.responseSchema;
+  if (!responseSchema || !state.outputParserState) {
+    return state;
+  }
+
+  const outputParserState = finish(state.outputParserState);
+  const output = resolveSchemaValue(
+    responseSchema,
+    outputParserState,
+    state.outputCache,
+  );
+  let message = state.message;
+  let error = state.error;
+
+  if (output.hasError && !error) {
+    error = new Error('Invalid structured output');
+  }
+  if (output.value !== undefined && message) {
+    message = {
+      ...message,
+      contentResolved: output.value,
+    };
+  }
+  if (output.recoveredTrailingToken && output.value !== undefined) {
+    warnRecoveredTrailingTokenFromSource(
+      outputParserState,
+      output.value,
+      message?.content ?? '',
+    );
+  }
+
+  return {
+    ...state,
+    message,
+    outputParserState,
+    outputCache: output.cache,
+    error,
+  };
+}
+
+function finalizeToolCalls(
+  state: StreamingMessageState,
+  toolCallIds?: ReadonlySet<string>,
+): StreamingMessageState {
+  const toolsByName = state.configSnapshot?.toolsByName ?? {};
+  let toolParserStateById = state.toolParserStateById;
+  let toolCacheById = state.toolCacheById;
+  let finalizedToolCallIds = state.finalizedToolCallIds;
+  let error = state.error;
+
+  const toolCalls = state.toolCalls.map((toolCall) => {
+    if (
+      (toolCallIds && !toolCallIds.has(toolCall.id)) ||
+      finalizedToolCallIds[toolCall.id]
+    ) {
+      return toolCall;
+    }
+
+    const parserState = toolParserStateById[toolCall.id];
+    const tool = toolsByName[toolCall.name];
+    if (!parserState || !tool) {
+      return toolCall;
+    }
+
+    const finalized = finish(parserState);
+    toolParserStateById = {
+      ...toolParserStateById,
+      [toolCall.id]: finalized,
+    };
+    finalizedToolCallIds = {
+      ...finalizedToolCallIds,
+      [toolCall.id]: true,
+    };
+    let argumentsResolved = toolCall.argumentsResolved;
+
+    if (s.isHashbrownType(tool.schema)) {
+      const resolved = resolveSchemaValue(
+        tool.schema,
+        finalized,
+        toolCacheById[toolCall.id],
+      );
+      toolCacheById = {
+        ...toolCacheById,
+        [toolCall.id]: resolved.cache,
+      };
+      if (resolved.value !== undefined) {
+        argumentsResolved = resolved.value;
+      }
+      if (resolved.recoveredTrailingToken && resolved.value !== undefined) {
+        warnRecoveredTrailingTokenFromSource(
+          finalized,
+          resolved.value,
+          toolCall.arguments,
+        );
+      }
+      if (resolved.hasError && !error) {
+        error = new Error(`Invalid tool arguments for ${toolCall.name}`);
+      }
+    } else {
+      const resolvedValue = resolveJsonValue(finalized);
+      if (resolvedValue !== undefined) {
+        argumentsResolved = resolvedValue;
+      }
+      if (finalized.error && !error) {
+        error = new Error(`Invalid tool arguments for ${toolCall.name}`);
+      }
+    }
+
+    return argumentsResolved === toolCall.argumentsResolved
+      ? toolCall
+      : { ...toolCall, argumentsResolved };
+  });
+
+  return {
+    ...state,
+    toolCalls,
+    toolParserStateById,
+    toolCacheById,
+    finalizedToolCallIds,
+    error,
+  };
+}
+
+function finishRun(state: StreamingMessageState): StreamingMessageState {
+  return finalizeToolCalls(finalizeOutput(state));
+}
+
+function reduceEvent(
+  state: StreamingMessageState,
+  event: AGUIEvent,
+): StreamingMessageState {
+  switch (event.type) {
+    case EventType.TEXT_MESSAGE_START:
+      return startTextMessage(state, event);
+    case EventType.TEXT_MESSAGE_CONTENT:
+      return appendTextContent(state, event);
+    case EventType.TEXT_MESSAGE_CHUNK:
+      return applyTextMessageChunk(state, event);
+    case EventType.TOOL_CALL_START:
+      return startToolCall(state, event);
+    case EventType.TOOL_CALL_ARGS:
+      return appendToolArguments(state, event);
+    case EventType.TOOL_CALL_CHUNK:
+      return applyToolCallChunk(state, event);
+    case EventType.TOOL_CALL_END:
+      return finalizeToolCalls(state, new Set([event.toolCallId]));
+    case EventType.RUN_FINISHED:
+      return finishRun(state);
+    case EventType.RUN_ERROR:
+      return {
+        ...state,
+        error: state.error ?? new Error(event.message),
+      };
+    default:
+      return state;
+  }
+}
+
 export const reducer = createReducer(
   initialState,
   on(
@@ -191,437 +601,14 @@ export const reducer = createReducer(
       };
     },
   ),
-  on(
-    apiActions.generateMessageChunk,
-    (state, action): StreamingMessageState => {
-      const choice = action.payload.choices[0];
-      if (!choice) {
-        return state;
-      }
-
-      const config = state.configSnapshot;
-      const responseSchema = config?.responseSchema;
-      const toolsByName = config?.toolsByName ?? {};
-
-      const delta = choice.delta;
-      const deltaContent = delta.content ?? '';
-      const deltaToolCalls = delta.toolCalls ?? [];
-
-      let message = state.message;
-      if (!message) {
-        if (delta.role !== 'assistant') {
-          return state;
-        }
-        message = {
-          role: 'assistant',
-          content: '',
-          toolCallIds: [],
-        };
-      }
-      const baseMessage: Chat.Internal.AssistantMessage = message ?? {
-        role: 'assistant',
-        content: '',
-        toolCallIds: [],
-      };
-      message = baseMessage;
-
-      const mergedRawToolCalls = mergeToolCalls(
-        state.rawToolCalls,
-        deltaToolCalls,
-      );
-
-      let outputParserState = state.outputParserState;
-      let outputCache = state.outputCache;
-      let toolParserStateByIndex = state.toolParserStateByIndex;
-      let toolCacheByIndex = state.toolCacheByIndex;
-      let toolCallIndexById = state.toolCallIndexById;
-      let error = state.error;
-      const updatedToolIds = new Set<string>();
-      const updatedToolIndices = new Set<number>();
-      const resolvedArgsByIndex = new Map<number, JsonValue | undefined>();
-
-      for (const toolCallDelta of deltaToolCalls) {
-        const index =
-          toolCallDelta.index ??
-          (toolCallDelta.id ? toolCallIndexById[toolCallDelta.id] : undefined);
-        const deltaArgs = toolCallDelta.function?.arguments;
-        const isStringArgs = typeof deltaArgs === 'string';
-        const hasArgs =
-          deltaArgs !== undefined &&
-          deltaArgs !== null &&
-          (!isStringArgs || deltaArgs.length > 0);
-
-        if (toolCallDelta.id && toolCallDelta.index !== undefined) {
-          toolCallIndexById = {
-            ...toolCallIndexById,
-            [toolCallDelta.id]: toolCallDelta.index,
-          };
-        }
-
-        if (index === undefined) {
-          continue;
-        }
-        updatedToolIndices.add(index);
-
-        const name = getToolCallName(
-          mergedRawToolCalls,
-          index,
-          toolCallDelta.function?.name,
-        );
-
-        if (!hasArgs) {
-          continue;
-        }
-
-        if (!name) {
-          continue;
-        }
-
-        const tool = toolsByName[name];
-        if (!tool) {
-          continue;
-        }
-
-        if (isStringArgs) {
-          toolParserStateByIndex = updateToolParserState(
-            toolParserStateByIndex,
-            index,
-            deltaArgs,
-          );
-
-          const toolState = toolParserStateByIndex[index];
-          if (!toolState) {
-            continue;
-          }
-
-          if (s.isHashbrownType(tool.schema)) {
-            const resolved = resolveSchemaValue(
-              tool.schema,
-              toolState,
-              toolCacheByIndex[index],
-            );
-            toolCacheByIndex = updateCache(
-              toolCacheByIndex,
-              index,
-              resolved.cache,
-            );
-            if (resolved.value !== undefined) {
-              resolvedArgsByIndex.set(index, resolved.value);
-            }
-
-            if (resolved.hasError && !error) {
-              error = new Error(`Invalid tool arguments for ${name}`);
-            }
-          } else if (toolState.error && !error) {
-            error = new Error(`Invalid tool arguments for ${name}`);
-          } else {
-            const resolvedValue = resolveJsonValue(toolState);
-            if (resolvedValue !== undefined) {
-              resolvedArgsByIndex.set(index, resolvedValue);
-            }
-          }
-        } else {
-          resolvedArgsByIndex.set(index, deltaArgs as JsonValue);
-        }
-
-        if (toolCallDelta.id) {
-          updatedToolIds.add(toolCallDelta.id);
-        }
-      }
-
-      let nextContent = message.content ?? '';
-      nextContent += deltaContent;
-
-      if (responseSchema && deltaContent) {
-        const nextOutputState = push(
-          ensureParserState(outputParserState),
-          deltaContent,
-        );
-        outputParserState = nextOutputState;
-        const output = resolveSchemaValue(
-          responseSchema,
-          nextOutputState,
-          outputCache,
-        );
-        outputCache = output.cache;
-        if (output.hasError && !error) {
-          error = new Error('Invalid structured output');
-        }
-        if (output.value !== undefined) {
-          message = {
-            ...message,
-            contentResolved: output.value,
-          };
-        }
-      }
-
-      const existingToolCalls = state.toolCalls;
-      const existingById = existingToolCalls.reduce(
-        (acc, toolCall) => {
-          acc[toolCall.id] = toolCall;
-          return acc;
-        },
-        {} as Record<string, Chat.Internal.ToolCall>,
-      );
-
-      const nextToolCalls = mergedRawToolCalls.flatMap((toolCall) => {
-        const name = toolCall.function?.name;
-        if (!name) {
-          return [];
-        }
-
-        const toolCallId =
-          toolCall.id ??
-          (toolCall.index !== undefined
-            ? `tool-call-${toolCall.index}`
-            : undefined);
-        if (!toolCallId) {
-          return [];
-        }
-
-        const existing = existingById[toolCallId];
-        if (
-          existing &&
-          !updatedToolIds.has(toolCallId) &&
-          !updatedToolIndices.has(toolCall.index ?? -1)
-        ) {
-          return [existing];
-        }
-
-        const base: Chat.Internal.ToolCall = existing ?? {
-          id: toolCallId,
-          name,
-          arguments: '',
-          status: 'pending',
-        };
-
-        const rawArguments = toolCall.function?.arguments;
-        const argumentsString =
-          typeof rawArguments === 'string'
-            ? rawArguments
-            : rawArguments != null
-              ? JSON.stringify(rawArguments)
-              : '';
-
-        const tool = toolsByName[name];
-        const toolIndex =
-          toolCall.index ??
-          (toolCall.id ? toolCallIndexById[toolCall.id] : undefined);
-        const parserState =
-          tool && toolIndex !== undefined
-            ? toolParserStateByIndex[toolIndex]
-            : undefined;
-        let argumentsResolved = base.argumentsResolved;
-
-        if (tool && parserState && toolIndex !== undefined) {
-          const resolved = resolvedArgsByIndex.get(toolIndex);
-          if (resolved !== undefined) {
-            argumentsResolved = resolved;
-          }
-        }
-
-        return [
-          {
-            ...base,
-            name,
-            arguments: argumentsString,
-            argumentsResolved,
-          },
-        ];
-      });
-
-      const nextMessage: Chat.Internal.AssistantMessage = {
-        ...message,
-        content: nextContent,
-        toolCallIds: nextToolCalls.map((toolCall) => toolCall.id),
-      };
-
-      return {
-        ...state,
-        message: nextMessage,
-        toolCalls: nextToolCalls,
-        rawToolCalls: mergedRawToolCalls,
-        outputParserState,
-        outputCache,
-        toolParserStateByIndex,
-        toolCacheByIndex,
-        toolCallIndexById,
-        error,
-      };
-    },
+  on(apiActions.generateMessageEvent, (state, action): StreamingMessageState =>
+    reduceEvent(state, action.payload),
   ),
-  on(apiActions.generateMessageFinish, (state): StreamingMessageState => {
-    const config = state.configSnapshot;
-    const responseSchema = config?.responseSchema;
-    const toolsByName = config?.toolsByName ?? {};
-
-    let outputParserState = state.outputParserState;
-    let outputCache = state.outputCache;
-    let toolParserStateByIndex = state.toolParserStateByIndex;
-    let toolCacheByIndex = state.toolCacheByIndex;
-    const toolCallIndexById = state.toolCallIndexById;
-    let error = state.error;
-    let message = state.message;
-
-    if (responseSchema && outputParserState) {
-      outputParserState = finish(outputParserState);
-      const output = resolveSchemaValue(
-        responseSchema,
-        outputParserState,
-        outputCache,
-      );
-      outputCache = output.cache;
-      if (output.hasError && !error) {
-        error = new Error('Invalid structured output');
-      }
-      if (output.value !== undefined && message) {
-        message = {
-          ...message,
-          contentResolved: output.value,
-        };
-      }
-      if (output.recoveredTrailingToken && output.value !== undefined) {
-        warnRecoveredTrailingTokenFromSource(
-          outputParserState,
-          output.value,
-          message?.content ?? '',
-        );
-      }
-    }
-
-    const finalizedToolStates: ParserMap = {};
-    Object.entries(toolParserStateByIndex).forEach(([key, parserState]) => {
-      const index = Number(key);
-      const finalized = finish(parserState);
-      const toolName = getToolCallName(state.rawToolCalls, index);
-      const tool = toolName ? toolsByName[toolName] : undefined;
-      const canRecoverTrailingToken =
-        tool &&
-        s.isHashbrownType(tool.schema) &&
-        isRecoverableTrailingToken(finalized);
-      finalizedToolStates[index] = finalized;
-      if (finalized.error && !canRecoverTrailingToken && !error) {
-        error = new Error('Invalid tool arguments');
-      }
-    });
-    toolParserStateByIndex = finalizedToolStates;
-
-    const existingById = state.toolCalls.reduce(
-      (acc, toolCall) => {
-        acc[toolCall.id] = toolCall;
-        return acc;
-      },
-      {} as Record<string, Chat.Internal.ToolCall>,
-    );
-
-    const nextToolCalls = state.rawToolCalls.flatMap((toolCall) => {
-      const name = toolCall.function?.name;
-      if (!name) {
-        return [];
-      }
-
-      const toolCallId =
-        toolCall.id ??
-        (toolCall.index !== undefined
-          ? `tool-call-${toolCall.index}`
-          : undefined);
-      if (!toolCallId) {
-        return [];
-      }
-
-      const existing = existingById[toolCallId];
-      const base: Chat.Internal.ToolCall = existing ?? {
-        id: toolCallId,
-        name,
-        arguments: '',
-        status: 'pending',
-        metadata: toolCall.metadata,
-      };
-
-      const rawArguments = toolCall.function?.arguments;
-      const argumentsString =
-        typeof rawArguments === 'string'
-          ? rawArguments
-          : rawArguments != null
-            ? JSON.stringify(rawArguments)
-            : '';
-
-      const tool = toolsByName[name];
-      const toolIndex =
-        toolCall.index ??
-        (toolCall.id ? toolCallIndexById[toolCall.id] : undefined);
-      const parserState = tool ? toolParserStateByIndex[toolIndex] : undefined;
-      let argumentsResolved = base.argumentsResolved;
-
-      if (tool && parserState && toolIndex !== undefined) {
-        if (s.isHashbrownType(tool.schema)) {
-          const resolved = resolveSchemaValue(
-            tool.schema,
-            parserState,
-            toolCacheByIndex[toolIndex],
-          );
-          toolCacheByIndex = updateCache(
-            toolCacheByIndex,
-            toolIndex,
-            resolved.cache,
-          );
-          if (resolved.value !== undefined) {
-            argumentsResolved = resolved.value;
-          }
-          if (resolved.recoveredTrailingToken && resolved.value !== undefined) {
-            warnRecoveredTrailingTokenFromSource(
-              parserState,
-              resolved.value,
-              argumentsString,
-            );
-          }
-          if (resolved.hasError && !error) {
-            error = new Error(`Invalid tool arguments for ${name}`);
-          }
-        } else {
-          const resolvedValue = resolveJsonValue(parserState);
-          if (resolvedValue !== undefined) {
-            argumentsResolved = resolvedValue;
-          }
-        }
-      }
-
-      return [
-        {
-          ...base,
-          name,
-          arguments: argumentsString,
-          argumentsResolved,
-          metadata: toolCall.metadata ?? base.metadata,
-        },
-      ];
-    });
-
-    if (message) {
-      message = {
-        ...message,
-        toolCallIds: nextToolCalls.map((toolCall) => toolCall.id),
-      };
-    }
-
-    return {
-      ...state,
-      message,
-      toolCalls: nextToolCalls,
-      outputParserState,
-      outputCache,
-      toolParserStateByIndex,
-      toolCacheByIndex,
-      error,
-    };
-  }),
   on(
     apiActions.generateMessageSuccess,
     apiActions.generateMessageError,
     devActions.stopMessageGeneration,
-    () => {
-      return initialState;
-    },
+    () => initialState,
   ),
 );
 

@@ -1,9 +1,11 @@
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { s } from '../schema';
 import { sleep, switchAsync } from '../utils/async';
 import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
 import { decodeFrames } from '../frames/decode-frames';
 import { Chat } from '../models';
+import { createCompletionChunkEventAdapter } from '../transport/completion-chunk-to-agui-events';
 import { updateAssistantMessage } from '../utils/assistant-message';
 import {
   selectApiMessages,
@@ -144,6 +146,21 @@ export const generateMessage = createEffect((store) => {
           }
 
           let transportResponse: TransportResponse | undefined;
+          let activeRun:
+            { threadId: string; runId: string; terminal: boolean } | undefined;
+          const dispatchRunError = (message: string) => {
+            if (!activeRun || activeRun.terminal) {
+              return;
+            }
+
+            activeRun = { ...activeRun, terminal: true };
+            store.dispatch(
+              apiActions.generateMessageEvent({
+                type: EventType.RUN_ERROR,
+                message,
+              }),
+            );
+          };
 
           try {
             attempt++;
@@ -158,13 +175,18 @@ export const generateMessage = createEffect((store) => {
               ...params,
               model: selection.spec.name,
             };
+            const requestId = _createRequestId();
+            const runId = requestId;
+            const aguiThreadId = threadId ?? requestId;
+            const completionChunkAdapter =
+              createCompletionChunkEventAdapter(requestId);
 
             transportResponse = await selection.transport.send({
               params: paramsWithModel,
               signal: requestAbortSignal,
               attempt,
               maxAttempts: retries + 1,
-              requestId: _createRequestId(),
+              requestId,
             });
 
             if (cancelAbortController.signal.aborted) {
@@ -225,6 +247,11 @@ export const generateMessage = createEffect((store) => {
                   throw new Error(frame.error);
                 }
                 case 'generation-start': {
+                  activeRun = {
+                    threadId: aguiThreadId,
+                    runId,
+                    terminal: false,
+                  };
                   store.dispatch(
                     apiActions.generateMessageStart({
                       responseSchema,
@@ -244,10 +271,21 @@ export const generateMessage = createEffect((store) => {
                           : toolsByName,
                     }),
                   );
+                  store.dispatch(
+                    apiActions.generateMessageEvent({
+                      type: EventType.RUN_STARTED,
+                      threadId: aguiThreadId,
+                      runId,
+                    }),
+                  );
                   break;
                 }
                 case 'generation-chunk': {
-                  store.dispatch(apiActions.generateMessageChunk(frame.chunk));
+                  for (const event of completionChunkAdapter.push(
+                    frame.chunk,
+                  )) {
+                    store.dispatch(apiActions.generateMessageEvent(event));
+                  }
                   break;
                 }
                 case 'thread-save-success': {
@@ -270,13 +308,27 @@ export const generateMessage = createEffect((store) => {
                   break;
                 }
                 case 'generation-error': {
+                  dispatchRunError(frame.error);
                   // Assumption: a 'finish' will follow the 'error', but we know we need to retry
                   // as soon as we see the error.  Therefore, throw an exception to break out
                   // of the for loop.
                   throw new Error(frame.error);
                 }
                 case 'generation-finish': {
-                  store.dispatch(apiActions.generateMessageFinish());
+                  if (activeRun) {
+                    activeRun = { ...activeRun, terminal: true };
+                  }
+                  const events: AGUIEvent[] = [
+                    ...completionChunkAdapter.finish(),
+                    {
+                      type: EventType.RUN_FINISHED,
+                      threadId: aguiThreadId,
+                      runId,
+                    },
+                  ];
+                  for (const event of events) {
+                    store.dispatch(apiActions.generateMessageEvent(event));
+                  }
 
                   const streamingError = store.read(
                     selectStreamingMessageError,
@@ -313,9 +365,35 @@ export const generateMessage = createEffect((store) => {
                 }
               }
             }
+
+            if (activeRun && !activeRun.terminal) {
+              const cancelled =
+                effectAbortController.signal.aborted ||
+                switchSignal.aborted ||
+                cancelAbortController.signal.aborted;
+              if (cancelled) {
+                dispatchRunError('Generation cancelled');
+                return;
+              }
+
+              throw new TransportError(
+                'Generation stream ended before generation-finish',
+                { retryable: true },
+              );
+            }
           } catch (e) {
+            const cancelled =
+              effectAbortController.signal.aborted ||
+              switchSignal.aborted ||
+              cancelAbortController.signal.aborted;
+            if (cancelled) {
+              dispatchRunError('Generation cancelled');
+              return;
+            }
+
             const error =
               e instanceof Error ? e : new Error('Unknown transport error');
+            dispatchRunError(error.message);
             store.dispatch(apiActions.generateMessageError(error));
 
             const retryable =

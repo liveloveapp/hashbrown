@@ -58,6 +58,11 @@ function createPackageSandbox(): string {
   cpSync(reactDistPath, join(scopePath, 'react'), { recursive: true });
   cpSync(coreDistPath, join(scopePath, 'core'), { recursive: true });
   symlinkSync(
+    join(workspaceRoot, 'node_modules/@ag-ui'),
+    join(nodeModulesPath, '@ag-ui'),
+    'dir',
+  );
+  symlinkSync(
     join(workspaceRoot, 'node_modules/@cacheplane'),
     join(nodeModulesPath, '@cacheplane'),
     'dir',

@@ -82,6 +82,9 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
             '@hashbrownai/core/package.json',
           );
           const packageJson = require(packageJsonPath);
+          if (packageJson.dependencies?.['@ag-ui/core'] !== '0.0.58') {
+            throw new Error('Core must declare an exact @ag-ui/core dependency');
+          }
           const cjs = require('@hashbrownai/core');
           const cjsPartialJson = require('@cacheplane/partial-json');
           const esm = await import(

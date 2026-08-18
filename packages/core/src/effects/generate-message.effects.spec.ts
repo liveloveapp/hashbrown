@@ -1,3 +1,4 @@
+import { EventType } from '@ag-ui/core';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { apiActions, devActions } from '../actions';
@@ -639,204 +640,435 @@ function mockSuccessfulSelection() {
   return send;
 }
 
-describe('generateMessage effect', () => {
-  const ModelResolverMock = jest.mocked(ModelResolver);
-  const decodeFramesMock = jest.mocked(decodeFrames);
+const ModelResolverMock = jest.mocked(ModelResolver);
+const decodeFramesMock = jest.mocked(decodeFrames);
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+type MockTransportResponse = {
+  frames?: AsyncIterable<unknown>;
+  stream?: AsyncIterable<unknown>;
+  dispose?: jest.Mock;
+  metadata?: unknown;
+};
 
-  type MockTransportResponse = {
-    frames?: AsyncIterable<unknown>;
-    stream?: AsyncIterable<unknown>;
-    dispose?: jest.Mock;
-    metadata?: unknown;
+function makeSelection(
+  transportResponseFactory: (request: {
+    signal: AbortSignal;
+  }) => Promise<MockTransportResponse>,
+) {
+  const send = jest.fn().mockImplementation(transportResponseFactory);
+  const selection = {
+    spec: { name: 'selected-model' },
+    transport: { send },
+    metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
+  };
+  ModelResolverMock.mockImplementation(
+    () =>
+      ({
+        select: jest.fn(async () => selection),
+        skipFromError: jest.fn(),
+        getMetadata: jest.fn(() => selection.metadata),
+      }) as unknown as ModelResolver,
+  );
+  return { send, selection };
+}
+
+test('dispatches AG-UI lifecycle events and success on happy path', async () => {
+  jest.clearAllMocks();
+  const messageChunk: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        delta: { role: 'assistant', content: 'Hello' },
+        finishReason: 'stop',
+      },
+    ],
   };
 
-  function makeSelection(
-    transportResponseFactory: () => Promise<MockTransportResponse>,
-  ) {
-    const send = jest.fn().mockImplementation(transportResponseFactory);
-    const selection = {
-      spec: { name: 'selected-model' },
-      transport: { send },
-      metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
-    };
-    ModelResolverMock.mockImplementation(
-      () =>
-        ({
-          select: jest.fn(async () => selection),
-          skipFromError: jest.fn(),
-          getMetadata: jest.fn(() => selection.metadata),
-        }) as unknown as ModelResolver,
-    );
-    return { send, selection };
-  }
+  const frames = async function* () {
+    yield { type: 'generation-start' as const };
+    yield { type: 'generation-chunk' as const, chunk: messageChunk };
+    yield { type: 'generation-finish' as const };
+  };
 
-  it('dispatches start, chunk, success, and finalize on happy path', async () => {
-    const messageChunk: Chat.Api.CompletionChunk = {
-      choices: [
+  const dispose = jest.fn();
+  const { send } = makeSelection(async () => ({
+    frames: frames(),
+    dispose,
+  }));
+
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectRawStreamingMessage,
         {
-          index: 0,
-          delta: { role: 'assistant', content: 'Hello' },
-          finishReason: 'stop',
+          role: 'assistant',
+          content: 'Hello',
+          toolCallIds: [],
         },
       ],
-    };
+    ]),
+  );
+  const teardown = generateMessage(store);
 
-    const frames = async function* () {
-      yield { type: 'generation-start' as const };
-      yield { type: 'generation-chunk' as const, chunk: messageChunk };
-      yield { type: 'generation-finish' as const };
-    };
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
 
-    const dispose = jest.fn();
-    const { send } = makeSelection(async () => ({
-      frames: frames(),
-      dispose,
-    }));
-
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([
-        [
-          selectRawStreamingMessage,
-          {
-            role: 'assistant',
-            content: 'Hello',
-            toolCallIds: [],
-          },
-        ],
-      ]),
-    );
-    const teardown = generateMessage(store);
-
-    await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-    );
-
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(decodeFramesMock).toHaveBeenCalled();
-    expect(store.actions.map((a) => a.type)).toEqual([
-      apiActions.generateMessageStart.type,
-      apiActions.generateMessageChunk.type,
-      apiActions.generateMessageFinish.type,
-      apiActions.generateMessageSuccess.type,
-      apiActions.assistantTurnFinalized.type,
-    ]);
-    expect(store.actions[1].payload).toMatchObject({
-      choices: [
-        {
-          delta: expect.objectContaining({
-            content: 'Hello',
-            role: 'assistant',
-          }),
-        },
-      ],
-    });
-    expect(store.actions[3].payload).toMatchObject({
-      message: {
-        role: 'assistant',
-        content: 'Hello',
-      },
-      toolCalls: [],
-    });
-    expect(dispose).toHaveBeenCalledTimes(1);
-
-    teardown?.();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(decodeFramesMock).toHaveBeenCalled();
+  expect(store.actions.map((action) => action.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageSuccess.type,
+    apiActions.assistantTurnFinalized.type,
+  ]);
+  expect(store.actions[1].payload).toMatchObject({
+    type: EventType.RUN_STARTED,
+    threadId: expect.any(String),
+    runId: expect.any(String),
   });
+  expect(store.actions[2].payload).toMatchObject({
+    type: EventType.TEXT_MESSAGE_START,
+    messageId: expect.any(String),
+    role: 'assistant',
+  });
+  const runStarted = store.actions[1]?.payload as {
+    threadId: string;
+    runId: string;
+  };
+  const textStarted = store.actions[2]?.payload as { messageId: string };
+  expect(store.actions[3].payload).toMatchObject({
+    type: EventType.TEXT_MESSAGE_CONTENT,
+    messageId: textStarted.messageId,
+    delta: 'Hello',
+  });
+  expect(store.actions[4].payload).toMatchObject({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId: textStarted.messageId,
+  });
+  expect(store.actions[5].payload).toMatchObject({
+    type: EventType.RUN_FINISHED,
+    threadId: runStarted.threadId,
+    runId: runStarted.runId,
+  });
+  expect(store.actions[6].payload).toMatchObject({
+    message: {
+      role: 'assistant',
+      content: 'Hello',
+    },
+    toolCalls: [],
+  });
+  expect(dispose).toHaveBeenCalledTimes(1);
 
-  it('retries on retryable transport errors and eventually succeeds', async () => {
-    const retries = 1;
+  teardown?.();
+});
 
-    let attempt = 0;
-    const messageChunk: Chat.Api.CompletionChunk = {
-      choices: [
-        {
-          index: 0,
-          delta: { role: 'assistant', content: 'Hi after retry' },
-          finishReason: 'stop',
-        },
-      ],
-    };
+test('retries on retryable transport errors and eventually succeeds', async () => {
+  jest.clearAllMocks();
+  const retries = 1;
 
-    const { send } = makeSelection(async () => {
-      attempt++;
-      if (attempt === 1) {
-        throw new TransportError('temporary boom', { retryable: true });
-      }
+  let attempt = 0;
+  const messageChunk: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        delta: { role: 'assistant', content: 'Hi after retry' },
+        finishReason: 'stop',
+      },
+    ],
+  };
+
+  const { send } = makeSelection(async () => {
+    attempt++;
+    if (attempt === 1) {
       return {
         frames: (async function* () {
           yield { type: 'generation-start' as const };
-          yield { type: 'generation-chunk' as const, chunk: messageChunk };
-          yield { type: 'generation-finish' as const };
+          throw new TransportError('temporary boom', { retryable: true });
         })(),
         dispose: jest.fn(),
       };
-    });
-
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([
-        [selectRetries, retries],
-        [
-          selectRawStreamingMessage,
-          {
-            role: 'assistant',
-            content: 'Hi after retry',
-            toolCallIds: [],
-          },
-        ],
-      ]),
-    );
-    const teardown = generateMessage(store);
-
-    await store.trigger(
-      devActions.sendMessage({
-        message: { role: 'user', content: 'retry me' },
-      }),
-    );
-
-    expect(send).toHaveBeenCalledTimes(2);
-    expect(store.actions.map((a) => a.type)).toEqual([
-      apiActions.generateMessageError.type,
-      apiActions.generateMessageStart.type,
-      apiActions.generateMessageChunk.type,
-      apiActions.generateMessageFinish.type,
-      apiActions.generateMessageSuccess.type,
-      apiActions.assistantTurnFinalized.type,
-      apiActions.generateMessageExhaustedRetries.type,
-    ]);
-    const chunkPayload = (store.actions[2].payload ??
-      {}) as Chat.Api.CompletionChunk;
-    expect(chunkPayload.choices[0]?.delta?.content).toBe('Hi after retry');
-
-    teardown?.();
+    }
+    return {
+      frames: (async function* () {
+        yield { type: 'generation-start' as const };
+        yield { type: 'generation-chunk' as const, chunk: messageChunk };
+        yield { type: 'generation-finish' as const };
+      })(),
+      dispose: jest.fn(),
+    };
   });
 
-  it('dispatches exhausted retries after max retryable failures', async () => {
-    const retries = 1;
-    const error = new Error('still broken');
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, retries],
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: 'Hi after retry',
+          toolCallIds: [],
+        },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
 
-    makeSelection(async () => {
-      throw error;
-    });
+  await store.trigger(
+    devActions.sendMessage({
+      message: { role: 'user', content: 'retry me' },
+    }),
+  );
 
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([[selectRetries, retries]]),
-    );
-    const teardown = generateMessage(store);
-
-    await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'fail' } }),
-    );
-
-    expect(store.actions.map((a) => a.type)).toEqual([
-      apiActions.generateMessageError.type,
-      apiActions.generateMessageError.type,
-      apiActions.assistantTurnFinalized.type,
-      apiActions.generateMessageExhaustedRetries.type,
-    ]);
-
-    teardown?.();
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(store.actions.map((action) => action.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageError.type,
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageSuccess.type,
+    apiActions.assistantTurnFinalized.type,
+    apiActions.generateMessageExhaustedRetries.type,
+  ]);
+  expect(store.actions[2].payload).toMatchObject({
+    type: EventType.RUN_ERROR,
+    message: 'temporary boom',
   });
+  expect(store.actions[7].payload).toMatchObject({
+    type: EventType.TEXT_MESSAGE_CONTENT,
+    delta: 'Hi after retry',
+  });
+
+  teardown?.();
+});
+
+test('dispatches exhausted retries after max retryable failures', async () => {
+  jest.clearAllMocks();
+  const retries = 1;
+  const error = new Error('still broken');
+
+  makeSelection(async () => {
+    throw error;
+  });
+
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, retries]]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'fail' } }),
+  );
+
+  expect(store.actions.map((a) => a.type)).toEqual([
+    apiActions.generateMessageError.type,
+    apiActions.generateMessageError.type,
+    apiActions.assistantTurnFinalized.type,
+    apiActions.generateMessageExhaustedRetries.type,
+  ]);
+
+  teardown?.();
+});
+
+test('converts generation error frames to AG-UI run errors', async () => {
+  jest.clearAllMocks();
+  const frames = async function* () {
+    yield { type: 'generation-start' as const };
+    yield {
+      type: 'generation-error' as const,
+      error: 'provider failed',
+    };
+  };
+  makeSelection(async () => ({ frames: frames() }));
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(store.actions.map((action) => action.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageError.type,
+    apiActions.assistantTurnFinalized.type,
+  ]);
+  expect(store.actions[2].payload).toEqual({
+    type: EventType.RUN_ERROR,
+    message: 'provider failed',
+  });
+
+  teardown?.();
+});
+
+test('converts decode failures after run start to one AG-UI run error', async () => {
+  jest.clearAllMocks();
+  const frames = async function* () {
+    yield { type: 'generation-start' as const };
+    throw new Error('decode failed');
+  };
+  makeSelection(async () => ({ frames: frames() }));
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(store.actions.map((action) => action.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageError.type,
+    apiActions.assistantTurnFinalized.type,
+  ]);
+  expect(store.actions[2].payload).toEqual({
+    type: EventType.RUN_ERROR,
+    message: 'decode failed',
+  });
+
+  teardown?.();
+});
+
+test('converts premature stream completion to an AG-UI run error', async () => {
+  jest.clearAllMocks();
+  const frames = async function* () {
+    yield { type: 'generation-start' as const };
+  };
+  makeSelection(async () => ({ frames: frames() }));
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(store.actions.map((action) => action.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageError.type,
+    apiActions.assistantTurnFinalized.type,
+  ]);
+  expect(store.actions[2].payload).toEqual({
+    type: EventType.RUN_ERROR,
+    message: 'Generation stream ended before generation-finish',
+  });
+
+  teardown?.();
+});
+
+test('terminates an active AG-UI run when generation is cancelled', async () => {
+  jest.clearAllMocks();
+  let notifyStarted: () => void = () => undefined;
+  const started = new Promise<void>((resolve) => {
+    notifyStarted = resolve;
+  });
+  makeSelection(async ({ signal }) => ({
+    frames: (async function* () {
+      notifyStarted();
+      yield { type: 'generation-start' as const };
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+          return;
+        }
+        signal.addEventListener('abort', () => resolve(), {
+          once: true,
+        });
+      });
+    })(),
+  }));
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  const generation = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  await started;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await store.trigger(devActions.stopMessageGeneration(true));
+  await generation;
+
+  expect(store.actions.map((action) => action.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.assistantTurnFinalized.type,
+  ]);
+  const runStarted = store.actions[1]?.payload as {
+    threadId: string;
+    runId: string;
+  };
+  expect(store.actions[2].payload).toMatchObject({
+    type: EventType.RUN_ERROR,
+    message: 'Generation cancelled',
+  });
+  expect(runStarted).toMatchObject({
+    threadId: expect.any(String),
+    runId: expect.any(String),
+  });
+
+  teardown?.();
+});
+
+test('does not retry when decoding throws after generation is cancelled', async () => {
+  jest.clearAllMocks();
+  let notifyStarted: () => void = () => undefined;
+  const started = new Promise<void>((resolve) => {
+    notifyStarted = resolve;
+  });
+  const { send } = makeSelection(async ({ signal }) => ({
+    frames: (async function* () {
+      notifyStarted();
+      yield { type: 'generation-start' as const };
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+          return;
+        }
+        signal.addEventListener('abort', () => resolve(), {
+          once: true,
+        });
+      });
+      throw new Error('Stream ended with 3 leftover bytes');
+    })(),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, 1]]),
+  );
+  const teardown = generateMessage(store);
+
+  const generation = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  await started;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await store.trigger(devActions.stopMessageGeneration(true));
+  await generation;
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(store.actions.map((action) => action.type)).toEqual([
+    apiActions.generateMessageStart.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.generateMessageEvent.type,
+    apiActions.assistantTurnFinalized.type,
+  ]);
+  expect(store.actions[2].payload).toEqual({
+    type: EventType.RUN_ERROR,
+    message: 'Generation cancelled',
+  });
+
+  teardown?.();
 });

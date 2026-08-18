@@ -1,3 +1,4 @@
+import type { AGUIEvent } from '@ag-ui/core';
 import { createActionGroup, emptyProps, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 import { s } from '../schema';
@@ -8,8 +9,7 @@ export default createActionGroup('api', {
     emulateStructuredOutput: boolean;
     toolsByName: Record<string, Chat.Internal.Tool>;
   }>(),
-  generateMessageChunk: props<Chat.Api.CompletionChunk>(),
-  generateMessageFinish: emptyProps(),
+  generateMessageEvent: props<AGUIEvent>(),
   generateMessageSuccess: props<{
     message: Chat.Internal.AssistantMessage;
     toolCalls: Chat.Internal.ToolCall[];

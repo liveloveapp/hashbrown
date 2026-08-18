@@ -1,3 +1,4 @@
+import { EventType } from '@ag-ui/core';
 import { createReducer, on } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
 
@@ -48,21 +49,30 @@ export const reducer = createReducer(
       };
     },
   ),
-  on(apiActions.generateMessageStart, (state) => {
-    return {
-      ...state,
-      isSending: false,
-      isReceiving: true,
-      isGenerating: true,
-      generatingError: undefined,
-    };
-  }),
-  on(apiActions.generateMessageChunk, (state) => {
-    return {
-      ...state,
-      isReceiving: true,
-      isGenerating: true,
-    };
+  on(apiActions.generateMessageEvent, (state, action) => {
+    switch (action.payload.type) {
+      case EventType.RUN_STARTED:
+        return {
+          ...state,
+          isSending: false,
+          isReceiving: true,
+          isGenerating: true,
+          generatingError: undefined,
+        };
+      case EventType.TEXT_MESSAGE_START:
+      case EventType.TEXT_MESSAGE_CONTENT:
+      case EventType.TEXT_MESSAGE_CHUNK:
+      case EventType.TOOL_CALL_START:
+      case EventType.TOOL_CALL_ARGS:
+      case EventType.TOOL_CALL_CHUNK:
+        return {
+          ...state,
+          isReceiving: true,
+          isGenerating: true,
+        };
+      default:
+        return state;
+    }
   }),
   on(apiActions.generateMessageSuccess, (state) => {
     return {
