@@ -24,6 +24,9 @@ export default defineConfig(({ command, mode }) => {
         },
       },
       ssr: {
+        resolve: {
+          noExternal: [/^@ag-ui\/client$/, /^rxjs(?:\/.*)?$/],
+        },
         build: {
           rollupOptions: {
             output: {
