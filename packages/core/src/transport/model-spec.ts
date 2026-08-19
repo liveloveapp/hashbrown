@@ -266,20 +266,13 @@ export class ModelResolver {
     return candidate;
   }
 
-  private buildDefaultTransport(): TransportFactory | Transport | undefined {
+  private buildDefaultTransport(): TransportFactory | Transport {
     if (this.config.transport) {
       return this.config.transport;
     }
 
     const baseUrl =
       typeof this.config.url === 'string' ? this.config.url : undefined;
-
-    if (!baseUrl) {
-      console.warn(
-        'No url provided for default transport; string model specs will be skipped.',
-      );
-      return undefined;
-    }
 
     const options: HttpTransportOptions = {
       baseUrl,

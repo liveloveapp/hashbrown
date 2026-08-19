@@ -1,3 +1,4 @@
+import type { AGUIEvent } from '@copilotkit/aimock/agui';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -49,6 +50,54 @@ test('startAimock loads sorted JSON fixture files from a directory', async () =>
     handle = await startAimock({ fixturePath: workDir });
 
     expect(handle.port).toBeGreaterThan(0);
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+});
+
+test('startAimock serves fixture-backed AG-UI events from /run', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const fixturePath = createFixtureFile(workDir, 'text.json', 'say hi briefly');
+  let handle: AimockHandle | null = null;
+
+  try {
+    handle = await startAimock({ fixturePath });
+    const events = [
+      {
+        type: 'RUN_STARTED',
+        threadId: 'thread-runner',
+        runId: 'run-runner',
+        timestamp: 1_700_000_000_000,
+      },
+      {
+        type: 'RUN_FINISHED',
+        threadId: 'thread-runner',
+        runId: 'run-runner',
+        timestamp: 1_700_000_000_001,
+      },
+    ] satisfies AGUIEvent[];
+    handle.aguiMock.onPredicate(() => true, events);
+
+    const response = await fetch(handle.aguiRunUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        threadId: 'thread-runner',
+        runId: 'run-runner',
+        messages: [],
+        tools: [],
+        context: [],
+        state: {},
+        forwardedProps: {},
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/event-stream');
+    await expect(response.text()).resolves.toBe(
+      events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''),
+    );
   } finally {
     await handle?.stop();
     rmSync(workDir, { recursive: true, force: true });

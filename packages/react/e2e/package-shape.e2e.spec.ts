@@ -1,15 +1,14 @@
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
-  symlinkSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 
 type PackageJson = {
   dependencies?: Record<string, string>;
@@ -28,6 +27,8 @@ type PackageJson = {
 const workspaceRoot = resolve(__dirname, '../../..');
 const reactDistPath = join(workspaceRoot, 'dist/packages/react');
 const coreDistPath = join(workspaceRoot, 'dist/packages/core');
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const childProcessTimeoutMs = 90_000;
 
 function readReactPackageJson(): PackageJson {
   return JSON.parse(
@@ -35,49 +36,108 @@ function readReactPackageJson(): PackageJson {
   ) as PackageJson;
 }
 
-function runNodePackageCheck(script: string, sandboxPath: string) {
-  return spawnSync(
-    process.execPath,
-    ['--input-type=module', '--eval', script],
-    {
-      cwd: sandboxPath,
-      env: {
-        ...process.env,
-        NODE_PATH: join(sandboxPath, 'node_modules'),
-      },
-      encoding: 'utf8',
-    },
+function assertProcessSucceeded(
+  label: string,
+  command: string,
+  args: string[],
+  result: SpawnSyncReturns<string>,
+): void {
+  if (!result.error && !result.signal && result.status === 0) {
+    return;
+  }
+
+  const processError = result.error as NodeJS.ErrnoException | undefined;
+  const failureDetails = [
+    processError
+      ? `${processError.code ?? processError.name}: ${processError.message}`
+      : undefined,
+    result.signal ? `signal ${result.signal}` : undefined,
+    result.status !== null ? `exit status ${result.status}` : undefined,
+  ].filter(Boolean);
+  throw new Error(
+    `${label} failed (${failureDetails.join(', ')})\n` +
+      `Command: ${command} ${args.join(' ')}\n` +
+      `stdout:\n${result.stdout || '<empty>'}\n` +
+      `stderr:\n${result.stderr || '<empty>'}`,
   );
+}
+
+function runNodePackageCheck(script: string, sandboxPath: string) {
+  const args = ['--input-type=module', '--eval', script];
+  const result = spawnSync(process.execPath, args, {
+    cwd: sandboxPath,
+    env: {
+      ...process.env,
+      NODE_PATH: join(sandboxPath, 'node_modules'),
+    },
+    encoding: 'utf8',
+    timeout: childProcessTimeoutMs,
+  });
+  assertProcessSucceeded('Consumer Node check', process.execPath, args, result);
+
+  return result;
+}
+
+function runNpm(args: string[], cwd: string): string {
+  const result = spawnSync(npmCommand, args, {
+    cwd,
+    encoding: 'utf8',
+    timeout: childProcessTimeoutMs,
+  });
+  assertProcessSucceeded('npm command', npmCommand, args, result);
+
+  return result.stdout;
+}
+
+function packPackage(packagePath: string, packPath: string): string {
+  const output = runNpm(
+    ['pack', packagePath, '--json', '--pack-destination', packPath],
+    workspaceRoot,
+  );
+  const packs = JSON.parse(output) as Array<{ filename?: string }>;
+  const filename = packs[0]?.filename;
+  if (!filename) {
+    throw new Error(`npm pack did not report a filename for ${packagePath}`);
+  }
+
+  return join(packPath, filename);
 }
 
 function createPackageSandbox(): string {
   const sandboxPath = mkdtempSync(join(tmpdir(), 'hashbrown-react-package-'));
-  const nodeModulesPath = join(sandboxPath, 'node_modules');
-  const scopePath = join(nodeModulesPath, '@hashbrownai');
-  mkdirSync(scopePath, { recursive: true });
-  cpSync(reactDistPath, join(scopePath, 'react'), { recursive: true });
-  cpSync(coreDistPath, join(scopePath, 'core'), { recursive: true });
-  symlinkSync(
-    join(workspaceRoot, 'node_modules/@ag-ui'),
-    join(nodeModulesPath, '@ag-ui'),
-    'dir',
-  );
-  symlinkSync(
-    join(workspaceRoot, 'node_modules/@cacheplane'),
-    join(nodeModulesPath, '@cacheplane'),
-    'dir',
-  );
-  symlinkSync(
-    join(workspaceRoot, 'node_modules/react'),
-    join(nodeModulesPath, 'react'),
-    'dir',
-  );
-  symlinkSync(
-    join(workspaceRoot, 'node_modules/react-dom'),
-    join(nodeModulesPath, 'react-dom'),
-    'dir',
-  );
-  return sandboxPath;
+  try {
+    const packPath = join(sandboxPath, 'packs');
+    mkdirSync(packPath);
+    writeFileSync(
+      join(sandboxPath, 'package.json'),
+      JSON.stringify({
+        name: 'hashbrown-react-package-e2e',
+        private: true,
+        type: 'module',
+      }),
+    );
+    const coreTarball = packPackage(coreDistPath, packPath);
+    const reactTarball = packPackage(reactDistPath, packPath);
+    runNpm(
+      [
+        'install',
+        '--ignore-scripts',
+        '--no-audit',
+        '--no-fund',
+        '--no-package-lock',
+        coreTarball,
+        reactTarball,
+        'react@19.2.8',
+        'react-dom@19.2.8',
+      ],
+      sandboxPath,
+    );
+
+    return sandboxPath;
+  } catch (error) {
+    rmSync(sandboxPath, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 test('published React package metadata exposes ESM and CJS entrypoints', () => {
@@ -97,7 +157,7 @@ test('published React package metadata exposes ESM and CJS entrypoints', () => {
   expect(existsSync(join(reactDistPath, 'index.cjs'))).toBe(true);
 });
 
-test('published React package can be imported and required by package name', () => {
+test('packed React and core packages install and load in a clean consumer', () => {
   const sandboxPath = createPackageSandbox();
 
   try {
@@ -107,7 +167,17 @@ test('published React package can be imported and required by package name', () 
 
         const require = createRequire(import.meta.url);
         const cjs = require('@hashbrownai/react');
+        const cjsCore = require('@hashbrownai/core');
         const esm = await import('@hashbrownai/react');
+        const esmCore = await import('@hashbrownai/core');
+
+        if (typeof cjsCore.HttpTransport !== 'function') {
+          throw new Error('CJS core did not load the AG-UI transport dependency tree');
+        }
+
+        if (typeof esmCore.HttpTransport !== 'function') {
+          throw new Error('ESM core did not load the AG-UI transport dependency tree');
+        }
 
         if (typeof cjs.HashbrownProvider !== 'function') {
           throw new Error('CJS entrypoint did not expose HashbrownProvider');
@@ -125,4 +195,4 @@ test('published React package can be imported and required by package name', () 
   } finally {
     rmSync(sandboxPath, { recursive: true, force: true });
   }
-});
+}, 120_000);
