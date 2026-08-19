@@ -1,5 +1,5 @@
 import { EventType } from '@ag-ui/core';
-import { apiActions, devActions } from '../actions';
+import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import {
   reducers as rootReducers,
@@ -100,6 +100,45 @@ test('ignores AG-UI events unrelated to generation status', () => {
   );
 
   expect(next).toBe(state);
+});
+
+test('marks a continuing tool settlement as sending', () => {
+  const next = reducer(
+    initialStatusState,
+    internalActions.toolTurnSettled({
+      toolCalls: [],
+      toolMessages: [],
+      continuation: 'continue',
+    }),
+  );
+
+  expect(next.isSending).toBe(true);
+});
+
+test('keeps a stopped tool settlement idle', () => {
+  const next = reducer(
+    initialStatusState,
+    internalActions.toolTurnSettled({
+      toolCalls: [],
+      toolMessages: [],
+      continuation: 'stop',
+    }),
+  );
+
+  expect(next.isSending).toBe(false);
+});
+
+test('preserves a superseding user turn sending state', () => {
+  const next = reducer(
+    { ...initialStatusState, isSending: true },
+    internalActions.toolTurnSettled({
+      toolCalls: [],
+      toolMessages: [],
+      continuation: 'stop',
+    }),
+  );
+
+  expect(next.isSending).toBe(true);
 });
 
 test('clears prestart errors when a retry starts and succeeds', () => {

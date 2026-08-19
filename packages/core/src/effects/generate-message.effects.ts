@@ -15,6 +15,7 @@ import {
   selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
   selectResponseSchema,
@@ -50,8 +51,15 @@ export const generateMessage = createEffect((store) => {
     devActions.setMessages,
     devActions.sendMessage,
     devActions.resendMessages,
-    internalActions.runToolCallsSuccess,
     switchAsync(async (switchSignal) => {
+      if (cancelAbortController.signal.aborted) {
+        cancelAbortController = new AbortController();
+      }
+      const runCancelSignal = cancelAbortController.signal;
+
+      // Let sibling effects settle nested actions before snapshotting state.
+      await Promise.resolve();
+
       const apiUrl = store.read(selectApiUrl);
       const middleware = store.read(selectMiddleware);
       const model = store.read(selectModel);
@@ -199,12 +207,8 @@ export const generateMessage = createEffect((store) => {
           if (
             effectAbortController.signal.aborted ||
             switchSignal.aborted ||
-            cancelAbortController.signal.aborted
+            runCancelSignal.aborted
           ) {
-            // we need to reset the cancelAbortController for the next messsage
-            if (cancelAbortController.signal.aborted) {
-              cancelAbortController = new AbortController();
-            }
             return;
           }
 
@@ -245,7 +249,7 @@ export const generateMessage = createEffect((store) => {
               const requestAbortSignal = AbortSignal.any([
                 switchSignal,
                 effectAbortController.signal,
-                cancelAbortController.signal,
+                runCancelSignal,
               ]);
 
               const paramsWithModel: Chat.Api.CompletionCreateParams = {
@@ -274,8 +278,7 @@ export const generateMessage = createEffect((store) => {
                 requestId,
               });
 
-              if (cancelAbortController.signal.aborted) {
-                cancelAbortController = new AbortController();
+              if (runCancelSignal.aborted) {
                 return;
               }
 
@@ -393,7 +396,7 @@ export const generateMessage = createEffect((store) => {
 
                 for await (const frame of decodeFrames(frameStream, {
                   signal: AbortSignal.any([
-                    cancelAbortController.signal,
+                    runCancelSignal,
                     effectAbortController.signal,
                   ]),
                 })) {
@@ -520,7 +523,7 @@ export const generateMessage = createEffect((store) => {
                   const cancelled =
                     effectAbortController.signal.aborted ||
                     switchSignal.aborted ||
-                    cancelAbortController.signal.aborted;
+                    runCancelSignal.aborted;
                   if (cancelled) {
                     dispatchRunError('Generation cancelled');
                     return;
@@ -543,7 +546,7 @@ export const generateMessage = createEffect((store) => {
             const cancelled =
               effectAbortController.signal.aborted ||
               switchSignal.aborted ||
-              cancelAbortController.signal.aborted;
+              runCancelSignal.aborted;
             if (cancelled) {
               dispatchRunError('Generation cancelled');
               return;
@@ -576,16 +579,21 @@ export const generateMessage = createEffect((store) => {
             }
 
             continue;
-          } finally {
-            if (cancelAbortController.signal.aborted) {
-              cancelAbortController = new AbortController();
-            }
           }
 
           break;
         } while (retryWithReplacement || attempt < retries + 1);
       } finally {
-        store.dispatch(apiActions.assistantTurnFinalized());
+        const supersededOrDisposed =
+          effectAbortController.signal.aborted || switchSignal.aborted;
+        if (!supersededOrDisposed) {
+          store.dispatch(
+            apiActions.assistantTurnFinalized({
+              toolCalls: store.read(selectPendingToolCalls),
+              continuation: runCancelSignal.aborted ? 'stop' : 'continue',
+            }),
+          );
+        }
       }
 
       // Did we exhaust our retries?
@@ -594,6 +602,14 @@ export const generateMessage = createEffect((store) => {
       }
     }, effectAbortController.signal),
   );
+
+  store.when(internalActions.toolTurnSettled, (action) => {
+    if (action.payload.continuation !== 'continue') {
+      return;
+    }
+
+    store.dispatch(internalActions.sizzle());
+  });
 
   store.when(devActions.stopMessageGeneration, () => {
     cancelAbortController.abort();

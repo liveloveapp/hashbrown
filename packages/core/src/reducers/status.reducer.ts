@@ -102,10 +102,11 @@ export const reducer = createReducer(
         : state.generatingError,
     };
   }),
-  on(internalActions.runToolCallsSuccess, (state) => {
+  on(internalActions.toolTurnSettled, (state, action) => {
     return {
       ...state,
-      isSending: true,
+      isSending:
+        action.payload.continuation === 'continue' ? true : state.isSending,
     };
   }),
   on(internalActions.runToolCallsError, (state, action) => {

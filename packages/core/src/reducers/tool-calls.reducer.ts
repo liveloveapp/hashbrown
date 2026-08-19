@@ -52,14 +52,23 @@ export const reducer = createReducer(
 
     return adapter.addMany(initialState, toolCalls);
   }),
-  on(internalActions.runToolCallsSuccess, (state, action) => {
-    const { toolMessages } = action.payload;
-    const changes: EntityChange<Chat.Internal.ToolCall>[] = toolMessages.map(
-      (toolMessage) => ({
-        id: toolMessage.toolCallId,
-        updates: { result: toolMessage.content, status: 'done' },
-      }),
+  on(internalActions.toolTurnSettled, (state, action) => {
+    const { toolCalls, toolMessages } = action.payload;
+    const expectedById = new Map(
+      toolCalls.map((toolCall) => [toolCall.id, toolCall]),
     );
+    const changes: EntityChange<Chat.Internal.ToolCall>[] =
+      toolMessages.flatMap((toolMessage) =>
+        state.entities[toolMessage.toolCallId] ===
+        expectedById.get(toolMessage.toolCallId)
+          ? [
+              {
+                id: toolMessage.toolCallId,
+                updates: { result: toolMessage.content, status: 'done' },
+              },
+            ]
+          : [],
+      );
 
     return adapter.updateMany(state, changes);
   }),

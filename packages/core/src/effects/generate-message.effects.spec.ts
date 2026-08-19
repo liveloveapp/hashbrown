@@ -10,6 +10,7 @@ import {
   selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
   selectResponseSchema,
@@ -75,6 +76,15 @@ type TestHandler = {
 };
 type SelectorMap = Map<SelectorKey, unknown>;
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+}
+
 function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const actions: ActionLike[] = [];
   const handlers: TestHandler[] = [];
@@ -102,6 +112,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectUiRequested, false],
     [selectRawStreamingMessage, null],
     [selectRawStreamingToolCalls, []],
+    [selectPendingToolCalls, []],
     [selectStreamingMessageError, undefined],
   ]);
 
@@ -129,6 +140,9 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
         throw new Error(`No value for selector`);
       }
       return values.get(selector) as T;
+    },
+    setSelector: (selector: SelectorKey, value: unknown) => {
+      values.set(selector, value);
     },
     // helpers for tests
     async trigger(action: ActionLike) {
@@ -1043,8 +1057,14 @@ test('reuses a generated thread across retries and tool continuation', async () 
     devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
   await store.trigger(
-    internalActions.runToolCallsSuccess({ toolMessages: [] }),
+    internalActions.toolTurnSettled({
+      toolCalls: [],
+      toolMessages: [],
+      continuation: 'continue',
+    }),
   );
+  expect(store.actions).toContainEqual(internalActions.sizzle());
+  await store.trigger(internalActions.sizzle());
 
   const requests = send.mock.calls.map(([request]) => request);
   expect(requests).toHaveLength(3);
@@ -1056,6 +1076,251 @@ test('reuses a generated thread across retries and tool continuation', async () 
   expect(
     requests.every((request) => request.input?.runId === request.requestId),
   ).toBe(true);
+
+  teardown?.();
+});
+
+test('does not generate after a non-continuing tool settlement', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async () => ({
+    events: (async function* () {
+      yield { type: EventType.RUN_FINISHED, threadId: 'thread', runId: 'run' };
+    })(),
+  }));
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    internalActions.toolTurnSettled({
+      toolCalls: [],
+      toolMessages: [],
+      continuation: 'stop',
+    }),
+  );
+
+  expect(send).not.toHaveBeenCalled();
+  expect(store.actions).not.toContainEqual(internalActions.sizzle());
+
+  teardown?.();
+});
+
+test('takes the generation state snapshot after sibling action effects run', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield { type: EventType.RUN_FINISHED, ...identity };
+      })(),
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  const generation = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Latest' } }),
+  );
+  store.setSelector(selectApiMessages, [
+    { role: 'user', content: 'Latest' },
+  ] as Chat.Api.Message[]);
+  await generation;
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[0][0].params.messages).toEqual([
+    { role: 'user', content: 'Latest' },
+  ]);
+
+  teardown?.();
+});
+
+test('finalizes the exact pending tool call snapshot', async () => {
+  jest.clearAllMocks();
+  const pendingToolCall: Chat.Internal.ToolCall = {
+    id: 'tool-call-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield { type: EventType.RUN_FINISHED, ...identity };
+      })(),
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: '',
+          toolCallIds: [pendingToolCall.id],
+        },
+      ],
+      [selectRawStreamingToolCalls, [pendingToolCall]],
+      [selectPendingToolCalls, [pendingToolCall]],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Lookup' } }),
+  );
+
+  expect(
+    store.actions.find(
+      (action) => action.type === apiActions.assistantTurnFinalized.type,
+    )?.payload,
+  ).toEqual({ toolCalls: [pendingToolCall], continuation: 'continue' });
+
+  teardown?.();
+});
+
+test('does not finalize tool calls from a superseded generation', async () => {
+  jest.clearAllMocks();
+  const firstStarted = createDeferred<void>();
+  const releaseFirst = createDeferred<void>();
+  const firstToolCall: Chat.Internal.ToolCall = {
+    id: 'first-tool-call',
+    name: 'lookup',
+    arguments: '{"turn":"first"}',
+    status: 'pending',
+  };
+  const secondToolCall: Chat.Internal.ToolCall = {
+    id: 'second-tool-call',
+    name: 'lookup',
+    arguments: '{"turn":"second"}',
+    status: 'pending',
+  };
+  let sendCount = 0;
+  makeSelection(async (request) => {
+    sendCount++;
+    const identity = getInputIdentity(request);
+
+    if (sendCount === 1) {
+      return {
+        events: (async function* () {
+          yield { type: EventType.RUN_STARTED, ...identity };
+          firstStarted.resolve();
+          await releaseFirst.promise;
+          yield { type: EventType.RUN_FINISHED, ...identity };
+        })(),
+      };
+    }
+
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        store.setSelector(selectRawStreamingMessage, {
+          role: 'assistant',
+          content: '',
+          toolCallIds: [secondToolCall.id],
+        });
+        store.setSelector(selectRawStreamingToolCalls, [secondToolCall]);
+        store.setSelector(selectPendingToolCalls, [secondToolCall]);
+        yield { type: EventType.RUN_FINISHED, ...identity };
+      })(),
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: '',
+          toolCallIds: [firstToolCall.id],
+        },
+      ],
+      [selectRawStreamingToolCalls, [firstToolCall]],
+      [selectPendingToolCalls, [firstToolCall]],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  const firstGeneration = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+  );
+  await firstStarted.promise;
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+  );
+  releaseFirst.resolve();
+  await firstGeneration;
+
+  const finalizations = store.actions.filter(
+    (action) => action.type === apiActions.assistantTurnFinalized.type,
+  );
+  expect(finalizations).toEqual([
+    apiActions.assistantTurnFinalized({
+      toolCalls: [secondToolCall],
+      continuation: 'continue',
+    }),
+  ]);
+
+  teardown?.();
+});
+
+test('marks pending tool calls stopped when stop follows generation success', async () => {
+  jest.clearAllMocks();
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'tool-call-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield { type: EventType.RUN_FINISHED, ...identity };
+      })(),
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectRawStreamingMessage,
+        {
+          role: 'assistant',
+          content: '',
+          toolCallIds: [toolCall.id],
+        },
+      ],
+      [selectRawStreamingToolCalls, [toolCall]],
+      [selectPendingToolCalls, [toolCall]],
+    ]),
+  );
+  const dispatch = store.dispatch;
+  store.dispatch = (action) => {
+    dispatch(action);
+    if (action.type === apiActions.generateMessageSuccess.type) {
+      void store.trigger(devActions.stopMessageGeneration(true));
+    }
+  };
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Lookup' } }),
+  );
+
+  expect(
+    store.actions.find(
+      (action) => action.type === apiActions.assistantTurnFinalized.type,
+    )?.payload,
+  ).toEqual({ toolCalls: [toolCall], continuation: 'stop' });
 
   teardown?.();
 });

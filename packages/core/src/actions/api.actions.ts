@@ -26,5 +26,8 @@ export default createActionGroup('api', {
   threadSaveStart: emptyProps(),
   threadSaveSuccess: props<{ threadId: string }>(),
   threadSaveFailure: props<{ error: string; stacktrace?: string }>(),
-  assistantTurnFinalized: emptyProps(),
+  assistantTurnFinalized: props<{
+    toolCalls: Chat.Internal.ToolCall[];
+    continuation: 'continue' | 'stop';
+  }>(),
 });
