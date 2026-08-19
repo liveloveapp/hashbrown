@@ -82,8 +82,15 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
             '@hashbrownai/core/package.json',
           );
           const packageJson = require(packageJsonPath);
-          if (packageJson.dependencies?.['@ag-ui/core'] !== '0.0.58') {
-            throw new Error('Core must declare an exact @ag-ui/core dependency');
+          const agUiCoreVersion = packageJson.dependencies?.['@ag-ui/core'];
+          const agUiClientVersion = packageJson.dependencies?.['@ag-ui/client'];
+          if (
+            agUiCoreVersion !== '0.0.58' ||
+            agUiClientVersion !== agUiCoreVersion
+          ) {
+            throw new Error(
+              'Core must declare exact matching @ag-ui/core and @ag-ui/client dependencies',
+            );
           }
           const cjs = require('@hashbrownai/core');
           const cjsPartialJson = require('@cacheplane/partial-json');

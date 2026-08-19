@@ -1,4 +1,5 @@
 import { LLMock } from '@copilotkit/aimock';
+import { AGUIMock } from '@copilotkit/aimock/agui';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -10,6 +11,10 @@ export interface AimockHandle {
   readonly port: number;
   /** Raw aimock server URL without a provider-specific path suffix. */
   readonly url: string;
+  /** AG-UI run endpoint mounted on the shared aimock server. */
+  readonly aguiRunUrl: string;
+  /** AG-UI mock used to register deterministic run fixtures. */
+  readonly aguiMock: AGUIMock;
   /** OpenAI-compatible base URL including `/v1`. */
   readonly openAiBaseUrl: string;
   /** Anthropic-compatible base URL without `/v1`; the SDK appends it. */
@@ -68,6 +73,8 @@ export async function startAimock(
     port: 0,
     chunkSize: options.chunkSize ?? 4096,
   });
+  const aguiMock = new AGUIMock();
+  mock.mount('/run', aguiMock);
 
   if (entries.length > 0) {
     mock.addFixturesFromJSON(entries as never);
@@ -81,6 +88,8 @@ export async function startAimock(
   return {
     port: mock.port,
     url,
+    aguiRunUrl: `${url}/run`,
+    aguiMock,
     openAiBaseUrl: `${url}/v1`,
     anthropicBaseUrl: url,
     ollamaHost: url,

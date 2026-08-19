@@ -57,7 +57,9 @@ export const reducer = createReducer(
           isSending: false,
           isReceiving: true,
           isGenerating: true,
+          sendingError: undefined,
           generatingError: undefined,
+          error: undefined,
         };
       case EventType.TEXT_MESSAGE_START:
       case EventType.TEXT_MESSAGE_CONTENT:
@@ -79,6 +81,7 @@ export const reducer = createReducer(
       ...state,
       isReceiving: false,
       isGenerating: false,
+      sendingError: undefined,
       error: undefined,
       generatingError: undefined,
       exhaustedRetries: false,

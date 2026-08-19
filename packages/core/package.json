@@ -17,6 +17,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@ag-ui/client": "0.0.58",
     "@ag-ui/core": "0.0.58",
     "@cacheplane/partial-json": "0.2.2"
   },

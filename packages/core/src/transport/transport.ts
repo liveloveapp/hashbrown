@@ -1,3 +1,4 @@
+import type { AGUIEvent, RunAgentInput } from '@ag-ui/core';
 import { Chat } from '../models';
 import { Frame } from '../frames';
 /**
@@ -15,6 +16,20 @@ export interface TransportMetadata {
  * @public
  */
 export interface TransportRequest {
+  /**
+   * Modern AG-UI input sent directly to AG-UI-compatible transports.
+   */
+  input?: RunAgentInput & {
+    hashbrown?: {
+      responseSchema?: object;
+      ui?: boolean;
+    };
+  };
+  /**
+   * Legacy completion parameters used by frame-based providers.
+   *
+   * @deprecated Modern transports should consume `input`.
+   */
   params: Chat.Api.CompletionCreateParams;
   signal: AbortSignal;
   attempt: number;
@@ -28,6 +43,8 @@ export interface TransportRequest {
  * @public
  */
 export interface TransportResponse {
+  /** Validated AG-UI events streamed by a modern transport. */
+  events?: AsyncIterable<AGUIEvent>;
   stream?: ReadableStream<Uint8Array>;
   frames?: AsyncGenerator<Frame>;
   metadata?: TransportMetadata;
@@ -35,12 +52,19 @@ export interface TransportResponse {
 }
 
 /**
- * Abstraction that converts chat params into a frame stream.
+ * Abstraction for modern AG-UI event responses and deprecated legacy frame or
+ * byte-stream responses.
  *
  * @public
  */
 export interface Transport {
   readonly name: string;
+  /**
+   * Whether this transport supports legacy thread-loading requests. When
+   * omitted, the current legacy behavior is preserved. Modern HTTP transport
+   * implementations set this to `false`.
+   */
+  readonly supportsLegacyThreadLoading?: boolean;
   send(request: TransportRequest): Promise<TransportResponse>;
 }
 

@@ -25,6 +25,7 @@ import {
   selectSystem,
   selectThreadId,
   selectToolEntities,
+  selectTools,
   selectTransport,
   selectUiRequested,
 } from '../reducers';
@@ -35,12 +36,14 @@ import {
   TransportError,
   TransportResponse,
 } from '../transport';
+import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
   // This controller is used to cancel the current message generation
   // when a new message is sent or the user stops the generation.
   let cancelAbortController = new AbortController();
+  let generatedThreadId: string | undefined;
 
   store.when(
     internalActions.sizzle,
@@ -57,6 +60,12 @@ export const generateMessage = createEffect((store) => {
       const debounce = store.read(selectDebounce);
       const retries = store.read(selectRetries);
       const tools = store.read(selectApiTools);
+      const internalTools = store.read(selectTools);
+      const modernTools = Chat.helpers.toApiToolsFromInternal(
+        internalTools,
+        false,
+        responseSchema ?? s.nullish(),
+      );
       const toolsByName = store.read(selectToolEntities);
       const system = store.read(selectSystem);
       const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
@@ -65,8 +74,12 @@ export const generateMessage = createEffect((store) => {
         ? (structuredOutput?.mode ??
           (emulateStructuredOutput ? 'tool' : 'strict'))
         : undefined;
+      const responseJsonSchema = responseSchema
+        ? s.toJsonSchema(responseSchema)
+        : undefined;
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       const threadId = store.read(selectThreadId);
+      const uiRequested = store.read(selectUiRequested);
       const shouldLoadThread = Boolean(threadId) && messages.length === 0;
       const messagePayload = threadId
         ? _extractMessageDelta(messages)
@@ -90,7 +103,7 @@ export const generateMessage = createEffect((store) => {
         toolChoice: structuredOutputMode === 'tool' ? 'required' : undefined,
         responseFormat:
           structuredOutputMode === 'strict' && responseSchema
-            ? s.toJsonSchema(responseSchema)
+            ? responseJsonSchema
             : undefined,
         responseFormatMode:
           structuredOutputMode === 'strict'
@@ -105,7 +118,7 @@ export const generateMessage = createEffect((store) => {
         tools:
           Boolean(params.tools?.length) || params.toolChoice === 'required',
         structured: Boolean(params.responseFormatMode),
-        ui: store.read(selectUiRequested),
+        ui: uiRequested,
         threads: Boolean(threadId),
       };
 
@@ -119,18 +132,68 @@ export const generateMessage = createEffect((store) => {
         transport: transportProvider,
       });
 
-      let selection = await resolver.select(requestedFeatures);
-      if (!selection) {
-        store.dispatch(
-          apiActions.generateMessageError(
-            new Error(
-              'No compatible model spec found for the requested features.',
+      let skippedLegacyThreadLoad = false;
+      const selectCompatibleTransport = async () => {
+        let nextSelection = await resolver.select(requestedFeatures);
+        while (
+          shouldLoadThread &&
+          nextSelection?.transport.supportsLegacyThreadLoading === false
+        ) {
+          skippedLegacyThreadLoad = true;
+          resolver.skipFromError(
+            nextSelection.spec,
+            new TransportError(
+              `Model spec "${nextSelection.spec.name}" does not support legacy thread loading.`,
+              { retryable: false, code: 'FEATURE_UNSUPPORTED' },
             ),
-          ),
-        );
+          );
+          nextSelection = await resolver.select(requestedFeatures);
+        }
+
+        return nextSelection;
+      };
+
+      let selection = await selectCompatibleTransport();
+      if (!selection) {
+        if (!skippedLegacyThreadLoad) {
+          store.dispatch(
+            apiActions.generateMessageError(
+              new Error(
+                'No compatible model spec found for the requested features.',
+              ),
+            ),
+          );
+        }
         return;
       }
 
+      const finalizeGeneration = () => {
+        const streamingError = store.read(selectStreamingMessageError);
+        if (streamingError) {
+          store.dispatch(apiActions.generateMessageError(streamingError));
+          return;
+        }
+
+        const streamingMessage = store.read(selectRawStreamingMessage);
+        const streamingToolCalls = store.read(selectRawStreamingToolCalls);
+
+        if (streamingMessage) {
+          store.dispatch(
+            apiActions.generateMessageSuccess({
+              message: streamingMessage,
+              toolCalls: streamingToolCalls,
+            }),
+          );
+        } else {
+          store.dispatch(
+            apiActions.generateMessageError(
+              new Error('No message was generated'),
+            ),
+          );
+        }
+      };
+
+      let retryWithReplacement = false;
       try {
         do {
           if (
@@ -148,6 +211,16 @@ export const generateMessage = createEffect((store) => {
           let transportResponse: TransportResponse | undefined;
           let activeRun:
             { threadId: string; runId: string; terminal: boolean } | undefined;
+          let shouldFinalizeGeneration = false;
+          let disposed = false;
+          const disposeTransportResponse = async () => {
+            if (disposed) {
+              return;
+            }
+
+            disposed = true;
+            await transportResponse?.dispose?.();
+          };
           const dispatchRunError = (message: string) => {
             if (!activeRun || activeRun.terminal) {
               return;
@@ -163,223 +236,308 @@ export const generateMessage = createEffect((store) => {
           };
 
           try {
-            attempt++;
-
-            const requestAbortSignal = AbortSignal.any([
-              switchSignal,
-              effectAbortController.signal,
-              cancelAbortController.signal,
-            ]);
-
-            const paramsWithModel: Chat.Api.CompletionCreateParams = {
-              ...params,
-              model: selection.spec.name,
-            };
-            const requestId = _createRequestId();
-            const runId = requestId;
-            const aguiThreadId = threadId ?? requestId;
-            const completionChunkAdapter =
-              createCompletionChunkEventAdapter(requestId);
-
-            transportResponse = await selection.transport.send({
-              params: paramsWithModel,
-              signal: requestAbortSignal,
-              attempt,
-              maxAttempts: retries + 1,
-              requestId,
-            });
-
-            if (cancelAbortController.signal.aborted) {
-              cancelAbortController = new AbortController();
-              return;
-            }
-
-            const frameStream = transportResponse.frames
-              ? framesToLengthPrefixedStream(transportResponse.frames)
-              : transportResponse.stream;
-
-            if (!frameStream) {
-              throw new TransportError(
-                'Transport returned neither frames nor stream',
-                { retryable: false },
-              );
-            }
-
-            transportResponse = {
-              ...transportResponse,
-              metadata: {
-                ...(transportResponse.metadata ?? {}),
-                selection: selection.metadata,
-              },
-            };
-
-            for await (const frame of decodeFrames(frameStream, {
-              signal: AbortSignal.any([
-                cancelAbortController.signal,
-                effectAbortController.signal,
-              ]),
-            })) {
-              switch (frame.type) {
-                case 'thread-load-start': {
-                  store.dispatch(apiActions.threadLoadStart());
-                  break;
-                }
-                case 'thread-load-success': {
-                  store.dispatch(
-                    apiActions.threadLoadSuccess({
-                      thread: frame.thread,
-                      responseSchema,
-                      toolsByName,
-                    }),
-                  );
-                  if (params.operation === 'load-thread') {
-                    return;
-                  }
-                  break;
-                }
-                case 'thread-load-failure': {
-                  store.dispatch(
-                    apiActions.threadLoadFailure({
-                      error: frame.error,
-                      stacktrace: frame.stacktrace,
-                    }),
-                  );
-                  throw new Error(frame.error);
-                }
-                case 'generation-start': {
-                  activeRun = {
-                    threadId: aguiThreadId,
-                    runId,
-                    terminal: false,
-                  };
-                  store.dispatch(
-                    apiActions.generateMessageStart({
-                      responseSchema,
-                      emulateStructuredOutput,
-                      toolsByName:
-                        emulateStructuredOutput && responseSchema
-                          ? {
-                              ...toolsByName,
-                              output: {
-                                name: 'output',
-                                description:
-                                  'Reserved tool for emulated structured output.',
-                                schema: s.normalizeSchemaOutput(responseSchema),
-                                handler: async () => undefined,
-                              },
-                            }
-                          : toolsByName,
-                    }),
-                  );
-                  store.dispatch(
-                    apiActions.generateMessageEvent({
-                      type: EventType.RUN_STARTED,
-                      threadId: aguiThreadId,
-                      runId,
-                    }),
-                  );
-                  break;
-                }
-                case 'generation-chunk': {
-                  for (const event of completionChunkAdapter.push(
-                    frame.chunk,
-                  )) {
-                    store.dispatch(apiActions.generateMessageEvent(event));
-                  }
-                  break;
-                }
-                case 'thread-save-success': {
-                  store.dispatch(
-                    apiActions.threadSaveSuccess({ threadId: frame.threadId }),
-                  );
-                  break;
-                }
-                case 'thread-save-start': {
-                  store.dispatch(apiActions.threadSaveStart());
-                  break;
-                }
-                case 'thread-save-failure': {
-                  store.dispatch(
-                    apiActions.threadSaveFailure({
-                      error: frame.error,
-                      stacktrace: frame.stacktrace,
-                    }),
-                  );
-                  break;
-                }
-                case 'generation-error': {
-                  dispatchRunError(frame.error);
-                  // Assumption: a 'finish' will follow the 'error', but we know we need to retry
-                  // as soon as we see the error.  Therefore, throw an exception to break out
-                  // of the for loop.
-                  throw new Error(frame.error);
-                }
-                case 'generation-finish': {
-                  if (activeRun) {
-                    activeRun = { ...activeRun, terminal: true };
-                  }
-                  const events: AGUIEvent[] = [
-                    ...completionChunkAdapter.finish(),
-                    {
-                      type: EventType.RUN_FINISHED,
-                      threadId: aguiThreadId,
-                      runId,
-                    },
-                  ];
-                  for (const event of events) {
-                    store.dispatch(apiActions.generateMessageEvent(event));
-                  }
-
-                  const streamingError = store.read(
-                    selectStreamingMessageError,
-                  );
-                  if (streamingError) {
-                    store.dispatch(
-                      apiActions.generateMessageError(streamingError),
-                    );
-                    break;
-                  }
-
-                  const streamingMessage = store.read(
-                    selectRawStreamingMessage,
-                  );
-                  const streamingToolCalls = store.read(
-                    selectRawStreamingToolCalls,
-                  );
-
-                  if (streamingMessage) {
-                    store.dispatch(
-                      apiActions.generateMessageSuccess({
-                        message: streamingMessage,
-                        toolCalls: streamingToolCalls,
-                      }),
-                    );
-                  } else {
-                    store.dispatch(
-                      apiActions.generateMessageError(
-                        new Error('No message was generated'),
-                      ),
-                    );
-                  }
-                  break;
-                }
+            try {
+              if (!retryWithReplacement) {
+                attempt++;
               }
-            }
+              retryWithReplacement = false;
 
-            if (activeRun && !activeRun.terminal) {
-              const cancelled =
-                effectAbortController.signal.aborted ||
-                switchSignal.aborted ||
-                cancelAbortController.signal.aborted;
-              if (cancelled) {
-                dispatchRunError('Generation cancelled');
+              const requestAbortSignal = AbortSignal.any([
+                switchSignal,
+                effectAbortController.signal,
+                cancelAbortController.signal,
+              ]);
+
+              const paramsWithModel: Chat.Api.CompletionCreateParams = {
+                ...params,
+                model: selection.spec.name,
+              };
+              const aguiThreadId =
+                threadId ?? (generatedThreadId ??= _createRequestId());
+              const requestId = _createRequestId();
+              const runId = requestId;
+
+              transportResponse = await selection.transport.send({
+                input: createHashbrownRunAgentInput({
+                  threadId: aguiThreadId,
+                  runId,
+                  system,
+                  messages,
+                  tools: modernTools,
+                  responseSchema: responseJsonSchema,
+                  ui: uiRequested,
+                }),
+                params: paramsWithModel,
+                signal: requestAbortSignal,
+                attempt,
+                maxAttempts: retries + 1,
+                requestId,
+              });
+
+              if (cancelAbortController.signal.aborted) {
+                cancelAbortController = new AbortController();
                 return;
               }
 
-              throw new TransportError(
-                'Generation stream ended before generation-finish',
-                { retryable: true },
-              );
+              if (transportResponse.events) {
+                for await (const event of transportResponse.events) {
+                  if (event.type === EventType.RUN_STARTED) {
+                    if (activeRun) {
+                      throw new TransportError(
+                        'Received duplicate RUN_STARTED',
+                        {
+                          retryable: true,
+                          code: 'PROTOCOL_ERROR',
+                        },
+                      );
+                    }
+
+                    if (
+                      event.threadId !== aguiThreadId ||
+                      event.runId !== runId
+                    ) {
+                      throw new TransportError(
+                        'RUN_STARTED identity does not match the attempted run',
+                        { retryable: true, code: 'PROTOCOL_ERROR' },
+                      );
+                    }
+
+                    activeRun = {
+                      threadId: event.threadId,
+                      runId: event.runId,
+                      terminal: false,
+                    };
+                    store.dispatch(
+                      apiActions.generateMessageStart({
+                        responseSchema,
+                        emulateStructuredOutput: false,
+                        toolsByName,
+                      }),
+                    );
+                    store.dispatch(apiActions.generateMessageEvent(event));
+                    continue;
+                  }
+
+                  if (event.type === EventType.RUN_ERROR) {
+                    if (activeRun) {
+                      activeRun = { ...activeRun, terminal: true };
+                    }
+                    store.dispatch(apiActions.generateMessageEvent(event));
+                    throw new Error(event.message);
+                  }
+
+                  if (!activeRun) {
+                    throw new TransportError(
+                      `Received ${event.type} before RUN_STARTED`,
+                      { retryable: true, code: 'PROTOCOL_ERROR' },
+                    );
+                  }
+
+                  if (event.type === EventType.RUN_FINISHED) {
+                    if (
+                      event.threadId !== activeRun.threadId ||
+                      event.runId !== activeRun.runId
+                    ) {
+                      throw new TransportError(
+                        'RUN_FINISHED identity does not match the active run',
+                        { retryable: true, code: 'PROTOCOL_ERROR' },
+                      );
+                    }
+
+                    activeRun = { ...activeRun, terminal: true };
+                    store.dispatch(apiActions.generateMessageEvent(event));
+                    shouldFinalizeGeneration = true;
+                    break;
+                  }
+
+                  store.dispatch(apiActions.generateMessageEvent(event));
+                }
+
+                if (activeRun && !activeRun.terminal) {
+                  throw new TransportError(
+                    'Generation stream ended before RUN_FINISHED or RUN_ERROR',
+                    { retryable: true },
+                  );
+                }
+
+                if (!activeRun) {
+                  throw new TransportError(
+                    'Generation stream ended before RUN_STARTED',
+                    { retryable: true },
+                  );
+                }
+              }
+
+              if (!transportResponse.events) {
+                const completionChunkAdapter =
+                  createCompletionChunkEventAdapter(requestId);
+
+                const frameStream = transportResponse.frames
+                  ? framesToLengthPrefixedStream(transportResponse.frames)
+                  : transportResponse.stream;
+
+                if (!frameStream) {
+                  throw new TransportError(
+                    'Transport returned neither frames nor stream',
+                    { retryable: false },
+                  );
+                }
+
+                transportResponse = {
+                  ...transportResponse,
+                  metadata: {
+                    ...(transportResponse.metadata ?? {}),
+                    selection: selection.metadata,
+                  },
+                };
+
+                for await (const frame of decodeFrames(frameStream, {
+                  signal: AbortSignal.any([
+                    cancelAbortController.signal,
+                    effectAbortController.signal,
+                  ]),
+                })) {
+                  switch (frame.type) {
+                    case 'thread-load-start': {
+                      store.dispatch(apiActions.threadLoadStart());
+                      break;
+                    }
+                    case 'thread-load-success': {
+                      store.dispatch(
+                        apiActions.threadLoadSuccess({
+                          thread: frame.thread,
+                          responseSchema,
+                          toolsByName,
+                        }),
+                      );
+                      if (params.operation === 'load-thread') {
+                        return;
+                      }
+                      break;
+                    }
+                    case 'thread-load-failure': {
+                      store.dispatch(
+                        apiActions.threadLoadFailure({
+                          error: frame.error,
+                          stacktrace: frame.stacktrace,
+                        }),
+                      );
+                      throw new Error(frame.error);
+                    }
+                    case 'generation-start': {
+                      activeRun = {
+                        threadId: aguiThreadId,
+                        runId,
+                        terminal: false,
+                      };
+                      store.dispatch(
+                        apiActions.generateMessageStart({
+                          responseSchema,
+                          emulateStructuredOutput,
+                          toolsByName:
+                            emulateStructuredOutput && responseSchema
+                              ? {
+                                  ...toolsByName,
+                                  output: {
+                                    name: 'output',
+                                    description:
+                                      'Reserved tool for emulated structured output.',
+                                    schema:
+                                      s.normalizeSchemaOutput(responseSchema),
+                                    handler: async () => undefined,
+                                  },
+                                }
+                              : toolsByName,
+                        }),
+                      );
+                      store.dispatch(
+                        apiActions.generateMessageEvent({
+                          type: EventType.RUN_STARTED,
+                          threadId: aguiThreadId,
+                          runId,
+                        }),
+                      );
+                      break;
+                    }
+                    case 'generation-chunk': {
+                      for (const event of completionChunkAdapter.push(
+                        frame.chunk,
+                      )) {
+                        store.dispatch(apiActions.generateMessageEvent(event));
+                      }
+                      break;
+                    }
+                    case 'thread-save-success': {
+                      store.dispatch(
+                        apiActions.threadSaveSuccess({
+                          threadId: frame.threadId,
+                        }),
+                      );
+                      break;
+                    }
+                    case 'thread-save-start': {
+                      store.dispatch(apiActions.threadSaveStart());
+                      break;
+                    }
+                    case 'thread-save-failure': {
+                      store.dispatch(
+                        apiActions.threadSaveFailure({
+                          error: frame.error,
+                          stacktrace: frame.stacktrace,
+                        }),
+                      );
+                      break;
+                    }
+                    case 'generation-error': {
+                      dispatchRunError(frame.error);
+                      // Assumption: a 'finish' will follow the 'error', but we know we need to retry
+                      // as soon as we see the error.  Therefore, throw an exception to break out
+                      // of the for loop.
+                      throw new Error(frame.error);
+                    }
+                    case 'generation-finish': {
+                      if (activeRun) {
+                        activeRun = { ...activeRun, terminal: true };
+                      }
+                      const events: AGUIEvent[] = [
+                        ...completionChunkAdapter.finish(),
+                        {
+                          type: EventType.RUN_FINISHED,
+                          threadId: aguiThreadId,
+                          runId,
+                        },
+                      ];
+                      for (const event of events) {
+                        store.dispatch(apiActions.generateMessageEvent(event));
+                      }
+                      shouldFinalizeGeneration = true;
+                      break;
+                    }
+                  }
+                }
+
+                if (activeRun && !activeRun.terminal) {
+                  const cancelled =
+                    effectAbortController.signal.aborted ||
+                    switchSignal.aborted ||
+                    cancelAbortController.signal.aborted;
+                  if (cancelled) {
+                    dispatchRunError('Generation cancelled');
+                    return;
+                  }
+
+                  throw new TransportError(
+                    'Generation stream ended before generation-finish',
+                    { retryable: true },
+                  );
+                }
+              }
+            } finally {
+              await disposeTransportResponse();
+            }
+
+            if (shouldFinalizeGeneration) {
+              finalizeGeneration();
             }
           } catch (e) {
             const cancelled =
@@ -405,10 +563,11 @@ export const generateMessage = createEffect((store) => {
                 e.code === 'PLATFORM_UNSUPPORTED')
             ) {
               resolver.skipFromError(selection.spec, e);
-              selection = await resolver.select(requestedFeatures);
+              selection = await selectCompatibleTransport();
               if (!selection) {
                 break;
               }
+              retryWithReplacement = true;
               continue;
             }
 
@@ -418,14 +577,13 @@ export const generateMessage = createEffect((store) => {
 
             continue;
           } finally {
-            await transportResponse?.dispose?.();
             if (cancelAbortController.signal.aborted) {
               cancelAbortController = new AbortController();
             }
           }
 
           break;
-        } while (retries > 0 && attempt < retries + 1);
+        } while (retryWithReplacement || attempt < retries + 1);
       } finally {
         store.dispatch(apiActions.assistantTurnFinalized());
       }
