@@ -53,6 +53,7 @@ type RunOutcome =
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
   let cancelAbortController = new AbortController();
+  let threadIdentityAbortController = new AbortController();
 
   store.when(
     internalActions.sizzle,
@@ -67,6 +68,7 @@ export const generateMessage = createEffect((store) => {
       const retiredSignal = AbortSignal.any([
         effectAbortController.signal,
         switchSignal,
+        threadIdentityAbortController.signal,
       ]);
 
       // Let sibling effects settle nested actions before snapshotting state.
@@ -530,9 +532,19 @@ export const generateMessage = createEffect((store) => {
     cancelAbortController.abort();
   });
 
+  store.when(devActions.updateOptions, (action) => {
+    if (!Object.prototype.hasOwnProperty.call(action.payload, 'threadId')) {
+      return;
+    }
+
+    threadIdentityAbortController.abort();
+    threadIdentityAbortController = new AbortController();
+  });
+
   return () => {
     effectAbortController.abort();
     cancelAbortController.abort();
+    threadIdentityAbortController.abort();
   };
 });
 

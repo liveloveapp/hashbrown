@@ -654,6 +654,161 @@ test('first user message uses the configured thread ID', async () => {
   teardown?.();
 });
 
+test.each([
+  { label: 'replacement', nextThreadId: 'thread-b' },
+  { label: 'explicit clearing', nextThreadId: undefined },
+] as const)(
+  'thread identity $label retires a run awaiting RUN_STARTED',
+  async ({ nextThreadId }) => {
+    jest.clearAllMocks();
+    const firstIterationStarted = createDeferred<void>();
+    const releaseLateStart = createDeferred<void>();
+    const firstIteratorReturn = jest.fn(async () => ({
+      done: true as const,
+      value: undefined,
+    }));
+    const firstDispose = jest.fn();
+    let firstRequest: TransportRequest | undefined;
+    let sendCount = 0;
+    const { send } = makeSelection(async (request) => {
+      sendCount++;
+      if (sendCount === 1) {
+        firstRequest = request;
+        let index = 0;
+        return {
+          events: {
+            [Symbol.asyncIterator]() {
+              return {
+                async next() {
+                  index++;
+                  if (index === 1) {
+                    firstIterationStarted.resolve();
+                    await releaseLateStart.promise;
+                    return {
+                      done: false as const,
+                      value: {
+                        type: EventType.RUN_STARTED,
+                        ...getInputIdentity(request),
+                      } as AGUIEvent,
+                    };
+                  }
+
+                  return {
+                    done: false as const,
+                    value: {
+                      type: EventType.RUN_FINISHED,
+                      ...getInputIdentity(request),
+                    } as AGUIEvent,
+                  };
+                },
+                return: firstIteratorReturn,
+              };
+            },
+          },
+          dispose: firstDispose,
+        };
+      }
+
+      return { events: successfulEvents(request) };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectRetries, 2],
+        [selectThreadId, 'thread-a'],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const firstGeneration = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    );
+    await firstIterationStarted.promise;
+    store.setSelector(selectThreadId, nextThreadId);
+    await store.trigger(devActions.updateOptions({ threadId: nextThreadId }));
+    const abortedAfterUpdate = firstRequest?.signal.aborted;
+    releaseLateStart.resolve();
+    await firstGeneration;
+    const actionsAfterRetirement = [...store.actions];
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+    );
+
+    const secondRequest = send.mock.calls[1]?.[0] as
+      TransportRequest | undefined;
+    expect(abortedAfterUpdate).toBe(true);
+    expect(firstIteratorReturn).toHaveBeenCalledTimes(1);
+    expect(firstDispose).toHaveBeenCalledTimes(1);
+    expect(getDispatchedEvents(actionsAfterRetirement)).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.generateMessageError.type,
+      ),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.generateMessageExhaustedRetries.type,
+      ),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.assistantTurnFinalized.type,
+      ),
+    ).toHaveLength(0);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(secondRequest?.input?.threadId).toBeDefined();
+    if (nextThreadId === undefined) {
+      expect(secondRequest?.input?.threadId).not.toBe(
+        firstRequest?.input?.threadId,
+      );
+    } else {
+      expect(secondRequest?.input?.threadId).toBe(nextThreadId);
+    }
+
+    teardown?.();
+  },
+);
+
+test('thread identity synchronization before a run does not retire the next run', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectThreadId, undefined],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(devActions.updateOptions({ threadId: undefined }));
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_FINISHED,
+    ),
+  ).toHaveLength(1);
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(1);
+
+  teardown?.();
+});
+
 test('unconfigured run reuses one generated thread ID across retries', async () => {
   jest.clearAllMocks();
   const firstDispose = jest.fn();

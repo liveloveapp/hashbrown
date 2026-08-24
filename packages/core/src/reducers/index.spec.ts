@@ -1,5 +1,6 @@
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions } from '../actions';
+import { fryHashbrown } from '../hashbrown';
 import { Chat } from '../models';
 import { s } from '../schema';
 import {
@@ -352,4 +353,128 @@ test('the loading selector ignores thread persistence flags', () => {
   const isLoading = selectIsLoading(stateWithPersistenceFlags);
 
   expect(isLoading).toBe(false);
+});
+
+test('undefined non-clearable options preserve current config values', () => {
+  const state = reduceAll(
+    createState(),
+    devActions.init({
+      model: 'initial-model',
+      system: 'initial-system',
+      debounce: 250,
+      emulateStructuredOutput: true,
+      retries: 3,
+      ui: true,
+    }),
+  );
+
+  const nextState = reduceAll(
+    state,
+    devActions.updateOptions({
+      model: undefined,
+      system: undefined,
+      debounce: undefined,
+      emulateStructuredOutput: undefined,
+      retries: undefined,
+      ui: undefined,
+    }),
+  );
+
+  expect(nextState.config).toMatchObject({
+    model: 'initial-model',
+    system: 'initial-system',
+    debounce: 250,
+    emulateStructuredOutput: true,
+    retries: 3,
+    ui: true,
+  });
+});
+
+test('undefined clearable options clear current config values', () => {
+  const middleware: Chat.Middleware = (request) => request;
+  const transport = {
+    name: 'test-transport',
+    send: async () => {
+      throw new Error('not used');
+    },
+  };
+  const state = reduceAll(
+    createState(),
+    devActions.init({
+      apiUrl: 'https://example.test',
+      model: 'test-model',
+      system: 'test',
+      middleware: [middleware],
+      structuredOutput: { mode: 'json' },
+      transport,
+    }),
+  );
+
+  const nextState = reduceAll(
+    state,
+    devActions.updateOptions({
+      apiUrl: undefined,
+      middleware: undefined,
+      structuredOutput: undefined,
+      transport: undefined,
+    }),
+  );
+
+  expect(nextState.config).toHaveProperty('apiUrl', undefined);
+  expect(nextState.config).toHaveProperty('middleware', undefined);
+  expect(nextState.config).toHaveProperty('structuredOutput', undefined);
+  expect(nextState.config).toHaveProperty('transport', undefined);
+});
+
+test('public options explicitly clear the current thread identity', () => {
+  const hashbrown = fryHashbrown({
+    model: 'test-model',
+    system: 'test',
+    threadId: 'current-thread',
+  });
+
+  hashbrown.updateOptions({ threadId: undefined });
+
+  expect(hashbrown.threadId()).toBeUndefined();
+});
+
+test('devtools state includes only the current thread identity', () => {
+  const send = jest.fn();
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      __REDUX_DEVTOOLS_EXTENSION__: {
+        connect: () => ({
+          error: jest.fn(),
+          init: jest.fn(),
+          send,
+          unsubscribe: jest.fn(),
+        }),
+      },
+    },
+  });
+
+  try {
+    fryHashbrown({
+      debugName: 'thread-identity-test',
+      model: 'test-model',
+      system: 'test',
+      threadId: 'devtools-thread',
+    });
+
+    const projectedState = send.mock.calls.at(-1)?.[1];
+
+    expect(projectedState).toMatchObject({ threadId: 'devtools-thread' });
+    expect(projectedState).not.toHaveProperty('isLoadingThread');
+    expect(projectedState).not.toHaveProperty('isSavingThread');
+    expect(projectedState).not.toHaveProperty('threadLoadError');
+    expect(projectedState).not.toHaveProperty('threadSaveError');
+  } finally {
+    if (previousWindow) {
+      Object.defineProperty(globalThis, 'window', previousWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, 'window');
+    }
+  }
 });

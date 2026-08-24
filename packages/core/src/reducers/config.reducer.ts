@@ -51,7 +51,16 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.updateOptions, (state, action): ConfigState => {
-    const { threadId: _threadId, ...configPayload } = action.payload;
+    const {
+      threadId: _threadId,
+      model = state.model,
+      system = state.system,
+      debounce = state.debounce,
+      emulateStructuredOutput = state.emulateStructuredOutput,
+      retries = state.retries,
+      ui = state.ui,
+      ...configPayload
+    } = action.payload;
     void _threadId;
     const responseSchema = configPayload.responseSchema
       ? s.normalizeSchemaOutput(configPayload.responseSchema)
@@ -60,6 +69,12 @@ export const reducer = createReducer(
     return {
       ...state,
       ...configPayload,
+      model,
+      system,
+      debounce,
+      emulateStructuredOutput,
+      retries,
+      ui,
       responseSchema,
     };
   }),

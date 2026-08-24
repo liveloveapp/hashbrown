@@ -75,7 +75,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       retries: number;
       transport: TransportOrFactory;
       ui?: boolean;
-      threadId: string;
+      /** Set to undefined to clear the current AG-UI thread identity. */
+      threadId?: string | undefined;
     }>,
   ) => void;
 
@@ -190,6 +191,7 @@ export function fryHashbrown(init: {
       isGenerating: selectIsGenerating(state),
       isRunningToolCalls: selectIsRunningToolCalls(state),
       isLoading: selectIsLoading(state),
+      threadId: selectThreadId(state),
       sendingError: selectSendingError(state),
       generatingError: selectGeneratingError(state),
       error: selectUnifiedError(state),
@@ -253,7 +255,7 @@ export function fryHashbrown(init: {
       retries: number;
       transport: TransportOrFactory;
       ui?: boolean;
-      threadId: string;
+      threadId?: string | undefined;
     }>,
   ) {
     state.dispatch(devActions.updateOptions(options));
