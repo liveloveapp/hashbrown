@@ -59,11 +59,13 @@ type TestSelection = {
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
 
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
 
 function createTestStore(selectorOverrides: SelectorMap = new Map()) {
@@ -207,6 +209,20 @@ function mockSelectionSequence(selections: Array<TestSelection | undefined>) {
   return { select, skipFromError };
 }
 
+function mockResolverSelect(select: jest.Mock) {
+  const skipFromError = jest.fn();
+  ModelResolverMock.mockImplementation(
+    () =>
+      ({
+        select,
+        skipFromError,
+        getMetadata: jest.fn(() => ({ skippedSpecs: [] })),
+      }) as unknown as ModelResolver,
+  );
+
+  return { skipFromError };
+}
+
 function getDispatchedEvents(actions: ActionLike[]) {
   return actions
     .filter((action) => action.type === apiActions.generateMessageEvent.type)
@@ -332,6 +348,128 @@ test('updateMessagesWithDelta merges tool-call arguments by index', () => {
   ]);
 });
 
+test('updateMessagesWithDelta preserves an existing message for an empty delta', () => {
+  const initialMessage: Chat.Api.AssistantMessage = {
+    role: 'assistant',
+    content: 'Hello',
+    toolCalls: [],
+  };
+  const delta: Chat.Api.CompletionChunk = { choices: [] };
+
+  const message = _updateMessagesWithDelta(initialMessage, delta);
+
+  expect(message).toEqual(initialMessage);
+});
+
+test('updateMessagesWithDelta adds the first tool call', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        finishReason: 'stop',
+        delta: {
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'tc-1',
+              index: 0,
+              type: 'function',
+              function: { name: 'get_current_time', arguments: '{}' },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(null, delta);
+
+  expect(message).toEqual({
+    role: 'assistant',
+    content: '',
+    toolCalls: [
+      {
+        id: 'tc-1',
+        index: 0,
+        type: 'function',
+        function: { name: 'get_current_time', arguments: '{}' },
+      },
+    ],
+  });
+});
+
+test('updateMessagesWithDelta appends a tool call with a different index', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        finishReason: 'stop',
+        delta: {
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'tc-2',
+              index: 1,
+              type: 'function',
+              function: { name: 'get_weather', arguments: '{}' },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'tc-1',
+          index: 0,
+          type: 'function',
+          function: { name: 'get_current_time', arguments: '{}' },
+        },
+      ],
+    },
+    delta,
+  );
+
+  expect(message?.toolCalls).toHaveLength(2);
+  expect(message?.toolCalls?.[1]).toMatchObject({
+    id: 'tc-2',
+    index: 1,
+    function: { name: 'get_weather' },
+  });
+});
+
+test('updateMessagesWithDelta treats missing content as empty', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        finishReason: 'stop',
+        delta: { role: 'assistant', content: 'Hi!' },
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(
+    { role: 'assistant', toolCalls: [] },
+    delta,
+  );
+
+  expect(message?.content).toBe('Hi!');
+});
+
+test('updateMessagesWithDelta returns null when there is nothing to update', () => {
+  const delta: Chat.Api.CompletionChunk = { choices: [] };
+
+  const message = _updateMessagesWithDelta(null, delta);
+
+  expect(message).toBeNull();
+});
+
 test('configured thread with no messages sends no request and never selects', async () => {
   jest.clearAllMocks();
   const { select, send } = makeSelection(async (request) => ({
@@ -350,6 +488,143 @@ test('configured thread with no messages sends no request and never selects', as
 
   expect(select).not.toHaveBeenCalled();
   expect(send).not.toHaveBeenCalled();
+
+  teardown?.();
+});
+
+test.each(['undefined', 'rejection'] as const)(
+  'supersession owns a late initial selection %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const selectionStarted = createDeferred<void>();
+    const delayedSelection = createDeferred<TestSelection | undefined>();
+    const secondSend = jest.fn(async (request: TransportRequest) => ({
+      events: successfulEvents(request),
+    }));
+    const secondSelection = createTestSelection('second', secondSend);
+    const select = jest
+      .fn()
+      .mockImplementationOnce(() => {
+        selectionStarted.resolve();
+        return delayedSelection.promise;
+      })
+      .mockResolvedValueOnce(secondSelection);
+    mockResolverSelect(select);
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Second', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const firstGeneration = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    );
+    await selectionStarted.promise;
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+    );
+    const actionsBeforeSettlement = [...store.actions];
+    if (settlement === 'undefined') {
+      delayedSelection.resolve(undefined);
+    } else {
+      delayedSelection.reject(new Error('late selection failure'));
+    }
+    await expect(firstGeneration).resolves.toBeUndefined();
+
+    expect(store.actions).toEqual(actionsBeforeSettlement);
+    expect(secondSend).toHaveBeenCalledTimes(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
+
+    teardown?.();
+  },
+);
+
+test.each(['undefined', 'rejection'] as const)(
+  'explicit stop owns a late initial selection %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const selectionStarted = createDeferred<void>();
+    const delayedSelection = createDeferred<TestSelection | undefined>();
+    const select = jest.fn(() => {
+      selectionStarted.resolve();
+      return delayedSelection.promise;
+    });
+    mockResolverSelect(select);
+    const store = createTestStore();
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await selectionStarted.promise;
+    await store.trigger(devActions.stopMessageGeneration(true));
+    if (settlement === 'undefined') {
+      delayedSelection.resolve(undefined);
+    } else {
+      delayedSelection.reject(new Error('late selection failure'));
+    }
+    await expect(generation).resolves.toBeUndefined();
+
+    expect(store.actions).toHaveLength(0);
+
+    teardown?.();
+  },
+);
+
+test.each(['undefined', 'rejection'] as const)(
+  'effect teardown owns a late initial selection %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const selectionStarted = createDeferred<void>();
+    const delayedSelection = createDeferred<TestSelection | undefined>();
+    const select = jest.fn(() => {
+      selectionStarted.resolve();
+      return delayedSelection.promise;
+    });
+    mockResolverSelect(select);
+    const store = createTestStore();
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await selectionStarted.promise;
+    teardown?.();
+    if (settlement === 'undefined') {
+      delayedSelection.resolve(undefined);
+    } else {
+      delayedSelection.reject(new Error('late selection failure'));
+    }
+    await expect(generation).resolves.toBeUndefined();
+
+    expect(store.actions).toHaveLength(0);
+  },
+);
+
+test('active initial selection rejection dispatches the selection error', async () => {
+  jest.clearAllMocks();
+  const selectionError = new Error('selection failed');
+  const select = jest.fn().mockRejectedValue(selectionError);
+  mockResolverSelect(select);
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([apiActions.generateMessageError(selectionError)]);
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(0);
 
   teardown?.();
 });
@@ -600,6 +875,161 @@ test.each(['FEATURE_UNSUPPORTED', 'PLATFORM_UNSUPPORTED'] as const)(
     teardown?.();
   },
 );
+
+test.each(['undefined', 'rejection'] as const)(
+  'explicit stop owns a late fallback selection %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const fallbackStarted = createDeferred<void>();
+    const delayedFallback = createDeferred<TestSelection | undefined>();
+    const unsupportedError = new TransportError('unsupported transport', {
+      retryable: false,
+      code: 'FEATURE_UNSUPPORTED',
+    });
+    const unsupportedSend = jest.fn().mockRejectedValue(unsupportedError);
+    const firstSelection = createTestSelection('unsupported', unsupportedSend);
+    const select = jest
+      .fn()
+      .mockResolvedValueOnce(firstSelection)
+      .mockImplementationOnce(() => {
+        fallbackStarted.resolve();
+        return delayedFallback.promise;
+      });
+    const { skipFromError } = mockResolverSelect(select);
+    const store = createTestStore();
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await fallbackStarted.promise;
+    await store.trigger(devActions.stopMessageGeneration(true));
+    const actionsBeforeSettlement = [...store.actions];
+    if (settlement === 'undefined') {
+      delayedFallback.resolve(undefined);
+    } else {
+      delayedFallback.reject(new Error('late fallback failure'));
+    }
+    await expect(generation).resolves.toBeUndefined();
+
+    expect(skipFromError).toHaveBeenCalledWith(
+      firstSelection.spec,
+      unsupportedError,
+    );
+    expect(store.actions).toEqual(actionsBeforeSettlement);
+
+    teardown?.();
+  },
+);
+
+test('active fallback selection rejection dispatches the selection error', async () => {
+  jest.clearAllMocks();
+  const unsupportedError = new TransportError('unsupported transport', {
+    retryable: false,
+    code: 'FEATURE_UNSUPPORTED',
+  });
+  const fallbackError = new Error('fallback selection failed');
+  const unsupportedSend = jest.fn().mockRejectedValue(unsupportedError);
+  const firstSelection = createTestSelection('unsupported', unsupportedSend);
+  const select = jest
+    .fn()
+    .mockResolvedValueOnce(firstSelection)
+    .mockRejectedValueOnce(fallbackError);
+  mockResolverSelect(select);
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(unsupportedError),
+    apiActions.generateMessageError(fallbackError),
+  ]);
+
+  teardown?.();
+});
+
+test('generic send rejection retries with exact attempt progression', async () => {
+  jest.clearAllMocks();
+  const requests: TransportRequest[] = [];
+  const { send } = makeSelection(async (request) => {
+    requests.push(request);
+    if (requests.length < 3) {
+      throw new Error(`temporary failure ${requests.length}`);
+    }
+
+    return { events: successfulEvents(request) };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 2],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(3);
+  expect(requests.map((request) => request.attempt)).toEqual([1, 2, 3]);
+  expect(requests.map((request) => request.maxAttempts)).toEqual([3, 3, 3]);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toHaveLength(2);
+  expect(
+    getActionsOfType(
+      store.actions,
+      apiActions.generateMessageExhaustedRetries.type,
+    ),
+  ).toHaveLength(0);
+
+  teardown?.();
+});
+
+test('exhausted generic send retries dispatches the exhausted action', async () => {
+  jest.clearAllMocks();
+  const error = new Error('still broken');
+  const { send } = makeSelection(async () => {
+    throw error;
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, 1]]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(send.mock.calls.map(([request]) => request.attempt)).toEqual([1, 2]);
+  expect(send.mock.calls.map(([request]) => request.maxAttempts)).toEqual([
+    2, 2,
+  ]);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(error),
+    apiActions.generateMessageError(error),
+  ]);
+  expect(
+    getActionsOfType(
+      store.actions,
+      apiActions.generateMessageExhaustedRetries.type,
+    ),
+  ).toEqual([apiActions.generateMessageExhaustedRetries()]);
+
+  teardown?.();
+});
 
 test.each([
   {
@@ -923,6 +1353,111 @@ test('server RUN_ERROR after start dispatches once without synthesis or retry', 
 
   teardown?.();
 });
+
+test.each(['resolution', 'rejection'] as const)(
+  'explicit stop owns a late send %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const sendStarted = createDeferred<void>();
+    const delayedSend = createDeferred<MockTransportResponse>();
+    const dispose = jest.fn();
+    const { send } = makeSelection(async () => {
+      sendStarted.resolve();
+      return delayedSend.promise;
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([[selectRetries, 2]]),
+    );
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await sendStarted.promise;
+    const request = send.mock.calls[0]?.[0] as TransportRequest;
+    await store.trigger(devActions.stopMessageGeneration(true));
+    if (settlement === 'resolution') {
+      delayedSend.resolve({ events: successfulEvents(request), dispose });
+    } else {
+      delayedSend.reject(new Error('late send failure'));
+    }
+    await expect(generation).resolves.toBeUndefined();
+
+    expect(getDispatchedEvents(store.actions)).toHaveLength(0);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageError.type),
+    ).toHaveLength(0);
+    expect(dispose).toHaveBeenCalledTimes(settlement === 'resolution' ? 1 : 0);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toEqual([
+      apiActions.assistantTurnFinalized({
+        toolCalls: [],
+        continuation: 'stop',
+      }),
+    ]);
+
+    teardown?.();
+  },
+);
+
+test.each(['resolution', 'rejection'] as const)(
+  'supersession owns a late send %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const firstSendStarted = createDeferred<void>();
+    const delayedFirstSend = createDeferred<MockTransportResponse>();
+    const firstDispose = jest.fn();
+    let sendCount = 0;
+    const { send } = makeSelection(async (request) => {
+      sendCount++;
+      if (sendCount === 1) {
+        firstSendStarted.resolve();
+        return delayedFirstSend.promise;
+      }
+
+      return { events: successfulEvents(request) };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Second', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const firstGeneration = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    );
+    await firstSendStarted.promise;
+    const firstRequest = send.mock.calls[0]?.[0] as TransportRequest;
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+    );
+    const actionsBeforeSettlement = [...store.actions];
+    if (settlement === 'resolution') {
+      delayedFirstSend.resolve({
+        events: successfulEvents(firstRequest),
+        dispose: firstDispose,
+      });
+    } else {
+      delayedFirstSend.reject(new Error('late send failure'));
+    }
+    await expect(firstGeneration).resolves.toBeUndefined();
+
+    expect(store.actions).toEqual(actionsBeforeSettlement);
+    expect(firstDispose).toHaveBeenCalledTimes(
+      settlement === 'resolution' ? 1 : 0,
+    );
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
+
+    teardown?.();
+  },
+);
 
 test('user stop before start has no terminal, no retry, and discards late events', async () => {
   jest.clearAllMocks();

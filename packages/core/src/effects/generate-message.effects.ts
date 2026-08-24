@@ -116,7 +116,27 @@ export const generateMessage = createEffect((store) => {
         middleware: middleware ?? undefined,
         transport: transportProvider,
       });
-      let selection = await resolver.select(requestedFeatures);
+      let selection: Awaited<ReturnType<ModelResolver['select']>>;
+      try {
+        selection = await resolver.select(requestedFeatures);
+      } catch (error) {
+        if (retiredSignal.aborted || runCancelSignal.aborted) {
+          return;
+        }
+
+        store.dispatch(
+          apiActions.generateMessageError(
+            error instanceof Error
+              ? error
+              : new Error('Unknown model selection error'),
+          ),
+        );
+        return;
+      }
+
+      if (retiredSignal.aborted || runCancelSignal.aborted) {
+        return;
+      }
       if (!selection) {
         store.dispatch(
           apiActions.generateMessageError(
@@ -158,6 +178,7 @@ export const generateMessage = createEffect((store) => {
       let attempt = 0;
       let reuseAttempt = false;
       let exhaustedRetries = false;
+      let suppressFinalization = false;
 
       try {
         while (selection) {
@@ -441,7 +462,28 @@ export const generateMessage = createEffect((store) => {
               primaryError.code === 'PLATFORM_UNSUPPORTED')
           ) {
             resolver.skipFromError(selection.spec, primaryError);
-            selection = await resolver.select(requestedFeatures);
+            try {
+              selection = await resolver.select(requestedFeatures);
+            } catch (error) {
+              if (retiredSignal.aborted || runCancelSignal.aborted) {
+                suppressFinalization = true;
+                return;
+              }
+
+              store.dispatch(
+                apiActions.generateMessageError(
+                  error instanceof Error
+                    ? error
+                    : new Error('Unknown model selection error'),
+                ),
+              );
+              break;
+            }
+
+            if (retiredSignal.aborted || runCancelSignal.aborted) {
+              suppressFinalization = true;
+              return;
+            }
             if (!selection) {
               break;
             }
@@ -458,7 +500,7 @@ export const generateMessage = createEffect((store) => {
           }
         }
       } finally {
-        if (!retiredSignal.aborted) {
+        if (!retiredSignal.aborted && !suppressFinalization) {
           store.dispatch(
             apiActions.assistantTurnFinalized({
               toolCalls: store.read(selectPendingToolCalls),
