@@ -1,4 +1,4 @@
-import { apiActions, devActions } from '../actions';
+import { devActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { type ModelInput, TransportOrFactory } from '../transport';
@@ -16,7 +16,6 @@ export interface ConfigState {
   retries: number;
   transport?: TransportOrFactory;
   ui?: boolean;
-  threadId?: string;
 }
 
 const initialState: ConfigState = {
@@ -27,7 +26,6 @@ const initialState: ConfigState = {
   emulateStructuredOutput: false,
   retries: 0,
   ui: false,
-  threadId: undefined,
 };
 
 export const reducer = createReducer(
@@ -50,30 +48,19 @@ export const reducer = createReducer(
       retries: action.payload.retries ?? state.retries,
       transport: action.payload.transport ?? state.transport,
       ui: action.payload.ui ?? state.ui,
-      threadId: action.payload.threadId,
     };
   }),
   on(devActions.updateOptions, (state, action): ConfigState => {
-    const hasThreadId = Object.prototype.hasOwnProperty.call(
-      action.payload,
-      'threadId',
-    );
-    const threadId = hasThreadId ? action.payload.threadId : state.threadId;
-    const responseSchema = action.payload.responseSchema
-      ? s.normalizeSchemaOutput(action.payload.responseSchema)
+    const { threadId: _threadId, ...configPayload } = action.payload;
+    void _threadId;
+    const responseSchema = configPayload.responseSchema
+      ? s.normalizeSchemaOutput(configPayload.responseSchema)
       : state.responseSchema;
 
     return {
       ...state,
-      ...action.payload,
+      ...configPayload,
       responseSchema,
-      threadId,
-    };
-  }),
-  on(apiActions.threadSaveSuccess, (state, action): ConfigState => {
-    return {
-      ...state,
-      threadId: action.payload.threadId,
     };
   }),
 );
@@ -92,4 +79,3 @@ export const selectEmulateStructuredOutput = (state: ConfigState) =>
 export const selectRetries = (state: ConfigState) => state.retries;
 export const selectTransport = (state: ConfigState) => state.transport;
 export const selectUiRequested = (state: ConfigState) => state.ui ?? false;
-export const selectThreadId = (state: ConfigState) => state.threadId;

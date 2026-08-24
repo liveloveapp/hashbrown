@@ -12,17 +12,13 @@ import {
   selectGeneratingError,
   selectIsGenerating,
   selectIsLoading,
-  selectIsLoadingThread,
   selectIsReceiving,
   selectIsRunningToolCalls,
-  selectIsSavingThread,
   selectIsSending,
   selectLastAssistantMessage,
   selectResponseSchema,
   selectSendingError,
   selectThreadId,
-  selectThreadLoadError,
-  selectThreadSaveError,
   selectToolEntities,
   selectUnifiedError,
   selectViewMessages,
@@ -52,15 +48,8 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   lastAssistantMessage: StateSignal<
     Chat.AssistantMessage<Output, Tools> | undefined
   >;
+  /** The opaque AG-UI thread identity used by the current and subsequent runs. */
   threadId: StateSignal<string | undefined>;
-  isLoadingThread: StateSignal<boolean>;
-  isSavingThread: StateSignal<boolean>;
-  threadLoadError: StateSignal<
-    { error: string; stacktrace?: string } | undefined
-  >;
-  threadSaveError: StateSignal<
-    { error: string; stacktrace?: string } | undefined
-  >;
 
   /** Replace the current set of messages in the chat state. */
   setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
@@ -201,8 +190,6 @@ export function fryHashbrown(init: {
       isGenerating: selectIsGenerating(state),
       isRunningToolCalls: selectIsRunningToolCalls(state),
       isLoading: selectIsLoading(state),
-      isLoadingThread: selectIsLoadingThread(state),
-      isSavingThread: selectIsSavingThread(state),
       sendingError: selectSendingError(state),
       generatingError: selectGeneratingError(state),
       error: selectUnifiedError(state),
@@ -269,20 +256,7 @@ export function fryHashbrown(init: {
       threadId: string;
     }>,
   ) {
-    const currentThreadId = state.read(selectThreadId);
-    const hasThreadIdOption = Object.prototype.hasOwnProperty.call(
-      options,
-      'threadId',
-    );
-
-    const nextThreadId = hasThreadIdOption ? options.threadId : currentThreadId;
-
-    state.dispatch(
-      devActions.updateOptions({
-        ...options,
-        threadId: nextThreadId,
-      }),
-    );
+    state.dispatch(devActions.updateOptions(options));
   }
 
   function sizzle() {
@@ -334,9 +308,5 @@ export function fryHashbrown(init: {
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
     lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
     threadId: state.createSignal(selectThreadId),
-    isLoadingThread: state.createSignal(selectIsLoadingThread),
-    isSavingThread: state.createSignal(selectIsSavingThread),
-    threadLoadError: state.createSignal(selectThreadLoadError),
-    threadSaveError: state.createSignal(selectThreadSaveError),
   };
 }

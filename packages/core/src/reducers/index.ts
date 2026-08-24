@@ -163,22 +163,6 @@ export const selectThreadIdState = select(
   selectThreadState,
   fromThread.selectThreadId,
 );
-export const selectIsLoadingThread = select(
-  selectThreadState,
-  fromThread.selectIsLoadingThread,
-);
-export const selectIsSavingThread = select(
-  selectThreadState,
-  fromThread.selectIsSavingThread,
-);
-export const selectThreadLoadError = select(
-  selectThreadState,
-  fromThread.selectThreadLoadError,
-);
-export const selectThreadSaveError = select(
-  selectThreadState,
-  fromThread.selectThreadSaveError,
-);
 
 /**
  * Config
@@ -334,35 +318,17 @@ export const selectApiTools = select(
 export const selectUnifiedError = select(
   selectSendingError,
   selectGeneratingError,
-  selectThreadLoadError,
-  selectThreadSaveError,
   selectError,
-  (
-    sendingError,
-    generatingError,
-    threadLoadError,
-    threadSaveError,
-    statusError,
-  ) =>
-    sendingError ??
-    generatingError ??
-    (threadLoadError && new Error(threadLoadError.error)) ??
-    (threadSaveError && new Error(threadSaveError.error)) ??
-    statusError,
+  (sendingError, generatingError, statusError) =>
+    sendingError ?? generatingError ?? statusError,
 );
 
 export const selectIsRunningToolCalls = select(
   selectPendingToolCalls,
   selectIsGenerating,
-  selectIsLoadingThread,
-  selectIsSavingThread,
   selectUnifiedError,
-  (pendingToolCalls, isGenerating, isLoadingThread, isSavingThread, error) =>
-    pendingToolCalls.length > 0 &&
-    !isGenerating &&
-    !isLoadingThread &&
-    !isSavingThread &&
-    !error,
+  (pendingToolCalls, isGenerating, error) =>
+    pendingToolCalls.length > 0 && !isGenerating && !error,
 );
 
 export const selectIsLoading = select(
@@ -370,20 +336,6 @@ export const selectIsLoading = select(
   selectIsGenerating,
   selectIsReceiving,
   selectIsRunningToolCalls,
-  selectIsLoadingThread,
-  selectIsSavingThread,
-  (
-    isSending,
-    isGenerating,
-    isReceiving,
-    isRunningToolCalls,
-    isLoadingThread,
-    isSavingThread,
-  ) =>
-    isSending ||
-    isGenerating ||
-    isReceiving ||
-    isRunningToolCalls ||
-    isLoadingThread ||
-    isSavingThread,
+  (isSending, isGenerating, isReceiving, isRunningToolCalls) =>
+    isSending || isGenerating || isReceiving || isRunningToolCalls,
 );

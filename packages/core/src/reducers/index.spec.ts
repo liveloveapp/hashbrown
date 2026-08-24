@@ -2,7 +2,14 @@ import { EventType } from '@ag-ui/core';
 import { apiActions, devActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
-import { reducers, selectThreadId, selectViewMessages } from './index';
+import {
+  reducers,
+  selectIsLoading,
+  selectIsRunningToolCalls,
+  selectThreadId,
+  selectUnifiedError,
+  selectViewMessages,
+} from './index';
 
 const initAction = { type: '@@init' } as const;
 
@@ -157,4 +164,192 @@ test('RUN_STARTED updates the selected thread ID', () => {
   );
 
   expect(selectThreadId(nextState)).toBe('server-thread');
+});
+
+test('init and an explicit options update set the current thread identity', () => {
+  const state = createState();
+  const initializedState = reduceAll(
+    state,
+    devActions.init({
+      model: 'test-model',
+      system: 'test',
+      threadId: 'initial-thread',
+    }),
+  );
+
+  const nextState = reduceAll(
+    initializedState,
+    devActions.updateOptions({ threadId: 'next-thread' }),
+  );
+
+  expect(selectThreadId(initializedState)).toBe('initial-thread');
+  expect(selectThreadId(nextState)).toBe('next-thread');
+});
+
+test('an options update without a threadId preserves the current identity', () => {
+  const state = reduceAll(
+    createState(),
+    devActions.init({
+      model: 'test-model',
+      system: 'test',
+      threadId: 'current-thread',
+    }),
+  );
+
+  const nextState = reduceAll(
+    state,
+    devActions.updateOptions({ system: 'updated' }),
+  );
+
+  expect(selectThreadId(nextState)).toBe('current-thread');
+});
+
+test('an explicit undefined threadId clears the current identity', () => {
+  const state = reduceAll(
+    createState(),
+    devActions.init({
+      model: 'test-model',
+      system: 'test',
+      threadId: 'current-thread',
+    }),
+  );
+
+  const nextState = reduceAll(
+    state,
+    devActions.updateOptions({ threadId: undefined }),
+  );
+
+  expect(selectThreadId(nextState)).toBeUndefined();
+});
+
+test('an explicit empty threadId sets the current identity', () => {
+  const state = reduceAll(
+    createState(),
+    devActions.init({
+      model: 'test-model',
+      system: 'test',
+      threadId: 'current-thread',
+    }),
+  );
+
+  const nextState = reduceAll(
+    state,
+    devActions.updateOptions({ threadId: '' }),
+  );
+
+  expect(selectThreadId(nextState)).toBe('');
+});
+
+test('unrelated events preserve the current thread identity', () => {
+  const state = reduceAll(
+    createState(),
+    devActions.init({
+      model: 'test-model',
+      system: 'test',
+      threadId: 'current-thread',
+    }),
+  );
+
+  const nextState = reduceAll(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'message-1',
+      role: 'assistant',
+    }),
+  );
+
+  expect(selectThreadId(nextState)).toBe('current-thread');
+});
+
+test('combined state stores only the current thread identity', () => {
+  const state = createState();
+
+  const threadState = state.thread;
+  const configState = state.config;
+
+  expect(threadState).toEqual({ threadId: undefined });
+  expect(configState).not.toHaveProperty('threadId');
+});
+
+test('thread load and save API actions are absent', () => {
+  const actionNames = [
+    'threadLoadStart',
+    'threadLoadSuccess',
+    'threadLoadFailure',
+    'threadSaveStart',
+    'threadSaveSuccess',
+    'threadSaveFailure',
+  ];
+
+  const matchingActions = actionNames.filter((name) => name in apiActions);
+
+  expect(matchingActions).toEqual([]);
+});
+
+test('the unified error selector ignores thread persistence errors', () => {
+  const state = createState();
+  const stateWithPersistenceErrors = {
+    ...state,
+    thread: {
+      ...state.thread,
+      loadingThreadError: { error: 'load failed' },
+      savingThreadError: { error: 'save failed' },
+    },
+  };
+
+  const error = selectUnifiedError(stateWithPersistenceErrors);
+
+  expect(error).toBeUndefined();
+});
+
+test('the running tool calls selector ignores thread persistence flags', () => {
+  const state = reduceAll(
+    createState(),
+    apiActions.generateMessageSuccess({
+      message: {
+        role: 'assistant',
+        content: '',
+        toolCallIds: ['call-1'],
+      },
+      toolCalls: [
+        {
+          id: 'call-1',
+          name: 'lookup',
+          arguments: '{}',
+          status: 'pending',
+        },
+      ],
+    }),
+  );
+  const stateWithPersistenceFlags = {
+    ...state,
+    thread: {
+      ...state.thread,
+      isLoadingThread: true,
+      isSavingThread: true,
+    },
+  };
+
+  const isRunningToolCalls = selectIsRunningToolCalls(
+    stateWithPersistenceFlags,
+  );
+
+  expect(isRunningToolCalls).toBe(true);
+});
+
+test('the loading selector ignores thread persistence flags', () => {
+  const state = createState();
+  const stateWithPersistenceFlags = {
+    ...state,
+    thread: {
+      ...state.thread,
+      isLoadingThread: true,
+      isSavingThread: true,
+    },
+  };
+
+  const isLoading = selectIsLoading(stateWithPersistenceFlags);
+
+  expect(isLoading).toBe(false);
 });
