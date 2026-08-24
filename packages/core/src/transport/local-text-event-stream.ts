@@ -51,14 +51,8 @@ export function createLocalTextEventStream(
   };
   const handleExternalAbort = () => {
     requestCancellation(signal.reason);
+    void cleanup().catch(() => undefined);
   };
-
-  if (signal.aborted) {
-    requestCancellation(signal.reason);
-  } else {
-    signal.addEventListener('abort', handleExternalAbort, { once: true });
-    externalAbortListenerAttached = true;
-  }
 
   const cleanup = () => {
     cleanupPromise ??= (async () => {
@@ -101,6 +95,13 @@ export function createLocalTextEventStream(
     requestCancellation();
     return cleanup();
   };
+
+  if (signal.aborted) {
+    handleExternalAbort();
+  } else {
+    signal.addEventListener('abort', handleExternalAbort, { once: true });
+    externalAbortListenerAttached = true;
+  }
 
   const generator = (async function* (): AsyncGenerator<AGUIEvent> {
     let cleanupFailed = false;

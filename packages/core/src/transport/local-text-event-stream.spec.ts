@@ -464,6 +464,68 @@ test('aborts a blocked read and cancels the active reader once', async () => {
   expect(reader.releaseLock).toHaveBeenCalledTimes(1);
 });
 
+test('external abort owns cleanup while the generator is suspended at a yield', async () => {
+  const abortController = new AbortController();
+  const cancelError = new Error('cancel failed');
+  const destroy = jest.fn();
+  const { stream, reader } = createReaderStream({
+    read: async () => ({ done: true, value: undefined }),
+    cancel: async () => Promise.reject(cancelError),
+  });
+  const response = createLocalTextEventStream({
+    input,
+    signal: abortController.signal,
+    start: async () => stream,
+    destroy,
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  await iterator.next();
+  await iterator.next();
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (reason: unknown) => {
+    unhandledRejections.push(reason);
+  };
+  process.on('unhandledRejection', handleUnhandledRejection);
+
+  try {
+    abortController.abort('yield-stop');
+    await flushTasks();
+
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(reader.cancel).toHaveBeenCalledWith('yield-stop');
+    expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(unhandledRejections).toEqual([]);
+
+    const returnPromise = iterator.return?.();
+    if (!returnPromise) {
+      throw new Error('Expected iterator return');
+    }
+    const outcomes = await Promise.allSettled([
+      returnPromise,
+      response.dispose(),
+      response.dispose(),
+    ]);
+    await flushTasks();
+
+    expect(outcomes).toEqual([
+      { status: 'rejected', reason: cancelError },
+      { status: 'rejected', reason: cancelError },
+      { status: 'rejected', reason: cancelError },
+    ]);
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(unhandledRejections).toEqual([]);
+    await expect(iterator.next()).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  } finally {
+    process.removeListener('unhandledRejection', handleUnhandledRejection);
+  }
+});
+
 test('external dispose cancels a blocked read without terminal success', async () => {
   const readResult = createDeferred<ReadableStreamReadResult<string>>();
   const { stream, reader } = createReaderStream({
