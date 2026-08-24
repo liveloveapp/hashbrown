@@ -188,6 +188,42 @@ test('throws when AG-UI run input is missing', async () => {
   });
 });
 
+test('retries session creation after a cached creation rejects', async () => {
+  await withLanguageModel(undefined, async () => {
+    const createError = new Error('create failed');
+    const session = createSession(createTextStream(['retry succeeded']));
+    const create = jest
+      .fn()
+      .mockRejectedValueOnce(createError)
+      .mockResolvedValueOnce(session);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+    });
+
+    const firstSendPromise = transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+
+    await expect(firstSendPromise).rejects.toBe(createError);
+
+    const response = await transport.send(
+      createRequest({ runId: 'run-second' }),
+    );
+    const events = await collectEvents(requireEvents(response));
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          delta: 'retry succeeded',
+        }),
+      ]),
+    );
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
 test('emits the exact local AG-UI event sequence and identities', async () => {
   await withLanguageModel(undefined, async () => {
     const session = createSession(createTextStream(['Hello', ' world']));
@@ -231,6 +267,35 @@ test('emits the exact local AG-UI event sequence and identities', async () => {
         runId: input.runId,
       },
     ] satisfies AGUIEvent[]);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('accepts a synchronous Prompt API stream', async () => {
+  const stream = createTextStream(['synchronous']);
+  const session = {
+    prompt: jest.fn(),
+    promptStreaming: jest.fn(() => stream),
+    destroy: jest.fn(),
+  };
+  const languageModel = {
+    create: jest.fn().mockResolvedValue(session),
+  };
+
+  await withLanguageModel(languageModel, async () => {
+    const transport = new ExperimentalChromeLocalTransport({});
+
+    const response = await transport.send(createRequest());
+    const events = await collectEvents(requireEvents(response));
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          delta: 'synchronous',
+        }),
+      ]),
+    );
     expect(session.destroy).toHaveBeenCalledTimes(1);
   });
 });
@@ -560,6 +625,219 @@ test('shares one session cleanup across repeated response disposal', async () =>
     expect(sessionState).toHaveBeenCalledTimes(1);
     expect(sessionState).toHaveBeenCalledWith('destroyed');
     expectNoRunError(observedEvents);
+  });
+});
+
+test('preserves a session destroy failure without reporting destroyed', async () => {
+  await withLanguageModel(undefined, async () => {
+    const destroyError = new Error('destroy failed');
+    const callbackError = new Error('callback failed');
+    const session = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        throw destroyError;
+      }),
+    };
+    const sessionState = jest.fn(() => {
+      throw callbackError;
+    });
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+      events: { sessionState },
+    });
+    const response = await transport.send(createRequest());
+
+    const disposePromise = requireDispose(response)();
+
+    await expect(disposePromise).rejects.toBe(destroyError);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).not.toHaveBeenCalled();
+  });
+});
+
+test('keeps an overlapping response session alive after another response is disposed', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream(['second response']));
+    const create = jest.fn(async () => session);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+    const secondResponse = await transport.send(
+      createRequest({ runId: 'run-second' }),
+    );
+
+    await requireDispose(firstResponse)();
+
+    expect(session.destroy).not.toHaveBeenCalled();
+
+    const events = await collectEvents(requireEvents(secondResponse));
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          delta: 'second response',
+        }),
+      ]),
+    );
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('keeps an overlapping response session alive after another response completes', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream(['first response']));
+    const create = jest.fn(async () => session);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+    const secondResponse = await transport.send(
+      createRequest({ runId: 'run-second' }),
+    );
+
+    await collectEvents(requireEvents(firstResponse));
+
+    expect(session.destroy).not.toHaveBeenCalled();
+
+    await requireDispose(secondResponse)();
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('transport destroy force-destroys an overlapping response session once', async () => {
+  await withLanguageModel(undefined, async () => {
+    const sessionState = jest.fn();
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+      events: { sessionState },
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+    const secondResponse = await transport.send(
+      createRequest({ runId: 'run-second' }),
+    );
+
+    await transport.destroy();
+
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledWith('destroyed');
+
+    await Promise.all([
+      requireDispose(firstResponse)(),
+      requireDispose(secondResponse)(),
+    ]);
+
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('reserves session ownership before an overlapping send awaits the session', async () => {
+  await withLanguageModel(undefined, async () => {
+    const secondAwaitReached = createDeferred<void>();
+    const continueSecondAwait = createDeferred<void>();
+    const session = createSession(createTextStream([]));
+    let awaitCount = 0;
+    const sessionPromise = {
+      then(onFulfilled: (value: typeof session) => void) {
+        awaitCount += 1;
+        if (awaitCount === 1) {
+          onFulfilled(session);
+          return;
+        }
+
+        secondAwaitReached.resolve();
+        void continueSecondAwait.promise.then(() => onFulfilled(session));
+      },
+      catch: jest.fn(),
+    } as unknown as Promise<typeof session>;
+    const create = jest.fn(() => sessionPromise);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+
+    const secondResponsePromise = transport.send(
+      createRequest({ runId: 'run-second' }),
+    );
+    await secondAwaitReached.promise;
+
+    const firstDisposePromise = requireDispose(firstResponse)();
+    await Promise.resolve();
+
+    expect(session.destroy).not.toHaveBeenCalled();
+
+    continueSecondAwait.resolve();
+    const secondResponse = await secondResponsePromise;
+    await firstDisposePromise;
+    await requireDispose(secondResponse)();
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('does not let stale cleanup clear a newer session', async () => {
+  await withLanguageModel(undefined, async () => {
+    const firstDestroyResult = createDeferred<void>();
+    const firstSession = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => firstDestroyResult.promise),
+    };
+    const secondSession = createSession(createTextStream([]));
+    const create = jest
+      .fn()
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+
+    const firstDisposePromise = requireDispose(firstResponse)();
+    await Promise.resolve();
+    const secondResponse = await transport.send(
+      createRequest({ runId: 'run-second' }),
+    );
+
+    expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledTimes(2);
+
+    firstDestroyResult.resolve();
+    await firstDisposePromise;
+
+    const thirdResponse = await transport.send(
+      createRequest({ runId: 'run-third' }),
+    );
+
+    expect(create).toHaveBeenCalledTimes(2);
+
+    await requireDispose(secondResponse)();
+
+    expect(secondSession.destroy).not.toHaveBeenCalled();
+
+    await requireDispose(thirdResponse)();
+
+    expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+    expect(secondSession.destroy).toHaveBeenCalledTimes(1);
   });
 });
 

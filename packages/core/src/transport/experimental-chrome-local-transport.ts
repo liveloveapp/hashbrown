@@ -94,8 +94,19 @@ interface LanguageModelSession {
   promptStreaming(
     input: PromptMessage[] | string,
     options?: PromptOptions,
-  ): Promise<ReadableStream<string>>;
+  ): ReadableStream<string> | Promise<ReadableStream<string>>;
   destroy?: () => void;
+}
+
+interface LanguageModelSessionRecord {
+  promise: Promise<LanguageModelSession>;
+  owners: number;
+  destructionPromise?: Promise<void>;
+}
+
+interface LanguageModelSessionLease {
+  record: LanguageModelSessionRecord;
+  session: LanguageModelSession;
 }
 
 interface LanguageModelGlobal {
@@ -111,7 +122,7 @@ interface LanguageModelGlobal {
  */
 export class ExperimentalChromeLocalTransport implements Transport {
   readonly name = 'ExperimentalChromeLocalTransport';
-  private sessionPromise?: Promise<LanguageModelSession>;
+  private sessionRecord?: LanguageModelSessionRecord;
 
   constructor(
     private readonly options: ExperimentalChromeLocalTransportOptions,
@@ -165,28 +176,24 @@ export class ExperimentalChromeLocalTransport implements Transport {
         )
       : 'available';
 
-    const session = await this.getSession(
+    const sessionLease = await this.acquireSession(
       languageModel,
       request.signal,
       promptRequest,
       resolvedPromptOutputLanguage,
     );
+    const { session } = sessionLease;
     const localStream = createLocalTextEventStream({
       input: request.input,
       signal: request.signal,
       start: (signal) =>
-        session.promptStreaming(promptRequest.messages, {
-          ...promptRequest.options,
-          signal,
-        }),
-      destroy: async () => {
-        try {
-          await session.destroy?.();
-        } finally {
-          this.sessionPromise = undefined;
-          this.options.events?.sessionState?.('destroyed');
-        }
-      },
+        Promise.resolve(
+          session.promptStreaming(promptRequest.messages, {
+            ...promptRequest.options,
+            signal,
+          }),
+        ),
+      destroy: () => this.releaseSession(sessionLease),
     });
 
     return {
@@ -202,14 +209,14 @@ export class ExperimentalChromeLocalTransport implements Transport {
   }
 
   async destroy() {
-    const session = await this.sessionPromise;
-    try {
-      session?.destroy?.();
+    const sessionRecord = this.sessionRecord;
+    if (!sessionRecord) {
       this.options.events?.sessionState?.('destroyed');
-    } finally {
-      // no-op
+      return;
     }
-    this.sessionPromise = undefined;
+
+    const session = await sessionRecord.promise;
+    await this.destroySessionRecord(sessionRecord, session);
   }
 
   private async getLanguageModel(): Promise<LanguageModelGlobal | undefined> {
@@ -261,36 +268,103 @@ export class ExperimentalChromeLocalTransport implements Transport {
     return availability.status;
   }
 
-  private async getSession(
+  private async acquireSession(
     languageModel: LanguageModelGlobal | undefined,
     signal: AbortSignal,
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
-  ): Promise<LanguageModelSession> {
-    if (this.sessionPromise) {
-      return this.sessionPromise;
-    }
-
-    if (this.options.createSession) {
-      this.sessionPromise = this.options.createSession();
-      return this.sessionPromise;
-    }
-
-    if (!languageModel) {
-      throw new TransportError('Prompt API is unavailable', {
-        retryable: false,
-        code: 'PROMPT_API_MISSING',
-      });
-    }
-
-    this.sessionPromise = this.createLanguageModelSession(
+  ): Promise<LanguageModelSessionLease> {
+    const sessionRecord = this.getSessionRecord(
       languageModel,
       signal,
       promptRequest,
       outputLanguage,
     );
+    sessionRecord.owners += 1;
 
-    return this.sessionPromise;
+    let session: LanguageModelSession;
+    try {
+      session = await sessionRecord.promise;
+    } catch (error) {
+      sessionRecord.owners = Math.max(0, sessionRecord.owners - 1);
+      throw error;
+    }
+
+    return { record: sessionRecord, session };
+  }
+
+  private getSessionRecord(
+    languageModel: LanguageModelGlobal | undefined,
+    signal: AbortSignal,
+    promptRequest: PromptRequest,
+    outputLanguage: SupportedOutputLanguage,
+  ): LanguageModelSessionRecord {
+    if (this.sessionRecord) {
+      return this.sessionRecord;
+    }
+
+    let promise: Promise<LanguageModelSession>;
+
+    if (this.options.createSession) {
+      promise = this.options.createSession();
+    } else if (!languageModel) {
+      throw new TransportError('Prompt API is unavailable', {
+        retryable: false,
+        code: 'PROMPT_API_MISSING',
+      });
+    } else {
+      promise = this.createLanguageModelSession(
+        languageModel,
+        signal,
+        promptRequest,
+        outputLanguage,
+      );
+    }
+
+    const sessionRecord = { promise, owners: 0 };
+    this.sessionRecord = sessionRecord;
+    void promise.catch(() => {
+      if (this.sessionRecord === sessionRecord) {
+        this.sessionRecord = undefined;
+      }
+    });
+
+    return sessionRecord;
+  }
+
+  private releaseSession(lease: LanguageModelSessionLease): Promise<void> {
+    const { record, session } = lease;
+    record.owners = Math.max(0, record.owners - 1);
+
+    if (record.destructionPromise) {
+      return record.destructionPromise;
+    }
+
+    if (record.owners > 0) {
+      return Promise.resolve();
+    }
+
+    return this.destroySessionRecord(record, session);
+  }
+
+  private destroySessionRecord(
+    record: LanguageModelSessionRecord,
+    session: LanguageModelSession,
+  ): Promise<void> {
+    if (record.destructionPromise) {
+      return record.destructionPromise;
+    }
+
+    if (this.sessionRecord === record) {
+      this.sessionRecord = undefined;
+    }
+
+    record.destructionPromise = (async () => {
+      await session.destroy?.();
+      this.options.events?.sessionState?.('destroyed');
+    })();
+
+    return record.destructionPromise;
   }
 
   private async createLanguageModelSession(
