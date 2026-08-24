@@ -102,6 +102,14 @@ export const reducer = createReducer(
         : state.generatingError,
     };
   }),
+  on(internalActions.generationSilentlyRetired, (state) => {
+    return {
+      ...state,
+      isReceiving: false,
+      isSending: false,
+      isGenerating: false,
+    };
+  }),
   on(internalActions.toolTurnSettled, (state, action) => {
     return {
       ...state,

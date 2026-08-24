@@ -54,6 +54,7 @@ export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
   let cancelAbortController = new AbortController();
   let threadIdentityAbortController = new AbortController();
+  let activeGeneration: object | undefined;
 
   store.when(
     internalActions.sizzle,
@@ -61,6 +62,16 @@ export const generateMessage = createEffect((store) => {
     devActions.sendMessage,
     devActions.resendMessages,
     switchAsync(async (switchSignal) => {
+      const generation = {};
+      activeGeneration = store.read(selectShouldGenerateMessage)
+        ? generation
+        : undefined;
+      const releaseGeneration = () => {
+        if (activeGeneration === generation) {
+          activeGeneration = undefined;
+        }
+      };
+
       if (cancelAbortController.signal.aborted) {
         cancelAbortController = new AbortController();
       }
@@ -76,7 +87,15 @@ export const generateMessage = createEffect((store) => {
 
       const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
       if (!shouldGenerateMessage) {
+        releaseGeneration();
         return;
+      }
+      if (
+        !retiredSignal.aborted &&
+        !runCancelSignal.aborted &&
+        activeGeneration === undefined
+      ) {
+        activeGeneration = generation;
       }
 
       const apiUrl = store.read(selectApiUrl);
@@ -108,6 +127,7 @@ export const generateMessage = createEffect((store) => {
 
       await sleep(debounce, switchSignal);
       if (retiredSignal.aborted || runCancelSignal.aborted) {
+        releaseGeneration();
         return;
       }
 
@@ -122,9 +142,11 @@ export const generateMessage = createEffect((store) => {
         selection = await resolver.select(requestedFeatures);
       } catch (error) {
         if (retiredSignal.aborted || runCancelSignal.aborted) {
+          releaseGeneration();
           return;
         }
 
+        releaseGeneration();
         store.dispatch(
           apiActions.generateMessageError(
             error instanceof Error
@@ -136,9 +158,11 @@ export const generateMessage = createEffect((store) => {
       }
 
       if (retiredSignal.aborted || runCancelSignal.aborted) {
+        releaseGeneration();
         return;
       }
       if (!selection) {
+        releaseGeneration();
         store.dispatch(
           apiActions.generateMessageError(
             new Error(
@@ -257,7 +281,6 @@ export const generateMessage = createEffect((store) => {
 
           let outcome: RunOutcome | undefined;
           let primaryError: Error | undefined;
-
           try {
             transportResponse = await selection.transport.send(eventRequest);
 
@@ -436,11 +459,13 @@ export const generateMessage = createEffect((store) => {
           }
 
           if (outcome?.kind === 'finished') {
+            releaseGeneration();
             finalizeGeneration();
             break;
           }
 
           if (outcome?.kind === 'server-error') {
+            releaseGeneration();
             store.dispatch(apiActions.generateMessageError(outcome.error));
             break;
           }
@@ -504,6 +529,7 @@ export const generateMessage = createEffect((store) => {
           }
         }
       } finally {
+        releaseGeneration();
         if (!retiredSignal.aborted && !suppressFinalization) {
           store.dispatch(
             apiActions.assistantTurnFinalized({
@@ -529,6 +555,7 @@ export const generateMessage = createEffect((store) => {
   });
 
   store.when(devActions.stopMessageGeneration, () => {
+    activeGeneration = undefined;
     cancelAbortController.abort();
   });
 
@@ -537,11 +564,18 @@ export const generateMessage = createEffect((store) => {
       return;
     }
 
+    const retiredGeneration = activeGeneration;
+    activeGeneration = undefined;
     threadIdentityAbortController.abort();
     threadIdentityAbortController = new AbortController();
+
+    if (retiredGeneration) {
+      store.dispatch(internalActions.generationSilentlyRetired());
+    }
   });
 
   return () => {
+    activeGeneration = undefined;
     effectAbortController.abort();
     cancelAbortController.abort();
     threadIdentityAbortController.abort();

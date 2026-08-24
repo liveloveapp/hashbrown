@@ -1,5 +1,5 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { apiActions } from '../actions';
+import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
 import {
@@ -92,6 +92,9 @@ function runFinished(): AGUIEvent {
     runId: 'run-1',
   };
 }
+
+const generationSilentlyRetiredAction =
+  internalActions.generationSilentlyRetired();
 
 test('parses structured output from AG-UI text events', () => {
   const responseSchema = s.object('output', {
@@ -536,6 +539,30 @@ test('stores AG-UI run errors without discarding the partial message', () => {
 
   expect(state.message?.content).toBe('partial');
   expect(state.error).toEqual(new Error('provider failed'));
+});
+
+test('silent retirement resets all partial generation state', () => {
+  const responseSchema = s.object('output', {
+    answer: s.streaming.string('answer'),
+  });
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    lookup: {
+      name: 'lookup',
+      description: '',
+      schema: s.object('args', { query: s.streaming.string('query') }),
+      handler: async () => undefined,
+    },
+  };
+  let state = startState(responseSchema, false, toolsByName);
+  state = reduceEvents(state, textEvents('{"answer":"par'));
+  state = reduceEvents(state, toolEvents('call-1', 'lookup', '{"query":"par'));
+
+  const next = reducer(state, generationSilentlyRetiredAction);
+
+  expect(state.message).not.toBeNull();
+  expect(state.toolCalls).toHaveLength(1);
+  expect(state.configSnapshot).toBeDefined();
+  expect(next).toBe(initialState);
 });
 
 test('ignores unsupported AG-UI events without mutating state', () => {

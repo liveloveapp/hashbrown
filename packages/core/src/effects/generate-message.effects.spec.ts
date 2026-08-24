@@ -57,6 +57,9 @@ type TestSelection = {
   metadata: { chosenSpec: string; skippedSpecs: [] };
 };
 
+const generationSilentlyRetiredType =
+  internalActions.generationSilentlyRetired.type;
+
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
@@ -729,6 +732,7 @@ test.each([
     await firstIterationStarted.promise;
     store.setSelector(selectThreadId, nextThreadId);
     await store.trigger(devActions.updateOptions({ threadId: nextThreadId }));
+    await store.trigger(devActions.updateOptions({ threadId: nextThreadId }));
     const abortedAfterUpdate = firstRequest?.signal.aborted;
     releaseLateStart.resolve();
     await firstGeneration;
@@ -742,7 +746,16 @@ test.each([
     expect(abortedAfterUpdate).toBe(true);
     expect(firstIteratorReturn).toHaveBeenCalledTimes(1);
     expect(firstDispose).toHaveBeenCalledTimes(1);
+    expect(
+      getActionsOfType(actionsAfterRetirement, generationSilentlyRetiredType),
+    ).toHaveLength(1);
     expect(getDispatchedEvents(actionsAfterRetirement)).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.generateMessageSuccess.type,
+      ),
+    ).toHaveLength(0);
     expect(
       getActionsOfType(
         actionsAfterRetirement,
@@ -762,6 +775,17 @@ test.each([
       ),
     ).toHaveLength(0);
     expect(send).toHaveBeenCalledTimes(2);
+    expect(
+      getDispatchedEvents(store.actions).filter(
+        (event) => event.type === EventType.RUN_FINISHED,
+      ),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
     expect(secondRequest?.input?.threadId).toBeDefined();
     if (nextThreadId === undefined) {
       expect(secondRequest?.input?.threadId).not.toBe(
@@ -792,11 +816,15 @@ test('thread identity synchronization before a run does not retire the next run'
   const teardown = generateMessage(store);
 
   await store.trigger(devActions.updateOptions({ threadId: undefined }));
+  await store.trigger(devActions.updateOptions({ threadId: undefined }));
   await store.trigger(
     devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    getActionsOfType(store.actions, generationSilentlyRetiredType),
+  ).toHaveLength(0);
   expect(
     getDispatchedEvents(store.actions).filter(
       (event) => event.type === EventType.RUN_FINISHED,

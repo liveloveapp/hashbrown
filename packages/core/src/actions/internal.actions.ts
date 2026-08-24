@@ -3,6 +3,7 @@ import { Chat } from '../models';
 
 export default createActionGroup('internal', {
   sizzle: emptyProps(),
+  generationSilentlyRetired: emptyProps(),
   toolTurnSettled: props<{
     toolCalls: Chat.Internal.ToolCall[];
     toolMessages: Chat.Api.ToolMessage[];

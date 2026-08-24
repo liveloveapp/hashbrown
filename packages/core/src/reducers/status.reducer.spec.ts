@@ -1,14 +1,23 @@
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { createStore } from '../utils/micro-ngrx';
 import {
   reducers as rootReducers,
+  selectIsLoading,
   selectIsRunningToolCalls,
+  selectMessagesState,
+  selectStatusState,
+  selectStreamingMessageState,
+  selectToolCallsState,
   selectUnifiedError,
 } from './index';
+import { initialState as initialStreamingMessageState } from './streaming-message.reducer';
 import { initialStatusState, reducer } from './status.reducer';
 
 const initAction = { type: '@@init' } as const;
+const generationSilentlyRetiredAction =
+  internalActions.generationSilentlyRetired();
 
 function createRootState() {
   return {
@@ -20,6 +29,10 @@ function createRootState() {
     tools: rootReducers.tools(undefined, initAction),
     thread: rootReducers.thread(undefined, initAction),
   };
+}
+
+function createRootStore() {
+  return createStore({ reducers: rootReducers, effects: [] });
 }
 
 function reduceRoot(
@@ -139,6 +152,96 @@ test('preserves a superseding user turn sending state', () => {
   );
 
   expect(next.isSending).toBe(true);
+});
+
+test('silent retirement returns a pending generation to idle', () => {
+  const store = createRootStore();
+  store.dispatch(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  const status = store.read(selectStatusState);
+  const wasLoading = store.read(selectIsLoading);
+  const committedMessages = store.read(selectMessagesState);
+  const committedToolCalls = store.read(selectToolCallsState);
+
+  store.dispatch(generationSilentlyRetiredAction);
+
+  expect(status.isSending).toBe(true);
+  expect(wasLoading).toBe(true);
+  expect(store.read(selectStatusState)).toEqual({
+    ...status,
+    isSending: false,
+    isReceiving: false,
+    isGenerating: false,
+  });
+  expect(store.read(selectIsLoading)).toBe(false);
+  expect(store.read(selectMessagesState)).toBe(committedMessages);
+  expect(store.read(selectToolCallsState)).toBe(committedToolCalls);
+});
+
+test('silent retirement clears active streaming state without changing committed state', () => {
+  const store = createRootStore();
+  store.dispatch(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  store.dispatch(
+    apiActions.generateMessageStart({
+      emulateStructuredOutput: false,
+      toolsByName: {},
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'message-1',
+      role: 'assistant',
+      delta: 'partial',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'call-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'message-1',
+      delta: '{"query":"par',
+    }),
+  );
+  const status = store.read(selectStatusState);
+  const wasLoading = store.read(selectIsLoading);
+  const streamingMessage = store.read(selectStreamingMessageState);
+  const committedMessages = store.read(selectMessagesState);
+  const committedToolCalls = store.read(selectToolCallsState);
+
+  store.dispatch(generationSilentlyRetiredAction);
+
+  expect(status).toMatchObject({
+    isSending: false,
+    isReceiving: true,
+    isGenerating: true,
+  });
+  expect(wasLoading).toBe(true);
+  expect(streamingMessage.message?.content).toBe('partial');
+  expect(streamingMessage.toolCalls).toHaveLength(1);
+  expect(store.read(selectStatusState)).toEqual({
+    ...status,
+    isSending: false,
+    isReceiving: false,
+    isGenerating: false,
+  });
+  expect(store.read(selectIsLoading)).toBe(false);
+  expect(store.read(selectStreamingMessageState)).toBe(
+    initialStreamingMessageState,
+  );
+  expect(store.read(selectMessagesState)).toBe(committedMessages);
+  expect(store.read(selectToolCallsState)).toBe(committedToolCalls);
 });
 
 test('clears prestart errors when a retry starts and succeeds', () => {
