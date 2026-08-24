@@ -120,7 +120,12 @@ export function createLocalTextEventStream(
         cancellationSignal,
         (lateStream) => cancelLateStream(lateStream, cancellationSignal.reason),
       );
-      reader = stream.getReader();
+      const acquiredReader = stream.getReader();
+      if (cleanupPromise) {
+        await cancelReader(acquiredReader, cancellationSignal.reason);
+        throw createAbortError();
+      }
+      reader = acquiredReader;
 
       throwIfAborted(cancellationSignal);
       yield {
@@ -275,17 +280,22 @@ function cancelLateStream(stream: ReadableStream<string>, reason: unknown) {
     return;
   }
 
-  void (async () => {
+  void cancelReader(lateReader, reason);
+}
+
+async function cancelReader(
+  reader: ReadableStreamDefaultReader<string>,
+  reason: unknown,
+): Promise<void> {
+  try {
+    await reader.cancel(reason);
+  } catch {
+    // Cancellation is teardown-only and must remain owned.
+  } finally {
     try {
-      await lateReader.cancel(reason);
+      reader.releaseLock();
     } catch {
-      // Late cancellation is teardown-only and must remain owned.
-    } finally {
-      try {
-        lateReader.releaseLock();
-      } catch {
-        // The late stream may already have released its reader lock.
-      }
+      // The stream may already have released its reader lock.
     }
-  })();
+  }
 }

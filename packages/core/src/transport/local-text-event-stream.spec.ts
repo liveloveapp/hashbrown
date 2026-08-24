@@ -332,6 +332,68 @@ test('external dispose cancels a pending start and its eventual stream', async (
   });
 });
 
+test('cancels a stream acquired after cleanup begins', async () => {
+  const destroy = jest.fn();
+  const { stream, reader } = createReaderStream({
+    read: async () => ({ done: false, value: 'late chunk' }),
+  });
+  const lifecycle: { dispose?: () => Promise<void> } = {};
+  let disposeResult: Promise<void> | undefined;
+  const startResult = {
+    then(onFulfilled: (value: ReadableStream<string>) => unknown) {
+      const result = onFulfilled(stream);
+      if (!lifecycle.dispose) {
+        throw new Error('Expected dispose callback');
+      }
+      disposeResult = lifecycle.dispose();
+      return Promise.resolve(result);
+    },
+  } as unknown as Promise<ReadableStream<string>>;
+  const start = jest.fn(() => startResult);
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start,
+    destroy,
+  });
+  lifecycle.dispose = () => response.dispose();
+  const iterator = response.events[Symbol.asyncIterator]();
+  const observedEvents: AGUIEvent[] = [];
+  const first = await iterator.next();
+  if (!first.done) {
+    observedEvents.push(first.value);
+  }
+
+  const pendingNext = iterator.next();
+
+  await expect(pendingNext).rejects.toMatchObject({
+    code: 'PROMPT_API_ABORTED',
+  });
+  await disposeResult;
+  expect(start).toHaveBeenCalledTimes(1);
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  expect(reader.read).not.toHaveBeenCalled();
+  expect(destroy).toHaveBeenCalledTimes(1);
+  expect(observedEvents.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+  ]);
+
+  await Promise.all([
+    response.dispose(),
+    response.dispose(),
+    iterator.return?.(),
+  ]);
+
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  expect(destroy).toHaveBeenCalledTimes(1);
+  await expect(iterator.next()).resolves.toEqual({
+    done: true,
+    value: undefined,
+  });
+});
+
 test('iterator return preempts a pending start', async () => {
   const startResult = createDeferred<ReadableStream<string>>();
   const destroy = jest.fn();
