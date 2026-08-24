@@ -521,6 +521,35 @@ test('discards a chunk that resolves after abort without successful terminal eve
   ]);
 });
 
+test('iterator return before first next performs shared cleanup once', async () => {
+  const start = jest.fn(async () => createTextStream([]));
+  const destroy = jest.fn();
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start,
+    destroy,
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+
+  await iterator.return?.();
+
+  expect(start).not.toHaveBeenCalled();
+  expect(destroy).toHaveBeenCalledTimes(1);
+
+  await Promise.all([
+    iterator.return?.(),
+    response.dispose(),
+    response.dispose(),
+  ]);
+
+  expect(destroy).toHaveBeenCalledTimes(1);
+  await expect(iterator.next()).resolves.toEqual({
+    done: true,
+    value: undefined,
+  });
+});
+
 test('shares one disposer across repeated dispose and iterator return', async () => {
   const { stream, reader } = createReaderStream({
     read: async () => ({ done: true, value: undefined }),

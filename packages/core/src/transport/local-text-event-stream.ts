@@ -174,9 +174,23 @@ export function createLocalTextEventStream(
       return this;
     },
     next: () => generator.next(),
-    return: (value?: unknown) => {
+    return: async (value?: unknown) => {
       requestCancellation();
-      return generator.return(value);
+      const cleanupResult = cleanup();
+      void cleanupResult.catch(() => undefined);
+
+      try {
+        const result = await generator.return(value);
+        await cleanupResult;
+        return result;
+      } catch (error) {
+        try {
+          await cleanupResult;
+        } catch {
+          // A cleanup failure cannot replace the primary iterator failure.
+        }
+        throw error;
+      }
     },
     throw: (error?: unknown) => generator.throw(error),
   };
