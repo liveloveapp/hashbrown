@@ -299,7 +299,7 @@ export class ExperimentalChromeLocalTransport implements Transport {
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
   ): LanguageModelSessionRecord {
-    if (this.sessionRecord) {
+    if (this.sessionRecord && !this.sessionRecord.destructionPromise) {
       return this.sessionRecord;
     }
 
@@ -355,13 +355,15 @@ export class ExperimentalChromeLocalTransport implements Transport {
       return record.destructionPromise;
     }
 
-    if (this.sessionRecord === record) {
-      this.sessionRecord = undefined;
-    }
-
     record.destructionPromise = (async () => {
-      await session.destroy?.();
-      this.options.events?.sessionState?.('destroyed');
+      try {
+        await session.destroy?.();
+        this.options.events?.sessionState?.('destroyed');
+      } finally {
+        if (this.sessionRecord === record) {
+          this.sessionRecord = undefined;
+        }
+      }
     })();
 
     return record.destructionPromise;

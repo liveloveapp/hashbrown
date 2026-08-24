@@ -160,6 +160,18 @@ async function flushTasks(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
+async function settleWithinTask<T>(promise: Promise<T>) {
+  return Promise.race([
+    promise.then(
+      (value) => ({ status: 'fulfilled' as const, value }),
+      (reason: unknown) => ({ status: 'rejected' as const, reason }),
+    ),
+    new Promise<{ status: 'pending' }>((resolve) => {
+      setImmediate(() => resolve({ status: 'pending' }));
+    }),
+  ]);
+}
+
 test('throws PLATFORM_UNSUPPORTED when the Prompt API is missing', async () => {
   await withLanguageModel(undefined, async () => {
     const transport = new ExperimentalChromeLocalTransport({});
@@ -653,6 +665,93 @@ test('preserves a session destroy failure without reporting destroyed', async ()
     await expect(disposePromise).rejects.toBe(destroyError);
     expect(session.destroy).toHaveBeenCalledTimes(1);
     expect(sessionState).not.toHaveBeenCalled();
+  });
+});
+
+test('transport destroy awaits response disposal teardown', async () => {
+  await withLanguageModel(undefined, async () => {
+    const destroyResult = createDeferred<void>();
+    const destroyStarted = createDeferred<void>();
+    const sessionState = jest.fn();
+    const session = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        destroyStarted.resolve();
+        return destroyResult.promise;
+      }),
+    };
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+      events: { sessionState },
+    });
+    const response = await transport.send(createRequest());
+
+    const disposePromise = requireDispose(response)();
+    await destroyStarted.promise;
+    const transportDestroyPromise = transport.destroy();
+    const pendingResult = await settleWithinTask(transportDestroyPromise);
+
+    expect(pendingResult).toEqual({ status: 'pending' });
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).not.toHaveBeenCalled();
+
+    destroyResult.resolve();
+    await Promise.all([disposePromise, transportDestroyPromise]);
+
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledWith('destroyed');
+  });
+});
+
+test('transport destroy observes response abort teardown rejection', async () => {
+  await withLanguageModel(undefined, async () => {
+    const abortController = new AbortController();
+    const destroyResult = createDeferred<void>();
+    const destroyStarted = createDeferred<void>();
+    const destroyError = new Error('destroy failed');
+    const sessionState = jest.fn();
+    const session = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        destroyStarted.resolve();
+        return destroyResult.promise;
+      }),
+    };
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+      events: { sessionState },
+    });
+    await transport.send(createRequest({}, { signal: abortController.signal }));
+    const unhandledRejections: unknown[] = [];
+    const onUnhandledRejection = (reason: unknown) => {
+      unhandledRejections.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    try {
+      abortController.abort('stop');
+      await destroyStarted.promise;
+      const transportDestroyPromise = transport.destroy();
+      const pendingResult = await settleWithinTask(transportDestroyPromise);
+
+      expect(pendingResult).toEqual({ status: 'pending' });
+      expect(session.destroy).toHaveBeenCalledTimes(1);
+      expect(sessionState).not.toHaveBeenCalled();
+
+      destroyResult.reject(destroyError);
+
+      await expect(transportDestroyPromise).rejects.toBe(destroyError);
+      await flushTasks();
+
+      expect(session.destroy).toHaveBeenCalledTimes(1);
+      expect(sessionState).not.toHaveBeenCalled();
+      expect(unhandledRejections).toEqual([]);
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandledRejection);
+    }
   });
 });
 
