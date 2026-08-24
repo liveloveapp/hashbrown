@@ -755,6 +755,178 @@ test('transport destroy observes response abort teardown rejection', async () =>
   });
 });
 
+test('transport destroy awaits prior and replacement session teardowns', async () => {
+  await withLanguageModel(undefined, async () => {
+    const firstDestroyResult = createDeferred<void>();
+    const firstDestroyStarted = createDeferred<void>();
+    const secondDestroyResult = createDeferred<void>();
+    const secondDestroyStarted = createDeferred<void>();
+    const sessionState = jest.fn();
+    const firstSession = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        firstDestroyStarted.resolve();
+        return firstDestroyResult.promise;
+      }),
+    };
+    const secondSession = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        secondDestroyStarted.resolve();
+        return secondDestroyResult.promise;
+      }),
+    };
+    const create = jest
+      .fn()
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+      events: { sessionState },
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+
+    const firstDisposePromise = requireDispose(firstResponse)();
+    await firstDestroyStarted.promise;
+    const secondResponse = await transport.send(
+      createRequest({ runId: 'run-second' }),
+    );
+    const transportDestroyPromise = transport.destroy();
+    await secondDestroyStarted.promise;
+    const initialResult = await settleWithinTask(transportDestroyPromise);
+
+    expect(initialResult).toEqual({ status: 'pending' });
+    expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+    expect(secondSession.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).not.toHaveBeenCalled();
+
+    secondDestroyResult.resolve();
+    await Promise.resolve();
+    const afterSecondResult = await settleWithinTask(transportDestroyPromise);
+
+    expect(afterSecondResult).toEqual({ status: 'pending' });
+    expect(sessionState).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledWith('destroyed');
+
+    firstDestroyResult.resolve();
+    await Promise.all([firstDisposePromise, transportDestroyPromise]);
+    await requireDispose(secondResponse)();
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+    expect(secondSession.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledTimes(2);
+    expect(sessionState).toHaveBeenNthCalledWith(1, 'destroyed');
+    expect(sessionState).toHaveBeenNthCalledWith(2, 'destroyed');
+  });
+});
+
+test('transport destroy retains a prior teardown rejection after replacement', async () => {
+  await withLanguageModel(undefined, async () => {
+    const firstDestroyResult = createDeferred<void>();
+    const firstDestroyStarted = createDeferred<void>();
+    const secondDestroyResult = createDeferred<void>();
+    const secondDestroyStarted = createDeferred<void>();
+    const firstDestroyError = new Error('first destroy failed');
+    const sessionState = jest.fn();
+    const firstSession = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        firstDestroyStarted.resolve();
+        return firstDestroyResult.promise;
+      }),
+    };
+    const secondSession = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        secondDestroyStarted.resolve();
+        return secondDestroyResult.promise;
+      }),
+    };
+    const thirdSession = createSession(createTextStream([]));
+    const create = jest
+      .fn()
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession)
+      .mockResolvedValueOnce(thirdSession);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+      events: { sessionState },
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+    const unhandledRejections: unknown[] = [];
+    const onUnhandledRejection = (reason: unknown) => {
+      unhandledRejections.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    try {
+      const firstDisposeOutcome = requireDispose(firstResponse)().then(
+        () => ({ status: 'fulfilled' as const }),
+        (reason: unknown) => ({ status: 'rejected' as const, reason }),
+      );
+      await firstDestroyStarted.promise;
+      const secondResponse = await transport.send(
+        createRequest({ runId: 'run-second' }),
+      );
+      const transportDestroyOutcome = transport.destroy().then(
+        () => ({ status: 'fulfilled' as const }),
+        (reason: unknown) => ({ status: 'rejected' as const, reason }),
+      );
+      await secondDestroyStarted.promise;
+
+      secondDestroyResult.resolve();
+      await Promise.resolve();
+      const afterSecondResult = await settleWithinTask(transportDestroyOutcome);
+
+      expect(afterSecondResult).toEqual({ status: 'pending' });
+      expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+      expect(secondSession.destroy).toHaveBeenCalledTimes(1);
+      expect(sessionState).toHaveBeenCalledTimes(1);
+      expect(sessionState).toHaveBeenCalledWith('destroyed');
+
+      firstDestroyResult.reject(firstDestroyError);
+
+      await expect(transportDestroyOutcome).resolves.toEqual({
+        status: 'rejected',
+        reason: firstDestroyError,
+      });
+      await expect(firstDisposeOutcome).resolves.toEqual({
+        status: 'rejected',
+        reason: firstDestroyError,
+      });
+      await requireDispose(secondResponse)();
+      await flushTasks();
+
+      expect(sessionState).toHaveBeenCalledTimes(1);
+      expect(unhandledRejections).toEqual([]);
+
+      const thirdResponse = await transport.send(
+        createRequest({ runId: 'run-third' }),
+      );
+      const laterDestroyPromise = transport.destroy();
+
+      await expect(laterDestroyPromise).resolves.toBeUndefined();
+      await requireDispose(thirdResponse)();
+
+      expect(create).toHaveBeenCalledTimes(3);
+      expect(thirdSession.destroy).toHaveBeenCalledTimes(1);
+      expect(sessionState).toHaveBeenCalledTimes(2);
+      expect(unhandledRejections).toEqual([]);
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandledRejection);
+    }
+  });
+});
+
 test('keeps an overlapping response session alive after another response is disposed', async () => {
   await withLanguageModel(undefined, async () => {
     const session = createSession(createTextStream(['second response']));

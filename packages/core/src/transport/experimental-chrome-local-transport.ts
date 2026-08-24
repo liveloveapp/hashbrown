@@ -123,6 +123,7 @@ interface LanguageModelGlobal {
 export class ExperimentalChromeLocalTransport implements Transport {
   readonly name = 'ExperimentalChromeLocalTransport';
   private sessionRecord?: LanguageModelSessionRecord;
+  private readonly sessionDestructionPromises = new Set<Promise<void>>();
 
   constructor(
     private readonly options: ExperimentalChromeLocalTransportOptions,
@@ -209,14 +210,22 @@ export class ExperimentalChromeLocalTransport implements Transport {
   }
 
   async destroy() {
+    const destructionPromises = new Set(this.sessionDestructionPromises);
     const sessionRecord = this.sessionRecord;
-    if (!sessionRecord) {
+
+    if (sessionRecord) {
+      const currentDestructionPromise =
+        sessionRecord.destructionPromise ??
+        sessionRecord.promise.then((session) =>
+          this.destroySessionRecord(sessionRecord, session),
+        );
+      destructionPromises.add(currentDestructionPromise);
+    } else if (destructionPromises.size === 0) {
       this.options.events?.sessionState?.('destroyed');
       return;
     }
 
-    const session = await sessionRecord.promise;
-    await this.destroySessionRecord(sessionRecord, session);
+    await Promise.all(destructionPromises);
   }
 
   private async getLanguageModel(): Promise<LanguageModelGlobal | undefined> {
@@ -365,8 +374,14 @@ export class ExperimentalChromeLocalTransport implements Transport {
         }
       }
     })();
+    const destructionPromise = record.destructionPromise;
+    this.sessionDestructionPromises.add(destructionPromise);
+    void destructionPromise.then(
+      () => this.sessionDestructionPromises.delete(destructionPromise),
+      () => this.sessionDestructionPromises.delete(destructionPromise),
+    );
 
-    return record.destructionPromise;
+    return destructionPromise;
   }
 
   private async createLanguageModelSession(
