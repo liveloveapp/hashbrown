@@ -58,7 +58,7 @@ export interface UseCompletionOptions<Input> {
   transport?: TransportOrFactory;
 
   /**
-   * Optional thread identifier used to load or continue an existing conversation.
+   * Optional opaque AG-UI thread identity.
    */
   threadId?: string;
 }
@@ -85,7 +85,7 @@ export interface UseCompletionResult {
   error: Error | undefined;
 
   /**
-   * Aggregate loading flag across transport, generation, tool-calls, and thread load/save.
+   * Aggregate loading flag across transport, generation, and tool calls.
    */
   isLoading: boolean;
 
@@ -123,15 +123,6 @@ export interface UseCompletionResult {
    * Whether the current request has exhausted retries.
    */
   exhaustedRetries: boolean;
-
-  /** Whether a thread load request is in flight. */
-  isLoadingThread: boolean;
-  /** Whether a thread save request is in flight. */
-  isSavingThread: boolean;
-  /** Error encountered while loading a thread. */
-  threadLoadError: { error: string; stacktrace?: string } | undefined;
-  /** Error encountered while saving a thread. */
-  threadSaveError: { error: string; stacktrace?: string } | undefined;
 }
 
 /**
@@ -193,9 +184,5 @@ export function useCompletion<Input>(
     sendingError: chat.sendingError,
     generatingError: chat.generatingError,
     exhaustedRetries: chat.exhaustedRetries,
-    isLoadingThread: chat.isLoadingThread,
-    isSavingThread: chat.isSavingThread,
-    threadLoadError: chat.threadLoadError,
-    threadSaveError: chat.threadSaveError,
   };
 }

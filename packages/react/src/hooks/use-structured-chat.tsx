@@ -90,7 +90,7 @@ export interface UseStructuredChatOptions<
   ui?: boolean;
 
   /**
-   * Optional thread identifier used to load or continue an existing conversation.
+   * Optional opaque AG-UI thread identity.
    */
   threadId?: string;
 }
@@ -161,7 +161,7 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
   isRunningToolCalls: boolean;
 
   /**
-   * Aggregate loading flag across transport, generation, tool-calls, and thread load/save.
+   * Aggregate loading flag across transport, generation, and tool calls.
    */
   isLoading: boolean;
 
@@ -184,15 +184,6 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
    * The last assistant message.
    */
   lastAssistantMessage: Chat.AssistantMessage<Output, Tools> | undefined;
-
-  /** Whether a thread load request is in flight. */
-  isLoadingThread: boolean;
-  /** Whether a thread save request is in flight. */
-  isSavingThread: boolean;
-  /** Error encountered while loading a thread. */
-  threadLoadError: { error: string; stacktrace?: string } | undefined;
-  /** Error encountered while saving a thread. */
-  threadSaveError: { error: string; stacktrace?: string } | undefined;
 }
 
 /**
@@ -331,11 +322,6 @@ export function useStructuredChat<
   const lastAssistantMessage = useHashbrownSignal(
     hashbrown.current.lastAssistantMessage,
   );
-  const isLoadingThread = useHashbrownSignal(hashbrown.current.isLoadingThread);
-  const isSavingThread = useHashbrownSignal(hashbrown.current.isSavingThread);
-  const threadLoadError = useHashbrownSignal(hashbrown.current.threadLoadError);
-  const threadSaveError = useHashbrownSignal(hashbrown.current.threadSaveError);
-
   const sendMessage = useCallback((message: Chat.Message<Output, Tools>) => {
     getHashbrown().sendMessage(message);
   }, []);
@@ -381,9 +367,5 @@ export function useStructuredChat<
     sendingError,
     generatingError,
     lastAssistantMessage,
-    isLoadingThread,
-    isSavingThread,
-    threadLoadError,
-    threadSaveError,
   };
 }

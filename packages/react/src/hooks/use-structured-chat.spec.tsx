@@ -73,6 +73,55 @@ test('useStructuredChat passes structured output options to Hashbrown', async ()
   );
 });
 
+test('useStructuredChat propagates thread identity without exposing persistence state', () => {
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReset();
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  const { result, rerender } = renderHook(
+    ({ threadId }: { threadId: string | undefined }) =>
+      useStructuredChat({
+        model: 'gpt-4.1',
+        system: 'You are a portfolio analyst.',
+        schema: s.object('risk summary', {
+          risk: s.string('Risk level'),
+        }),
+        threadId,
+      }),
+    {
+      initialProps: { threadId: 'thread-initial' as string | undefined },
+      wrapper: ProviderWrapper,
+    },
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({ threadId: 'thread-initial' }),
+  );
+  expect(result.current).not.toHaveProperty('isLoadingThread');
+  expect(result.current).not.toHaveProperty('isSavingThread');
+  expect(result.current).not.toHaveProperty('threadLoadError');
+  expect(result.current).not.toHaveProperty('threadSaveError');
+  expect(result.current).not.toHaveProperty('threadId');
+
+  rerender({ threadId: 'thread-changed' });
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({ threadId: 'thread-changed' }),
+  );
+
+  rerender({ threadId: undefined });
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({ threadId: undefined }),
+  );
+
+  rerender({ threadId: '' });
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({ threadId: '' }),
+  );
+});
+
 function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }
