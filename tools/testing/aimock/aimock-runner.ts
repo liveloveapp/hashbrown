@@ -83,6 +83,7 @@ export async function startAimock(
   await mock.start();
 
   let stopped = false;
+  let stopPromise: Promise<void> | undefined;
   const url = mock.url;
 
   return {
@@ -97,8 +98,18 @@ export async function startAimock(
       if (stopped) {
         return;
       }
-      stopped = true;
-      await mock.stop();
+      if (stopPromise) {
+        await stopPromise;
+        return;
+      }
+
+      stopPromise = mock.stop();
+      try {
+        await stopPromise;
+        stopped = true;
+      } finally {
+        stopPromise = undefined;
+      }
     },
   };
 }

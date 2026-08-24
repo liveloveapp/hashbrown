@@ -1,3 +1,4 @@
+import { LLMock } from '@copilotkit/aimock';
 import type { AGUIEvent } from '@copilotkit/aimock/agui';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -117,6 +118,68 @@ test('AimockHandle stop is idempotent', async () => {
 
     expect(handle.port).toBeGreaterThan(0);
   } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+});
+
+test('AimockHandle shares an in-flight shutdown across concurrent stop calls', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const fixturePath = createFixtureFile(workDir, 'text.json', 'say hi briefly');
+  const originalStop = LLMock.prototype.stop;
+  let releaseStop: () => void = () => undefined;
+  const stopGate = new Promise<void>((resolve) => {
+    releaseStop = resolve;
+  });
+  let handle: AimockHandle | null = null;
+  let stopSpy: jest.SpiedFunction<LLMock['stop']> | undefined;
+
+  try {
+    handle = await startAimock({ fixturePath });
+    stopSpy = jest
+      .spyOn(LLMock.prototype, 'stop')
+      .mockImplementation(async function (this: LLMock) {
+        await stopGate;
+        await originalStop.call(this);
+      });
+
+    const firstStop = handle.stop();
+    const secondStop = handle.stop();
+    const stopCallCount = stopSpy.mock.calls.length;
+    releaseStop();
+    await Promise.allSettled([firstStop, secondStop]);
+
+    expect(stopCallCount).toBe(1);
+  } finally {
+    releaseStop();
+    stopSpy?.mockRestore();
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+});
+
+test('AimockHandle retries shutdown after a failed stop', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const fixturePath = createFixtureFile(workDir, 'text.json', 'say hi briefly');
+  const originalStop = LLMock.prototype.stop;
+  let handle: AimockHandle | null = null;
+  let stopSpy: jest.SpiedFunction<LLMock['stop']> | undefined;
+
+  try {
+    handle = await startAimock({ fixturePath });
+    stopSpy = jest
+      .spyOn(LLMock.prototype, 'stop')
+      .mockRejectedValueOnce(new Error('stop failed'))
+      .mockImplementation(function (this: LLMock) {
+        return originalStop.call(this);
+      });
+
+    await expect(handle.stop()).rejects.toThrow('stop failed');
+    await expect(handle.stop()).resolves.toBeUndefined();
+
+    expect(stopSpy).toHaveBeenCalledTimes(2);
+  } finally {
+    stopSpy?.mockRestore();
     await handle?.stop();
     rmSync(workDir, { recursive: true, force: true });
   }

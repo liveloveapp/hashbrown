@@ -16,21 +16,38 @@ import {
   type TransportResponse,
   ɵui,
 } from '@hashbrownai/core';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type AimockHandle, startAimock } from './aimock-runner';
 
 type HashbrownRunInput = NonNullable<TransportRequest['input']>;
 
-interface TestAimock {
-  readonly handle: AimockHandle;
+interface StoppableHandle {
+  stop(): Promise<void>;
+}
+
+interface TestAimock<Handle extends StoppableHandle = AimockHandle> {
+  readonly handle: Handle;
   stop(): Promise<void>;
 }
 
 interface ObservedResponse {
   readonly response: Response;
-  readonly bodyClosed: Promise<void>;
+  readonly cancelCount: number;
+  readonly eventTypes: readonly EventType[];
+  readonly readCount: number;
+  readonly reachedEof: boolean;
+  waitForCancel(timeoutMs?: number): Promise<{
+    readonly reason: unknown;
+    readonly readCount: number;
+  }>;
+  waitForEvent(type: EventType, timeoutMs?: number): Promise<void>;
+}
+
+interface Deferred<Value> {
+  readonly promise: Promise<Value>;
+  resolve(value: Value): void;
 }
 
 function createFixtureFile(workDir: string): string {
@@ -49,6 +66,13 @@ async function startTestAimock(): Promise<TestAimock> {
     rmSync(workDir, { recursive: true, force: true });
     throw error;
   }
+  return createTestAimock(handle, workDir);
+}
+
+function createTestAimock<Handle extends StoppableHandle>(
+  handle: Handle,
+  workDir: string,
+): TestAimock<Handle> {
   let stopped = false;
 
   return {
@@ -58,9 +82,12 @@ async function startTestAimock(): Promise<TestAimock> {
         return;
       }
 
-      stopped = true;
-      await handle.stop();
-      rmSync(workDir, { recursive: true, force: true });
+      try {
+        await handle.stop();
+        stopped = true;
+      } finally {
+        rmSync(workDir, { recursive: true, force: true });
+      }
     },
   };
 }
@@ -127,6 +154,38 @@ async function waitForIdle(
 async function drainHashbrownEffects(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
+}
+
+function waitForHandshake<Value>(
+  handshake: Promise<Value>,
+  description: string,
+  timeoutMs = 2_000,
+): Promise<Value> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`Timed out waiting for ${description}`));
+    }, timeoutMs);
+
+    handshake.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
+function createDeferred<Value>(): Deferred<Value> {
+  let resolvePromise: (value: Value) => void = () => undefined;
+  const promise = new Promise<Value>((resolve) => {
+    resolvePromise = resolve;
+  });
+
+  return { promise, resolve: resolvePromise };
 }
 
 function registerFixture(
@@ -211,6 +270,7 @@ function createTextRunEvents(
 
 function createObservedFetch(
   observedResponses: ObservedResponse[],
+  onObserved?: (response: ObservedResponse) => void,
 ): typeof fetch {
   return async (input, init) => {
     const response = await fetch(input, init);
@@ -219,30 +279,122 @@ function createObservedFetch(
     }
 
     const reader = response.body.getReader();
-    const bodyClosed = reader.closed.then(
-      () => undefined,
-      () => undefined,
-    );
+    let cancelCount = 0;
+    const eventTypes: EventType[] = [];
+    let eventBuffer = '';
+    let readCount = 0;
+    let reachedEof = false;
+    const eventWaiters: Array<{
+      readonly type: EventType;
+      readonly resolve: () => void;
+    }> = [];
+    const decoder = new TextDecoder();
+    const observeEvents = (chunk: Uint8Array | undefined) => {
+      eventBuffer += decoder.decode(chunk, { stream: chunk !== undefined });
+
+      let boundary = eventBuffer.indexOf('\n\n');
+      while (boundary >= 0) {
+        const frame = eventBuffer.slice(0, boundary);
+        eventBuffer = eventBuffer.slice(boundary + 2);
+        const data = frame
+          .split(/\r?\n/)
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart())
+          .join('\n');
+        if (data) {
+          const parsed = JSON.parse(data) as { type?: EventType };
+          if (parsed.type) {
+            eventTypes.push(parsed.type);
+            for (let index = eventWaiters.length - 1; index >= 0; index--) {
+              const waiter = eventWaiters[index];
+              if (waiter?.type === parsed.type) {
+                eventWaiters.splice(index, 1);
+                waiter.resolve();
+              }
+            }
+          }
+        }
+
+        boundary = eventBuffer.indexOf('\n\n');
+      }
+    };
+    let resolveCancellation: (value: {
+      readonly reason: unknown;
+      readonly readCount: number;
+    }) => void = () => undefined;
+    const cancellation = new Promise<{
+      readonly reason: unknown;
+      readonly readCount: number;
+    }>((resolve) => {
+      resolveCancellation = resolve;
+    });
+    const observation: ObservedResponse = {
+      response,
+      get cancelCount() {
+        return cancelCount;
+      },
+      get eventTypes() {
+        return [...eventTypes];
+      },
+      get readCount() {
+        return readCount;
+      },
+      get reachedEof() {
+        return reachedEof;
+      },
+      waitForCancel(timeoutMs) {
+        return waitForHandshake(
+          cancellation,
+          'explicit response body cancellation',
+          timeoutMs,
+        );
+      },
+      waitForEvent(type, timeoutMs) {
+        if (eventTypes.includes(type)) {
+          return Promise.resolve();
+        }
+
+        const eventObserved = new Promise<void>((resolve) => {
+          eventWaiters.push({ type, resolve });
+        });
+        return waitForHandshake(
+          eventObserved,
+          `${type} response event`,
+          timeoutMs,
+        );
+      },
+    };
     const body = new ReadableStream<Uint8Array>({
       async pull(controller) {
         try {
           const result = await reader.read();
           if (result.done) {
-            controller.close();
+            if (cancelCount === 0) {
+              reachedEof = true;
+              observeEvents(undefined);
+              controller.close();
+            }
             return;
           }
 
+          readCount += 1;
+          observeEvents(result.value);
           controller.enqueue(result.value);
         } catch (error) {
-          controller.error(error);
+          if (cancelCount === 0) {
+            controller.error(error);
+          }
         }
       },
       async cancel(reason) {
+        cancelCount += 1;
+        resolveCancellation({ reason, readCount });
         await reader.cancel(reason);
       },
     });
 
-    observedResponses.push({ response, bodyClosed });
+    observedResponses.push(observation);
+    onObserved?.(observation);
     return new Response(body, {
       headers: response.headers,
       status: response.status,
@@ -250,6 +402,26 @@ function createObservedFetch(
     });
   };
 }
+
+test('test aimock cleanup removes fixtures after a stop failure and retries shutdown', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-agui-cleanup-'));
+  const handle = {
+    stop: jest
+      .fn<Promise<void>, []>()
+      .mockRejectedValueOnce(new Error('stop failed'))
+      .mockResolvedValue(undefined),
+  };
+  const testAimock = createTestAimock(handle, workDir);
+
+  await expect(testAimock.stop()).rejects.toThrow('stop failed');
+
+  expect(existsSync(workDir)).toBe(false);
+
+  await expect(testAimock.stop()).resolves.toBeUndefined();
+  await expect(testAimock.stop()).resolves.toBeUndefined();
+
+  expect(handle.stop).toHaveBeenCalledTimes(2);
+});
 
 test('createHttpTransport posts Hashbrown run input and collects text events over real SSE', async () => {
   const input: HashbrownRunInput = {
@@ -755,7 +927,7 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
     if (!cancellationResponse) {
       throw new Error('Expected one observed cancellation response');
     }
-    await cancellationResponse.bodyClosed;
+    const cancellation = await cancellationResponse.waitForCancel();
     await testAimock.stop();
 
     expect(messagesAfterCancellation).toEqual([
@@ -763,6 +935,15 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
     ]);
     expect(hashbrown.messages()).toEqual(messagesAfterCancellation);
     expect(capturedInputs).toHaveLength(1);
+    expect(cancellationResponse.cancelCount).toBe(1);
+    expect(cancellationResponse.eventTypes).toEqual([
+      EventType.RUN_STARTED,
+      EventType.TEXT_MESSAGE_START,
+      EventType.TEXT_MESSAGE_CONTENT,
+    ]);
+    expect(cancellationResponse.reachedEof).toBe(false);
+    expect(cancellationResponse.readCount).toBe(cancellation.readCount);
+    expect(cancellation.readCount).toBeLessThan(9);
     expect(toolHandler).not.toHaveBeenCalled();
     expect(hashbrown.error()).toBeUndefined();
     expect(hashbrown.isLoading()).toBe(false);
@@ -840,7 +1021,7 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
     if (!errorResponse) {
       throw new Error('Expected one observed error response');
     }
-    await errorResponse.bodyClosed;
+    const cancellation = await errorResponse.waitForCancel();
     await testAimock.stop();
 
     expect(error?.message).toBe('Deterministic server failure');
@@ -855,7 +1036,15 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
       hashbrown.messages().filter((message) => message.role === 'error'),
     ).toHaveLength(1);
     expect(capturedInputs).toHaveLength(1);
-    expect(observedResponses[0]?.response.bodyUsed).toBe(true);
+    expect(errorResponse.response.bodyUsed).toBe(true);
+    expect(errorResponse.cancelCount).toBe(1);
+    expect(errorResponse.eventTypes).toEqual([
+      EventType.RUN_STARTED,
+      EventType.RUN_ERROR,
+    ]);
+    expect(errorResponse.reachedEof).toBe(false);
+    expect(errorResponse.readCount).toBe(cancellation.readCount);
+    expect(cancellation.readCount).toBeLessThan(7);
     expect(hashbrown.isLoading()).toBe(false);
     expect(hashbrown.isReceiving()).toBe(false);
     expect(hashbrown.isSending()).toBe(false);
@@ -869,11 +1058,24 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
 }, 10_000);
 
 test('fryHashbrown executes and continues an AG-UI tool call over real SSE', async () => {
-  const toolHandler = jest.fn(async ({ city }: { city: string }) => ({
-    city,
-    temperatureC: 21,
-    condition: 'sunny',
-  }));
+  const handlerStarted = createDeferred<void>();
+  const handlerResult = createDeferred<{
+    city: string;
+    temperatureC: number;
+    condition: string;
+  }>();
+  const responseObserved = createDeferred<ObservedResponse>();
+  const secondRequestCaptured = createDeferred<void>();
+  const trace: string[] = [];
+  const toolHandler = jest.fn(async ({ city }: { city: string }) => {
+    trace.push('handler-started');
+    handlerStarted.resolve(undefined);
+
+    const result = await handlerResult.promise;
+
+    trace.push('handler-resolved');
+    return { ...result, city };
+  });
   const tool: Chat.Tool<
     'getWeather',
     { city: string },
@@ -887,6 +1089,7 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
     handler: toolHandler,
   };
   const capturedInputs: HashbrownRunInput[] = [];
+  const observedResponses: ObservedResponse[] = [];
   let testAimock: TestAimock | undefined;
   let teardown: (() => void) | undefined;
 
@@ -896,8 +1099,13 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
       testAimock.handle.aguiMock,
       capturedInputs,
       () => true,
-      (requestInput, requestIndex) =>
-        requestIndex === 0
+      (requestInput, requestIndex) => {
+        if (requestIndex === 1) {
+          trace.push('second-request');
+          secondRequestCaptured.resolve(undefined);
+        }
+
+        return requestIndex === 0
           ? [
               {
                 type: EventType.RUN_STARTED,
@@ -960,13 +1168,19 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
                 runId: requestInput.runId,
                 timestamp: 1_700_000_003_004,
               },
-            ],
+            ];
+      },
+      75,
     );
     const hashbrown = fryHashbrown({
       model: {
         name: 'aimock-tool-model',
-        transport: createHttpTransport({
+        transport: new HttpTransport({
           baseUrl: testAimock.handle.aguiRunUrl,
+          fetchImpl: createObservedFetch(
+            observedResponses,
+            responseObserved.resolve,
+          ),
         }),
         capabilities: { tools: true },
       },
@@ -981,6 +1195,41 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
       role: 'user',
       content: 'What is the weather in Paris?',
     });
+
+    const firstResponse = await waitForHandshake(
+      responseObserved.promise,
+      'first tool response',
+    );
+    await firstResponse.waitForEvent(EventType.TOOL_CALL_ARGS);
+
+    trace.push('tool-args-observed');
+    expect(firstResponse.eventTypes).not.toContain(EventType.TOOL_CALL_END);
+    expect(toolHandler).not.toHaveBeenCalled();
+
+    await waitForHandshake(handlerStarted.promise, 'tool handler start');
+
+    expect(firstResponse.eventTypes).toContain(EventType.TOOL_CALL_END);
+    expect(toolHandler).toHaveBeenCalledTimes(1);
+    expect(capturedInputs).toHaveLength(1);
+    expect(trace).toEqual(['tool-args-observed', 'handler-started']);
+
+    handlerResult.resolve({
+      city: 'Paris',
+      temperatureC: 21,
+      condition: 'sunny',
+    });
+    await waitForHandshake(
+      secondRequestCaptured.promise,
+      'tool continuation request',
+    );
+
+    expect(trace).toEqual([
+      'tool-args-observed',
+      'handler-started',
+      'handler-resolved',
+      'second-request',
+    ]);
+
     const messages = await waitForSignal(hashbrown.messages, (value) =>
       value.some(
         (message) =>
