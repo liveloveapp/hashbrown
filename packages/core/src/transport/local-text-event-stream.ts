@@ -29,16 +29,45 @@ export function createLocalTextEventStream(
 ): LocalTextEventStream {
   const { input, signal, start, destroy } = options;
   const messageId = `${input.runId}:message`;
+  const cancellationController = new AbortController();
+  const cancellationSignal = cancellationController.signal;
   let reader: ReadableStreamDefaultReader<string> | undefined;
-  let disposePromise: Promise<void> | undefined;
+  let cleanupPromise: Promise<void> | undefined;
+  let externalAbortListenerAttached = false;
 
-  const dispose = () => {
-    disposePromise ??= (async () => {
+  const removeExternalAbortListener = () => {
+    if (!externalAbortListenerAttached) {
+      return;
+    }
+
+    externalAbortListenerAttached = false;
+    signal.removeEventListener('abort', handleExternalAbort);
+  };
+  const requestCancellation = (reason: unknown = createAbortError()) => {
+    removeExternalAbortListener();
+    if (!cancellationSignal.aborted) {
+      cancellationController.abort(reason);
+    }
+  };
+  const handleExternalAbort = () => {
+    requestCancellation(signal.reason);
+  };
+
+  if (signal.aborted) {
+    requestCancellation(signal.reason);
+  } else {
+    signal.addEventListener('abort', handleExternalAbort, { once: true });
+    externalAbortListenerAttached = true;
+  }
+
+  const cleanup = () => {
+    cleanupPromise ??= (async () => {
       let cleanupFailed = false;
       let cleanupError: unknown;
 
+      removeExternalAbortListener();
       try {
-        await reader?.cancel(signal.reason);
+        await reader?.cancel(cancellationSignal.reason);
       } catch (error) {
         cleanupFailed = true;
         cleanupError = error;
@@ -66,28 +95,34 @@ export function createLocalTextEventStream(
         throw cleanupError;
       }
     })();
-    return disposePromise;
+    return cleanupPromise;
+  };
+  const dispose = () => {
+    requestCancellation();
+    return cleanup();
   };
 
-  const events = (async function* (): AsyncGenerator<AGUIEvent> {
+  const generator = (async function* (): AsyncGenerator<AGUIEvent> {
     let cleanupFailed = false;
     let cleanupError: unknown;
 
     try {
-      throwIfAborted(signal);
+      throwIfAborted(cancellationSignal);
       yield {
         type: EventType.RUN_STARTED,
         threadId: input.threadId,
         runId: input.runId,
       };
 
-      throwIfAborted(signal);
-      const stream = await raceWithAbort(start(signal), signal, (lateStream) =>
-        cancelLateStream(lateStream, signal.reason),
+      throwIfAborted(cancellationSignal);
+      const stream = await raceWithAbort(
+        start(cancellationSignal),
+        cancellationSignal,
+        (lateStream) => cancelLateStream(lateStream, cancellationSignal.reason),
       );
       reader = stream.getReader();
 
-      throwIfAborted(signal);
+      throwIfAborted(cancellationSignal);
       yield {
         type: EventType.TEXT_MESSAGE_START,
         messageId,
@@ -95,13 +130,13 @@ export function createLocalTextEventStream(
       };
 
       while (true) {
-        throwIfAborted(signal);
-        const result = await raceWithAbort(reader.read(), signal);
+        throwIfAborted(cancellationSignal);
+        const result = await raceWithAbort(reader.read(), cancellationSignal);
         if (result.done) {
           break;
         }
 
-        throwIfAborted(signal);
+        throwIfAborted(cancellationSignal);
         yield {
           type: EventType.TEXT_MESSAGE_CONTENT,
           messageId,
@@ -109,13 +144,13 @@ export function createLocalTextEventStream(
         };
       }
 
-      throwIfAborted(signal);
+      throwIfAborted(cancellationSignal);
       yield {
         type: EventType.TEXT_MESSAGE_END,
         messageId,
       };
 
-      throwIfAborted(signal);
+      throwIfAborted(cancellationSignal);
       yield {
         type: EventType.RUN_FINISHED,
         threadId: input.threadId,
@@ -123,7 +158,7 @@ export function createLocalTextEventStream(
       };
     } finally {
       try {
-        await dispose();
+        await cleanup();
       } catch (error) {
         cleanupFailed = true;
         cleanupError = error;
@@ -134,6 +169,20 @@ export function createLocalTextEventStream(
       throw cleanupError;
     }
   })();
+  const iterator: AsyncIterableIterator<AGUIEvent> = {
+    [Symbol.asyncIterator]() {
+      return this;
+    },
+    next: () => generator.next(),
+    return: (value?: unknown) => {
+      requestCancellation();
+      return generator.return(value);
+    },
+    throw: (error?: unknown) => generator.throw(error),
+  };
+  const events: AsyncIterable<AGUIEvent> = {
+    [Symbol.asyncIterator]: () => iterator,
+  };
 
   return { events, dispose };
 }

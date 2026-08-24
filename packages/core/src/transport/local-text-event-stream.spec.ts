@@ -64,6 +64,18 @@ async function flushTasks(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
+async function settleWithinTask<T>(promise: Promise<T>) {
+  return Promise.race([
+    promise.then(
+      (value) => ({ status: 'fulfilled' as const, value }),
+      (reason: unknown) => ({ status: 'rejected' as const, reason }),
+    ),
+    new Promise<{ status: 'pending' }>((resolve) => {
+      setImmediate(() => resolve({ status: 'pending' }));
+    }),
+  ]);
+}
+
 test('emits the complete AG-UI text lifecycle for streamed chunks', async () => {
   const response = createLocalTextEventStream({
     input,
@@ -280,6 +292,88 @@ test('aborts a pending start and cancels its eventual stream', async () => {
   ]);
 });
 
+test('external dispose cancels a pending start and its eventual stream', async () => {
+  const startResult = createDeferred<ReadableStream<string>>();
+  let startSignal: AbortSignal | undefined;
+  const start = jest.fn((signal: AbortSignal) => {
+    startSignal = signal;
+    return startResult.promise;
+  });
+  const { stream, reader } = createReaderStream({
+    read: async () => ({ done: true, value: undefined }),
+  });
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start,
+    destroy: jest.fn(),
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  await iterator.next();
+  const pendingNext = iterator.next();
+  await Promise.resolve();
+
+  await response.dispose();
+  const outcome = await settleWithinTask(pendingNext);
+
+  startResult.resolve(stream);
+  await flushTasks();
+
+  expect(outcome).toMatchObject({
+    status: 'rejected',
+    reason: { code: 'PROMPT_API_ABORTED' },
+  });
+  expect(startSignal?.aborted).toBe(true);
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  await expect(iterator.next()).resolves.toEqual({
+    done: true,
+    value: undefined,
+  });
+});
+
+test('iterator return preempts a pending start', async () => {
+  const startResult = createDeferred<ReadableStream<string>>();
+  const destroy = jest.fn();
+  const { stream, reader } = createReaderStream({
+    read: async () => ({ done: true, value: undefined }),
+  });
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start: () => startResult.promise,
+    destroy,
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  await iterator.next();
+  const pendingNext = iterator.next();
+  await Promise.resolve();
+
+  const returnPromise = iterator.return?.();
+  if (!returnPromise) {
+    throw new Error('Expected iterator return');
+  }
+  const [nextOutcome, returnOutcome] = await Promise.all([
+    settleWithinTask(pendingNext),
+    settleWithinTask(returnPromise),
+  ]);
+
+  startResult.resolve(stream);
+  await flushTasks();
+
+  expect(nextOutcome).toMatchObject({
+    status: 'rejected',
+    reason: { code: 'PROMPT_API_ABORTED' },
+  });
+  expect(returnOutcome).toEqual({
+    status: 'fulfilled',
+    value: { done: true, value: undefined },
+  });
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  expect(destroy).toHaveBeenCalledTimes(1);
+});
+
 test('aborts a blocked read and cancels the active reader once', async () => {
   const abortController = new AbortController();
   const readResult = createDeferred<ReadableStreamReadResult<string>>();
@@ -306,6 +400,88 @@ test('aborts a blocked read and cancels the active reader once', async () => {
   expect(reader.cancel).toHaveBeenCalledTimes(1);
   expect(reader.cancel).toHaveBeenCalledWith('read-stop');
   expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+});
+
+test('external dispose cancels a blocked read without terminal success', async () => {
+  const readResult = createDeferred<ReadableStreamReadResult<string>>();
+  const { stream, reader } = createReaderStream({
+    read: () => readResult.promise,
+  });
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start: async () => stream,
+    destroy: jest.fn(),
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  await iterator.next();
+  await iterator.next();
+  const pendingNext = iterator.next();
+  await Promise.resolve();
+
+  await response.dispose();
+  const outcome = await settleWithinTask(pendingNext);
+
+  readResult.resolve({ done: true, value: undefined });
+  await flushTasks();
+
+  expect(outcome).toMatchObject({
+    status: 'rejected',
+    reason: { code: 'PROMPT_API_ABORTED' },
+  });
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  await expect(iterator.next()).resolves.toEqual({
+    done: true,
+    value: undefined,
+  });
+});
+
+test('iterator return preempts a blocked read', async () => {
+  const readResult = createDeferred<ReadableStreamReadResult<string>>();
+  const destroy = jest.fn();
+  const { stream, reader } = createReaderStream({
+    read: () => readResult.promise,
+  });
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start: async () => stream,
+    destroy,
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  await iterator.next();
+  await iterator.next();
+  const pendingNext = iterator.next();
+  await Promise.resolve();
+
+  const returnPromise = iterator.return?.();
+  if (!returnPromise) {
+    throw new Error('Expected iterator return');
+  }
+  const [nextOutcome, returnOutcome] = await Promise.all([
+    settleWithinTask(pendingNext),
+    settleWithinTask(returnPromise),
+  ]);
+
+  readResult.resolve({ done: false, value: 'late chunk' });
+  await flushTasks();
+
+  expect(nextOutcome).toMatchObject({
+    status: 'rejected',
+    reason: { code: 'PROMPT_API_ABORTED' },
+  });
+  expect(returnOutcome).toEqual({
+    status: 'fulfilled',
+    value: { done: true, value: undefined },
+  });
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  expect(destroy).toHaveBeenCalledTimes(1);
+  await expect(iterator.next()).resolves.toEqual({
+    done: true,
+    value: undefined,
+  });
 });
 
 test('discards a chunk that resolves after abort without successful terminal events', async () => {
