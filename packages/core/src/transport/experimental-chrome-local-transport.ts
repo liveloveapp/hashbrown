@@ -1,4 +1,3 @@
-import { Frame } from '../frames';
 import {
   type Transport,
   type TransportFactory,
@@ -6,6 +5,7 @@ import {
   type TransportResponse,
 } from './transport';
 import { type DetectionResult, type ModelSpecFactory } from './model-spec';
+import { createLocalTextEventStream } from './local-text-event-stream';
 import { TransportError } from './transport-error';
 
 const PROMPT_API_SOURCE = 'chrome-prompt-api';
@@ -67,10 +67,7 @@ export interface ExperimentalChromeLocalTransportOptions {
 }
 
 type LanguageModelAvailabilityStatus =
-  | 'unavailable'
-  | 'available'
-  | 'downloadable'
-  | 'downloading';
+  'unavailable' | 'available' | 'downloadable' | 'downloading';
 
 interface LanguageModelAvailability {
   status: LanguageModelAvailabilityStatus;
@@ -121,6 +118,12 @@ export class ExperimentalChromeLocalTransport implements Transport {
   ) {}
 
   async send(request: TransportRequest): Promise<TransportResponse> {
+    if (!request.input) {
+      throw new TransportError('Missing AG-UI run input', {
+        retryable: false,
+      });
+    }
+
     const languageModel = await this.getLanguageModel();
     const transformRequest =
       this.options.transformRequest ?? defaultTransformRequest;
@@ -141,11 +144,18 @@ export class ExperimentalChromeLocalTransport implements Transport {
       });
     }
 
-    const promptRequest = transformRequest(request);
+    const transformedPromptRequest = transformRequest(request);
     const resolvedPromptOutputLanguage = resolvePromptOutputLanguage(
-      promptRequest,
+      transformedPromptRequest,
       resolvedOutputLanguage,
     );
+    const promptRequest: PromptRequest = {
+      ...transformedPromptRequest,
+      options: {
+        ...transformedPromptRequest.options,
+        outputLanguage: resolvedPromptOutputLanguage,
+      },
+    };
 
     const availability = languageModel
       ? await this.ensureAvailability(
@@ -161,25 +171,33 @@ export class ExperimentalChromeLocalTransport implements Transport {
       promptRequest,
       resolvedPromptOutputLanguage,
     );
-    const frames = this.createFrameGenerator(session, promptRequest, request);
-    const dispose = async () => {
-      try {
-        await session.destroy?.();
-        this.options.events?.sessionState?.('destroyed');
-      } finally {
-        this.sessionPromise = undefined;
-      }
-    };
+    const localStream = createLocalTextEventStream({
+      input: request.input,
+      signal: request.signal,
+      start: (signal) =>
+        session.promptStreaming(promptRequest.messages, {
+          ...promptRequest.options,
+          signal,
+        }),
+      destroy: async () => {
+        try {
+          await session.destroy?.();
+        } finally {
+          this.sessionPromise = undefined;
+          this.options.events?.sessionState?.('destroyed');
+        }
+      },
+    });
 
     return {
-      frames,
+      events: localStream.events,
       metadata: {
         source: PROMPT_API_SOURCE,
         status: availability,
         promptMode: 'promptStreaming',
         outputLanguage: resolvedPromptOutputLanguage,
       },
-      dispose,
+      dispose: localStream.dispose,
     };
   }
 
@@ -322,95 +340,6 @@ export class ExperimentalChromeLocalTransport implements Transport {
     } catch (err) {
       this.options.events?.sessionState?.('error');
       throw err;
-    }
-  }
-
-  private createFrameGenerator(
-    session: LanguageModelSession,
-    promptRequest: PromptRequest,
-    request: TransportRequest,
-  ): AsyncGenerator<Frame> {
-    const resolvedOutputLanguage = resolvePromptOutputLanguage(
-      promptRequest,
-      this.options.outputLanguage ?? 'en',
-    );
-
-    const options: PromptOptions = {
-      ...(promptRequest.options ?? {}),
-      signal: request.signal,
-    };
-
-    options.outputLanguage = resolvedOutputLanguage;
-
-    return this.streamPromptToFrames(session, promptRequest.messages, options);
-  }
-
-  private streamPromptToFrames(
-    session: LanguageModelSession,
-    messages: PromptMessage[] | string,
-    options: PromptOptions,
-  ): AsyncGenerator<Frame> {
-    const controller = new AbortController();
-    const signal = options.signal;
-
-    if (signal) {
-      signal.addEventListener(
-        'abort',
-        () => {
-          controller.abort(signal.reason);
-        },
-        { once: true },
-      );
-    }
-
-    return this.readStream(session, messages, options, controller);
-  }
-
-  private async *readStream(
-    session: LanguageModelSession,
-    messages: PromptMessage[] | string,
-    options: PromptOptions,
-    abortController: AbortController,
-  ): AsyncGenerator<Frame> {
-    const stream = await session.promptStreaming(messages, options);
-    const reader = stream.getReader();
-    let aborted = false;
-
-    try {
-      while (true) {
-        if (abortController.signal.aborted) {
-          aborted = true;
-          try {
-            await reader.cancel(abortController.signal.reason);
-          } catch {
-            // best-effort cancellation
-          }
-          try {
-            await session.destroy?.();
-          } catch {
-            // swallow destroy errors on abort
-          }
-          throw new TransportError('Prompt aborted', {
-            retryable: false,
-            code: 'PROMPT_API_ABORTED',
-          });
-        }
-
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        if (typeof value === 'string' && value.length > 0) {
-          yield createChunkFrame(value);
-        }
-      }
-
-      yield { type: 'generation-finish' };
-    } finally {
-      if (!aborted) {
-        reader.releaseLock();
-      }
     }
   }
 }
@@ -560,8 +489,10 @@ function isUnsupportedContext(): boolean {
   return false;
 }
 
-function defaultTransformRequest({ params }: TransportRequest): PromptRequest {
-  if (params.tools && params.tools.length > 0) {
+function defaultTransformRequest(request: TransportRequest): PromptRequest {
+  const input = request.input as NonNullable<TransportRequest['input']>;
+
+  if (input.tools.length > 0) {
     throw new TransportError(
       'Chrome Prompt API transport does not support tool calls',
       {
@@ -572,30 +503,31 @@ function defaultTransformRequest({ params }: TransportRequest): PromptRequest {
   }
 
   const messages: PromptMessage[] = [];
-  if (params.system) {
-    messages.push({ role: 'system', content: params.system });
-  }
-  for (const message of params.messages) {
-    if (message.role === 'tool' || message.role === 'error') {
+  for (const message of input.messages) {
+    if (
+      message.role !== 'system' &&
+      message.role !== 'user' &&
+      message.role !== 'assistant'
+    ) {
       continue;
     }
     const content =
       typeof message.content === 'string'
         ? message.content
         : JSON.stringify(message.content ?? '');
-    const role = message.role === 'assistant' ? 'assistant' : 'user';
-    messages.push({ role, content });
+    messages.push({ role: message.role, content });
   }
 
   const options: PromptOptions = {};
-  if (params.responseFormat) {
-    if (!isSupportedResponseConstraint(params.responseFormat)) {
+  const responseSchema = input.hashbrown?.responseSchema;
+  if (responseSchema) {
+    if (!isSupportedResponseConstraint(responseSchema)) {
       throw new TransportError(
         'Chrome Prompt API transport does not support the provided response schema.',
         { retryable: false, code: 'FEATURE_UNSUPPORTED' },
       );
     }
-    options.responseConstraint = params.responseFormat;
+    options.responseConstraint = responseSchema;
   }
 
   return {
@@ -618,24 +550,6 @@ function isSupportedResponseConstraint(constraint: unknown): boolean {
   }
 
   return false;
-}
-
-function createChunkFrame(content: string): Frame {
-  return {
-    type: 'generation-chunk',
-    chunk: {
-      choices: [
-        {
-          index: 0,
-          delta: {
-            role: 'assistant',
-            content,
-          },
-          finishReason: null,
-        },
-      ],
-    },
-  };
 }
 
 interface PromptApiGlobal {

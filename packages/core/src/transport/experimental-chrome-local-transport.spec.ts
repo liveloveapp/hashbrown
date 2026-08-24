@@ -1,115 +1,594 @@
-import { ExperimentalChromeLocalTransport } from './experimental-chrome-local-transport';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { Chat } from '../models';
-import { Frame } from '../frames';
+import { type TransportRequest } from './transport';
+import { ExperimentalChromeLocalTransport } from './experimental-chrome-local-transport';
 
 const params: Chat.Api.CompletionCreateParams = {
   operation: 'generate',
   model: '' as Chat.Api.CompletionCreateParams['model'],
-  system: 'system',
-  messages: [
-    {
-      role: 'user',
-      content: 'Hello',
-    },
-  ],
+  system: '',
+  messages: [],
 };
 
-afterEach(() => {
-  delete (globalThis as { LanguageModel?: unknown }).LanguageModel;
-});
+const responseSchema = {
+  type: 'object',
+  properties: {
+    answer: { type: 'string' },
+  },
+  required: ['answer'],
+};
 
-test('throws PLATFORM_UNSUPPORTED when the Prompt API is missing', async () => {
-  const transport = new ExperimentalChromeLocalTransport({});
+type RunInput = NonNullable<TransportRequest['input']>;
 
-  const sendPromise = transport.send({
+function createRequest(
+  inputOverrides: Partial<RunInput> = {},
+  requestOverrides: Partial<Omit<TransportRequest, 'input' | 'params'>> = {},
+): TransportRequest {
+  const input: RunInput = {
+    threadId: 'thread-1',
+    runId: 'run-1',
+    messages: [
+      { id: 'system-1', role: 'system', content: 'You are concise.' },
+      { id: 'user-1', role: 'user', content: 'Hello' },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
+    hashbrown: { responseSchema },
+    ...inputOverrides,
+  };
+
+  return {
+    input,
     params,
     signal: new AbortController().signal,
     attempt: 1,
     maxAttempts: 1,
-    requestId: 'test',
-  });
+    requestId: 'request-1',
+    ...requestOverrides,
+  };
+}
 
-  await expect(sendPromise).rejects.toMatchObject({
-    code: 'PLATFORM_UNSUPPORTED',
-  });
-});
+async function withLanguageModel<T>(
+  languageModel: unknown,
+  run: () => Promise<T>,
+): Promise<T> {
+  const global = globalThis as { LanguageModel?: unknown };
+  const hadLanguageModel = Object.hasOwn(global, 'LanguageModel');
+  const previousLanguageModel = global.LanguageModel;
 
-test('streams frames from the Prompt API', async () => {
-  const promptStream = new ReadableStream<string>({
+  if (languageModel === undefined) {
+    delete global.LanguageModel;
+  } else {
+    global.LanguageModel = languageModel;
+  }
+
+  try {
+    return await run();
+  } finally {
+    if (hadLanguageModel) {
+      global.LanguageModel = previousLanguageModel;
+    } else {
+      delete global.LanguageModel;
+    }
+  }
+}
+
+async function collectEvents(
+  events: AsyncIterable<AGUIEvent>,
+): Promise<AGUIEvent[]> {
+  const collected: AGUIEvent[] = [];
+  for await (const event of events) {
+    collected.push(event);
+  }
+  return collected;
+}
+
+function createTextStream(chunks: string[]): ReadableStream<string> {
+  return new ReadableStream<string>({
     start(controller) {
-      controller.enqueue('Hello');
-      controller.enqueue(' world');
+      for (const chunk of chunks) {
+        controller.enqueue(chunk);
+      }
       controller.close();
     },
   });
+}
 
-  const session = {
+function createDeferred<T>() {
+  let resolve: (value: T | PromiseLike<T>) => void = () => undefined;
+  let reject: (reason?: unknown) => void = () => undefined;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
+function createReaderStream(options: {
+  read: () => Promise<ReadableStreamReadResult<string>>;
+  cancel?: (reason?: unknown) => Promise<void>;
+}) {
+  const reader = {
+    read: jest.fn(options.read),
+    cancel: jest.fn(options.cancel ?? (async () => undefined)),
+    releaseLock: jest.fn(),
+  };
+  const stream = {
+    getReader: jest.fn(() => reader),
+  } as unknown as ReadableStream<string>;
+
+  return { stream, reader };
+}
+
+function createSession(stream: ReadableStream<string>) {
+  return {
     prompt: jest.fn(),
-    promptStreaming: jest.fn().mockResolvedValue(promptStream),
+    promptStreaming: jest.fn().mockResolvedValue(stream),
     destroy: jest.fn(),
   };
+}
 
-  const availability = jest.fn().mockResolvedValue({ status: 'available' });
-  const create = jest.fn().mockResolvedValue(session);
-  (globalThis as { LanguageModel?: unknown }).LanguageModel = {
-    availability,
-    create,
-  };
-
-  const transport = new ExperimentalChromeLocalTransport({});
-
-  const response = await transport.send({
-    params,
-    signal: new AbortController().signal,
-    attempt: 1,
-    maxAttempts: 1,
-    requestId: 'stream-test',
-  });
-
-  const frames = response.frames;
-  const collected: Frame[] = [];
-
-  if (frames) {
-    for await (const frame of frames) {
-      collected.push(frame);
-    }
+function requireEvents(response: {
+  events?: AsyncIterable<AGUIEvent>;
+}): AsyncIterable<AGUIEvent> {
+  if (!response.events) {
+    throw new Error('Expected AG-UI events');
   }
 
-  expect(session.promptStreaming).toHaveBeenCalledTimes(1);
-  expect(
-    collected.filter((frame) => frame.type === 'generation-chunk'),
-  ).toHaveLength(2);
-  expect(collected.at(-1)?.type).toBe('generation-finish');
+  return response.events;
+}
+
+function requireDispose(response: {
+  dispose?: () => void | Promise<void>;
+}): () => Promise<void> {
+  if (!response.dispose) {
+    throw new Error('Expected response disposer');
+  }
+
+  return async () => response.dispose?.();
+}
+
+function expectNoRunError(events: AGUIEvent[]): void {
+  expect(events.map((event) => event.type)).not.toContain(EventType.RUN_ERROR);
+}
+
+async function flushTasks(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
+test('throws PLATFORM_UNSUPPORTED when the Prompt API is missing', async () => {
+  await withLanguageModel(undefined, async () => {
+    const transport = new ExperimentalChromeLocalTransport({});
+
+    const sendPromise = transport.send(createRequest());
+
+    await expect(sendPromise).rejects.toMatchObject({
+      code: 'PLATFORM_UNSUPPORTED',
+    });
+  });
 });
 
-test('rejects tool calls as FEATURE_UNSUPPORTED', async () => {
-  (globalThis as { LanguageModel?: unknown }).LanguageModel = {
-    availability: jest.fn().mockResolvedValue({ status: 'available' }),
-    create: jest.fn().mockResolvedValue({
-      prompt: jest.fn(),
-      promptStreaming: jest.fn(),
-    }),
-  };
-  const transport = new ExperimentalChromeLocalTransport({});
+test('throws when AG-UI run input is missing', async () => {
+  await withLanguageModel(undefined, async () => {
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => createSession(createTextStream([])),
+    });
+    const request = { ...createRequest(), input: undefined };
 
-  const sendPromise = transport.send({
-    params: {
-      ...params,
+    const sendPromise = transport.send(request);
+
+    await expect(sendPromise).rejects.toMatchObject({
+      message: 'Missing AG-UI run input',
+      retryable: false,
+    });
+  });
+});
+
+test('emits the exact local AG-UI event sequence and identities', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream(['Hello', ' world']));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const request = createRequest();
+    const input = request.input as RunInput;
+
+    const response = await transport.send(request);
+    const events = await collectEvents(requireEvents(response));
+
+    expect(events).toEqual([
+      {
+        type: EventType.RUN_STARTED,
+        threadId: input.threadId,
+        runId: input.runId,
+      },
+      {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: `${input.runId}:message`,
+        role: 'assistant',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: `${input.runId}:message`,
+        delta: 'Hello',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: `${input.runId}:message`,
+        delta: ' world',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_END,
+        messageId: `${input.runId}:message`,
+      },
+      {
+        type: EventType.RUN_FINISHED,
+        threadId: input.threadId,
+        runId: input.runId,
+      },
+    ] satisfies AGUIEvent[]);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('maps system, user, and assistant AG-UI messages to Prompt API messages', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const request = createRequest({
+      messages: [
+        { id: 'system-1', role: 'system', content: 'System prompt' },
+        { id: 'user-1', role: 'user', content: 'User prompt' },
+        { id: 'assistant-1', role: 'assistant', content: 'Prior answer' },
+      ],
+    });
+
+    const response = await transport.send(request);
+    await collectEvents(requireEvents(response));
+
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      [
+        { role: 'system', content: 'System prompt' },
+        { role: 'user', content: 'User prompt' },
+        { role: 'assistant', content: 'Prior answer' },
+      ],
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+});
+
+test('rejects AG-UI tool declarations as FEATURE_UNSUPPORTED', async () => {
+  await withLanguageModel(undefined, async () => {
+    const create = jest.fn(async () => createSession(createTextStream([])));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+    });
+    const request = createRequest({
       tools: [
         {
-          name: 'test',
-          description: 'test',
-          parameters: {},
+          name: 'lookup',
+          description: 'Looks up a value',
+          parameters: { type: 'object', properties: {} },
         },
       ],
-    },
-    signal: new AbortController().signal,
-    attempt: 1,
-    maxAttempts: 1,
-    requestId: 'tools',
-  });
+    });
 
-  await expect(sendPromise).rejects.toMatchObject({
-    code: 'FEATURE_UNSUPPORTED',
+    const sendPromise = transport.send(request);
+
+    await expect(sendPromise).rejects.toMatchObject({
+      code: 'FEATURE_UNSUPPORTED',
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+test('skips tool results and unsupported internal message roles', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const request = createRequest({
+      messages: [
+        { id: 'system-1', role: 'system', content: 'System prompt' },
+        { id: 'developer-1', role: 'developer', content: 'Developer prompt' },
+        { id: 'user-1', role: 'user', content: 'User prompt' },
+        {
+          id: 'activity-1',
+          role: 'activity',
+          activityType: 'status',
+          content: { state: 'working' },
+        },
+        { id: 'reasoning-1', role: 'reasoning', content: 'Reasoning' },
+        {
+          id: 'tool-1',
+          role: 'tool',
+          toolCallId: 'call-1',
+          content: 'Tool result',
+        },
+        { id: 'assistant-1', role: 'assistant', content: 'Prior answer' },
+      ],
+    });
+
+    const response = await transport.send(request);
+    await collectEvents(requireEvents(response));
+
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      [
+        { role: 'system', content: 'System prompt' },
+        { role: 'user', content: 'User prompt' },
+        { role: 'assistant', content: 'Prior answer' },
+      ],
+      expect.any(Object),
+    );
+  });
+});
+
+test('maps the Hashbrown response schema to the Prompt API constraint', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const request = createRequest({ hashbrown: { responseSchema } });
+
+    const response = await transport.send(request);
+    await collectEvents(requireEvents(response));
+
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ responseConstraint: responseSchema }),
+    );
+  });
+});
+
+test('does not add Hashbrown UI instructions to the text prompt', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const request = createRequest({
+      hashbrown: { responseSchema, ui: true },
+    });
+
+    const response = await transport.send(request);
+    await collectEvents(requireEvents(response));
+
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      [
+        { role: 'system', content: 'You are concise.' },
+        { role: 'user', content: 'Hello' },
+      ],
+      expect.any(Object),
+    );
+  });
+});
+
+test('preserves Chrome transport metadata', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+
+    const response = await transport.send(createRequest());
+
+    try {
+      expect(response.metadata).toEqual({
+        source: 'chrome-prompt-api',
+        status: 'available',
+        promptMode: 'promptStreaming',
+        outputLanguage: 'en',
+      });
+    } finally {
+      await requireDispose(response)();
+    }
+  });
+});
+
+test('aborts before event iteration and destroys the session once', async () => {
+  await withLanguageModel(undefined, async () => {
+    const abortController = new AbortController();
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const request = createRequest({}, { signal: abortController.signal });
+    const response = await transport.send(request);
+    const observedEvents: AGUIEvent[] = [];
+
+    abortController.abort('stop');
+    const nextPromise = requireEvents(response)[Symbol.asyncIterator]().next();
+
+    await expect(nextPromise).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+    expect(session.promptStreaming).not.toHaveBeenCalled();
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expectNoRunError(observedEvents);
+  });
+});
+
+test('aborts pending promptStreaming and destroys the session once', async () => {
+  await withLanguageModel(undefined, async () => {
+    const abortController = new AbortController();
+    const promptResult = createDeferred<ReadableStream<string>>();
+    const { stream, reader } = createReaderStream({
+      read: async () => ({ done: true, value: undefined }),
+    });
+    const session = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn(() => promptResult.promise),
+      destroy: jest.fn(),
+    };
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const response = await transport.send(
+      createRequest({}, { signal: abortController.signal }),
+    );
+    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const observedEvents: AGUIEvent[] = [];
+    const first = await iterator.next();
+    if (!first.done) {
+      observedEvents.push(first.value);
+    }
+    const pendingNext = iterator.next();
+    await Promise.resolve();
+
+    abortController.abort('stop');
+
+    await expect(pendingNext).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expectNoRunError(observedEvents);
+
+    promptResult.resolve(stream);
+    await flushTasks();
+
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('aborts a blocked stream read and destroys the session once', async () => {
+  await withLanguageModel(undefined, async () => {
+    const abortController = new AbortController();
+    const readResult = createDeferred<ReadableStreamReadResult<string>>();
+    const { stream, reader } = createReaderStream({
+      read: () => readResult.promise,
+    });
+    const session = createSession(stream);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const response = await transport.send(
+      createRequest({}, { signal: abortController.signal }),
+    );
+    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const observedEvents: AGUIEvent[] = [];
+    for (let index = 0; index < 2; index++) {
+      const result = await iterator.next();
+      if (!result.done) {
+        observedEvents.push(result.value);
+      }
+    }
+    const pendingNext = iterator.next();
+    await Promise.resolve();
+
+    abortController.abort('stop');
+
+    await expect(pendingNext).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expectNoRunError(observedEvents);
+
+    readResult.resolve({ done: true, value: undefined });
+  });
+});
+
+test('discards chunks that resolve after abort without terminal events', async () => {
+  await withLanguageModel(undefined, async () => {
+    const abortController = new AbortController();
+    const readResult = createDeferred<ReadableStreamReadResult<string>>();
+    const { stream } = createReaderStream({ read: () => readResult.promise });
+    const session = createSession(stream);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const response = await transport.send(
+      createRequest({}, { signal: abortController.signal }),
+    );
+    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const observedEvents: AGUIEvent[] = [];
+    for (let index = 0; index < 2; index++) {
+      const result = await iterator.next();
+      if (!result.done) {
+        observedEvents.push(result.value);
+      }
+    }
+    const pendingNext = iterator.next();
+    await Promise.resolve();
+
+    abortController.abort('stop');
+    readResult.resolve({ done: false, value: 'late chunk' });
+
+    await expect(pendingNext).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+    expect(observedEvents.map((event) => event.type)).toEqual([
+      EventType.RUN_STARTED,
+      EventType.TEXT_MESSAGE_START,
+    ]);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expectNoRunError(observedEvents);
+  });
+});
+
+test('shares one session cleanup across repeated response disposal', async () => {
+  await withLanguageModel(undefined, async () => {
+    const sessionState = jest.fn();
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+      events: { sessionState },
+    });
+    const response = await transport.send(createRequest());
+    const dispose = requireDispose(response);
+    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const observedEvents: AGUIEvent[] = [];
+
+    await Promise.all([dispose(), dispose(), dispose()]);
+    const nextPromise = iterator.next();
+
+    await expect(nextPromise).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledTimes(1);
+    expect(sessionState).toHaveBeenCalledWith('destroyed');
+    expectNoRunError(observedEvents);
+  });
+});
+
+test('propagates a rejected stream read without emitting RUN_ERROR', async () => {
+  await withLanguageModel(undefined, async () => {
+    const readError = new Error('read failed');
+    const { stream, reader } = createReaderStream({
+      read: async () => Promise.reject(readError),
+    });
+    const session = createSession(stream);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const response = await transport.send(createRequest());
+    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const observedEvents: AGUIEvent[] = [];
+    for (let index = 0; index < 2; index++) {
+      const result = await iterator.next();
+      if (!result.done) {
+        observedEvents.push(result.value);
+      }
+    }
+
+    const nextPromise = iterator.next();
+
+    await expect(nextPromise).rejects.toBe(readError);
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expectNoRunError(observedEvents);
   });
 });
