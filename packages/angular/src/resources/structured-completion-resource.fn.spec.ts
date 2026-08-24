@@ -27,16 +27,8 @@ const createChatStub = (
     isReceiving: signal(false),
     isGenerating: signal(false),
     isRunningToolCalls: signal(false),
-    isLoadingThread: signal(false),
-    isSavingThread: signal(false),
     sendingError: signal<Error | undefined>(undefined),
     generatingError: signal<Error | undefined>(undefined),
-    threadLoadError: signal<{ error: string; stacktrace?: string } | undefined>(
-      undefined,
-    ),
-    threadSaveError: signal<{ error: string; stacktrace?: string } | undefined>(
-      undefined,
-    ),
     lastAssistantMessage: signal(undefined),
     sendMessage: vi.fn(),
     resendMessages: vi.fn(),
@@ -47,7 +39,7 @@ const createChatStub = (
   } as unknown as ReturnType<typeof structuredChatResource>;
 };
 
-test('structuredCompletionResource passes reactive options through to structuredChatResource', () => {
+test('structuredCompletionResource passes reactive options through without exposing persistence state', () => {
   // Arrange
   structuredChatResourceMock.mockReset();
   structuredChatResourceMock.mockReturnValue(createChatStub(signal<any[]>([])));
@@ -57,7 +49,7 @@ test('structuredCompletionResource passes reactive options through to structured
   const threadId = signal<string | undefined>('thread-a');
 
   // Act
-  TestBed.runInInjectionContext(() =>
+  const resource = TestBed.runInInjectionContext(() =>
     structuredCompletionResource({
       model,
       apiUrl,
@@ -77,6 +69,43 @@ test('structuredCompletionResource passes reactive options through to structured
       apiUrl,
       system,
       threadId,
+    }),
+  );
+  expect(resource).not.toHaveProperty('isLoadingThread');
+  expect(resource).not.toHaveProperty('isSavingThread');
+  expect(resource).not.toHaveProperty('threadLoadError');
+  expect(resource).not.toHaveProperty('threadSaveError');
+  expect(resource).not.toHaveProperty('threadId');
+
+  threadId.set('thread-b');
+
+  const delegatedOptions = structuredChatResourceMock.mock.calls[0]?.[0];
+  const delegatedThreadId = delegatedOptions?.threadId as Signal<
+    string | undefined
+  >;
+
+  expect(delegatedThreadId()).toBe('thread-b');
+});
+
+test('structuredCompletionResource preserves a literal empty threadId option', () => {
+  structuredChatResourceMock.mockReset();
+  structuredChatResourceMock.mockReturnValue(createChatStub(signal<any[]>([])));
+
+  TestBed.runInInjectionContext(() =>
+    structuredCompletionResource({
+      model: 'gpt-4.1',
+      system: 'System prompt',
+      threadId: '',
+      input: signal('Summarize this'),
+      schema: s.object('summary', {
+        summary: s.string('Summary'),
+      }),
+    }),
+  );
+
+  expect(structuredChatResourceMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      threadId: '',
     }),
   );
 });

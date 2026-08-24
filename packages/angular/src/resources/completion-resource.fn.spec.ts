@@ -29,7 +29,7 @@ test('completionResource updates runtime options when option signals change', ()
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
 
-  TestBed.runInInjectionContext(() =>
+  const resource = TestBed.runInInjectionContext(() =>
     completionResource({
       model,
       apiUrl,
@@ -47,6 +47,11 @@ test('completionResource updates runtime options when option signals change', ()
       threadId: 'thread-a',
     }),
   );
+  expect(resource).not.toHaveProperty('isLoadingThread');
+  expect(resource).not.toHaveProperty('isSavingThread');
+  expect(resource).not.toHaveProperty('threadLoadError');
+  expect(resource).not.toHaveProperty('threadSaveError');
+  expect(resource).not.toHaveProperty('threadId');
 
   model.set('gpt-4.2');
   apiUrl.set('/completion-b');
@@ -60,6 +65,24 @@ test('completionResource updates runtime options when option signals change', ()
       apiUrl: '/completion-b',
       system: 'System B',
       threadId: 'thread-b',
+    }),
+  );
+
+  threadId.set(undefined);
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: undefined,
+    }),
+  );
+
+  threadId.set('');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: '',
     }),
   );
 });
@@ -214,6 +237,40 @@ test('completionResource preserves an empty threadId option', () => {
   );
 
   threadId.set('');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+});
+
+test('completionResource preserves a literal empty threadId option', () => {
+  fryHashbrownMock.mockReset();
+  const input = signal('Summarize this');
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    completionResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      input,
+      threadId: '',
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+
   TestBed.flushEffects();
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(

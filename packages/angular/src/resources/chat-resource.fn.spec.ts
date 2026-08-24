@@ -90,7 +90,7 @@ test('chatResource updates runtime options when option signals change', () => {
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
 
-  TestBed.runInInjectionContext(() =>
+  const resource = TestBed.runInInjectionContext(() =>
     chatResource({
       model,
       apiUrl,
@@ -107,6 +107,11 @@ test('chatResource updates runtime options when option signals change', () => {
       threadId: 'thread-a',
     }),
   );
+  expect(resource).not.toHaveProperty('isLoadingThread');
+  expect(resource).not.toHaveProperty('isSavingThread');
+  expect(resource).not.toHaveProperty('threadLoadError');
+  expect(resource).not.toHaveProperty('threadSaveError');
+  expect(resource).not.toHaveProperty('threadId');
 
   model.set('gpt-4.2');
   apiUrl.set('/chat-b');
@@ -120,6 +125,24 @@ test('chatResource updates runtime options when option signals change', () => {
       apiUrl: '/chat-b',
       system: 'System B',
       threadId: 'thread-b',
+    }),
+  );
+
+  threadId.set(undefined);
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: undefined,
+    }),
+  );
+
+  threadId.set('');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: '',
     }),
   );
 });

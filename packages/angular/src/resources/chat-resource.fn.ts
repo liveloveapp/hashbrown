@@ -48,20 +48,12 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
   isGenerating: Signal<boolean>;
   /** Indicates whether the chat is running tool calls. */
   isRunningToolCalls: Signal<boolean>;
-  /** Aggregate loading flag across transport, generation, tool calls, and thread load/save. */
+  /** Aggregate loading flag across transport, generation, and tool calls. */
   isLoading: Signal<boolean>;
-  /** Indicates whether a thread load request is in flight. */
-  isLoadingThread: Signal<boolean>;
-  /** Indicates whether a thread save request is in flight. */
-  isSavingThread: Signal<boolean>;
   /** Transport/request error before generation frames arrive. */
   sendingError: Signal<Error | undefined>;
   /** Error emitted during generation frames. */
   generatingError: Signal<Error | undefined>;
-  /** Thread loading error, if present. */
-  threadLoadError: Signal<{ error: string; stacktrace?: string } | undefined>;
-  /** Thread saving error, if present. */
-  threadSaveError: Signal<{ error: string; stacktrace?: string } | undefined>;
   /**
    * Send a new user message to the chat.
    *
@@ -159,7 +151,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
   transport?: TransportOrFactory;
 
   /**
-   * Optional thread identifier used to load or continue an existing conversation.
+   * Optional opaque AG-UI thread identity.
    */
   threadId?: ReactiveOption<string | undefined>;
 }
@@ -286,23 +278,6 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hashbrown.lastAssistantMessage,
     options.debugName && `${options.debugName}.lastAssistantMessage`,
   );
-  const isLoadingThread = toNgSignal(
-    hashbrown.isLoadingThread,
-    options.debugName && `${options.debugName}.isLoadingThread`,
-  );
-  const isSavingThread = toNgSignal(
-    hashbrown.isSavingThread,
-    options.debugName && `${options.debugName}.isSavingThread`,
-  );
-  const threadLoadError = toNgSignal(
-    hashbrown.threadLoadError,
-    options.debugName && `${options.debugName}.threadLoadError`,
-  );
-  const threadSaveError = toNgSignal(
-    hashbrown.threadSaveError,
-    options.debugName && `${options.debugName}.threadSaveError`,
-  );
-
   const status = computed(
     (): ResourceStatus => {
       if (isLoading()) {
@@ -379,12 +354,8 @@ export function chatResource<Tools extends Chat.AnyTool>(
     isGenerating,
     isRunningToolCalls,
     isLoading,
-    isLoadingThread,
-    isSavingThread,
     sendingError,
     generatingError,
-    threadLoadError,
-    threadSaveError,
     reload,
     sendMessage,
     setMessages,
