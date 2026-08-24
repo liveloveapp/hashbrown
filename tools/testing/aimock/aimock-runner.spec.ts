@@ -1,6 +1,6 @@
 import { LLMock } from '@copilotkit/aimock';
 import type { AGUIEvent } from '@copilotkit/aimock/agui';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type AimockHandle, startAimock } from './aimock-runner';
@@ -133,6 +133,9 @@ test('AimockHandle shares an in-flight shutdown across concurrent stop calls', a
   });
   let handle: AimockHandle | null = null;
   let stopSpy: jest.SpiedFunction<LLMock['stop']> | undefined;
+  let settledBeforeRelease: boolean[] = [];
+  let stopResults: PromiseSettledResult<void>[] = [];
+  let stopCallCount = 0;
 
   try {
     handle = await startAimock({ fixturePath });
@@ -145,42 +148,125 @@ test('AimockHandle shares an in-flight shutdown across concurrent stop calls', a
 
     const firstStop = handle.stop();
     const secondStop = handle.stop();
-    const stopCallCount = stopSpy.mock.calls.length;
-    releaseStop();
-    await Promise.allSettled([firstStop, secondStop]);
+    let firstSettled = false;
+    let secondSettled = false;
+    void firstStop.then(
+      () => {
+        firstSettled = true;
+      },
+      () => {
+        firstSettled = true;
+      },
+    );
+    void secondStop.then(
+      () => {
+        secondSettled = true;
+      },
+      () => {
+        secondSettled = true;
+      },
+    );
 
-    expect(stopCallCount).toBe(1);
+    await Promise.resolve();
+
+    settledBeforeRelease = [firstSettled, secondSettled];
+    releaseStop();
+    stopResults = await Promise.allSettled([firstStop, secondStop]);
+    stopCallCount = stopSpy.mock.calls.length;
   } finally {
     releaseStop();
     stopSpy?.mockRestore();
     await handle?.stop();
     rmSync(workDir, { recursive: true, force: true });
   }
+
+  expect(settledBeforeRelease).toEqual([false, false]);
+  expect(stopResults).toEqual([
+    { status: 'fulfilled', value: undefined },
+    { status: 'fulfilled', value: undefined },
+  ]);
+  expect(stopCallCount).toBe(1);
+  expect(existsSync(workDir)).toBe(false);
 });
 
-test('AimockHandle retries shutdown after a failed stop', async () => {
+test('AimockHandle shares a concurrent shutdown failure and permits a later retry', async () => {
   const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
   const fixturePath = createFixtureFile(workDir, 'text.json', 'say hi briefly');
   const originalStop = LLMock.prototype.stop;
+  const shutdownFailure = new Error('stop failed');
+  let releaseStop: () => void = () => undefined;
+  const stopGate = new Promise<void>((resolve) => {
+    releaseStop = resolve;
+  });
+  let stopAttempt = 0;
   let handle: AimockHandle | null = null;
   let stopSpy: jest.SpiedFunction<LLMock['stop']> | undefined;
+  let settledBeforeRelease: boolean[] = [];
+  let failureResults: PromiseSettledResult<void>[] = [];
+  let retryResults: PromiseSettledResult<void>[] = [];
+  let stopCallCountAfterFailure = 0;
+  let stopCallCountAfterRetry = 0;
 
   try {
     handle = await startAimock({ fixturePath });
     stopSpy = jest
       .spyOn(LLMock.prototype, 'stop')
-      .mockRejectedValueOnce(new Error('stop failed'))
-      .mockImplementation(function (this: LLMock) {
-        return originalStop.call(this);
+      .mockImplementation(async function (this: LLMock) {
+        stopAttempt += 1;
+        if (stopAttempt === 1) {
+          await stopGate;
+          throw shutdownFailure;
+        }
+
+        await originalStop.call(this);
       });
 
-    await expect(handle.stop()).rejects.toThrow('stop failed');
-    await expect(handle.stop()).resolves.toBeUndefined();
+    const firstStop = handle.stop();
+    const secondStop = handle.stop();
+    let firstSettled = false;
+    let secondSettled = false;
+    void firstStop.then(
+      () => {
+        firstSettled = true;
+      },
+      () => {
+        firstSettled = true;
+      },
+    );
+    void secondStop.then(
+      () => {
+        secondSettled = true;
+      },
+      () => {
+        secondSettled = true;
+      },
+    );
 
-    expect(stopSpy).toHaveBeenCalledTimes(2);
+    await Promise.resolve();
+
+    settledBeforeRelease = [firstSettled, secondSettled];
+    releaseStop();
+    failureResults = await Promise.allSettled([firstStop, secondStop]);
+    stopCallCountAfterFailure = stopSpy.mock.calls.length;
+    retryResults = await Promise.allSettled([handle.stop()]);
+    stopCallCountAfterRetry = stopSpy.mock.calls.length;
   } finally {
+    releaseStop();
     stopSpy?.mockRestore();
     await handle?.stop();
     rmSync(workDir, { recursive: true, force: true });
   }
+
+  expect(settledBeforeRelease).toEqual([false, false]);
+  expect(failureResults).toHaveLength(2);
+  for (const result of failureResults) {
+    expect(result.status).toBe('rejected');
+    if (result.status === 'rejected') {
+      expect(result.reason).toBe(shutdownFailure);
+    }
+  }
+  expect(stopCallCountAfterFailure).toBe(1);
+  expect(retryResults).toEqual([{ status: 'fulfilled', value: undefined }]);
+  expect(stopCallCountAfterRetry).toBe(2);
+  expect(existsSync(workDir)).toBe(false);
 });
