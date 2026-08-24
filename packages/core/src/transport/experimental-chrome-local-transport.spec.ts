@@ -927,6 +927,97 @@ test('transport destroy retains a prior teardown rejection after replacement', a
   });
 });
 
+test('transport destroy settles replacement teardown after prior teardown rejects', async () => {
+  await withLanguageModel(undefined, async () => {
+    const firstDestroyResult = createDeferred<void>();
+    const firstDestroyStarted = createDeferred<void>();
+    const secondDestroyResult = createDeferred<void>();
+    const secondDestroyStarted = createDeferred<void>();
+    const firstDestroyError = new Error('first destroy failed');
+    const sessionState = jest.fn();
+    const firstSession = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        firstDestroyStarted.resolve();
+        return firstDestroyResult.promise;
+      }),
+    };
+    const secondSession = {
+      prompt: jest.fn(),
+      promptStreaming: jest.fn().mockReturnValue(createTextStream([])),
+      destroy: jest.fn(() => {
+        secondDestroyStarted.resolve();
+        return secondDestroyResult.promise;
+      }),
+    };
+    const create = jest
+      .fn()
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession);
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: create,
+      events: { sessionState },
+    });
+    const firstResponse = await transport.send(
+      createRequest({ runId: 'run-first' }),
+    );
+    const unhandledRejections: unknown[] = [];
+    const onUnhandledRejection = (reason: unknown) => {
+      unhandledRejections.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    try {
+      const firstDisposeOutcome = requireDispose(firstResponse)().then(
+        () => ({ status: 'fulfilled' as const }),
+        (reason: unknown) => ({ status: 'rejected' as const, reason }),
+      );
+      await firstDestroyStarted.promise;
+      const secondResponse = await transport.send(
+        createRequest({ runId: 'run-second' }),
+      );
+      const transportDestroyOutcome = transport.destroy().then(
+        () => ({ status: 'fulfilled' as const }),
+        (reason: unknown) => ({ status: 'rejected' as const, reason }),
+      );
+      await secondDestroyStarted.promise;
+
+      firstDestroyResult.reject(firstDestroyError);
+
+      await expect(firstDisposeOutcome).resolves.toEqual({
+        status: 'rejected',
+        reason: firstDestroyError,
+      });
+      const afterFirstResult = await settleWithinTask(transportDestroyOutcome);
+      await flushTasks();
+
+      expect(afterFirstResult).toEqual({ status: 'pending' });
+      expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+      expect(secondSession.destroy).toHaveBeenCalledTimes(1);
+      expect(sessionState).not.toHaveBeenCalled();
+      expect(unhandledRejections).toEqual([]);
+
+      secondDestroyResult.resolve();
+
+      await expect(transportDestroyOutcome).resolves.toEqual({
+        status: 'rejected',
+        reason: firstDestroyError,
+      });
+      await requireDispose(secondResponse)();
+      await flushTasks();
+
+      expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+      expect(secondSession.destroy).toHaveBeenCalledTimes(1);
+      expect(sessionState).toHaveBeenCalledTimes(1);
+      expect(sessionState).toHaveBeenCalledWith('destroyed');
+      expect(unhandledRejections).toEqual([]);
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandledRejection);
+    }
+  });
+});
+
 test('keeps an overlapping response session alive after another response is disposed', async () => {
   await withLanguageModel(undefined, async () => {
     const session = createSession(createTextStream(['second response']));

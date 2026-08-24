@@ -225,7 +225,11 @@ export class ExperimentalChromeLocalTransport implements Transport {
       return;
     }
 
-    await Promise.all(destructionPromises);
+    const results = await Promise.allSettled(destructionPromises);
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure) {
+      throw failure.reason;
+    }
   }
 
   private async getLanguageModel(): Promise<LanguageModelGlobal | undefined> {
