@@ -1986,11 +1986,15 @@ test('missing events is retryable and disposes each response exactly once', asyn
   jest.clearAllMocks();
   const firstDispose = jest.fn();
   const secondDispose = jest.fn();
+  const removedFramesIterator = jest.fn();
   let attempt = 0;
   const { send } = makeSelection(async (request) => {
     attempt++;
     if (attempt === 1) {
-      return { dispose: firstDispose };
+      return {
+        frames: { [Symbol.asyncIterator]: removedFramesIterator },
+        dispose: firstDispose,
+      } as unknown as MockTransportResponse;
     }
     return {
       events: successfulEvents(request),
@@ -2015,6 +2019,69 @@ test('missing events is retryable and disposes each response exactly once', asyn
   expect(send).toHaveBeenCalledTimes(2);
   expect(firstDispose).toHaveBeenCalledTimes(1);
   expect(secondDispose).toHaveBeenCalledTimes(1);
+  expect(removedFramesIterator).not.toHaveBeenCalled();
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(
+      new TransportError('Transport response did not provide an event stream', {
+        retryable: true,
+        code: 'PROTOCOL_ERROR',
+      }),
+    ),
+  ]);
+
+  teardown?.();
+});
+
+test('non-async-iterable events are a retryable protocol error', async () => {
+  jest.clearAllMocks();
+  const firstDispose = jest.fn();
+  const secondDispose = jest.fn();
+  let attempt = 0;
+  const { send } = makeSelection(async (request) => {
+    attempt++;
+    if (attempt === 1) {
+      return {
+        events: {
+          [Symbol.asyncIterator]: 'not-callable',
+        } as unknown as AsyncIterable<AGUIEvent>,
+        dispose: firstDispose,
+      };
+    }
+    return {
+      events: successfulEvents(request),
+      dispose: secondDispose,
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 1],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(firstDispose).toHaveBeenCalledTimes(1);
+  expect(secondDispose).toHaveBeenCalledTimes(1);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(
+      new TransportError('Transport response did not provide an event stream', {
+        retryable: true,
+        code: 'PROTOCOL_ERROR',
+      }),
+    ),
+  ]);
 
   teardown?.();
 });

@@ -15,6 +15,7 @@ export interface TransportMetadata {
  * @public
  */
 export interface TransportRequest {
+  /** AG-UI run input whose thread and run IDs define the response identity. */
   input: RunAgentInput & {
     hashbrown?: {
       responseSchema?: object;
@@ -33,6 +34,10 @@ export interface TransportRequest {
  * @public
  */
 export interface TransportResponse {
+  /**
+   * AG-UI events beginning with a matching `RUN_STARTED` and ending with
+   * `RUN_FINISHED` or `RUN_ERROR` for the same run identity.
+   */
   events: AsyncIterable<AGUIEvent>;
   metadata?: TransportMetadata;
   dispose?: () => void | Promise<void>;

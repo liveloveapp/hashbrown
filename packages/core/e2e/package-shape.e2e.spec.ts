@@ -5,6 +5,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -16,6 +17,7 @@ type PackedPackage = {
 const workspaceRoot = resolve(__dirname, '../../..');
 const coreDistPath = join(workspaceRoot, 'dist/packages/core');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const typescriptPath = join(workspaceRoot, 'node_modules/typescript/bin/tsc');
 
 function run(command: string, args: string[], cwd: string) {
   return spawnSync(command, args, {
@@ -67,24 +69,103 @@ function createPackageSandbox(): string {
 
 test('packed Core package includes generated chunks and supports ESM and CJS', () => {
   const sandboxPath = createPackageSandbox();
-  const installedCorePath = join(sandboxPath, 'node_modules/@hashbrownai/core');
-  const generatedIndexFiles = readdirSync(coreDistPath).filter((file) =>
-    file.startsWith('index'),
-  );
-  const transportDeclarations = readFileSync(
-    join(coreDistPath, 'src/transport/transport.d.ts'),
-    'utf8',
-  );
-  const publicApiDeclarations = readFileSync(
-    join(coreDistPath, 'src/public_api.d.ts'),
-    'utf8',
-  );
-  const frameDeclarations = readFileSync(
-    join(coreDistPath, 'src/frames/index.d.ts'),
-    'utf8',
-  );
 
   try {
+    const installedCorePath = join(
+      sandboxPath,
+      'node_modules/@hashbrownai/core',
+    );
+    const generatedIndexFiles = readdirSync(coreDistPath).filter((file) =>
+      file.startsWith('index'),
+    );
+    const publicApiDeclarations = readFileSync(
+      join(coreDistPath, 'src/public_api.d.ts'),
+      'utf8',
+    );
+    const frameDeclarations = readFileSync(
+      join(coreDistPath, 'src/frames/index.d.ts'),
+      'utf8',
+    );
+
+    writeFileSync(
+      join(sandboxPath, 'consumer.ts'),
+      `
+        import {
+          encodeFrame,
+          type Frame,
+          type Transport,
+          type TransportRequest,
+          type TransportResponse,
+        } from '@hashbrownai/core';
+
+        const input: TransportRequest['input'] = {
+          threadId: 'thread-1',
+          runId: 'run-1',
+          messages: [],
+          tools: [],
+          context: [],
+          state: {},
+          forwardedProps: {},
+        };
+        const request: TransportRequest = {
+          input,
+          signal: new AbortController().signal,
+          attempt: 1,
+          maxAttempts: 1,
+          requestId: 'request-1',
+        };
+        const events = (async function* (): AsyncGenerator<never> {})();
+        const response: TransportResponse = { events };
+        const transport: Transport = {
+          name: 'consumer',
+          async send(nextRequest) {
+            void nextRequest;
+            return response;
+          },
+        };
+        const frame: Frame = { type: 'generation-start' };
+        const encoded = encodeFrame(frame);
+
+        // @ts-expect-error Transport requests require AG-UI input.
+        const missingInput: TransportRequest = {
+          signal: request.signal,
+          attempt: request.attempt,
+          maxAttempts: request.maxAttempts,
+          requestId: request.requestId,
+        };
+        // @ts-expect-error Transport responses require AG-UI events.
+        const missingEvents: TransportResponse = {};
+        // @ts-expect-error Completion parameters are not transport input.
+        request.params;
+        // @ts-expect-error Byte streams are not transport responses.
+        response.stream;
+        // @ts-expect-error Frame generators are not transport responses.
+        response.frames;
+        // @ts-expect-error Thread-loading capability is not part of Transport.
+        transport.supportsLegacyThreadLoading;
+
+        void [encoded, missingInput, missingEvents];
+      `,
+    );
+    const compileResult = run(
+      process.execPath,
+      [
+        typescriptPath,
+        '--noEmit',
+        '--strict',
+        '--skipLibCheck',
+        '--target',
+        'ES2022',
+        '--module',
+        'Node16',
+        '--moduleResolution',
+        'Node16',
+        '--lib',
+        'ES2022,DOM',
+        'consumer.ts',
+      ],
+      sandboxPath,
+    );
     const result = run(
       process.execPath,
       [
@@ -167,17 +248,22 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
         (file) => !existsSync(join(installedCorePath, file)),
       ),
     ).toEqual([]);
-    expect(transportDeclarations).toMatch(
-      /export interface TransportRequest \{\n {4}input: RunAgentInput & \{/,
-    );
-    expect(transportDeclarations).toMatch(
-      /export interface TransportResponse \{\n {4}events: AsyncIterable<AGUIEvent>;/,
-    );
     expect(publicApiDeclarations).toContain("export * from './frames';");
     expect(frameDeclarations).toContain(
       "export { encodeFrame } from './encode-frame';",
     );
     expect(frameDeclarations).toContain('export { type Frame,');
+    expect({
+      status: compileResult.status,
+      signal: compileResult.signal,
+      stderr: compileResult.stderr,
+      stdout: compileResult.stdout,
+    }).toEqual({
+      status: 0,
+      signal: null,
+      stderr: '',
+      stdout: '',
+    });
     expect({
       status: result.status,
       signal: result.signal,

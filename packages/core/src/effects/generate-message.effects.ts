@@ -264,7 +264,17 @@ export const generateMessage = createEffect((store) => {
             } else if (runCancelSignal.aborted) {
               outcome = { kind: 'cancelled' };
             } else {
-              eventIterator = transportResponse.events[Symbol.asyncIterator]();
+              const events = transportResponse.events;
+              if (
+                !events ||
+                typeof events[Symbol.asyncIterator] !== 'function'
+              ) {
+                throw new TransportError(
+                  'Transport response did not provide an event stream',
+                  { retryable: true, code: 'PROTOCOL_ERROR' },
+                );
+              }
+              eventIterator = events[Symbol.asyncIterator]();
 
               while (!outcome) {
                 const iteration = await _nextEvent(
