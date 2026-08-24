@@ -227,6 +227,33 @@ test('emits the exact local AG-UI event sequence and identities', async () => {
   });
 });
 
+test('accepts a synchronous Prompt API stream', async () => {
+  const stream = createTextStream(['synchronous']);
+  const session = {
+    prompt: jest.fn(),
+    promptStreaming: jest.fn(() => stream),
+    destroy: jest.fn(),
+  };
+  const languageModel = { create: jest.fn().mockResolvedValue(session) };
+
+  await withLanguageModel(languageModel, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({});
+
+    const response = await transport.send(createRequest());
+    const events = await collectEvents(requireEvents(response));
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          delta: 'synchronous',
+        }),
+      ]),
+    );
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
 test('moves system messages to initialPrompts and streams user and assistant messages', async () => {
   const session = createSession(createTextStream([]));
   const create = jest.fn().mockResolvedValue(session);

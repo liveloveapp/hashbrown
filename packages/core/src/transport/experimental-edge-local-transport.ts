@@ -22,7 +22,7 @@ interface LanguageModelSession {
   promptStreaming(
     input: PromptMessage[] | string,
     options?: PromptOptions,
-  ): Promise<ReadableStream<string>>;
+  ): ReadableStream<string> | Promise<ReadableStream<string>>;
   destroy?: () => void;
 }
 
@@ -119,10 +119,12 @@ export class ExperimentalEdgeLocalTransport implements Transport {
       input: request.input,
       signal: request.signal,
       start: (signal) =>
-        session.promptStreaming(promptRequest.messages, {
-          ...promptRequest.options,
-          signal,
-        }),
+        Promise.resolve(
+          session.promptStreaming(promptRequest.messages, {
+            ...promptRequest.options,
+            signal,
+          }),
+        ),
       destroy: () => this.releaseSession(sessionLease),
     });
 
