@@ -2,8 +2,6 @@ import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { type TransportRequest } from './transport';
 import { ExperimentalEdgeLocalTransport } from './experimental-edge-local-transport';
 
-const params = {} as TransportRequest['params'];
-
 const responseSchema = {
   type: 'object',
   properties: {
@@ -16,7 +14,7 @@ type RunInput = NonNullable<TransportRequest['input']>;
 
 function createRequest(
   inputOverrides: Partial<RunInput> = {},
-  requestOverrides: Partial<Omit<TransportRequest, 'input' | 'params'>> = {},
+  requestOverrides: Partial<Omit<TransportRequest, 'input'>> = {},
 ): TransportRequest {
   const input: RunInput = {
     threadId: 'thread-1',
@@ -35,7 +33,6 @@ function createRequest(
 
   return {
     input,
-    params,
     signal: new AbortController().signal,
     attempt: 1,
     maxAttempts: 1,
@@ -125,16 +122,6 @@ function createSession(stream: ReadableStream<string>) {
   };
 }
 
-function requireEvents(response: {
-  events?: AsyncIterable<AGUIEvent>;
-}): AsyncIterable<AGUIEvent> {
-  if (!response.events) {
-    throw new Error('Expected AG-UI events');
-  }
-
-  return response.events;
-}
-
 function requireDispose(response: {
   dispose?: () => void | Promise<void>;
 }): () => Promise<void> {
@@ -157,7 +144,10 @@ async function flushTasks(): Promise<void> {
 test('throws when AG-UI run input is missing', async () => {
   await withLanguageModel(undefined, async () => {
     const transport = new ExperimentalEdgeLocalTransport({});
-    const request = { ...createRequest(), input: undefined };
+    const request = {
+      ...createRequest(),
+      input: undefined,
+    } as unknown as TransportRequest;
 
     const sendPromise = transport.send(request);
 
@@ -190,7 +180,7 @@ test('emits the exact local AG-UI event sequence and identities', async () => {
     const input = request.input as RunInput;
 
     const response = await transport.send(request);
-    const events = await collectEvents(requireEvents(response));
+    const events = await collectEvents(response.events);
 
     expect(events).toEqual([
       {
@@ -240,7 +230,7 @@ test('accepts a synchronous Prompt API stream', async () => {
     const transport = new ExperimentalEdgeLocalTransport({});
 
     const response = await transport.send(createRequest());
-    const events = await collectEvents(requireEvents(response));
+    const events = await collectEvents(response.events);
 
     expect(events).toEqual(
       expect.arrayContaining([
@@ -276,7 +266,7 @@ test('moves system messages to initialPrompts and streams user and assistant mes
     });
 
     const response = await transport.send(request);
-    await collectEvents(requireEvents(response));
+    await collectEvents(response.events);
 
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -303,7 +293,7 @@ test('maps the Hashbrown response schema to the Prompt API constraint', async ()
     const request = createRequest({ hashbrown: { responseSchema } });
 
     const response = await transport.send(request);
-    await collectEvents(requireEvents(response));
+    await collectEvents(response.events);
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
       expect.any(Array),
@@ -383,7 +373,7 @@ test('preserves Edge availability, download, progress, and monitor callbacks', a
     });
 
     const response = await transport.send(createRequest());
-    await collectEvents(requireEvents(response));
+    await collectEvents(response.events);
 
     expect(availability).toHaveBeenCalledWith({ monitor: userMonitor });
     expect(onAvailability).toHaveBeenCalledWith('downloading');
@@ -440,7 +430,7 @@ test('retries session creation after a cached creation rejects', async () => {
     const response = await transport.send(
       createRequest({ runId: 'run-second' }),
     );
-    const events = await collectEvents(requireEvents(response));
+    const events = await collectEvents(response.events);
 
     expect(events).toEqual(
       expect.arrayContaining([
@@ -468,7 +458,7 @@ test('aborts before event iteration and destroys the session once', async () => 
     const observedEvents: AGUIEvent[] = [];
 
     abortController.abort('stop');
-    const nextPromise = requireEvents(response)[Symbol.asyncIterator]().next();
+    const nextPromise = response.events[Symbol.asyncIterator]().next();
 
     await expect(nextPromise).rejects.toMatchObject({
       code: 'PROMPT_API_ABORTED',
@@ -497,7 +487,7 @@ test('aborts pending stream creation and destroys the session once', async () =>
     const response = await transport.send(
       createRequest({}, { signal: abortController.signal }),
     );
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     const first = await iterator.next();
     if (!first.done) {
@@ -536,7 +526,7 @@ test('aborts a blocked stream read and destroys the session once', async () => {
     const response = await transport.send(
       createRequest({}, { signal: abortController.signal }),
     );
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     for (let index = 0; index < 2; index++) {
       const result = await iterator.next();
@@ -575,7 +565,7 @@ test('discards chunks that resolve after abort without terminal events', async (
     const response = await transport.send(
       createRequest({}, { signal: abortController.signal }),
     );
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     for (let index = 0; index < 2; index++) {
       const result = await iterator.next();
@@ -662,7 +652,7 @@ test('keeps an overlapping response session alive until its final owner cleans u
 
     expect(session.destroy).not.toHaveBeenCalled();
 
-    const events = await collectEvents(requireEvents(secondResponse));
+    const events = await collectEvents(secondResponse.events);
 
     expect(events).toEqual(
       expect.arrayContaining([
@@ -688,7 +678,7 @@ test('propagates a rejected stream read without emitting RUN_ERROR', async () =>
   await withLanguageModel(languageModel, async () => {
     const transport = new ExperimentalEdgeLocalTransport({});
     const response = await transport.send(createRequest());
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     for (let index = 0; index < 2; index++) {
       const result = await iterator.next();

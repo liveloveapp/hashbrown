@@ -1,15 +1,7 @@
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
-import { Chat } from '../models';
 import { HttpTransport } from './http-transport';
-import type { TransportRequest, TransportResponse } from './transport';
+import type { TransportRequest } from './transport';
 import { TransportError } from './transport-error';
-
-const defaultParams: Chat.Api.CompletionCreateParams = {
-  operation: 'generate',
-  model: '' as Chat.Api.CompletionCreateParams['model'],
-  system: '',
-  messages: [],
-};
 
 const input: RunAgentInput = {
   threadId: 'thread-1',
@@ -26,7 +18,6 @@ function createRequest(
 ): TransportRequest {
   return {
     input,
-    params: defaultParams,
     signal: new AbortController().signal,
     attempt: 1,
     maxAttempts: 1,
@@ -117,13 +108,6 @@ function successfulResponse(): Response {
   return createSseResponse([], { close: true }).response;
 }
 
-function requireEvents(response: TransportResponse): AsyncIterable<AGUIEvent> {
-  if (!response.events) {
-    throw new Error('Expected AG-UI events');
-  }
-  return response.events;
-}
-
 async function collectEvents(
   events: AsyncIterable<AGUIEvent>,
 ): Promise<AGUIEvent[]> {
@@ -140,7 +124,14 @@ test('rejects missing input before calling fetch', async () => {
     fetchImpl: fetchMock as unknown as typeof fetch,
   });
 
-  const sendPromise = transport.send(createRequest({ input: undefined }));
+  const request = {
+    signal: new AbortController().signal,
+    attempt: 1,
+    maxAttempts: 1,
+    requestId: 'test-request',
+  } as unknown as TransportRequest;
+
+  const sendPromise = transport.send(request);
 
   await expect(sendPromise).rejects.toMatchObject({
     name: 'TransportError',
@@ -222,16 +213,6 @@ test('cleans up the request listener when async middleware fails', async () => {
     addListener.mockRestore();
     removeListener.mockRestore();
   }
-});
-
-test('does not support legacy thread loading', () => {
-  const transport = new HttpTransport({
-    fetchImpl: jest.fn() as unknown as typeof fetch,
-  });
-
-  const supportsLegacyThreadLoading = transport.supportsLegacyThreadLoading;
-
-  expect(supportsLegacyThreadLoading).toBe(false);
 });
 
 test.each([undefined, '', '  \n'])(
@@ -368,9 +349,7 @@ test('parses and validates canonical RUN, TEXT, and TOOL events across byte spli
 
   const result = await transport.send(createRequest());
 
-  await expect(collectEvents(requireEvents(result))).resolves.toEqual(
-    expectedEvents,
-  );
+  await expect(collectEvents(result.events)).resolves.toEqual(expectedEvents);
 });
 
 test('preserves buffered events when a single SSE chunk completes normally', async () => {
@@ -406,7 +385,7 @@ test('preserves buffered events when a single SSE chunk completes normally', asy
   });
 
   const result = await transport.send(createRequest());
-  const events = await collectEvents(requireEvents(result));
+  const events = await collectEvents(result.events);
 
   expect(events).toEqual(expectedEvents);
 });
@@ -432,7 +411,7 @@ test('emits CRLF-delimited SSE before an open connection closes', async () => {
     fetchImpl: jest.fn(async () => response) as unknown as typeof fetch,
   });
   const result = await transport.send(createRequest());
-  const iterator = requireEvents(result)[Symbol.asyncIterator]();
+  const iterator = result.events[Symbol.asyncIterator]();
 
   const outcome = await Promise.race([
     iterator.next().then((event) => ({ type: 'event' as const, event })),
@@ -456,7 +435,7 @@ test('preserves non-2xx TransportError formatting, status, and truncation', asyn
   });
   const response = await transport.send(createRequest());
 
-  const nextPromise = requireEvents(response)[Symbol.asyncIterator]().next();
+  const nextPromise = response.events[Symbol.asyncIterator]().next();
 
   await expect(nextPromise).rejects.toEqual(
     new TransportError(`Too Many (429): ${'x'.repeat(500)}…`, {
@@ -478,7 +457,7 @@ test('rejects a successful response with a null body as nonretryable', async () 
   });
   const response = await transport.send(createRequest());
 
-  const nextPromise = requireEvents(response)[Symbol.asyncIterator]().next();
+  const nextPromise = response.events[Symbol.asyncIterator]().next();
 
   await expect(nextPromise).rejects.toMatchObject({
     name: 'TransportError',
@@ -499,7 +478,7 @@ test.each([undefined, 'application/json'])(
     });
     const response = await transport.send(createRequest());
 
-    const nextPromise = requireEvents(response)[Symbol.asyncIterator]().next();
+    const nextPromise = response.events[Symbol.asyncIterator]().next();
 
     await expect(nextPromise).rejects.toMatchObject({
       name: 'TransportError',
@@ -518,7 +497,7 @@ test('leaves network errors ordinary and retryable', async () => {
   });
   const response = await transport.send(createRequest());
 
-  const nextPromise = requireEvents(response)[Symbol.asyncIterator]().next();
+  const nextPromise = response.events[Symbol.asyncIterator]().next();
 
   await expect(nextPromise).rejects.toBe(networkError);
   expect(networkError).not.toBeInstanceOf(TransportError);
@@ -533,7 +512,7 @@ test('leaves malformed SSE JSON as an ordinary iterator error', async () => {
   });
   const result = await transport.send(createRequest());
 
-  const nextPromise = requireEvents(result)[Symbol.asyncIterator]().next();
+  const nextPromise = result.events[Symbol.asyncIterator]().next();
 
   await expect(nextPromise).rejects.toBeInstanceOf(SyntaxError);
 });
@@ -548,7 +527,7 @@ test('leaves schema-invalid SSE JSON as an ordinary iterator error', async () =>
   });
   const result = await transport.send(createRequest());
 
-  const nextPromise = requireEvents(result)[Symbol.asyncIterator]().next();
+  const nextPromise = result.events[Symbol.asyncIterator]().next();
 
   await expect(nextPromise).rejects.not.toBeInstanceOf(TransportError);
   expect(cancel).toHaveBeenCalledTimes(1);
@@ -570,7 +549,7 @@ test('request abort settles pending reads and cancels the reader', async () => {
   const result = await transport.send(
     createRequest({ signal: requestController.signal }),
   );
-  const iterator = requireEvents(result)[Symbol.asyncIterator]();
+  const iterator = result.events[Symbol.asyncIterator]();
   await iterator.next();
   const pendingNext = iterator.next();
 
@@ -593,7 +572,7 @@ test('iterator return settles pending reads and cancels the reader', async () =>
     fetchImpl: jest.fn(async () => response) as unknown as typeof fetch,
   });
   const result = await transport.send(createRequest());
-  const iterator = requireEvents(result)[Symbol.asyncIterator]();
+  const iterator = result.events[Symbol.asyncIterator]();
   await iterator.next();
   const pendingNext = iterator.next();
 
@@ -616,7 +595,7 @@ test('iterator throw rejects pending reads and cancels the reader idempotently',
     fetchImpl: jest.fn(async () => response) as unknown as typeof fetch,
   });
   const result = await transport.send(createRequest());
-  const iterator = requireEvents(result)[Symbol.asyncIterator]();
+  const iterator = result.events[Symbol.asyncIterator]();
   await iterator.next();
   const firstPendingNext = iterator.next();
   const secondPendingNext = iterator.next();
@@ -656,7 +635,7 @@ test('dispose settles pending reads and cancels the reader idempotently', async 
     const result = await transport.send(
       createRequest({ signal: requestController.signal }),
     );
-    const iterator = requireEvents(result)[Symbol.asyncIterator]();
+    const iterator = result.events[Symbol.asyncIterator]();
     await iterator.next();
     const pendingNext = iterator.next();
 
@@ -733,7 +712,7 @@ test('cancellation failures do not escape detached AG-UI teardown', async () => 
 
   try {
     const result = await transport.send(createRequest());
-    const iterator = requireEvents(result)[Symbol.asyncIterator]();
+    const iterator = result.events[Symbol.asyncIterator]();
     await iterator.next();
     const pendingNext = iterator.next();
 
@@ -782,7 +761,7 @@ test('read failures reject once without escaping detached teardown', async () =>
 
   try {
     const result = await transport.send(createRequest());
-    const iterator = requireEvents(result)[Symbol.asyncIterator]();
+    const iterator = result.events[Symbol.asyncIterator]();
 
     await expect(iterator.next()).rejects.toBe(readError);
     await new Promise<void>((resolve) => setImmediate(resolve));
@@ -807,7 +786,7 @@ test('parser errors cancel the active reader', async () => {
   });
   const result = await transport.send(createRequest());
 
-  const nextPromise = requireEvents(result)[Symbol.asyncIterator]().next();
+  const nextPromise = result.events[Symbol.asyncIterator]().next();
 
   await expect(nextPromise).rejects.toBeInstanceOf(SyntaxError);
   expect(cancel).toHaveBeenCalledTimes(1);

@@ -1,5 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -65,6 +71,18 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
   const generatedIndexFiles = readdirSync(coreDistPath).filter((file) =>
     file.startsWith('index'),
   );
+  const transportDeclarations = readFileSync(
+    join(coreDistPath, 'src/transport/transport.d.ts'),
+    'utf8',
+  );
+  const publicApiDeclarations = readFileSync(
+    join(coreDistPath, 'src/public_api.d.ts'),
+    'utf8',
+  );
+  const frameDeclarations = readFileSync(
+    join(coreDistPath, 'src/frames/index.d.ts'),
+    'utf8',
+  );
 
   try {
     const result = run(
@@ -103,6 +121,15 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
             ['CJS', cjs, cjsPartialJson],
             ['ESM', esm, esmPartialJson],
           ]) {
+            if (
+              'framesToLengthPrefixedStream' in core ||
+              typeof core.encodeFrame !== 'function'
+            ) {
+              throw new Error(
+                \`\${format} transport and frame exports do not match the public package boundary\`,
+              );
+            }
+
             const legacyExports = [
               'createParserState',
               'finalizeJsonParse',
@@ -140,6 +167,17 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
         (file) => !existsSync(join(installedCorePath, file)),
       ),
     ).toEqual([]);
+    expect(transportDeclarations).toMatch(
+      /export interface TransportRequest \{\n {4}input: RunAgentInput & \{/,
+    );
+    expect(transportDeclarations).toMatch(
+      /export interface TransportResponse \{\n {4}events: AsyncIterable<AGUIEvent>;/,
+    );
+    expect(publicApiDeclarations).toContain("export * from './frames';");
+    expect(frameDeclarations).toContain(
+      "export { encodeFrame } from './encode-frame';",
+    );
+    expect(frameDeclarations).toContain('export { type Frame,');
     expect({
       status: result.status,
       signal: result.signal,

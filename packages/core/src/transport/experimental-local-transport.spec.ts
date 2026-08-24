@@ -38,7 +38,6 @@ function makeRequest(
 
   return {
     input,
-    params: {} as TransportRequest['params'],
     signal: new AbortController().signal,
     attempt: 1,
     maxAttempts: 1,

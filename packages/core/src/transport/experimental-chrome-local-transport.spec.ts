@@ -1,14 +1,6 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { Chat } from '../models';
 import { type TransportRequest } from './transport';
 import { ExperimentalChromeLocalTransport } from './experimental-chrome-local-transport';
-
-const params: Chat.Api.CompletionCreateParams = {
-  operation: 'generate',
-  model: '' as Chat.Api.CompletionCreateParams['model'],
-  system: '',
-  messages: [],
-};
 
 const responseSchema = {
   type: 'object',
@@ -22,7 +14,7 @@ type RunInput = NonNullable<TransportRequest['input']>;
 
 function createRequest(
   inputOverrides: Partial<RunInput> = {},
-  requestOverrides: Partial<Omit<TransportRequest, 'input' | 'params'>> = {},
+  requestOverrides: Partial<Omit<TransportRequest, 'input'>> = {},
 ): TransportRequest {
   const input: RunInput = {
     threadId: 'thread-1',
@@ -41,7 +33,6 @@ function createRequest(
 
   return {
     input,
-    params,
     signal: new AbortController().signal,
     attempt: 1,
     maxAttempts: 1,
@@ -131,16 +122,6 @@ function createSession(stream: ReadableStream<string>) {
   };
 }
 
-function requireEvents(response: {
-  events?: AsyncIterable<AGUIEvent>;
-}): AsyncIterable<AGUIEvent> {
-  if (!response.events) {
-    throw new Error('Expected AG-UI events');
-  }
-
-  return response.events;
-}
-
 function requireDispose(response: {
   dispose?: () => void | Promise<void>;
 }): () => Promise<void> {
@@ -189,7 +170,10 @@ test('throws when AG-UI run input is missing', async () => {
     const transport = new ExperimentalChromeLocalTransport({
       createSession: async () => createSession(createTextStream([])),
     });
-    const request = { ...createRequest(), input: undefined };
+    const request = {
+      ...createRequest(),
+      input: undefined,
+    } as unknown as TransportRequest;
 
     const sendPromise = transport.send(request);
 
@@ -221,7 +205,7 @@ test('retries session creation after a cached creation rejects', async () => {
     const response = await transport.send(
       createRequest({ runId: 'run-second' }),
     );
-    const events = await collectEvents(requireEvents(response));
+    const events = await collectEvents(response.events);
 
     expect(events).toEqual(
       expect.arrayContaining([
@@ -246,7 +230,7 @@ test('emits the exact local AG-UI event sequence and identities', async () => {
     const input = request.input as RunInput;
 
     const response = await transport.send(request);
-    const events = await collectEvents(requireEvents(response));
+    const events = await collectEvents(response.events);
 
     expect(events).toEqual([
       {
@@ -298,7 +282,7 @@ test('accepts a synchronous Prompt API stream', async () => {
     const transport = new ExperimentalChromeLocalTransport({});
 
     const response = await transport.send(createRequest());
-    const events = await collectEvents(requireEvents(response));
+    const events = await collectEvents(response.events);
 
     expect(events).toEqual(
       expect.arrayContaining([
@@ -327,7 +311,7 @@ test('maps system, user, and assistant AG-UI messages to Prompt API messages', a
     });
 
     const response = await transport.send(request);
-    await collectEvents(requireEvents(response));
+    await collectEvents(response.events);
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
       [
@@ -394,7 +378,7 @@ test('skips tool results and unsupported internal message roles', async () => {
     });
 
     const response = await transport.send(request);
-    await collectEvents(requireEvents(response));
+    await collectEvents(response.events);
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
       [
@@ -416,7 +400,7 @@ test('maps the Hashbrown response schema to the Prompt API constraint', async ()
     const request = createRequest({ hashbrown: { responseSchema } });
 
     const response = await transport.send(request);
-    await collectEvents(requireEvents(response));
+    await collectEvents(response.events);
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
       expect.any(Array),
@@ -436,7 +420,7 @@ test('does not add Hashbrown UI instructions to the text prompt', async () => {
     });
 
     const response = await transport.send(request);
-    await collectEvents(requireEvents(response));
+    await collectEvents(response.events);
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
       [
@@ -482,7 +466,7 @@ test('aborts before event iteration and destroys the session once', async () => 
     const observedEvents: AGUIEvent[] = [];
 
     abortController.abort('stop');
-    const nextPromise = requireEvents(response)[Symbol.asyncIterator]().next();
+    const nextPromise = response.events[Symbol.asyncIterator]().next();
 
     await expect(nextPromise).rejects.toMatchObject({
       code: 'PROMPT_API_ABORTED',
@@ -511,7 +495,7 @@ test('aborts pending promptStreaming and destroys the session once', async () =>
     const response = await transport.send(
       createRequest({}, { signal: abortController.signal }),
     );
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     const first = await iterator.next();
     if (!first.done) {
@@ -551,7 +535,7 @@ test('aborts a blocked stream read and destroys the session once', async () => {
     const response = await transport.send(
       createRequest({}, { signal: abortController.signal }),
     );
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     for (let index = 0; index < 2; index++) {
       const result = await iterator.next();
@@ -588,7 +572,7 @@ test('discards chunks that resolve after abort without terminal events', async (
     const response = await transport.send(
       createRequest({}, { signal: abortController.signal }),
     );
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     for (let index = 0; index < 2; index++) {
       const result = await iterator.next();
@@ -624,7 +608,7 @@ test('shares one session cleanup across repeated response disposal', async () =>
     });
     const response = await transport.send(createRequest());
     const dispose = requireDispose(response);
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
 
     await Promise.all([dispose(), dispose(), dispose()]);
@@ -1036,7 +1020,7 @@ test('keeps an overlapping response session alive after another response is disp
 
     expect(session.destroy).not.toHaveBeenCalled();
 
-    const events = await collectEvents(requireEvents(secondResponse));
+    const events = await collectEvents(secondResponse.events);
 
     expect(events).toEqual(
       expect.arrayContaining([
@@ -1065,7 +1049,7 @@ test('keeps an overlapping response session alive after another response complet
       createRequest({ runId: 'run-second' }),
     );
 
-    await collectEvents(requireEvents(firstResponse));
+    await collectEvents(firstResponse.events);
 
     expect(session.destroy).not.toHaveBeenCalled();
 
@@ -1214,7 +1198,7 @@ test('propagates a rejected stream read without emitting RUN_ERROR', async () =>
       createSession: async () => session,
     });
     const response = await transport.send(createRequest());
-    const iterator = requireEvents(response)[Symbol.asyncIterator]();
+    const iterator = response.events[Symbol.asyncIterator]();
     const observedEvents: AGUIEvent[] = [];
     for (let index = 0; index < 2; index++) {
       const result = await iterator.next();

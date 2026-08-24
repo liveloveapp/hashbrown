@@ -26,7 +26,6 @@ import {
   ModelResolver,
   type RequestedFeatures,
   TransportError,
-  type TransportRequest,
   type TransportResponse,
 } from '../transport';
 import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
@@ -258,19 +257,12 @@ export const generateMessage = createEffect((store) => {
           let primaryError: Error | undefined;
 
           try {
-            transportResponse = await selection.transport.send(
-              eventRequest as TransportRequest,
-            );
+            transportResponse = await selection.transport.send(eventRequest);
 
             if (retiredSignal.aborted) {
               outcome = { kind: 'retired' };
             } else if (runCancelSignal.aborted) {
               outcome = { kind: 'cancelled' };
-            } else if (!transportResponse.events) {
-              throw new TransportError(
-                'Transport response did not provide an event stream',
-                { retryable: true, code: 'PROTOCOL_ERROR' },
-              );
             } else {
               eventIterator = transportResponse.events[Symbol.asyncIterator]();
 

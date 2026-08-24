@@ -51,7 +51,6 @@ export interface HttpTransportOptions {
  */
 export class HttpTransport implements Transport {
   readonly name = 'HttpTransport';
-  readonly supportsLegacyThreadLoading = false;
   private readonly baseUrl: string;
   private readonly middleware?: Chat.Middleware[];
   private readonly fetchImpl: typeof fetch;

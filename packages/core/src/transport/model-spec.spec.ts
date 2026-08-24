@@ -1,4 +1,3 @@
-import { Chat } from '../models';
 import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
 import { experimental_local } from './experimental-local-transport';
 import { TransportError } from './transport-error';
@@ -34,13 +33,6 @@ const input: RunAgentInput = {
   context: [],
   state: {},
   forwardedProps: {},
-};
-
-const params: Chat.Api.CompletionCreateParams = {
-  operation: 'generate',
-  model: '' as Chat.Api.CompletionCreateParams['model'],
-  system: '',
-  messages: [],
 };
 
 function createSseResponse(): Response {
@@ -128,7 +120,7 @@ test('advances after PLATFORM_UNSUPPORTED errors', async () => {
   if (first) {
     try {
       await first.transport.send({
-        params,
+        input,
         signal: new AbortController().signal,
         attempt: 1,
         maxAttempts: 1,
@@ -159,7 +151,6 @@ test.each([undefined, '', ' \n '])(
 
       const response = await selection?.transport.send({
         input,
-        params,
         signal: new AbortController().signal,
         attempt: 1,
         maxAttempts: 1,
@@ -190,7 +181,6 @@ test('default string models preserve a non-whitespace API URL exactly', async ()
 
     const response = await selection?.transport.send({
       input,
-      params,
       signal: new AbortController().signal,
       attempt: 1,
       maxAttempts: 1,
@@ -228,7 +218,6 @@ test('selects a local spec when the later request input has a configured thread 
   });
   await selection?.transport.send({
     input: laterInput,
-    params,
     signal: new AbortController().signal,
     attempt: 1,
     maxAttempts: 1,

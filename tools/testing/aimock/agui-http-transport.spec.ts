@@ -21,13 +21,6 @@ import { type AimockHandle, startAimock } from './aimock-runner';
 
 type HashbrownRunInput = NonNullable<TransportRequest['input']>;
 
-const defaultParams: Chat.Api.CompletionCreateParams = {
-  operation: 'generate',
-  model: '' as Chat.Api.CompletionCreateParams['model'],
-  system: '',
-  messages: [],
-};
-
 function createFixtureFile(workDir: string): string {
   const fixturePath = join(workDir, 'providers.json');
   writeFileSync(fixturePath, JSON.stringify({ fixtures: [] }));
@@ -40,19 +33,11 @@ function createRequest(
 ): TransportRequest {
   return {
     input,
-    params: defaultParams,
     signal: new AbortController().signal,
     attempt: 1,
     maxAttempts: 1,
     requestId,
   };
-}
-
-function requireEvents(response: TransportResponse): AsyncIterable<AGUIEvent> {
-  if (!response.events) {
-    throw new Error('Expected AG-UI events');
-  }
-  return response.events;
 }
 
 async function collectEvents(
@@ -212,7 +197,7 @@ test('createHttpTransport posts Hashbrown run input and collects text events ove
     const transport = createHttpTransport({ baseUrl: handle.aguiRunUrl });
 
     response = await transport.send(createRequest(input, 'request-text'));
-    const events = await collectEvents(requireEvents(response));
+    const events = await collectEvents(response.events);
 
     expect(capturedInputs).toEqual([input]);
     expect(events).toEqual(expectedEvents);
