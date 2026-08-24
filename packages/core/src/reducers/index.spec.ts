@@ -2,7 +2,7 @@ import { EventType } from '@ag-ui/core';
 import { apiActions, devActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
-import { reducers, selectViewMessages } from './index';
+import { reducers, selectThreadId, selectViewMessages } from './index';
 
 const initAction = { type: '@@init' } as const;
 
@@ -142,4 +142,19 @@ test('selectViewMessages uses streaming output tool arguments', () => {
   const assistant = messages.find((message) => message.role === 'assistant');
 
   expect(assistant?.content).toEqual({ text: 'hello' });
+});
+
+test('RUN_STARTED updates the selected thread ID', () => {
+  const state = createState();
+
+  const nextState = reduceAll(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'server-thread',
+      runId: 'run-1',
+    }),
+  );
+
+  expect(selectThreadId(nextState)).toBe('server-thread');
 });

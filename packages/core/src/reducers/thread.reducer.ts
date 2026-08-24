@@ -1,3 +1,4 @@
+import { EventType } from '@ag-ui/core';
 import { apiActions, devActions } from '../actions';
 import { createReducer, on } from '../utils/micro-ngrx';
 
@@ -36,6 +37,16 @@ export const reducer = createReducer(
       ...state,
       loadingThreadError: undefined,
       savingThreadError: undefined,
+    };
+  }),
+  on(apiActions.generateMessageEvent, (state, action) => {
+    if (action.payload.type !== EventType.RUN_STARTED) {
+      return state;
+    }
+
+    return {
+      ...state,
+      threadId: action.payload.threadId,
     };
   }),
   on(apiActions.threadLoadStart, (state) => {

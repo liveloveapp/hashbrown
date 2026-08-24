@@ -149,7 +149,6 @@ export function experimental_local(
         tools: false,
         structured: true,
         ui: true,
-        threads: false,
       },
       detect: () => detectAny(adapters),
       transport: () => new DelegatingLocalTransport(adapters),
@@ -163,8 +162,7 @@ export function experimental_local(
  */
 export function createDelegatingTransport(
   adaptersOrOptions:
-    | LocalPromptAdapter[]
-    | ExperimentalLocalTransportOptions = {},
+    LocalPromptAdapter[] | ExperimentalLocalTransportOptions = {},
 ): TransportFactory {
   const adapters = Array.isArray(adaptersOrOptions)
     ? adaptersOrOptions

@@ -533,7 +533,6 @@ export function experimentalChromeLocalModelSpec(
         tools: false,
         structured: true,
         ui: true,
-        threads: false,
       },
       detect: () =>
         detectChromePromptApi(

@@ -402,7 +402,6 @@ export function experimentalEdgeLocalModelSpec(
         tools: false,
         structured: true,
         ui: true,
-        threads: false,
       },
       detect: () =>
         detectEdgePromptApi(undefined, {
