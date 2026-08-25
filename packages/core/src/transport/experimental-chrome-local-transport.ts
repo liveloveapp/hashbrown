@@ -262,7 +262,7 @@ export class ExperimentalChromeLocalTransport implements Transport {
     );
 
     const availability = await raceTransportOperationWithAbort(
-      () => checkAvailability(availabilityOptions),
+      () => checkAvailability.call(languageModel, availabilityOptions),
       signal,
       createPromptAbortError,
     );

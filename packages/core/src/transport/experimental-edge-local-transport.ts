@@ -160,7 +160,8 @@ export class ExperimentalEdgeLocalTransport implements Transport {
 
     const availability = await raceTransportOperationWithAbort(
       () =>
-        checkAvailability(
+        checkAvailability.call(
+          languageModel,
           promptRequest.sessionOptions as
             EdgeLanguageModelCreateOptions | undefined,
         ),

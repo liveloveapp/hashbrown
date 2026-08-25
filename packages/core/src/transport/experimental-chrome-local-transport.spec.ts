@@ -454,6 +454,27 @@ test('preserves Chrome transport metadata', async () => {
   });
 });
 
+test('calls Chrome availability with the language model receiver', async () => {
+  const session = createSession(createTextStream([]));
+  const create = jest.fn().mockResolvedValue(session);
+  const availability = jest.fn(function (this: unknown) {
+    expect(this).toBe(languageModel);
+    return Promise.resolve({ status: 'available' as const });
+  });
+  const languageModel = { availability, create };
+
+  await withLanguageModel(languageModel, async () => {
+    const transport = new ExperimentalChromeLocalTransport({});
+
+    const response = await transport.send(createRequest());
+    const events = await collectEvents(response.events);
+
+    expect(events).toEqual(expect.any(Array));
+    expect(availability).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});
+
 test.each(['resolve', 'reject'] as const)(
   'aborts while Chrome availability is pending and owns a late %s',
   async (lateSettlement) => {
