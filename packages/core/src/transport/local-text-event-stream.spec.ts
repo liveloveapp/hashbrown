@@ -436,6 +436,58 @@ test('iterator return preempts a pending start', async () => {
   expect(destroy).toHaveBeenCalledTimes(1);
 });
 
+test('iterator throw preempts a pending start and preserves its error', async () => {
+  const iteratorError = new Error('iterator failed');
+  const startResult = createDeferred<ReadableStream<string>>();
+  const destroy = jest.fn();
+  let startSignal: AbortSignal | undefined;
+  const { stream, reader } = createReaderStream({
+    read: async () => ({ done: true, value: undefined }),
+  });
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start: (signal) => {
+      startSignal = signal;
+      return startResult.promise;
+    },
+    destroy,
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  await iterator.next();
+  const pendingNext = iterator.next();
+  await Promise.resolve();
+
+  const throwPromise = iterator.throw?.(iteratorError);
+  if (!throwPromise) {
+    throw new Error('Expected iterator throw');
+  }
+  const [nextOutcome, throwOutcome] = await Promise.all([
+    settleWithinTask(pendingNext),
+    settleWithinTask(throwPromise),
+  ]);
+
+  startResult.resolve(stream);
+  await flushTasks();
+
+  expect(nextOutcome).toMatchObject({
+    status: 'rejected',
+    reason: { code: 'PROMPT_API_ABORTED' },
+  });
+  expect(throwOutcome).toEqual({
+    status: 'rejected',
+    reason: iteratorError,
+  });
+  expect(startSignal?.aborted).toBe(true);
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  expect(destroy).toHaveBeenCalledTimes(1);
+  await expect(iterator.next()).resolves.toEqual({
+    done: true,
+    value: undefined,
+  });
+});
+
 test('aborts a blocked read and cancels the active reader once', async () => {
   const abortController = new AbortController();
   const readResult = createDeferred<ReadableStreamReadResult<string>>();
@@ -608,6 +660,54 @@ test('iterator return preempts a blocked read', async () => {
   });
 });
 
+test('iterator throw preempts a blocked read and preserves its error', async () => {
+  const iteratorError = new Error('iterator failed');
+  const readResult = createDeferred<ReadableStreamReadResult<string>>();
+  const destroy = jest.fn();
+  const { stream, reader } = createReaderStream({
+    read: () => readResult.promise,
+  });
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start: async () => stream,
+    destroy,
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  await iterator.next();
+  await iterator.next();
+  const pendingNext = iterator.next();
+  await Promise.resolve();
+
+  const throwPromise = iterator.throw?.(iteratorError);
+  if (!throwPromise) {
+    throw new Error('Expected iterator throw');
+  }
+  const [nextOutcome, throwOutcome] = await Promise.all([
+    settleWithinTask(pendingNext),
+    settleWithinTask(throwPromise),
+  ]);
+
+  readResult.resolve({ done: false, value: 'late chunk' });
+  await flushTasks();
+
+  expect(nextOutcome).toMatchObject({
+    status: 'rejected',
+    reason: { code: 'PROMPT_API_ABORTED' },
+  });
+  expect(throwOutcome).toEqual({
+    status: 'rejected',
+    reason: iteratorError,
+  });
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  expect(destroy).toHaveBeenCalledTimes(1);
+  await expect(iterator.next()).resolves.toEqual({
+    done: true,
+    value: undefined,
+  });
+});
+
 test('discards a chunk that resolves after abort without successful terminal events', async () => {
   const abortController = new AbortController();
   const readResult = createDeferred<ReadableStreamReadResult<string>>();
@@ -672,6 +772,55 @@ test('iterator return before first next performs shared cleanup once', async () 
     done: true,
     value: undefined,
   });
+});
+
+test('iterator throw before first next preserves its error over cleanup failure', async () => {
+  const iteratorError = new Error('iterator failed');
+  const cleanupError = new Error('cleanup failed');
+  const start = jest.fn(async () => createTextStream([]));
+  const destroy = jest.fn(async () => Promise.reject(cleanupError));
+  const response = createLocalTextEventStream({
+    input,
+    signal: new AbortController().signal,
+    start,
+    destroy,
+  });
+  const iterator = response.events[Symbol.asyncIterator]();
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (reason: unknown) => {
+    unhandledRejections.push(reason);
+  };
+  process.on('unhandledRejection', handleUnhandledRejection);
+
+  try {
+    const throwPromise = iterator.throw?.(iteratorError);
+    if (!throwPromise) {
+      throw new Error('Expected iterator throw');
+    }
+
+    await expect(throwPromise).rejects.toBe(iteratorError);
+    await flushTasks();
+
+    expect(start).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(unhandledRejections).toEqual([]);
+
+    await Promise.allSettled([
+      iterator.throw?.(iteratorError),
+      response.dispose(),
+      response.dispose(),
+    ]);
+    await flushTasks();
+
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(unhandledRejections).toEqual([]);
+    await expect(iterator.next()).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  } finally {
+    process.removeListener('unhandledRejection', handleUnhandledRejection);
+  }
 });
 
 test('shares one disposer across repeated dispose and iterator return', async () => {

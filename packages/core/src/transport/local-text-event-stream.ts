@@ -198,7 +198,24 @@ export function createLocalTextEventStream(
         throw error;
       }
     },
-    throw: (error?: unknown) => generator.throw(error),
+    throw: async (error?: unknown) => {
+      requestCancellation();
+      const cleanupResult = cleanup();
+      void cleanupResult.catch(() => undefined);
+
+      try {
+        const result = await generator.throw(error);
+        await cleanupResult;
+        return result;
+      } catch (iteratorError) {
+        try {
+          await cleanupResult;
+        } catch {
+          // A cleanup failure cannot replace the primary iterator failure.
+        }
+        throw iteratorError;
+      }
+    },
   };
   const events: AsyncIterable<AGUIEvent> = {
     [Symbol.asyncIterator]: () => iterator,

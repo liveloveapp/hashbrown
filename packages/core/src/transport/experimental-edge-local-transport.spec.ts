@@ -141,6 +141,18 @@ async function flushTasks(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
+async function settleWithinTask<T>(promise: Promise<T>) {
+  return Promise.race([
+    promise.then(
+      (value) => ({ status: 'fulfilled' as const, value }),
+      (reason: unknown) => ({ status: 'rejected' as const, reason }),
+    ),
+    new Promise<{ status: 'pending' }>((resolve) => {
+      setImmediate(() => resolve({ status: 'pending' }));
+    }),
+  ]);
+}
+
 test('throws when AG-UI run input is missing', async () => {
   await withLanguageModel(undefined, async () => {
     const transport = new ExperimentalEdgeLocalTransport({});
@@ -442,6 +454,203 @@ test('retries session creation after a cached creation rejects', async () => {
     );
     expect(create).toHaveBeenCalledTimes(2);
     expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('aborts pending custom session creation and destroys a late session once', async () => {
+  const abortController = new AbortController();
+  const creation = createDeferred<ReturnType<typeof createSession>>();
+  const session = createSession(createTextStream([]));
+  const createSessionOption = jest.fn(() => creation.promise);
+
+  await withLanguageModel({ create: jest.fn() }, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({
+      createSession: createSessionOption,
+    });
+    const sendPromise = transport.send(
+      createRequest({}, { signal: abortController.signal }),
+    );
+    await flushTasks();
+
+    abortController.abort('stop');
+    const abortOutcome = await settleWithinTask(sendPromise);
+    creation.resolve(session);
+    const finalOutcome = await sendPromise.then(
+      (response) => ({ status: 'fulfilled' as const, response }),
+      (reason: unknown) => ({ status: 'rejected' as const, reason }),
+    );
+    if (finalOutcome.status === 'fulfilled') {
+      await requireDispose(finalOutcome.response)();
+    }
+    await flushTasks();
+
+    expect(abortOutcome).toMatchObject({
+      status: 'rejected',
+      reason: {
+        code: 'PROMPT_API_ABORTED',
+        retryable: false,
+        message: 'Prompt aborted',
+      },
+    });
+    expect(finalOutcome).toMatchObject({
+      status: 'rejected',
+      reason: { code: 'PROMPT_API_ABORTED' },
+    });
+    expect(createSessionOption).toHaveBeenCalledTimes(1);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('owns a late native session creation rejection after request abort', async () => {
+  const abortController = new AbortController();
+  const creation = createDeferred<ReturnType<typeof createSession>>();
+  const createError = new Error('late create failed');
+  const create = jest.fn(() => creation.promise);
+  const sessionState = jest.fn();
+  const unhandledRejections: unknown[] = [];
+  const onUnhandledRejection = (reason: unknown) => {
+    unhandledRejections.push(reason);
+  };
+
+  await withLanguageModel({ create }, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({
+      events: { sessionState },
+    });
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    try {
+      const sendPromise = transport.send(
+        createRequest({}, { signal: abortController.signal }),
+      );
+      await flushTasks();
+
+      abortController.abort('stop');
+      const abortOutcome = await settleWithinTask(sendPromise);
+      creation.reject(createError);
+      const finalOutcome = await sendPromise.then(
+        () => ({ status: 'fulfilled' as const }),
+        (reason: unknown) => ({ status: 'rejected' as const, reason }),
+      );
+      await flushTasks();
+
+      expect(abortOutcome).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'PROMPT_API_ABORTED', retryable: false },
+      });
+      expect(finalOutcome).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'PROMPT_API_ABORTED' },
+      });
+      expect(sessionState).toHaveBeenCalledWith('error');
+      expect(unhandledRejections).toEqual([]);
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandledRejection);
+    }
+  });
+});
+
+test('transport destruction tracks teardown of a late abandoned session', async () => {
+  const abortController = new AbortController();
+  const creation = createDeferred<ReturnType<typeof createSession>>();
+  const destroyResult = createDeferred<void>();
+  const destroyStarted = createDeferred<void>();
+  const destroyError = new Error('late destroy failed');
+  const session = {
+    ...createSession(createTextStream([])),
+    destroy: jest.fn(() => {
+      destroyStarted.resolve();
+      return destroyResult.promise;
+    }),
+  };
+
+  await withLanguageModel({ create: jest.fn() }, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({
+      createSession: () => creation.promise,
+    });
+    const sendPromise = transport.send(
+      createRequest({}, { signal: abortController.signal }),
+    );
+    await flushTasks();
+    abortController.abort('stop');
+    await expect(sendPromise).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+
+    const transportDestroy = transport.destroy();
+    const beforeCreation = await settleWithinTask(transportDestroy);
+    creation.resolve(session);
+    await destroyStarted.promise;
+    const duringTeardown = await settleWithinTask(transportDestroy);
+    destroyResult.reject(destroyError);
+
+    expect(beforeCreation).toEqual({ status: 'pending' });
+    expect(duringTeardown).toEqual({ status: 'pending' });
+    await expect(transportDestroy).rejects.toBe(destroyError);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+test('keeps a late session with an overlapping owner while using a replacement session', async () => {
+  const firstAbortController = new AbortController();
+  const firstCreation = createDeferred<ReturnType<typeof createSession>>();
+  const firstSession = createSession(createTextStream([]));
+  const replacementSession = createSession(createTextStream([]));
+  const createSessionOption = jest
+    .fn()
+    .mockImplementationOnce(() => firstCreation.promise)
+    .mockResolvedValueOnce(replacementSession);
+
+  await withLanguageModel({ create: jest.fn() }, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({
+      createSession: createSessionOption,
+    });
+    const firstSend = transport.send(
+      createRequest(
+        { runId: 'run-first' },
+        { signal: firstAbortController.signal },
+      ),
+    );
+    const overlappingSend = transport.send(
+      createRequest({ runId: 'run-overlapping' }),
+    );
+    await flushTasks();
+
+    firstAbortController.abort('stop');
+    const abortOutcome = await settleWithinTask(firstSend);
+    const replacementSend = transport.send(
+      createRequest({ runId: 'run-replacement' }),
+    );
+    firstCreation.resolve(firstSession);
+    const firstOutcome = await firstSend.then(
+      (response) => ({ status: 'fulfilled' as const, response }),
+      (reason: unknown) => ({ status: 'rejected' as const, reason }),
+    );
+    const overlappingResponse = await overlappingSend;
+    const replacementResponse = await replacementSend;
+    await flushTasks();
+
+    expect(abortOutcome).toMatchObject({
+      status: 'rejected',
+      reason: { code: 'PROMPT_API_ABORTED', retryable: false },
+    });
+    expect(firstOutcome).toMatchObject({
+      status: 'rejected',
+      reason: { code: 'PROMPT_API_ABORTED' },
+    });
+    expect(createSessionOption).toHaveBeenCalledTimes(2);
+    expect(firstSession.destroy).not.toHaveBeenCalled();
+    expect(replacementSession.destroy).not.toHaveBeenCalled();
+
+    await requireDispose(replacementResponse)();
+    expect(replacementSession.destroy).toHaveBeenCalledTimes(1);
+    expect(firstSession.destroy).not.toHaveBeenCalled();
+
+    await requireDispose(overlappingResponse)();
+    if (firstOutcome.status === 'fulfilled') {
+      await requireDispose(firstOutcome.response)();
+    }
+    expect(firstSession.destroy).toHaveBeenCalledTimes(1);
+    expect(replacementSession.destroy).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -3,6 +3,7 @@ import { Chat } from '../models';
 import {
   reducers as rootReducers,
   selectPendingToolCalls,
+  selectThreadId,
   selectToolEntities,
   selectUnifiedError,
 } from '../reducers';
@@ -40,6 +41,7 @@ function createToolCall(
 function createTestStore(input: {
   toolCalls: Chat.Internal.ToolCall[];
   tools: Record<string, Chat.Internal.Tool>;
+  threadId?: string;
   unifiedError?: Error;
 }) {
   const actions: ActionLike[] = [];
@@ -47,6 +49,7 @@ function createTestStore(input: {
   const selectorValues = new Map<SelectorKey, unknown>([
     [selectUnifiedError, input.unifiedError],
     [selectPendingToolCalls, input.toolCalls],
+    [selectThreadId, input.threadId],
     [selectToolEntities, input.tools],
   ]);
 
@@ -74,6 +77,9 @@ function createTestStore(input: {
     },
     setToolCalls: (toolCalls: Chat.Internal.ToolCall[]) => {
       selectorValues.set(selectPendingToolCalls, toolCalls);
+    },
+    setThreadId: (threadId: string | undefined) => {
+      selectorValues.set(selectThreadId, threadId);
     },
     finalize: (toolCalls = input.toolCalls) =>
       apiActions.assistantTurnFinalized({
@@ -380,6 +386,100 @@ test('a superseding user turn cancels active tool execution', async () => {
   expect(store.actions[0]).toMatchObject({
     type: '[internal] toolTurnSettled',
     payload: { continuation: 'stop' },
+  });
+});
+
+test.each([
+  { label: 'replacement', nextThreadId: 'thread-b' },
+  { label: 'empty replacement', nextThreadId: '' },
+  { label: 'explicit clearing', nextThreadId: undefined },
+] as const)(
+  'a $label thread identity update cancels its active tool turn once',
+  async ({ nextThreadId }) => {
+    const handlerStarted = createDeferred<void>();
+    const result = createDeferred<string>();
+    let toolSignal: AbortSignal | undefined;
+    const store = createTestStore({
+      threadId: 'thread-a',
+      toolCalls: [createToolCall()],
+      tools: {
+        lookup: {
+          name: 'lookup',
+          description: 'Looks up a value',
+          schema: {},
+          handler: (_input, signal) => {
+            toolSignal = signal;
+            handlerStarted.resolve();
+            return result.promise;
+          },
+        },
+      },
+    });
+    runTools(store);
+
+    const finalization = store.trigger(store.finalize());
+    await handlerStarted.promise;
+    store.setThreadId(nextThreadId);
+    await store.trigger(devActions.updateOptions({ threadId: nextThreadId }));
+    result.resolve('late result');
+    const completion = await Promise.race([
+      finalization.then(() => 'finished'),
+      new Promise<'timed out'>((resolve) =>
+        setTimeout(() => resolve('timed out'), 25),
+      ),
+    ]);
+
+    expect(completion).toBe('finished');
+    expect(toolSignal?.aborted).toBe(true);
+    expect(store.actions).toHaveLength(1);
+    expect(store.actions[0]).toMatchObject({
+      type: '[internal] toolTurnSettled',
+      payload: { continuation: 'stop' },
+    });
+  },
+);
+
+test('a same thread identity update preserves its active tool turn', async () => {
+  const handlerStarted = createDeferred<void>();
+  const result = createDeferred<string>();
+  let toolSignal: AbortSignal | undefined;
+  const store = createTestStore({
+    threadId: 'thread-a',
+    toolCalls: [createToolCall()],
+    tools: {
+      lookup: {
+        name: 'lookup',
+        description: 'Looks up a value',
+        schema: {},
+        handler: (_input, signal) => {
+          toolSignal = signal;
+          handlerStarted.resolve();
+          return result.promise;
+        },
+      },
+    },
+  });
+  runTools(store);
+
+  const finalization = store.trigger(store.finalize());
+  await handlerStarted.promise;
+  await store.trigger(
+    devActions.updateOptions({
+      threadId: 'thread-a',
+      system: 'Updated system prompt',
+    }),
+  );
+  result.resolve('result');
+  await finalization;
+
+  expect(toolSignal?.aborted).toBe(false);
+  expect(store.actions).toHaveLength(1);
+  expect(store.actions[0]).toMatchObject({
+    type: '[internal] toolTurnSettled',
+    payload: {
+      continuation: 'continue',
+      toolMessages: [{ content: { status: 'fulfilled', value: 'result' } }],
+    },
   });
 });
 

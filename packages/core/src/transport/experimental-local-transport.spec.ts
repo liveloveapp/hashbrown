@@ -5,6 +5,7 @@ import {
 } from './experimental-local-transport';
 import { type DetectionResult } from './model-spec';
 import { Transport, type TransportRequest } from './transport';
+import { TransportError } from './transport-error';
 import { createDelegatingTransport } from './experimental-local-transport';
 
 function eventResponse(request: TransportRequest): {
@@ -116,4 +117,123 @@ test('throws PLATFORM_UNSUPPORTED when no adapters are available', async () => {
     'code',
     'PLATFORM_UNSUPPORTED',
   );
+});
+
+test('falls back when the first detected adapter cannot send a supported request', async () => {
+  const primary = makeAdapter('chrome-local', {
+    send: async () => {
+      throw new TransportError('Chrome feature unavailable', {
+        retryable: false,
+        code: 'FEATURE_UNSUPPORTED',
+      });
+    },
+  });
+  const fallback = makeAdapter('edge-local');
+  const transport = createDelegatingTransport([
+    primary,
+    fallback,
+  ])() as Transport;
+
+  const response = await transport.send(makeRequest());
+  const events: AGUIEvent[] = [];
+  for await (const event of response.events) {
+    events.push(event);
+  }
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(primary.detect).toHaveBeenCalledTimes(1);
+  expect(primary.send).toHaveBeenCalledTimes(1);
+  expect(fallback.detect).toHaveBeenCalledTimes(1);
+  expect(fallback.send).toHaveBeenCalledTimes(1);
+});
+
+test('prefers a feature error when all detected adapters reject as unsupported', async () => {
+  const platformError = new TransportError('Chrome platform unavailable', {
+    retryable: false,
+    code: 'PLATFORM_UNSUPPORTED',
+  });
+  const featureError = new TransportError('Edge feature unavailable', {
+    retryable: false,
+    code: 'FEATURE_UNSUPPORTED',
+  });
+  const primary = makeAdapter('chrome-local', {
+    send: async () => Promise.reject(platformError),
+  });
+  const fallback = makeAdapter('edge-local', {
+    send: async () => Promise.reject(featureError),
+  });
+  const transport = createDelegatingTransport([
+    primary,
+    fallback,
+  ])() as Transport;
+
+  const sendPromise = transport.send(makeRequest());
+
+  await expect(sendPromise).rejects.toBe(featureError);
+  expect(primary.send).toHaveBeenCalledTimes(1);
+  expect(fallback.send).toHaveBeenCalledTimes(1);
+});
+
+test('makes the successfully sent adapter sticky after fallback', async () => {
+  const primary = makeAdapter('chrome-local', {
+    send: async () => {
+      throw new TransportError('Chrome platform unavailable', {
+        retryable: false,
+        code: 'PLATFORM_UNSUPPORTED',
+      });
+    },
+  });
+  const fallback = makeAdapter('edge-local');
+  const transport = createDelegatingTransport([
+    primary,
+    fallback,
+  ])() as Transport;
+
+  await transport.send(makeRequest());
+  await transport.send(makeRequest({ requestId: 'req-2' }));
+
+  expect(primary.detect).toHaveBeenCalledTimes(1);
+  expect(primary.send).toHaveBeenCalledTimes(1);
+  expect(fallback.detect).toHaveBeenCalledTimes(2);
+  expect(fallback.send).toHaveBeenCalledTimes(2);
+});
+
+test.each([
+  {
+    label: 'arbitrary',
+    error: new Error('send failed'),
+  },
+  {
+    label: 'retryable unsupported',
+    error: new TransportError('temporarily unavailable', {
+      retryable: true,
+      code: 'PLATFORM_UNSUPPORTED',
+    }),
+  },
+  {
+    label: 'other transport',
+    error: new TransportError('prompt failed', {
+      retryable: false,
+      code: 'PROMPT_FAILED',
+    }),
+  },
+] as const)('does not fall back for a $label send error', async ({ error }) => {
+  const primary = makeAdapter('chrome-local', {
+    send: async () => Promise.reject(error),
+  });
+  const fallback = makeAdapter('edge-local');
+  const transport = createDelegatingTransport([
+    primary,
+    fallback,
+  ])() as Transport;
+
+  const sendPromise = transport.send(makeRequest());
+
+  await expect(sendPromise).rejects.toBe(error);
+  expect(primary.send).toHaveBeenCalledTimes(1);
+  expect(fallback.detect).not.toHaveBeenCalled();
+  expect(fallback.send).not.toHaveBeenCalled();
 });

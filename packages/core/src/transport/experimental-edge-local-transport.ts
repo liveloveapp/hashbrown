@@ -216,9 +216,12 @@ export class ExperimentalEdgeLocalTransport implements Transport {
 
     let session: LanguageModelSession;
     try {
-      session = await sessionRecord.promise;
+      session = await waitForSessionCreation(sessionRecord.promise, signal);
     } catch (error) {
       sessionRecord.owners = Math.max(0, sessionRecord.owners - 1);
+      if (isPromptAbortError(error)) {
+        this.abandonSessionRecord(sessionRecord);
+      }
       throw error;
     }
 
@@ -262,6 +265,22 @@ export class ExperimentalEdgeLocalTransport implements Transport {
     return sessionRecord;
   }
 
+  private abandonSessionRecord(record: LanguageModelSessionRecord): void {
+    if (this.sessionRecord === record) {
+      this.sessionRecord = undefined;
+    }
+
+    const abandonmentPromise = record.promise.then(
+      async (session) => {
+        if (record.owners === 0) {
+          await this.destroySessionRecord(record, session);
+        }
+      },
+      (error) => Promise.reject(error),
+    );
+    this.trackSessionDestruction(abandonmentPromise);
+  }
+
   private releaseSession(lease: LanguageModelSessionLease): Promise<void> {
     const { record, session } = lease;
     record.owners = Math.max(0, record.owners - 1);
@@ -296,13 +315,17 @@ export class ExperimentalEdgeLocalTransport implements Transport {
       }
     })();
     const destructionPromise = record.destructionPromise;
-    this.sessionDestructionPromises.add(destructionPromise);
-    void destructionPromise.then(
-      () => this.sessionDestructionPromises.delete(destructionPromise),
-      () => this.sessionDestructionPromises.delete(destructionPromise),
-    );
+    this.trackSessionDestruction(destructionPromise);
 
     return destructionPromise;
+  }
+
+  private trackSessionDestruction(promise: Promise<void>): void {
+    this.sessionDestructionPromises.add(promise);
+    void promise.then(
+      () => this.sessionDestructionPromises.delete(promise),
+      () => this.sessionDestructionPromises.delete(promise),
+    );
   }
 
   private async createLanguageModelSession(
@@ -337,6 +360,61 @@ export class ExperimentalEdgeLocalTransport implements Transport {
       throw err;
     }
   }
+}
+
+function waitForSessionCreation<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const handleAbort = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      signal.removeEventListener('abort', handleAbort);
+      reject(createPromptAbortError());
+    };
+
+    signal.addEventListener('abort', handleAbort, { once: true });
+    promise.then(
+      (session) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        signal.removeEventListener('abort', handleAbort);
+        resolve(session);
+      },
+      (error) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        signal.removeEventListener('abort', handleAbort);
+        reject(error);
+      },
+    );
+
+    if (signal.aborted) {
+      handleAbort();
+    }
+  });
+}
+
+function createPromptAbortError(): TransportError {
+  return new TransportError('Prompt aborted', {
+    retryable: false,
+    code: 'PROMPT_API_ABORTED',
+  });
+}
+
+function isPromptAbortError(error: unknown): boolean {
+  return error instanceof TransportError && error.code === 'PROMPT_API_ABORTED';
 }
 
 /**

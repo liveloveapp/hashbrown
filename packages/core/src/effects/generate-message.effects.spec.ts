@@ -660,6 +660,7 @@ test('first user message uses the configured thread ID', async () => {
 test.each([
   { label: 'replacement', nextThreadId: 'thread-b' },
   { label: 'explicit clearing', nextThreadId: undefined },
+  { label: 'empty replacement', nextThreadId: '' },
 ] as const)(
   'thread identity $label retires a run awaiting RUN_STARTED',
   async ({ nextThreadId }) => {
@@ -794,6 +795,76 @@ test.each([
     } else {
       expect(secondRequest?.input?.threadId).toBe(nextThreadId);
     }
+
+    teardown?.();
+  },
+);
+
+test.each([
+  { label: 'configured', configuredThreadId: 'thread-a' },
+  { label: 'generated', configuredThreadId: undefined },
+] as const)(
+  'same $label thread identity update preserves a blocked generation',
+  async ({ configuredThreadId }) => {
+    jest.clearAllMocks();
+    const iterationBlocked = createDeferred<void>();
+    const releaseFinish = createDeferred<void>();
+    let request: TransportRequest | undefined;
+    makeSelection(async (sentRequest) => {
+      request = sentRequest;
+      const identity = getInputIdentity(sentRequest);
+      return {
+        events: (async function* () {
+          yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+          iterationBlocked.resolve();
+          await releaseFinish.promise;
+          yield { type: EventType.RUN_FINISHED, ...identity } as AGUIEvent;
+        })(),
+      };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectThreadId, configuredThreadId],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await iterationBlocked.promise;
+    const effectiveThreadId = request?.input?.threadId;
+    store.setSelector(selectThreadId, effectiveThreadId);
+    store.setSelector(selectSystem, 'Updated system prompt');
+    await store.trigger(
+      devActions.updateOptions({
+        threadId: effectiveThreadId,
+        system: 'Updated system prompt',
+      }),
+    );
+    const abortedAfterUpdate = request?.signal.aborted;
+    releaseFinish.resolve();
+    await generation;
+
+    expect(abortedAfterUpdate).toBe(false);
+    expect(
+      getActionsOfType(store.actions, generationSilentlyRetiredType),
+    ).toHaveLength(0);
+    expect(
+      getDispatchedEvents(store.actions).filter(
+        (event) => event.type === EventType.RUN_FINISHED,
+      ),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
 
     teardown?.();
   },

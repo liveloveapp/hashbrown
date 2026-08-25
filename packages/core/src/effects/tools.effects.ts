@@ -3,6 +3,7 @@ import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import {
   selectPendingToolCalls,
+  selectThreadId,
   selectToolEntities,
   selectUnifiedError,
 } from '../reducers';
@@ -11,6 +12,7 @@ import { s } from '../schema';
 interface ActiveToolTurn {
   readonly toolCalls: Chat.Internal.ToolCall[];
   readonly controllers: Map<string, AbortController>;
+  readonly threadId: string | undefined;
   settled: boolean;
 }
 
@@ -157,7 +159,12 @@ export const runTools = createEffect((store) => {
 
     if (action.payload.continuation === 'stop') {
       settleTurn(
-        { toolCalls, controllers: new Map(), settled: false },
+        {
+          toolCalls,
+          controllers: new Map(),
+          threadId: store.read(selectThreadId),
+          settled: false,
+        },
         cancellationResults(toolCalls),
         'stop',
       );
@@ -174,6 +181,7 @@ export const runTools = createEffect((store) => {
     const turn: ActiveToolTurn = {
       toolCalls,
       controllers,
+      threadId: store.read(selectThreadId),
       settled: false,
     };
     activeTurn = turn;
@@ -193,6 +201,17 @@ export const runTools = createEffect((store) => {
     devActions.resendMessages,
     cancelActiveTurn,
   );
+
+  store.when(devActions.updateOptions, (action) => {
+    if (
+      !Object.prototype.hasOwnProperty.call(action.payload, 'threadId') ||
+      activeTurn?.threadId === action.payload.threadId
+    ) {
+      return;
+    }
+
+    cancelActiveTurn();
+  });
 
   return cancelActiveTurn;
 });

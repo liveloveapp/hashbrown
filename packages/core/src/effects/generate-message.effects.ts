@@ -39,6 +39,10 @@ type ActiveRun = {
   terminal: boolean;
 };
 
+type ActiveGeneration = {
+  threadId: string | undefined;
+};
+
 type EventIterationResult =
   | { kind: 'event'; result: IteratorResult<AGUIEvent> }
   | { kind: 'cancelled' }
@@ -54,7 +58,7 @@ export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
   let cancelAbortController = new AbortController();
   let threadIdentityAbortController = new AbortController();
-  let activeGeneration: object | undefined;
+  let activeGeneration: ActiveGeneration | undefined;
 
   store.when(
     internalActions.sizzle,
@@ -62,7 +66,7 @@ export const generateMessage = createEffect((store) => {
     devActions.sendMessage,
     devActions.resendMessages,
     switchAsync(async (switchSignal) => {
-      const generation = {};
+      const generation: ActiveGeneration = { threadId: undefined };
       activeGeneration = store.read(selectShouldGenerateMessage)
         ? generation
         : undefined;
@@ -118,6 +122,7 @@ export const generateMessage = createEffect((store) => {
         : undefined;
       const configuredThreadId = store.read(selectThreadId);
       const threadId = configuredThreadId ?? _createRequestId();
+      generation.threadId = threadId;
       const uiRequested = store.read(selectUiRequested);
       const requestedFeatures: RequestedFeatures = {
         tools: tools.length > 0,
@@ -561,6 +566,9 @@ export const generateMessage = createEffect((store) => {
 
   store.when(devActions.updateOptions, (action) => {
     if (!Object.prototype.hasOwnProperty.call(action.payload, 'threadId')) {
+      return;
+    }
+    if (activeGeneration?.threadId === action.payload.threadId) {
       return;
     }
 
