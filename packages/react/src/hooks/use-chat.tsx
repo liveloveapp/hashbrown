@@ -61,9 +61,9 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
   transport?: TransportOrFactory;
 
   /**
-   * Optional thread identifier used to load or continue an existing conversation.
+   * Optional opaque AG-UI thread identity.
    */
-  threadId?: string;
+  threadId?: string | undefined;
 }
 
 /**
@@ -126,7 +126,7 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
   isRunningToolCalls: boolean;
 
   /**
-   * Aggregate loading flag across transport, generation, tool-calls, and thread load/save.
+   * Aggregate loading flag across transport, generation, and tool calls.
    */
   isLoading: boolean;
 
@@ -149,26 +149,6 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
    * The last assistant message.
    */
   lastAssistantMessage: Chat.AssistantMessage<string, Tools> | undefined;
-
-  /**
-   * Whether a thread load request is in flight.
-   */
-  isLoadingThread: boolean;
-
-  /**
-   * Whether a thread save request is in flight.
-   */
-  isSavingThread: boolean;
-
-  /**
-   * Thread loading error, if present.
-   */
-  threadLoadError: { error: string; stacktrace?: string } | undefined;
-
-  /**
-   * Thread saving error, if present.
-   */
-  threadSaveError: { error: string; stacktrace?: string } | undefined;
 }
 
 /**
@@ -226,6 +206,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     throw new Error('HashbrownContext not found');
   }
 
+  const hasThreadId = Object.hasOwn(options, 'threadId');
   const hashbrownRef = useRef<Hashbrown<string, Tools> | null>(null);
 
   if (!hashbrownRef.current) {
@@ -273,7 +254,7 @@ export function useChat<Tools extends Chat.AnyTool>(
       retries: options.retries,
       transport: options.transport ?? config.transport,
       ui: false,
-      threadId: options.threadId,
+      ...(hasThreadId ? { threadId: options.threadId } : {}),
     });
   }, [
     config.url,
@@ -286,6 +267,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     options.retries,
     options.system,
     options.transport,
+    hasThreadId,
     options.threadId,
     tools,
   ]);
@@ -313,19 +295,6 @@ export function useChat<Tools extends Chat.AnyTool>(
   const lastAssistantMessage = useHashbrownSignal<
     Chat.AssistantMessage<string, Tools> | undefined
   >(getHashbrown().lastAssistantMessage);
-  const isLoadingThread = useHashbrownSignal<boolean>(
-    getHashbrown().isLoadingThread,
-  );
-  const isSavingThread = useHashbrownSignal<boolean>(
-    getHashbrown().isSavingThread,
-  );
-  const threadLoadError = useHashbrownSignal<
-    { error: string; stacktrace?: string } | undefined
-  >(getHashbrown().threadLoadError);
-  const threadSaveError = useHashbrownSignal<
-    { error: string; stacktrace?: string } | undefined
-  >(getHashbrown().threadSaveError);
-
   const sendMessage = useCallback((message: Chat.Message<string, Tools>) => {
     getHashbrown().sendMessage(message);
   }, []);
@@ -366,9 +335,5 @@ export function useChat<Tools extends Chat.AnyTool>(
     sendingError,
     generatingError,
     lastAssistantMessage,
-    isLoadingThread,
-    isSavingThread,
-    threadLoadError,
-    threadSaveError,
   };
 }

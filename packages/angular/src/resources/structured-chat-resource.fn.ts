@@ -55,21 +55,13 @@ export interface StructuredChatResourceRef<
    */
   isRunningToolCalls: Signal<boolean>;
   /**
-   * Aggregate loading flag across transport, generation, tool calls, and thread load/save.
+   * Aggregate loading flag across transport, generation, and tool calls.
    */
   isLoading: Signal<boolean>;
-  /** Indicates whether a thread load request is in flight. */
-  isLoadingThread: Signal<boolean>;
-  /** Indicates whether a thread save request is in flight. */
-  isSavingThread: Signal<boolean>;
   /** Transport/request error before generation frames arrive. */
   sendingError: Signal<Error | undefined>;
   /** Error emitted during generation frames. */
   generatingError: Signal<Error | undefined>;
-  /** Thread loading error, if present. */
-  threadLoadError: Signal<{ error: string; stacktrace?: string } | undefined>;
-  /** Thread saving error, if present. */
-  threadSaveError: Signal<{ error: string; stacktrace?: string } | undefined>;
   /**
    * Send a new user message to the chat.
    *
@@ -176,7 +168,7 @@ export interface StructuredChatResourceOptions<
   ui?: boolean;
 
   /**
-   * Optional thread identifier used to load or continue an existing conversation.
+   * Optional opaque AG-UI thread identity.
    */
   threadId?: ReactiveOption<string | undefined>;
 }
@@ -289,23 +281,6 @@ export function structuredChatResource<
     hashbrown.lastAssistantMessage,
     options.debugName && `${options.debugName}.lastAssistantMessage`,
   );
-  const isLoadingThread = toNgSignal(
-    hashbrown.isLoadingThread,
-    options.debugName && `${options.debugName}.isLoadingThread`,
-  );
-  const isSavingThread = toNgSignal(
-    hashbrown.isSavingThread,
-    options.debugName && `${options.debugName}.isSavingThread`,
-  );
-  const threadLoadError = toNgSignal(
-    hashbrown.threadLoadError,
-    options.debugName && `${options.debugName}.threadLoadError`,
-  );
-  const threadSaveError = toNgSignal(
-    hashbrown.threadSaveError,
-    options.debugName && `${options.debugName}.threadSaveError`,
-  );
-
   const status = computed(
     (): ResourceStatus => {
       if (isLoading()) {
@@ -396,9 +371,5 @@ export function structuredChatResource<
     generatingError,
     setMessages,
     lastAssistantMessage,
-    isLoadingThread,
-    isSavingThread,
-    threadLoadError,
-    threadSaveError,
   };
 }

@@ -13,7 +13,6 @@ export {
   createHttpTransport,
   type HttpTransportOptions,
 } from './http-transport';
-export { framesToLengthPrefixedStream } from './frames-to-length-prefixed-stream';
 export {
   ExperimentalChromeLocalTransport,
   createExperimentalChromeLocalTransport,

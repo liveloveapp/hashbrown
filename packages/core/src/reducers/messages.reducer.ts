@@ -41,26 +41,6 @@ export const reducer = createReducer(
       messages: [...state.messages, action.payload.message],
     };
   }),
-  on(apiActions.threadLoadSuccess, (state, action) => {
-    if (!action.payload.thread || action.payload.thread.length === 0) {
-      return state;
-    }
-
-    const responseSchema = action.payload.responseSchema
-      ? s.normalizeSchemaOutput(action.payload.responseSchema)
-      : undefined;
-    const loadedMessages = action.payload.thread.flatMap((message) =>
-      hydrateResolvedContent(
-        Chat.helpers.toInternalMessagesFromApi(message),
-        responseSchema,
-      ),
-    );
-
-    return {
-      ...state,
-      messages: loadedMessages,
-    };
-  }),
   on(apiActions.generateMessageError, (state, action) => {
     const message = action.payload;
     const errorMessage: ErrorMessage = {

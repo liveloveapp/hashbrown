@@ -50,16 +50,8 @@ export interface CompletionResourceRef extends Resource<string | null> {
   isGenerating: Signal<boolean>;
   /** Indicates whether tool calls are running. */
   isRunningToolCalls: Signal<boolean>;
-  /** Aggregate loading flag across transport, generation, tool calls, and thread load/save. */
+  /** Aggregate loading flag across transport, generation, and tool calls. */
   isLoading: Signal<boolean>;
-  /** Whether a thread load request is in flight. */
-  isLoadingThread: Signal<boolean>;
-  /** Whether a thread save request is in flight. */
-  isSavingThread: Signal<boolean>;
-  /** Error encountered while loading a thread. */
-  threadLoadError: Signal<{ error: string; stacktrace?: string } | undefined>;
-  /** Error encountered while saving a thread. */
-  threadSaveError: Signal<{ error: string; stacktrace?: string } | undefined>;
   /** Transport/request error before generation frames arrive. */
   sendingError: Signal<Error | undefined>;
   /** Error emitted during generation frames. */
@@ -103,7 +95,7 @@ export interface CompletionResourceOptions<Input> {
   transport?: TransportOrFactory;
 
   /**
-   * Optional thread identifier used to load or continue an existing conversation.
+   * Optional opaque AG-UI thread identity.
    */
   threadId?: ReactiveOption<string | undefined>;
 }
@@ -180,12 +172,8 @@ export function completionResource<Input>(
   const isGenerating = toNgSignal(hashbrown.isGenerating);
   const isRunningToolCalls = toNgSignal(hashbrown.isRunningToolCalls);
   const isLoading = toNgSignal(hashbrown.isLoading);
-  const isLoadingThread = toNgSignal(hashbrown.isLoadingThread);
-  const isSavingThread = toNgSignal(hashbrown.isSavingThread);
   const sendingError = toNgSignal(hashbrown.sendingError);
   const generatingError = toNgSignal(hashbrown.generatingError);
-  const threadLoadError = toNgSignal(hashbrown.threadLoadError);
-  const threadSaveError = toNgSignal(hashbrown.threadSaveError);
   const internalMessages = computed(() => {
     const _input = input();
 
@@ -304,12 +292,8 @@ export function completionResource<Input>(
     isSending,
     isGenerating,
     isRunningToolCalls,
-    isLoadingThread,
-    isSavingThread,
     sendingError,
     generatingError,
-    threadLoadError,
-    threadSaveError,
     reload,
     stop,
     hasValue: hasValue as any,

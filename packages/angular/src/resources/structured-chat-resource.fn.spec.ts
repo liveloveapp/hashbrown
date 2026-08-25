@@ -57,7 +57,7 @@ test('structuredChatResource updates runtime options when option signals change'
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
 
-  TestBed.runInInjectionContext(() =>
+  const resource = TestBed.runInInjectionContext(() =>
     structuredChatResource({
       model,
       apiUrl,
@@ -77,6 +77,11 @@ test('structuredChatResource updates runtime options when option signals change'
       threadId: 'thread-a',
     }),
   );
+  expect(resource).not.toHaveProperty('isLoadingThread');
+  expect(resource).not.toHaveProperty('isSavingThread');
+  expect(resource).not.toHaveProperty('threadLoadError');
+  expect(resource).not.toHaveProperty('threadSaveError');
+  expect(resource).not.toHaveProperty('threadId');
 
   model.set('gpt-4.2');
   apiUrl.set('/structured-b');
@@ -90,6 +95,24 @@ test('structuredChatResource updates runtime options when option signals change'
       apiUrl: '/structured-b',
       system: 'System B',
       threadId: 'thread-b',
+    }),
+  );
+
+  threadId.set(undefined);
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: undefined,
+    }),
+  );
+
+  threadId.set('');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: '',
     }),
   );
 });
@@ -212,6 +235,41 @@ test('structuredChatResource preserves an empty threadId option', () => {
   );
 
   threadId.set('');
+  TestBed.flushEffects();
+
+  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+});
+
+test('structuredChatResource preserves a literal empty threadId option', () => {
+  fryHashbrownMock.mockReset();
+  const hashbrown = createHashbrownStub({ messages: [] });
+  fryHashbrownMock.mockReturnValue(hashbrown);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    structuredChatResource({
+      model: 'gpt-4.1',
+      system: 'System A',
+      threadId: '',
+      schema: s.object('risk summary', {
+        risk: s.string('Risk level'),
+      }),
+    }),
+  );
+
+  expect(fryHashbrownMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
+
   TestBed.flushEffects();
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(

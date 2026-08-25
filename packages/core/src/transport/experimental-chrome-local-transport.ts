@@ -1,4 +1,3 @@
-import { Frame } from '../frames';
 import {
   type Transport,
   type TransportFactory,
@@ -6,6 +5,8 @@ import {
   type TransportResponse,
 } from './transport';
 import { type DetectionResult, type ModelSpecFactory } from './model-spec';
+import { createLocalTextEventStream } from './local-text-event-stream';
+import { raceTransportOperationWithAbort } from './race-transport-operation-with-abort';
 import { TransportError } from './transport-error';
 
 const PROMPT_API_SOURCE = 'chrome-prompt-api';
@@ -67,10 +68,7 @@ export interface ExperimentalChromeLocalTransportOptions {
 }
 
 type LanguageModelAvailabilityStatus =
-  | 'unavailable'
-  | 'available'
-  | 'downloadable'
-  | 'downloading';
+  'unavailable' | 'available' | 'downloadable' | 'downloading';
 
 interface LanguageModelAvailability {
   status: LanguageModelAvailabilityStatus;
@@ -97,8 +95,19 @@ interface LanguageModelSession {
   promptStreaming(
     input: PromptMessage[] | string,
     options?: PromptOptions,
-  ): Promise<ReadableStream<string>>;
+  ): ReadableStream<string> | Promise<ReadableStream<string>>;
   destroy?: () => void;
+}
+
+interface LanguageModelSessionRecord {
+  promise: Promise<LanguageModelSession>;
+  owners: number;
+  destructionPromise?: Promise<void>;
+}
+
+interface LanguageModelSessionLease {
+  record: LanguageModelSessionRecord;
+  session: LanguageModelSession;
 }
 
 interface LanguageModelGlobal {
@@ -114,13 +123,20 @@ interface LanguageModelGlobal {
  */
 export class ExperimentalChromeLocalTransport implements Transport {
   readonly name = 'ExperimentalChromeLocalTransport';
-  private sessionPromise?: Promise<LanguageModelSession>;
+  private sessionRecord?: LanguageModelSessionRecord;
+  private readonly sessionDestructionPromises = new Set<Promise<void>>();
 
   constructor(
     private readonly options: ExperimentalChromeLocalTransportOptions,
   ) {}
 
   async send(request: TransportRequest): Promise<TransportResponse> {
+    if (!request.input) {
+      throw new TransportError('Missing AG-UI run input', {
+        retryable: false,
+      });
+    }
+
     const languageModel = await this.getLanguageModel();
     const transformRequest =
       this.options.transformRequest ?? defaultTransformRequest;
@@ -141,57 +157,81 @@ export class ExperimentalChromeLocalTransport implements Transport {
       });
     }
 
-    const promptRequest = transformRequest(request);
+    const transformedPromptRequest = transformRequest(request);
     const resolvedPromptOutputLanguage = resolvePromptOutputLanguage(
-      promptRequest,
+      transformedPromptRequest,
       resolvedOutputLanguage,
     );
+    const promptRequest: PromptRequest = {
+      ...transformedPromptRequest,
+      options: {
+        ...transformedPromptRequest.options,
+        outputLanguage: resolvedPromptOutputLanguage,
+      },
+    };
 
     const availability = languageModel
       ? await this.ensureAvailability(
           languageModel,
           promptRequest,
           resolvedPromptOutputLanguage,
+          request.signal,
         )
       : 'available';
 
-    const session = await this.getSession(
+    const sessionLease = await this.acquireSession(
       languageModel,
       request.signal,
       promptRequest,
       resolvedPromptOutputLanguage,
     );
-    const frames = this.createFrameGenerator(session, promptRequest, request);
-    const dispose = async () => {
-      try {
-        await session.destroy?.();
-        this.options.events?.sessionState?.('destroyed');
-      } finally {
-        this.sessionPromise = undefined;
-      }
-    };
+    const { session } = sessionLease;
+    const localStream = createLocalTextEventStream({
+      input: request.input,
+      signal: request.signal,
+      start: (signal) =>
+        Promise.resolve(
+          session.promptStreaming(promptRequest.messages, {
+            ...promptRequest.options,
+            signal,
+          }),
+        ),
+      destroy: () => this.releaseSession(sessionLease),
+    });
 
     return {
-      frames,
+      events: localStream.events,
       metadata: {
         source: PROMPT_API_SOURCE,
         status: availability,
         promptMode: 'promptStreaming',
         outputLanguage: resolvedPromptOutputLanguage,
       },
-      dispose,
+      dispose: localStream.dispose,
     };
   }
 
   async destroy() {
-    const session = await this.sessionPromise;
-    try {
-      session?.destroy?.();
+    const destructionPromises = new Set(this.sessionDestructionPromises);
+    const sessionRecord = this.sessionRecord;
+
+    if (sessionRecord) {
+      const currentDestructionPromise =
+        sessionRecord.destructionPromise ??
+        sessionRecord.promise.then((session) =>
+          this.destroySessionRecord(sessionRecord, session),
+        );
+      destructionPromises.add(currentDestructionPromise);
+    } else if (destructionPromises.size === 0) {
       this.options.events?.sessionState?.('destroyed');
-    } finally {
-      // no-op
+      return;
     }
-    this.sessionPromise = undefined;
+
+    const results = await Promise.allSettled(destructionPromises);
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure) {
+      throw failure.reason;
+    }
   }
 
   private async getLanguageModel(): Promise<LanguageModelGlobal | undefined> {
@@ -209,17 +249,23 @@ export class ExperimentalChromeLocalTransport implements Transport {
     languageModel: LanguageModelGlobal,
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
+    signal: AbortSignal,
   ): Promise<LanguageModelAvailabilityStatus> {
     if (!languageModel.availability) {
       return 'available';
     }
+    const checkAvailability = languageModel.availability;
 
     const availabilityOptions = buildAvailabilityOptions(
       promptRequest.sessionOptions,
       outputLanguage,
     );
 
-    const availability = await languageModel.availability(availabilityOptions);
+    const availability = await raceTransportOperationWithAbort(
+      () => checkAvailability.call(languageModel, availabilityOptions),
+      signal,
+      createPromptAbortError,
+    );
 
     this.options.events?.availability?.(availability.status);
 
@@ -237,42 +283,152 @@ export class ExperimentalChromeLocalTransport implements Transport {
       availability.status === 'downloadable' ||
       availability.status === 'downloading'
     ) {
-      await this.options.events?.downloadRequired?.(availability.status);
+      await raceTransportOperationWithAbort(
+        () => this.options.events?.downloadRequired?.(availability.status),
+        signal,
+        createPromptAbortError,
+      );
     }
 
     return availability.status;
   }
 
-  private async getSession(
+  private async acquireSession(
     languageModel: LanguageModelGlobal | undefined,
     signal: AbortSignal,
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
-  ): Promise<LanguageModelSession> {
-    if (this.sessionPromise) {
-      return this.sessionPromise;
+  ): Promise<LanguageModelSessionLease> {
+    if (signal.aborted) {
+      throw createPromptAbortError();
     }
 
-    if (this.options.createSession) {
-      this.sessionPromise = this.options.createSession();
-      return this.sessionPromise;
-    }
-
-    if (!languageModel) {
-      throw new TransportError('Prompt API is unavailable', {
-        retryable: false,
-        code: 'PROMPT_API_MISSING',
-      });
-    }
-
-    this.sessionPromise = this.createLanguageModelSession(
+    const sessionRecord = this.getSessionRecord(
       languageModel,
       signal,
       promptRequest,
       outputLanguage,
     );
+    sessionRecord.owners += 1;
 
-    return this.sessionPromise;
+    let session: LanguageModelSession;
+    try {
+      session = await raceTransportOperationWithAbort(
+        () => sessionRecord.promise,
+        signal,
+        createPromptAbortError,
+      );
+    } catch (error) {
+      sessionRecord.owners = Math.max(0, sessionRecord.owners - 1);
+      if (isPromptAbortError(error)) {
+        this.abandonSessionRecord(sessionRecord);
+      }
+      throw error;
+    }
+
+    return { record: sessionRecord, session };
+  }
+
+  private getSessionRecord(
+    languageModel: LanguageModelGlobal | undefined,
+    signal: AbortSignal,
+    promptRequest: PromptRequest,
+    outputLanguage: SupportedOutputLanguage,
+  ): LanguageModelSessionRecord {
+    if (this.sessionRecord && !this.sessionRecord.destructionPromise) {
+      return this.sessionRecord;
+    }
+
+    let promise: Promise<LanguageModelSession>;
+
+    if (this.options.createSession) {
+      promise = this.options.createSession();
+    } else if (!languageModel) {
+      throw new TransportError('Prompt API is unavailable', {
+        retryable: false,
+        code: 'PROMPT_API_MISSING',
+      });
+    } else {
+      promise = this.createLanguageModelSession(
+        languageModel,
+        signal,
+        promptRequest,
+        outputLanguage,
+      );
+    }
+
+    const sessionRecord = { promise, owners: 0 };
+    this.sessionRecord = sessionRecord;
+    void promise.catch(() => {
+      if (this.sessionRecord === sessionRecord) {
+        this.sessionRecord = undefined;
+      }
+    });
+
+    return sessionRecord;
+  }
+
+  private abandonSessionRecord(record: LanguageModelSessionRecord): void {
+    if (this.sessionRecord === record) {
+      this.sessionRecord = undefined;
+    }
+
+    const abandonmentPromise = record.promise.then(
+      async (session) => {
+        if (record.owners === 0) {
+          await this.destroySessionRecord(record, session);
+        }
+      },
+      (error) => Promise.reject(error),
+    );
+    this.trackSessionDestruction(abandonmentPromise);
+  }
+
+  private releaseSession(lease: LanguageModelSessionLease): Promise<void> {
+    const { record, session } = lease;
+    record.owners = Math.max(0, record.owners - 1);
+
+    if (record.destructionPromise) {
+      return record.destructionPromise;
+    }
+
+    if (record.owners > 0) {
+      return Promise.resolve();
+    }
+
+    return this.destroySessionRecord(record, session);
+  }
+
+  private destroySessionRecord(
+    record: LanguageModelSessionRecord,
+    session: LanguageModelSession,
+  ): Promise<void> {
+    if (record.destructionPromise) {
+      return record.destructionPromise;
+    }
+
+    record.destructionPromise = (async () => {
+      try {
+        await session.destroy?.();
+        this.options.events?.sessionState?.('destroyed');
+      } finally {
+        if (this.sessionRecord === record) {
+          this.sessionRecord = undefined;
+        }
+      }
+    })();
+    const destructionPromise = record.destructionPromise;
+    this.trackSessionDestruction(destructionPromise);
+
+    return destructionPromise;
+  }
+
+  private trackSessionDestruction(promise: Promise<void>): void {
+    this.sessionDestructionPromises.add(promise);
+    void promise.then(
+      () => this.sessionDestructionPromises.delete(promise),
+      () => this.sessionDestructionPromises.delete(promise),
+    );
   }
 
   private async createLanguageModelSession(
@@ -324,95 +480,17 @@ export class ExperimentalChromeLocalTransport implements Transport {
       throw err;
     }
   }
+}
 
-  private createFrameGenerator(
-    session: LanguageModelSession,
-    promptRequest: PromptRequest,
-    request: TransportRequest,
-  ): AsyncGenerator<Frame> {
-    const resolvedOutputLanguage = resolvePromptOutputLanguage(
-      promptRequest,
-      this.options.outputLanguage ?? 'en',
-    );
+function createPromptAbortError(): TransportError {
+  return new TransportError('Prompt aborted', {
+    retryable: false,
+    code: 'PROMPT_API_ABORTED',
+  });
+}
 
-    const options: PromptOptions = {
-      ...(promptRequest.options ?? {}),
-      signal: request.signal,
-    };
-
-    options.outputLanguage = resolvedOutputLanguage;
-
-    return this.streamPromptToFrames(session, promptRequest.messages, options);
-  }
-
-  private streamPromptToFrames(
-    session: LanguageModelSession,
-    messages: PromptMessage[] | string,
-    options: PromptOptions,
-  ): AsyncGenerator<Frame> {
-    const controller = new AbortController();
-    const signal = options.signal;
-
-    if (signal) {
-      signal.addEventListener(
-        'abort',
-        () => {
-          controller.abort(signal.reason);
-        },
-        { once: true },
-      );
-    }
-
-    return this.readStream(session, messages, options, controller);
-  }
-
-  private async *readStream(
-    session: LanguageModelSession,
-    messages: PromptMessage[] | string,
-    options: PromptOptions,
-    abortController: AbortController,
-  ): AsyncGenerator<Frame> {
-    const stream = await session.promptStreaming(messages, options);
-    const reader = stream.getReader();
-    let aborted = false;
-
-    try {
-      while (true) {
-        if (abortController.signal.aborted) {
-          aborted = true;
-          try {
-            await reader.cancel(abortController.signal.reason);
-          } catch {
-            // best-effort cancellation
-          }
-          try {
-            await session.destroy?.();
-          } catch {
-            // swallow destroy errors on abort
-          }
-          throw new TransportError('Prompt aborted', {
-            retryable: false,
-            code: 'PROMPT_API_ABORTED',
-          });
-        }
-
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        if (typeof value === 'string' && value.length > 0) {
-          yield createChunkFrame(value);
-        }
-      }
-
-      yield { type: 'generation-finish' };
-    } finally {
-      if (!aborted) {
-        reader.releaseLock();
-      }
-    }
-  }
+function isPromptAbortError(error: unknown): boolean {
+  return error instanceof TransportError && error.code === 'PROMPT_API_ABORTED';
 }
 
 /**
@@ -509,7 +587,6 @@ export function experimentalChromeLocalModelSpec(
         tools: false,
         structured: true,
         ui: true,
-        threads: false,
       },
       detect: () =>
         detectChromePromptApi(
@@ -560,8 +637,10 @@ function isUnsupportedContext(): boolean {
   return false;
 }
 
-function defaultTransformRequest({ params }: TransportRequest): PromptRequest {
-  if (params.tools && params.tools.length > 0) {
+function defaultTransformRequest(request: TransportRequest): PromptRequest {
+  const input = request.input as NonNullable<TransportRequest['input']>;
+
+  if (input.tools.length > 0) {
     throw new TransportError(
       'Chrome Prompt API transport does not support tool calls',
       {
@@ -572,30 +651,31 @@ function defaultTransformRequest({ params }: TransportRequest): PromptRequest {
   }
 
   const messages: PromptMessage[] = [];
-  if (params.system) {
-    messages.push({ role: 'system', content: params.system });
-  }
-  for (const message of params.messages) {
-    if (message.role === 'tool' || message.role === 'error') {
+  for (const message of input.messages) {
+    if (
+      message.role !== 'system' &&
+      message.role !== 'user' &&
+      message.role !== 'assistant'
+    ) {
       continue;
     }
     const content =
       typeof message.content === 'string'
         ? message.content
         : JSON.stringify(message.content ?? '');
-    const role = message.role === 'assistant' ? 'assistant' : 'user';
-    messages.push({ role, content });
+    messages.push({ role: message.role, content });
   }
 
   const options: PromptOptions = {};
-  if (params.responseFormat) {
-    if (!isSupportedResponseConstraint(params.responseFormat)) {
+  const responseSchema = input.hashbrown?.responseSchema;
+  if (responseSchema) {
+    if (!isSupportedResponseConstraint(responseSchema)) {
       throw new TransportError(
         'Chrome Prompt API transport does not support the provided response schema.',
         { retryable: false, code: 'FEATURE_UNSUPPORTED' },
       );
     }
-    options.responseConstraint = params.responseFormat;
+    options.responseConstraint = responseSchema;
   }
 
   return {
@@ -618,24 +698,6 @@ function isSupportedResponseConstraint(constraint: unknown): boolean {
   }
 
   return false;
-}
-
-function createChunkFrame(content: string): Frame {
-  return {
-    type: 'generation-chunk',
-    chunk: {
-      choices: [
-        {
-          index: 0,
-          delta: {
-            role: 'assistant',
-            content,
-          },
-          finishReason: null,
-        },
-      ],
-    },
-  };
 }
 
 interface PromptApiGlobal {

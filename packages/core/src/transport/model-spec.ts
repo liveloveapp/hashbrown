@@ -21,7 +21,6 @@ export interface ModelCapabilities {
   tools?: boolean;
   structured?: boolean;
   ui?: boolean;
-  threads?: boolean;
 }
 
 /**
@@ -90,7 +89,6 @@ export interface RequestedFeatures {
   tools: boolean;
   structured: boolean;
   ui: boolean;
-  threads: boolean;
 }
 
 /**
@@ -252,7 +250,6 @@ export class ModelResolver {
           tools: true,
           structured: true,
           ui: true,
-          threads: true,
         },
         transport,
       };
@@ -320,9 +317,6 @@ function getCapabilityFailure(
   }
   if (features.ui && capabilities.ui === false) {
     return 'ui output requested but not supported';
-  }
-  if (features.threads && capabilities.threads === false) {
-    return 'threads requested but not supported';
   }
   return undefined;
 }

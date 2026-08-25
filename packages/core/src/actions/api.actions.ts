@@ -1,5 +1,5 @@
 import type { AGUIEvent } from '@ag-ui/core';
-import { createActionGroup, emptyProps, props } from '../utils/micro-ngrx';
+import { createActionGroup, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 import { s } from '../schema';
 
@@ -16,15 +16,8 @@ export default createActionGroup('api', {
   }>(),
   generateMessageError: props<Error>(),
   generateMessageExhaustedRetries: props<void>(),
-  threadLoadStart: emptyProps(),
-  threadLoadSuccess: props<{
-    thread?: Chat.Api.Message[];
-    responseSchema?: s.SchemaOutput;
-    toolsByName?: Record<string, Chat.Internal.Tool>;
+  assistantTurnFinalized: props<{
+    toolCalls: Chat.Internal.ToolCall[];
+    continuation: 'continue' | 'stop';
   }>(),
-  threadLoadFailure: props<{ error: string; stacktrace?: string }>(),
-  threadSaveStart: emptyProps(),
-  threadSaveSuccess: props<{ threadId: string }>(),
-  threadSaveFailure: props<{ error: string; stacktrace?: string }>(),
-  assistantTurnFinalized: emptyProps(),
 });

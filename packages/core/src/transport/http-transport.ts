@@ -2,6 +2,7 @@ import { parseSSEStream } from '@ag-ui/client';
 import { type AGUIEvent, EventSchemas } from '@ag-ui/core';
 import { Chat } from '../models';
 import { observableToAsyncIterable } from './observable-to-async-iterable';
+import { raceTransportOperationWithAbort } from './race-transport-operation-with-abort';
 import {
   captureAgUiClient058Subscription,
   normalizeSseLineEndings,
@@ -51,7 +52,6 @@ export interface HttpTransportOptions {
  */
 export class HttpTransport implements Transport {
   readonly name = 'HttpTransport';
-  readonly supportsLegacyThreadLoading = false;
   private readonly baseUrl: string;
   private readonly middleware?: Chat.Middleware[];
   private readonly fetchImpl: typeof fetch;
@@ -124,6 +124,10 @@ export class HttpTransport implements Transport {
         requestAbortListenerAttached = true;
       }
 
+      if (internalAbortController.signal.aborted) {
+        throw createHttpAbortError(internalAbortController.signal);
+      }
+
       let requestInit: RequestInit = {
         method: 'POST',
         headers: {
@@ -136,7 +140,11 @@ export class HttpTransport implements Transport {
 
       if (this.middleware?.length) {
         for (const middleware of this.middleware) {
-          requestInit = await middleware(requestInit);
+          requestInit = await raceTransportOperationWithAbort(
+            () => middleware(requestInit),
+            internalAbortController.signal,
+            () => createHttpAbortError(internalAbortController.signal),
+          );
         }
       }
       requestInit = {
@@ -186,6 +194,12 @@ export class HttpTransport implements Transport {
       throw error;
     }
   }
+}
+
+function createHttpAbortError(signal: AbortSignal): unknown {
+  return (
+    signal.reason ?? new DOMException('The operation was aborted', 'AbortError')
+  );
 }
 
 function createHttpEventSource(

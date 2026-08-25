@@ -58,16 +58,48 @@ class DelegatingLocalTransport implements Transport {
   }
 
   async send(request: TransportRequest): Promise<TransportResponse> {
-    const adapter = await this.selectAdapter(request);
+    const errors: TransportError[] = [];
+    const orderedAdapters =
+      this.lastAdapter && this.adapters.includes(this.lastAdapter)
+        ? [
+            this.lastAdapter,
+            ...this.adapters.filter((adapter) => adapter !== this.lastAdapter),
+          ]
+        : this.adapters;
 
-    if (!adapter) {
-      throw new TransportError('No local prompt API adapter is available', {
-        retryable: false,
-        code: 'PLATFORM_UNSUPPORTED',
-      });
+    for (const adapter of orderedAdapters) {
+      const detection = await safeDetect(adapter, request);
+
+      if (!detection.ok) {
+        errors.push(toDetectionError(detection));
+        continue;
+      }
+
+      let response: TransportResponse;
+      try {
+        response = await adapter.send(request);
+      } catch (error) {
+        if (!isTerminalUnsupportedError(error)) {
+          throw error;
+        }
+
+        errors.push(error);
+        continue;
+      }
+
+      this.lastAdapter = adapter;
+      return response;
     }
 
-    return adapter.send(request);
+    const preferredError = selectPreferredUnsupportedError(errors);
+    if (preferredError) {
+      throw preferredError;
+    }
+
+    throw new TransportError('No local prompt API adapter is available', {
+      retryable: false,
+      code: 'PLATFORM_UNSUPPORTED',
+    });
   }
 
   async teardown() {
@@ -76,58 +108,39 @@ class DelegatingLocalTransport implements Transport {
     );
     this.lastAdapter = undefined;
   }
+}
 
-  private async selectAdapter(
-    request: TransportRequest,
-  ): Promise<LocalPromptAdapter | undefined> {
-    const errors: TransportError[] = [];
-    const orderedAdapters =
-      this.lastAdapter && this.adapters.includes(this.lastAdapter)
-        ? [
-            this.lastAdapter,
-            ...this.adapters.filter((a) => a !== this.lastAdapter),
-          ]
-        : this.adapters;
+function toDetectionError(
+  detection: Extract<DetectionResult, { ok: false }>,
+): TransportError {
+  return new TransportError(
+    detection.reason ?? 'Local prompt API adapter unavailable',
+    {
+      retryable: false,
+      code:
+        detection.code === 'MODEL_UNAVAILABLE'
+          ? 'PLATFORM_UNSUPPORTED'
+          : detection.code,
+    },
+  );
+}
 
-    for (const adapter of orderedAdapters) {
-      const detection = await safeDetect(adapter, request);
+function isTerminalUnsupportedError(error: unknown): error is TransportError {
+  return (
+    error instanceof TransportError &&
+    !error.retryable &&
+    (error.code === 'FEATURE_UNSUPPORTED' ||
+      error.code === 'PLATFORM_UNSUPPORTED')
+  );
+}
 
-      if (!detection.ok) {
-        errors.push(
-          new TransportError(
-            detection.reason ?? 'Local prompt API adapter unavailable',
-            {
-              retryable: false,
-              code:
-                detection.code === 'MODEL_UNAVAILABLE'
-                  ? 'PLATFORM_UNSUPPORTED'
-                  : detection.code,
-            },
-          ),
-        );
-        continue;
-      }
-
-      this.lastAdapter = adapter;
-      return adapter;
-    }
-
-    const featureError = errors.find(
-      (err) => err.code === 'FEATURE_UNSUPPORTED',
-    );
-    if (featureError) {
-      throw featureError;
-    }
-
-    const platformError = errors.find(
-      (err) => err.code === 'PLATFORM_UNSUPPORTED',
-    );
-    if (platformError) {
-      throw platformError;
-    }
-
-    return undefined;
-  }
+function selectPreferredUnsupportedError(
+  errors: TransportError[],
+): TransportError | undefined {
+  return (
+    errors.find((error) => error.code === 'FEATURE_UNSUPPORTED') ??
+    errors.find((error) => error.code === 'PLATFORM_UNSUPPORTED')
+  );
 }
 
 /**
@@ -149,7 +162,6 @@ export function experimental_local(
         tools: false,
         structured: true,
         ui: true,
-        threads: false,
       },
       detect: () => detectAny(adapters),
       transport: () => new DelegatingLocalTransport(adapters),
@@ -163,8 +175,7 @@ export function experimental_local(
  */
 export function createDelegatingTransport(
   adaptersOrOptions:
-    | LocalPromptAdapter[]
-    | ExperimentalLocalTransportOptions = {},
+    LocalPromptAdapter[] | ExperimentalLocalTransportOptions = {},
 ): TransportFactory {
   const adapters = Array.isArray(adaptersOrOptions)
     ? adaptersOrOptions

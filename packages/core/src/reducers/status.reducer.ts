@@ -102,10 +102,19 @@ export const reducer = createReducer(
         : state.generatingError,
     };
   }),
-  on(internalActions.runToolCallsSuccess, (state) => {
+  on(internalActions.generationSilentlyRetired, (state) => {
     return {
       ...state,
-      isSending: true,
+      isReceiving: false,
+      isSending: false,
+      isGenerating: false,
+    };
+  }),
+  on(internalActions.toolTurnSettled, (state, action) => {
+    return {
+      ...state,
+      isSending:
+        action.payload.continuation === 'continue' ? true : state.isSending,
     };
   }),
   on(internalActions.runToolCallsError, (state, action) => {

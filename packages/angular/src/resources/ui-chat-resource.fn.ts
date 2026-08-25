@@ -93,7 +93,7 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   structuredOutput?: Chat.Api.StructuredOutputOptions;
 
   /**
-   * Optional thread identifier used to load or continue an existing conversation.
+   * Optional opaque AG-UI thread identity.
    */
   threadId?: ReactiveOption<string | undefined>;
 }

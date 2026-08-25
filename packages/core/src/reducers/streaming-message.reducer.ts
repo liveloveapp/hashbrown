@@ -6,7 +6,7 @@ import {
   resolve,
   type StreamState,
 } from '@cacheplane/partial-json';
-import { apiActions, devActions } from '../actions';
+import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
@@ -607,6 +607,7 @@ export const reducer = createReducer(
   on(
     apiActions.generateMessageSuccess,
     apiActions.generateMessageError,
+    internalActions.generationSilentlyRetired,
     devActions.stopMessageGeneration,
     () => initialState,
   ),

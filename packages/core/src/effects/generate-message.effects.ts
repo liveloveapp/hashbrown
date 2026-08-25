@@ -1,27 +1,19 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { s } from '../schema';
-import { sleep, switchAsync } from '../utils/async';
-import { createEffect } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
-import { decodeFrames } from '../frames/decode-frames';
 import { Chat } from '../models';
-import { createCompletionChunkEventAdapter } from '../transport/completion-chunk-to-agui-events';
-import { updateAssistantMessage } from '../utils/assistant-message';
 import {
   selectApiMessages,
-  selectApiTools,
   selectApiUrl,
   selectDebounce,
-  selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
-  selectStructuredOutput,
   selectSystem,
   selectThreadId,
   selectToolEntities,
@@ -29,29 +21,89 @@ import {
   selectTransport,
   selectUiRequested,
 } from '../reducers';
+import { s } from '../schema';
 import {
-  framesToLengthPrefixedStream,
   ModelResolver,
   type RequestedFeatures,
   TransportError,
-  TransportResponse,
+  type TransportResponse,
 } from '../transport';
 import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
+import { sleep, switchAsync } from '../utils/async';
+import { updateAssistantMessage } from '../utils/assistant-message';
+import { createEffect } from '../utils/micro-ngrx';
+
+type ActiveRun = {
+  threadId: string;
+  runId: string;
+  terminal: boolean;
+};
+
+type ActiveGeneration = {
+  threadId: string | undefined;
+};
+
+type EventIterationResult =
+  | { kind: 'event'; result: IteratorResult<AGUIEvent> }
+  | { kind: 'cancelled' }
+  | { kind: 'retired' };
+
+type RunOutcome =
+  | { kind: 'finished' }
+  | { kind: 'server-error'; error: Error }
+  | { kind: 'cancelled' }
+  | { kind: 'retired' };
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
-  // This controller is used to cancel the current message generation
-  // when a new message is sent or the user stops the generation.
   let cancelAbortController = new AbortController();
-  let generatedThreadId: string | undefined;
+  let threadIdentityAbortController = new AbortController();
+  let activeGeneration: ActiveGeneration | undefined;
 
   store.when(
     internalActions.sizzle,
     devActions.setMessages,
     devActions.sendMessage,
     devActions.resendMessages,
-    internalActions.runToolCallsSuccess,
     switchAsync(async (switchSignal) => {
+      const generation: ActiveGeneration = {
+        threadId: store.read(selectThreadId),
+      };
+      activeGeneration = store.read(selectShouldGenerateMessage)
+        ? generation
+        : undefined;
+      const releaseGeneration = () => {
+        if (activeGeneration === generation) {
+          activeGeneration = undefined;
+        }
+      };
+
+      if (cancelAbortController.signal.aborted) {
+        cancelAbortController = new AbortController();
+      }
+      const runCancelSignal = cancelAbortController.signal;
+      const retiredSignal = AbortSignal.any([
+        effectAbortController.signal,
+        switchSignal,
+        threadIdentityAbortController.signal,
+      ]);
+
+      // Let sibling effects settle nested actions before snapshotting state.
+      await Promise.resolve();
+
+      const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
+      if (!shouldGenerateMessage) {
+        releaseGeneration();
+        return;
+      }
+      if (
+        !retiredSignal.aborted &&
+        !runCancelSignal.aborted &&
+        activeGeneration === undefined
+      ) {
+        activeGeneration = generation;
+      }
+
       const apiUrl = store.read(selectApiUrl);
       const middleware = store.read(selectMiddleware);
       const model = store.read(selectModel);
@@ -59,111 +111,72 @@ export const generateMessage = createEffect((store) => {
       const messages = store.read(selectApiMessages);
       const debounce = store.read(selectDebounce);
       const retries = store.read(selectRetries);
-      const tools = store.read(selectApiTools);
       const internalTools = store.read(selectTools);
-      const modernTools = Chat.helpers.toApiToolsFromInternal(
+      const tools = Chat.helpers.toApiToolsFromInternal(
         internalTools,
         false,
         responseSchema ?? s.nullish(),
       );
       const toolsByName = store.read(selectToolEntities);
       const system = store.read(selectSystem);
-      const emulateStructuredOutput = store.read(selectEmulateStructuredOutput);
-      const structuredOutput = store.read(selectStructuredOutput);
-      const structuredOutputMode = responseSchema
-        ? (structuredOutput?.mode ??
-          (emulateStructuredOutput ? 'tool' : 'strict'))
-        : undefined;
       const responseJsonSchema = responseSchema
         ? s.toJsonSchema(responseSchema)
         : undefined;
-      const shouldGenerateMessage = store.read(selectShouldGenerateMessage);
-      const threadId = store.read(selectThreadId);
+      const configuredThreadId = store.read(selectThreadId);
+      const threadId = configuredThreadId ?? _createRequestId();
+      generation.threadId = threadId;
       const uiRequested = store.read(selectUiRequested);
-      const shouldLoadThread = Boolean(threadId) && messages.length === 0;
-      const messagePayload = threadId
-        ? _extractMessageDelta(messages)
-        : messages;
-      const shouldProceed = shouldLoadThread || shouldGenerateMessage;
-
-      if (!shouldProceed) {
-        return;
-      }
-
-      if (threadId && !shouldLoadThread && messagePayload.length === 0) {
-        return;
-      }
-
-      const params: Chat.Api.CompletionCreateParams = {
-        operation: shouldLoadThread ? 'load-thread' : 'generate',
-        model,
-        system,
-        messages: messagePayload,
-        tools,
-        toolChoice: structuredOutputMode === 'tool' ? 'required' : undefined,
-        responseFormat:
-          structuredOutputMode === 'strict' && responseSchema
-            ? responseJsonSchema
-            : undefined,
-        responseFormatMode:
-          structuredOutputMode === 'strict'
-            ? 'schema'
-            : structuredOutputMode === 'json'
-              ? 'json'
-              : undefined,
-        threadId: threadId,
-      };
-
       const requestedFeatures: RequestedFeatures = {
-        tools:
-          Boolean(params.tools?.length) || params.toolChoice === 'required',
-        structured: Boolean(params.responseFormatMode),
+        tools: tools.length > 0,
+        structured: Boolean(responseSchema),
         ui: uiRequested,
-        threads: Boolean(threadId),
       };
 
       await sleep(debounce, switchSignal);
+      if (retiredSignal.aborted || runCancelSignal.aborted) {
+        releaseGeneration();
+        return;
+      }
 
-      let attempt = 0;
       const transportProvider = store.read(selectTransport);
       const resolver = new ModelResolver(model, {
         url: apiUrl,
         middleware: middleware ?? undefined,
         transport: transportProvider,
       });
-
-      let skippedLegacyThreadLoad = false;
-      const selectCompatibleTransport = async () => {
-        let nextSelection = await resolver.select(requestedFeatures);
-        while (
-          shouldLoadThread &&
-          nextSelection?.transport.supportsLegacyThreadLoading === false
-        ) {
-          skippedLegacyThreadLoad = true;
-          resolver.skipFromError(
-            nextSelection.spec,
-            new TransportError(
-              `Model spec "${nextSelection.spec.name}" does not support legacy thread loading.`,
-              { retryable: false, code: 'FEATURE_UNSUPPORTED' },
-            ),
-          );
-          nextSelection = await resolver.select(requestedFeatures);
+      let selection: Awaited<ReturnType<ModelResolver['select']>>;
+      try {
+        selection = await resolver.select(requestedFeatures);
+      } catch (error) {
+        if (retiredSignal.aborted || runCancelSignal.aborted) {
+          releaseGeneration();
+          return;
         }
 
-        return nextSelection;
-      };
+        releaseGeneration();
+        store.dispatch(
+          apiActions.generateMessageError(
+            error instanceof Error
+              ? error
+              : new Error('Unknown model selection error'),
+          ),
+        );
+        return;
+      }
 
-      let selection = await selectCompatibleTransport();
+      if (retiredSignal.aborted || runCancelSignal.aborted) {
+        releaseGeneration();
+        return;
+      }
       if (!selection) {
-        if (!skippedLegacyThreadLoad) {
-          store.dispatch(
-            apiActions.generateMessageError(
-              new Error(
-                'No compatible model spec found for the requested features.',
-              ),
+        releaseGeneration();
+        store.dispatch(
+          apiActions.generateMessageError(
+            new Error(
+              'No compatible model spec found for the requested features.',
             ),
-          );
-        }
+          ),
+        );
         return;
       }
 
@@ -184,45 +197,83 @@ export const generateMessage = createEffect((store) => {
               toolCalls: streamingToolCalls,
             }),
           );
-        } else {
-          store.dispatch(
-            apiActions.generateMessageError(
-              new Error('No message was generated'),
-            ),
-          );
+          return;
         }
+
+        store.dispatch(
+          apiActions.generateMessageError(
+            new Error('No message was generated'),
+          ),
+        );
       };
 
-      let retryWithReplacement = false;
+      let attempt = 0;
+      let reuseAttempt = false;
+      let exhaustedRetries = false;
+      let suppressFinalization = false;
+
       try {
-        do {
-          if (
-            effectAbortController.signal.aborted ||
-            switchSignal.aborted ||
-            cancelAbortController.signal.aborted
-          ) {
-            // we need to reset the cancelAbortController for the next messsage
-            if (cancelAbortController.signal.aborted) {
-              cancelAbortController = new AbortController();
-            }
+        while (selection) {
+          if (retiredSignal.aborted || runCancelSignal.aborted) {
             return;
           }
 
+          if (!reuseAttempt) {
+            attempt++;
+          }
+          reuseAttempt = false;
+
+          const requestId = _createRequestId();
+          const eventRequest = {
+            input: createHashbrownRunAgentInput({
+              threadId,
+              runId: requestId,
+              system,
+              messages,
+              tools,
+              responseSchema: responseJsonSchema,
+              ui: uiRequested,
+            }),
+            signal: AbortSignal.any([retiredSignal, runCancelSignal]),
+            attempt,
+            maxAttempts: retries + 1,
+            requestId,
+          };
           let transportResponse: TransportResponse | undefined;
-          let activeRun:
-            { threadId: string; runId: string; terminal: boolean } | undefined;
-          let shouldFinalizeGeneration = false;
-          let disposed = false;
-          const disposeTransportResponse = async () => {
-            if (disposed) {
+          let eventIterator: AsyncIterator<AGUIEvent> | undefined;
+          let iteratorDone = false;
+          let cleanedUp = false;
+          let activeRun: ActiveRun | undefined;
+
+          const cleanup = async () => {
+            if (cleanedUp) {
               return;
             }
+            cleanedUp = true;
 
-            disposed = true;
-            await transportResponse?.dispose?.();
+            const cleanupTasks: Promise<unknown>[] = [];
+            if (!iteratorDone && eventIterator?.return) {
+              cleanupTasks.push(
+                Promise.resolve().then(() => eventIterator?.return?.()),
+              );
+            }
+            if (transportResponse?.dispose) {
+              cleanupTasks.push(
+                Promise.resolve().then(() => transportResponse?.dispose?.()),
+              );
+            }
+
+            await Promise.allSettled(cleanupTasks);
           };
-          const dispatchRunError = (message: string) => {
-            if (!activeRun || activeRun.terminal) {
+
+          const synthesizeRunError = (
+            message: string,
+            allowCancelled = false,
+          ) => {
+            if (!activeRun || activeRun.terminal || retiredSignal.aborted) {
+              return;
+            }
+            if (runCancelSignal.aborted && !allowCancelled) {
               return;
             }
 
@@ -235,375 +286,356 @@ export const generateMessage = createEffect((store) => {
             );
           };
 
+          let outcome: RunOutcome | undefined;
+          let primaryError: Error | undefined;
           try {
-            try {
-              if (!retryWithReplacement) {
-                attempt++;
+            transportResponse = await selection.transport.send(eventRequest);
+
+            if (retiredSignal.aborted) {
+              outcome = { kind: 'retired' };
+            } else if (runCancelSignal.aborted) {
+              outcome = { kind: 'cancelled' };
+            } else {
+              const events = transportResponse.events;
+              if (
+                !events ||
+                typeof events[Symbol.asyncIterator] !== 'function'
+              ) {
+                throw new TransportError(
+                  'Transport response did not provide an event stream',
+                  { retryable: true, code: 'PROTOCOL_ERROR' },
+                );
               }
-              retryWithReplacement = false;
+              eventIterator = events[Symbol.asyncIterator]();
 
-              const requestAbortSignal = AbortSignal.any([
-                switchSignal,
-                effectAbortController.signal,
-                cancelAbortController.signal,
-              ]);
+              while (!outcome) {
+                const iteration = await _nextEvent(
+                  eventIterator,
+                  retiredSignal,
+                  runCancelSignal,
+                );
 
-              const paramsWithModel: Chat.Api.CompletionCreateParams = {
-                ...params,
-                model: selection.spec.name,
-              };
-              const aguiThreadId =
-                threadId ?? (generatedThreadId ??= _createRequestId());
-              const requestId = _createRequestId();
-              const runId = requestId;
+                if (iteration.kind === 'retired') {
+                  outcome = { kind: 'retired' };
+                  break;
+                }
+                if (iteration.kind === 'cancelled') {
+                  outcome = { kind: 'cancelled' };
+                  break;
+                }
 
-              transportResponse = await selection.transport.send({
-                input: createHashbrownRunAgentInput({
-                  threadId: aguiThreadId,
-                  runId,
-                  system,
-                  messages,
-                  tools: modernTools,
-                  responseSchema: responseJsonSchema,
-                  ui: uiRequested,
-                }),
-                params: paramsWithModel,
-                signal: requestAbortSignal,
-                attempt,
-                maxAttempts: retries + 1,
-                requestId,
-              });
-
-              if (cancelAbortController.signal.aborted) {
-                cancelAbortController = new AbortController();
-                return;
-              }
-
-              if (transportResponse.events) {
-                for await (const event of transportResponse.events) {
-                  if (event.type === EventType.RUN_STARTED) {
-                    if (activeRun) {
-                      throw new TransportError(
-                        'Received duplicate RUN_STARTED',
-                        {
-                          retryable: true,
-                          code: 'PROTOCOL_ERROR',
-                        },
-                      );
-                    }
-
-                    if (
-                      event.threadId !== aguiThreadId ||
-                      event.runId !== runId
-                    ) {
-                      throw new TransportError(
-                        'RUN_STARTED identity does not match the attempted run',
-                        { retryable: true, code: 'PROTOCOL_ERROR' },
-                      );
-                    }
-
-                    activeRun = {
-                      threadId: event.threadId,
-                      runId: event.runId,
-                      terminal: false,
-                    };
-                    store.dispatch(
-                      apiActions.generateMessageStart({
-                        responseSchema,
-                        emulateStructuredOutput: false,
-                        toolsByName,
-                      }),
-                    );
-                    store.dispatch(apiActions.generateMessageEvent(event));
-                    continue;
-                  }
-
-                  if (event.type === EventType.RUN_ERROR) {
-                    if (activeRun) {
-                      activeRun = { ...activeRun, terminal: true };
-                    }
-                    store.dispatch(apiActions.generateMessageEvent(event));
-                    throw new Error(event.message);
-                  }
-
+                const { result } = iteration;
+                if (result.done) {
+                  iteratorDone = true;
                   if (!activeRun) {
+                    throw new TransportError(
+                      'Generation stream ended before RUN_STARTED',
+                      { retryable: true, code: 'PROTOCOL_ERROR' },
+                    );
+                  }
+                  if (!activeRun.terminal) {
+                    throw new TransportError(
+                      'Generation stream ended before RUN_FINISHED or RUN_ERROR',
+                      { retryable: true, code: 'PROTOCOL_ERROR' },
+                    );
+                  }
+                  break;
+                }
+
+                if (retiredSignal.aborted) {
+                  outcome = { kind: 'retired' };
+                  break;
+                }
+                if (runCancelSignal.aborted) {
+                  outcome = { kind: 'cancelled' };
+                  break;
+                }
+
+                const event = result.value;
+                if (!activeRun) {
+                  if (event.type !== EventType.RUN_STARTED) {
                     throw new TransportError(
                       `Received ${event.type} before RUN_STARTED`,
                       { retryable: true, code: 'PROTOCOL_ERROR' },
                     );
                   }
+                  if (
+                    event.threadId !== threadId ||
+                    event.runId !== requestId
+                  ) {
+                    throw new TransportError(
+                      'RUN_STARTED identity does not match the attempted run',
+                      { retryable: true, code: 'PROTOCOL_ERROR' },
+                    );
+                  }
 
-                  if (event.type === EventType.RUN_FINISHED) {
-                    if (
-                      event.threadId !== activeRun.threadId ||
-                      event.runId !== activeRun.runId
-                    ) {
-                      throw new TransportError(
-                        'RUN_FINISHED identity does not match the active run',
-                        { retryable: true, code: 'PROTOCOL_ERROR' },
-                      );
-                    }
-
-                    activeRun = { ...activeRun, terminal: true };
-                    store.dispatch(apiActions.generateMessageEvent(event));
-                    shouldFinalizeGeneration = true;
+                  if (retiredSignal.aborted || runCancelSignal.aborted) {
+                    outcome = retiredSignal.aborted
+                      ? { kind: 'retired' }
+                      : { kind: 'cancelled' };
                     break;
                   }
-
+                  store.dispatch(
+                    apiActions.generateMessageStart({
+                      responseSchema,
+                      emulateStructuredOutput: false,
+                      toolsByName,
+                    }),
+                  );
+                  if (retiredSignal.aborted || runCancelSignal.aborted) {
+                    outcome = retiredSignal.aborted
+                      ? { kind: 'retired' }
+                      : { kind: 'cancelled' };
+                    break;
+                  }
+                  activeRun = {
+                    threadId: event.threadId,
+                    runId: event.runId,
+                    terminal: false,
+                  };
                   store.dispatch(apiActions.generateMessageEvent(event));
+                  continue;
                 }
 
-                if (activeRun && !activeRun.terminal) {
-                  throw new TransportError(
-                    'Generation stream ended before RUN_FINISHED or RUN_ERROR',
-                    { retryable: true },
-                  );
+                if (event.type === EventType.RUN_STARTED) {
+                  throw new TransportError('Received duplicate RUN_STARTED', {
+                    retryable: true,
+                    code: 'PROTOCOL_ERROR',
+                  });
                 }
 
-                if (!activeRun) {
-                  throw new TransportError(
-                    'Generation stream ended before RUN_STARTED',
-                    { retryable: true },
-                  );
-                }
-              }
-
-              if (!transportResponse.events) {
-                const completionChunkAdapter =
-                  createCompletionChunkEventAdapter(requestId);
-
-                const frameStream = transportResponse.frames
-                  ? framesToLengthPrefixedStream(transportResponse.frames)
-                  : transportResponse.stream;
-
-                if (!frameStream) {
-                  throw new TransportError(
-                    'Transport returned neither frames nor stream',
-                    { retryable: false },
-                  );
-                }
-
-                transportResponse = {
-                  ...transportResponse,
-                  metadata: {
-                    ...(transportResponse.metadata ?? {}),
-                    selection: selection.metadata,
-                  },
-                };
-
-                for await (const frame of decodeFrames(frameStream, {
-                  signal: AbortSignal.any([
-                    cancelAbortController.signal,
-                    effectAbortController.signal,
-                  ]),
-                })) {
-                  switch (frame.type) {
-                    case 'thread-load-start': {
-                      store.dispatch(apiActions.threadLoadStart());
-                      break;
-                    }
-                    case 'thread-load-success': {
-                      store.dispatch(
-                        apiActions.threadLoadSuccess({
-                          thread: frame.thread,
-                          responseSchema,
-                          toolsByName,
-                        }),
-                      );
-                      if (params.operation === 'load-thread') {
-                        return;
-                      }
-                      break;
-                    }
-                    case 'thread-load-failure': {
-                      store.dispatch(
-                        apiActions.threadLoadFailure({
-                          error: frame.error,
-                          stacktrace: frame.stacktrace,
-                        }),
-                      );
-                      throw new Error(frame.error);
-                    }
-                    case 'generation-start': {
-                      activeRun = {
-                        threadId: aguiThreadId,
-                        runId,
-                        terminal: false,
-                      };
-                      store.dispatch(
-                        apiActions.generateMessageStart({
-                          responseSchema,
-                          emulateStructuredOutput,
-                          toolsByName:
-                            emulateStructuredOutput && responseSchema
-                              ? {
-                                  ...toolsByName,
-                                  output: {
-                                    name: 'output',
-                                    description:
-                                      'Reserved tool for emulated structured output.',
-                                    schema:
-                                      s.normalizeSchemaOutput(responseSchema),
-                                    handler: async () => undefined,
-                                  },
-                                }
-                              : toolsByName,
-                        }),
-                      );
-                      store.dispatch(
-                        apiActions.generateMessageEvent({
-                          type: EventType.RUN_STARTED,
-                          threadId: aguiThreadId,
-                          runId,
-                        }),
-                      );
-                      break;
-                    }
-                    case 'generation-chunk': {
-                      for (const event of completionChunkAdapter.push(
-                        frame.chunk,
-                      )) {
-                        store.dispatch(apiActions.generateMessageEvent(event));
-                      }
-                      break;
-                    }
-                    case 'thread-save-success': {
-                      store.dispatch(
-                        apiActions.threadSaveSuccess({
-                          threadId: frame.threadId,
-                        }),
-                      );
-                      break;
-                    }
-                    case 'thread-save-start': {
-                      store.dispatch(apiActions.threadSaveStart());
-                      break;
-                    }
-                    case 'thread-save-failure': {
-                      store.dispatch(
-                        apiActions.threadSaveFailure({
-                          error: frame.error,
-                          stacktrace: frame.stacktrace,
-                        }),
-                      );
-                      break;
-                    }
-                    case 'generation-error': {
-                      dispatchRunError(frame.error);
-                      // Assumption: a 'finish' will follow the 'error', but we know we need to retry
-                      // as soon as we see the error.  Therefore, throw an exception to break out
-                      // of the for loop.
-                      throw new Error(frame.error);
-                    }
-                    case 'generation-finish': {
-                      if (activeRun) {
-                        activeRun = { ...activeRun, terminal: true };
-                      }
-                      const events: AGUIEvent[] = [
-                        ...completionChunkAdapter.finish(),
-                        {
-                          type: EventType.RUN_FINISHED,
-                          threadId: aguiThreadId,
-                          runId,
-                        },
-                      ];
-                      for (const event of events) {
-                        store.dispatch(apiActions.generateMessageEvent(event));
-                      }
-                      shouldFinalizeGeneration = true;
-                      break;
-                    }
-                  }
-                }
-
-                if (activeRun && !activeRun.terminal) {
-                  const cancelled =
-                    effectAbortController.signal.aborted ||
-                    switchSignal.aborted ||
-                    cancelAbortController.signal.aborted;
-                  if (cancelled) {
-                    dispatchRunError('Generation cancelled');
-                    return;
+                if (event.type === EventType.RUN_FINISHED) {
+                  if (
+                    event.threadId !== activeRun.threadId ||
+                    event.runId !== activeRun.runId
+                  ) {
+                    throw new TransportError(
+                      'RUN_FINISHED identity does not match the active run',
+                      { retryable: true, code: 'PROTOCOL_ERROR' },
+                    );
                   }
 
-                  throw new TransportError(
-                    'Generation stream ended before generation-finish',
-                    { retryable: true },
-                  );
+                  activeRun = { ...activeRun, terminal: true };
+                  if (!retiredSignal.aborted && !runCancelSignal.aborted) {
+                    store.dispatch(apiActions.generateMessageEvent(event));
+                    outcome = { kind: 'finished' };
+                  } else {
+                    outcome = retiredSignal.aborted
+                      ? { kind: 'retired' }
+                      : { kind: 'cancelled' };
+                  }
+                  break;
+                }
+
+                if (event.type === EventType.RUN_ERROR) {
+                  activeRun = { ...activeRun, terminal: true };
+                  if (!retiredSignal.aborted && !runCancelSignal.aborted) {
+                    store.dispatch(apiActions.generateMessageEvent(event));
+                    outcome = {
+                      kind: 'server-error',
+                      error: new Error(event.message),
+                    };
+                  } else {
+                    outcome = retiredSignal.aborted
+                      ? { kind: 'retired' }
+                      : { kind: 'cancelled' };
+                  }
+                  break;
+                }
+
+                if (!retiredSignal.aborted && !runCancelSignal.aborted) {
+                  store.dispatch(apiActions.generateMessageEvent(event));
+                } else {
+                  outcome = retiredSignal.aborted
+                    ? { kind: 'retired' }
+                    : { kind: 'cancelled' };
                 }
               }
-            } finally {
-              await disposeTransportResponse();
             }
+          } catch (error) {
+            primaryError =
+              error instanceof Error
+                ? error
+                : new Error('Unknown transport error');
+          } finally {
+            await cleanup();
+          }
 
-            if (shouldFinalizeGeneration) {
-              finalizeGeneration();
-            }
-          } catch (e) {
-            const cancelled =
-              effectAbortController.signal.aborted ||
-              switchSignal.aborted ||
-              cancelAbortController.signal.aborted;
-            if (cancelled) {
-              dispatchRunError('Generation cancelled');
-              return;
-            }
+          if (retiredSignal.aborted || outcome?.kind === 'retired') {
+            return;
+          }
 
-            const error =
-              e instanceof Error ? e : new Error('Unknown transport error');
-            dispatchRunError(error.message);
-            store.dispatch(apiActions.generateMessageError(error));
+          if (outcome?.kind === 'finished') {
+            releaseGeneration();
+            finalizeGeneration();
+            break;
+          }
 
-            const retryable =
-              !(e instanceof TransportError) || e.retryable !== false;
+          if (outcome?.kind === 'server-error') {
+            releaseGeneration();
+            store.dispatch(apiActions.generateMessageError(outcome.error));
+            break;
+          }
 
-            if (
-              e instanceof TransportError &&
-              (e.code === 'FEATURE_UNSUPPORTED' ||
-                e.code === 'PLATFORM_UNSUPPORTED')
-            ) {
-              resolver.skipFromError(selection.spec, e);
-              selection = await selectCompatibleTransport();
-              if (!selection) {
-                break;
+          if (runCancelSignal.aborted || outcome?.kind === 'cancelled') {
+            synthesizeRunError('Generation cancelled', true);
+            return;
+          }
+
+          if (!primaryError) {
+            primaryError = new TransportError(
+              'Generation ended without a terminal outcome',
+              { retryable: true, code: 'PROTOCOL_ERROR' },
+            );
+          }
+
+          synthesizeRunError(primaryError.message);
+          store.dispatch(apiActions.generateMessageError(primaryError));
+
+          if (
+            primaryError instanceof TransportError &&
+            (primaryError.code === 'FEATURE_UNSUPPORTED' ||
+              primaryError.code === 'PLATFORM_UNSUPPORTED')
+          ) {
+            resolver.skipFromError(selection.spec, primaryError);
+            try {
+              selection = await resolver.select(requestedFeatures);
+            } catch (error) {
+              if (retiredSignal.aborted || runCancelSignal.aborted) {
+                suppressFinalization = true;
+                return;
               }
-              retryWithReplacement = true;
-              continue;
-            }
 
-            if (!retryable) {
+              store.dispatch(
+                apiActions.generateMessageError(
+                  error instanceof Error
+                    ? error
+                    : new Error('Unknown model selection error'),
+                ),
+              );
               break;
             }
 
-            continue;
-          } finally {
-            if (cancelAbortController.signal.aborted) {
-              cancelAbortController = new AbortController();
+            if (retiredSignal.aborted || runCancelSignal.aborted) {
+              suppressFinalization = true;
+              return;
             }
+            if (!selection) {
+              break;
+            }
+            reuseAttempt = true;
+            continue;
           }
 
-          break;
-        } while (retryWithReplacement || attempt < retries + 1);
+          const retryable =
+            !(primaryError instanceof TransportError) ||
+            primaryError.retryable !== false;
+          if (!retryable || attempt >= retries + 1) {
+            exhaustedRetries = retryable && retries > 0;
+            break;
+          }
+        }
       } finally {
-        store.dispatch(apiActions.assistantTurnFinalized());
+        releaseGeneration();
+        if (!retiredSignal.aborted && !suppressFinalization) {
+          store.dispatch(
+            apiActions.assistantTurnFinalized({
+              toolCalls: store.read(selectPendingToolCalls),
+              continuation: runCancelSignal.aborted ? 'stop' : 'continue',
+            }),
+          );
+        }
       }
 
-      // Did we exhaust our retries?
-      if (retries > 0 && attempt > retries) {
+      if (exhaustedRetries) {
         store.dispatch(apiActions.generateMessageExhaustedRetries());
       }
     }, effectAbortController.signal),
   );
 
+  store.when(internalActions.toolTurnSettled, (action) => {
+    if (action.payload.continuation !== 'continue') {
+      return;
+    }
+
+    store.dispatch(internalActions.sizzle());
+  });
+
   store.when(devActions.stopMessageGeneration, () => {
+    activeGeneration = undefined;
     cancelAbortController.abort();
   });
 
+  store.when(devActions.updateOptions, (action) => {
+    if (!Object.prototype.hasOwnProperty.call(action.payload, 'threadId')) {
+      return;
+    }
+    if (activeGeneration?.threadId === action.payload.threadId) {
+      return;
+    }
+
+    const retiredGeneration = activeGeneration;
+    activeGeneration = undefined;
+    threadIdentityAbortController.abort();
+    threadIdentityAbortController = new AbortController();
+
+    if (retiredGeneration) {
+      store.dispatch(internalActions.generationSilentlyRetired());
+    }
+  });
+
   return () => {
+    activeGeneration = undefined;
     effectAbortController.abort();
     cancelAbortController.abort();
+    threadIdentityAbortController.abort();
   };
 });
+
+function _nextEvent(
+  iterator: AsyncIterator<AGUIEvent>,
+  retiredSignal: AbortSignal,
+  cancelSignal: AbortSignal,
+): Promise<EventIterationResult> {
+  if (retiredSignal.aborted) {
+    return Promise.resolve({ kind: 'retired' });
+  }
+  if (cancelSignal.aborted) {
+    return Promise.resolve({ kind: 'cancelled' });
+  }
+
+  return new Promise<EventIterationResult>((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      retiredSignal.removeEventListener('abort', handleRetired);
+      cancelSignal.removeEventListener('abort', handleCancelled);
+    };
+    const settle = (result: EventIterationResult) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(result);
+    };
+    const fail = (error: unknown) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const handleRetired = () => settle({ kind: 'retired' });
+    const handleCancelled = () => settle({ kind: 'cancelled' });
+
+    retiredSignal.addEventListener('abort', handleRetired, { once: true });
+    cancelSignal.addEventListener('abort', handleCancelled, { once: true });
+    Promise.resolve()
+      .then(() => iterator.next())
+      .then((result) => settle({ kind: 'event', result }), fail);
+  });
+}
 
 function _createRequestId() {
   if (
@@ -614,29 +646,6 @@ function _createRequestId() {
   }
 
   return Math.random().toString(36).slice(2);
-}
-
-/**
- * Updates the messages array with an incoming assistant delta.
- *
- * @param messages - The current messages array.
- * @param delta - The incoming message delta.
- * @returns The updated messages array.
- */
-export function _extractMessageDelta(
-  messages: Chat.Api.Message[],
-): Chat.Api.Message[] {
-  if (messages.length === 0) {
-    return messages;
-  }
-
-  for (let index = messages.length - 1; index >= 0; index--) {
-    if (messages[index]?.role === 'assistant') {
-      return messages.slice(index + 1);
-    }
-  }
-
-  return messages;
 }
 
 export function _updateMessagesWithDelta(

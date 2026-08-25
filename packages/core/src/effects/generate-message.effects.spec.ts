@@ -1,22 +1,19 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { Chat } from '../models';
-import { s } from '../schema';
 import { apiActions, devActions, internalActions } from '../actions';
+import { Chat } from '../models';
 import {
   selectApiMessages,
-  selectApiTools,
   selectApiUrl,
   selectDebounce,
-  selectEmulateStructuredOutput,
   selectMiddleware,
   selectModel,
+  selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
-  selectStructuredOutput,
   selectSystem,
   selectThreadId,
   selectToolEntities,
@@ -24,46 +21,22 @@ import {
   selectTransport,
   selectUiRequested,
 } from '../reducers';
-import { decodeFrames } from '../frames/decode-frames';
-import { createCompletionChunkEventAdapter } from '../transport/completion-chunk-to-agui-events';
+import { s } from '../schema';
 import {
-  framesToLengthPrefixedStream,
   ModelResolver,
   TransportError,
   type TransportRequest,
 } from '../transport';
 import {
-  _extractMessageDelta,
   _updateMessagesWithDelta,
   generateMessage,
 } from './generate-message.effects';
-
-jest.mock('../frames/decode-frames', () => ({
-  decodeFrames: jest.fn(async function* (frames: AsyncIterable<unknown>) {
-    for await (const frame of frames) {
-      yield frame;
-    }
-  }),
-}));
-
-jest.mock('../transport/completion-chunk-to-agui-events', () => {
-  const actual = jest.requireActual(
-    '../transport/completion-chunk-to-agui-events',
-  );
-  return {
-    ...actual,
-    createCompletionChunkEventAdapter: jest.fn(
-      actual.createCompletionChunkEventAdapter,
-    ),
-  };
-});
 
 jest.mock('../transport', () => {
   const actual = jest.requireActual('../transport');
   return {
     ...actual,
     ModelResolver: jest.fn(),
-    framesToLengthPrefixedStream: jest.fn((frames: unknown) => frames),
   };
 });
 
@@ -74,11 +47,33 @@ type TestHandler = {
   handler: (action: ActionLike) => unknown | Promise<unknown>;
 };
 type SelectorMap = Map<SelectorKey, unknown>;
+type MockTransportResponse = {
+  events?: AsyncIterable<AGUIEvent>;
+  dispose?: jest.Mock;
+};
+type TestSelection = {
+  spec: { name: string };
+  transport: { send: jest.Mock };
+  metadata: { chosenSpec: string; skippedSpecs: [] };
+};
+
+const generationSilentlyRetiredType =
+  internalActions.generationSilentlyRetired.type;
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, reject, resolve };
+}
 
 function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const actions: ActionLike[] = [];
   const handlers: TestHandler[] = [];
-
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
     [selectApiUrl, 'https://example.test'],
     [selectMiddleware, undefined],
@@ -91,20 +86,17 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectShouldGenerateMessage, true],
     [selectDebounce, 0],
     [selectRetries, 0],
-    [selectApiTools, []],
     [selectToolEntities, {}],
     [selectTools, []],
     [selectSystem, 'You are a test bot'],
-    [selectEmulateStructuredOutput, false],
-    [selectStructuredOutput, undefined],
     [selectThreadId, undefined],
     [selectTransport, { kind: 'test-transport' }],
     [selectUiRequested, false],
     [selectRawStreamingMessage, null],
     [selectRawStreamingToolCalls, []],
+    [selectPendingToolCalls, []],
     [selectStreamingMessageError, undefined],
   ]);
-
   const values = new Map<SelectorKey, unknown>([
     ...defaults,
     ...selectorOverrides,
@@ -116,8 +108,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
       ...params: [...Array<{ type: string }>, (action: ActionLike) => unknown]
     ) => {
       const handler = params.pop() as (action: ActionLike) => unknown;
-      // After removing the handler, remaining params are action descriptors
-      const types = (params as { type: string }[]).map((p) => p.type);
+      const types = (params as { type: string }[]).map((item) => item.type);
       handlers.push({ types, handler });
       return () => undefined;
     },
@@ -126,589 +117,81 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     },
     read: <T = unknown>(selector: SelectorKey): T => {
       if (!values.has(selector)) {
-        throw new Error(`No value for selector`);
+        throw new Error('No value for selector');
       }
       return values.get(selector) as T;
     },
-    // helpers for tests
+    setSelector: (selector: SelectorKey, value: unknown) => {
+      values.set(selector, value);
+    },
     async trigger(action: ActionLike) {
-      const matches = handlers.filter((h) => h.types.includes(action.type));
+      const matches = handlers.filter((handler) =>
+        handler.types.includes(action.type),
+      );
       for (const match of matches) {
         await match.handler(action);
       }
     },
   };
 
-  // Hide the bespoke test shape behind unknown so we can pass to the effect
   return store as unknown as Parameters<typeof generateMessage>[0] &
     typeof store;
 }
 
-test('extractMessageDelta returns all messages when no assistant is present', () => {
-  const messages: Chat.Api.Message[] = [
-    {
-      role: 'user',
-      content: 'Hello',
-    },
-  ];
+function getInputIdentity(request: TransportRequest) {
+  if (!request.input) {
+    throw new Error('Expected AG-UI input');
+  }
 
-  expect(_extractMessageDelta(messages)).toEqual(messages);
-});
-
-test('extractMessageDelta returns messages after the last assistant message', () => {
-  const messages: Chat.Api.Message[] = [
-    {
-      role: 'user',
-      content: 'Hi',
-    },
-    {
-      role: 'assistant',
-      content: 'Hello there!',
-    },
-    {
-      role: 'user',
-      content: 'How are you?',
-    },
-  ];
-
-  expect(_extractMessageDelta(messages)).toEqual([
-    {
-      role: 'user',
-      content: 'How are you?',
-    },
-  ]);
-});
-
-test('extractMessageDelta isolates tool messages following the assistant', () => {
-  const toolMessage: Chat.Api.ToolMessage = {
-    role: 'tool',
-    content: { status: 'fulfilled', value: '42' },
-    toolCallId: 'call-1',
-    toolName: 'answer',
+  return {
+    threadId: request.input.threadId,
+    runId: request.input.runId,
   };
+}
 
-  const messages: Chat.Api.Message[] = [
-    {
-      role: 'user',
-      content: 'Compute?',
-    },
-    {
-      role: 'assistant',
-      content: '',
-      toolCalls: [
-        {
-          id: 'call-1',
-          index: 0,
-          type: 'function',
-          function: {
-            name: 'answer',
-            arguments: '{}',
-          },
-        },
-      ],
-    },
-    toolMessage,
-  ];
+function successfulEvents(
+  request: TransportRequest,
+  middle: AGUIEvent[] = [],
+): AsyncIterable<AGUIEvent> {
+  const identity = getInputIdentity(request);
 
-  expect(_extractMessageDelta(messages)).toEqual([toolMessage]);
-});
-
-test('extractMessageDelta returns an empty array when the last message is assistant', () => {
-  const messages: Chat.Api.Message[] = [
-    {
-      role: 'user',
-      content: 'Start',
-    },
-    {
-      role: 'assistant',
-      content: 'Done',
-    },
-  ];
-
-  expect(_extractMessageDelta(messages)).toEqual([]);
-});
-
-test('updateMessagesWithDelta works without an initial message', () => {
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        delta: {
-          role: 'assistant',
-          content: 'Hello, world!',
-        },
-        finishReason: 'stop',
-      },
-    ],
-  };
-
-  const message = _updateMessagesWithDelta(null, delta);
-
-  expect(message).toEqual({
-    role: 'assistant',
-    content: 'Hello, world!',
-    toolCalls: [],
-  });
-});
-
-test('updateMessagesWithDelta works with an initial message', () => {
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        delta: {
-          role: 'assistant',
-          content: ' world!',
-        },
-        finishReason: 'stop',
-      },
-    ],
-  };
-
-  const message = _updateMessagesWithDelta(
-    {
-      role: 'assistant',
-      content: 'Hello,',
-    },
-    delta,
-  );
-
-  expect(message).toEqual({
-    role: 'assistant',
-    content: 'Hello, world!',
-    toolCalls: [],
-  });
-});
-
-test('updateMessagesWithDelta works with an initial message and a tool call', () => {
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        delta: {
-          role: 'assistant',
-          content: ' world!',
-        },
-        finishReason: 'stop',
-      },
-    ],
-  };
-
-  const message = _updateMessagesWithDelta(
-    {
-      role: 'assistant',
-      content: 'Hello,',
-      toolCalls: [
-        {
-          id: '1',
-          index: 0,
-          type: 'function',
-          function: {
-            name: 'get_current_time',
-            arguments: '{}',
-          },
-        },
-      ],
-    },
-    delta,
-  );
-
-  expect(message).toEqual({
-    role: 'assistant',
-    content: 'Hello, world!',
-    toolCalls: [
-      {
-        id: '1',
-        index: 0,
-        type: 'function',
-        function: {
-          name: 'get_current_time',
-          arguments: '{}',
-        },
-      },
-    ],
-  });
-});
-
-test('updateMessagesWithDelta works when there are no choices in the delta', () => {
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [],
-  };
-
-  const message = _updateMessagesWithDelta(
-    {
-      role: 'assistant',
-      content: 'Hello,',
-      toolCalls: [],
-    },
-    delta,
-  );
-
-  expect(message).toEqual({
-    role: 'assistant',
-    content: 'Hello,',
-    toolCalls: [],
-  });
-});
-
-test('updateMessagesWithDelta adds a first tool call', () => {
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        finishReason: 'stop',
-        delta: {
-          role: 'assistant',
-          // no content in this chunk – only a tool call
-          toolCalls: [
-            {
-              id: 'tc-1',
-              index: 0,
-              type: 'function',
-              function: {
-                name: 'get_current_time',
-                arguments: '{}',
-              },
-            },
-          ],
-        },
-      },
-    ],
-  };
-
-  const message = _updateMessagesWithDelta(null, delta);
-
-  expect(message).toEqual({
-    role: 'assistant',
-    content: '',
-    toolCalls: [
-      {
-        id: 'tc-1',
-        index: 0,
-        type: 'function',
-        function: {
-          name: 'get_current_time',
-          arguments: '{}',
-        },
-      },
-    ],
-  });
-});
-
-test('updateMessagesWithDelta merges tool-call arguments when index matches', () => {
-  const existingToolCall = {
-    id: 'tc-1',
-    index: 0,
-    type: 'function',
-    function: {
-      name: 'get_current_time',
-      arguments: '{"tz":"UTC"}',
-    },
-  };
-
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        finishReason: 'stop',
-        delta: {
-          role: 'assistant',
-          toolCalls: [
-            {
-              index: existingToolCall.index,
-              function: {
-                arguments: ',"format":"iso8601"',
-              },
-            },
-          ],
-        },
-      },
-    ],
-  };
-
-  const message = _updateMessagesWithDelta(
-    {
-      role: 'assistant',
-      content: '',
-      toolCalls: [existingToolCall],
-    },
-    delta,
-  );
-
-  expect(message?.toolCalls).toEqual([
-    {
-      ...existingToolCall,
-      function: {
-        ...existingToolCall.function,
-        arguments: '{"tz":"UTC"},"format":"iso8601"', // concatenated
-      },
-    },
-  ]);
-});
-
-test('updateMessagesWithDelta appends a new tool call when index differs', () => {
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        finishReason: 'stop',
-        delta: {
-          role: 'assistant',
-          toolCalls: [
-            {
-              id: 'tc-2',
-              index: 1,
-              type: 'function',
-              function: {
-                name: 'get_weather',
-                arguments: '{"city":"PDX"}',
-              },
-            },
-          ],
-        },
-      },
-    ],
-  };
-
-  const message = _updateMessagesWithDelta(
-    {
-      role: 'assistant',
-      content: '',
-      toolCalls: [
-        {
-          id: 'tc-1',
-          index: 0,
-          type: 'function',
-          function: {
-            name: 'get_current_time',
-            arguments: '{}',
-          },
-        },
-      ],
-    },
-    delta,
-  );
-
-  expect(message?.toolCalls).toHaveLength(2);
-  expect(message?.toolCalls?.[1]).toMatchObject({
-    id: 'tc-2',
-    index: 1,
-    function: { name: 'get_weather' },
-  });
-});
-
-test('updateMessagesWithDelta treats undefined content as empty string', () => {
-  const delta: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        finishReason: 'stop',
-        delta: {
-          role: 'assistant',
-          content: 'Hi!',
-        },
-      },
-    ],
-  };
-
-  const message = _updateMessagesWithDelta(
-    {
-      role: 'assistant',
-      toolCalls: [],
-    },
-    delta,
-  );
-
-  expect(message?.content).toBe('Hi!');
-});
-
-test('updateMessagesWithDelta returns null when nothing to update', () => {
-  const delta: Chat.Api.CompletionChunk = { choices: [] };
-
-  const message = _updateMessagesWithDelta(null, delta);
-
-  expect(message).toBeNull();
-});
-
-test('generateMessage sends schema response format mode by default for structured output', async () => {
-  const send = mockSuccessfulSelection();
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectResponseSchema, s.object('response', {})],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: {},
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(send).toHaveBeenCalledWith(
-    expect.objectContaining({
-      params: expect.objectContaining({
-        responseFormat: expect.any(Object),
-        responseFormatMode: 'schema',
-        toolChoice: undefined,
-      }),
-    }),
-  );
-
-  teardown?.();
-});
-
-test('generateMessage sends json response format mode without provider schema', async () => {
-  const send = mockSuccessfulSelection();
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectResponseSchema, s.object('response', {})],
-      [selectStructuredOutput, { mode: 'json' }],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: {},
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(send).toHaveBeenCalledWith(
-    expect.objectContaining({
-      params: expect.objectContaining({
-        responseFormat: undefined,
-        responseFormatMode: 'json',
-        toolChoice: undefined,
-      }),
-    }),
-  );
-
-  teardown?.();
-});
-
-test('generateMessage lets resource-level tool mode override strict structured output', async () => {
-  const send = mockSuccessfulSelection();
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectResponseSchema, s.object('response', {})],
-      [selectStructuredOutput, { mode: 'tool' }],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: {},
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(send).toHaveBeenCalledWith(
-    expect.objectContaining({
-      params: expect.objectContaining({
-        responseFormat: undefined,
-        responseFormatMode: undefined,
-        toolChoice: 'required',
-      }),
-    }),
-  );
-
-  teardown?.();
-});
-
-function mockSuccessfulSelection() {
-  const ModelResolverMock = jest.mocked(ModelResolver);
-  const send = jest.fn(async () => ({
-    frames: (async function* () {
-      yield { type: 'generation-start' as const };
-      yield { type: 'generation-finish' as const };
-    })(),
-  }));
-  const selection = {
-    spec: { name: 'selected-model' },
-    transport: { send },
-    metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
-  };
-
-  ModelResolverMock.mockImplementation(
-    () =>
-      ({
-        select: jest.fn(async () => selection),
-        skipFromError: jest.fn(),
-        getMetadata: jest.fn(() => selection.metadata),
-      }) as unknown as ModelResolver,
-  );
-
-  return send;
+  return (async function* () {
+    yield { type: EventType.RUN_STARTED, ...identity };
+    yield* middle;
+    yield { type: EventType.RUN_FINISHED, ...identity };
+  })();
 }
 
 const ModelResolverMock = jest.mocked(ModelResolver);
-const decodeFramesMock = jest.mocked(decodeFrames);
-const framesToLengthPrefixedStreamMock = jest.mocked(
-  framesToLengthPrefixedStream,
-);
-const createCompletionChunkEventAdapterMock = jest.mocked(
-  createCompletionChunkEventAdapter,
-);
-
-type MockTransportResponse = {
-  events?: AsyncIterable<AGUIEvent>;
-  frames?: AsyncIterable<unknown>;
-  stream?: AsyncIterable<unknown>;
-  dispose?: jest.Mock;
-  metadata?: unknown;
-};
 
 function makeSelection(
   transportResponseFactory: (
     request: TransportRequest,
   ) => Promise<MockTransportResponse>,
-  transportOverrides: { supportsLegacyThreadLoading?: boolean } = {},
 ) {
   const send = jest.fn().mockImplementation(transportResponseFactory);
-  const selection = {
-    spec: { name: 'selected-model' },
-    transport: { ...transportOverrides, send },
-    metadata: { chosenSpec: 'selected-model', skippedSpecs: [] },
-  };
+  const selection = createTestSelection('selected-model', send);
   const select = jest.fn(async () => selection);
+  const skipFromError = jest.fn();
   ModelResolverMock.mockImplementation(
     () =>
       ({
         select,
-        skipFromError: jest.fn(),
+        skipFromError,
         getMetadata: jest.fn(() => selection.metadata),
       }) as unknown as ModelResolver,
   );
-  return { select, send, selection };
+
+  return { select, send, selection, skipFromError };
 }
 
-type TestSelection = {
-  spec: { name: string };
-  transport: {
-    send: jest.Mock;
-    supportsLegacyThreadLoading?: boolean;
+function createTestSelection(name: string, send: jest.Mock): TestSelection {
+  return {
+    spec: { name },
+    transport: { send },
+    metadata: { chosenSpec: name, skippedSpecs: [] },
   };
-  metadata: { chosenSpec: string; skippedSpecs: [] };
-};
+}
 
 function mockSelectionSequence(selections: Array<TestSelection | undefined>) {
   const select = jest.fn();
@@ -729,311 +212,437 @@ function mockSelectionSequence(selections: Array<TestSelection | undefined>) {
   return { select, skipFromError };
 }
 
-function createTestSelection(
-  name: string,
-  send: jest.Mock,
-  supportsLegacyThreadLoading?: boolean,
-): TestSelection {
-  return {
-    spec: { name },
-    transport: { send, supportsLegacyThreadLoading },
-    metadata: { chosenSpec: name, skippedSpecs: [] },
-  };
+function mockResolverSelect(select: jest.Mock) {
+  const skipFromError = jest.fn();
+  ModelResolverMock.mockImplementation(
+    () =>
+      ({
+        select,
+        skipFromError,
+        getMetadata: jest.fn(() => ({ skippedSpecs: [] })),
+      }) as unknown as ModelResolver,
+  );
+
+  return { skipFromError };
 }
 
-function getInputIdentity(request: TransportRequest) {
-  if (!request.input) {
-    throw new Error('Expected modern AG-UI input');
+function getDispatchedEvents(actions: ActionLike[]) {
+  return actions
+    .filter((action) => action.type === apiActions.generateMessageEvent.type)
+    .map((action) => action.payload as AGUIEvent);
+}
+
+function getActionsOfType(actions: ActionLike[], type: string) {
+  return actions.filter((action) => action.type === type);
+}
+
+function waitForAbort(signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+
+    signal.addEventListener('abort', () => resolve(), { once: true });
+  });
+}
+
+async function waitForDispatchedEvent(
+  actions: ActionLike[],
+  eventType: EventType,
+) {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (
+      getDispatchedEvents(actions).some((event) => event.type === eventType)
+    ) {
+      return;
+    }
+
+    await Promise.resolve();
   }
 
-  return {
-    threadId: request.input.threadId,
-    runId: request.input.runId,
-  };
+  throw new Error(`Timed out waiting for ${eventType}`);
 }
 
-test.each(['FEATURE_UNSUPPORTED', 'PLATFORM_UNSUPPORTED'] as const)(
-  'sends a compatible replacement after %s without consuming a retry',
-  async (code) => {
-    jest.clearAllMocks();
-    const unsupportedSend = jest.fn<
-      Promise<MockTransportResponse>,
-      [TransportRequest]
-    >(async () => {
-      throw new TransportError('unsupported transport', {
-        retryable: false,
-        code,
-      });
-    });
-    const replacementSend = jest.fn(async (request: TransportRequest) => {
-      const identity = getInputIdentity(request);
+test('updateMessagesWithDelta works without an initial message', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        delta: { role: 'assistant', content: 'Hello, world!' },
+        finishReason: 'stop',
+      },
+    ],
+  };
 
-      return {
-        events: (async function* () {
-          yield { type: EventType.RUN_STARTED, ...identity };
-          yield { type: EventType.RUN_FINISHED, ...identity };
-        })(),
-      };
-    });
-    const unsupportedSelection = createTestSelection(
-      'unsupported',
-      unsupportedSend,
-    );
-    const replacementSelection = createTestSelection(
-      'replacement',
-      replacementSend,
-    );
-    const { select, skipFromError } = mockSelectionSequence([
-      unsupportedSelection,
-      replacementSelection,
-    ]);
+  const message = _updateMessagesWithDelta(null, delta);
+
+  expect(message).toEqual({
+    role: 'assistant',
+    content: 'Hello, world!',
+    toolCalls: [],
+  });
+});
+
+test('updateMessagesWithDelta merges content into an existing message', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        delta: { role: 'assistant', content: ' world!' },
+        finishReason: 'stop',
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(
+    { role: 'assistant', content: 'Hello,' },
+    delta,
+  );
+
+  expect(message).toEqual({
+    role: 'assistant',
+    content: 'Hello, world!',
+    toolCalls: [],
+  });
+});
+
+test('updateMessagesWithDelta merges tool-call arguments by index', () => {
+  const existingToolCall = {
+    id: 'tc-1',
+    index: 0,
+    type: 'function',
+    function: {
+      name: 'get_current_time',
+      arguments: '{"tz":"UTC"}',
+    },
+  };
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        finishReason: 'stop',
+        delta: {
+          role: 'assistant',
+          toolCalls: [
+            {
+              index: 0,
+              function: { arguments: ',"format":"iso8601"' },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(
+    { role: 'assistant', content: '', toolCalls: [existingToolCall] },
+    delta,
+  );
+
+  expect(message?.toolCalls).toEqual([
+    {
+      ...existingToolCall,
+      function: {
+        ...existingToolCall.function,
+        arguments: '{"tz":"UTC"},"format":"iso8601"',
+      },
+    },
+  ]);
+});
+
+test('updateMessagesWithDelta preserves an existing message for an empty delta', () => {
+  const initialMessage: Chat.Api.AssistantMessage = {
+    role: 'assistant',
+    content: 'Hello',
+    toolCalls: [],
+  };
+  const delta: Chat.Api.CompletionChunk = { choices: [] };
+
+  const message = _updateMessagesWithDelta(initialMessage, delta);
+
+  expect(message).toEqual(initialMessage);
+});
+
+test('updateMessagesWithDelta adds the first tool call', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        finishReason: 'stop',
+        delta: {
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'tc-1',
+              index: 0,
+              type: 'function',
+              function: { name: 'get_current_time', arguments: '{}' },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(null, delta);
+
+  expect(message).toEqual({
+    role: 'assistant',
+    content: '',
+    toolCalls: [
+      {
+        id: 'tc-1',
+        index: 0,
+        type: 'function',
+        function: { name: 'get_current_time', arguments: '{}' },
+      },
+    ],
+  });
+});
+
+test('updateMessagesWithDelta appends a tool call with a different index', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        finishReason: 'stop',
+        delta: {
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'tc-2',
+              index: 1,
+              type: 'function',
+              function: { name: 'get_weather', arguments: '{}' },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'tc-1',
+          index: 0,
+          type: 'function',
+          function: { name: 'get_current_time', arguments: '{}' },
+        },
+      ],
+    },
+    delta,
+  );
+
+  expect(message?.toolCalls).toHaveLength(2);
+  expect(message?.toolCalls?.[1]).toMatchObject({
+    id: 'tc-2',
+    index: 1,
+    function: { name: 'get_weather' },
+  });
+});
+
+test('updateMessagesWithDelta treats missing content as empty', () => {
+  const delta: Chat.Api.CompletionChunk = {
+    choices: [
+      {
+        index: 0,
+        finishReason: 'stop',
+        delta: { role: 'assistant', content: 'Hi!' },
+      },
+    ],
+  };
+
+  const message = _updateMessagesWithDelta(
+    { role: 'assistant', toolCalls: [] },
+    delta,
+  );
+
+  expect(message?.content).toBe('Hi!');
+});
+
+test('updateMessagesWithDelta returns null when there is nothing to update', () => {
+  const delta: Chat.Api.CompletionChunk = { choices: [] };
+
+  const message = _updateMessagesWithDelta(null, delta);
+
+  expect(message).toBeNull();
+});
+
+test('configured thread with no messages sends no request and never selects', async () => {
+  jest.clearAllMocks();
+  const { select, send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectApiMessages, []],
+      [selectShouldGenerateMessage, false],
+      [selectThreadId, 'configured-thread'],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(internalActions.sizzle());
+
+  expect(select).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
+
+  teardown?.();
+});
+
+test.each(['undefined', 'rejection'] as const)(
+  'supersession owns a late initial selection %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const selectionStarted = createDeferred<void>();
+    const delayedSelection = createDeferred<TestSelection | undefined>();
+    const secondSend = jest.fn(async (request: TransportRequest) => ({
+      events: successfulEvents(request),
+    }));
+    const secondSelection = createTestSelection('second', secondSend);
+    const select = jest
+      .fn()
+      .mockImplementationOnce(() => {
+        selectionStarted.resolve();
+        return delayedSelection.promise;
+      })
+      .mockResolvedValueOnce(secondSelection);
+    mockResolverSelect(select);
     const store = createTestStore(
       new Map<SelectorKey, unknown>([
         [
           selectRawStreamingMessage,
-          {
-            role: 'assistant',
-            content: 'Fallback succeeded',
-            toolCallIds: [],
-          },
+          { role: 'assistant', content: 'Second', toolCallIds: [] },
         ],
       ]),
     );
     const teardown = generateMessage(store);
 
+    const firstGeneration = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    );
+    await selectionStarted.promise;
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
     );
+    const actionsBeforeSettlement = [...store.actions];
+    if (settlement === 'undefined') {
+      delayedSelection.resolve(undefined);
+    } else {
+      delayedSelection.reject(new Error('late selection failure'));
+    }
+    await expect(firstGeneration).resolves.toBeUndefined();
 
-    expect(select).toHaveBeenCalledTimes(2);
-    expect(skipFromError).toHaveBeenCalledWith(
-      unsupportedSelection.spec,
-      expect.objectContaining({ code }),
-    );
-    expect(unsupportedSend).toHaveBeenCalledTimes(1);
-    expect(replacementSend).toHaveBeenCalledTimes(1);
-    expect(unsupportedSend.mock.calls[0]?.[0]).toMatchObject({
-      attempt: 1,
-      maxAttempts: 1,
-      params: { model: 'unsupported' },
-    });
-    expect(replacementSend.mock.calls[0]?.[0]).toMatchObject({
-      attempt: 1,
-      maxAttempts: 1,
-      params: { model: 'replacement' },
-    });
+    expect(store.actions).toEqual(actionsBeforeSettlement);
+    expect(secondSend).toHaveBeenCalledTimes(1);
     expect(
-      store.actions.filter(
-        (action) => action.type === apiActions.generateMessageSuccess.type,
-      ),
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
     ).toHaveLength(1);
 
     teardown?.();
   },
 );
 
-test('does not load an empty configured thread through a modern transport', async () => {
-  jest.clearAllMocks();
-  const send = jest.fn();
-  const modernSelection = createTestSelection('modern', send, false);
-  const { select, skipFromError } = mockSelectionSequence([
-    modernSelection,
-    undefined,
-  ]);
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectApiMessages, []],
-      [selectShouldGenerateMessage, false],
-      [selectThreadId, 'configured-thread'],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(internalActions.sizzle());
-
-  expect(select).toHaveBeenCalledTimes(2);
-  expect(skipFromError).toHaveBeenCalledWith(
-    modernSelection.spec,
-    expect.objectContaining({
-      name: 'TransportError',
-      code: 'FEATURE_UNSUPPORTED',
-      retryable: false,
-      message: expect.stringMatching(/legacy thread load/i),
-    }),
-  );
-  expect(send).not.toHaveBeenCalled();
-
-  teardown?.();
-});
-
-test('skips a modern transport and loads an empty thread with the next legacy transport', async () => {
-  jest.clearAllMocks();
-  const modernSend = jest.fn();
-  const legacySend = jest.fn<
-    Promise<MockTransportResponse>,
-    [TransportRequest]
-  >(async () => ({
-    frames: (async function* () {
-      yield { type: 'thread-load-start' as const };
-      yield { type: 'thread-load-success' as const, thread: [] };
-    })(),
-  }));
-  const modernSelection = createTestSelection('modern', modernSend, false);
-  const legacySelection = createTestSelection('legacy', legacySend, true);
-  const { select, skipFromError } = mockSelectionSequence([
-    modernSelection,
-    legacySelection,
-  ]);
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectApiMessages, []],
-      [selectShouldGenerateMessage, false],
-      [selectThreadId, 'configured-thread'],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(internalActions.sizzle());
-
-  expect(select).toHaveBeenCalledTimes(2);
-  expect(skipFromError).toHaveBeenCalledTimes(1);
-  expect(modernSend).not.toHaveBeenCalled();
-  expect(legacySend).toHaveBeenCalledTimes(1);
-  expect(legacySend.mock.calls[0]?.[0]).toMatchObject({
-    attempt: 1,
-    params: { operation: 'load-thread', messages: [] },
-  });
-
-  teardown?.();
-});
-
-test('does not send an empty thread request to a modern fallback', async () => {
-  jest.clearAllMocks();
-  const legacySend = jest.fn<
-    Promise<MockTransportResponse>,
-    [TransportRequest]
-  >(async () => {
-    throw new TransportError('legacy transport unavailable', {
-      retryable: false,
-      code: 'FEATURE_UNSUPPORTED',
-    });
-  });
-  const modernSend = jest.fn(async (request: TransportRequest) => {
-    const identity = getInputIdentity(request);
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
-  const legacySelection = createTestSelection('legacy', legacySend, true);
-  const modernSelection = createTestSelection('modern', modernSend, false);
-  const { select, skipFromError } = mockSelectionSequence([
-    legacySelection,
-    modernSelection,
-    undefined,
-  ]);
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectApiMessages, []],
-      [selectShouldGenerateMessage, false],
-      [selectThreadId, 'configured-thread'],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(internalActions.sizzle());
-
-  expect(select).toHaveBeenCalledTimes(3);
-  expect(skipFromError).toHaveBeenNthCalledWith(
-    1,
-    legacySelection.spec,
-    expect.objectContaining({ code: 'FEATURE_UNSUPPORTED' }),
-  );
-  expect(skipFromError).toHaveBeenNthCalledWith(
-    2,
-    modernSelection.spec,
-    expect.objectContaining({
-      code: 'FEATURE_UNSUPPORTED',
-      retryable: false,
-    }),
-  );
-  expect(legacySend).toHaveBeenCalledTimes(1);
-  expect(legacySend.mock.calls[0]?.[0]).toMatchObject({ attempt: 1 });
-  expect(modernSend).not.toHaveBeenCalled();
-
-  teardown?.();
-});
-
-test.each([undefined, true])(
-  'loads an empty configured thread when legacy capability is %s',
-  async (supportsLegacyThreadLoading) => {
+test.each(['undefined', 'rejection'] as const)(
+  'explicit stop owns a late initial selection %s',
+  async (settlement) => {
     jest.clearAllMocks();
-    const dispose = jest.fn();
-    const { send } = makeSelection(
-      async () => ({
-        frames: (async function* () {
-          yield { type: 'thread-load-start' as const };
-          yield { type: 'thread-load-success' as const, thread: [] };
-        })(),
-        dispose,
-      }),
-      supportsLegacyThreadLoading === undefined
-        ? {}
-        : { supportsLegacyThreadLoading },
-    );
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([
-        [selectApiMessages, []],
-        [selectShouldGenerateMessage, false],
-        [selectThreadId, 'configured-thread'],
-      ]),
-    );
+    const selectionStarted = createDeferred<void>();
+    const delayedSelection = createDeferred<TestSelection | undefined>();
+    const select = jest.fn(() => {
+      selectionStarted.resolve();
+      return delayedSelection.promise;
+    });
+    mockResolverSelect(select);
+    const store = createTestStore();
     const teardown = generateMessage(store);
 
-    await store.trigger(internalActions.sizzle());
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await selectionStarted.promise;
+    await store.trigger(devActions.stopMessageGeneration(true));
+    if (settlement === 'undefined') {
+      delayedSelection.resolve(undefined);
+    } else {
+      delayedSelection.reject(new Error('late selection failure'));
+    }
+    await expect(generation).resolves.toBeUndefined();
 
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(send.mock.calls[0]?.[0].params).toMatchObject({
-      operation: 'load-thread',
-      messages: [],
-      threadId: 'configured-thread',
-    });
-    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(store.actions).toHaveLength(0);
 
     teardown?.();
   },
 );
 
-test('reuses a generated thread across retries and tool continuation', async () => {
-  jest.clearAllMocks();
-  let sendCount = 0;
-  const { send } = makeSelection(async (request) => {
-    sendCount++;
-    if (sendCount === 1) {
-      throw new TransportError('retry once', { retryable: true });
+test.each(['undefined', 'rejection'] as const)(
+  'effect teardown owns a late initial selection %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const selectionStarted = createDeferred<void>();
+    const delayedSelection = createDeferred<TestSelection | undefined>();
+    const select = jest.fn(() => {
+      selectionStarted.resolve();
+      return delayedSelection.promise;
+    });
+    mockResolverSelect(select);
+    const store = createTestStore();
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await selectionStarted.promise;
+    teardown?.();
+    if (settlement === 'undefined') {
+      delayedSelection.resolve(undefined);
+    } else {
+      delayedSelection.reject(new Error('late selection failure'));
     }
+    await expect(generation).resolves.toBeUndefined();
 
-    const identity = getInputIdentity(request);
+    expect(store.actions).toHaveLength(0);
+  },
+);
 
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
+test('active initial selection rejection dispatches the selection error', async () => {
+  jest.clearAllMocks();
+  const selectionError = new Error('selection failed');
+  const select = jest.fn().mockRejectedValue(selectionError);
+  mockResolverSelect(select);
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([apiActions.generateMessageError(selectionError)]);
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(0);
+
+  teardown?.();
+});
+
+test('first user message uses the configured thread ID', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
+      [selectThreadId, 'configured-thread'],
       [
         selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Done',
-          toolCallIds: [],
-        },
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
       ],
     ]),
   );
@@ -1042,78 +651,476 @@ test('reuses a generated thread across retries and tool continuation', async () 
   await store.trigger(
     devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
-  await store.trigger(
-    internalActions.runToolCallsSuccess({ toolMessages: [] }),
-  );
 
-  const requests = send.mock.calls.map(([request]) => request);
-  expect(requests).toHaveLength(3);
-  expect(new Set(requests.map((request) => request.input?.threadId)).size).toBe(
-    1,
-  );
-  expect(new Set(requests.map((request) => request.input?.runId)).size).toBe(3);
-  expect(new Set(requests.map((request) => request.requestId)).size).toBe(3);
-  expect(
-    requests.every((request) => request.input?.runId === request.requestId),
-  ).toBe(true);
+  expect(send.mock.calls[0]?.[0].input?.threadId).toBe('configured-thread');
 
   teardown?.();
 });
 
-test('sends full modern input while preserving legacy completion params', async () => {
+test.each([
+  {
+    label: 'configured identity',
+    configuredThreadId: 'thread-a',
+    updateThreadId: 'thread-a',
+  },
+  {
+    label: 'unconfigured identity',
+    configuredThreadId: undefined,
+    updateThreadId: undefined,
+  },
+] as const)(
+  'immediate same $label update preserves the pre-snapshot generation',
+  async ({ configuredThreadId, updateThreadId }) => {
+    jest.clearAllMocks();
+    const { send } = makeSelection(async (request) => ({
+      events: successfulEvents(request),
+    }));
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectThreadId, configuredThreadId],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    store.setSelector(selectThreadId, updateThreadId);
+    await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
+    await generation;
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(
+      getActionsOfType(store.actions, generationSilentlyRetiredType),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
+
+    teardown?.();
+  },
+);
+
+test.each([
+  {
+    label: 'configured identity',
+    configuredThreadId: 'thread-a',
+    updateThreadId: 'thread-b',
+  },
+  {
+    label: 'unconfigured identity',
+    configuredThreadId: undefined,
+    updateThreadId: 'thread-b',
+  },
+] as const)(
+  'immediate changed $label update retires the pre-snapshot generation',
+  async ({ configuredThreadId, updateThreadId }) => {
+    jest.clearAllMocks();
+    const { send } = makeSelection(async (request) => ({
+      events: successfulEvents(request),
+    }));
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([[selectThreadId, configuredThreadId]]),
+    );
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    store.setSelector(selectThreadId, updateThreadId);
+    await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
+    await generation;
+
+    expect(send).not.toHaveBeenCalled();
+    expect(
+      getActionsOfType(store.actions, generationSilentlyRetiredType),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(0);
+
+    teardown?.();
+  },
+);
+
+test.each([
+  { label: 'replacement', nextThreadId: 'thread-b' },
+  { label: 'explicit clearing', nextThreadId: undefined },
+  { label: 'empty replacement', nextThreadId: '' },
+] as const)(
+  'thread identity $label retires a run awaiting RUN_STARTED',
+  async ({ nextThreadId }) => {
+    jest.clearAllMocks();
+    const firstIterationStarted = createDeferred<void>();
+    const releaseLateStart = createDeferred<void>();
+    const firstIteratorReturn = jest.fn(async () => ({
+      done: true as const,
+      value: undefined,
+    }));
+    const firstDispose = jest.fn();
+    let firstRequest: TransportRequest | undefined;
+    let sendCount = 0;
+    const { send } = makeSelection(async (request) => {
+      sendCount++;
+      if (sendCount === 1) {
+        firstRequest = request;
+        let index = 0;
+        return {
+          events: {
+            [Symbol.asyncIterator]() {
+              return {
+                async next() {
+                  index++;
+                  if (index === 1) {
+                    firstIterationStarted.resolve();
+                    await releaseLateStart.promise;
+                    return {
+                      done: false as const,
+                      value: {
+                        type: EventType.RUN_STARTED,
+                        ...getInputIdentity(request),
+                      } as AGUIEvent,
+                    };
+                  }
+
+                  return {
+                    done: false as const,
+                    value: {
+                      type: EventType.RUN_FINISHED,
+                      ...getInputIdentity(request),
+                    } as AGUIEvent,
+                  };
+                },
+                return: firstIteratorReturn,
+              };
+            },
+          },
+          dispose: firstDispose,
+        };
+      }
+
+      return { events: successfulEvents(request) };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectRetries, 2],
+        [selectThreadId, 'thread-a'],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const firstGeneration = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    );
+    await firstIterationStarted.promise;
+    store.setSelector(selectThreadId, nextThreadId);
+    await store.trigger(devActions.updateOptions({ threadId: nextThreadId }));
+    await store.trigger(devActions.updateOptions({ threadId: nextThreadId }));
+    const abortedAfterUpdate = firstRequest?.signal.aborted;
+    releaseLateStart.resolve();
+    await firstGeneration;
+    const actionsAfterRetirement = [...store.actions];
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+    );
+
+    const secondRequest = send.mock.calls[1]?.[0] as
+      TransportRequest | undefined;
+    expect(abortedAfterUpdate).toBe(true);
+    expect(firstIteratorReturn).toHaveBeenCalledTimes(1);
+    expect(firstDispose).toHaveBeenCalledTimes(1);
+    expect(
+      getActionsOfType(actionsAfterRetirement, generationSilentlyRetiredType),
+    ).toHaveLength(1);
+    expect(getDispatchedEvents(actionsAfterRetirement)).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.generateMessageSuccess.type,
+      ),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.generateMessageError.type,
+      ),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.generateMessageExhaustedRetries.type,
+      ),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        actionsAfterRetirement,
+        apiActions.assistantTurnFinalized.type,
+      ),
+    ).toHaveLength(0);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(
+      getDispatchedEvents(store.actions).filter(
+        (event) => event.type === EventType.RUN_FINISHED,
+      ),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
+    expect(secondRequest?.input?.threadId).toBeDefined();
+    if (nextThreadId === undefined) {
+      expect(secondRequest?.input?.threadId).not.toBe(
+        firstRequest?.input?.threadId,
+      );
+    } else {
+      expect(secondRequest?.input?.threadId).toBe(nextThreadId);
+    }
+
+    teardown?.();
+  },
+);
+
+test.each([
+  { label: 'configured', configuredThreadId: 'thread-a' },
+  { label: 'generated', configuredThreadId: undefined },
+] as const)(
+  'same $label thread identity update preserves a blocked generation',
+  async ({ configuredThreadId }) => {
+    jest.clearAllMocks();
+    const iterationBlocked = createDeferred<void>();
+    const releaseFinish = createDeferred<void>();
+    let request: TransportRequest | undefined;
+    makeSelection(async (sentRequest) => {
+      request = sentRequest;
+      const identity = getInputIdentity(sentRequest);
+      return {
+        events: (async function* () {
+          yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+          iterationBlocked.resolve();
+          await releaseFinish.promise;
+          yield { type: EventType.RUN_FINISHED, ...identity } as AGUIEvent;
+        })(),
+      };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectThreadId, configuredThreadId],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await iterationBlocked.promise;
+    const effectiveThreadId = request?.input?.threadId;
+    store.setSelector(selectThreadId, effectiveThreadId);
+    store.setSelector(selectSystem, 'Updated system prompt');
+    await store.trigger(
+      devActions.updateOptions({
+        threadId: effectiveThreadId,
+        system: 'Updated system prompt',
+      }),
+    );
+    const abortedAfterUpdate = request?.signal.aborted;
+    releaseFinish.resolve();
+    await generation;
+
+    expect(abortedAfterUpdate).toBe(false);
+    expect(
+      getActionsOfType(store.actions, generationSilentlyRetiredType),
+    ).toHaveLength(0);
+    expect(
+      getDispatchedEvents(store.actions).filter(
+        (event) => event.type === EventType.RUN_FINISHED,
+      ),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
+
+    teardown?.();
+  },
+);
+
+test('thread identity synchronization before a run does not retire the next run', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectThreadId, undefined],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(devActions.updateOptions({ threadId: undefined }));
+  await store.trigger(devActions.updateOptions({ threadId: undefined }));
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    getActionsOfType(store.actions, generationSilentlyRetiredType),
+  ).toHaveLength(0);
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_FINISHED,
+    ),
+  ).toHaveLength(1);
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(1);
+
+  teardown?.();
+});
+
+test('unconfigured run reuses one generated thread ID across retries', async () => {
+  jest.clearAllMocks();
+  const firstDispose = jest.fn();
+  const secondDispose = jest.fn();
+  let attempt = 0;
+  const { send } = makeSelection(async (request) => {
+    attempt++;
+    if (attempt === 1) {
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => ({
+                done: true as const,
+                value: undefined,
+              }),
+            };
+          },
+        },
+        dispose: firstDispose,
+      };
+    }
+
+    return {
+      events: successfulEvents(request),
+      dispose: secondDispose,
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 1],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  const requests = send.mock.calls.map(([request]) => request);
+  expect(requests).toHaveLength(2);
+  expect(requests[0]?.input?.threadId).toBe(requests[1]?.input?.threadId);
+  expect(requests[0]?.input?.runId).not.toBe(requests[1]?.input?.runId);
+  expect(firstDispose).toHaveBeenCalledTimes(1);
+  expect(secondDispose).toHaveBeenCalledTimes(1);
+
+  teardown?.();
+});
+
+test('validated start then tool continuation reuses the same thread ID', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  const acceptedThreadId = send.mock.calls[0]?.[0].input?.threadId;
+  store.setSelector(selectThreadId, acceptedThreadId);
+  await store.trigger(
+    internalActions.toolTurnSettled({
+      toolCalls: [],
+      toolMessages: [],
+      continuation: 'continue',
+    }),
+  );
+  await store.trigger(internalActions.sizzle());
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(send.mock.calls[1]?.[0].input?.threadId).toBe(acceptedThreadId);
+
+  teardown?.();
+});
+
+test('sends one RunAgentInput and requests only tools, structured, and ui', async () => {
   jest.clearAllMocks();
   const responseSchema = s.object('answer', {
     answer: s.string('answer text'),
   });
-  const jsonSchema = s.toJsonSchema(responseSchema);
-  const messages: Chat.Api.Message[] = [
-    { role: 'user', content: 'First question' },
-    { role: 'assistant', content: 'First answer' },
-    { role: 'user', content: 'Follow-up question' },
-  ];
-  const internalTool: Chat.Internal.Tool = {
+  const tool: Chat.Internal.Tool = {
     name: 'search',
     description: 'Search records',
     schema: s.object('search input', { query: s.string('query') }),
     handler: async () => undefined,
   };
-  const modernTool = Chat.helpers.toApiToolsFromInternal(
-    [internalTool],
-    false,
-    responseSchema,
-  )[0];
-  const legacyTools = Chat.helpers.toApiToolsFromInternal(
-    [internalTool],
-    true,
-    responseSchema,
-  );
-  const { send } = makeSelection(async (request) => {
-    const identity = getInputIdentity(request);
-
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
+  const dispose = jest.fn();
+  const { select, send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+    dispose,
+  }));
+  const messages: Chat.Api.Message[] = [
+    { role: 'user', content: 'First question' },
+    { role: 'assistant', content: 'First answer' },
+    { role: 'user', content: 'Follow-up question' },
+  ];
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
       [selectApiMessages, messages],
-      [selectApiTools, legacyTools],
-      [selectTools, [internalTool]],
-      [selectToolEntities, { search: internalTool }],
+      [selectTools, [tool]],
+      [selectToolEntities, { search: tool }],
       [selectResponseSchema, responseSchema],
-      [selectStructuredOutput, { mode: 'tool' }],
       [selectThreadId, 'configured-thread'],
       [selectUiRequested, true],
       [
         selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Second answer',
-          toolCallIds: [],
-        },
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
       ],
     ]),
   );
@@ -1126,127 +1133,190 @@ test('sends full modern input while preserving legacy completion params', async 
   );
 
   const request = send.mock.calls[0]?.[0];
-  expect(request.params).toEqual({
-    operation: 'generate',
-    model: 'selected-model',
-    system: 'You are a test bot',
-    messages: [{ role: 'user', content: 'Follow-up question' }],
-    tools: legacyTools,
-    toolChoice: 'required',
-    responseFormat: undefined,
-    responseFormatMode: undefined,
-    threadId: 'configured-thread',
+  expect(select).toHaveBeenCalledWith({
+    tools: true,
+    structured: true,
+    ui: true,
   });
-  expect(request.input).toEqual({
+  expect(Object.keys(request).sort()).toEqual(
+    ['attempt', 'input', 'maxAttempts', 'requestId', 'signal'].sort(),
+  );
+  expect(request.input).toMatchObject({
     threadId: 'configured-thread',
     runId: request.requestId,
-    messages: [
-      {
-        id: 'configured-thread:system',
-        role: 'system',
-        content: 'You are a test bot',
-      },
-      {
-        id: 'configured-thread:message:0',
-        role: 'user',
-        content: 'First question',
-      },
-      {
-        id: 'configured-thread:message:1',
-        role: 'assistant',
-        content: 'First answer',
-      },
-      {
-        id: 'configured-thread:message:2',
-        role: 'user',
-        content: 'Follow-up question',
-      },
-    ],
-    tools: [
-      {
-        name: modernTool?.name,
-        description: modernTool?.description,
-        parameters: modernTool?.parameters,
-      },
-    ],
-    context: [],
-    state: {},
-    forwardedProps: {},
-    hashbrown: { responseSchema: jsonSchema, ui: true },
+    hashbrown: {
+      responseSchema: s.toJsonSchema(responseSchema),
+      ui: true,
+    },
   });
-  expect(request.input).not.toHaveProperty('model');
-  expect(request.input).not.toHaveProperty('provider');
-  expect(request.input).not.toHaveProperty('emulateStructuredOutput');
-  expect(
-    request.input?.tools.map((tool: { name: string }) => tool.name),
-  ).not.toContain('output');
-  expect(
-    store.actions.find(
-      (action) => action.type === apiActions.generateMessageStart.type,
-    )?.payload,
-  ).toEqual({
-    responseSchema,
-    emulateStructuredOutput: false,
-    toolsByName: { search: internalTool },
-  });
+  expect(request.input.messages).toHaveLength(4);
+  expect(request.input.tools).toEqual([
+    expect.objectContaining({ name: 'search' }),
+  ]);
+  expect(dispose).toHaveBeenCalledTimes(1);
 
   teardown?.();
 });
 
-test('consumes direct AG-UI events without invoking the legacy stream path', async () => {
-  jest.clearAllMocks();
-  let serverEvents: AGUIEvent[] = [];
-  const iteratorReturn = jest.fn(async () => ({
-    done: true as const,
-    value: undefined,
-  }));
-  const dispose = jest.fn();
-  const { send } = makeSelection(async (request) => {
-    const identity = getInputIdentity(request);
-    serverEvents = [
-      { type: EventType.RUN_STARTED, ...identity },
-      {
-        type: EventType.TEXT_MESSAGE_START,
-        messageId: 'server-message',
-        role: 'assistant',
+test.each(['FEATURE_UNSUPPORTED', 'PLATFORM_UNSUPPORTED'] as const)(
+  'falls back after %s without consuming a retry and preserves thread identity',
+  async (code) => {
+    jest.clearAllMocks();
+    const firstDispose = jest.fn();
+    const secondDispose = jest.fn();
+    const unsupportedSend = jest.fn<
+      Promise<MockTransportResponse>,
+      [TransportRequest]
+    >(async () => ({
+      events: {
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              throw new TransportError('unsupported transport', {
+                retryable: false,
+                code,
+              });
+            },
+          };
+        },
       },
-      {
-        type: EventType.TEXT_MESSAGE_CONTENT,
-        messageId: 'server-message',
-        delta: 'Hello',
-      },
-      {
-        type: EventType.TEXT_MESSAGE_END,
-        messageId: 'server-message',
-      },
-      {
-        type: EventType.CUSTOM,
-        name: 'server-metadata',
-        value: { source: 'server' },
-      },
-      { type: EventType.RUN_FINISHED, ...identity },
-    ];
-    const events = {
-      [Symbol.asyncIterator]() {
-        const iterator = serverEvents[Symbol.iterator]();
-        return {
-          next: async () => iterator.next(),
-          return: iteratorReturn,
-        };
-      },
-    };
+      dispose: firstDispose,
+    }));
+    const replacementSend = jest.fn(async (request: TransportRequest) => ({
+      events: successfulEvents(request),
+      dispose: secondDispose,
+    }));
+    const firstSelection = createTestSelection('unsupported', unsupportedSend);
+    const secondSelection = createTestSelection('replacement', replacementSend);
+    const { select, skipFromError } = mockSelectionSequence([
+      firstSelection,
+      secondSelection,
+    ]);
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
 
-    return { events, dispose };
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+
+    const firstRequest = unsupportedSend.mock.calls[0]?.[0];
+    const secondRequest = replacementSend.mock.calls[0]?.[0];
+    expect(select).toHaveBeenCalledTimes(2);
+    expect(skipFromError).toHaveBeenCalledWith(
+      firstSelection.spec,
+      expect.objectContaining({ code }),
+    );
+    expect(firstRequest?.attempt).toBe(1);
+    expect(secondRequest?.attempt).toBe(1);
+    expect(firstRequest?.input?.threadId).toBe(secondRequest?.input?.threadId);
+    expect(firstDispose).toHaveBeenCalledTimes(1);
+    expect(secondDispose).toHaveBeenCalledTimes(1);
+
+    teardown?.();
+  },
+);
+
+test.each(['undefined', 'rejection'] as const)(
+  'explicit stop owns a late fallback selection %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const fallbackStarted = createDeferred<void>();
+    const delayedFallback = createDeferred<TestSelection | undefined>();
+    const unsupportedError = new TransportError('unsupported transport', {
+      retryable: false,
+      code: 'FEATURE_UNSUPPORTED',
+    });
+    const unsupportedSend = jest.fn().mockRejectedValue(unsupportedError);
+    const firstSelection = createTestSelection('unsupported', unsupportedSend);
+    const select = jest
+      .fn()
+      .mockResolvedValueOnce(firstSelection)
+      .mockImplementationOnce(() => {
+        fallbackStarted.resolve();
+        return delayedFallback.promise;
+      });
+    const { skipFromError } = mockResolverSelect(select);
+    const store = createTestStore();
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await fallbackStarted.promise;
+    await store.trigger(devActions.stopMessageGeneration(true));
+    const actionsBeforeSettlement = [...store.actions];
+    if (settlement === 'undefined') {
+      delayedFallback.resolve(undefined);
+    } else {
+      delayedFallback.reject(new Error('late fallback failure'));
+    }
+    await expect(generation).resolves.toBeUndefined();
+
+    expect(skipFromError).toHaveBeenCalledWith(
+      firstSelection.spec,
+      unsupportedError,
+    );
+    expect(store.actions).toEqual(actionsBeforeSettlement);
+
+    teardown?.();
+  },
+);
+
+test('active fallback selection rejection dispatches the selection error', async () => {
+  jest.clearAllMocks();
+  const unsupportedError = new TransportError('unsupported transport', {
+    retryable: false,
+    code: 'FEATURE_UNSUPPORTED',
+  });
+  const fallbackError = new Error('fallback selection failed');
+  const unsupportedSend = jest.fn().mockRejectedValue(unsupportedError);
+  const firstSelection = createTestSelection('unsupported', unsupportedSend);
+  const select = jest
+    .fn()
+    .mockResolvedValueOnce(firstSelection)
+    .mockRejectedValueOnce(fallbackError);
+  mockResolverSelect(select);
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(unsupportedError),
+    apiActions.generateMessageError(fallbackError),
+  ]);
+
+  teardown?.();
+});
+
+test('generic send rejection retries with exact attempt progression', async () => {
+  jest.clearAllMocks();
+  const requests: TransportRequest[] = [];
+  const { send } = makeSelection(async (request) => {
+    requests.push(request);
+    if (requests.length < 3) {
+      throw new Error(`temporary failure ${requests.length}`);
+    }
+
+    return { events: successfulEvents(request) };
   });
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
+      [selectRetries, 2],
       [
         selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Hello',
-          toolCallIds: [],
-        },
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
       ],
     ]),
   );
@@ -1256,45 +1326,255 @@ test('consumes direct AG-UI events without invoking the legacy stream path', asy
     devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
 
-  expect(send).toHaveBeenCalledTimes(1);
-  expect(decodeFramesMock).not.toHaveBeenCalled();
-  expect(framesToLengthPrefixedStreamMock).not.toHaveBeenCalled();
-  expect(createCompletionChunkEventAdapterMock).not.toHaveBeenCalled();
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    ...serverEvents.map(() => apiActions.generateMessageEvent.type),
-    apiActions.generateMessageSuccess.type,
-    apiActions.assistantTurnFinalized.type,
-  ]);
+  expect(send).toHaveBeenCalledTimes(3);
+  expect(requests.map((request) => request.attempt)).toEqual([1, 2, 3]);
+  expect(requests.map((request) => request.maxAttempts)).toEqual([3, 3, 3]);
   expect(
-    store.actions
-      .filter((action) => action.type === apiActions.generateMessageEvent.type)
-      .map((action) => action.payload),
-  ).toEqual(serverEvents);
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toHaveLength(2);
   expect(
-    store.actions.find(
-      (action) => action.type === apiActions.generateMessageSuccess.type,
-    )?.payload,
-  ).toEqual({
-    message: {
-      role: 'assistant',
-      content: 'Hello',
-      toolCallIds: [],
-    },
-    toolCalls: [],
-  });
-  expect(iteratorReturn).toHaveBeenCalledTimes(1);
-  expect(dispose).toHaveBeenCalledTimes(1);
+    getActionsOfType(
+      store.actions,
+      apiActions.generateMessageExhaustedRetries.type,
+    ),
+  ).toHaveLength(0);
 
   teardown?.();
 });
 
-test('retries when direct iterator cleanup rejects before message commit', async () => {
+test('exhausted generic send retries dispatches the exhausted action', async () => {
   jest.clearAllMocks();
-  const cleanupError = new Error('iterator cleanup failed');
-  const iteratorReturn = jest.fn(async () => {
-    throw cleanupError;
+  const error = new Error('still broken');
+  const { send } = makeSelection(async () => {
+    throw error;
   });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, 1]]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(send.mock.calls.map(([request]) => request.attempt)).toEqual([1, 2]);
+  expect(send.mock.calls.map(([request]) => request.maxAttempts)).toEqual([
+    2, 2,
+  ]);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(error),
+    apiActions.generateMessageError(error),
+  ]);
+  expect(
+    getActionsOfType(
+      store.actions,
+      apiActions.generateMessageExhaustedRetries.type,
+    ),
+  ).toEqual([apiActions.generateMessageExhaustedRetries()]);
+
+  teardown?.();
+});
+
+test.each([
+  {
+    label: 'RUN_ERROR',
+    createEvent: () => ({
+      type: EventType.RUN_ERROR,
+      message: 'server rejected request',
+    }),
+  },
+  {
+    label: 'RUN_FINISHED',
+    createEvent: (identity: { threadId: string; runId: string }) => ({
+      type: EventType.RUN_FINISHED,
+      ...identity,
+    }),
+  },
+  {
+    label: 'CUSTOM',
+    createEvent: () => ({
+      type: EventType.CUSTOM,
+      name: 'early-event',
+      value: null,
+    }),
+  },
+])(
+  'treats $label before RUN_STARTED as a retryable protocol error',
+  async ({ createEvent }) => {
+    jest.clearAllMocks();
+    let attempt = 0;
+    let earlyEvent: AGUIEvent | undefined;
+    const { send } = makeSelection(async (request) => {
+      attempt++;
+      const identity = getInputIdentity(request);
+      if (attempt === 1) {
+        earlyEvent = createEvent(identity) as AGUIEvent;
+        return {
+          events: (async function* () {
+            yield earlyEvent as AGUIEvent;
+          })(),
+        };
+      }
+
+      return { events: successfulEvents(request) };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectRetries, 1],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Recovered', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    );
+
+    const errors = getActionsOfType(
+      store.actions,
+      apiActions.generateMessageError.type,
+    );
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(getDispatchedEvents(store.actions)).not.toContain(earlyEvent);
+    expect(errors[0]?.payload).toMatchObject({
+      name: 'TransportError',
+      code: 'PROTOCOL_ERROR',
+      retryable: true,
+    });
+
+    teardown?.();
+  },
+);
+
+test('rejects duplicate RUN_STARTED and synthesizes one terminal error', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield { type: EventType.RUN_STARTED, ...identity };
+      })(),
+    };
+  });
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  const events = getDispatchedEvents(store.actions);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    events.filter((event) => event.type === EventType.RUN_STARTED),
+  ).toHaveLength(1);
+  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual([
+    {
+      type: EventType.RUN_ERROR,
+      message: 'Received duplicate RUN_STARTED',
+    },
+  ]);
+
+  teardown?.();
+});
+
+test('rejects a mismatched RUN_STARTED without accepting the run', async () => {
+  jest.clearAllMocks();
+  let attempt = 0;
+  const { send } = makeSelection(async (request) => {
+    attempt++;
+    const identity = getInputIdentity(request);
+    if (attempt === 1) {
+      return {
+        events: (async function* () {
+          yield {
+            type: EventType.RUN_STARTED,
+            threadId: identity.threadId,
+            runId: `${identity.runId}:mismatch`,
+          };
+        })(),
+      };
+    }
+
+    return { events: successfulEvents(request) };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 1],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageStart.type),
+  ).toHaveLength(1);
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_ERROR,
+    ),
+  ).toHaveLength(0);
+
+  teardown?.();
+});
+
+test('rejects a mismatched RUN_FINISHED and synthesizes one terminal error', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield {
+          type: EventType.RUN_FINISHED,
+          threadId: `${identity.threadId}:mismatch`,
+          runId: identity.runId,
+        };
+      })(),
+    };
+  });
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_ERROR,
+    ),
+  ).toEqual([
+    {
+      type: EventType.RUN_ERROR,
+      message: 'RUN_FINISHED identity does not match the active run',
+    },
+  ]);
+
+  teardown?.();
+});
+
+test.each([
+  { label: 'before start', start: false },
+  { label: 'before terminal', start: true },
+])('treats EOF $label as retryable', async ({ start }) => {
+  jest.clearAllMocks();
   const firstDispose = jest.fn();
   const secondDispose = jest.fn();
   let attempt = 0;
@@ -1302,29 +1582,18 @@ test('retries when direct iterator cleanup rejects before message commit', async
     attempt++;
     const identity = getInputIdentity(request);
     if (attempt === 1) {
-      const serverEvents: AGUIEvent[] = [
-        { type: EventType.RUN_STARTED, ...identity },
-        { type: EventType.RUN_FINISHED, ...identity },
-      ];
       return {
-        events: {
-          [Symbol.asyncIterator]() {
-            const iterator = serverEvents[Symbol.iterator]();
-            return {
-              next: async () => iterator.next(),
-              return: iteratorReturn,
-            };
-          },
-        },
+        events: (async function* () {
+          if (start) {
+            yield { type: EventType.RUN_STARTED, ...identity };
+          }
+        })(),
         dispose: firstDispose,
       };
     }
 
     return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
+      events: successfulEvents(request),
       dispose: secondDispose,
     };
   });
@@ -1333,11 +1602,7 @@ test('retries when direct iterator cleanup rejects before message commit', async
       [selectRetries, 1],
       [
         selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
       ],
     ]),
   );
@@ -1347,564 +1612,630 @@ test('retries when direct iterator cleanup rejects before message commit', async
     devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
   );
 
-  const errorIndex = store.actions.findIndex(
-    (action) => action.type === apiActions.generateMessageError.type,
-  );
-  const successIndex = store.actions.findIndex(
-    (action) => action.type === apiActions.generateMessageSuccess.type,
+  const errors = getActionsOfType(
+    store.actions,
+    apiActions.generateMessageError.type,
   );
   expect(send).toHaveBeenCalledTimes(2);
-  expect(iteratorReturn).toHaveBeenCalledTimes(1);
+  expect(errors[0]?.payload).toMatchObject({ retryable: true });
   expect(firstDispose).toHaveBeenCalledTimes(1);
   expect(secondDispose).toHaveBeenCalledTimes(1);
   expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageError.type,
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_ERROR,
     ),
-  ).toEqual([apiActions.generateMessageError(cleanupError)]);
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageSuccess.type,
-    ),
-  ).toHaveLength(1);
-  expect(
-    store.actions.filter(
-      (action) =>
-        action.type === apiActions.generateMessageEvent.type &&
-        (action.payload as AGUIEvent).type === EventType.RUN_ERROR,
-    ),
-  ).toHaveLength(0);
-  expect(errorIndex).toBeLessThan(successIndex);
+  ).toHaveLength(start ? 1 : 0);
 
   teardown?.();
 });
 
-test('retries when direct response disposal rejects before message commit', async () => {
+test('iterable failure after an accepted start synthesizes exactly one RUN_ERROR', async () => {
   jest.clearAllMocks();
-  const disposeError = new Error('response disposal failed');
-  const firstDispose = jest.fn(async () => {
-    throw disposeError;
-  });
-  const secondDispose = jest.fn();
-  let attempt = 0;
-  const { send } = makeSelection(async (request) => {
-    attempt++;
+  const primaryError = new Error('event stream failed');
+  const dispose = jest.fn();
+  makeSelection(async (request) => {
     const identity = getInputIdentity(request);
     return {
       events: (async function* () {
         yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
+        throw primaryError;
       })(),
-      dispose: attempt === 1 ? firstDispose : secondDispose,
+      dispose,
     };
   });
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-  let thrown: unknown;
-
-  try {
-    await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
-    );
-  } catch (error) {
-    thrown = error;
-  }
-
-  const errorIndex = store.actions.findIndex(
-    (action) => action.type === apiActions.generateMessageError.type,
-  );
-  const successIndex = store.actions.findIndex(
-    (action) => action.type === apiActions.generateMessageSuccess.type,
-  );
-  expect(thrown).toBeUndefined();
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(firstDispose).toHaveBeenCalledTimes(1);
-  expect(secondDispose).toHaveBeenCalledTimes(1);
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageError.type,
-    ),
-  ).toEqual([apiActions.generateMessageError(disposeError)]);
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageSuccess.type,
-    ),
-  ).toHaveLength(1);
-  expect(
-    store.actions.filter(
-      (action) =>
-        action.type === apiActions.generateMessageEvent.type &&
-        (action.payload as AGUIEvent).type === EventType.RUN_ERROR,
-    ),
-  ).toHaveLength(0);
-  expect(errorIndex).toBeLessThan(successIndex);
-
-  teardown?.();
-});
-
-test('retries an early direct server RUN_ERROR without starting the failed attempt', async () => {
-  jest.clearAllMocks();
-  const serverError: AGUIEvent = {
-    type: EventType.RUN_ERROR,
-    message: 'server rejected request',
-  };
-  let attempt = 0;
-  const { send } = makeSelection(async (request) => {
-    attempt++;
-    if (attempt === 1) {
-      return {
-        events: (async function* () {
-          yield serverError;
-        })(),
-      };
-    }
-
-    const identity = getInputIdentity(request);
-
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
+  const store = createTestStore();
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
 
-  const dispatchedEvents = store.actions
-    .filter((action) => action.type === apiActions.generateMessageEvent.type)
-    .map((action) => action.payload);
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(dispatchedEvents.filter((event) => event === serverError)).toEqual([
-    serverError,
-  ]);
   expect(
-    dispatchedEvents.filter(
-      (event) => (event as AGUIEvent).type === EventType.RUN_ERROR,
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_ERROR,
     ),
-  ).toHaveLength(1);
+  ).toEqual([{ type: EventType.RUN_ERROR, message: primaryError.message }]);
   expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageStart.type,
-    ),
-  ).toHaveLength(1);
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageError.type,
-    ),
-  ).toEqual([apiActions.generateMessageError(new Error(serverError.message))]);
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([apiActions.generateMessageError(primaryError)]);
+  expect(dispose).toHaveBeenCalledTimes(1);
 
   teardown?.();
 });
 
-test('retries a direct server RUN_ERROR without dispatching it twice', async () => {
+test('server RUN_ERROR after start dispatches once without synthesis or retry', async () => {
   jest.clearAllMocks();
   const serverError: AGUIEvent = {
     type: EventType.RUN_ERROR,
     message: 'server failed',
   };
-  let attempt = 0;
-  const { send } = makeSelection(async (request) => {
-    attempt++;
-    const identity = getInputIdentity(request);
-    if (attempt === 1) {
-      return {
-        events: (async function* () {
-          yield { type: EventType.RUN_STARTED, ...identity };
-          yield serverError;
-          yield {
-            type: EventType.CUSTOM,
-            name: 'must-not-dispatch',
-            value: 'tail',
-          };
-        })(),
+  const { send } = makeSelection(async (request) => ({
+    events: (async function* () {
+      yield { type: EventType.RUN_STARTED, ...getInputIdentity(request) };
+      yield serverError;
+      yield {
+        type: EventType.CUSTOM,
+        name: 'late-event',
+        value: null,
       };
-    }
-
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
+    })(),
+  }));
   const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
-      ],
-    ]),
+    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
   );
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
 
-  const dispatchedEvents = store.actions
-    .filter((action) => action.type === apiActions.generateMessageEvent.type)
-    .map((action) => action.payload);
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(dispatchedEvents.filter((event) => event === serverError)).toEqual([
+  const events = getDispatchedEvents(store.actions);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual([
     serverError,
   ]);
-  expect(dispatchedEvents).not.toContainEqual(
-    expect.objectContaining({ name: 'must-not-dispatch' }),
+  expect(events).not.toContainEqual(
+    expect.objectContaining({ name: 'late-event' }),
   );
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageError.type,
-    ),
-  ).toHaveLength(1);
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageSuccess.type,
-    ),
-  ).toHaveLength(1);
 
   teardown?.();
 });
 
-test('treats duplicate direct RUN_STARTED events as a protocol error', async () => {
-  jest.clearAllMocks();
-  const { send } = makeSelection(async (request) => {
-    const identity = getInputIdentity(request);
+test.each(['resolution', 'rejection'] as const)(
+  'explicit stop owns a late send %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const sendStarted = createDeferred<void>();
+    const delayedSend = createDeferred<MockTransportResponse>();
+    const dispose = jest.fn();
+    const { send } = makeSelection(async () => {
+      sendStarted.resolve();
+      return delayedSend.promise;
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([[selectRetries, 2]]),
+    );
+    const teardown = generateMessage(store);
 
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
-  const store = createTestStore();
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    await sendStarted.promise;
+    const request = send.mock.calls[0]?.[0] as TransportRequest;
+    await store.trigger(devActions.stopMessageGeneration(true));
+    if (settlement === 'resolution') {
+      delayedSend.resolve({ events: successfulEvents(request), dispose });
+    } else {
+      delayedSend.reject(new Error('late send failure'));
+    }
+    await expect(generation).resolves.toBeUndefined();
+
+    expect(getDispatchedEvents(store.actions)).toHaveLength(0);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageError.type),
+    ).toHaveLength(0);
+    expect(dispose).toHaveBeenCalledTimes(settlement === 'resolution' ? 1 : 0);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toEqual([
+      apiActions.assistantTurnFinalized({
+        toolCalls: [],
+        continuation: 'stop',
+      }),
+    ]);
+
+    teardown?.();
+  },
+);
+
+test.each(['resolution', 'rejection'] as const)(
+  'supersession owns a late send %s',
+  async (settlement) => {
+    jest.clearAllMocks();
+    const firstSendStarted = createDeferred<void>();
+    const delayedFirstSend = createDeferred<MockTransportResponse>();
+    const firstDispose = jest.fn();
+    let sendCount = 0;
+    const { send } = makeSelection(async (request) => {
+      sendCount++;
+      if (sendCount === 1) {
+        firstSendStarted.resolve();
+        return delayedFirstSend.promise;
+      }
+
+      return { events: successfulEvents(request) };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Second', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const firstGeneration = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    );
+    await firstSendStarted.promise;
+    const firstRequest = send.mock.calls[0]?.[0] as TransportRequest;
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+    );
+    const actionsBeforeSettlement = [...store.actions];
+    if (settlement === 'resolution') {
+      delayedFirstSend.resolve({
+        events: successfulEvents(firstRequest),
+        dispose: firstDispose,
+      });
+    } else {
+      delayedFirstSend.reject(new Error('late send failure'));
+    }
+    await expect(firstGeneration).resolves.toBeUndefined();
+
+    expect(store.actions).toEqual(actionsBeforeSettlement);
+    expect(firstDispose).toHaveBeenCalledTimes(
+      settlement === 'resolution' ? 1 : 0,
+    );
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
+
+    teardown?.();
+  },
+);
+
+test('user stop before start has no terminal, no retry, and discards late events', async () => {
+  jest.clearAllMocks();
+  const waiting = createDeferred<void>();
+  const dispose = jest.fn();
+  const iteratorReturn = jest.fn(async () => ({
+    done: true as const,
+    value: undefined,
+  }));
+  const { send } = makeSelection(async (request) => ({
+    events: {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            waiting.resolve();
+            await waitForAbort(request.signal);
+            return {
+              done: false as const,
+              value: {
+                type: EventType.RUN_STARTED,
+                ...getInputIdentity(request),
+              } as AGUIEvent,
+            };
+          },
+          return: iteratorReturn,
+        };
+      },
+    },
+    dispose,
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
+  );
   const teardown = generateMessage(store);
 
-  await store.trigger(
+  const generation = store.trigger(
     devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
+  await waiting.promise;
+  await store.trigger(devActions.stopMessageGeneration(true));
+  await generation;
 
-  const dispatchedEvents = store.actions
-    .filter((action) => action.type === apiActions.generateMessageEvent.type)
-    .map((action) => action.payload);
-  const errorAction = store.actions.find(
-    (action) => action.type === apiActions.generateMessageError.type,
-  );
   expect(send).toHaveBeenCalledTimes(1);
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageStart.type,
-    ),
-  ).toHaveLength(1);
-  expect(
-    dispatchedEvents.filter(
-      (event) => (event as AGUIEvent).type === EventType.RUN_STARTED,
-    ),
-  ).toHaveLength(1);
-  expect(
-    dispatchedEvents.filter(
-      (event) => (event as AGUIEvent).type === EventType.RUN_ERROR,
-    ),
-  ).toHaveLength(1);
-  expect(errorAction?.payload).toMatchObject({
-    name: 'TransportError',
-    code: 'PROTOCOL_ERROR',
-    retryable: true,
-  });
+  expect(getDispatchedEvents(store.actions)).toHaveLength(0);
+  expect(iteratorReturn).toHaveBeenCalledTimes(1);
+  expect(dispose).toHaveBeenCalledTimes(1);
 
   teardown?.();
 });
 
-test('retries a mismatched direct RUN_STARTED without accepting the run', async () => {
+test('user stop while starting does not accept RUN_STARTED or add a terminal', async () => {
   jest.clearAllMocks();
-  let attempt = 0;
-  let mismatchedStart: AGUIEvent | undefined;
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
+  );
+  const dispatch = store.dispatch;
+  store.dispatch = (action) => {
+    dispatch(action);
+    if (action.type === apiActions.generateMessageStart.type) {
+      void store.trigger(devActions.stopMessageGeneration(true));
+    }
+  };
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(getDispatchedEvents(store.actions)).toHaveLength(0);
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toEqual([
+    apiActions.assistantTurnFinalized({
+      toolCalls: [],
+      continuation: 'stop',
+    }),
+  ]);
+
+  teardown?.();
+});
+
+test('user stop after start synthesizes one cancellation and finalizes once with stop', async () => {
+  jest.clearAllMocks();
+  const started = createDeferred<void>();
+  const dispose = jest.fn();
+  const iteratorReturn = jest.fn(async () => ({
+    done: true as const,
+    value: undefined,
+  }));
   const { send } = makeSelection(async (request) => {
-    attempt++;
-    const identity = getInputIdentity(request);
-    if (attempt === 1) {
-      mismatchedStart = {
-        type: EventType.RUN_STARTED,
-        threadId: identity.threadId,
-        runId: `${identity.runId}:mismatch`,
-      };
+    let index = 0;
+    return {
+      events: {
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              index++;
+              if (index === 1) {
+                started.resolve();
+                return {
+                  done: false as const,
+                  value: {
+                    type: EventType.RUN_STARTED,
+                    ...getInputIdentity(request),
+                  } as AGUIEvent,
+                };
+              }
+
+              if (index > 2) {
+                return { done: true as const, value: undefined };
+              }
+
+              await waitForAbort(request.signal);
+              return {
+                done: false as const,
+                value: {
+                  type: EventType.CUSTOM,
+                  name: 'late-event',
+                  value: null,
+                } as AGUIEvent,
+              };
+            },
+            return: iteratorReturn,
+          };
+        },
+      },
+      dispose,
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
+  );
+  const teardown = generateMessage(store);
+
+  const generation = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  await started.promise;
+  await waitForDispatchedEvent(store.actions, EventType.RUN_STARTED);
+  await store.trigger(devActions.stopMessageGeneration(true));
+  await generation;
+
+  const events = getDispatchedEvents(store.actions);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual([
+    { type: EventType.RUN_ERROR, message: 'Generation cancelled' },
+  ]);
+  expect(events).not.toContainEqual(
+    expect.objectContaining({ name: 'late-event' }),
+  );
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toEqual([
+    apiActions.assistantTurnFinalized({
+      toolCalls: [],
+      continuation: 'stop',
+    }),
+  ]);
+  expect(iteratorReturn).toHaveBeenCalledTimes(1);
+  expect(dispose).toHaveBeenCalledTimes(1);
+
+  teardown?.();
+});
+
+test('superseding input retires the old run and only the new run finishes', async () => {
+  jest.clearAllMocks();
+  const firstStarted = createDeferred<void>();
+  const releaseLateEvent = createDeferred<void>();
+  const firstIteratorReturn = jest.fn(async () => ({
+    done: true as const,
+    value: undefined,
+  }));
+  const firstDispose = jest.fn();
+  const secondDispose = jest.fn();
+  let firstSignal: AbortSignal | undefined;
+  let sendCount = 0;
+  const { send } = makeSelection(async (request) => {
+    sendCount++;
+    if (sendCount === 1) {
+      firstSignal = request.signal;
+      let index = 0;
       return {
-        events: (async function* () {
-          yield mismatchedStart as AGUIEvent;
-        })(),
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              async next() {
+                index++;
+                if (index === 1) {
+                  firstStarted.resolve();
+                  return {
+                    done: false as const,
+                    value: {
+                      type: EventType.RUN_STARTED,
+                      ...getInputIdentity(request),
+                    } as AGUIEvent,
+                  };
+                }
+
+                await releaseLateEvent.promise;
+                return {
+                  done: false as const,
+                  value: {
+                    type: EventType.RUN_FINISHED,
+                    ...getInputIdentity(request),
+                  } as AGUIEvent,
+                };
+              },
+              return: firstIteratorReturn,
+            };
+          },
+        },
+        dispose: firstDispose,
       };
     }
 
     return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
+      events: successfulEvents(request),
+      dispose: secondDispose,
     };
   });
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
       [
         selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
+        { role: 'assistant', content: 'Second', toolCallIds: [] },
       ],
     ]),
   );
   const teardown = generateMessage(store);
 
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+  const firstGeneration = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
   );
+  await firstStarted.promise;
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+  );
+  await Promise.resolve();
 
-  const dispatchedEvents = store.actions
-    .filter((action) => action.type === apiActions.generateMessageEvent.type)
-    .map((action) => action.payload);
+  const returnedBeforeRelease = firstIteratorReturn.mock.calls.length;
+  const disposedBeforeRelease = firstDispose.mock.calls.length;
+  releaseLateEvent.resolve();
+  await firstGeneration;
+
+  expect(firstSignal?.aborted).toBe(true);
+  expect(returnedBeforeRelease).toBe(1);
+  expect(disposedBeforeRelease).toBe(1);
+
   expect(send).toHaveBeenCalledTimes(2);
-  expect(dispatchedEvents).not.toContain(mismatchedStart);
+  expect(secondDispose).toHaveBeenCalledTimes(1);
   expect(
-    dispatchedEvents.filter(
-      (event) => (event as AGUIEvent).type === EventType.RUN_ERROR,
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(1);
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_FINISHED,
+    ),
+  ).toHaveLength(1);
+
+  teardown?.();
+});
+
+test('effect teardown retires the run without terminal or finalization', async () => {
+  jest.clearAllMocks();
+  const started = createDeferred<void>();
+  const releaseLateEvent = createDeferred<void>();
+  const iteratorReturn = jest.fn(async () => ({
+    done: true as const,
+    value: undefined,
+  }));
+  const dispose = jest.fn();
+  let requestSignal: AbortSignal | undefined;
+  makeSelection(async (request) => {
+    requestSignal = request.signal;
+    let index = 0;
+    return {
+      events: {
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              index++;
+              if (index === 1) {
+                started.resolve();
+                return {
+                  done: false as const,
+                  value: {
+                    type: EventType.RUN_STARTED,
+                    ...getInputIdentity(request),
+                  } as AGUIEvent,
+                };
+              }
+
+              await releaseLateEvent.promise;
+              return {
+                done: false as const,
+                value: {
+                  type: EventType.RUN_FINISHED,
+                  ...getInputIdentity(request),
+                } as AGUIEvent,
+              };
+            },
+            return: iteratorReturn,
+          };
+        },
+      },
+      dispose,
+    };
+  });
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  const generation = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  await started.promise;
+  teardown?.();
+  releaseLateEvent.resolve();
+  await generation;
+
+  expect(requestSignal?.aborted).toBe(true);
+  expect(iteratorReturn).toHaveBeenCalledTimes(1);
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) =>
+        event.type === EventType.RUN_FINISHED ||
+        event.type === EventType.RUN_ERROR,
     ),
   ).toHaveLength(0);
   expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageStart.type,
-    ),
-  ).toHaveLength(1);
-  expect(
-    store.actions.find(
-      (action) => action.type === apiActions.generateMessageError.type,
-    )?.payload,
-  ).toMatchObject({
-    name: 'TransportError',
-    code: 'PROTOCOL_ERROR',
-    retryable: true,
-  });
-
-  teardown?.();
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(0);
 });
 
-test('retries a mismatched direct RUN_FINISHED with one terminal error', async () => {
-  jest.clearAllMocks();
-  let attempt = 0;
-  let acceptedStart: AGUIEvent | undefined;
-  let mismatchedFinish: AGUIEvent | undefined;
-  const { send } = makeSelection(async (request) => {
-    attempt++;
-    const identity = getInputIdentity(request);
-    if (attempt === 1) {
-      acceptedStart = { type: EventType.RUN_STARTED, ...identity };
-      mismatchedFinish = {
-        type: EventType.RUN_FINISHED,
-        threadId: `${identity.threadId}:mismatch`,
-        runId: identity.runId,
-      };
+test.each(['iterator return', 'response disposal'] as const)(
+  '%s rejection after RUN_FINISHED preserves success',
+  async (failurePoint) => {
+    jest.clearAllMocks();
+    const cleanupError = new Error(`${failurePoint} failed`);
+    const iteratorReturn = jest.fn(async () => {
+      if (failurePoint === 'iterator return') {
+        throw cleanupError;
+      }
+      return { done: true as const, value: undefined };
+    });
+    const dispose = jest.fn(async () => {
+      if (failurePoint === 'response disposal') {
+        throw cleanupError;
+      }
+    });
+    const { send } = makeSelection(async (request) => {
+      const events = [
+        { type: EventType.RUN_STARTED, ...getInputIdentity(request) },
+        { type: EventType.RUN_FINISHED, ...getInputIdentity(request) },
+      ] as AGUIEvent[];
       return {
-        events: (async function* () {
-          yield acceptedStart as AGUIEvent;
-          yield mismatchedFinish as AGUIEvent;
-        })(),
+        events: {
+          [Symbol.asyncIterator]() {
+            const iterator = events[Symbol.iterator]();
+            return {
+              next: async () => iterator.next(),
+              return: iteratorReturn,
+            };
+          },
+        },
+        dispose,
       };
-    }
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectRetries, 1],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
 
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
 
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
-  );
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(iteratorReturn).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageError.type),
+    ).toHaveLength(0);
+    expect(
+      getDispatchedEvents(store.actions).filter(
+        (event) => event.type === EventType.RUN_ERROR,
+      ),
+    ).toHaveLength(0);
 
-  const dispatchedEvents = store.actions
-    .filter((action) => action.type === apiActions.generateMessageEvent.type)
-    .map((action) => action.payload);
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(dispatchedEvents).toContain(acceptedStart);
-  expect(dispatchedEvents).not.toContain(mismatchedFinish);
-  expect(
-    dispatchedEvents.filter(
-      (event) => (event as AGUIEvent).type === EventType.RUN_ERROR,
-    ),
-  ).toHaveLength(1);
-  expect(
-    store.actions.find(
-      (action) => action.type === apiActions.generateMessageError.type,
-    )?.payload,
-  ).toMatchObject({
-    name: 'TransportError',
-    code: 'PROTOCOL_ERROR',
-    retryable: true,
-  });
+    teardown?.();
+  },
+);
 
-  teardown?.();
-});
-
-test('retries premature direct EOF after start with one terminal error', async () => {
+test('cleanup rejections do not replace a protocol failure', async () => {
   jest.clearAllMocks();
-  let attempt = 0;
-  const { send } = makeSelection(async (request) => {
-    attempt++;
-    const identity = getInputIdentity(request);
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        if (attempt === 2) {
-          yield { type: EventType.RUN_FINISHED, ...identity };
-        }
-      })(),
-    };
+  const cleanupError = new Error('cleanup failed');
+  const iteratorReturn = jest.fn(async () => {
+    throw cleanupError;
   });
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  const runErrors = store.actions.filter(
-    (action) =>
-      action.type === apiActions.generateMessageEvent.type &&
-      (action.payload as AGUIEvent).type === EventType.RUN_ERROR,
-  );
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(runErrors).toHaveLength(1);
-  expect(runErrors[0]?.payload).toEqual({
-    type: EventType.RUN_ERROR,
-    message: 'Generation stream ended before RUN_FINISHED or RUN_ERROR',
+  const dispose = jest.fn(async () => {
+    throw cleanupError;
   });
-
-  teardown?.();
-});
-
-test('retries premature direct EOF before start without a terminal event', async () => {
-  jest.clearAllMocks();
-  let attempt = 0;
-  const { send } = makeSelection(async (request) => {
-    attempt++;
-    const identity = getInputIdentity(request);
-    return {
-      events: (async function* () {
-        if (attempt === 2) {
-          yield { type: EventType.RUN_STARTED, ...identity };
-          yield { type: EventType.RUN_FINISHED, ...identity };
-        }
-      })(),
-    };
-  });
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [selectRetries, 1],
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Recovered',
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  const runErrors = store.actions.filter(
-    (action) =>
-      action.type === apiActions.generateMessageEvent.type &&
-      (action.payload as AGUIEvent).type === EventType.RUN_ERROR,
-  );
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(runErrors).toHaveLength(0);
-  expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageError.type,
-    ),
-  ).toHaveLength(1);
-
-  teardown?.();
-});
-
-test('rejects direct RUN_FINISHED before RUN_STARTED as a protocol error', async () => {
-  jest.clearAllMocks();
   makeSelection(async (request) => {
-    const identity = getInputIdentity(request);
-
+    const events = [
+      { type: EventType.RUN_STARTED, ...getInputIdentity(request) },
+      { type: EventType.RUN_STARTED, ...getInputIdentity(request) },
+    ] as AGUIEvent[];
     return {
-      events: (async function* () {
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
+      events: {
+        [Symbol.asyncIterator]() {
+          const iterator = events[Symbol.iterator]();
+          return {
+            next: async () => iterator.next(),
+            return: iteratorReturn,
+          };
+        },
+      },
+      dispose,
     };
   });
   const store = createTestStore();
@@ -1915,36 +2246,199 @@ test('rejects direct RUN_FINISHED before RUN_STARTED as a protocol error', async
   );
 
   expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageEvent.type,
-    ),
-  ).toHaveLength(0);
-  expect(
-    store.actions.find(
-      (action) => action.type === apiActions.generateMessageError.type,
-    )?.payload,
+    getActionsOfType(store.actions, apiActions.generateMessageError.type)[0]
+      ?.payload,
   ).toMatchObject({
     name: 'TransportError',
     code: 'PROTOCOL_ERROR',
-    retryable: true,
+    message: 'Received duplicate RUN_STARTED',
   });
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_ERROR,
+    ),
+  ).toEqual([
+    { type: EventType.RUN_ERROR, message: 'Received duplicate RUN_STARTED' },
+  ]);
+  expect(iteratorReturn).toHaveBeenCalledTimes(1);
+  expect(dispose).toHaveBeenCalledTimes(1);
 
   teardown?.();
 });
 
-test('does not retry a direct finish-time parser error', async () => {
+test('cleanup rejections do not replace user cancellation', async () => {
+  jest.clearAllMocks();
+  const started = createDeferred<void>();
+  const cleanupError = new Error('cleanup failed');
+  const iteratorReturn = jest.fn(async () => {
+    throw cleanupError;
+  });
+  const dispose = jest.fn(async () => {
+    throw cleanupError;
+  });
+  makeSelection(async (request) => {
+    let index = 0;
+    return {
+      events: {
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              index++;
+              if (index === 1) {
+                started.resolve();
+                return {
+                  done: false as const,
+                  value: {
+                    type: EventType.RUN_STARTED,
+                    ...getInputIdentity(request),
+                  } as AGUIEvent,
+                };
+              }
+              await waitForAbort(request.signal);
+              return { done: true as const, value: undefined };
+            },
+            return: iteratorReturn,
+          };
+        },
+      },
+      dispose,
+    };
+  });
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  const generation = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+  await started.promise;
+  await waitForDispatchedEvent(store.actions, EventType.RUN_STARTED);
+  await store.trigger(devActions.stopMessageGeneration(true));
+  await generation;
+
+  expect(
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_ERROR,
+    ),
+  ).toEqual([{ type: EventType.RUN_ERROR, message: 'Generation cancelled' }]);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toHaveLength(0);
+  expect(iteratorReturn).toHaveBeenCalledTimes(1);
+  expect(dispose).toHaveBeenCalledTimes(1);
+
+  teardown?.();
+});
+
+test('missing events is retryable and disposes each response exactly once', async () => {
+  jest.clearAllMocks();
+  const firstDispose = jest.fn();
+  const secondDispose = jest.fn();
+  const removedFramesIterator = jest.fn();
+  let attempt = 0;
+  const { send } = makeSelection(async (request) => {
+    attempt++;
+    if (attempt === 1) {
+      return {
+        frames: { [Symbol.asyncIterator]: removedFramesIterator },
+        dispose: firstDispose,
+      } as unknown as MockTransportResponse;
+    }
+    return {
+      events: successfulEvents(request),
+      dispose: secondDispose,
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 1],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(firstDispose).toHaveBeenCalledTimes(1);
+  expect(secondDispose).toHaveBeenCalledTimes(1);
+  expect(removedFramesIterator).not.toHaveBeenCalled();
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(
+      new TransportError('Transport response did not provide an event stream', {
+        retryable: true,
+        code: 'PROTOCOL_ERROR',
+      }),
+    ),
+  ]);
+
+  teardown?.();
+});
+
+test('non-async-iterable events are a retryable protocol error', async () => {
+  jest.clearAllMocks();
+  const firstDispose = jest.fn();
+  const secondDispose = jest.fn();
+  let attempt = 0;
+  const { send } = makeSelection(async (request) => {
+    attempt++;
+    if (attempt === 1) {
+      return {
+        events: {
+          [Symbol.asyncIterator]: 'not-callable',
+        } as unknown as AsyncIterable<AGUIEvent>,
+        dispose: firstDispose,
+      };
+    }
+    return {
+      events: successfulEvents(request),
+      dispose: secondDispose,
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 1],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(firstDispose).toHaveBeenCalledTimes(1);
+  expect(secondDispose).toHaveBeenCalledTimes(1);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(
+      new TransportError('Transport response did not provide an event stream', {
+        retryable: true,
+        code: 'PROTOCOL_ERROR',
+      }),
+    ),
+  ]);
+
+  teardown?.();
+});
+
+test('finish-time parser errors do not retry an accepted success terminal', async () => {
   jest.clearAllMocks();
   const parserError = new Error('Structured output is incomplete');
-  const { send } = makeSelection(async (request) => {
-    const identity = getInputIdentity(request);
-
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
       [selectRetries, 2],
@@ -1959,29 +2453,37 @@ test('does not retry a direct finish-time parser error', async () => {
 
   expect(send).toHaveBeenCalledTimes(1);
   expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageError.type,
-    ),
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
   ).toEqual([apiActions.generateMessageError(parserError)]);
 
   teardown?.();
 });
 
-test('does not retry when direct RUN_FINISHED produces no message', async () => {
+test('accepted RUN_FINISHED remains successful when its dispatch triggers stop', async () => {
   jest.clearAllMocks();
-  const { send } = makeSelection(async (request) => {
-    const identity = getInputIdentity(request);
-
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        yield { type: EventType.RUN_FINISHED, ...identity };
-      })(),
-    };
-  });
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
   const store = createTestStore(
-    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 2],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Done', toolCallIds: [] },
+      ],
+    ]),
   );
+  const dispatch = store.dispatch;
+  store.dispatch = (action) => {
+    dispatch(action);
+    if (
+      action.type === apiActions.generateMessageEvent.type &&
+      'payload' in action &&
+      (action.payload as AGUIEvent).type === EventType.RUN_FINISHED
+    ) {
+      void store.trigger(devActions.stopMessageGeneration(true));
+    }
+  };
   const teardown = generateMessage(store);
 
   await store.trigger(
@@ -1990,518 +2492,80 @@ test('does not retry when direct RUN_FINISHED produces no message', async () => 
 
   expect(send).toHaveBeenCalledTimes(1);
   expect(
-    store.actions.find(
-      (action) => action.type === apiActions.generateMessageError.type,
-    )?.payload,
-  ).toEqual(new Error('No message was generated'));
-
-  teardown?.();
-});
-
-test('cancels a direct active run once without retrying and disposes', async () => {
-  jest.clearAllMocks();
-  let notifyStarted: () => void = () => undefined;
-  const started = new Promise<void>((resolve) => {
-    notifyStarted = resolve;
-  });
-  const dispose = jest.fn();
-  const { send } = makeSelection(async (request) => {
-    const identity = getInputIdentity(request);
-
-    return {
-      events: (async function* () {
-        yield { type: EventType.RUN_STARTED, ...identity };
-        notifyStarted();
-        await new Promise<void>((resolve) => {
-          if (request.signal.aborted) {
-            resolve();
-            return;
-          }
-          request.signal.addEventListener('abort', () => resolve(), {
-            once: true,
-          });
-        });
-      })(),
-      dispose,
-    };
-  });
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
-  );
-  const teardown = generateMessage(store);
-
-  const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-  await started;
-  await store.trigger(devActions.stopMessageGeneration(true));
-  await generation;
-
-  const runErrors = store.actions.filter(
-    (action) =>
-      action.type === apiActions.generateMessageEvent.type &&
-      (action.payload as AGUIEvent).type === EventType.RUN_ERROR,
-  );
-  expect(send).toHaveBeenCalledTimes(1);
-  expect(runErrors).toHaveLength(1);
-  expect(runErrors[0]?.payload).toEqual({
-    type: EventType.RUN_ERROR,
-    message: 'Generation cancelled',
-  });
-  expect(dispose).toHaveBeenCalledTimes(1);
-
-  teardown?.();
-});
-
-test('cancels a direct run before start without a terminal event and disposes', async () => {
-  jest.clearAllMocks();
-  let notifyWaiting: () => void = () => undefined;
-  const waiting = new Promise<void>((resolve) => {
-    notifyWaiting = resolve;
-  });
-  const dispose = jest.fn();
-  const { send } = makeSelection(async ({ signal }) => ({
-    events: {
-      [Symbol.asyncIterator]() {
-        return {
-          async next() {
-            notifyWaiting();
-            await new Promise<void>((resolve) => {
-              if (signal.aborted) {
-                resolve();
-                return;
-              }
-              signal.addEventListener('abort', () => resolve(), {
-                once: true,
-              });
-            });
-            return { done: true as const, value: undefined };
-          },
-        };
-      },
-    },
-    dispose,
-  }));
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
-  );
-  const teardown = generateMessage(store);
-
-  const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-  await waiting;
-  await store.trigger(devActions.stopMessageGeneration(true));
-  await generation;
-
-  expect(send).toHaveBeenCalledTimes(1);
+    getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+  ).toHaveLength(1);
   expect(
-    store.actions.filter(
-      (action) => action.type === apiActions.generateMessageEvent.type,
+    getDispatchedEvents(store.actions).filter(
+      (event) => event.type === EventType.RUN_ERROR,
     ),
   ).toHaveLength(0);
-  expect(dispose).toHaveBeenCalledTimes(1);
-
-  teardown?.();
-});
-
-test('dispatches AG-UI lifecycle events and success on happy path', async () => {
-  jest.clearAllMocks();
-  const messageChunk: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        delta: { role: 'assistant', content: 'Hello' },
-        finishReason: 'stop',
-      },
-    ],
-  };
-
-  const frames = async function* () {
-    yield { type: 'generation-start' as const };
-    yield { type: 'generation-chunk' as const, chunk: messageChunk };
-    yield { type: 'generation-finish' as const };
-  };
-
-  const dispose = jest.fn();
-  const { send } = makeSelection(async () => ({
-    frames: frames(),
-    dispose,
-  }));
-
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: 'Hello',
-          toolCallIds: [],
-        },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(send).toHaveBeenCalledTimes(1);
-  expect(decodeFramesMock).toHaveBeenCalled();
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageSuccess.type,
-    apiActions.assistantTurnFinalized.type,
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toEqual([
+    apiActions.assistantTurnFinalized({
+      toolCalls: [],
+      continuation: 'stop',
+    }),
   ]);
-  expect(store.actions[1].payload).toMatchObject({
-    type: EventType.RUN_STARTED,
-    threadId: expect.any(String),
-    runId: expect.any(String),
-  });
-  expect(store.actions[2].payload).toMatchObject({
-    type: EventType.TEXT_MESSAGE_START,
-    messageId: expect.any(String),
-    role: 'assistant',
-  });
-  const runStarted = store.actions[1]?.payload as {
-    threadId: string;
-    runId: string;
-  };
-  const textStarted = store.actions[2]?.payload as { messageId: string };
-  expect(store.actions[3].payload).toMatchObject({
-    type: EventType.TEXT_MESSAGE_CONTENT,
-    messageId: textStarted.messageId,
-    delta: 'Hello',
-  });
-  expect(store.actions[4].payload).toMatchObject({
-    type: EventType.TEXT_MESSAGE_END,
-    messageId: textStarted.messageId,
-  });
-  expect(store.actions[5].payload).toMatchObject({
-    type: EventType.RUN_FINISHED,
-    threadId: runStarted.threadId,
-    runId: runStarted.runId,
-  });
-  expect(store.actions[6].payload).toMatchObject({
-    message: {
-      role: 'assistant',
-      content: 'Hello',
-    },
-    toolCalls: [],
-  });
-  expect(dispose).toHaveBeenCalledTimes(1);
 
   teardown?.();
 });
 
-test('retries on retryable transport errors and eventually succeeds', async () => {
+test('finalizes the exact pending tool call snapshot', async () => {
   jest.clearAllMocks();
-  const retries = 1;
-
-  let attempt = 0;
-  const messageChunk: Chat.Api.CompletionChunk = {
-    choices: [
-      {
-        index: 0,
-        delta: { role: 'assistant', content: 'Hi after retry' },
-        finishReason: 'stop',
-      },
-    ],
+  const pendingToolCall: Chat.Internal.ToolCall = {
+    id: 'tool-call-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
   };
-
-  const { send } = makeSelection(async () => {
-    attempt++;
-    if (attempt === 1) {
-      return {
-        frames: (async function* () {
-          yield { type: 'generation-start' as const };
-          throw new TransportError('temporary boom', { retryable: true });
-        })(),
-        dispose: jest.fn(),
-      };
-    }
-    return {
-      frames: (async function* () {
-        yield { type: 'generation-start' as const };
-        yield { type: 'generation-chunk' as const, chunk: messageChunk };
-        yield { type: 'generation-finish' as const };
-      })(),
-      dispose: jest.fn(),
-    };
-  });
-
+  makeSelection(async (request) => ({ events: successfulEvents(request) }));
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
-      [selectRetries, retries],
       [
         selectRawStreamingMessage,
         {
           role: 'assistant',
-          content: 'Hi after retry',
-          toolCallIds: [],
+          content: '',
+          toolCallIds: [pendingToolCall.id],
         },
       ],
+      [selectRawStreamingToolCalls, [pendingToolCall]],
+      [selectPendingToolCalls, [pendingToolCall]],
     ]),
   );
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({
-      message: { role: 'user', content: 'retry me' },
+    devActions.sendMessage({ message: { role: 'user', content: 'Lookup' } }),
+  );
+
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type)[0]
+      ?.payload,
+  ).toEqual({ toolCalls: [pendingToolCall], continuation: 'continue' });
+
+  teardown?.();
+});
+
+test('does not generate after a non-continuing tool settlement', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore();
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    internalActions.toolTurnSettled({
+      toolCalls: [],
+      toolMessages: [],
+      continuation: 'stop',
     }),
   );
 
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageError.type,
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageSuccess.type,
-    apiActions.assistantTurnFinalized.type,
-    apiActions.generateMessageExhaustedRetries.type,
-  ]);
-  expect(store.actions[2].payload).toMatchObject({
-    type: EventType.RUN_ERROR,
-    message: 'temporary boom',
-  });
-  expect(store.actions[7].payload).toMatchObject({
-    type: EventType.TEXT_MESSAGE_CONTENT,
-    delta: 'Hi after retry',
-  });
-
-  teardown?.();
-});
-
-test('dispatches exhausted retries after max retryable failures', async () => {
-  jest.clearAllMocks();
-  const retries = 1;
-  const error = new Error('still broken');
-
-  makeSelection(async () => {
-    throw error;
-  });
-
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([[selectRetries, retries]]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'fail' } }),
-  );
-
-  expect(store.actions.map((a) => a.type)).toEqual([
-    apiActions.generateMessageError.type,
-    apiActions.generateMessageError.type,
-    apiActions.assistantTurnFinalized.type,
-    apiActions.generateMessageExhaustedRetries.type,
-  ]);
-
-  teardown?.();
-});
-
-test('converts generation error frames to AG-UI run errors', async () => {
-  jest.clearAllMocks();
-  const frames = async function* () {
-    yield { type: 'generation-start' as const };
-    yield {
-      type: 'generation-error' as const,
-      error: 'provider failed',
-    };
-  };
-  makeSelection(async () => ({ frames: frames() }));
-  const store = createTestStore();
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageError.type,
-    apiActions.assistantTurnFinalized.type,
-  ]);
-  expect(store.actions[2].payload).toEqual({
-    type: EventType.RUN_ERROR,
-    message: 'provider failed',
-  });
-
-  teardown?.();
-});
-
-test('converts decode failures after run start to one AG-UI run error', async () => {
-  jest.clearAllMocks();
-  const frames = async function* () {
-    yield { type: 'generation-start' as const };
-    throw new Error('decode failed');
-  };
-  makeSelection(async () => ({ frames: frames() }));
-  const store = createTestStore();
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageError.type,
-    apiActions.assistantTurnFinalized.type,
-  ]);
-  expect(store.actions[2].payload).toEqual({
-    type: EventType.RUN_ERROR,
-    message: 'decode failed',
-  });
-
-  teardown?.();
-});
-
-test('converts premature stream completion to an AG-UI run error', async () => {
-  jest.clearAllMocks();
-  const frames = async function* () {
-    yield { type: 'generation-start' as const };
-  };
-  makeSelection(async () => ({ frames: frames() }));
-  const store = createTestStore();
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageError.type,
-    apiActions.assistantTurnFinalized.type,
-  ]);
-  expect(store.actions[2].payload).toEqual({
-    type: EventType.RUN_ERROR,
-    message: 'Generation stream ended before generation-finish',
-  });
-
-  teardown?.();
-});
-
-test('terminates an active AG-UI run when generation is cancelled', async () => {
-  jest.clearAllMocks();
-  let notifyStarted: () => void = () => undefined;
-  const started = new Promise<void>((resolve) => {
-    notifyStarted = resolve;
-  });
-  makeSelection(async ({ signal }) => ({
-    frames: (async function* () {
-      notifyStarted();
-      yield { type: 'generation-start' as const };
-      await new Promise<void>((resolve) => {
-        if (signal.aborted) {
-          resolve();
-          return;
-        }
-        signal.addEventListener('abort', () => resolve(), {
-          once: true,
-        });
-      });
-    })(),
-  }));
-  const store = createTestStore();
-  const teardown = generateMessage(store);
-
-  const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-  await started;
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await store.trigger(devActions.stopMessageGeneration(true));
-  await generation;
-
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.assistantTurnFinalized.type,
-  ]);
-  const runStarted = store.actions[1]?.payload as {
-    threadId: string;
-    runId: string;
-  };
-  expect(store.actions[2].payload).toMatchObject({
-    type: EventType.RUN_ERROR,
-    message: 'Generation cancelled',
-  });
-  expect(runStarted).toMatchObject({
-    threadId: expect.any(String),
-    runId: expect.any(String),
-  });
-
-  teardown?.();
-});
-
-test('does not retry when decoding throws after generation is cancelled', async () => {
-  jest.clearAllMocks();
-  let notifyStarted: () => void = () => undefined;
-  const started = new Promise<void>((resolve) => {
-    notifyStarted = resolve;
-  });
-  const { send } = makeSelection(async ({ signal }) => ({
-    frames: (async function* () {
-      notifyStarted();
-      yield { type: 'generation-start' as const };
-      await new Promise<void>((resolve) => {
-        if (signal.aborted) {
-          resolve();
-          return;
-        }
-        signal.addEventListener('abort', () => resolve(), {
-          once: true,
-        });
-      });
-      throw new Error('Stream ended with 3 leftover bytes');
-    })(),
-  }));
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([[selectRetries, 1]]),
-  );
-  const teardown = generateMessage(store);
-
-  const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-  await started;
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await store.trigger(devActions.stopMessageGeneration(true));
-  await generation;
-
-  expect(send).toHaveBeenCalledTimes(1);
-  expect(store.actions.map((action) => action.type)).toEqual([
-    apiActions.generateMessageStart.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.generateMessageEvent.type,
-    apiActions.assistantTurnFinalized.type,
-  ]);
-  expect(store.actions[2].payload).toEqual({
-    type: EventType.RUN_ERROR,
-    message: 'Generation cancelled',
-  });
+  expect(send).not.toHaveBeenCalled();
+  expect(store.actions).not.toContainEqual(internalActions.sizzle());
 
   teardown?.();
 });

@@ -1,6 +1,5 @@
-import { Frame } from '../frames';
-import { Chat } from '../models';
-import type { RunAgentInput } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
+import { experimental_local } from './experimental-local-transport';
 import { TransportError } from './transport-error';
 import {
   ModelResolver,
@@ -8,15 +7,22 @@ import {
   type RequestedFeatures,
 } from './model-spec';
 
-const noopFrames = async function* (): AsyncGenerator<Frame> {
-  yield { type: 'generation-finish' };
+const noopEvents = async function* (
+  requestInput: RunAgentInput,
+): AsyncGenerator<AGUIEvent> {
+  const identity = {
+    threadId: requestInput.threadId,
+    runId: requestInput.runId,
+  };
+
+  yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+  yield { type: EventType.RUN_FINISHED, ...identity } as AGUIEvent;
 };
 
 const features: RequestedFeatures = {
   tools: true,
   structured: false,
   ui: false,
-  threads: false,
 };
 
 const input: RunAgentInput = {
@@ -27,13 +33,6 @@ const input: RunAgentInput = {
   context: [],
   state: {},
   forwardedProps: {},
-};
-
-const params: Chat.Api.CompletionCreateParams = {
-  operation: 'generate',
-  model: '' as Chat.Api.CompletionCreateParams['model'],
-  system: '',
-  messages: [],
 };
 
 function createSseResponse(): Response {
@@ -56,7 +55,9 @@ test('skips specs without required capabilities', async () => {
     capabilities: { tools: false },
     transport: {
       name: 'noop',
-      send: jest.fn(async () => ({ frames: noopFrames() })),
+      send: jest.fn(async ({ input: requestInput }) => ({
+        events: noopEvents(requestInput as RunAgentInput),
+      })),
     },
   };
 
@@ -65,7 +66,9 @@ test('skips specs without required capabilities', async () => {
     capabilities: { tools: true },
     transport: {
       name: 'ok',
-      send: jest.fn(async () => ({ frames: noopFrames() })),
+      send: jest.fn(async ({ input: requestInput }) => ({
+        events: noopEvents(requestInput as RunAgentInput),
+      })),
     },
   };
 
@@ -102,7 +105,9 @@ test('advances after PLATFORM_UNSUPPORTED errors', async () => {
     capabilities: { tools: true },
     transport: {
       name: 'ok',
-      send: jest.fn(async () => ({ frames: noopFrames() })),
+      send: jest.fn(async ({ input: requestInput }) => ({
+        events: noopEvents(requestInput as RunAgentInput),
+      })),
     },
   };
 
@@ -115,7 +120,7 @@ test('advances after PLATFORM_UNSUPPORTED errors', async () => {
   if (first) {
     try {
       await first.transport.send({
-        params,
+        input,
         signal: new AbortController().signal,
         attempt: 1,
         maxAttempts: 1,
@@ -146,7 +151,6 @@ test.each([undefined, '', ' \n '])(
 
       const response = await selection?.transport.send({
         input,
-        params,
         signal: new AbortController().signal,
         attempt: 1,
         maxAttempts: 1,
@@ -155,6 +159,7 @@ test.each([undefined, '', ' \n '])(
       await response?.dispose?.();
 
       expect(selection?.spec.name).toBe('test-model');
+      expect(selection?.spec.capabilities).not.toHaveProperty('threads');
       expect(fetchMock).toHaveBeenCalledWith('/run', expect.any(Object));
     } finally {
       globalThis.fetch = originalFetch;
@@ -176,7 +181,6 @@ test('default string models preserve a non-whitespace API URL exactly', async ()
 
     const response = await selection?.transport.send({
       input,
-      params,
       signal: new AbortController().signal,
       attempt: 1,
       maxAttempts: 1,
@@ -188,4 +192,40 @@ test('default string models preserve a non-whitespace API URL exactly', async ()
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('selects a local spec when the later request input has a configured thread ID', async () => {
+  const localSend = jest.fn(async ({ input: requestInput }) => ({
+    events: noopEvents(requestInput as RunAgentInput),
+  }));
+  const localSpec: ModelSpec = {
+    ...experimental_local({ order: [] })({}),
+    detect: async () => ({ ok: true }),
+    transport: { name: 'local', send: localSend },
+  };
+  const fallbackSpec: ModelSpec = {
+    name: 'fallback',
+    capabilities: { tools: false, structured: true, ui: true },
+    transport: { name: 'fallback', send: jest.fn() },
+  };
+  const resolver = new ModelResolver([localSpec, fallbackSpec], {});
+  const laterInput = { ...input, threadId: 'configured-thread' };
+
+  const selection = await resolver.select({
+    tools: false,
+    structured: false,
+    ui: false,
+  });
+  await selection?.transport.send({
+    input: laterInput,
+    signal: new AbortController().signal,
+    attempt: 1,
+    maxAttempts: 1,
+    requestId: laterInput.runId,
+  });
+
+  expect(selection?.spec.name).toBe('local-prompt-api');
+  expect(localSend).toHaveBeenCalledWith(
+    expect.objectContaining({ input: laterInput }),
+  );
 });

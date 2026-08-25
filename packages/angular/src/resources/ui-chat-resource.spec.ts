@@ -27,16 +27,8 @@ const createChatStub = (
     isReceiving: signal(false),
     isGenerating: signal(false),
     isRunningToolCalls: signal(false),
-    isLoadingThread: signal(false),
-    isSavingThread: signal(false),
     sendingError: signal<Error | undefined>(undefined),
     generatingError: signal<Error | undefined>(undefined),
-    threadLoadError: signal<{ error: string; stacktrace?: string } | undefined>(
-      undefined,
-    ),
-    threadSaveError: signal<{ error: string; stacktrace?: string } | undefined>(
-      undefined,
-    ),
     sendMessage: vi.fn(),
     resendMessages: vi.fn(),
     setMessages: vi.fn(),
@@ -134,7 +126,7 @@ test('uiChatResource provides empty tag registry when assistant has no content',
   expect((message as any)[TAG_NAME_REGISTRY]).toEqual({});
 });
 
-test('uiChatResource passes reactive options through to structuredChatResource', () => {
+test('uiChatResource passes reactive options through without exposing persistence state', () => {
   // Arrange
   structuredChatResourceMock.mockReset();
   structuredChatResourceMock.mockReturnValue(createChatStub(signal<any[]>([])));
@@ -144,7 +136,7 @@ test('uiChatResource passes reactive options through to structuredChatResource',
   const threadId = signal<string | undefined>('thread-a');
 
   // Act
-  uiChatResource({
+  const resource = uiChatResource({
     components: [
       {
         component: class {},
@@ -171,10 +163,43 @@ test('uiChatResource passes reactive options through to structuredChatResource',
   );
   expect(delegatedSystem).not.toBe(system);
   expect(delegatedSystem()).toBe('System prompt');
+  expect(resource).not.toHaveProperty('isLoadingThread');
+  expect(resource).not.toHaveProperty('isSavingThread');
+  expect(resource).not.toHaveProperty('threadLoadError');
+  expect(resource).not.toHaveProperty('threadSaveError');
+  expect(resource).not.toHaveProperty('threadId');
 
   system.set('Updated system prompt');
+  threadId.set('thread-b');
 
   expect(delegatedSystem()).toBe('Updated system prompt');
+  expect((delegatedOptions?.threadId as Signal<string | undefined>)()).toBe(
+    'thread-b',
+  );
+});
+
+test('uiChatResource preserves a literal empty threadId option', () => {
+  structuredChatResourceMock.mockReset();
+  structuredChatResourceMock.mockReturnValue(createChatStub(signal<any[]>([])));
+
+  uiChatResource({
+    components: [
+      {
+        component: class {},
+        name: 'Card',
+        description: 'Card component',
+      },
+    ],
+    model: 'gpt-4.1',
+    system: 'System prompt',
+    threadId: '',
+  });
+
+  expect(structuredChatResourceMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      threadId: '',
+    }),
+  );
 });
 
 test('uiChatResource snapshot uses the exposed decorated messages', () => {
