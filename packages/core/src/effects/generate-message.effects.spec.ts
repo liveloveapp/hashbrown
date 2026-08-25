@@ -658,6 +658,99 @@ test('first user message uses the configured thread ID', async () => {
 });
 
 test.each([
+  {
+    label: 'configured identity',
+    configuredThreadId: 'thread-a',
+    updateThreadId: 'thread-a',
+  },
+  {
+    label: 'unconfigured identity',
+    configuredThreadId: undefined,
+    updateThreadId: undefined,
+  },
+] as const)(
+  'immediate same $label update preserves the pre-snapshot generation',
+  async ({ configuredThreadId, updateThreadId }) => {
+    jest.clearAllMocks();
+    const { send } = makeSelection(async (request) => ({
+      events: successfulEvents(request),
+    }));
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectThreadId, configuredThreadId],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Done', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    store.setSelector(selectThreadId, updateThreadId);
+    await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
+    await generation;
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(
+      getActionsOfType(store.actions, generationSilentlyRetiredType),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(1);
+
+    teardown?.();
+  },
+);
+
+test.each([
+  {
+    label: 'configured identity',
+    configuredThreadId: 'thread-a',
+    updateThreadId: 'thread-b',
+  },
+  {
+    label: 'unconfigured identity',
+    configuredThreadId: undefined,
+    updateThreadId: 'thread-b',
+  },
+] as const)(
+  'immediate changed $label update retires the pre-snapshot generation',
+  async ({ configuredThreadId, updateThreadId }) => {
+    jest.clearAllMocks();
+    const { send } = makeSelection(async (request) => ({
+      events: successfulEvents(request),
+    }));
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([[selectThreadId, configuredThreadId]]),
+    );
+    const teardown = generateMessage(store);
+
+    const generation = store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+    store.setSelector(selectThreadId, updateThreadId);
+    await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
+    await generation;
+
+    expect(send).not.toHaveBeenCalled();
+    expect(
+      getActionsOfType(store.actions, generationSilentlyRetiredType),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+    ).toHaveLength(0);
+
+    teardown?.();
+  },
+);
+
+test.each([
   { label: 'replacement', nextThreadId: 'thread-b' },
   { label: 'explicit clearing', nextThreadId: undefined },
   { label: 'empty replacement', nextThreadId: '' },

@@ -63,7 +63,7 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
   /**
    * Optional opaque AG-UI thread identity.
    */
-  threadId?: string;
+  threadId?: string | undefined;
 }
 
 /**
@@ -206,6 +206,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     throw new Error('HashbrownContext not found');
   }
 
+  const hasThreadId = Object.hasOwn(options, 'threadId');
   const hashbrownRef = useRef<Hashbrown<string, Tools> | null>(null);
 
   if (!hashbrownRef.current) {
@@ -253,7 +254,7 @@ export function useChat<Tools extends Chat.AnyTool>(
       retries: options.retries,
       transport: options.transport ?? config.transport,
       ui: false,
-      threadId: options.threadId,
+      ...(hasThreadId ? { threadId: options.threadId } : {}),
     });
   }, [
     config.url,
@@ -266,6 +267,7 @@ export function useChat<Tools extends Chat.AnyTool>(
     options.retries,
     options.system,
     options.transport,
+    hasThreadId,
     options.threadId,
     tools,
   ]);

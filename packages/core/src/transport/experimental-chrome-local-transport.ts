@@ -6,6 +6,7 @@ import {
 } from './transport';
 import { type DetectionResult, type ModelSpecFactory } from './model-spec';
 import { createLocalTextEventStream } from './local-text-event-stream';
+import { raceTransportOperationWithAbort } from './race-transport-operation-with-abort';
 import { TransportError } from './transport-error';
 
 const PROMPT_API_SOURCE = 'chrome-prompt-api';
@@ -174,6 +175,7 @@ export class ExperimentalChromeLocalTransport implements Transport {
           languageModel,
           promptRequest,
           resolvedPromptOutputLanguage,
+          request.signal,
         )
       : 'available';
 
@@ -247,17 +249,23 @@ export class ExperimentalChromeLocalTransport implements Transport {
     languageModel: LanguageModelGlobal,
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
+    signal: AbortSignal,
   ): Promise<LanguageModelAvailabilityStatus> {
     if (!languageModel.availability) {
       return 'available';
     }
+    const checkAvailability = languageModel.availability;
 
     const availabilityOptions = buildAvailabilityOptions(
       promptRequest.sessionOptions,
       outputLanguage,
     );
 
-    const availability = await languageModel.availability(availabilityOptions);
+    const availability = await raceTransportOperationWithAbort(
+      () => checkAvailability(availabilityOptions),
+      signal,
+      createPromptAbortError,
+    );
 
     this.options.events?.availability?.(availability.status);
 
@@ -275,7 +283,11 @@ export class ExperimentalChromeLocalTransport implements Transport {
       availability.status === 'downloadable' ||
       availability.status === 'downloading'
     ) {
-      await this.options.events?.downloadRequired?.(availability.status);
+      await raceTransportOperationWithAbort(
+        () => this.options.events?.downloadRequired?.(availability.status),
+        signal,
+        createPromptAbortError,
+      );
     }
 
     return availability.status;
@@ -287,6 +299,10 @@ export class ExperimentalChromeLocalTransport implements Transport {
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
   ): Promise<LanguageModelSessionLease> {
+    if (signal.aborted) {
+      throw createPromptAbortError();
+    }
+
     const sessionRecord = this.getSessionRecord(
       languageModel,
       signal,
@@ -297,7 +313,11 @@ export class ExperimentalChromeLocalTransport implements Transport {
 
     let session: LanguageModelSession;
     try {
-      session = await waitForSessionCreation(sessionRecord.promise, signal);
+      session = await raceTransportOperationWithAbort(
+        () => sessionRecord.promise,
+        signal,
+        createPromptAbortError,
+      );
     } catch (error) {
       sessionRecord.owners = Math.max(0, sessionRecord.owners - 1);
       if (isPromptAbortError(error)) {
@@ -460,50 +480,6 @@ export class ExperimentalChromeLocalTransport implements Transport {
       throw err;
     }
   }
-}
-
-function waitForSessionCreation<T>(
-  promise: Promise<T>,
-  signal: AbortSignal,
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    let settled = false;
-    const handleAbort = () => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      signal.removeEventListener('abort', handleAbort);
-      reject(createPromptAbortError());
-    };
-
-    signal.addEventListener('abort', handleAbort, { once: true });
-    promise.then(
-      (session) => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        signal.removeEventListener('abort', handleAbort);
-        resolve(session);
-      },
-      (error) => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        signal.removeEventListener('abort', handleAbort);
-        reject(error);
-      },
-    );
-
-    if (signal.aborted) {
-      handleAbort();
-    }
-  });
 }
 
 function createPromptAbortError(): TransportError {

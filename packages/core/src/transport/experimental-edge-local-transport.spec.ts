@@ -421,6 +421,95 @@ test('preserves Edge transport metadata', async () => {
   });
 });
 
+test.each(['resolve', 'reject'] as const)(
+  'aborts while Edge availability is pending and owns a late %s',
+  async (lateSettlement) => {
+    const availabilityResult = createDeferred<'available'>();
+    const availability = jest.fn(() => availabilityResult.promise);
+    const create = jest.fn(async () => createSession(createTextStream([])));
+    const controller = new AbortController();
+
+    await withLanguageModel({ availability, create }, async () => {
+      const transport = new ExperimentalEdgeLocalTransport({});
+      const sendPromise = transport.send(
+        createRequest({}, { signal: controller.signal }),
+      );
+      await flushTasks();
+
+      controller.abort();
+
+      await expect(settleWithinTask(sendPromise)).resolves.toMatchObject({
+        status: 'rejected',
+        reason: { code: 'PROMPT_API_ABORTED', retryable: false },
+      });
+
+      if (lateSettlement === 'resolve') {
+        availabilityResult.resolve('available');
+      } else {
+        availabilityResult.reject(new Error('late availability failure'));
+      }
+      await flushTasks();
+
+      expect(create).not.toHaveBeenCalled();
+    });
+  },
+);
+
+test('aborts while the Edge download callback is pending', async () => {
+  const downloadResult = createDeferred<void>();
+  const downloadRequired = jest.fn(() => downloadResult.promise);
+  const create = jest.fn(async () => createSession(createTextStream([])));
+  const controller = new AbortController();
+  const languageModel = {
+    availability: jest.fn().mockResolvedValue('downloadable'),
+    create,
+  };
+
+  await withLanguageModel(languageModel, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({
+      events: { downloadRequired },
+    });
+    const sendPromise = transport.send(
+      createRequest({}, { signal: controller.signal }),
+    );
+    await flushTasks();
+
+    controller.abort();
+
+    await expect(settleWithinTask(sendPromise)).resolves.toMatchObject({
+      status: 'rejected',
+      reason: { code: 'PROMPT_API_ABORTED', retryable: false },
+    });
+    downloadResult.resolve();
+    await flushTasks();
+
+    expect(downloadRequired).toHaveBeenCalledWith('downloadable');
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+test('does not check Edge availability or create a session after abort', async () => {
+  const availability = jest.fn().mockResolvedValue('available');
+  const create = jest.fn(async () => createSession(createTextStream([])));
+  const controller = new AbortController();
+  controller.abort();
+
+  await withLanguageModel({ availability, create }, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({});
+
+    const sendPromise = transport.send(
+      createRequest({}, { signal: controller.signal }),
+    );
+
+    await expect(sendPromise).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+      retryable: false,
+    });
+    expect(availability).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
 test('retries session creation after a cached creation rejects', async () => {
   const createError = new Error('create failed');
   const session = createSession(createTextStream(['retry succeeded']));

@@ -128,7 +128,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
    * Optional opaque AG-UI thread identity.
    */
-  threadId?: string;
+  threadId?: string | undefined;
 }
 
 /**

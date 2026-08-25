@@ -39,46 +39,62 @@ test('useChat initializes with the provided message history', () => {
   expect(result.current.messages).toEqual(messages);
 });
 
-test('useChat propagates thread identity without exposing persistence state', () => {
+test('useChat preserves thread identity property presence on updates', () => {
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReset();
   fryHashbrownMock.mockReturnValue(hashbrown);
+  type HookProps = {
+    system: string;
+    threadId?: string | undefined;
+  };
 
   const { result, rerender } = renderHook(
-    ({ threadId }: { threadId: string | undefined }) =>
+    ({ system, ...threadOptions }: HookProps) =>
       useChat({
         model: 'gpt-4.1',
-        system: 'You are a helpful assistant.',
-        threadId,
+        system,
+        ...threadOptions,
       }),
     {
-      initialProps: { threadId: 'thread-initial' as string | undefined },
+      initialProps: {
+        system: 'You are a helpful assistant.',
+      } as HookProps,
       wrapper: ProviderWrapper,
     },
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
-    expect.objectContaining({ threadId: 'thread-initial' }),
-  );
   expect(result.current).not.toHaveProperty('isLoadingThread');
   expect(result.current).not.toHaveProperty('isSavingThread');
   expect(result.current).not.toHaveProperty('threadLoadError');
   expect(result.current).not.toHaveProperty('threadSaveError');
   expect(result.current).not.toHaveProperty('threadId');
+  hashbrown.updateOptions.mockClear();
 
-  rerender({ threadId: 'thread-changed' });
+  rerender({ system: 'You are a concise assistant.' });
+
+  const omittedUpdate = hashbrown.updateOptions.mock.calls.at(-1)?.[0];
+  expect(omittedUpdate).toBeDefined();
+  expect(Object.hasOwn(omittedUpdate, 'threadId')).toBe(false);
+
+  rerender({
+    system: 'You are a concise assistant.',
+    threadId: undefined,
+  });
+
+  const clearedUpdate = hashbrown.updateOptions.mock.calls.at(-1)?.[0];
+  expect(Object.hasOwn(clearedUpdate, 'threadId')).toBe(true);
+  expect(clearedUpdate).toMatchObject({ threadId: undefined });
+
+  rerender({
+    system: 'You are a concise assistant.',
+    threadId: 'thread-changed',
+  });
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({ threadId: 'thread-changed' }),
   );
 
-  rerender({ threadId: undefined });
-
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
-    expect.objectContaining({ threadId: undefined }),
-  );
-
-  rerender({ threadId: '' });
+  rerender({ system: 'You are a concise assistant.', threadId: '' });
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({ threadId: '' }),

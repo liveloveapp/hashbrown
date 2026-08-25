@@ -66,7 +66,9 @@ export const generateMessage = createEffect((store) => {
     devActions.sendMessage,
     devActions.resendMessages,
     switchAsync(async (switchSignal) => {
-      const generation: ActiveGeneration = { threadId: undefined };
+      const generation: ActiveGeneration = {
+        threadId: store.read(selectThreadId),
+      };
       activeGeneration = store.read(selectShouldGenerateMessage)
         ? generation
         : undefined;

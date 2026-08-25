@@ -60,7 +60,7 @@ export interface UseCompletionOptions<Input> {
   /**
    * Optional opaque AG-UI thread identity.
    */
-  threadId?: string;
+  threadId?: string | undefined;
 }
 
 /**

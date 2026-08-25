@@ -92,7 +92,7 @@ export interface UseStructuredChatOptions<
   /**
    * Optional opaque AG-UI thread identity.
    */
-  threadId?: string;
+  threadId?: string | undefined;
 }
 
 /**
@@ -227,6 +227,7 @@ export function useStructuredChat<
     throw new Error('HashbrownContext not found');
   }
 
+  const hasThreadId = Object.hasOwn(options, 'threadId');
   const tools: Tools[] = useMemo(
     () => options.tools ?? [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -285,7 +286,7 @@ export function useStructuredChat<
       transport: options.transport ?? config.transport,
       structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
-      threadId: options.threadId,
+      ...(hasThreadId ? { threadId: options.threadId } : {}),
     });
   }, [
     config.url,
@@ -302,6 +303,7 @@ export function useStructuredChat<
     options.transport,
     options.structuredOutput,
     options.ui,
+    hasThreadId,
     options.threadId,
   ]);
 

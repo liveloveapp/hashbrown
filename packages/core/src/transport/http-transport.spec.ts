@@ -26,6 +26,34 @@ function createRequest(
   };
 }
 
+function createDeferred<T>() {
+  let resolve: (value: T | PromiseLike<T>) => void = () => undefined;
+  let reject: (reason?: unknown) => void = () => undefined;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
+async function flushTasks(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
+async function settleWithinTask<T>(promise: Promise<T>) {
+  return Promise.race([
+    promise.then(
+      (value) => ({ status: 'fulfilled' as const, value }),
+      (reason: unknown) => ({ status: 'rejected' as const, reason }),
+    ),
+    new Promise<{ status: 'pending' }>((resolve) => {
+      setImmediate(() => resolve({ status: 'pending' }));
+    }),
+  ]);
+}
+
 function encodeSse(events: unknown[]): Uint8Array {
   return new TextEncoder().encode(
     events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''),
@@ -213,6 +241,70 @@ test('cleans up the request listener when async middleware fails', async () => {
     addListener.mockRestore();
     removeListener.mockRestore();
   }
+});
+
+test.each([
+  { blockingIndex: 0, lateSettlement: 'resolve' },
+  { blockingIndex: 1, lateSettlement: 'reject' },
+] as const)(
+  'aborts while middleware $blockingIndex is pending and owns its late $lateSettlement',
+  async ({ blockingIndex, lateSettlement }) => {
+    const middlewareResult = createDeferred<RequestInit>();
+    const abortError = new Error('request aborted');
+    const controller = new AbortController();
+    const middleware = [0, 1, 2].map((index) =>
+      jest.fn((requestInit: RequestInit) =>
+        index === blockingIndex ? middlewareResult.promise : requestInit,
+      ),
+    );
+    const fetchMock = jest.fn(async () => successfulResponse());
+    const transport = new HttpTransport({
+      middleware,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    const sendPromise = transport.send(
+      createRequest({ signal: controller.signal }),
+    );
+    await flushTasks();
+
+    controller.abort(abortError);
+
+    await expect(settleWithinTask(sendPromise)).resolves.toEqual({
+      status: 'rejected',
+      reason: abortError,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(middleware[blockingIndex + 1]).not.toHaveBeenCalled();
+
+    if (lateSettlement === 'resolve') {
+      middlewareResult.resolve({});
+    } else {
+      middlewareResult.reject(new Error('late middleware failure'));
+    }
+    await flushTasks();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  },
+);
+
+test('does not run middleware or fetch when an HTTP request is already aborted', async () => {
+  const abortError = new Error('request aborted');
+  const controller = new AbortController();
+  controller.abort(abortError);
+  const middleware = jest.fn((requestInit: RequestInit) => requestInit);
+  const fetchMock = jest.fn(async () => successfulResponse());
+  const transport = new HttpTransport({
+    middleware: [middleware],
+    fetchImpl: fetchMock as unknown as typeof fetch,
+  });
+
+  const sendPromise = transport.send(
+    createRequest({ signal: controller.signal }),
+  );
+
+  await expect(sendPromise).rejects.toBe(abortError);
+  expect(middleware).not.toHaveBeenCalled();
+  expect(fetchMock).not.toHaveBeenCalled();
 });
 
 test.each([undefined, '', '  \n'])(

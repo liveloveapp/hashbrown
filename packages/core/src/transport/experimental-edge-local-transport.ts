@@ -11,6 +11,7 @@ import {
   type PromptRequest,
 } from './experimental-chrome-local-transport';
 import { createLocalTextEventStream } from './local-text-event-stream';
+import { raceTransportOperationWithAbort } from './race-transport-operation-with-abort';
 
 const PROMPT_API_SOURCE = 'edge-prompt-api';
 
@@ -108,6 +109,7 @@ export class ExperimentalEdgeLocalTransport implements Transport {
     const availability = await this.ensureAvailability(
       languageModel,
       promptRequest,
+      request.signal,
     );
     const sessionLease = await this.acquireSession(
       languageModel,
@@ -149,14 +151,21 @@ export class ExperimentalEdgeLocalTransport implements Transport {
   private async ensureAvailability(
     languageModel: LanguageModelGlobal,
     promptRequest: PromptRequest,
+    signal: AbortSignal,
   ): Promise<LanguageModelAvailabilityStatus> {
     if (!languageModel.availability) {
       return 'available';
     }
+    const checkAvailability = languageModel.availability;
 
-    const availability = await languageModel.availability(
-      promptRequest.sessionOptions as
-        EdgeLanguageModelCreateOptions | undefined,
+    const availability = await raceTransportOperationWithAbort(
+      () =>
+        checkAvailability(
+          promptRequest.sessionOptions as
+            EdgeLanguageModelCreateOptions | undefined,
+        ),
+      signal,
+      createPromptAbortError,
     );
 
     const status =
@@ -174,7 +183,11 @@ export class ExperimentalEdgeLocalTransport implements Transport {
     }
 
     if (status === 'downloadable' || status === 'downloading') {
-      await this.options.events?.downloadRequired?.(status);
+      await raceTransportOperationWithAbort(
+        () => this.options.events?.downloadRequired?.(status),
+        signal,
+        createPromptAbortError,
+      );
     }
 
     return status;
@@ -207,6 +220,10 @@ export class ExperimentalEdgeLocalTransport implements Transport {
     signal: AbortSignal,
     promptRequest: PromptRequest,
   ): Promise<LanguageModelSessionLease> {
+    if (signal.aborted) {
+      throw createPromptAbortError();
+    }
+
     const sessionRecord = this.getSessionRecord(
       languageModel,
       signal,
@@ -216,7 +233,11 @@ export class ExperimentalEdgeLocalTransport implements Transport {
 
     let session: LanguageModelSession;
     try {
-      session = await waitForSessionCreation(sessionRecord.promise, signal);
+      session = await raceTransportOperationWithAbort(
+        () => sessionRecord.promise,
+        signal,
+        createPromptAbortError,
+      );
     } catch (error) {
       sessionRecord.owners = Math.max(0, sessionRecord.owners - 1);
       if (isPromptAbortError(error)) {
@@ -360,50 +381,6 @@ export class ExperimentalEdgeLocalTransport implements Transport {
       throw err;
     }
   }
-}
-
-function waitForSessionCreation<T>(
-  promise: Promise<T>,
-  signal: AbortSignal,
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    let settled = false;
-    const handleAbort = () => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      signal.removeEventListener('abort', handleAbort);
-      reject(createPromptAbortError());
-    };
-
-    signal.addEventListener('abort', handleAbort, { once: true });
-    promise.then(
-      (session) => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        signal.removeEventListener('abort', handleAbort);
-        resolve(session);
-      },
-      (error) => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        signal.removeEventListener('abort', handleAbort);
-        reject(error);
-      },
-    );
-
-    if (signal.aborted) {
-      handleAbort();
-    }
-  });
 }
 
 function createPromptAbortError(): TransportError {

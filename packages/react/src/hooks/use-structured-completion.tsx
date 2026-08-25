@@ -79,7 +79,7 @@ export interface UseStructuredCompletionOptions<
   /**
    * Optional opaque AG-UI thread identity.
    */
-  threadId?: string;
+  threadId?: string | undefined;
 }
 
 /**

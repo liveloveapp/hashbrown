@@ -454,6 +454,95 @@ test('preserves Chrome transport metadata', async () => {
   });
 });
 
+test.each(['resolve', 'reject'] as const)(
+  'aborts while Chrome availability is pending and owns a late %s',
+  async (lateSettlement) => {
+    const availabilityResult = createDeferred<{ status: 'available' }>();
+    const availability = jest.fn(() => availabilityResult.promise);
+    const create = jest.fn(async () => createSession(createTextStream([])));
+    const controller = new AbortController();
+
+    await withLanguageModel({ availability, create }, async () => {
+      const transport = new ExperimentalChromeLocalTransport({});
+      const sendPromise = transport.send(
+        createRequest({}, { signal: controller.signal }),
+      );
+      await flushTasks();
+
+      controller.abort();
+
+      await expect(settleWithinTask(sendPromise)).resolves.toMatchObject({
+        status: 'rejected',
+        reason: { code: 'PROMPT_API_ABORTED', retryable: false },
+      });
+
+      if (lateSettlement === 'resolve') {
+        availabilityResult.resolve({ status: 'available' });
+      } else {
+        availabilityResult.reject(new Error('late availability failure'));
+      }
+      await flushTasks();
+
+      expect(create).not.toHaveBeenCalled();
+    });
+  },
+);
+
+test('aborts while the Chrome download callback is pending', async () => {
+  const downloadResult = createDeferred<void>();
+  const downloadRequired = jest.fn(() => downloadResult.promise);
+  const create = jest.fn(async () => createSession(createTextStream([])));
+  const controller = new AbortController();
+  const languageModel = {
+    availability: jest.fn().mockResolvedValue({ status: 'downloading' }),
+    create,
+  };
+
+  await withLanguageModel(languageModel, async () => {
+    const transport = new ExperimentalChromeLocalTransport({
+      events: { downloadRequired },
+    });
+    const sendPromise = transport.send(
+      createRequest({}, { signal: controller.signal }),
+    );
+    await flushTasks();
+
+    controller.abort();
+
+    await expect(settleWithinTask(sendPromise)).resolves.toMatchObject({
+      status: 'rejected',
+      reason: { code: 'PROMPT_API_ABORTED', retryable: false },
+    });
+    downloadResult.resolve();
+    await flushTasks();
+
+    expect(downloadRequired).toHaveBeenCalledWith('downloading');
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+test('does not check Chrome availability or create a session after abort', async () => {
+  const availability = jest.fn().mockResolvedValue({ status: 'available' });
+  const create = jest.fn(async () => createSession(createTextStream([])));
+  const controller = new AbortController();
+  controller.abort();
+
+  await withLanguageModel({ availability, create }, async () => {
+    const transport = new ExperimentalChromeLocalTransport({});
+
+    const sendPromise = transport.send(
+      createRequest({}, { signal: controller.signal }),
+    );
+
+    await expect(sendPromise).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+      retryable: false,
+    });
+    expect(availability).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
 test('aborts pending custom session creation and destroys a late session once', async () => {
   await withLanguageModel(undefined, async () => {
     const abortController = new AbortController();
