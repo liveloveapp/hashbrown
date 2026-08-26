@@ -1,4 +1,3 @@
-import { s, ɵcreateUiKit } from '@hashbrownai/core';
 import type { Page } from '@playwright/test';
 import { createAppDriver } from '../harness/app-driver';
 import {
@@ -12,22 +11,89 @@ import { expect, test } from '../harness/test-fixture';
 interface ObservedPostRequest {
   readonly method: string;
   readonly url: string;
+  readonly accept: string | undefined;
+  readonly contentType: string | undefined;
 }
+
+const expectedStructuredJsonSchema = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    count: { type: 'number', description: 'Result count' },
+    answer: { type: 'string', description: 'Answer text' },
+  },
+  required: ['count', 'answer'],
+  additionalProperties: false,
+  description: 'Runtime smoke answer',
+};
+
+const expectedUiSchema = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    ui: {
+      type: 'array',
+      items: {
+        anyOf: [
+          {
+            type: 'object',
+            properties: {
+              status: {
+                type: 'object',
+                properties: {
+                  props: {
+                    type: 'object',
+                    properties: {
+                      count: {
+                        type: 'number',
+                        description: 'Status count',
+                      },
+                      title: {
+                        type: 'string',
+                        description: 'Status title',
+                      },
+                    },
+                    required: ['count', 'title'],
+                    additionalProperties: false,
+                    description: 'Component Props',
+                  },
+                },
+                required: ['props'],
+                additionalProperties: false,
+                description: 'status node',
+              },
+            },
+            required: ['status'],
+            additionalProperties: false,
+            description: 'Display a runtime status.',
+          },
+        ],
+      },
+      description: 'List of elements',
+    },
+  },
+  required: ['ui'],
+  additionalProperties: false,
+  description:
+    'Return a JSON object with a single key "ui" that matches the schema below. Use only these components.',
+};
 
 function observePostRequests(page: Page): ObservedPostRequest[] {
   const requests: ObservedPostRequest[] = [];
 
   page.on('request', (request) => {
     if (request.method() === 'POST') {
-      requests.push({ method: request.method(), url: request.url() });
+      const headers = request.headers();
+      requests.push({
+        method: request.method(),
+        url: request.url(),
+        accept: headers['accept'],
+        contentType: headers['content-type'],
+      });
     }
   });
 
   return requests;
-}
-
-function messageHistory(input: HashbrownRunInput) {
-  return input.messages.map(({ role, content }) => ({ role, content }));
 }
 
 test('sends the exact plain AG-UI request contract across explicit sends', async ({
@@ -75,8 +141,18 @@ test('sends the exact plain AG-UI request contract across explicit sends', async
   await expect(driver.sendingError()).toHaveJSProperty('textContent', '');
   await expect(driver.generatingError()).toHaveJSProperty('textContent', '');
   expect(posts).toEqual([
-    { method: 'POST', url: aimock.aguiRunUrl },
-    { method: 'POST', url: aimock.aguiRunUrl },
+    {
+      method: 'POST',
+      url: aimock.aguiRunUrl,
+      accept: 'text/event-stream',
+      contentType: 'application/json',
+    },
+    {
+      method: 'POST',
+      url: aimock.aguiRunUrl,
+      accept: 'text/event-stream',
+      contentType: 'application/json',
+    },
   ]);
   expect(inputs).toHaveLength(2);
   expect(attemptedInputs).toHaveLength(2);
@@ -86,21 +162,57 @@ test('sends the exact plain AG-UI request contract across explicit sends', async
   }
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
-  expect(messageHistory(firstInput)).toEqual([
-    { role: 'system', content: 'Runtime smoke system prompt.' },
-    { role: 'user', content: 'First contract prompt' },
-  ]);
-  expect(messageHistory(secondInput)).toEqual([
-    { role: 'system', content: 'Runtime smoke system prompt.' },
-    { role: 'user', content: 'First contract prompt' },
-    { role: 'assistant', content: 'First deterministic response.' },
-    { role: 'user', content: 'Second contract prompt' },
-  ]);
-  for (const input of inputs) {
-    expect(input.forwardedProps).toEqual({});
-    expect(input).not.toHaveProperty('model');
-    expect(input).not.toHaveProperty('hashbrown');
-  }
+  expect(firstInput).toEqual({
+    threadId: firstInput.threadId,
+    runId: firstInput.runId,
+    messages: [
+      {
+        id: `${firstInput.threadId}:system`,
+        role: 'system',
+        content: 'Runtime smoke system prompt.',
+      },
+      {
+        id: `${firstInput.threadId}:message:0`,
+        role: 'user',
+        content: 'First contract prompt',
+      },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
+  });
+  expect(secondInput).toEqual({
+    threadId: firstInput.threadId,
+    runId: secondInput.runId,
+    messages: [
+      {
+        id: `${firstInput.threadId}:system`,
+        role: 'system',
+        content: 'Runtime smoke system prompt.',
+      },
+      {
+        id: `${firstInput.threadId}:message:0`,
+        role: 'user',
+        content: 'First contract prompt',
+      },
+      {
+        id: `${firstInput.threadId}:message:1`,
+        role: 'assistant',
+        content: 'First deterministic response.',
+        toolCalls: [],
+      },
+      {
+        id: `${firstInput.threadId}:message:2`,
+        role: 'user',
+        content: 'Second contract prompt',
+      },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
+  });
   hygiene.assertClean();
 });
 
@@ -108,12 +220,6 @@ test('sends the exact structured AG-UI request contract', async ({
   page,
   aimock,
 }) => {
-  const expectedStructuredJsonSchema = s.toJsonSchema(
-    s.object('Runtime smoke answer', {
-      answer: s.streaming.string('Answer text'),
-      count: s.number('Result count'),
-    }),
-  );
   const inputs: HashbrownRunInput[] = [];
   const attemptedInputs: HashbrownRunInput[] = [];
   const hygiene = await openScenario(page, aimock, {
@@ -145,23 +251,41 @@ test('sends the exact structured AG-UI request contract', async ({
   await expect(driver.error()).toHaveJSProperty('textContent', '');
   await expect(driver.sendingError()).toHaveJSProperty('textContent', '');
   await expect(driver.generatingError()).toHaveJSProperty('textContent', '');
-  expect(posts).toEqual([{ method: 'POST', url: aimock.aguiRunUrl }]);
+  expect(posts).toEqual([
+    {
+      method: 'POST',
+      url: aimock.aguiRunUrl,
+      accept: 'text/event-stream',
+      contentType: 'application/json',
+    },
+  ]);
   expect(inputs).toHaveLength(1);
   expect(attemptedInputs).toHaveLength(1);
   const [input] = inputs;
   if (!input) {
     throw new Error('Expected one captured structured run input.');
   }
-  expect(messageHistory(input)).toEqual([
-    { role: 'system', content: 'Runtime smoke system prompt.' },
-    { role: 'user', content: 'Return structured contract' },
-  ]);
-  expect(input.forwardedProps).toEqual({});
-  expect(input).not.toHaveProperty('model');
-  expect(input.hashbrown).toEqual({
-    responseSchema: expectedStructuredJsonSchema,
+  expect(input).toEqual({
+    threadId: input.threadId,
+    runId: input.runId,
+    messages: [
+      {
+        id: `${input.threadId}:system`,
+        role: 'system',
+        content: 'Runtime smoke system prompt.',
+      },
+      {
+        id: `${input.threadId}:message:0`,
+        role: 'user',
+        content: 'Return structured contract',
+      },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
+    hashbrown: { responseSchema: expectedStructuredJsonSchema },
   });
-  expect(input).not.toHaveProperty('responseSchema');
   hygiene.assertClean();
 });
 
@@ -169,22 +293,6 @@ test('sends the exact generative UI AG-UI request contract', async ({
   page,
   aimock,
 }) => {
-  const expectedUiSchema = s.toJsonSchema(
-    ɵcreateUiKit({
-      components: [
-        {
-          component: {},
-          name: 'status',
-          description: 'Display a runtime status.',
-          props: {
-            title: s.streaming.string('Status title'),
-            count: s.number('Status count'),
-          },
-          children: false,
-        },
-      ],
-    }).schema,
-  );
   const inputs: HashbrownRunInput[] = [];
   const attemptedInputs: HashbrownRunInput[] = [];
   const hygiene = await openScenario(page, aimock, {
@@ -215,24 +323,40 @@ test('sends the exact generative UI AG-UI request contract', async ({
   await expect(driver.error()).toHaveJSProperty('textContent', '');
   await expect(driver.sendingError()).toHaveJSProperty('textContent', '');
   await expect(driver.generatingError()).toHaveJSProperty('textContent', '');
-  expect(posts).toEqual([{ method: 'POST', url: aimock.aguiRunUrl }]);
+  expect(posts).toEqual([
+    {
+      method: 'POST',
+      url: aimock.aguiRunUrl,
+      accept: 'text/event-stream',
+      contentType: 'application/json',
+    },
+  ]);
   expect(inputs).toHaveLength(1);
   expect(attemptedInputs).toHaveLength(1);
   const [input] = inputs;
   if (!input) {
     throw new Error('Expected one captured generative UI run input.');
   }
-  expect(messageHistory(input)).toEqual([
-    { role: 'system', content: 'Runtime smoke system prompt.' },
-    { role: 'user', content: 'Render contract status' },
-  ]);
-  expect(input.forwardedProps).toEqual({});
-  expect(input).not.toHaveProperty('model');
-  expect(input.hashbrown).toEqual({
-    ui: true,
-    responseSchema: expectedUiSchema,
+  expect(input).toEqual({
+    threadId: input.threadId,
+    runId: input.runId,
+    messages: [
+      {
+        id: `${input.threadId}:system`,
+        role: 'system',
+        content: 'Runtime smoke system prompt.',
+      },
+      {
+        id: `${input.threadId}:message:0`,
+        role: 'user',
+        content: 'Render contract status',
+      },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
+    hashbrown: { ui: true, responseSchema: expectedUiSchema },
   });
-  expect(input).not.toHaveProperty('responseSchema');
-  expect(input).not.toHaveProperty('ui');
   hygiene.assertClean();
 });

@@ -1,4 +1,3 @@
-import { s } from '@hashbrownai/core';
 import { createAppDriver } from '../harness/app-driver';
 import {
   createTextRunEvents,
@@ -8,10 +7,17 @@ import {
 import { openScenario } from '../harness/browser';
 import { expect, test } from '../harness/test-fixture';
 
-const answerSchema = s.object('Runtime smoke answer', {
-  answer: s.streaming.string('Answer text'),
-  count: s.number('Result count'),
-});
+const answerResponseSchema = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    count: { type: 'number', description: 'Result count' },
+    answer: { type: 'string', description: 'Answer text' },
+  },
+  required: ['count', 'answer'],
+  additionalProperties: false,
+  description: 'Runtime smoke answer',
+};
 
 test('streams structured output progressively', async ({ page, aimock }) => {
   const captured: HashbrownRunInput[] = [];
@@ -61,7 +67,7 @@ test('streams structured output progressively', async ({ page, aimock }) => {
     throw new Error('Expected one captured structured run input.');
   }
   expect(input.hashbrown).toEqual({
-    responseSchema: s.toJsonSchema(answerSchema),
+    responseSchema: answerResponseSchema,
   });
   expect(
     input.messages.map(({ role, content }) => ({ role, content })),

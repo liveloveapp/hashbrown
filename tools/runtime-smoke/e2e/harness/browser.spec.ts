@@ -202,3 +202,22 @@ test('reports a completely unmatched browser event as unexpected', () => {
     'Request failed: POST http://127.0.0.1:4100/run (net::ERR_FAILED)',
   );
 });
+
+test('ignores only a request failure accepted by the terminal matcher', () => {
+  const fakePage = createFakePage();
+  const terminalAbort = createRequest();
+  const unexpectedAbort = createRequest();
+  const hygiene = installBrowserHygiene(
+    fakePage.page,
+    {},
+    (request) => request === terminalAbort,
+  );
+
+  fakePage.emit('requestfailed', terminalAbort);
+  fakePage.emit('requestfailed', unexpectedAbort);
+  const assertClean = () => hygiene.assertClean();
+
+  expect(assertClean).toThrow(
+    'Request failed: POST http://127.0.0.1:4100/run (net::ERR_ABORTED)',
+  );
+});

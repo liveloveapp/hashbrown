@@ -5,7 +5,7 @@ import {
   type Request,
   type Response,
 } from '@playwright/test';
-import type { AimockHandle } from '@hashbrownai/testing/aimock';
+import type { RuntimeSmokeAimockHandle } from './test-fixture';
 
 /** Scenario shells supported by both runtime smoke fixture applications. */
 export type RuntimeSmokeScenario = 'plain' | 'tool' | 'structured' | 'ui';
@@ -46,7 +46,9 @@ export interface OpenScenarioOptions {
   /** Optional browser hygiene exceptions scoped to this scenario. */
   readonly hygiene?: BrowserHygieneOptions;
   /** Registers aimock behavior after reset and before browser navigation. */
-  readonly register?: (aimock: AimockHandle) => void | Promise<void>;
+  readonly register?: (
+    aimock: RuntimeSmokeAimockHandle,
+  ) => void | Promise<void>;
 }
 
 function formatLocation(location: { url: string; lineNumber: number }): string {
@@ -119,6 +121,7 @@ function createAllowanceTracker<T>(
 export function installBrowserHygiene(
   page: Page,
   options: BrowserHygieneOptions = {},
+  ignoreRequestFailure: (request: Request) => boolean = () => false,
 ): BrowserHygiene {
   const unexpectedEntries: string[] = [];
   const requestFailureAllowances = createAllowanceTracker(
@@ -148,7 +151,10 @@ export function installBrowserHygiene(
     }
   });
   page.on('requestfailed', (request) => {
-    if (!requestFailureAllowances.consume(request)) {
+    if (
+      !ignoreRequestFailure(request) &&
+      !requestFailureAllowances.consume(request)
+    ) {
       const failure = request.failure()?.errorText ?? 'unknown failure';
       unexpectedEntries.push(
         `Request failed: ${request.method()} ${request.url()} (${failure})`,
@@ -182,11 +188,30 @@ export function installBrowserHygiene(
 /** Opens a reset and registered fixture scenario, then waits for readiness. */
 export async function openScenario(
   page: Page,
-  aimock: AimockHandle,
+  aimock: RuntimeSmokeAimockHandle,
   options: OpenScenarioOptions,
 ): Promise<BrowserHygiene> {
   aimock.aguiMock.reset();
-  const hygiene = installBrowserHygiene(page, options.hygiene);
+  const hygiene = installBrowserHygiene(page, options.hygiene, (request) => {
+    if (
+      request.method() !== 'POST' ||
+      request.url() !== aimock.aguiRunUrl ||
+      request.failure()?.errorText !== 'net::ERR_ABORTED'
+    ) {
+      return false;
+    }
+
+    try {
+      const input = request.postDataJSON() as { readonly runId?: unknown };
+
+      return (
+        typeof input.runId === 'string' &&
+        aimock.consumeTerminalRun(input.runId)
+      );
+    } catch {
+      return false;
+    }
+  });
   await options.register?.(aimock);
 
   const searchParams = new URLSearchParams({

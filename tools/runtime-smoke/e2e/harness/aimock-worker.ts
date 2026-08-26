@@ -1,13 +1,13 @@
 import type { AimockHandle } from '@hashbrownai/testing/aimock';
 
 /** Runs one worker body with an owned aimock handle and deterministic cleanup. */
-export async function runAimockWorker(
-  start: () => Promise<AimockHandle>,
-  use: (handle: AimockHandle) => Promise<void>,
+export async function runAimockWorker<T extends AimockHandle>(
+  start: () => Promise<T>,
+  use: (handle: T) => Promise<void>,
 ): Promise<void> {
   const handle = await start();
   let stopPromise: Promise<void> | undefined;
-  const wrappedHandle: AimockHandle = {
+  const wrappedHandle: T = {
     ...handle,
     stop() {
       stopPromise ??= Promise.resolve().then(() => handle.stop());

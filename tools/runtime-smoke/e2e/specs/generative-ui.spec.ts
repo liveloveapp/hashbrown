@@ -1,4 +1,3 @@
-import { s, ɵcreateUiKit } from '@hashbrownai/core';
 import { createAppDriver } from '../harness/app-driver';
 import {
   createTextRunEvents,
@@ -8,22 +7,56 @@ import {
 import { openScenario } from '../harness/browser';
 import { expect, test } from '../harness/test-fixture';
 
-const statusResponseSchema = s.toJsonSchema(
-  ɵcreateUiKit({
-    components: [
-      {
-        component: {},
-        name: 'status',
-        description: 'Display a runtime status.',
-        props: {
-          title: s.streaming.string('Status title'),
-          count: s.number('Status count'),
-        },
-        children: false,
+const statusResponseSchema = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    ui: {
+      type: 'array',
+      items: {
+        anyOf: [
+          {
+            type: 'object',
+            properties: {
+              status: {
+                type: 'object',
+                properties: {
+                  props: {
+                    type: 'object',
+                    properties: {
+                      count: {
+                        type: 'number',
+                        description: 'Status count',
+                      },
+                      title: {
+                        type: 'string',
+                        description: 'Status title',
+                      },
+                    },
+                    required: ['count', 'title'],
+                    additionalProperties: false,
+                    description: 'Component Props',
+                  },
+                },
+                required: ['props'],
+                additionalProperties: false,
+                description: 'status node',
+              },
+            },
+            required: ['status'],
+            additionalProperties: false,
+            description: 'Display a runtime status.',
+          },
+        ],
       },
-    ],
-  }).schema,
-);
+      description: 'List of elements',
+    },
+  },
+  required: ['ui'],
+  additionalProperties: false,
+  description:
+    'Return a JSON object with a single key "ui" that matches the schema below. Use only these components.',
+};
 
 test('streams trusted generative UI progressively', async ({
   page,

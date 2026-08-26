@@ -15,6 +15,23 @@ const weatherResult = {
   condition: 'sunny',
 };
 const serializedWeatherResult = JSON.stringify(weatherResult);
+const expectedWeatherTool = {
+  name: 'getWeather',
+  description: 'Get the current weather for a city.',
+  parameters: {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties: {
+      city: {
+        type: 'string',
+        description: 'The city to get weather for',
+      },
+    },
+    required: ['city'],
+    additionalProperties: false,
+    description: 'Weather lookup',
+  },
+};
 
 function createInitialMessages(
   threadId: string,
@@ -170,11 +187,23 @@ test('executes a tool once and automatically continues the run', async ({
   expect(attempted).toHaveLength(2);
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
-  expect(firstInput.messages).toEqual(
-    createInitialMessages(firstInput.threadId),
-  );
-  expect(secondInput.messages).toEqual(
-    createContinuationMessages(secondInput.threadId),
-  );
+  expect(firstInput).toEqual({
+    threadId: firstInput.threadId,
+    runId: firstInput.runId,
+    messages: createInitialMessages(firstInput.threadId),
+    tools: [expectedWeatherTool],
+    context: [],
+    state: {},
+    forwardedProps: {},
+  });
+  expect(secondInput).toEqual({
+    threadId: firstInput.threadId,
+    runId: secondInput.runId,
+    messages: createContinuationMessages(firstInput.threadId),
+    tools: [expectedWeatherTool],
+    context: [],
+    state: {},
+    forwardedProps: {},
+  });
   hygiene.assertClean();
 });
