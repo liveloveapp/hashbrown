@@ -38,33 +38,40 @@ function parseTerminalEvent(chunk: unknown): TerminalEvent | undefined {
   const frames = chunk.split(/\r?\n\r?\n/);
   frames.pop();
   for (const frame of frames) {
-    for (const line of frame.split(/\r?\n/)) {
-      if (!line.startsWith('data:')) {
-        continue;
-      }
+    const payload = frame
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => {
+        const value = line.slice('data:'.length);
 
-      try {
-        const event = JSON.parse(line.slice('data:'.length).trim()) as {
-          readonly type?: unknown;
-          readonly runId?: unknown;
-          readonly threadId?: unknown;
+        return value.startsWith(' ') ? value.slice(1) : value;
+      })
+      .join('\n');
+    if (!payload) {
+      continue;
+    }
+
+    try {
+      const event = JSON.parse(payload) as {
+        readonly type?: unknown;
+        readonly runId?: unknown;
+        readonly threadId?: unknown;
+      };
+
+      if (
+        event.type === EventType.RUN_FINISHED ||
+        event.type === EventType.RUN_ERROR
+      ) {
+        return {
+          type: event.type,
+          ...(typeof event.runId === 'string' ? { runId: event.runId } : {}),
+          ...(typeof event.threadId === 'string'
+            ? { threadId: event.threadId }
+            : {}),
         };
-
-        if (
-          event.type === EventType.RUN_FINISHED ||
-          event.type === EventType.RUN_ERROR
-        ) {
-          return {
-            type: event.type,
-            ...(typeof event.runId === 'string' ? { runId: event.runId } : {}),
-            ...(typeof event.threadId === 'string'
-              ? { threadId: event.threadId }
-              : {}),
-          };
-        }
-      } catch {
-        continue;
       }
+    } catch {
+      continue;
     }
   }
 

@@ -60,6 +60,22 @@ test('does not close for an incomplete terminal SSE frame', () => {
   expect(fake.endCalls).toEqual([]);
 });
 
+test('parses all data lines as one SSE payload before detecting a terminal', () => {
+  const fake = createFakeResponse();
+  const invalidMultilineFrame = [
+    'data: {"type":"RUN_FINISHED","threadId":"thread","runId":"run"}',
+    'data: invalid continuation',
+    '',
+    '',
+  ].join('\n');
+  endResponseAfterTerminalEvent(fake.response);
+
+  fake.response.write(invalidMultilineFrame);
+
+  expect(fake.writes).toEqual([invalidMultilineFrame]);
+  expect(fake.endCalls).toEqual([]);
+});
+
 test('leaves a nonterminal SSE response open until the server ends it', () => {
   const fake = createFakeResponse();
   const contentFrame =
