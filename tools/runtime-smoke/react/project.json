@@ -24,6 +24,7 @@
       "options": {
         "buildTarget": "runtime-smoke-react:build:production",
         "staticFilePath": "dist/tools/runtime-smoke/react",
+        "host": "127.0.0.1",
         "port": 4312,
         "spa": true
       }

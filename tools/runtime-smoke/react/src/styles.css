@@ -1,0 +1,11 @@
+html {
+  font-family: system-ui, sans-serif;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  color: #1f2937;
+  background: #ffffff;
+}
