@@ -149,6 +149,7 @@ test('registers request-specific events and captures cloned matching inputs', ()
     },
   } as Pick<AGUIMock, 'onPredicate'>;
   const capturedInputs: HashbrownRunInput[] = [];
+  const attemptedInputs: HashbrownRunInput[] = [];
   const predicateCalls: Array<{
     readonly threadId: string;
     readonly requestIndex: number;
@@ -180,6 +181,7 @@ test('registers request-specific events and captures cloned matching inputs', ()
       );
     },
     25,
+    attemptedInputs,
   );
   const predicate = registeredPredicate;
   const events = sharedEvents;
@@ -193,6 +195,7 @@ test('registers request-specific events and captures cloned matching inputs', ()
 
   expect(didMatchNonMatchingInput).toBe(false);
   expect(capturedInputs).toEqual([]);
+  expect(attemptedInputs).toEqual([nonMatchingInput]);
   expect(events).toEqual([]);
 
   const didMatchFirstInput = predicate(firstInput as AGUIRunAgentInput);
@@ -231,11 +234,16 @@ test('registers request-specific events and captures cloned matching inputs', ()
   ]);
   expect(capturedInputs).toHaveLength(2);
   expect(capturedInputs[0]).not.toBe(firstInput);
+  expect(attemptedInputs).toEqual([nonMatchingInput, firstInput, secondInput]);
+  expect(attemptedInputs[1]).not.toBe(firstInput);
   expect(registeredDelayMs).toBe(25);
 
   (firstInput.state as { nested: { value: string } }).nested.value = 'mutated';
 
   expect(capturedInputs[0]?.state).toEqual({
+    nested: { value: 'original' },
+  });
+  expect(attemptedInputs[1]?.state).toEqual({
     nested: { value: 'original' },
   });
 });

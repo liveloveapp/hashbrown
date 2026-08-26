@@ -22,6 +22,7 @@ export type HashbrownRunInput = NonNullable<TransportRequest['input']>;
 
 /**
  * Registers request-aware AG-UI events and captures cloned matching inputs.
+ * When supplied, attempted inputs include every predicate evaluation.
  */
 export function registerRunFixture(
   aguiMock: Pick<AGUIMock, 'onPredicate'>,
@@ -29,6 +30,7 @@ export function registerRunFixture(
   predicate: (input: HashbrownRunInput, requestIndex: number) => boolean,
   createEvents: (input: HashbrownRunInput, requestIndex: number) => AGUIEvent[],
   delayMs?: number,
+  attemptedInputs?: HashbrownRunInput[],
 ): void {
   const events = createStreamSnapshottingEventArray();
   let requestIndex = 0;
@@ -36,6 +38,7 @@ export function registerRunFixture(
   aguiMock.onPredicate(
     (input: AGUIRunAgentInput) => {
       const requestInput = input as HashbrownRunInput;
+      attemptedInputs?.push(structuredClone(requestInput));
       if (!predicate(requestInput, requestIndex)) {
         return false;
       }
