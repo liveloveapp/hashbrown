@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "module": "commonjs",
+    "ignoreDeprecations": "6.0"
+  },
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}

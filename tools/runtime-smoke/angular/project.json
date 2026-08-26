@@ -1,0 +1,34 @@
+{
+  "name": "runtime-smoke-angular",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/runtime-smoke/angular/src",
+  "implicitDependencies": ["core", "angular"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/tools/runtime-smoke/angular",
+        "browser": "tools/runtime-smoke/angular/src/main.ts",
+        "tsConfig": "tools/runtime-smoke/angular/tsconfig.app.json",
+        "styles": ["tools/runtime-smoke/angular/src/styles.css"]
+      },
+      "configurations": {
+        "production": {
+          "outputHashing": "none"
+        }
+      }
+    },
+    "serve-static": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "runtime-smoke-angular:build:production",
+        "staticFilePath": "dist/tools/runtime-smoke/angular/browser",
+        "port": 4311,
+        "spa": true
+      }
+    }
+  }
+}

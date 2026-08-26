@@ -1,0 +1,32 @@
+{
+  "name": "runtime-smoke-react",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/runtime-smoke/react/src",
+  "implicitDependencies": ["core", "react"],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "configFile": "tools/runtime-smoke/react/vite.config.ts",
+        "outputPath": "dist/tools/runtime-smoke/react"
+      },
+      "configurations": {
+        "production": {
+          "mode": "production"
+        }
+      }
+    },
+    "serve-static": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "runtime-smoke-react:build:production",
+        "staticFilePath": "dist/tools/runtime-smoke/react",
+        "port": 4312,
+        "spa": true
+      }
+    }
+  }
+}

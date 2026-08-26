@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "types": ["vite/client"],
+    "ignoreDeprecations": "6.0"
+  },
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
+}
