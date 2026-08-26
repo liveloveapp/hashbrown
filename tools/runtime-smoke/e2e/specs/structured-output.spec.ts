@@ -1,3 +1,4 @@
+import { s } from '@hashbrownai/core';
 import { createAppDriver } from '../harness/app-driver';
 import {
   createTextRunEvents,
@@ -6,6 +7,11 @@ import {
 } from '../harness/agui';
 import { openScenario } from '../harness/browser';
 import { expect, test } from '../harness/test-fixture';
+
+const answerSchema = s.object('Runtime smoke answer', {
+  answer: s.streaming.string('Answer text'),
+  count: s.number('Result count'),
+});
 
 test('streams structured output progressively', async ({ page, aimock }) => {
   const captured: HashbrownRunInput[] = [];
@@ -54,8 +60,15 @@ test('streams structured output progressively', async ({ page, aimock }) => {
   if (!input) {
     throw new Error('Expected one captured structured run input.');
   }
-  expect(input.hashbrown?.responseSchema).toEqual(expect.any(Object));
-  expect(input.hashbrown).not.toHaveProperty('ui');
+  expect(input.hashbrown).toEqual({
+    responseSchema: s.toJsonSchema(answerSchema),
+  });
+  expect(
+    input.messages.map(({ role, content }) => ({ role, content })),
+  ).toEqual([
+    { role: 'system', content: 'Runtime smoke system prompt.' },
+    { role: 'user', content: 'Count the results' },
+  ]);
   expect(input).not.toHaveProperty('responseSchema');
   hygiene.assertClean();
 });
