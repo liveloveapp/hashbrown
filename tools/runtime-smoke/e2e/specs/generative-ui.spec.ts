@@ -1,3 +1,4 @@
+import { s, ɵcreateUiKit } from '@hashbrownai/core';
 import { createAppDriver } from '../harness/app-driver';
 import {
   createTextRunEvents,
@@ -6,6 +7,23 @@ import {
 } from '../harness/agui';
 import { openScenario } from '../harness/browser';
 import { expect, test } from '../harness/test-fixture';
+
+const statusResponseSchema = s.toJsonSchema(
+  ɵcreateUiKit({
+    components: [
+      {
+        component: {},
+        name: 'status',
+        description: 'Display a runtime status.',
+        props: {
+          title: s.streaming.string('Status title'),
+          count: s.number('Status count'),
+        },
+        children: false,
+      },
+    ],
+  }).schema,
+);
 
 test('streams trusted generative UI progressively', async ({
   page,
@@ -50,7 +68,7 @@ test('streams trusted generative UI progressively', async ({
     throw new Error('Expected one captured generative UI run input.');
   }
   expect(input.hashbrown?.ui).toBe(true);
-  expect(input.hashbrown?.responseSchema).toEqual(expect.any(Object));
+  expect(input.hashbrown?.responseSchema).toEqual(statusResponseSchema);
   expect(input).not.toHaveProperty('responseSchema');
   expect(
     input.messages.map(({ role, content }) => ({ role, content })),
