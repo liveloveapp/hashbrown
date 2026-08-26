@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { PlainSmoke } from './plain-smoke';
 import { StructuredSmoke } from './structured-smoke';
+import { UiSmoke } from './ui-smoke';
 
 type Scenario = 'plain' | 'tool' | 'structured' | 'ui';
 
@@ -18,7 +19,7 @@ function readScenario(): Scenario {
 @Component({
   selector: 'runtime-smoke-root',
   standalone: true,
-  imports: [PlainSmoke, StructuredSmoke],
+  imports: [PlainSmoke, StructuredSmoke, UiSmoke],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main data-testid="fixture-ready">
@@ -27,7 +28,7 @@ function readScenario(): Scenario {
       } @else if (scenario === 'structured') {
         <runtime-structured-smoke />
       } @else {
-        Scenario: {{ scenario }}
+        <runtime-ui-smoke />
       }
     </main>
   `,

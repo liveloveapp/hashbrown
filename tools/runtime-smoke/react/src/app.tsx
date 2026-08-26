@@ -1,5 +1,6 @@
 import { PlainSmoke } from './plain-smoke';
 import { StructuredSmoke } from './structured-smoke';
+import { UiSmoke } from './ui-smoke';
 
 type Scenario = 'plain' | 'tool' | 'structured' | 'ui';
 
@@ -24,7 +25,7 @@ export function App() {
       ) : scenario === 'structured' ? (
         <StructuredSmoke />
       ) : (
-        <>Scenario: {scenario}</>
+        <UiSmoke />
       )}
     </main>
   );
