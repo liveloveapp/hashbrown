@@ -12,7 +12,7 @@ test('streams a plain text response progressively', async ({
   aimock,
 }) => {
   const captured: HashbrownRunInput[] = [];
-  const delay = 400;
+  const delay = 1_000;
   const hygiene = await openScenario(page, aimock, {
     scenario: 'plain',
     register: () =>
@@ -29,10 +29,21 @@ test('streams a plain text response progressively', async ({
 
   await driver.send('Say hello');
 
-  await expect(driver.userMessage()).toHaveText('Say hello');
-  await expect(driver.assistant()).toHaveText('Hello ');
-  await expect(driver.assistant()).toHaveText('Hello world');
+  await expect(driver.userMessage()).toHaveJSProperty(
+    'textContent',
+    'Say hello',
+  );
+  await driver.expectLoading();
+  await expect(driver.assistant()).toHaveJSProperty('textContent', '');
+  await expect(driver.assistant()).toHaveJSProperty('textContent', 'Hello ');
+  await expect(driver.assistant()).toHaveJSProperty(
+    'textContent',
+    'Hello world',
+  );
   await driver.expectIdle();
+  await expect(driver.error()).toHaveJSProperty('textContent', '');
+  await expect(driver.sendingError()).toHaveJSProperty('textContent', '');
+  await expect(driver.generatingError()).toHaveJSProperty('textContent', '');
   expect(captured).toHaveLength(1);
   hygiene.assertClean();
 });
