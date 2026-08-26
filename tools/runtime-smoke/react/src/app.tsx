@@ -1,4 +1,5 @@
 import { PlainSmoke } from './plain-smoke';
+import { StructuredSmoke } from './structured-smoke';
 
 type Scenario = 'plain' | 'tool' | 'structured' | 'ui';
 
@@ -20,6 +21,8 @@ export function App() {
     <main data-testid="fixture-ready">
       {scenario === 'plain' || scenario === 'tool' ? (
         <PlainSmoke scenario={scenario} />
+      ) : scenario === 'structured' ? (
+        <StructuredSmoke />
       ) : (
         <>Scenario: {scenario}</>
       )}
