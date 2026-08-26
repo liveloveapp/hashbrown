@@ -30,6 +30,16 @@
         "port": 4311,
         "spa": true
       }
+    },
+    "serve-built": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "staticFilePath": "dist/tools/runtime-smoke/angular/browser",
+        "watch": false,
+        "host": "127.0.0.1",
+        "port": 4311,
+        "spa": true
+      }
     }
   }
 }

@@ -42,14 +42,14 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'npx nx serve-static runtime-smoke-angular --skip-nx-cache',
+      command: 'npx nx run runtime-smoke-angular:serve-built --skip-nx-cache',
       cwd: repoRoot,
       url: 'http://127.0.0.1:4311',
       timeout: 30_000,
       reuseExistingServer: false,
     },
     {
-      command: 'npx nx serve-static runtime-smoke-react --skip-nx-cache',
+      command: 'npx nx run runtime-smoke-react:serve-built --skip-nx-cache',
       cwd: repoRoot,
       url: 'http://127.0.0.1:4312',
       timeout: 30_000,
