@@ -213,7 +213,7 @@ test('sends the exact plain AG-UI request contract across explicit sends', async
     state: {},
     forwardedProps: {},
   });
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });
 
 test('sends the exact structured AG-UI request contract', async ({
@@ -286,7 +286,7 @@ test('sends the exact structured AG-UI request contract', async ({
     forwardedProps: {},
     hashbrown: { responseSchema: expectedStructuredJsonSchema },
   });
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });
 
 test('sends the exact generative UI AG-UI request contract', async ({
@@ -358,5 +358,5 @@ test('sends the exact generative UI AG-UI request contract', async ({
     forwardedProps: {},
     hashbrown: { ui: true, responseSchema: expectedUiSchema },
   });
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });

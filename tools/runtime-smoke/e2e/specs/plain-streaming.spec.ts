@@ -45,5 +45,5 @@ test('streams a plain text response progressively', async ({
   await expect(driver.sendingError()).toHaveJSProperty('textContent', '');
   await expect(driver.generatingError()).toHaveJSProperty('textContent', '');
   expect(captured).toHaveLength(1);
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });

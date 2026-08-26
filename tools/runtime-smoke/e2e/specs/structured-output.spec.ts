@@ -76,5 +76,5 @@ test('streams structured output progressively', async ({ page, aimock }) => {
     { role: 'user', content: 'Count the results' },
   ]);
   expect(input).not.toHaveProperty('responseSchema');
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });

@@ -106,7 +106,7 @@ test('retries structured output when the first stream has no terminal', async ({
   }
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });
 
 test('recovers from an HTTP send failure after an explicit send', async ({
@@ -192,7 +192,7 @@ test('recovers from an HTTP send failure after an explicit send', async ({
     expect(interceptedRequests).toBe(1);
     expect(attempted).toHaveLength(0);
     expect(captured).toHaveLength(0);
-    hygiene.assertClean();
+    await hygiene.assertClean();
 
     await page.unroute(aimock.aguiRunUrl, routeHandler);
     routeInstalled = false;
@@ -213,7 +213,7 @@ test('recovers from an HTTP send failure after an explicit send', async ({
     expect(observedRunPosts).toBe(2);
     expect(attempted).toHaveLength(1);
     expect(captured).toHaveLength(1);
-    hygiene.assertClean();
+    await hygiene.assertClean();
   } finally {
     if (routeInstalled) {
       await page.unroute(aimock.aguiRunUrl, routeHandler);
@@ -292,5 +292,5 @@ test('recovers from a server run error after an explicit send', async ({
   }
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });

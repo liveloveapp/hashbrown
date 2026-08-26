@@ -109,5 +109,5 @@ test('streams trusted generative UI progressively', async ({
     { role: 'system', content: 'Runtime smoke system prompt.' },
     { role: 'user', content: 'Show status' },
   ]);
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });

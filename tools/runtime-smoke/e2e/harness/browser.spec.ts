@@ -56,7 +56,7 @@ function createConsoleMessage(): ConsoleMessage {
   } as ConsoleMessage;
 }
 
-test('consumes each exact browser hygiene allowance once', () => {
+test('consumes each exact browser hygiene allowance once', async () => {
   const fakePage = createFakePage();
   const request = createRequest();
   const response = createResponse(request);
@@ -86,10 +86,10 @@ test('consumes each exact browser hygiene allowance once', () => {
   fakePage.emit('response', response);
   fakePage.emit('console', consoleMessage);
 
-  expect(() => hygiene.assertClean()).not.toThrow();
+  await expect(hygiene.assertClean()).resolves.toBeUndefined();
 });
 
-test('reports a browser hygiene allowance that was not consumed', () => {
+test('reports a browser hygiene allowance that was not consumed', async () => {
   const fakePage = createFakePage();
   const hygiene = installBrowserHygiene(fakePage.page, {
     requestFailureAllowances: [
@@ -100,14 +100,12 @@ test('reports a browser hygiene allowance that was not consumed', () => {
     ],
   });
 
-  const assertClean = () => hygiene.assertClean();
-
-  expect(assertClean).toThrow(
+  await expect(hygiene.assertClean()).rejects.toThrow(
     'Expected request failure allowance "cancelled run" exactly once, observed 0',
   );
 });
 
-test('reports a browser hygiene allowance consumed more than once', () => {
+test('reports a browser hygiene allowance consumed more than once', async () => {
   const fakePage = createFakePage();
   const request = createRequest();
   const hygiene = installBrowserHygiene(fakePage.page, {
@@ -121,14 +119,12 @@ test('reports a browser hygiene allowance consumed more than once', () => {
 
   fakePage.emit('requestfailed', request);
   fakePage.emit('requestfailed', request);
-  const assertClean = () => hygiene.assertClean();
-
-  expect(assertClean).toThrow(
+  await expect(hygiene.assertClean()).rejects.toThrow(
     'Expected request failure allowance "cancelled run" exactly once, observed 2',
   );
 });
 
-test('rejects an ambiguous allowance match before a broad-only event', () => {
+test('rejects an ambiguous allowance match before a broad-only event', async () => {
   const fakePage = createFakePage();
   const cancelledRequest = createRequest();
   const otherFailure = createRequest('net::ERR_FAILED');
@@ -148,14 +144,12 @@ test('rejects an ambiguous allowance match before a broad-only event', () => {
 
   fakePage.emit('requestfailed', cancelledRequest);
   fakePage.emit('requestfailed', otherFailure);
-  const assertClean = () => hygiene.assertClean();
-
-  expect(assertClean).toThrow(
+  await expect(hygiene.assertClean()).rejects.toThrow(
     'Ambiguous request failure allowance match: "all POST failures", "cancelled run"',
   );
 });
 
-test('rejects an ambiguous allowance match after a broad-only event', () => {
+test('rejects an ambiguous allowance match after a broad-only event', async () => {
   const fakePage = createFakePage();
   const cancelledRequest = createRequest();
   const otherFailure = createRequest('net::ERR_FAILED');
@@ -175,14 +169,12 @@ test('rejects an ambiguous allowance match after a broad-only event', () => {
 
   fakePage.emit('requestfailed', otherFailure);
   fakePage.emit('requestfailed', cancelledRequest);
-  const assertClean = () => hygiene.assertClean();
-
-  expect(assertClean).toThrow(
+  await expect(hygiene.assertClean()).rejects.toThrow(
     'Ambiguous request failure allowance match: "all POST failures", "cancelled run"',
   );
 });
 
-test('reports a completely unmatched browser event as unexpected', () => {
+test('reports a completely unmatched browser event as unexpected', async () => {
   const fakePage = createFakePage();
   const unmatchedRequest = createRequest('net::ERR_FAILED');
   const hygiene = installBrowserHygiene(fakePage.page, {
@@ -196,14 +188,12 @@ test('reports a completely unmatched browser event as unexpected', () => {
   });
 
   fakePage.emit('requestfailed', unmatchedRequest);
-  const assertClean = () => hygiene.assertClean();
-
-  expect(assertClean).toThrow(
+  await expect(hygiene.assertClean()).rejects.toThrow(
     'Request failed: POST http://127.0.0.1:4100/run (net::ERR_FAILED)',
   );
 });
 
-test('ignores only a request failure accepted by the terminal matcher', () => {
+test('ignores only a request failure accepted by the terminal matcher', async () => {
   const fakePage = createFakePage();
   const terminalAbort = createRequest();
   const unexpectedAbort = createRequest();
@@ -215,9 +205,22 @@ test('ignores only a request failure accepted by the terminal matcher', () => {
 
   fakePage.emit('requestfailed', terminalAbort);
   fakePage.emit('requestfailed', unexpectedAbort);
-  const assertClean = () => hygiene.assertClean();
-
-  expect(assertClean).toThrow(
+  await expect(hygiene.assertClean()).rejects.toThrow(
     'Request failed: POST http://127.0.0.1:4100/run (net::ERR_ABORTED)',
+  );
+});
+
+test('waits for a pending POST failure before asserting hygiene', async () => {
+  const fakePage = createFakePage();
+  const request = createRequest('net::ERR_FAILED');
+  const hygiene = installBrowserHygiene(fakePage.page);
+  fakePage.emit('request', request);
+
+  const assertion = hygiene.assertClean();
+  await Promise.resolve();
+  fakePage.emit('requestfailed', request);
+
+  await expect(assertion).rejects.toThrow(
+    'Request failed: POST http://127.0.0.1:4100/run (net::ERR_FAILED)',
   );
 });

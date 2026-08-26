@@ -205,5 +205,5 @@ test('executes a tool once and automatically continues the run', async ({
     state: {},
     forwardedProps: {},
   });
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });

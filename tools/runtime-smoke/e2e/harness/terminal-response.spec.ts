@@ -1,5 +1,9 @@
+import { EventType } from '@ag-ui/core';
 import type { ServerResponse } from 'node:http';
-import { endResponseAfterTerminalEvent } from './terminal-response';
+import {
+  endResponseAfterTerminalEvent,
+  terminalEventMatchesRun,
+} from './terminal-response';
 
 interface FakeResponse {
   readonly response: ServerResponse;
@@ -26,11 +30,11 @@ function createFakeResponse(): FakeResponse {
 
 test('forwards a complete terminal SSE frame before closing exactly once', () => {
   const fake = createFakeResponse();
-  let terminalCalls = 0;
+  const terminalEvents: unknown[] = [];
   const terminalFrame =
     'data: {"type":"RUN_FINISHED","threadId":"thread","runId":"run"}\n\n';
-  endResponseAfterTerminalEvent(fake.response, () => {
-    terminalCalls += 1;
+  endResponseAfterTerminalEvent(fake.response, (event) => {
+    terminalEvents.push(event);
   });
 
   const writeResult = fake.response.write(terminalFrame);
@@ -39,7 +43,21 @@ test('forwards a complete terminal SSE frame before closing exactly once', () =>
   expect(writeResult).toBe(true);
   expect(fake.writes).toEqual([]);
   expect(fake.endCalls).toEqual([[terminalFrame]]);
-  expect(terminalCalls).toBe(1);
+  expect(terminalEvents).toEqual([
+    { type: 'RUN_FINISHED', threadId: 'thread', runId: 'run' },
+  ]);
+});
+
+test('does not close for an incomplete terminal SSE frame', () => {
+  const fake = createFakeResponse();
+  const incompleteTerminalFrame =
+    'data: {"type":"RUN_FINISHED","threadId":"thread","runId":"run"}\n';
+  endResponseAfterTerminalEvent(fake.response);
+
+  fake.response.write(incompleteTerminalFrame);
+
+  expect(fake.writes).toEqual([incompleteTerminalFrame]);
+  expect(fake.endCalls).toEqual([]);
 });
 
 test('leaves a nonterminal SSE response open until the server ends it', () => {
@@ -56,4 +74,32 @@ test('leaves a nonterminal SSE response open until the server ends it', () => {
   fake.response.end('done');
 
   expect(fake.endCalls).toEqual([['done']]);
+});
+
+test('matches only a terminal accepted for the active run identity', () => {
+  const identity = { threadId: 'thread', runId: 'run' };
+
+  expect(
+    terminalEventMatchesRun(
+      {
+        type: EventType.RUN_FINISHED,
+        threadId: 'thread',
+        runId: 'run',
+      },
+      identity,
+    ),
+  ).toBe(true);
+  expect(
+    terminalEventMatchesRun(
+      {
+        type: EventType.RUN_FINISHED,
+        threadId: 'thread',
+        runId: 'other',
+      },
+      identity,
+    ),
+  ).toBe(false);
+  expect(terminalEventMatchesRun({ type: EventType.RUN_ERROR }, identity)).toBe(
+    true,
+  );
 });

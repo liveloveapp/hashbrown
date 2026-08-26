@@ -34,7 +34,7 @@ export interface BrowserHygieneOptions {
 /** Browser error collector installed before scenario navigation. */
 export interface BrowserHygiene {
   /** Asserts that no unexpected browser, console, request, or HTTP errors occurred. */
-  assertClean(): void;
+  assertClean(): Promise<void>;
 }
 
 /** Options used to reset, register, and open one fixture scenario. */
@@ -124,6 +124,8 @@ export function installBrowserHygiene(
   ignoreRequestFailure: (request: Request) => boolean = () => false,
 ): BrowserHygiene {
   const unexpectedEntries: string[] = [];
+  const pendingPostRequests = new Set<Request>();
+  const pendingRequestWaiters = new Set<() => void>();
   const requestFailureAllowances = createAllowanceTracker(
     'request failure',
     options.requestFailureAllowances,
@@ -136,7 +138,42 @@ export function installBrowserHygiene(
     'console error',
     options.consoleErrorAllowances,
   );
+  const settleRequest = (request: Request) => {
+    pendingPostRequests.delete(request);
+    if (pendingPostRequests.size === 0) {
+      for (const resolve of pendingRequestWaiters) {
+        resolve();
+      }
+      pendingRequestWaiters.clear();
+    }
+  };
+  const waitForPostRequests = async () => {
+    if (pendingPostRequests.size === 0) {
+      return;
+    }
 
+    await new Promise<void>((resolve, reject) => {
+      const resolvePending = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      const timeout = setTimeout(() => {
+        pendingRequestWaiters.delete(resolvePending);
+        reject(
+          new Error(
+            `Timed out waiting for ${pendingPostRequests.size} POST request(s) to settle`,
+          ),
+        );
+      }, 5_000);
+      pendingRequestWaiters.add(resolvePending);
+    });
+  };
+
+  page.on('request', (request) => {
+    if (request.method() === 'POST') {
+      pendingPostRequests.add(request);
+    }
+  });
   page.on('pageerror', (error) => {
     unexpectedEntries.push(`Page error: ${error.stack ?? error.message}`);
   });
@@ -150,6 +187,7 @@ export function installBrowserHygiene(
       );
     }
   });
+  page.on('requestfinished', settleRequest);
   page.on('requestfailed', (request) => {
     if (
       !ignoreRequestFailure(request) &&
@@ -160,6 +198,7 @@ export function installBrowserHygiene(
         `Request failed: ${request.method()} ${request.url()} (${failure})`,
       );
     }
+    settleRequest(request);
   });
   page.on('response', (response) => {
     if (response.status() >= 400 && !httpErrorAllowances.consume(response)) {
@@ -170,7 +209,8 @@ export function installBrowserHygiene(
   });
 
   return {
-    assertClean() {
+    async assertClean() {
+      await waitForPostRequests();
       const errors = [
         ...unexpectedEntries,
         ...requestFailureAllowances.violations(),
@@ -191,6 +231,7 @@ export async function openScenario(
   aimock: RuntimeSmokeAimockHandle,
   options: OpenScenarioOptions,
 ): Promise<BrowserHygiene> {
+  aimock.resetTerminalRuns();
   aimock.aguiMock.reset();
   const hygiene = installBrowserHygiene(page, options.hygiene, (request) => {
     if (

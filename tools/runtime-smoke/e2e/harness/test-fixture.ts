@@ -2,7 +2,11 @@ import { test as base, expect as playwrightExpect } from '@playwright/test';
 import { type AimockHandle, startAimock } from '@hashbrownai/testing/aimock';
 import { resolve } from 'node:path';
 import { runAimockWorker } from './aimock-worker';
-import { endResponseAfterTerminalEvent } from './terminal-response';
+import {
+  endResponseAfterTerminalEvent,
+  type RunIdentity,
+  terminalEventMatchesRun,
+} from './terminal-response';
 
 const emptyFixturePath = resolve(__dirname, '../fixtures/empty.json');
 
@@ -10,15 +14,22 @@ const emptyFixturePath = resolve(__dirname, '../fixtures/empty.json');
 export interface RuntimeSmokeAimockHandle extends AimockHandle {
   /** Consumes one recorded terminal for the supplied AG-UI run identity. */
   consumeTerminalRun(runId: string): boolean;
+  /** Clears terminal tracking before a new isolated browser scenario. */
+  resetTerminalRuns(): void;
 }
 
-function parseRunId(chunks: readonly Buffer[]): string | undefined {
+function parseRequestIdentity(
+  chunks: readonly Buffer[],
+): RunIdentity | undefined {
   try {
     const input = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
       readonly runId?: unknown;
+      readonly threadId?: unknown;
     };
 
-    return typeof input.runId === 'string' ? input.runId : undefined;
+    return typeof input.runId === 'string' && typeof input.threadId === 'string'
+      ? { runId: input.runId, threadId: input.threadId }
+      : undefined;
   } catch {
     return undefined;
   }
@@ -30,17 +41,17 @@ async function startBrowserAimock(): Promise<RuntimeSmokeAimockHandle> {
   const handleRequest = handle.aguiMock.handleRequest.bind(handle.aguiMock);
   handle.aguiMock.handleRequest = async (request, response, pathname) => {
     const requestChunks: Buffer[] = [];
-    let requestRunId: string | undefined;
+    let requestIdentity: RunIdentity | undefined;
     request.on('data', (chunk: Buffer) => {
       requestChunks.push(Buffer.from(chunk));
     });
     request.once('end', () => {
-      requestRunId = parseRunId(requestChunks);
+      requestIdentity = parseRequestIdentity(requestChunks);
     });
     response.setHeader('Access-Control-Allow-Origin', '*');
-    endResponseAfterTerminalEvent(response, () => {
-      if (requestRunId) {
-        terminalRunIds.add(requestRunId);
+    endResponseAfterTerminalEvent(response, (event) => {
+      if (requestIdentity && terminalEventMatchesRun(event, requestIdentity)) {
+        terminalRunIds.add(requestIdentity.runId);
       }
     });
 
@@ -50,6 +61,9 @@ async function startBrowserAimock(): Promise<RuntimeSmokeAimockHandle> {
   return Object.assign(handle, {
     consumeTerminalRun(runId: string): boolean {
       return terminalRunIds.delete(runId);
+    },
+    resetTerminalRuns(): void {
+      terminalRunIds.clear();
     },
   });
 }

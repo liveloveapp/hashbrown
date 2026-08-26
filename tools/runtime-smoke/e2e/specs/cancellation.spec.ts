@@ -70,7 +70,7 @@ test('cancels a partial response and recovers on an explicit send', async ({
   await expect.poll(() => attempted.length).toBe(1);
   expect(captured).toHaveLength(1);
   await expect(driver.assistant()).not.toContainText('late');
-  hygiene.assertClean();
+  await hygiene.assertClean();
 
   await driver.send('Recover');
 
@@ -92,5 +92,5 @@ test('cancels a partial response and recovers on an explicit send', async ({
   }
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
-  hygiene.assertClean();
+  await hygiene.assertClean();
 });
