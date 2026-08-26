@@ -19,6 +19,12 @@
         "passWithNoTests": false
       }
     },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsc --noEmit --project tools/runtime-smoke/e2e/tsconfig.playwright.json"
+      }
+    },
     "e2e": {
       "executor": "nx:run-commands",
       "cache": false,

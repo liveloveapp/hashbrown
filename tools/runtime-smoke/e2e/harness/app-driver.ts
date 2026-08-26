@@ -71,3 +71,8 @@ export class AppDriver {
     return this.page.getByTestId('status-card');
   }
 }
+
+/** Creates a shared driver for one runtime smoke fixture page. */
+export function createAppDriver(page: Page): AppDriver {
+  return new AppDriver(page);
+}

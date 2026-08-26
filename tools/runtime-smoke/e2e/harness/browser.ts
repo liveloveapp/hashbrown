@@ -25,8 +25,6 @@ export interface BrowserHygiene {
 
 /** Options used to reset, register, and open one fixture scenario. */
 export interface OpenScenarioOptions {
-  /** Configured Playwright project base URL for the fixture application. */
-  readonly baseURL: string;
   /** Fixture application scenario to render. */
   readonly scenario: RuntimeSmokeScenario;
   /** Number of retries exposed to the fixture scenario. */
@@ -98,12 +96,13 @@ export async function openScenario(
   const hygiene = installBrowserHygiene(page, options.hygiene);
   await options.register?.(aimock);
 
-  const scenarioUrl = new URL(options.baseURL);
-  scenarioUrl.searchParams.set('runUrl', aimock.aguiRunUrl);
-  scenarioUrl.searchParams.set('scenario', options.scenario);
-  scenarioUrl.searchParams.set('retries', String(options.retries ?? 0));
+  const searchParams = new URLSearchParams({
+    runUrl: aimock.aguiRunUrl,
+    scenario: options.scenario,
+    retries: String(options.retries ?? 0),
+  });
 
-  await page.goto(scenarioUrl.href, { waitUntil: 'domcontentloaded' });
+  await page.goto(`/?${searchParams}`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('fixture-ready')).toBeVisible();
 
   return hygiene;
