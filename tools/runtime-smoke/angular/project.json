@@ -5,6 +5,13 @@
   "sourceRoot": "tools/runtime-smoke/angular/src",
   "implicitDependencies": ["core", "angular"],
   "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "tools/runtime-smoke/angular",
+        "command": "eslint ."
+      }
+    },
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],

@@ -11,6 +11,13 @@
     "runtime-smoke-react"
   ],
   "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "tools/runtime-smoke/e2e",
+        "command": "eslint ."
+      }
+    },
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/tools/runtime-smoke/e2e"],

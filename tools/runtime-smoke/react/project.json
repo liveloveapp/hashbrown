@@ -5,6 +5,13 @@
   "sourceRoot": "tools/runtime-smoke/react/src",
   "implicitDependencies": ["core", "react"],
   "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "tools/runtime-smoke/react",
+        "command": "eslint ."
+      }
+    },
     "build": {
       "executor": "@nx/vite:build",
       "outputs": ["{options.outputPath}"],
