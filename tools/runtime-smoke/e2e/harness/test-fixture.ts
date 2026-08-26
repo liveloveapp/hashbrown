@@ -5,6 +5,18 @@ import { runAimockWorker } from './aimock-worker';
 
 const emptyFixturePath = resolve(__dirname, '../fixtures/empty.json');
 
+async function startBrowserAimock(): Promise<AimockHandle> {
+  const handle = await startAimock({ fixturePath: emptyFixturePath });
+  const handleRequest = handle.aguiMock.handleRequest.bind(handle.aguiMock);
+  handle.aguiMock.handleRequest = async (request, response, pathname) => {
+    response.setHeader('Access-Control-Allow-Origin', '*');
+
+    return handleRequest(request, response, pathname);
+  };
+
+  return handle;
+}
+
 /** Worker-scoped fixtures shared by runtime smoke browser tests. */
 export interface RuntimeSmokeWorkerFixtures {
   /** Dynamically allocated aimock server owned by the current worker. */
@@ -14,11 +26,9 @@ export interface RuntimeSmokeWorkerFixtures {
 /** Playwright test extended with the worker-scoped runtime smoke fixtures. */
 export const test = base.extend<object, RuntimeSmokeWorkerFixtures>({
   aimock: [
-    async (_fixtures, use) => {
-      await runAimockWorker(
-        () => startAimock({ fixturePath: emptyFixturePath }),
-        use,
-      );
+    async ({ playwright }, use) => {
+      void playwright;
+      await runAimockWorker(startBrowserAimock, use);
     },
     { scope: 'worker' },
   ],

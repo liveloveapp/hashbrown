@@ -93,7 +93,14 @@ export async function openScenario(
   options: OpenScenarioOptions,
 ): Promise<BrowserHygiene> {
   aimock.aguiMock.reset();
-  const hygiene = installBrowserHygiene(page, options.hygiene);
+  const hygiene = installBrowserHygiene(page, {
+    ...options.hygiene,
+    isExpectedRequestFailure: (request) =>
+      (request.method() === 'POST' &&
+        request.url() === aimock.aguiRunUrl &&
+        request.failure()?.errorText === 'net::ERR_ABORTED') ||
+      options.hygiene?.isExpectedRequestFailure?.(request) === true,
+  });
   await options.register?.(aimock);
 
   const searchParams = new URLSearchParams({
