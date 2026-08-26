@@ -8,6 +8,15 @@ import type { TransportRequest } from '@hashbrownai/core';
 
 const DEFAULT_TIMESTAMP = 1_700_000_000_000;
 
+function createStreamSnapshottingEventArray(): AGUIEvent[] {
+  const events: AGUIEvent[] = [];
+  // Aimock holds this array by reference while delayed streams are active.
+  Object.defineProperty(events, Symbol.iterator, {
+    value: () => events.slice().values(),
+  });
+  return events;
+}
+
 /** AG-UI run input accepted by Hashbrown transports. */
 export type HashbrownRunInput = NonNullable<TransportRequest['input']>;
 
@@ -21,7 +30,7 @@ export function registerRunFixture(
   createEvents: (input: HashbrownRunInput, requestIndex: number) => AGUIEvent[],
   delayMs?: number,
 ): void {
-  const events: AGUIEvent[] = [];
+  const events = createStreamSnapshottingEventArray();
   let requestIndex = 0;
 
   aguiMock.onPredicate(

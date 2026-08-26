@@ -1,9 +1,13 @@
-import { EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import type {
   AGUIMock,
   AGUIRunAgentInput,
   AGUIEvent as AimockAGUIEvent,
 } from '@copilotkit/aimock/agui';
+import { HttpTransport, type TransportRequest } from '@hashbrownai/core';
+import { startAimock } from '@hashbrownai/testing/aimock';
+import { join } from 'node:path';
+import { runAimockWorker } from './aimock-worker';
 import {
   createRunErrorEvents,
   createTextRunEvents,
@@ -24,6 +28,31 @@ function createRunInput(
     context: [],
     state,
   };
+}
+
+function createTransportRequest(
+  input: HashbrownRunInput,
+  requestId: string,
+): TransportRequest {
+  return {
+    input,
+    signal: new AbortController().signal,
+    attempt: 1,
+    maxAttempts: 1,
+    requestId,
+  };
+}
+
+async function collectRemainingEvents(
+  iterator: AsyncIterator<AGUIEvent>,
+): Promise<AGUIEvent[]> {
+  const events: AGUIEvent[] = [];
+  let result = await iterator.next();
+  while (!result.done) {
+    events.push(result.value);
+    result = await iterator.next();
+  }
+  return events;
 }
 
 test('creates deterministic text events with request identity and one terminal', () => {
@@ -210,3 +239,71 @@ test('registers request-specific events and captures cloned matching inputs', ()
     nested: { value: 'original' },
   });
 });
+
+test('keeps overlapping delayed aimock streams bound to their request identity', async () => {
+  await runAimockWorker(
+    () =>
+      startAimock({
+        fixturePath: join(__dirname, '../fixtures/empty.json'),
+      }),
+    async (handle) => {
+      const capturedInputs: HashbrownRunInput[] = [];
+      const firstInput = createRunInput('thread-first', 'run-first');
+      const secondInput = createRunInput('thread-second', 'run-second');
+      const createIdentityEvents = (
+        input: HashbrownRunInput,
+        requestIndex: number,
+      ): AGUIEvent[] => [
+        {
+          type: EventType.RUN_STARTED,
+          threadId: input.threadId,
+          runId: input.runId,
+          timestamp: 1_700_000_002_000 + requestIndex * 10,
+        },
+        {
+          type: EventType.RUN_FINISHED,
+          threadId: input.threadId,
+          runId: input.runId,
+          timestamp: 1_700_000_002_001 + requestIndex * 10,
+        },
+      ];
+      registerRunFixture(
+        handle.aguiMock,
+        capturedInputs,
+        () => true,
+        createIdentityEvents,
+        1_000,
+      );
+      const transport = new HttpTransport({ baseUrl: handle.aguiRunUrl });
+      const firstResponse = await transport.send(
+        createTransportRequest(firstInput, 'request-first'),
+      );
+      const firstIterator = firstResponse.events[Symbol.asyncIterator]();
+
+      const firstStarted = await firstIterator.next();
+      if (firstStarted.done) {
+        throw new Error('Expected the first stream to start');
+      }
+
+      const secondResponse = await transport.send(
+        createTransportRequest(secondInput, 'request-second'),
+      );
+      const secondIterator = secondResponse.events[Symbol.asyncIterator]();
+      const secondStarted = await secondIterator.next();
+      if (secondStarted.done) {
+        throw new Error('Expected the second stream to start');
+      }
+
+      const [firstRemaining, secondRemaining] = await Promise.all([
+        collectRemainingEvents(firstIterator),
+        collectRemainingEvents(secondIterator),
+      ]);
+      const firstEvents = [firstStarted.value, ...firstRemaining];
+      const secondEvents = [secondStarted.value, ...secondRemaining];
+
+      expect(firstEvents).toEqual(createIdentityEvents(firstInput, 0));
+      expect(secondEvents).toEqual(createIdentityEvents(secondInput, 1));
+      expect(capturedInputs).toEqual([firstInput, secondInput]);
+    },
+  );
+}, 10_000);
