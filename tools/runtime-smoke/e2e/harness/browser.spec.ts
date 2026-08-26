@@ -127,3 +127,78 @@ test('reports a browser hygiene allowance consumed more than once', () => {
     'Expected request failure allowance "cancelled run" exactly once, observed 2',
   );
 });
+
+test('rejects an ambiguous allowance match before a broad-only event', () => {
+  const fakePage = createFakePage();
+  const cancelledRequest = createRequest();
+  const otherFailure = createRequest('net::ERR_FAILED');
+  const hygiene = installBrowserHygiene(fakePage.page, {
+    requestFailureAllowances: [
+      {
+        reason: 'all POST failures',
+        matches: (request) => request.method() === 'POST',
+      },
+      {
+        reason: 'cancelled run',
+        matches: (request) =>
+          request.failure()?.errorText === 'net::ERR_ABORTED',
+      },
+    ],
+  });
+
+  fakePage.emit('requestfailed', cancelledRequest);
+  fakePage.emit('requestfailed', otherFailure);
+  const assertClean = () => hygiene.assertClean();
+
+  expect(assertClean).toThrow(
+    'Ambiguous request failure allowance match: "all POST failures", "cancelled run"',
+  );
+});
+
+test('rejects an ambiguous allowance match after a broad-only event', () => {
+  const fakePage = createFakePage();
+  const cancelledRequest = createRequest();
+  const otherFailure = createRequest('net::ERR_FAILED');
+  const hygiene = installBrowserHygiene(fakePage.page, {
+    requestFailureAllowances: [
+      {
+        reason: 'all POST failures',
+        matches: (request) => request.method() === 'POST',
+      },
+      {
+        reason: 'cancelled run',
+        matches: (request) =>
+          request.failure()?.errorText === 'net::ERR_ABORTED',
+      },
+    ],
+  });
+
+  fakePage.emit('requestfailed', otherFailure);
+  fakePage.emit('requestfailed', cancelledRequest);
+  const assertClean = () => hygiene.assertClean();
+
+  expect(assertClean).toThrow(
+    'Ambiguous request failure allowance match: "all POST failures", "cancelled run"',
+  );
+});
+
+test('reports a completely unmatched browser event as unexpected', () => {
+  const fakePage = createFakePage();
+  const unmatchedRequest = createRequest('net::ERR_FAILED');
+  const hygiene = installBrowserHygiene(fakePage.page, {
+    requestFailureAllowances: [
+      {
+        reason: 'cancelled run',
+        matches: (request) =>
+          request.failure()?.errorText === 'net::ERR_ABORTED',
+      },
+    ],
+  });
+
+  fakePage.emit('requestfailed', unmatchedRequest);
+  const assertClean = () => hygiene.assertClean();
+
+  expect(assertClean).toThrow(
+    'Request failed: POST http://127.0.0.1:4100/run (net::ERR_FAILED)',
+  );
+});

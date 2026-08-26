@@ -10,7 +10,10 @@ import type { AimockHandle } from '@hashbrownai/testing/aimock';
 /** Scenario shells supported by both runtime smoke fixture applications. */
 export type RuntimeSmokeScenario = 'plain' | 'tool' | 'structured' | 'ui';
 
-/** One narrowly matched browser hygiene exception expected exactly once. */
+/**
+ * One narrowly matched browser hygiene exception expected exactly once.
+ * An event matching multiple allowances is reported as ambiguous.
+ */
 export interface BrowserHygieneAllowance<T> {
   /** Human-readable reason the browser event is intentional. */
   readonly reason: string;
@@ -64,16 +67,28 @@ function createAllowanceTracker<T>(
   allowances: readonly BrowserHygieneAllowance<T>[] = [],
 ): AllowanceTracker<T> {
   let observations = allowances.map(() => 0);
+  let ambiguityViolations: string[] = [];
 
   return {
     consume(event) {
       const matchingIndexes = allowances.flatMap((allowance, index) =>
         allowance.matches(event) ? [index] : [],
       );
-      const index =
-        matchingIndexes.find(
-          (matchingIndex) => observations[matchingIndex] === 0,
-        ) ?? matchingIndexes[0];
+      if (matchingIndexes.length > 1) {
+        const reasons = matchingIndexes
+          .map((index) => allowances[index]?.reason)
+          .filter((reason): reason is string => reason !== undefined)
+          .sort();
+        ambiguityViolations = [
+          ...ambiguityViolations,
+          `Ambiguous ${label} allowance match: ${reasons
+            .map((reason) => `"${reason}"`)
+            .join(', ')}`,
+        ];
+        return true;
+      }
+
+      const [index] = matchingIndexes;
       if (index === undefined) {
         return false;
       }
@@ -84,15 +99,18 @@ function createAllowanceTracker<T>(
       return true;
     },
     violations() {
-      return allowances.flatMap((allowance, index) => {
-        const observed = observations[index] ?? 0;
+      return [
+        ...ambiguityViolations,
+        ...allowances.flatMap((allowance, index) => {
+          const observed = observations[index] ?? 0;
 
-        return observed === 1
-          ? []
-          : [
-              `Expected ${label} allowance "${allowance.reason}" exactly once, observed ${observed}`,
-            ];
-      });
+          return observed === 1
+            ? []
+            : [
+                `Expected ${label} allowance "${allowance.reason}" exactly once, observed ${observed}`,
+              ];
+        }),
+      ];
     },
   };
 }
