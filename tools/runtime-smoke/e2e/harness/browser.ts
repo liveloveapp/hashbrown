@@ -1,4 +1,5 @@
 import {
+  type ConsoleMessage,
   expect,
   type Page,
   type Request,
@@ -9,12 +10,22 @@ import type { AimockHandle } from '@hashbrownai/testing/aimock';
 /** Scenario shells supported by both runtime smoke fixture applications. */
 export type RuntimeSmokeScenario = 'plain' | 'tool' | 'structured' | 'ui';
 
+/** One narrowly matched browser hygiene exception expected exactly once. */
+export interface BrowserHygieneAllowance<T> {
+  /** Human-readable reason the browser event is intentional. */
+  readonly reason: string;
+  /** Returns true only for the exact intentional browser event. */
+  readonly matches: (event: T) => boolean;
+}
+
 /** Narrow exceptions accepted by the browser hygiene monitor. */
 export interface BrowserHygieneOptions {
-  /** Returns true only for request failures expected by the current test. */
-  readonly isExpectedRequestFailure?: (request: Request) => boolean;
-  /** Returns true only for HTTP error responses expected by the current test. */
-  readonly isExpectedHttpError?: (response: Response) => boolean;
+  /** Request failures that must each occur exactly once. */
+  readonly requestFailureAllowances?: readonly BrowserHygieneAllowance<Request>[];
+  /** HTTP error responses that must each occur exactly once. */
+  readonly httpErrorAllowances?: readonly BrowserHygieneAllowance<Response>[];
+  /** Console errors that must each occur exactly once. */
+  readonly consoleErrorAllowances?: readonly BrowserHygieneAllowance<ConsoleMessage>[];
 }
 
 /** Browser error collector installed before scenario navigation. */
@@ -43,25 +54,83 @@ function formatLocation(location: { url: string; lineNumber: number }): string {
   return ` (${location.url}:${location.lineNumber})`;
 }
 
+interface AllowanceTracker<T> {
+  consume(event: T): boolean;
+  violations(): string[];
+}
+
+function createAllowanceTracker<T>(
+  label: string,
+  allowances: readonly BrowserHygieneAllowance<T>[] = [],
+): AllowanceTracker<T> {
+  let observations = allowances.map(() => 0);
+
+  return {
+    consume(event) {
+      const matchingIndexes = allowances.flatMap((allowance, index) =>
+        allowance.matches(event) ? [index] : [],
+      );
+      const index =
+        matchingIndexes.find(
+          (matchingIndex) => observations[matchingIndex] === 0,
+        ) ?? matchingIndexes[0];
+      if (index === undefined) {
+        return false;
+      }
+
+      observations = observations.map((count, observationIndex) =>
+        observationIndex === index ? count + 1 : count,
+      );
+      return true;
+    },
+    violations() {
+      return allowances.flatMap((allowance, index) => {
+        const observed = observations[index] ?? 0;
+
+        return observed === 1
+          ? []
+          : [
+              `Expected ${label} allowance "${allowance.reason}" exactly once, observed ${observed}`,
+            ];
+      });
+    },
+  };
+}
+
 /** Installs browser diagnostics and returns an assertion over unexpected entries. */
 export function installBrowserHygiene(
   page: Page,
   options: BrowserHygieneOptions = {},
 ): BrowserHygiene {
   const unexpectedEntries: string[] = [];
+  const requestFailureAllowances = createAllowanceTracker(
+    'request failure',
+    options.requestFailureAllowances,
+  );
+  const httpErrorAllowances = createAllowanceTracker(
+    'HTTP error',
+    options.httpErrorAllowances,
+  );
+  const consoleErrorAllowances = createAllowanceTracker(
+    'console error',
+    options.consoleErrorAllowances,
+  );
 
   page.on('pageerror', (error) => {
     unexpectedEntries.push(`Page error: ${error.stack ?? error.message}`);
   });
   page.on('console', (message) => {
-    if (message.type() === 'error') {
+    if (
+      message.type() === 'error' &&
+      !consoleErrorAllowances.consume(message)
+    ) {
       unexpectedEntries.push(
         `Console error: ${message.text()}${formatLocation(message.location())}`,
       );
     }
   });
   page.on('requestfailed', (request) => {
-    if (!options.isExpectedRequestFailure?.(request)) {
+    if (!requestFailureAllowances.consume(request)) {
       const failure = request.failure()?.errorText ?? 'unknown failure';
       unexpectedEntries.push(
         `Request failed: ${request.method()} ${request.url()} (${failure})`,
@@ -69,7 +138,7 @@ export function installBrowserHygiene(
     }
   });
   page.on('response', (response) => {
-    if (response.status() >= 400 && !options.isExpectedHttpError?.(response)) {
+    if (response.status() >= 400 && !httpErrorAllowances.consume(response)) {
       unexpectedEntries.push(
         `HTTP ${response.status()}: ${response.request().method()} ${response.url()}`,
       );
@@ -78,9 +147,15 @@ export function installBrowserHygiene(
 
   return {
     assertClean() {
+      const errors = [
+        ...unexpectedEntries,
+        ...requestFailureAllowances.violations(),
+        ...httpErrorAllowances.violations(),
+        ...consoleErrorAllowances.violations(),
+      ];
       expect(
-        unexpectedEntries,
-        `Unexpected browser errors:\n${unexpectedEntries.join('\n')}`,
+        errors,
+        `Unexpected browser errors:\n${errors.join('\n')}`,
       ).toEqual([]);
     },
   };
