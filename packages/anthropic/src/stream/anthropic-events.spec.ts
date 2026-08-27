@@ -4,6 +4,46 @@ import { mapAnthropicEvents } from './anthropic-events';
 
 type RawEvent = Anthropic.Messages.RawMessageStreamEvent;
 
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  readonly reject: (reason?: unknown) => void;
+  readonly resolve: (value: T | PromiseLike<T>) => void;
+}
+
+function createDeferred<T>(): Deferred<T> {
+  let reject!: (reason?: unknown) => void;
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    reject = rejectPromise;
+    resolve = resolvePromise;
+  });
+
+  return { promise, reject, resolve };
+}
+
+function rawEvent(value: unknown): RawEvent {
+  return value as RawEvent;
+}
+
+function withFailureTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('Timed out waiting for deterministic test operation'));
+    }, 1000);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
 function messageStart(): RawEvent {
   return {
     type: 'message_start',
@@ -85,10 +125,17 @@ async function collectEvents(
   events: readonly RawEvent[],
   signal?: AbortSignal,
 ): Promise<AGUIEvent[]> {
+  return collectIterable(toAsyncIterable(events), signal);
+}
+
+async function collectIterable(
+  events: AsyncIterable<RawEvent>,
+  signal?: AbortSignal,
+): Promise<AGUIEvent[]> {
   const result: AGUIEvent[] = [];
 
   for await (const event of mapAnthropicEvents({
-    events: toAsyncIterable(events),
+    events,
     messageId: 'assistant-message-1',
     signal,
   })) {
@@ -783,4 +830,427 @@ test('awaits source iterator closure when the consumer returns early', async () 
   expect(returned).toEqual({ done: true, value: undefined });
   expect(source.state.returnCalls).toBe(1);
   expect(source.state.returnCompleted).toBe(true);
+});
+
+test('cancels a permanently pending source read and awaits iterator closure', async () => {
+  const controller = new AbortController();
+  const nextStarted = createDeferred<void>();
+  const pendingNext = createDeferred<IteratorResult<RawEvent>>();
+  const returnStarted = createDeferred<void>();
+  const releaseReturn = createDeferred<void>();
+  const state = { returnCalls: 0, returnCompleted: false };
+  const source: AsyncIterable<RawEvent> = {
+    [Symbol.asyncIterator]() {
+      return {
+        next(): Promise<IteratorResult<RawEvent>> {
+          nextStarted.resolve(undefined);
+          return pendingNext.promise;
+        },
+        async return(): Promise<IteratorResult<RawEvent>> {
+          state.returnCalls += 1;
+          returnStarted.resolve(undefined);
+          await releaseReturn.promise;
+          state.returnCompleted = true;
+          return { done: true, value: undefined };
+        },
+      };
+    },
+  };
+
+  const act = collectIterable(source, controller.signal);
+  await withFailureTimeout(nextStarted.promise);
+  controller.abort();
+  await withFailureTimeout(returnStarted.promise);
+  let settled = false;
+  void act.then(
+    () => {
+      settled = true;
+    },
+    () => {
+      settled = true;
+    },
+  );
+  await Promise.resolve();
+  const settledBeforeRelease = settled;
+  releaseReturn.resolve(undefined);
+  const result = await withFailureTimeout(act);
+
+  expect(settledBeforeRelease).toBe(false);
+  expect(result).toEqual([]);
+  expect(state).toEqual({ returnCalls: 1, returnCompleted: true });
+});
+
+test('consumes a late rejection from a source read that loses cancellation', async () => {
+  const controller = new AbortController();
+  const nextStarted = createDeferred<void>();
+  const pendingNext = createDeferred<IteratorResult<RawEvent>>();
+  const source: AsyncIterable<RawEvent> = {
+    [Symbol.asyncIterator]() {
+      return {
+        next(): Promise<IteratorResult<RawEvent>> {
+          nextStarted.resolve(undefined);
+          return pendingNext.promise;
+        },
+        async return(): Promise<IteratorResult<RawEvent>> {
+          return { done: true, value: undefined };
+        },
+      };
+    },
+  };
+
+  const act = collectIterable(source, controller.signal);
+  await withFailureTimeout(nextStarted.promise);
+  controller.abort();
+  await withFailureTimeout(act);
+  pendingNext.reject(new Error('late source rejection'));
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  expect(controller.signal.aborted).toBe(true);
+});
+
+test('rejects a non-object stream event with a contextual error', async () => {
+  const events = [messageStart(), rawEvent(null)];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow('Anthropic stream event must be an object');
+});
+
+test('rejects an unsupported stream event type', async () => {
+  const events = [messageStart(), rawEvent({ type: 'ping' })];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic stream received unsupported event type "ping"',
+  );
+});
+
+test('rejects a negative content block start index', async () => {
+  const events = [messageStart(), textStart(-1)];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic content_block_start has invalid content index -1',
+  );
+});
+
+test('rejects a noninteger content block delta index', async () => {
+  const events = [messageStart(), textStart(0), textDelta(0.5, 'invalid')];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic content_block_delta has invalid content index 0.5',
+  );
+});
+
+test('rejects a nonnumeric content block stop index', async () => {
+  const events = [
+    messageStart(),
+    textStart(0),
+    rawEvent({ type: 'content_block_stop', index: '0' }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic content_block_stop has invalid content index "0"',
+  );
+});
+
+test('rejects a non-object content block with index context', async () => {
+  const events = [
+    messageStart(),
+    rawEvent({ type: 'content_block_start', index: 0, content_block: null }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic content block at index 0 must be an object',
+  );
+});
+
+test('rejects an unsupported content block discriminant', async () => {
+  const events = [
+    messageStart(),
+    rawEvent({
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'image' },
+    }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic content block at index 0 has unsupported type "image"',
+  );
+});
+
+test('rejects a text block with non-string text', async () => {
+  const events = [
+    messageStart(),
+    rawEvent({
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'text', text: 42 },
+    }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic text block at index 0 has non-string text',
+  );
+});
+
+test('rejects a tool block with a non-string ID', async () => {
+  const events = [
+    messageStart(),
+    rawEvent({
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'tool_use', id: 42, name: 'search', input: {} },
+    }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic tool block at index 0 has a non-string id',
+  );
+});
+
+test('rejects a tool block with a non-string name', async () => {
+  const events = [
+    messageStart(),
+    rawEvent({
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'tool_use', id: 'tool-1', name: 42, input: {} },
+    }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic tool block at index 0 has a non-string name',
+  );
+});
+
+test('rejects duplicate tool IDs across content indexes', async () => {
+  const events = [
+    messageStart(),
+    toolStart(0, 'tool-1', 'first', {}),
+    contentStop(0),
+    toolStart(1, 'tool-1', 'second', {}),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic tool id "tool-1" started more than once at index 1',
+  );
+});
+
+test('rejects a non-object content delta with index context', async () => {
+  const events = [
+    messageStart(),
+    textStart(0),
+    rawEvent({ type: 'content_block_delta', index: 0, delta: null }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic content delta at index 0 must be an object',
+  );
+});
+
+test('rejects a text delta with non-string text', async () => {
+  const events = [
+    messageStart(),
+    textStart(0),
+    rawEvent({
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: 42 },
+    }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic text_delta at index 0 has non-string text',
+  );
+});
+
+test('rejects an input JSON delta with non-string partial JSON', async () => {
+  const events = [
+    messageStart(),
+    toolStart(0, 'tool-1', 'search', {}),
+    rawEvent({
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'input_json_delta', partial_json: 42 },
+    }),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic input_json_delta at index 0 has non-string partial_json',
+  );
+});
+
+test('treats an empty input JSON delta as authoritative', async () => {
+  const events = [
+    messageStart(),
+    toolStart(0, 'tool-1', 'search', { query: 'initial' }),
+    inputJsonDelta(0, ''),
+    contentStop(0),
+    messageStop(),
+  ];
+
+  const result = await collectEvents(events);
+
+  expect(result).toEqual([
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'search',
+      parentMessageId: 'assistant-message-1',
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'tool-1', delta: '' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'tool-1' },
+  ]);
+});
+
+test('allows content blocks after message_delta', async () => {
+  const events = [
+    messageStart(),
+    messageDelta(),
+    textStart(0, 'after delta'),
+    contentStop(0),
+    messageStop(),
+  ];
+
+  const result = await collectEvents(events);
+
+  expect(result).toEqual([
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-message-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-message-1',
+      delta: 'after delta',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'assistant-message-1',
+    },
+  ]);
+});
+
+test('wraps circular initial tool input serialization errors with context', async () => {
+  const input: { self?: unknown } = {};
+  input.self = input;
+  const events = [
+    messageStart(),
+    toolStart(0, 'tool-1', 'search', input),
+    contentStop(0),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toMatchObject({
+    message:
+      'Anthropic tool "tool-1" at index 0 has non-serializable initial input',
+    cause: expect.any(TypeError),
+  });
+});
+
+test('wraps BigInt initial tool input serialization errors with context', async () => {
+  const events = [
+    messageStart(),
+    toolStart(0, 'tool-1', 'search', { value: BigInt(1) }),
+    contentStop(0),
+  ];
+
+  const act = collectEvents(events);
+
+  await expect(act).rejects.toMatchObject({
+    message:
+      'Anthropic tool "tool-1" at index 0 has non-serializable initial input',
+    cause: expect.any(TypeError),
+  });
+});
+
+test('preserves a primary mapping error when iterator cleanup rejects', async () => {
+  const source: AsyncIterable<RawEvent> = {
+    [Symbol.asyncIterator]() {
+      return {
+        async next(): Promise<IteratorResult<RawEvent>> {
+          return { done: false, value: messageDelta() };
+        },
+        async return(): Promise<IteratorResult<RawEvent>> {
+          throw new Error('cleanup failed');
+        },
+      };
+    },
+  };
+
+  const act = collectIterable(source);
+
+  await expect(act).rejects.toThrow(
+    'Anthropic event message_delta received before message_start',
+  );
+});
+
+test('preserves a primary source error when iterator cleanup rejects', async () => {
+  const sourceError = new Error('source failed');
+  const source: AsyncIterable<RawEvent> = {
+    [Symbol.asyncIterator]() {
+      return {
+        async next(): Promise<IteratorResult<RawEvent>> {
+          throw sourceError;
+        },
+        async return(): Promise<IteratorResult<RawEvent>> {
+          throw new Error('cleanup failed');
+        },
+      };
+    },
+  };
+
+  const act = collectIterable(source);
+
+  await expect(act).rejects.toBe(sourceError);
+});
+
+test('surfaces iterator cleanup rejection when there is no primary error', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const cleanupError = new Error('cleanup failed');
+  const source: AsyncIterable<RawEvent> = {
+    [Symbol.asyncIterator]() {
+      return {
+        async next(): Promise<IteratorResult<RawEvent>> {
+          return { done: true, value: undefined };
+        },
+        async return(): Promise<IteratorResult<RawEvent>> {
+          throw cleanupError;
+        },
+      };
+    },
+  };
+
+  const act = collectIterable(source, controller.signal);
+
+  await expect(act).rejects.toBe(cleanupError);
 });

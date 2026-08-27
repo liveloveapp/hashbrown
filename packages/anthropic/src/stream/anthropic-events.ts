@@ -1,6 +1,8 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import Anthropic from '@anthropic-ai/sdk';
 
+const ABORTED = Symbol('aborted');
+
 interface TextBlockState {
   readonly kind: 'text';
 }
@@ -13,6 +15,122 @@ interface ToolBlockState {
 }
 
 type ContentBlockState = TextBlockState | ToolBlockState;
+type RawEvent = Anthropic.Messages.RawMessageStreamEvent;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function formatDiagnosticValue(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function isRawEventType(value: unknown): value is RawEvent['type'] {
+  return (
+    value === 'message_start' ||
+    value === 'message_delta' ||
+    value === 'message_stop' ||
+    value === 'content_block_start' ||
+    value === 'content_block_delta' ||
+    value === 'content_block_stop'
+  );
+}
+
+function readRawEvent(value: unknown): RawEvent {
+  if (!isRecord(value)) {
+    throw new Error('Anthropic stream event must be an object');
+  }
+
+  const type = value['type'];
+  if (!isRawEventType(type)) {
+    throw new Error(
+      'Anthropic stream received unsupported event type ' +
+        formatDiagnosticValue(type),
+    );
+  }
+
+  return value as unknown as RawEvent;
+}
+
+function readContentIndex(event: RawEvent): number {
+  const eventRecord = event as unknown as Record<string, unknown>;
+  const index = eventRecord['index'];
+  if (typeof index !== 'number' || !Number.isInteger(index) || index < 0) {
+    throw new Error(
+      `Anthropic ${event.type} has invalid content index ` +
+        formatDiagnosticValue(index),
+    );
+  }
+
+  return index;
+}
+
+async function nextWithCancellation(
+  iterator: AsyncIterator<RawEvent>,
+  signal: AbortSignal | undefined,
+): Promise<IteratorResult<RawEvent> | typeof ABORTED> {
+  const nextPromise = iterator.next();
+  void nextPromise.catch(() => undefined);
+  if (!signal) {
+    return nextPromise;
+  }
+  if (signal.aborted) {
+    return ABORTED;
+  }
+
+  let handleAbort!: () => void;
+  const abortPromise = new Promise<typeof ABORTED>((resolve) => {
+    handleAbort = () => resolve(ABORTED);
+    signal.addEventListener('abort', handleAbort, { once: true });
+    if (signal.aborted) {
+      handleAbort();
+    }
+  });
+
+  try {
+    return await Promise.race([nextPromise, abortPromise]);
+  } finally {
+    signal.removeEventListener('abort', handleAbort);
+  }
+}
+
+async function closeIterator(
+  iterator: AsyncIterator<RawEvent>,
+  suppressError: boolean,
+): Promise<void> {
+  try {
+    await iterator.return?.();
+  } catch (error) {
+    if (!suppressError) {
+      throw error;
+    }
+  }
+}
+
+function serializeInitialInput(block: ToolBlockState, index: number): string {
+  const message =
+    `Anthropic tool "${block.id}" at index ${index} has ` +
+    'non-serializable initial input';
+  let result: string | undefined;
+
+  try {
+    result = JSON.stringify(block.initialInput);
+  } catch (cause) {
+    const error = new Error(message);
+    Object.defineProperty(error, 'cause', { configurable: true, value: cause });
+    throw error;
+  }
+
+  if (result === undefined) {
+    throw new Error(message);
+  }
+
+  return result;
+}
 
 /**
  * Options for mapping a raw Anthropic message stream to AG-UI events.
@@ -39,11 +157,13 @@ export async function* mapAnthropicEvents(
 ): AsyncIterable<AGUIEvent> {
   const iterator = options.events[Symbol.asyncIterator]();
   const seenIndexes = new Set<number>();
+  const seenToolIds = new Set<string>();
   const activeBlocks = new Map<number, ContentBlockState>();
   let messageStarted = false;
   let messageStopped = false;
   let textStarted = false;
   let sourceCompleted = false;
+  let hasPrimaryError = false;
 
   try {
     while (true) {
@@ -51,7 +171,10 @@ export async function* mapAnthropicEvents(
         return;
       }
 
-      const result = await iterator.next();
+      const result = await nextWithCancellation(iterator, options.signal);
+      if (result === ABORTED) {
+        return;
+      }
       if (result.done) {
         sourceCompleted = true;
         if (options.signal?.aborted) {
@@ -64,7 +187,7 @@ export async function* mapAnthropicEvents(
         return;
       }
 
-      const event = result.value;
+      const event = readRawEvent(result.value);
       if (messageStopped) {
         throw new Error(
           `Anthropic event ${event.type} received after message_stop`,
@@ -88,16 +211,40 @@ export async function* mapAnthropicEvents(
 
       switch (event.type) {
         case 'content_block_start': {
-          if (seenIndexes.has(event.index)) {
+          const index = readContentIndex(event);
+          if (seenIndexes.has(index)) {
             throw new Error(
-              `Anthropic content index ${event.index} started more than once`,
+              `Anthropic content index ${index} started more than once`,
             );
           }
 
-          seenIndexes.add(event.index);
-          if (event.content_block.type === 'text') {
-            activeBlocks.set(event.index, { kind: 'text' });
-            if (event.content_block.text.length === 0) {
+          const eventRecord = event as unknown as Record<string, unknown>;
+          const contentBlock = eventRecord['content_block'];
+          if (!isRecord(contentBlock)) {
+            throw new Error(
+              `Anthropic content block at index ${index} must be an object`,
+            );
+          }
+
+          const blockType = contentBlock['type'];
+          if (blockType !== 'text' && blockType !== 'tool_use') {
+            throw new Error(
+              `Anthropic content block at index ${index} has unsupported type ` +
+                formatDiagnosticValue(blockType),
+            );
+          }
+
+          seenIndexes.add(index);
+          if (blockType === 'text') {
+            const text = contentBlock['text'];
+            if (typeof text !== 'string') {
+              throw new Error(
+                `Anthropic text block at index ${index} has non-string text`,
+              );
+            }
+
+            activeBlocks.set(index, { kind: 'text' });
+            if (text.length === 0) {
               break;
             }
 
@@ -116,7 +263,7 @@ export async function* mapAnthropicEvents(
             yield {
               type: EventType.TEXT_MESSAGE_CONTENT,
               messageId: options.messageId,
-              delta: event.content_block.text,
+              delta: text,
             };
             if (options.signal?.aborted) {
               return;
@@ -124,27 +271,46 @@ export async function* mapAnthropicEvents(
             break;
           }
 
-          if (event.content_block.id.length === 0) {
+          const id = contentBlock['id'];
+          if (typeof id !== 'string') {
             throw new Error(
-              `Anthropic tool block at index ${event.index} has an empty id`,
+              `Anthropic tool block at index ${index} has a non-string id`,
             );
           }
-          if (event.content_block.name.length === 0) {
+          if (id.length === 0) {
             throw new Error(
-              `Anthropic tool block at index ${event.index} has an empty name`,
+              `Anthropic tool block at index ${index} has an empty id`,
             );
           }
 
-          activeBlocks.set(event.index, {
+          const name = contentBlock['name'];
+          if (typeof name !== 'string') {
+            throw new Error(
+              `Anthropic tool block at index ${index} has a non-string name`,
+            );
+          }
+          if (name.length === 0) {
+            throw new Error(
+              `Anthropic tool block at index ${index} has an empty name`,
+            );
+          }
+          if (seenToolIds.has(id)) {
+            throw new Error(
+              `Anthropic tool id "${id}" started more than once at index ${index}`,
+            );
+          }
+
+          seenToolIds.add(id);
+          activeBlocks.set(index, {
             kind: 'tool',
-            id: event.content_block.id,
-            initialInput: event.content_block.input,
+            id,
+            initialInput: contentBlock['input'],
             receivedDelta: false,
           });
           yield {
             type: EventType.TOOL_CALL_START,
-            toolCallId: event.content_block.id,
-            toolCallName: event.content_block.name,
+            toolCallId: id,
+            toolCallName: name,
             parentMessageId: options.messageId,
           };
           if (options.signal?.aborted) {
@@ -154,22 +320,46 @@ export async function* mapAnthropicEvents(
         }
 
         case 'content_block_delta': {
-          const block = activeBlocks.get(event.index);
+          const index = readContentIndex(event);
+          const block = activeBlocks.get(index);
           if (!block) {
             throw new Error(
               'Anthropic content_block_delta references unknown or stopped ' +
-                `index ${event.index}`,
+                `index ${index}`,
+            );
+          }
+
+          const eventRecord = event as unknown as Record<string, unknown>;
+          const delta = eventRecord['delta'];
+          if (!isRecord(delta)) {
+            throw new Error(
+              `Anthropic content delta at index ${index} must be an object`,
+            );
+          }
+
+          const deltaType = delta['type'];
+          if (deltaType !== 'text_delta' && deltaType !== 'input_json_delta') {
+            throw new Error(
+              `Anthropic content delta at index ${index} has unsupported type ` +
+                formatDiagnosticValue(deltaType),
             );
           }
 
           if (block.kind === 'text') {
-            if (event.delta.type !== 'text_delta') {
+            if (deltaType !== 'text_delta') {
               throw new Error(
-                `Anthropic text block at index ${event.index} cannot receive ` +
-                  event.delta.type,
+                `Anthropic text block at index ${index} cannot receive ` +
+                  deltaType,
               );
             }
-            if (event.delta.text.length === 0) {
+
+            const text = delta['text'];
+            if (typeof text !== 'string') {
+              throw new Error(
+                `Anthropic text_delta at index ${index} has non-string text`,
+              );
+            }
+            if (text.length === 0) {
               break;
             }
 
@@ -188,7 +378,7 @@ export async function* mapAnthropicEvents(
             yield {
               type: EventType.TEXT_MESSAGE_CONTENT,
               messageId: options.messageId,
-              delta: event.delta.text,
+              delta: text,
             };
             if (options.signal?.aborted) {
               return;
@@ -196,21 +386,29 @@ export async function* mapAnthropicEvents(
             break;
           }
 
-          if (event.delta.type !== 'input_json_delta') {
+          if (deltaType !== 'input_json_delta') {
             throw new Error(
-              `Anthropic tool block at index ${event.index} cannot receive ` +
-                event.delta.type,
+              `Anthropic tool block at index ${index} cannot receive ` +
+                deltaType,
             );
           }
 
-          activeBlocks.set(event.index, {
+          const partialJson = delta['partial_json'];
+          if (typeof partialJson !== 'string') {
+            throw new Error(
+              `Anthropic input_json_delta at index ${index} has ` +
+                'non-string partial_json',
+            );
+          }
+
+          activeBlocks.set(index, {
             ...block,
             receivedDelta: true,
           });
           yield {
             type: EventType.TOOL_CALL_ARGS,
             toolCallId: block.id,
-            delta: event.delta.partial_json,
+            delta: partialJson,
           };
           if (options.signal?.aborted) {
             return;
@@ -219,32 +417,25 @@ export async function* mapAnthropicEvents(
         }
 
         case 'content_block_stop': {
-          const block = activeBlocks.get(event.index);
+          const index = readContentIndex(event);
+          const block = activeBlocks.get(index);
           if (!block) {
             throw new Error(
               'Anthropic content_block_stop references unknown or stopped ' +
-                `index ${event.index}`,
+                `index ${index}`,
             );
           }
 
-          activeBlocks.delete(event.index);
+          activeBlocks.delete(index);
           if (block.kind === 'text') {
             break;
           }
 
           if (!block.receivedDelta) {
-            const initialInput = JSON.stringify(block.initialInput);
-            if (initialInput === undefined) {
-              throw new Error(
-                `Anthropic tool block at index ${event.index} has ` +
-                  'non-serializable initial input',
-              );
-            }
-
             yield {
               type: EventType.TOOL_CALL_ARGS,
               toolCallId: block.id,
-              delta: initialInput,
+              delta: serializeInitialInput(block, index),
             };
             if (options.signal?.aborted) {
               return;
@@ -299,9 +490,12 @@ export async function* mapAnthropicEvents(
     if (!messageStopped) {
       throw new Error('Anthropic stream ended before message_stop');
     }
+  } catch (error) {
+    hasPrimaryError = true;
+    throw error;
   } finally {
     if (!sourceCompleted) {
-      await iterator.return?.();
+      await closeIterator(iterator, hasPrimaryError);
     }
   }
 }
