@@ -1,7 +1,9 @@
 import { resolve } from 'node:path';
-import type { Chat, Frame, GenerationChunkFrame } from '@hashbrownai/core';
-import { runProviderTextWithAimock } from '@hashbrownai/testing/aimock';
+import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
+import { startAimock } from '@hashbrownai/testing/aimock';
+import OpenAI from 'openai';
 import { HashbrownOpenAI } from './index';
+import type { OpenAIHashbrownRunAgentInput } from './stream/text.fn';
 
 const OPENAI_MODEL = 'gpt-4.1-mini';
 
@@ -9,214 +11,455 @@ function fixturePath(name: string): string {
   return resolve(__dirname, '../../../tools/testing/aimock/fixtures', name);
 }
 
-function generationChunks(frames: Frame[]): GenerationChunkFrame[] {
-  return frames.filter(
-    (frame): frame is GenerationChunkFrame => frame.type === 'generation-chunk',
-  );
-}
-
-function streamedContent(frames: Frame[]): string {
-  return generationChunks(frames)
-    .map((frame) => frame.chunk.choices[0]?.delta.content ?? '')
-    .join('');
-}
-
-function baseRequest(userMessage: string): Chat.Api.CompletionCreateParams {
+function baseInput(userMessage: string): OpenAIHashbrownRunAgentInput {
   return {
-    operation: 'generate',
-    model: OPENAI_MODEL,
-    system: 'You are a deterministic test assistant.',
-    messages: [{ role: 'user', content: userMessage }],
+    threadId: 'thread-openai',
+    runId: 'run-openai',
+    messages: [
+      {
+        id: 'system-openai',
+        role: 'system',
+        content: 'You are a deterministic test assistant.',
+      },
+      {
+        id: 'user-openai',
+        role: 'user',
+        content: userMessage,
+      },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
   };
 }
 
-async function consumeProviderStream(
-  stream: AsyncIterable<Uint8Array>,
-): Promise<void> {
-  for await (const chunk of stream) {
-    void chunk;
+async function collectEvents(
+  events: AsyncIterable<AGUIEvent>,
+): Promise<AGUIEvent[]> {
+  const collected: AGUIEvent[] = [];
+
+  for await (const event of events) {
+    collected.push(EventSchemas.parse(event));
+  }
+
+  return collected;
+}
+
+async function runFixture(
+  fixtureName: string,
+  input: OpenAIHashbrownRunAgentInput,
+): Promise<AGUIEvent[]> {
+  const aimock = await startAimock({ fixturePath: fixturePath(fixtureName) });
+
+  try {
+    return await collectEvents(
+      HashbrownOpenAI.stream.text({
+        apiKey: 'test-not-used',
+        baseURL: aimock.openAiBaseUrl,
+        model: OPENAI_MODEL,
+        input,
+      }),
+    );
+  } finally {
+    await aimock.stop();
   }
 }
 
-test('OpenAI JSON response format mode requests JSON object output', async () => {
-  let capturedResponseFormat: unknown;
+function contentEvents(events: AGUIEvent[]) {
+  return events.filter(
+    (event) => event.type === EventType.TEXT_MESSAGE_CONTENT,
+  );
+}
 
-  await consumeProviderStream(
-    HashbrownOpenAI.stream.text({
-      apiKey: 'test-api-key',
-      request: {
-        ...baseRequest('Hello'),
-        system: 'Respond with JSON.',
-        responseFormatMode: 'json',
-      },
-      transformRequestOptions: (options) => {
-        capturedResponseFormat = options.response_format;
-        throw new Error('stop');
-      },
-    }),
+function streamedContent(events: AGUIEvent[]): string {
+  return contentEvents(events)
+    .map((event) => event.delta)
+    .join('');
+}
+
+test('OpenAI consumes AG-UI input and emits a canonical text run', async () => {
+  const events = await runFixture('text.json', baseInput('say hi briefly'));
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-openai',
+      runId: 'run-openai',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'run-openai:assistant',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'run-openai:assistant',
+      delta: 'Hello from aimock.',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'run-openai:assistant',
+    },
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-openai',
+      runId: 'run-openai',
+    },
+  ]);
+});
+
+test('OpenAI preserves streamed text across multiple AG-UI events', async () => {
+  const events = await runFixture(
+    'streaming.json',
+    baseInput('stream deterministic text'),
   );
 
-  expect(capturedResponseFormat).toEqual({ type: 'json_object' });
-});
-
-test('OpenAI text streaming emits Hashbrown generation frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        request: baseRequest('say hi briefly'),
-      }),
-  });
-
-  expect(frames[0].type).toBe('generation-start');
-  expect(frames.at(-1)?.type).toBe('generation-finish');
-  expect(streamedContent(frames)).toBe('Hello from aimock.');
-});
-
-test('OpenAI streaming preserves chunked content across multiple frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('streaming.json'),
-    createStream: (aimock) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        request: baseRequest('stream deterministic text'),
-      }),
-  });
-
-  expect(generationChunks(frames).length).toBeGreaterThan(1);
-  expect(streamedContent(frames)).toContain(
+  expect(contentEvents(events).length).toBeGreaterThan(1);
+  expect(streamedContent(events)).toContain(
     'Streaming fixture response with enough text',
   );
 });
 
-test('OpenAI tool calling emits tool call deltas', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('tool-call.json'),
-    createStream: (aimock) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        request: {
-          ...baseRequest('call the lookup tool'),
-          tools: [
-            {
-              name: 'lookup',
-              description: 'Lookup deterministic fixture data.',
-              parameters: {
-                type: 'object',
-                properties: {
-                  query: { type: 'string' },
-                },
-                required: ['query'],
-              },
-            },
-          ],
-          toolChoice: 'required',
+test('OpenAI emits complete AG-UI tool call lifecycles', async () => {
+  const input = baseInput('call the lookup tool');
+  input.tools = [
+    {
+      name: 'lookup',
+      description: 'Lookup deterministic fixture data.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
         },
-      }),
-  });
+        required: ['query'],
+      },
+    },
+  ];
 
-  const toolCallDeltas = generationChunks(frames).flatMap(
-    (frame) => frame.chunk.choices[0]?.delta.toolCalls ?? [],
+  const events = await runFixture('tool-call.json', input);
+  const toolEvents = events.filter((event) =>
+    [
+      EventType.TOOL_CALL_START,
+      EventType.TOOL_CALL_ARGS,
+      EventType.TOOL_CALL_END,
+    ].includes(event.type),
+  );
+  const start = toolEvents.find(
+    (event) => event.type === EventType.TOOL_CALL_START,
+  );
+  const args = toolEvents
+    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
+    .map((event) => event.delta)
+    .join('');
+  const end = toolEvents.find(
+    (event) => event.type === EventType.TOOL_CALL_END,
   );
 
-  expect(toolCallDeltas.some((toolCall) => toolCall.id)).toBe(true);
-  expect(
-    toolCallDeltas.some((toolCall) => toolCall.function?.name === 'lookup'),
-  ).toBe(true);
-  expect(
-    toolCallDeltas
-      .map((toolCall) => toolCall.function?.arguments ?? '')
-      .join(''),
-  ).toContain('"query":"hashbrown"');
+  expect(start).toMatchObject({
+    type: EventType.TOOL_CALL_START,
+    toolCallName: 'lookup',
+    parentMessageId: 'run-openai:assistant',
+  });
+  expect(args).toContain('"query":"hashbrown"');
+  expect(end).toMatchObject({
+    type: EventType.TOOL_CALL_END,
+    toolCallId:
+      start?.type === EventType.TOOL_CALL_START
+        ? start.toolCallId
+        : 'missing-tool-call',
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: input.threadId,
+    runId: input.runId,
+  });
 });
 
-test('OpenAI structured output emits JSON text content', async () => {
-  const frames = await runProviderTextWithAimock({
+test('OpenAI maps the Hashbrown response schema to native structured output', async () => {
+  const input = baseInput('return structured output');
+  input.hashbrown = {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        ok: { type: 'boolean' },
+      },
+      required: ['text', 'ok'],
+    },
+  };
+  let capturedResponseFormat: unknown;
+  const aimock = await startAimock({
     fixturePath: fixturePath('structured-output.json'),
-    createStream: (aimock) =>
+  });
+
+  let events: AGUIEvent[];
+  try {
+    events = await collectEvents(
       HashbrownOpenAI.stream.text({
         apiKey: 'test-not-used',
         baseURL: aimock.openAiBaseUrl,
-        request: {
-          ...baseRequest('return structured output'),
-          responseFormat: {
-            type: 'object',
-            properties: {
-              text: { type: 'string' },
-              ok: { type: 'boolean' },
-            },
-            required: ['text', 'ok'],
-          },
+        model: OPENAI_MODEL,
+        input,
+        transformRequestOptions: (options) => {
+          capturedResponseFormat = options.response_format;
+          return options;
         },
       }),
-  });
+    );
+  } finally {
+    await aimock.stop();
+  }
 
-  expect(JSON.parse(streamedContent(frames))).toEqual({
+  expect(capturedResponseFormat).toEqual({
+    type: 'json_schema',
+    json_schema: {
+      strict: true,
+      name: 'schema',
+      description: '',
+      schema: input.hashbrown.responseSchema,
+    },
+  });
+  expect(JSON.parse(streamedContent(events))).toEqual({
     text: 'Hello from structured aimock.',
     ok: true,
   });
 });
 
-test('OpenAI provider errors emit generation-error frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('error.json'),
-    createStream: (aimock) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        request: baseRequest('return provider error'),
-      }),
-  });
+test('OpenAI maps complete AG-UI history without provider-specific wire keys', async () => {
+  const input = baseInput('new question');
+  input.messages = [
+    input.messages[0],
+    { id: 'user-previous', role: 'user', content: 'previous question' },
+    {
+      id: 'assistant-previous',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'call-previous',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{"query":"previous"}' },
+        },
+      ],
+    },
+    {
+      id: 'call-previous',
+      role: 'tool',
+      toolCallId: 'call-previous',
+      content: '{"answer":"previous result"}',
+    },
+    {
+      id: 'reasoning-previous',
+      role: 'reasoning',
+      content: 'display-only reasoning',
+    },
+    {
+      id: 'activity-previous',
+      role: 'activity',
+      activityType: 'progress',
+      content: { label: 'display-only activity' },
+    },
+    input.messages[1],
+  ];
+  let capturedMessages: OpenAI.ChatCompletionMessageParam[] | undefined;
 
-  expect(frames).toEqual([
-    { type: 'generation-start' },
+  await collectEvents(
+    HashbrownOpenAI.stream.text({
+      apiKey: 'test-not-used',
+      model: OPENAI_MODEL,
+      input,
+      transformRequestOptions: (options) => {
+        capturedMessages = options.messages;
+        throw new Error('stop after capture');
+      },
+    }),
+  );
+
+  expect(capturedMessages).toEqual([
+    {
+      role: 'system',
+      content: 'You are a deterministic test assistant.',
+    },
+    { role: 'user', content: 'previous question' },
+    {
+      role: 'assistant',
+      content: null,
+      tool_calls: [
+        {
+          id: 'call-previous',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{"query":"previous"}' },
+        },
+      ],
+    },
+    {
+      role: 'tool',
+      tool_call_id: 'call-previous',
+      content: '{"answer":"previous result"}',
+    },
+    { role: 'user', content: 'new question' },
+  ]);
+});
+
+test('OpenAI provider errors terminate the AG-UI run with RUN_ERROR', async () => {
+  const events = await runFixture(
+    'error.json',
+    baseInput('return provider error'),
+  );
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-openai',
+      runId: 'run-openai',
+    },
     expect.objectContaining({
-      type: 'generation-error',
-      error: expect.stringContaining('Deterministic provider error'),
+      type: EventType.RUN_ERROR,
+      message: expect.stringContaining('Deterministic provider error'),
     }),
   ]);
 });
 
-test('OpenAI thread persistence wraps generation with thread frames', async () => {
-  const savedThreads: Chat.Api.Message[][] = [];
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        request: {
-          ...baseRequest('say hi briefly'),
-          threadId: 'openai-thread',
-        },
-        loadThread: async () => [
-          {
-            role: 'user',
-            content: 'previous message',
-          },
-        ],
-        saveThread: async (thread) => {
-          savedThreads.push(thread);
-          return 'openai-thread';
-        },
-      }),
+test('OpenAI cancellation stops iteration without emitting a terminal event', async () => {
+  const controller = new AbortController();
+  const input = baseInput('cancel before provider request');
+  const events = HashbrownOpenAI.stream.text({
+    apiKey: 'test-not-used',
+    model: OPENAI_MODEL,
+    input,
+    signal: controller.signal,
   });
+  const iterator = events[Symbol.asyncIterator]();
 
-  expect(frames.map((frame) => frame.type)).toEqual([
-    'thread-load-start',
-    'thread-load-success',
-    'generation-start',
-    ...generationChunks(frames).map((frame) => frame.type),
-    'generation-finish',
-    'thread-save-start',
-    'thread-save-success',
-  ]);
-  expect(savedThreads).toHaveLength(1);
-  expect(savedThreads[0].map((message) => message.content)).toContain(
-    'Hello from aimock.',
-  );
+  const started = await iterator.next();
+  controller.abort();
+  const done = await iterator.next();
+
+  expect(started).toEqual({
+    done: false,
+    value: {
+      type: EventType.RUN_STARTED,
+      threadId: input.threadId,
+      runId: input.runId,
+    },
+  });
+  expect(done.done).toBe(true);
+});
+
+test('OpenAI cancellation aborts an active provider stream without a terminal event', async () => {
+  const aimock = await startAimock({
+    fixturePath: fixturePath('streaming.json'),
+  });
+  const controller = new AbortController();
+  const input = baseInput('stream deterministic text');
+  const events = HashbrownOpenAI.stream.text({
+    apiKey: 'test-not-used',
+    baseURL: aimock.openAiBaseUrl,
+    model: OPENAI_MODEL,
+    input,
+    signal: controller.signal,
+  });
+  const iterator = events[Symbol.asyncIterator]();
+
+  try {
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { type: EventType.RUN_STARTED },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { type: EventType.TEXT_MESSAGE_START },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { type: EventType.TEXT_MESSAGE_CONTENT },
+    });
+
+    controller.abort();
+
+    await expect(iterator.next()).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  } finally {
+    controller.abort();
+    await iterator.return?.();
+    await aimock.stop();
+  }
+});
+
+test('OpenAI cancellation between message events stops the remaining lifecycle', async () => {
+  const aimock = await startAimock({ fixturePath: fixturePath('text.json') });
+  const controller = new AbortController();
+  const input = baseInput('say hi briefly');
+  const events = HashbrownOpenAI.stream.text({
+    apiKey: 'test-not-used',
+    baseURL: aimock.openAiBaseUrl,
+    model: OPENAI_MODEL,
+    input,
+    signal: controller.signal,
+  });
+  const iterator = events[Symbol.asyncIterator]();
+
+  try {
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { type: EventType.RUN_STARTED },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { type: EventType.TEXT_MESSAGE_START },
+    });
+
+    controller.abort();
+
+    await expect(iterator.next()).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  } finally {
+    controller.abort();
+    await iterator.return?.();
+    await aimock.stop();
+  }
+});
+
+test('OpenAI cancellation after a message ends does not finish the run', async () => {
+  const aimock = await startAimock({ fixturePath: fixturePath('text.json') });
+  const controller = new AbortController();
+  const input = baseInput('say hi briefly');
+  const events = HashbrownOpenAI.stream.text({
+    apiKey: 'test-not-used',
+    baseURL: aimock.openAiBaseUrl,
+    model: OPENAI_MODEL,
+    input,
+    signal: controller.signal,
+  });
+  const iterator = events[Symbol.asyncIterator]();
+
+  try {
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { type: EventType.RUN_STARTED },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { type: EventType.TEXT_MESSAGE_START },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { type: EventType.TEXT_MESSAGE_CONTENT },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { type: EventType.TEXT_MESSAGE_END },
+    });
+
+    controller.abort();
+
+    await expect(iterator.next()).resolves.toEqual({
+      done: true,
+      value: undefined,
+    });
+  } finally {
+    controller.abort();
+    await iterator.return?.();
+    await aimock.stop();
+  }
 });

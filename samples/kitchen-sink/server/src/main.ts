@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { Chat, KnownModelIds } from '@hashbrownai/core';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
@@ -13,6 +15,8 @@ const host = process.env.HOST ?? '0.0.0.0';
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const OPENAI_API_KEY = process.env['OPENAI_API_KEY'] ?? '';
+const OPENAI_BASE_URL = process.env['OPENAI_BASE_URL'];
+const OPENAI_MODEL = process.env['OPENAI_MODEL'] ?? 'gpt-5-nano';
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
@@ -27,31 +31,6 @@ const KNOWN_GOOGLE_MODEL_NAMES: KnownModelIds[] = [
   'gemini-1.5-flash',
   'gemini-1.5-flash-8b',
   'gemini-1.5-pro',
-];
-
-const KNOWN_OPENAI_MODEL_NAMES: KnownModelIds[] = [
-  'gpt-3.5',
-  'gpt-4',
-  'gpt-4o',
-  'gpt-4o-mini',
-  'o1-mini',
-  'o1',
-  'o1-pro',
-  'o3-mini',
-  'o3-mini-high',
-  'o3',
-  'o3-pro',
-  'o4-mini',
-  'o4-mini-high',
-  'gpt-4.1',
-  'gpt-4.1-mini',
-  'gpt-4.1-nano',
-  'gpt-4.5',
-  'gpt-5-mini',
-  'gpt-5-nano',
-  'gpt-5-pro',
-  'gpt-5',
-  'gpt-5.1',
 ];
 
 const KNOWN_WRITER_MODEL_NAMES: KnownModelIds[] = [
@@ -90,7 +69,34 @@ app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
 });
 
-app.post('/chat', async (req, res, next) => {
+app.post('/chat', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
+  const stream = HashbrownOpenAI.stream.text({
+    apiKey: OPENAI_API_KEY,
+    baseURL: OPENAI_BASE_URL,
+    model: OPENAI_MODEL,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
+
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
+  }
+
+  if (!res.writableEnded) {
+    res.end();
+  }
+});
+
+app.post('/legacy/chat', async (req, res) => {
   const request = req.body as Chat.Api.CompletionCreateParams;
 
   const modelName = request.model;
@@ -99,11 +105,6 @@ app.post('/chat', async (req, res, next) => {
   if (KNOWN_GOOGLE_MODEL_NAMES.includes(modelName as KnownModelIds)) {
     stream = HashbrownGoogle.stream.text({
       apiKey: GOOGLE_API_KEY,
-      request,
-    });
-  } else if (KNOWN_OPENAI_MODEL_NAMES.includes(modelName as KnownModelIds)) {
-    stream = HashbrownOpenAI.stream.text({
-      apiKey: OPENAI_API_KEY,
       request,
     });
   } else if (KNOWN_WRITER_MODEL_NAMES.includes(modelName as KnownModelIds)) {
