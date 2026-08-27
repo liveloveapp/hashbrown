@@ -1,0 +1,30 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "target": "es2024",
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "emitDecoratorMetadata": false,
+    "module": "preserve",
+    "ignoreDeprecations": "6.0"
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "typeCheckHostBindings": true,
+    "strictTemplates": true
+  },
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
+}

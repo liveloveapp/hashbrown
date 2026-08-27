@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "types": ["node"],
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["playwright.config.ts", "harness/**/*.ts", "specs/**/*.ts"],
+  "exclude": ["harness/**/*.spec.ts"]
+}

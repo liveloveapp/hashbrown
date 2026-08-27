@@ -1,0 +1,53 @@
+{
+  "name": "runtime-smoke",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "implicitDependencies": [
+    "core",
+    "angular",
+    "react",
+    "testing",
+    "runtime-smoke-angular",
+    "runtime-smoke-react"
+  ],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "tools/runtime-smoke/e2e",
+        "command": "eslint ."
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/tools/runtime-smoke/e2e"],
+      "options": {
+        "jestConfig": "tools/runtime-smoke/e2e/jest.config.ts",
+        "passWithNoTests": false
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsc --noEmit --project tools/runtime-smoke/e2e/tsconfig.playwright.json"
+      }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular"],
+          "target": "build"
+        },
+        {
+          "projects": ["runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "npx playwright test --config tools/runtime-smoke/e2e/playwright.config.ts"
+      }
+    }
+  }
+}
