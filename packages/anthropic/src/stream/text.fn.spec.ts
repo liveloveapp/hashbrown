@@ -237,6 +237,65 @@ test('awaits a transform of the final mapped request before provider creation', 
   );
 });
 
+test('maps transform rejection to exactly one RUN_ERROR without a provider request', async () => {
+  const provider = mockProvider();
+  const transformRequestOptions = jest
+    .fn()
+    .mockRejectedValue(new Error('Transform rejected request'));
+
+  const events = await collectEvents(
+    createOptions({ transformRequestOptions }),
+  );
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-anthropic',
+      runId: 'run-anthropic',
+    },
+    {
+      type: EventType.RUN_ERROR,
+      message: 'Transform rejected request',
+    },
+  ]);
+  expect(MockedAnthropic).not.toHaveBeenCalled();
+  expect(provider.create).not.toHaveBeenCalled();
+});
+
+test('checks cancellation after yielding RUN_ERROR', async () => {
+  const provider = mockProvider();
+  let abortedReads = 0;
+  const signal = {
+    get aborted() {
+      abortedReads += 1;
+      return false;
+    },
+  } as AbortSignal;
+  const iterator = text(
+    createOptions({
+      signal,
+      transformRequestOptions: async () => {
+        throw new Error('Transform rejected request');
+      },
+    }),
+  )[Symbol.asyncIterator]();
+
+  const started = await iterator.next();
+  const errored = await iterator.next();
+  const readsAfterError = abortedReads;
+  const done = await iterator.next();
+
+  expect(started.value).toMatchObject({ type: EventType.RUN_STARTED });
+  expect(errored.value).toEqual({
+    type: EventType.RUN_ERROR,
+    message: 'Transform rejected request',
+  });
+  expect(done).toEqual({ done: true, value: undefined });
+  expect(abortedReads).toBe(readsAfterError + 1);
+  expect(MockedAnthropic).not.toHaveBeenCalled();
+  expect(provider.create).not.toHaveBeenCalled();
+});
+
 test('cancellation while an async transform is pending prevents provider creation', async () => {
   const provider = mockProvider();
   const controller = new AbortController();

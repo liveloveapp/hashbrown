@@ -76,6 +76,9 @@ export async function* text(
   } catch (error: unknown) {
     if (!signal?.aborted) {
       yield { type: EventType.RUN_ERROR, message: normalizeError(error) };
+      if (signal?.aborted) {
+        return;
+      }
     }
   } finally {
     providerStream?.controller.abort();
