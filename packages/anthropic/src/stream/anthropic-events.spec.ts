@@ -880,6 +880,42 @@ test('cancels a permanently pending source read and awaits iterator closure', as
   expect(state).toEqual({ returnCalls: 1, returnCompleted: true });
 });
 
+test('returns quietly when the pending source rejects from its abort listener', async () => {
+  const controller = new AbortController();
+  const nextStarted = createDeferred<void>();
+  const state = { returnCalls: 0, returnCompleted: false };
+  const source: AsyncIterable<RawEvent> = {
+    [Symbol.asyncIterator]() {
+      return {
+        next(): Promise<IteratorResult<RawEvent>> {
+          nextStarted.resolve(undefined);
+          return new Promise<IteratorResult<RawEvent>>((_, reject) => {
+            controller.signal.addEventListener(
+              'abort',
+              () => reject(new Error('source aborted pending read')),
+              { once: true },
+            );
+          });
+        },
+        async return(): Promise<IteratorResult<RawEvent>> {
+          state.returnCalls += 1;
+          await Promise.resolve();
+          state.returnCompleted = true;
+          return { done: true, value: undefined };
+        },
+      };
+    },
+  };
+
+  const act = collectIterable(source, controller.signal);
+  await withFailureTimeout(nextStarted.promise);
+  controller.abort();
+  const result = await withFailureTimeout(act);
+
+  expect(result).toEqual([]);
+  expect(state).toEqual({ returnCalls: 1, returnCompleted: true });
+});
+
 test('consumes a late rejection from a source read that loses cancellation', async () => {
   const controller = new AbortController();
   const nextStarted = createDeferred<void>();

@@ -93,6 +93,11 @@ async function nextWithCancellation(
 
   try {
     return await Promise.race([nextPromise, abortPromise]);
+  } catch (error) {
+    if (signal.aborted) {
+      return ABORTED;
+    }
+    throw error;
   } finally {
     signal.removeEventListener('abort', handleAbort);
   }
