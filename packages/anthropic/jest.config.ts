@@ -7,5 +7,5 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/anthropic',
-  testPathIgnorePatterns: ['(?!.*integration).*\\.ts$'],
+  testPathIgnorePatterns: ['/integration\\.spec\\.ts$'],
 };
