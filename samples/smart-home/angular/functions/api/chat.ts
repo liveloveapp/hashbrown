@@ -1,4 +1,5 @@
-import type { Chat } from '@hashbrownai/core';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 
 type Env = Record<string, string | undefined>;
@@ -13,7 +14,6 @@ const getEnv = (env: Env | undefined, key: string): string | undefined => {
   const value =
     env?.[key] ??
     (globalThis as { process?: { env?: Env } }).process?.env?.[key];
-  console.log(value);
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 };
 
@@ -32,33 +32,48 @@ const handlePost = async ({
     );
   }
 
-  const body = (await request.json()) as Chat.Api.CompletionCreateParams;
+  const input = (await request.json()) as RunAgentInput;
   const stream = HashbrownOpenAI.stream.text({
     apiKey,
-    request: body,
+    baseURL: getEnv(env, 'OPENAI_BASE_URL'),
+    model: getEnv(env, 'OPENAI_MODEL') ?? 'gpt-5-nano',
+    input,
+    signal: request.signal,
     transformRequestOptions: (options) => ({
       ...options,
-      model: 'gpt-5-nano',
       reasoning_effort: 'low',
     }),
   });
+  const eventEncoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
+  const iterator = stream[Symbol.asyncIterator]();
 
   const readable = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    async pull(controller) {
       try {
-        for await (const chunk of stream) {
-          controller.enqueue(
-            typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk,
-          );
+        const next = await iterator.next();
+        if (next.done) {
+          controller.close();
+          return;
         }
-      } finally {
-        controller.close();
+
+        controller.enqueue(
+          textEncoder.encode(eventEncoder.encodeSSE(next.value)),
+        );
+      } catch (error) {
+        controller.error(error);
       }
+    },
+    async cancel() {
+      await iterator.return?.();
     },
   });
 
   return new Response(readable, {
-    headers: { 'Content-Type': 'application/octet-stream' },
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Content-Type': eventEncoder.getContentType(),
+    },
   });
 };
 

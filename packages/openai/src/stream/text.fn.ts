@@ -1,273 +1,111 @@
 import {
-  Chat,
-  encodeFrame,
-  Frame,
-  mergeMessagesForThread,
-  updateAssistantMessage,
-} from '@hashbrownai/core';
+  type AGUIEvent,
+  EventType,
+  type Message,
+  type RunAgentInput,
+} from '@ag-ui/core';
 import OpenAI from 'openai';
-import { FunctionParameters } from 'openai/resources/shared';
+import type { FunctionParameters } from 'openai/resources/shared';
 
-type BaseOpenAITextStreamOptions = {
+/**
+ * Hashbrown extensions accepted alongside a standard AG-UI run input.
+ *
+ * @public
+ */
+export interface OpenAIHashbrownRunAgentInput extends RunAgentInput {
+  hashbrown?: {
+    responseSchema?: object;
+    ui?: boolean;
+  };
+}
+
+/**
+ * Options for streaming an AG-UI run from OpenAI.
+ *
+ * @public
+ */
+export interface OpenAITextStreamOptions {
+  /** OpenAI API key. */
   apiKey: string;
+  /** Optional OpenAI-compatible API base URL. */
   baseURL?: string;
-  request: Chat.Api.CompletionCreateParams;
+  /** Model selected by the server for this endpoint. */
+  model: string;
+  /** Standard AG-UI run input plus optional Hashbrown semantics. */
+  input: OpenAIHashbrownRunAgentInput;
+  /** Cancels the provider request when the HTTP request is abandoned. */
+  signal?: AbortSignal;
+  /** Customize the OpenAI request after AG-UI input has been mapped. */
   transformRequestOptions?: (
     options: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
   ) =>
     | OpenAI.Chat.ChatCompletionCreateParamsStreaming
     | Promise<OpenAI.Chat.ChatCompletionCreateParamsStreaming>;
-};
+}
 
-type ThreadPersistenceOptions = {
-  loadThread: (threadId: string) => Promise<Chat.Api.Message[]>;
-  saveThread: (
-    thread: Chat.Api.Message[],
-    threadId?: string,
-  ) => Promise<string>;
-};
+interface PendingToolCall {
+  readonly index: number;
+  readonly id?: string;
+  readonly name?: string;
+  readonly pendingArguments: string;
+  readonly started: boolean;
+}
 
-type ThreadlessOptions = BaseOpenAITextStreamOptions & {
-  loadThread?: undefined;
-  saveThread?: undefined;
-};
-
-type ThreadfulOptions = BaseOpenAITextStreamOptions & ThreadPersistenceOptions;
-
-export type OpenAITextStreamOptions = ThreadlessOptions | ThreadfulOptions;
-
-export function text(options: ThreadfulOptions): AsyncIterable<Uint8Array>;
-export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
-
-export async function* text(
-  options: OpenAITextStreamOptions,
-): AsyncIterable<Uint8Array> {
-  const {
-    apiKey,
-    baseURL,
-    request,
-    transformRequestOptions,
-    loadThread,
-    saveThread,
-  } = options;
-  const {
-    model,
-    tools,
-    responseFormat,
-    responseFormatMode,
-    toolChoice,
-    system,
-  } = request;
-  const threadId = request.threadId;
-  let loadedThread: Chat.Api.Message[] = [];
-  let effectiveThreadId = threadId;
-
-  const openai = new OpenAI({
-    apiKey,
-    baseURL: baseURL,
-  });
-
-  // Thread loading (both load-thread op and generate op with threadId)
-  const shouldLoadThread = Boolean(request.threadId);
-  const shouldHydrateThreadOnTheClient = Boolean(
-    request.operation === 'load-thread',
-  );
-
-  if (shouldLoadThread) {
-    yield encodeFrame({ type: 'thread-load-start' });
-
-    if (!loadThread) {
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: 'Thread loading is not available for this transport.',
-      });
-      return;
-    }
-
-    const loadFn = loadThread;
-    try {
-      loadedThread = await loadFn(request.threadId as string);
-      if (shouldHydrateThreadOnTheClient) {
-        yield encodeFrame({
-          type: 'thread-load-success',
-          thread: loadedThread,
-        });
-      } else {
-        yield encodeFrame({
-          type: 'thread-load-success',
-        });
-      }
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
-  }
-
-  if (request.operation === 'load-thread') {
-    return;
-  }
-
-  const mergedMessages =
-    request.threadId && shouldLoadThread
-      ? mergeMessagesForThread(loadedThread, request.messages ?? [])
-      : (request.messages ?? []);
-  let assistantMessage: Chat.Api.AssistantMessage | null = null;
-
-  try {
-    const baseOptions: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
-      stream: true,
-      model: model as string,
-      messages: [
-        {
-          role: 'system',
-          content: system,
-        },
-        ...mergedMessages.map((message): OpenAI.ChatCompletionMessageParam => {
-          if (message.role === 'user') {
-            return {
-              role: message.role,
-              content: message.content,
-            };
-          }
-          if (message.role === 'assistant') {
-            return {
-              role: message.role,
-              content:
-                message.content && typeof message.content !== 'string'
-                  ? JSON.stringify(message.content)
-                  : message.content,
-              tool_calls:
-                message.toolCalls && message.toolCalls.length > 0
-                  ? message.toolCalls.map((toolCall) => ({
-                      ...toolCall,
-                      type: 'function',
-                      function: {
-                        ...toolCall.function,
-                        arguments: JSON.stringify(toolCall.function.arguments),
-                      },
-                    }))
-                  : undefined,
-            };
-          }
-          if (message.role === 'tool') {
-            return {
-              role: message.role,
-              content: JSON.stringify(message.content),
-              tool_call_id: message.toolCallId,
-            };
-          }
-
-          throw new Error(`Invalid message role`);
-        }),
-      ],
-      tools:
-        tools && tools.length > 0
-          ? tools.map((tool) => ({
-              type: 'function',
-              function: {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters as FunctionParameters,
-                strict: true,
-              },
-            }))
-          : undefined,
-      tool_choice: toolChoice,
-      response_format: createResponseFormat(responseFormatMode, responseFormat),
-    };
-
-    const resolvedOptions: OpenAI.Chat.ChatCompletionCreateParams =
-      transformRequestOptions
-        ? await transformRequestOptions(baseOptions)
-        : baseOptions;
-
-    const stream = openai.chat.completions.stream(resolvedOptions);
-
-    yield encodeFrame({ type: 'generation-start' });
-
-    for await (const chunk of stream) {
-      const chunkMessage: Chat.Api.CompletionChunk = {
-        choices: chunk.choices.map(
-          (
-            choice: OpenAI.Chat.Completions.ChatCompletionChunk.Choice,
-          ): Chat.Api.CompletionChunkChoice => ({
-            index: choice.index,
-            delta: {
-              content: choice.delta.content,
-              role: choice.delta.role,
-              toolCalls: choice.delta.tool_calls,
-            },
-            finishReason: choice.finish_reason,
-          }),
-        ),
+function mapMessage(
+  message: Message,
+): OpenAI.ChatCompletionMessageParam | undefined {
+  switch (message.role) {
+    case 'developer':
+    case 'system':
+      return {
+        role: message.role,
+        content: message.content,
       };
-
-      const frame: Frame = {
-        type: 'generation-chunk',
-        chunk: chunkMessage,
-      };
-
-      assistantMessage = updateAssistantMessage(assistantMessage, chunkMessage);
-
-      yield encodeFrame(frame);
-    }
-
-    yield encodeFrame({ type: 'generation-finish' });
-  } catch (error: unknown) {
-    const { message, stack } = normalizeError(error);
-    const frame: Frame = {
-      type: 'generation-error',
-      error: message,
-      stacktrace: stack,
-    };
-    yield encodeFrame(frame);
-
-    return;
-  }
-
-  if (saveThread) {
-    const threadToSave = mergeMessagesForThread(mergedMessages, [
-      ...(assistantMessage ? [assistantMessage] : []),
-    ]);
-    yield encodeFrame({ type: 'thread-save-start' });
-    try {
-      const savedThreadId = await saveThread(threadToSave, effectiveThreadId);
-      if (effectiveThreadId && savedThreadId !== effectiveThreadId) {
-        throw new Error(
-          'Save returned a different threadId than the existing thread',
-        );
+    case 'user':
+      if (typeof message.content !== 'string') {
+        throw new Error('OpenAI provider currently requires text user content');
       }
-      effectiveThreadId = savedThreadId;
-      yield encodeFrame({
-        type: 'thread-save-success',
-        threadId: savedThreadId,
-      });
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-save-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
+
+      return {
+        role: 'user',
+        content: message.content,
+      };
+    case 'assistant':
+      return {
+        role: 'assistant',
+        content: message.content ?? null,
+        tool_calls: message.toolCalls?.map((toolCall) => ({
+          id: toolCall.id,
+          type: 'function',
+          function: {
+            name: toolCall.function.name,
+            arguments: toolCall.function.arguments,
+          },
+        })),
+      };
+    case 'tool':
+      return {
+        role: 'tool',
+        content: message.content,
+        tool_call_id: message.toolCallId,
+      };
+    case 'activity':
+    case 'reasoning':
+      return undefined;
   }
 }
 
-function createResponseFormat(
-  responseFormatMode: Chat.Api.ResponseFormatMode | undefined,
-  responseFormat: object | undefined,
-): OpenAI.Chat.ChatCompletionCreateParamsStreaming['response_format'] {
-  if (responseFormatMode === 'json') {
-    return { type: 'json_object' };
-  }
+function mapMessages(messages: Message[]): OpenAI.ChatCompletionMessageParam[] {
+  return messages.flatMap((message) => {
+    const mapped = mapMessage(message);
+    return mapped ? [mapped] : [];
+  });
+}
 
-  if (!responseFormat) {
+function createResponseFormat(
+  responseSchema: object | undefined,
+): OpenAI.Chat.ChatCompletionCreateParamsStreaming['response_format'] {
+  if (!responseSchema) {
     return undefined;
   }
 
@@ -277,14 +115,223 @@ function createResponseFormat(
       strict: true,
       name: 'schema',
       description: '',
-      schema: responseFormat as Record<string, unknown>,
+      schema: responseSchema as Record<string, unknown>,
     },
   };
 }
 
-function normalizeError(error: unknown): { message: string; stack?: string } {
-  if (error instanceof Error) {
-    return { message: error.message, stack: error.stack };
+function mergeToolCall(
+  current: PendingToolCall | undefined,
+  delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
+): PendingToolCall {
+  return {
+    index: delta.index,
+    id: delta.id ?? current?.id,
+    name: delta.function?.name ?? current?.name,
+    pendingArguments:
+      current?.started === true
+        ? (delta.function?.arguments ?? '')
+        : `${current?.pendingArguments ?? ''}${delta.function?.arguments ?? ''}`,
+    started: current?.started ?? false,
+  };
+}
+
+function startToolCall(
+  toolCall: PendingToolCall,
+): PendingToolCall & { id: string; name: string } {
+  if (!toolCall.id || !toolCall.name) {
+    throw new Error(
+      `OpenAI returned incomplete metadata for tool call at index ${toolCall.index}`,
+    );
   }
-  return { message: String(error) };
+
+  return {
+    ...toolCall,
+    id: toolCall.id,
+    name: toolCall.name,
+    pendingArguments: '',
+    started: true,
+  };
+}
+
+function normalizeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Streams canonical AG-UI events from an OpenAI chat completion.
+ *
+ * @public
+ */
+export async function* text(
+  options: OpenAITextStreamOptions,
+): AsyncIterable<AGUIEvent> {
+  const { apiKey, baseURL, model, input, signal, transformRequestOptions } =
+    options;
+  const { threadId, runId } = input;
+  const messageId = `${runId}:assistant`;
+  let textStarted = false;
+  let providerStream: ReturnType<
+    OpenAI['chat']['completions']['stream']
+  > | null = null;
+  const toolCalls = new Map<number, PendingToolCall>();
+
+  yield { type: EventType.RUN_STARTED, threadId, runId };
+  if (signal?.aborted) {
+    return;
+  }
+
+  try {
+    const baseOptions: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
+      stream: true,
+      model,
+      messages: mapMessages(input.messages),
+      tools:
+        input.tools.length > 0
+          ? input.tools.map((tool) => ({
+              type: 'function',
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters as FunctionParameters,
+                strict: true,
+              },
+            }))
+          : undefined,
+      response_format: createResponseFormat(input.hashbrown?.responseSchema),
+    };
+    const requestOptions = transformRequestOptions
+      ? await transformRequestOptions(baseOptions)
+      : baseOptions;
+
+    if (signal?.aborted) {
+      return;
+    }
+
+    const openai = new OpenAI({ apiKey, baseURL });
+    providerStream = openai.chat.completions.stream(requestOptions, { signal });
+
+    for await (const chunk of providerStream) {
+      if (signal?.aborted) {
+        return;
+      }
+
+      for (const choice of chunk.choices) {
+        if (choice.index !== 0) {
+          continue;
+        }
+
+        const content = choice.delta.content;
+        if (content) {
+          if (!textStarted) {
+            textStarted = true;
+            yield {
+              type: EventType.TEXT_MESSAGE_START,
+              messageId,
+              role: 'assistant',
+            };
+            if (signal?.aborted) {
+              return;
+            }
+          }
+
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId,
+            delta: content,
+          };
+          if (signal?.aborted) {
+            return;
+          }
+        }
+
+        for (const delta of choice.delta.tool_calls ?? []) {
+          let toolCall = mergeToolCall(toolCalls.get(delta.index), delta);
+
+          if (!toolCall.started && toolCall.id && toolCall.name) {
+            const pendingArguments = toolCall.pendingArguments;
+            const startedToolCall = startToolCall(toolCall);
+            yield {
+              type: EventType.TOOL_CALL_START,
+              toolCallId: startedToolCall.id,
+              toolCallName: startedToolCall.name,
+              parentMessageId: messageId,
+            };
+            if (signal?.aborted) {
+              return;
+            }
+            if (pendingArguments) {
+              yield {
+                type: EventType.TOOL_CALL_ARGS,
+                toolCallId: startedToolCall.id,
+                delta: pendingArguments,
+              };
+              if (signal?.aborted) {
+                return;
+              }
+            }
+            toolCall = startedToolCall;
+          } else if (toolCall.started && toolCall.pendingArguments) {
+            yield {
+              type: EventType.TOOL_CALL_ARGS,
+              toolCallId: toolCall.id as string,
+              delta: toolCall.pendingArguments,
+            };
+            if (signal?.aborted) {
+              return;
+            }
+            toolCall = { ...toolCall, pendingArguments: '' };
+          }
+
+          toolCalls.set(delta.index, toolCall);
+        }
+      }
+    }
+
+    if (signal?.aborted) {
+      return;
+    }
+
+    if (textStarted) {
+      yield { type: EventType.TEXT_MESSAGE_END, messageId };
+      if (signal?.aborted) {
+        return;
+      }
+    }
+
+    for (const pendingToolCall of toolCalls.values()) {
+      const toolCall = pendingToolCall.started
+        ? pendingToolCall
+        : startToolCall(pendingToolCall);
+      if (toolCall.pendingArguments) {
+        yield {
+          type: EventType.TOOL_CALL_ARGS,
+          toolCallId: toolCall.id as string,
+          delta: toolCall.pendingArguments,
+        };
+        if (signal?.aborted) {
+          return;
+        }
+      }
+      yield {
+        type: EventType.TOOL_CALL_END,
+        toolCallId: toolCall.id as string,
+      };
+      if (signal?.aborted) {
+        return;
+      }
+    }
+
+    if (signal?.aborted) {
+      return;
+    }
+
+    yield { type: EventType.RUN_FINISHED, threadId, runId };
+  } catch (error: unknown) {
+    if (!signal?.aborted) {
+      yield { type: EventType.RUN_ERROR, message: normalizeError(error) };
+    }
+  } finally {
+    providerStream?.abort();
+  }
 }
