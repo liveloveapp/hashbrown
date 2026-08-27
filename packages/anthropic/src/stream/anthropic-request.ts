@@ -73,8 +73,9 @@ function mapMessage(
   }
 }
 
-function mapTool(tool: Tool): Anthropic.Messages.Tool {
+function mapTool(tool: Tool, index: number): Anthropic.Messages.Tool {
   const parameters = tool.parameters;
+  const toolReference = `Anthropic tool "${tool.name}" at index ${index}`;
 
   if (parameters === undefined) {
     return {
@@ -90,18 +91,27 @@ function mapTool(tool: Tool): Anthropic.Messages.Tool {
     Array.isArray(parameters)
   ) {
     throw new Error(
-      'Anthropic tool parameters must be a non-null, non-array object',
+      `${toolReference} parameters must be a non-null, non-array object`,
     );
   }
 
   if (parameters['type'] !== 'object') {
-    throw new Error('Anthropic tool parameters must have type "object"');
+    throw new Error(`${toolReference} parameters must have type "object"`);
+  }
+
+  let inputSchema: Anthropic.Messages.Tool.InputSchema;
+  try {
+    inputSchema = structuredClone(
+      parameters,
+    ) as Anthropic.Messages.Tool.InputSchema;
+  } catch {
+    throw new Error(`Failed to clone parameters for ${toolReference}`);
   }
 
   return {
     name: tool.name,
     description: tool.description,
-    input_schema: parameters as Anthropic.Messages.Tool.InputSchema,
+    input_schema: inputSchema,
   };
 }
 

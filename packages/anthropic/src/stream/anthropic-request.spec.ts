@@ -322,7 +322,7 @@ test('rejects null, array, and non-object tool parameters', () => {
 
   for (const act of actions) {
     expect(act).toThrow(
-      'Anthropic tool parameters must be a non-null, non-array object',
+      'Anthropic tool "invalid" at index 0 parameters must be a non-null, non-array object',
     );
   }
 });
@@ -340,7 +340,9 @@ test('rejects tool parameters whose root type is not object', () => {
 
   const act = () => createAnthropicRequestOptions(input, 'claude-test');
 
-  expect(act).toThrow('Anthropic tool parameters must have type "object"');
+  expect(act).toThrow(
+    'Anthropic tool "invalid" at index 0 parameters must have type "object"',
+  );
 });
 
 test('does not perform full JSON Schema validation', () => {
@@ -361,7 +363,73 @@ test('does not perform full JSON Schema validation', () => {
 
   const result = createAnthropicRequestOptions(input, 'claude-test');
 
-  expect(result.tools?.[0]?.input_schema).toBe(minimallyValidSchema);
+  expect(result.tools?.[0]?.input_schema).toEqual(minimallyValidSchema);
+  expect(result.tools?.[0]?.input_schema).not.toBe(minimallyValidSchema);
+});
+
+test('isolates mapped tool schemas from later source mutations', () => {
+  const schema = {
+    type: 'object' as const,
+    properties: { city: { type: 'string' } },
+  };
+  const input = createInput({
+    tools: [
+      {
+        name: 'weather',
+        description: 'Get the weather.',
+        parameters: schema,
+      },
+    ],
+  });
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+  const mappedSchema = result.tools?.[0]?.input_schema as typeof schema;
+  schema.properties.city.type = 'number';
+
+  expect(mappedSchema.properties.city.type).toBe('string');
+});
+
+test('isolates source tool schemas from later request mutations', () => {
+  const schema = {
+    type: 'object' as const,
+    properties: { city: { type: 'string' } },
+  };
+  const input = createInput({
+    tools: [
+      {
+        name: 'weather',
+        description: 'Get the weather.',
+        parameters: schema,
+      },
+    ],
+  });
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+  const mappedSchema = result.tools?.[0]?.input_schema as typeof schema;
+  mappedSchema.properties.city.type = 'number';
+
+  expect(schema.properties.city.type).toBe('string');
+});
+
+test('identifies the tool when its parameters cannot be cloned', () => {
+  const input = createInput({
+    tools: [
+      {
+        name: 'unclonable',
+        description: 'Contains a non-cloneable schema value.',
+        parameters: {
+          type: 'object',
+          customKeyword: () => undefined,
+        },
+      },
+    ],
+  });
+
+  const act = () => createAnthropicRequestOptions(input, 'claude-test');
+
+  expect(act).toThrow(
+    'Failed to clone parameters for Anthropic tool "unclonable" at index 0',
+  );
 });
 
 test('ignores Hashbrown response metadata without adding hidden instructions', () => {
