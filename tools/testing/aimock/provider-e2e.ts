@@ -117,6 +117,9 @@ export async function runProviderAGUIWithAimock(
       const event = EventSchemas.parse(next.value);
       events.push(event);
       await options.onEvent?.(event, controls);
+      if (abortController.signal.aborted) {
+        return events;
+      }
     }
   } finally {
     abortController.abort();

@@ -288,3 +288,115 @@ test('runProviderAGUIWithAimock lets an event hook abort after a parsed event', 
     startAimock.mockRestore();
   }
 });
+
+test('runProviderAGUIWithAimock stops reading when an event hook aborts', async () => {
+  const events = [
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-provider',
+      runId: 'run-provider',
+    },
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-provider',
+      runId: 'run-provider',
+    },
+  ] satisfies AGUIEvent[];
+  let eventIndex = 0;
+  const iterator: AsyncIterator<AGUIEvent> = {
+    next: jest.fn(async (): Promise<IteratorResult<AGUIEvent>> => {
+      const event = events[eventIndex];
+      eventIndex += 1;
+      return event
+        ? { done: false, value: event }
+        : { done: true, value: undefined };
+    }),
+    return: jest.fn(async () => ({ done: true as const, value: undefined })),
+  };
+  const aimock = {
+    stop: jest.fn(async () => undefined),
+  } as unknown as AimockHandle;
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue(aimock);
+
+  try {
+    const result = await runProviderAGUIWithAimock({
+      fixturePath: '/fixtures/provider.json',
+      createStream: () => ({
+        [Symbol.asyncIterator]: () => iterator,
+      }),
+      onEvent: (event, controls) => {
+        if (event.type === EventType.RUN_STARTED) {
+          controls.abort();
+        }
+      },
+    });
+
+    expect(result).toEqual([events[0]]);
+    expect(iterator.next).toHaveBeenCalledTimes(1);
+    expect(iterator.return).toHaveBeenCalledTimes(1);
+    expect(aimock.stop).toHaveBeenCalledTimes(1);
+  } finally {
+    startAimock.mockRestore();
+  }
+});
+
+test('runProviderAGUIWithAimock stops aimock when createStream throws', async () => {
+  const createStreamError = new Error('create stream failed');
+  const aimock = {
+    stop: jest.fn(async () => undefined),
+  } as unknown as AimockHandle;
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue(aimock);
+
+  try {
+    const result = runProviderAGUIWithAimock({
+      fixturePath: '/fixtures/provider.json',
+      createStream: () => {
+        throw createStreamError;
+      },
+    });
+
+    await expect(result).rejects.toBe(createStreamError);
+    expect(aimock.stop).toHaveBeenCalledTimes(1);
+  } finally {
+    startAimock.mockRestore();
+  }
+});
+
+test('runProviderAGUIWithAimock stops aimock when iterator cleanup rejects', async () => {
+  const cleanupCalls: string[] = [];
+  const iteratorReturnError = new Error('iterator return failed');
+  const iterator: AsyncIterator<AGUIEvent> = {
+    next: jest.fn(async () => ({ done: true as const, value: undefined })),
+    return: jest.fn(async () => {
+      cleanupCalls.push('return');
+      throw iteratorReturnError;
+    }),
+  };
+  const aimock = {
+    stop: jest.fn(async () => {
+      cleanupCalls.push('stop');
+    }),
+  } as unknown as AimockHandle;
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue(aimock);
+
+  try {
+    const result = runProviderAGUIWithAimock({
+      fixturePath: '/fixtures/provider.json',
+      createStream: () => ({
+        [Symbol.asyncIterator]: () => iterator,
+      }),
+    });
+
+    await expect(result).rejects.toBe(iteratorReturnError);
+    expect(cleanupCalls).toEqual(['return', 'stop']);
+    expect(aimock.stop).toHaveBeenCalledTimes(1);
+  } finally {
+    startAimock.mockRestore();
+  }
+});
