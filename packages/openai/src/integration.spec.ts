@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
 import {
   runProviderAGUIWithAimock,
   startAimock,
@@ -255,6 +255,7 @@ test('OpenAI maps complete AG-UI history without provider-specific wire keys', a
         throw new Error('stop after capture');
       },
     }),
+    (event) => EventSchemas.parse(event),
   );
 
   expect(capturedMessages).toEqual([
