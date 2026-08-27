@@ -351,7 +351,7 @@ test('Anthropic maps complete AG-UI request history for aimock', async () => {
 test('Anthropic provider errors terminate with RUN_ERROR', async () => {
   const input = baseInput('return provider error');
 
-  const events = await runFixture('error.json', input);
+  const events = await runFixture('anthropic-error.json', input);
 
   expect(events).toEqual([
     {
