@@ -1131,6 +1131,18 @@ test('continues client tools with isolated reasoning details in transcript order
             parentMessageId: 'assistant-weather',
           },
           {
+            type: EventType.REASONING_ENCRYPTED_VALUE,
+            subtype: 'message',
+            entityId: 'assistant-weather',
+            encryptedValue: 'opaque-assistant',
+          },
+          {
+            type: EventType.REASONING_ENCRYPTED_VALUE,
+            subtype: 'tool-call',
+            entityId: 'call-weather',
+            encryptedValue: 'opaque-tool-call',
+          },
+          {
             type: EventType.TOOL_CALL_ARGS,
             toolCallId: 'call-weather',
             delta: '{"city":"Paris"}',
@@ -1203,16 +1215,41 @@ test('continues client tools with isolated reasoning details in transcript order
   const safeContinuation = secondRequest.input?.messages
     .slice(2)
     .map((message) => {
-      if (message.role !== 'reasoning') {
-        return message;
+      if (message.role === 'assistant') {
+        const { encryptedValue, toolCalls, ...safeMessage } = message;
+        return {
+          ...safeMessage,
+          hasEncryptedValue:
+            typeof encryptedValue === 'string' && encryptedValue.length > 0,
+          ...(toolCalls
+            ? {
+                toolCalls: toolCalls.map((toolCall) => {
+                  const {
+                    encryptedValue: toolEncryptedValue,
+                    ...safeToolCall
+                  } = toolCall;
+                  return {
+                    ...safeToolCall,
+                    hasEncryptedValue:
+                      typeof toolEncryptedValue === 'string' &&
+                      toolEncryptedValue.length > 0,
+                  };
+                }),
+              }
+            : {}),
+        };
       }
 
-      const { encryptedValue, ...safeMessage } = message;
-      return {
-        ...safeMessage,
-        hasEncryptedValue:
-          typeof encryptedValue === 'string' && encryptedValue.length > 0,
-      };
+      if (message.role === 'reasoning') {
+        const { encryptedValue, ...safeMessage } = message;
+        return {
+          ...safeMessage,
+          hasEncryptedValue:
+            typeof encryptedValue === 'string' && encryptedValue.length > 0,
+        };
+      }
+
+      return message;
     });
   expect(safeContinuation).toEqual([
     {
@@ -1226,10 +1263,12 @@ test('continues client tools with isolated reasoning details in transcript order
       id: expect.any(String),
       role: 'assistant',
       content: '',
+      hasEncryptedValue: true,
       toolCalls: [
         {
           id: 'call-weather',
           type: 'function',
+          hasEncryptedValue: true,
           function: {
             name: 'getWeather',
             arguments: '{"city":"Paris"}',
@@ -1253,6 +1292,17 @@ test('continues client tools with isolated reasoning details in transcript order
   if (committedAssistant?.role !== 'assistant') {
     throw new Error('Expected a committed assistant reasoning message.');
   }
+  const capturedAssistant = secondRequest.input?.messages.find(
+    (message) => message.role === 'assistant',
+  );
+  if (!capturedAssistant || capturedAssistant.role !== 'assistant') {
+    throw new Error('Expected captured continuation assistant.');
+  }
+  const capturedToolCall = capturedAssistant.toolCalls?.[0];
+  const committedToolCall = committedAssistant.toolCalls[0];
+  if (!capturedToolCall || !committedToolCall) {
+    throw new Error('Expected captured and committed continuation tool calls.');
+  }
   const capturedReasoning = secondRequest.input?.messages.find(
     (message) => message.role === 'reasoning',
   );
@@ -1267,7 +1317,11 @@ test('continues client tools with isolated reasoning details in transcript order
     provider: { trace: string[] };
   };
   const originalEncryptedValue = capturedReasoning.encryptedValue;
+  const originalAssistantEncryptedValue = capturedAssistant.encryptedValue;
+  const originalToolEncryptedValue = capturedToolCall.encryptedValue;
 
+  expect(capturedAssistant).not.toBe(committedAssistant);
+  expect(capturedToolCall).not.toBe(committedToolCall);
   expect(capturedReasoning === committedReasoning).toBe(false);
   expect(capturedMetadata).not.toBe(committedMetadata);
   expect(capturedMetadata.provider).not.toBe(committedMetadata.provider);
@@ -1276,9 +1330,21 @@ test('continues client tools with isolated reasoning details in transcript order
       originalEncryptedValue.length > 0 &&
       committedReasoning?.encryptedValue === originalEncryptedValue,
   ).toBe(true);
+  expect(originalAssistantEncryptedValue).toBe('opaque-assistant');
+  expect(originalToolEncryptedValue).toBe('opaque-tool-call');
+  expect(committedAssistant.encryptedValue).toBe(
+    originalAssistantEncryptedValue,
+  );
+  expect(committedToolCall.encryptedValue).toBe(originalToolEncryptedValue);
+  capturedAssistant.encryptedValue = 'mutated-captured-assistant';
+  capturedToolCall.encryptedValue = 'mutated-captured-tool-call';
   capturedReasoning.encryptedValue = 'mutated-captured-value';
   capturedMetadata.provider.trace[0] = 'mutated-captured-metadata';
 
+  expect(committedAssistant.encryptedValue).toBe(
+    originalAssistantEncryptedValue,
+  );
+  expect(committedToolCall.encryptedValue).toBe(originalToolEncryptedValue);
   expect(committedReasoning?.encryptedValue === originalEncryptedValue).toBe(
     true,
   );
