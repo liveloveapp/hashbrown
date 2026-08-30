@@ -957,16 +957,15 @@ test('reports a stream error for a duplicate reasoning end', () => {
   );
 });
 
-test('reports a stream error for an unknown message encrypted-value id', () => {
+test('ignores an unknown message encrypted-value id', () => {
   const state = startState();
 
   const next = reduceEvents(state, [
     reasoningEncryptedValue('reasoning-unknown', 'opaque'),
   ]);
 
-  expect(next.error?.message).toBe(
-    'Reasoning message reasoning-unknown does not exist',
-  );
+  expect(next).toBe(state);
+  expect(next.error).toBeUndefined();
 });
 
 test('reports a stream error when a run finishes with active reasoning', () => {
@@ -1003,13 +1002,63 @@ test('accepts top-level reasoning grouping events as exact no-ops', () => {
   expect(afterEnd).toBe(state);
 });
 
-test('accepts tool-call encrypted values as exact no-ops', () => {
+test('sets a tool-call encrypted value without mutating prior state', () => {
+  const state = reduceEvents(
+    startState(),
+    toolEvents('call-1', 'search', '{"query":"hashbrown"}'),
+  );
+  const priorToolCall = state.toolCalls[0];
+
+  const next = reduceEvents(state, [
+    reasoningEncryptedValue('call-1', 'tool-opaque', 'tool-call', {
+      eventOnly: true,
+    }),
+  ]);
+
+  expect(next).not.toBe(state);
+  expect(next.toolCalls).not.toBe(state.toolCalls);
+  expect(next.toolCalls[0]).not.toBe(priorToolCall);
+  expect(priorToolCall).not.toHaveProperty('encryptedValue');
+  expect(next.toolCalls[0]?.encryptedValue).toBe('tool-opaque');
+  expect(next.toolCalls[0]?.arguments).toBe('{"query":"hashbrown"}');
+  expect(next.error).toBeUndefined();
+});
+
+test('sets an assistant encrypted value without changing message content', () => {
+  const state = reduceEvents(startState(), textEvents('Answer', 'assistant-1'));
+  const priorMessage = state.message;
+
+  const next = reduceEvents(state, [
+    reasoningEncryptedValue('assistant-1', 'assistant-opaque'),
+  ]);
+
+  expect(next).not.toBe(state);
+  expect(next.message).not.toBe(priorMessage);
+  expect(priorMessage).not.toHaveProperty('encryptedValue');
+  expect(next.message?.encryptedValue).toBe('assistant-opaque');
+  expect(next.message?.content).toBe('Answer');
+  expect(next.error).toBeUndefined();
+});
+
+test('keeps the latest assistant and tool-call encrypted values', () => {
+  let state = reduceEvents(startState(), toolEvents('call-1', 'search', '{}'));
+
+  state = reduceEvents(state, [
+    reasoningEncryptedValue('message-1', 'assistant-first'),
+    reasoningEncryptedValue('call-1', 'tool-first', 'tool-call'),
+    reasoningEncryptedValue('message-1', 'assistant-latest'),
+    reasoningEncryptedValue('call-1', 'tool-latest', 'tool-call'),
+  ]);
+
+  expect(state.message?.encryptedValue).toBe('assistant-latest');
+  expect(state.toolCalls[0]?.encryptedValue).toBe('tool-latest');
+});
+
+test('ignores an unknown tool-call encrypted-value id', () => {
   const state = startState();
 
   const next = reduceEvents(state, [
-    reasoningEncryptedValue('unknown-tool-call', 'opaque', 'tool-call', {
-      eventOnly: true,
-    }),
+    reasoningEncryptedValue('unknown-tool-call', 'opaque', 'tool-call'),
   ]);
 
   expect(next).toBe(state);

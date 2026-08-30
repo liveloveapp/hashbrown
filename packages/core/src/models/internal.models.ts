@@ -39,6 +39,13 @@ export interface ToolCall {
   result?: PromiseSettledResult<any>;
   progress?: number;
   status: 'pending' | 'done';
+
+  /**
+   * Opaque provider continuation data preserved across AG-UI runs.
+   * Hashbrown does not inspect or display this value.
+   */
+  encryptedValue?: string;
+
   metadata?: Record<string, unknown>;
 }
 
@@ -50,6 +57,13 @@ export interface AssistantMessage {
   content?: string;
   contentResolved?: JsonValue;
   toolCallIds: string[];
+
+  /**
+   * Opaque provider continuation data preserved across AG-UI runs.
+   * Hashbrown does not inspect or display this value.
+   */
+  encryptedValue?: string;
+
   reasoning?: ɵInternalReasoning;
 }
 

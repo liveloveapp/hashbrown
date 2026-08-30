@@ -95,11 +95,17 @@ function mapMessage(
         id,
         role: 'assistant',
         ...(message.content !== undefined ? { content: message.content } : {}),
+        ...(message.encryptedValue !== undefined
+          ? { encryptedValue: message.encryptedValue }
+          : {}),
         ...(message.toolCalls !== undefined
           ? {
               toolCalls: message.toolCalls.map((toolCall) => ({
                 id: toolCall.id,
                 type: 'function' as const,
+                ...(toolCall.encryptedValue !== undefined
+                  ? { encryptedValue: toolCall.encryptedValue }
+                  : {}),
                 function: {
                   name: toolCall.function.name,
                   arguments: toolCall.function.arguments,

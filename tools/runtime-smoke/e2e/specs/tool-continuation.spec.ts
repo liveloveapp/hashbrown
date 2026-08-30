@@ -68,10 +68,12 @@ function createContinuationMessages(
       id: `${threadId}:message:1`,
       role: 'assistant',
       content: '',
+      encryptedValue: 'fixture-assistant-opaque-value',
       toolCalls: [
         {
           id: 'call-weather',
           type: 'function',
+          encryptedValue: 'fixture-tool-opaque-value',
           function: {
             name: 'getWeather',
             arguments: '{"city":"Paris"}',
@@ -98,16 +100,39 @@ function hasExactWeatherContinuation(input: HashbrownRunInput): boolean {
 /** Returns transcript records with opaque values reduced to presence booleans. */
 function safeTranscript(messages: HashbrownRunInput['messages']) {
   return messages.map((message) => {
-    if (message.role !== 'reasoning') {
-      return message;
+    if (message.role === 'assistant') {
+      const { encryptedValue, toolCalls, ...safeMessage } = message;
+      return {
+        ...safeMessage,
+        hasOpaqueValue:
+          typeof encryptedValue === 'string' && encryptedValue.length > 0,
+        ...(toolCalls
+          ? {
+              toolCalls: toolCalls.map((toolCall) => {
+                const { encryptedValue: toolEncryptedValue, ...safeToolCall } =
+                  toolCall;
+                return {
+                  ...safeToolCall,
+                  hasOpaqueValue:
+                    typeof toolEncryptedValue === 'string' &&
+                    toolEncryptedValue.length > 0,
+                };
+              }),
+            }
+          : {}),
+      };
     }
 
-    const { encryptedValue, ...safeMessage } = message;
-    return {
-      ...safeMessage,
-      hasOpaqueValue:
-        typeof encryptedValue === 'string' && encryptedValue.length > 0,
-    };
+    if (message.role === 'reasoning') {
+      const { encryptedValue, ...safeMessage } = message;
+      return {
+        ...safeMessage,
+        hasOpaqueValue:
+          typeof encryptedValue === 'string' && encryptedValue.length > 0,
+      };
+    }
+
+    return message;
   });
 }
 
@@ -156,21 +181,35 @@ function createToolContinuationEvents(
         timestamp: 1_700_000_002_005,
       },
       {
+        type: EventType.REASONING_ENCRYPTED_VALUE,
+        subtype: 'message',
+        entityId: `${input.threadId}:message:1`,
+        encryptedValue: 'fixture-assistant-opaque-value',
+        timestamp: 1_700_000_002_006,
+      },
+      {
+        type: EventType.REASONING_ENCRYPTED_VALUE,
+        subtype: 'tool-call',
+        entityId: 'call-weather',
+        encryptedValue: 'fixture-tool-opaque-value',
+        timestamp: 1_700_000_002_007,
+      },
+      {
         type: EventType.TOOL_CALL_ARGS,
         toolCallId: 'call-weather',
         delta: '{"city":"Paris"}',
-        timestamp: 1_700_000_002_006,
+        timestamp: 1_700_000_002_008,
       },
       {
         type: EventType.TOOL_CALL_END,
         toolCallId: 'call-weather',
-        timestamp: 1_700_000_002_007,
+        timestamp: 1_700_000_002_009,
       },
       {
         type: EventType.RUN_FINISHED,
         threadId: input.threadId,
         runId: input.runId,
-        timestamp: 1_700_000_002_008,
+        timestamp: 1_700_000_002_010,
       },
     ];
   }
@@ -250,6 +289,20 @@ test('executes a tool once and automatically continues the run', async ({
     'assistant',
     'tool',
   ]);
+  const continuationAssistant = secondInput.messages.find(
+    (message) => message.role === 'assistant',
+  );
+  if (!continuationAssistant || continuationAssistant.role !== 'assistant') {
+    throw new Error('Expected an assistant in the continuation request.');
+  }
+  const continuationToolCall = continuationAssistant.toolCalls?.[0];
+  if (!continuationToolCall) {
+    throw new Error('Expected a tool call in the continuation request.');
+  }
+  expect(continuationAssistant.encryptedValue).toBe(
+    'fixture-assistant-opaque-value',
+  );
+  expect(continuationToolCall.encryptedValue).toBe('fixture-tool-opaque-value');
   expect(firstInput).toEqual({
     threadId: firstInput.threadId,
     runId: firstInput.runId,

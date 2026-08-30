@@ -23,6 +23,13 @@ export interface ToolCall {
     name: string;
     arguments: string;
   };
+
+  /**
+   * Opaque provider continuation data preserved across AG-UI runs.
+   * Hashbrown does not inspect or display this value.
+   */
+  encryptedValue?: string;
+
   metadata?: Record<string, unknown>;
 }
 
@@ -33,6 +40,12 @@ export interface AssistantMessage {
   role: 'assistant';
   content?: string;
   toolCalls?: ToolCall[];
+
+  /**
+   * Opaque provider continuation data preserved across AG-UI runs.
+   * Hashbrown does not inspect or display this value.
+   */
+  encryptedValue?: string;
 
   /**
    * Human-readable reasoning. When `reasoningDetails` is present, this value

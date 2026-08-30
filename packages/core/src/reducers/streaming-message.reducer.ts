@@ -339,7 +339,31 @@ function applyReasoningEncryptedValue(
   event: ReasoningEncryptedValueEvent,
 ): StreamingMessageState {
   if (event.subtype === 'tool-call') {
-    return state;
+    const toolCallIndex = state.toolCalls.findIndex(
+      (toolCall) => toolCall.id === event.entityId,
+    );
+    if (toolCallIndex === -1) {
+      return state;
+    }
+
+    return {
+      ...state,
+      toolCalls: state.toolCalls.map((toolCall, index) =>
+        index === toolCallIndex
+          ? { ...toolCall, encryptedValue: event.encryptedValue }
+          : toolCall,
+      ),
+    };
+  }
+
+  if (state.message && state.messageId === event.entityId) {
+    return {
+      ...state,
+      message: {
+        ...state.message,
+        encryptedValue: event.encryptedValue,
+      },
+    };
   }
 
   const next = updateReasoningDetail(state, event.entityId, (detail) => ({
@@ -349,10 +373,7 @@ function applyReasoningEncryptedValue(
       ? { subagentRunId: event.subagentRunId }
       : {}),
   }));
-  return (
-    next ??
-    withStreamError(state, `Reasoning message ${event.entityId} does not exist`)
-  );
+  return next ?? state;
 }
 
 function startTextMessage(
