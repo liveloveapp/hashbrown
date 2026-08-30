@@ -138,6 +138,7 @@ export function createAnthropicRequestOptions(
     return mapped ? [mapped] : [];
   });
   const tools = input.tools.map(mapTool);
+  const responseSchema = input.hashbrown?.responseSchema;
 
   return {
     stream: true,
@@ -148,5 +149,17 @@ export function createAnthropicRequestOptions(
       : {}),
     messages,
     ...(tools.length > 0 ? { tools } : {}),
+    ...(responseSchema === undefined
+      ? {}
+      : {
+          output_config: {
+            format: {
+              type: 'json_schema' as const,
+              schema: structuredClone(
+                responseSchema,
+              ) as Anthropic.Messages.JSONOutputFormat['schema'],
+            },
+          },
+        }),
   };
 }

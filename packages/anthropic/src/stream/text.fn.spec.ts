@@ -368,12 +368,17 @@ test('cancellation immediately after transform prevents provider and terminal ev
   expect(provider.create).not.toHaveBeenCalled();
 });
 
-test('maps provider create rejection to exactly one RUN_ERROR', async () => {
+test('maps a native structured-output provider rejection to exactly one RUN_ERROR', async () => {
   MockedAnthropic.mockReset();
   const create = jest.fn().mockRejectedValue(new Error('Provider unavailable'));
   MockedAnthropic.mockImplementation(() => ({ messages: { create } }));
+  const input = createInput({
+    hashbrown: {
+      responseSchema: { type: 'object', properties: {} },
+    },
+  });
 
-  const events = await collectEvents(createOptions());
+  const events = await collectEvents(createOptions({ input }));
 
   expect(events.map((event) => event.type)).toEqual([
     EventType.RUN_STARTED,
@@ -383,6 +388,18 @@ test('maps provider create rejection to exactly one RUN_ERROR', async () => {
     type: EventType.RUN_ERROR,
     message: 'Provider unavailable',
   });
+  expect(create).toHaveBeenCalledTimes(1);
+  expect(create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      output_config: {
+        format: {
+          type: 'json_schema',
+          schema: { type: 'object', properties: {} },
+        },
+      },
+    }),
+    { signal: undefined },
+  );
 });
 
 test('emits canonical mapper events followed by one RUN_FINISHED', async () => {

@@ -447,21 +447,67 @@ test('identifies the tool when its parameters cannot be cloned', () => {
   );
 });
 
-test('ignores Hashbrown response metadata without adding hidden instructions', () => {
-  const responseSchema: Record<string, unknown> = {};
-  responseSchema['self'] = responseSchema;
+test('maps Hashbrown response metadata to native JSON schema output without changing prompts or tools', () => {
+  const responseSchema = {
+    type: 'object',
+    properties: { answer: { type: 'string' } },
+    required: ['answer'],
+  };
   const input = createInput({
+    messages: [
+      { id: 'system-1', role: 'system', content: 'Be concise.' },
+      { id: 'user-1', role: 'user', content: 'Give an answer.' },
+    ],
+    tools: [
+      {
+        name: 'lookup',
+        description: 'Look up an answer.',
+        parameters: { type: 'object', properties: {} },
+      },
+    ],
     hashbrown: { responseSchema, ui: true },
   });
 
   const result = createAnthropicRequestOptions(input, 'claude-test');
 
-  expect(result).toEqual({
-    stream: true,
-    model: 'claude-test',
-    max_tokens: 4096,
-    messages: [],
+  expect(result.output_config).toEqual({
+    format: { type: 'json_schema', schema: responseSchema },
   });
+  expect(result.system).toBe('Be concise.');
+  expect(result.messages).toEqual([
+    { role: 'user', content: 'Give an answer.' },
+  ]);
+  expect(result.tools).toHaveLength(1);
+});
+
+test('isolates the native response schema from result and source mutations', () => {
+  const responseSchema = {
+    type: 'object',
+    metadata: { source: 'input' },
+    properties: { answer: { type: 'string' } },
+  };
+  const input = createInput({
+    hashbrown: { responseSchema, ui: true },
+  });
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+  const mappedSchema = result.output_config?.format
+    ?.schema as typeof responseSchema;
+
+  expect(mappedSchema).toBeDefined();
+  if (!mappedSchema) {
+    return;
+  }
+
+  mappedSchema.properties.answer.type = 'number';
+  mappedSchema.metadata.source = 'transform';
+  expect(responseSchema.properties.answer.type).toBe('string');
+  expect(responseSchema.metadata.source).toBe('input');
+
+  responseSchema.properties.answer.type = 'boolean';
+  responseSchema.metadata.source = 'source';
+  expect(mappedSchema.properties.answer.type).toBe('number');
+  expect(mappedSchema.metadata.source).toBe('transform');
 });
 
 test('does not mutate the input, messages, tool calls, schemas, or metadata', () => {
@@ -509,4 +555,5 @@ test('does not mutate the input, messages, tool calls, schemas, or metadata', ()
   expect(result.messages[0]).not.toBe(input.messages[1]);
   expect(result.tools).not.toBe(input.tools);
   expect(result.tools?.[0]).not.toBe(input.tools[0]);
+  expect(result.output_config?.format?.schema).not.toBe(responseSchema);
 });

@@ -205,6 +205,19 @@ test('Anthropic streams structured-output JSON without hidden emulation', async 
     max_tokens: 4096,
     system: 'You are a deterministic test assistant.',
     messages: [{ role: 'user', content: 'return structured output' }],
+    output_config: {
+      format: {
+        type: 'json_schema',
+        schema: {
+          type: 'object',
+          properties: {
+            text: { type: 'string' },
+            ok: { type: 'boolean' },
+          },
+          required: ['text', 'ok'],
+        },
+      },
+    },
   });
   expect(capturedOptions).not.toHaveProperty('response_format');
   expect(capturedOptions?.tools).toBeUndefined();
@@ -303,6 +316,9 @@ test('Anthropic maps complete AG-UI request history for aimock', async () => {
     model: ANTHROPIC_MODEL,
     max_tokens: 4096,
     system: 'System instruction.\n\nDeveloper instruction.',
+    output_config: {
+      format: { type: 'json_schema', schema: { type: 'object' } },
+    },
     messages: [
       { role: 'user', content: 'Previous question.' },
       {
