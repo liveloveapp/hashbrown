@@ -1,0 +1,31 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "reason before calling lookup",
+        "hasToolResult": false
+      },
+      "response": {
+        "reasoning": "I need the lookup result.",
+        "reasoningSignature": "signature_tool_fixture",
+        "toolCalls": [
+          {
+            "id": "call_reasoning_lookup_fixture",
+            "name": "lookup",
+            "arguments": "{\"query\":\"hashbrown\"}"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "reason before calling lookup",
+        "hasToolResult": true,
+        "toolResultContains": "fixture continuation result"
+      },
+      "response": {
+        "content": "Continued answer from aimock."
+      }
+    }
+  ]
+}

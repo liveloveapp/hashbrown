@@ -1,0 +1,14 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "reason before answering"
+      },
+      "response": {
+        "reasoning": "I will answer deterministically.",
+        "reasoningSignature": "signature_reasoning_fixture",
+        "content": "Reasoned answer from aimock."
+      }
+    }
+  ]
+}
