@@ -31,9 +31,9 @@
     ]
   },
   "dependencies": {
-    "@ag-ui/client": "0.0.58",
-    "@ag-ui/core": "0.0.58",
-    "@ag-ui/encoder": "0.0.58",
+    "@ag-ui/client": "0.0.59",
+    "@ag-ui/core": "0.0.59",
+    "@ag-ui/encoder": "0.0.59",
     "@analogjs/content": "3.0.0-alpha.64",
     "@analogjs/router": "3.0.0-alpha.64",
     "@angular/animations": "22.1.1",

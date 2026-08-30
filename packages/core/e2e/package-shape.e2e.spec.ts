@@ -184,7 +184,7 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
           const agUiCoreVersion = packageJson.dependencies?.['@ag-ui/core'];
           const agUiClientVersion = packageJson.dependencies?.['@ag-ui/client'];
           if (
-            agUiCoreVersion !== '0.0.58' ||
+            agUiCoreVersion !== '0.0.59' ||
             agUiClientVersion !== agUiCoreVersion
           ) {
             throw new Error(

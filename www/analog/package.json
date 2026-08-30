@@ -2,8 +2,8 @@
   "name": "@hashbrownai/www",
   "type": "module",
   "dependencies": {
-    "@ag-ui/core": "0.0.58",
-    "@ag-ui/encoder": "0.0.58",
+    "@ag-ui/core": "0.0.59",
+    "@ag-ui/encoder": "0.0.59",
     "@hashbrownai/core": "file:../../packages/core",
     "@hashbrownai/openai": "file:../../packages/openai",
     "@angular/common": "22.1.1",

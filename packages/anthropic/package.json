@@ -12,7 +12,7 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "@ag-ui/core": "0.0.58",
+    "@ag-ui/core": "0.0.59",
     "tslib": "^2.3.0"
   },
   "peerDependencies": {
