@@ -9,6 +9,8 @@ import {
 import { openScenario } from '../harness/browser';
 import { expect, test } from '../harness/test-fixture';
 
+test.use({ trace: 'off' });
+
 const weatherResult = {
   city: 'Paris',
   temperatureC: 21,
@@ -56,6 +58,13 @@ function createContinuationMessages(
   return [
     ...createInitialMessages(threadId),
     {
+      id: 'reasoning-weather',
+      role: 'reasoning',
+      content: 'I need the weather tool.',
+      encryptedValue: 'fixture-opaque-value',
+      metadata: { provider: { trace: ['weather'] } },
+    },
+    {
       id: `${threadId}:message:1`,
       role: 'assistant',
       content: '',
@@ -86,6 +95,22 @@ function hasExactWeatherContinuation(input: HashbrownRunInput): boolean {
   );
 }
 
+/** Returns transcript records with opaque values reduced to presence booleans. */
+function safeTranscript(messages: HashbrownRunInput['messages']) {
+  return messages.map((message) => {
+    if (message.role !== 'reasoning') {
+      return message;
+    }
+
+    const { encryptedValue, ...safeMessage } = message;
+    return {
+      ...safeMessage,
+      hasOpaqueValue:
+        typeof encryptedValue === 'string' && encryptedValue.length > 0,
+    };
+  });
+}
+
 function createToolContinuationEvents(
   input: HashbrownRunInput,
   requestIndex: number,
@@ -99,28 +124,53 @@ function createToolContinuationEvents(
         timestamp: 1_700_000_002_000,
       },
       {
+        type: EventType.REASONING_MESSAGE_START,
+        messageId: 'reasoning-weather',
+        role: 'reasoning',
+        metadata: { provider: { trace: ['weather'] } },
+        timestamp: 1_700_000_002_001,
+      },
+      {
+        type: EventType.REASONING_MESSAGE_CONTENT,
+        messageId: 'reasoning-weather',
+        delta: 'I need the weather tool.',
+        timestamp: 1_700_000_002_002,
+      },
+      {
+        type: EventType.REASONING_ENCRYPTED_VALUE,
+        subtype: 'message',
+        entityId: 'reasoning-weather',
+        encryptedValue: 'fixture-opaque-value',
+        timestamp: 1_700_000_002_003,
+      },
+      {
+        type: EventType.REASONING_MESSAGE_END,
+        messageId: 'reasoning-weather',
+        timestamp: 1_700_000_002_004,
+      },
+      {
         type: EventType.TOOL_CALL_START,
         toolCallId: 'call-weather',
         toolCallName: 'getWeather',
         parentMessageId: `${input.threadId}:message:1`,
-        timestamp: 1_700_000_002_001,
+        timestamp: 1_700_000_002_005,
       },
       {
         type: EventType.TOOL_CALL_ARGS,
         toolCallId: 'call-weather',
         delta: '{"city":"Paris"}',
-        timestamp: 1_700_000_002_002,
+        timestamp: 1_700_000_002_006,
       },
       {
         type: EventType.TOOL_CALL_END,
         toolCallId: 'call-weather',
-        timestamp: 1_700_000_002_003,
+        timestamp: 1_700_000_002_007,
       },
       {
         type: EventType.RUN_FINISHED,
         threadId: input.threadId,
         runId: input.runId,
-        timestamp: 1_700_000_002_004,
+        timestamp: 1_700_000_002_008,
       },
     ];
   }
@@ -167,6 +217,9 @@ test('executes a tool once and automatically continues the run', async ({
     'What is the weather in Paris?',
   );
   await driver.expectLoading();
+  await expect(driver.reasoning()).toHaveText('I need the weather tool.');
+  await expect(driver.reasoningDetailCount()).toHaveText('1');
+  await expect(driver.reasoningHasOpaqueValue()).toHaveText('true');
   await expect(driver.toolCount()).toHaveText('1');
   await expect.poll(() => attempted.length).toBe(2);
   await expect.poll(() => captured.length).toBe(2);
@@ -175,18 +228,28 @@ test('executes a tool once and automatically continues the run', async ({
     'It is 21 C and sunny in Paris.',
   );
   await driver.expectIdle();
+  await expect(driver.reasoning()).toHaveText('I need the weather tool.');
+  await expect(driver.reasoningDetailCount()).toHaveText('1');
+  await expect(driver.reasoningHasOpaqueValue()).toHaveText('true');
   await expect(driver.toolCount()).toHaveText('1');
   await expect(driver.error()).toHaveJSProperty('textContent', '');
   await expect(driver.sendingError()).toHaveJSProperty('textContent', '');
   await expect(driver.generatingError()).toHaveJSProperty('textContent', '');
-  expect(captured).toHaveLength(2);
+  expect(captured.length).toBe(2);
   const [firstInput, secondInput] = captured;
   if (!firstInput || !secondInput) {
     throw new Error('Expected two captured tool continuation run inputs.');
   }
-  expect(attempted).toHaveLength(2);
+  expect(attempted.length).toBe(2);
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
+  expect(secondInput.messages.map(({ role }) => role)).toEqual([
+    'system',
+    'user',
+    'reasoning',
+    'assistant',
+    'tool',
+  ]);
   expect(firstInput).toEqual({
     threadId: firstInput.threadId,
     runId: firstInput.runId,
@@ -196,10 +259,13 @@ test('executes a tool once and automatically continues the run', async ({
     state: {},
     forwardedProps: {},
   });
-  expect(secondInput).toEqual({
+  expect({
+    ...secondInput,
+    messages: safeTranscript(secondInput.messages),
+  }).toEqual({
     threadId: firstInput.threadId,
     runId: secondInput.runId,
-    messages: createContinuationMessages(firstInput.threadId),
+    messages: safeTranscript(createContinuationMessages(firstInput.threadId)),
     tools: [expectedWeatherTool],
     context: [],
     state: {},

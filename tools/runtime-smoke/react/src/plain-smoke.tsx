@@ -37,6 +37,7 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
     generatingError,
     isLoading,
     lastAssistantMessage,
+    messages,
     sendMessage,
     sendingError,
     stop,
@@ -45,6 +46,24 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
     system: 'Runtime smoke system prompt.',
     tools: scenario === 'tool' ? [getWeather] : [],
   });
+  const reasoningMessage = [...messages]
+    .reverse()
+    .find(
+      (message) =>
+        message.role === 'assistant' &&
+        message.reasoningDetails !== undefined,
+    );
+  const reasoningDetails =
+    reasoningMessage?.role === 'assistant'
+      ? (reasoningMessage.reasoningDetails ?? [])
+      : [];
+  const reasoningText = reasoningDetails
+    .map((detail) => detail.content)
+    .filter((content) => content.length > 0)
+    .join('\n\n');
+  const reasoningHasOpaqueValue = reasoningDetails.some((detail) =>
+    Boolean(detail.encryptedValue),
+  );
 
   function send() {
     setSubmitted(prompt);
@@ -71,6 +90,11 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
       <div data-testid="sending-error">{errorText(sendingError)}</div>
       <div data-testid="generating-error">{errorText(generatingError)}</div>
       <div data-testid="tool-count">{toolCount}</div>
+      <div data-testid="reasoning">{reasoningText}</div>
+      <div data-testid="reasoning-detail-count">{reasoningDetails.length}</div>
+      <div data-testid="reasoning-has-opaque-value">
+        {reasoningHasOpaqueValue ? 'true' : 'false'}
+      </div>
     </section>
   );
 }

@@ -100,6 +100,79 @@ export function createTextRunEvents(
 }
 
 /**
+ * Creates a deterministic successful text run preceded by one reasoning detail.
+ */
+export function createReasoningTextRunEvents(
+  input: HashbrownRunInput,
+  reasoning: {
+    readonly messageId: string;
+    readonly content: string;
+    readonly encryptedValue: string;
+    readonly metadata?: Record<string, unknown>;
+  },
+  assistantMessageId: string,
+  chunks: readonly string[],
+  timestamp = DEFAULT_TIMESTAMP,
+): AGUIEvent[] {
+  return [
+    {
+      type: EventType.RUN_STARTED,
+      threadId: input.threadId,
+      runId: input.runId,
+      timestamp,
+    },
+    {
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: reasoning.messageId,
+      role: 'reasoning',
+      ...(reasoning.metadata ? { metadata: reasoning.metadata } : {}),
+      timestamp: timestamp + 1,
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: reasoning.messageId,
+      delta: reasoning.content,
+      timestamp: timestamp + 2,
+    },
+    {
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'message',
+      entityId: reasoning.messageId,
+      encryptedValue: reasoning.encryptedValue,
+      timestamp: timestamp + 3,
+    },
+    {
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: reasoning.messageId,
+      timestamp: timestamp + 4,
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: assistantMessageId,
+      role: 'assistant',
+      timestamp: timestamp + 5,
+    },
+    ...chunks.map((delta, index): AGUIEvent => ({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: assistantMessageId,
+      delta,
+      timestamp: timestamp + index + 6,
+    })),
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: assistantMessageId,
+      timestamp: timestamp + chunks.length + 6,
+    },
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: input.threadId,
+      runId: input.runId,
+      timestamp: timestamp + chunks.length + 7,
+    },
+  ];
+}
+
+/**
  * Creates a deterministic failed run for the supplied request.
  */
 export function createRunErrorEvents(
