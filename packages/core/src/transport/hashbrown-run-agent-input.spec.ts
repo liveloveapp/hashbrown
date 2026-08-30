@@ -48,7 +48,7 @@ test('prepends a standard AG-UI system message to the full history', () => {
   ] satisfies Message[]);
 });
 
-test('maps assistant content and function tool calls', () => {
+test('omits absent assistant and tool-call encrypted values', () => {
   const messages: Chat.Api.Message[] = [
     {
       role: 'assistant',
@@ -94,6 +94,7 @@ test('emits ordered reasoning details before the assistant and its tool results'
     {
       role: 'assistant',
       content: 'Checking.',
+      encryptedValue: 'assistant-opaque',
       reasoning: 'Stale display reasoning.',
       reasoningDetails: [
         {
@@ -118,6 +119,7 @@ test('emits ordered reasoning details before the assistant and its tool results'
           index: 0,
           id: 'call-weather',
           type: 'function',
+          encryptedValue: 'tool-opaque',
           function: { name: 'getWeather', arguments: '{"city":"Paris"}' },
         },
       ],
@@ -153,10 +155,12 @@ test('emits ordered reasoning details before the assistant and its tool results'
       id: 'thread-1:message:0',
       role: 'assistant',
       content: 'Checking.',
+      encryptedValue: 'assistant-opaque',
       toolCalls: [
         {
           id: 'call-weather',
           type: 'function',
+          encryptedValue: 'tool-opaque',
           function: { name: 'getWeather', arguments: '{"city":"Paris"}' },
         },
       ],
