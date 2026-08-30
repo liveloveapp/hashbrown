@@ -11,7 +11,7 @@ import { JsonValue } from '../utils';
 export type ɵInternalReasoning =
   | {
       readonly kind: 'details';
-      readonly details: readonly ReasoningMessage[];
+      readonly details: readonly Readonly<ReasoningMessage>[];
     }
   | {
       readonly kind: 'display';
