@@ -1,6 +1,9 @@
 import { resolve } from 'node:path';
 import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
-import { startAimock } from '@hashbrownai/testing/aimock';
+import {
+  runProviderAGUIWithAimock,
+  startAimock,
+} from '@hashbrownai/testing/aimock';
 import OpenAI from 'openai';
 import { HashbrownOpenAI } from './index';
 import type { OpenAIHashbrownRunAgentInput } from './stream/text.fn';
@@ -34,36 +37,21 @@ function baseInput(userMessage: string): OpenAIHashbrownRunAgentInput {
   };
 }
 
-async function collectEvents(
-  events: AsyncIterable<AGUIEvent>,
-): Promise<AGUIEvent[]> {
-  const collected: AGUIEvent[] = [];
-
-  for await (const event of events) {
-    collected.push(EventSchemas.parse(event));
-  }
-
-  return collected;
-}
-
 async function runFixture(
   fixtureName: string,
   input: OpenAIHashbrownRunAgentInput,
 ): Promise<AGUIEvent[]> {
-  const aimock = await startAimock({ fixturePath: fixturePath(fixtureName) });
-
-  try {
-    return await collectEvents(
+  return runProviderAGUIWithAimock({
+    fixturePath: fixturePath(fixtureName),
+    createStream: (aimock, signal) =>
       HashbrownOpenAI.stream.text({
         apiKey: 'test-not-used',
         baseURL: aimock.openAiBaseUrl,
         model: OPENAI_MODEL,
         input,
+        signal,
       }),
-    );
-  } finally {
-    await aimock.stop();
-  }
+  });
 }
 
 function contentEvents(events: AGUIEvent[]) {
@@ -189,27 +177,21 @@ test('OpenAI maps the Hashbrown response schema to native structured output', as
     },
   };
   let capturedResponseFormat: unknown;
-  const aimock = await startAimock({
+  const events = await runProviderAGUIWithAimock({
     fixturePath: fixturePath('structured-output.json'),
-  });
-
-  let events: AGUIEvent[];
-  try {
-    events = await collectEvents(
+    createStream: (aimock, signal) =>
       HashbrownOpenAI.stream.text({
         apiKey: 'test-not-used',
         baseURL: aimock.openAiBaseUrl,
         model: OPENAI_MODEL,
         input,
+        signal,
         transformRequestOptions: (options) => {
           capturedResponseFormat = options.response_format;
           return options;
         },
       }),
-    );
-  } finally {
-    await aimock.stop();
-  }
+  });
 
   expect(capturedResponseFormat).toEqual({
     type: 'json_schema',
@@ -263,7 +245,7 @@ test('OpenAI maps complete AG-UI history without provider-specific wire keys', a
   ];
   let capturedMessages: OpenAI.ChatCompletionMessageParam[] | undefined;
 
-  await collectEvents(
+  await Array.fromAsync(
     HashbrownOpenAI.stream.text({
       apiKey: 'test-not-used',
       model: OPENAI_MODEL,
@@ -273,6 +255,7 @@ test('OpenAI maps complete AG-UI history without provider-specific wire keys', a
         throw new Error('stop after capture');
       },
     }),
+    (event) => EventSchemas.parse(event),
   );
 
   expect(capturedMessages).toEqual([

@@ -56,6 +56,21 @@ export class AppDriver {
     return this.page.getByTestId('tool-count');
   }
 
+  /** Returns the rendered reasoning text locator. */
+  reasoning(): Locator {
+    return this.page.getByTestId('reasoning');
+  }
+
+  /** Returns the rendered reasoning detail count locator. */
+  reasoningDetailCount(): Locator {
+    return this.page.getByTestId('reasoning-detail-count');
+  }
+
+  /** Returns whether the reasoning includes an opaque continuation value. */
+  reasoningHasOpaqueValue(): Locator {
+    return this.page.getByTestId('reasoning-has-opaque-value');
+  }
+
   /** Returns the structured answer locator. */
   structuredAnswer(): Locator {
     return this.page.getByTestId('structured-answer');

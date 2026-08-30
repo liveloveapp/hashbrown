@@ -64,6 +64,12 @@ export const reducer = createReducer(
       case EventType.TEXT_MESSAGE_START:
       case EventType.TEXT_MESSAGE_CONTENT:
       case EventType.TEXT_MESSAGE_CHUNK:
+      case EventType.REASONING_START:
+      case EventType.REASONING_MESSAGE_START:
+      case EventType.REASONING_MESSAGE_CONTENT:
+      case EventType.REASONING_ENCRYPTED_VALUE:
+      case EventType.REASONING_MESSAGE_END:
+      case EventType.REASONING_END:
       case EventType.TOOL_CALL_START:
       case EventType.TOOL_CALL_ARGS:
       case EventType.TOOL_CALL_CHUNK:

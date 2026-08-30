@@ -1,4 +1,4 @@
-import { EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { createStore } from '../utils/micro-ngrx';
@@ -99,6 +99,56 @@ test('marks generation active from AG-UI chunk events', () => {
     isReceiving: true,
     isGenerating: true,
   });
+});
+
+test('marks generation active from every AG-UI reasoning lifecycle event', () => {
+  const state = {
+    ...initialStatusState,
+    isReceiving: false,
+    isGenerating: false,
+  };
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.REASONING_START,
+      messageId: 'reasoning-group-1',
+    },
+    {
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning' as const,
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: 'Analysis',
+    },
+    {
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'message' as const,
+      entityId: 'reasoning-1',
+      encryptedValue: 'opaque',
+    },
+    {
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-1',
+    },
+    {
+      type: EventType.REASONING_END,
+      messageId: 'reasoning-group-1',
+    },
+  ];
+
+  const nextStates = events.map((event) =>
+    reducer(state, apiActions.generateMessageEvent(event)),
+  );
+
+  for (const next of nextStates) {
+    expect(next).toEqual({
+      ...state,
+      isReceiving: true,
+      isGenerating: true,
+    });
+  }
 });
 
 test('ignores AG-UI events unrelated to generation status', () => {

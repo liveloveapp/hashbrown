@@ -3,6 +3,8 @@ import {
   EventType,
   type Message,
   type RunAgentInput,
+  type TextMessageContentEvent,
+  type TextMessageStartEvent,
 } from '@ag-ui/core';
 import OpenAI from 'openai';
 import type { FunctionParameters } from 'openai/resources/shared';
@@ -115,9 +117,38 @@ function createResponseFormat(
       strict: true,
       name: 'schema',
       description: '',
-      schema: responseSchema as Record<string, unknown>,
+      schema: structuredClone(responseSchema) as Record<string, unknown>,
     },
   };
+}
+
+/**
+ * Maps one non-empty provider text fragment to canonical AG-UI events.
+ */
+function createTextDeltaEvents(
+  messageId: string,
+  delta: string | null | undefined,
+  started: boolean,
+): Array<TextMessageStartEvent | TextMessageContentEvent> {
+  if (!delta) {
+    return [];
+  }
+
+  const contentEvent: TextMessageContentEvent = {
+    type: EventType.TEXT_MESSAGE_CONTENT,
+    messageId,
+    delta,
+  };
+  if (started) {
+    return [contentEvent];
+  }
+
+  const startEvent: TextMessageStartEvent = {
+    type: EventType.TEXT_MESSAGE_START,
+    messageId,
+    role: 'assistant',
+  };
+  return [startEvent, contentEvent];
 }
 
 function mergeToolCall(
@@ -193,7 +224,10 @@ export async function* text(
               function: {
                 name: tool.name,
                 description: tool.description,
-                parameters: tool.parameters as FunctionParameters,
+                parameters:
+                  tool.parameters === undefined
+                    ? undefined
+                    : (structuredClone(tool.parameters) as FunctionParameters),
                 strict: true,
               },
             }))
@@ -221,27 +255,20 @@ export async function* text(
           continue;
         }
 
-        const content = choice.delta.content;
-        if (content) {
-          if (!textStarted) {
+        for (const textDelta of [choice.delta.content, choice.delta.refusal]) {
+          const textEvents = createTextDeltaEvents(
+            messageId,
+            textDelta,
+            textStarted,
+          );
+          if (textEvents.length > 0) {
             textStarted = true;
-            yield {
-              type: EventType.TEXT_MESSAGE_START,
-              messageId,
-              role: 'assistant',
-            };
+          }
+          for (const event of textEvents) {
+            yield event;
             if (signal?.aborted) {
               return;
             }
-          }
-
-          yield {
-            type: EventType.TEXT_MESSAGE_CONTENT,
-            messageId,
-            delta: content,
-          };
-          if (signal?.aborted) {
-            return;
           }
         }
 

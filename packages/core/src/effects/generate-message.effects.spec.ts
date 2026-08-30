@@ -1,5 +1,6 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
+import { fryHashbrown } from '../hashbrown';
 import { Chat } from '../models';
 import {
   selectApiMessages,
@@ -1087,6 +1088,203 @@ test('validated start then tool continuation reuses the same thread ID', async (
   expect(send.mock.calls[1]?.[0].input?.threadId).toBe(acceptedThreadId);
 
   teardown?.();
+});
+
+test('continues client tools with isolated reasoning details in transcript order', async () => {
+  jest.clearAllMocks();
+  const secondInputCaptured = createDeferred<TransportRequest>();
+  const toolHandler = jest.fn(async ({ city }: { city: string }) => ({
+    city,
+    condition: 'sunny',
+  }));
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: successfulEvents(request, [
+          {
+            type: EventType.REASONING_MESSAGE_START,
+            messageId: 'reasoning-weather',
+            role: 'reasoning',
+            metadata: { provider: { trace: ['original'] } },
+          },
+          {
+            type: EventType.REASONING_MESSAGE_CONTENT,
+            messageId: 'reasoning-weather',
+            delta: 'I need the weather tool.',
+          },
+          {
+            type: EventType.REASONING_ENCRYPTED_VALUE,
+            subtype: 'message',
+            entityId: 'reasoning-weather',
+            encryptedValue: 'opaque-reasoning',
+          },
+          {
+            type: EventType.REASONING_MESSAGE_END,
+            messageId: 'reasoning-weather',
+          },
+          {
+            type: EventType.TOOL_CALL_START,
+            toolCallId: 'call-weather',
+            toolCallName: 'getWeather',
+            parentMessageId: 'assistant-weather',
+          },
+          {
+            type: EventType.TOOL_CALL_ARGS,
+            toolCallId: 'call-weather',
+            delta: '{"city":"Paris"}',
+          },
+          {
+            type: EventType.TOOL_CALL_END,
+            toolCallId: 'call-weather',
+          },
+        ]),
+      };
+    }
+
+    secondInputCaptured.resolve(request);
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-final',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-final',
+          delta: 'It is sunny in Paris.',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-final',
+        },
+      ]),
+    };
+  });
+  const chat = fryHashbrown({
+    model: 'stub-model',
+    system: 'You are a test bot',
+    tools: [
+      {
+        name: 'getWeather',
+        description: 'Get weather for a city.',
+        schema: s.object('Weather lookup', {
+          city: s.string('City name'),
+        }),
+        handler: toolHandler,
+      },
+    ],
+  });
+  const teardown = chat.sizzle();
+
+  chat.sendMessage({ role: 'user', content: 'What is the weather in Paris?' });
+  const secondRequest = await secondInputCaptured.promise;
+
+  expect(toolHandler).toHaveBeenCalledWith(
+    { city: 'Paris' },
+    expect.any(AbortSignal),
+  );
+  expect(secondRequest.input?.messages.map(({ role }) => role)).toEqual([
+    'system',
+    'user',
+    'reasoning',
+    'assistant',
+    'tool',
+  ]);
+  const priorUserMessage = secondRequest.input?.messages[1];
+  expect(priorUserMessage?.role).toBe('user');
+  expect(typeof priorUserMessage?.id === 'string').toBe(true);
+  expect(
+    priorUserMessage?.role === 'user' &&
+      priorUserMessage.content === 'What is the weather in Paris?',
+  ).toBe(true);
+  const safeContinuation = secondRequest.input?.messages
+    .slice(2)
+    .map((message) => {
+      if (message.role !== 'reasoning') {
+        return message;
+      }
+
+      const { encryptedValue, ...safeMessage } = message;
+      return {
+        ...safeMessage,
+        hasEncryptedValue:
+          typeof encryptedValue === 'string' && encryptedValue.length > 0,
+      };
+    });
+  expect(safeContinuation).toEqual([
+    {
+      id: 'reasoning-weather',
+      role: 'reasoning',
+      content: 'I need the weather tool.',
+      hasEncryptedValue: true,
+      metadata: { provider: { trace: ['original'] } },
+    },
+    {
+      id: expect.any(String),
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'call-weather',
+          type: 'function',
+          function: {
+            name: 'getWeather',
+            arguments: '{"city":"Paris"}',
+          },
+        },
+      ],
+    },
+    {
+      id: 'call-weather',
+      role: 'tool',
+      toolCallId: 'call-weather',
+      content: '{"city":"Paris","condition":"sunny"}',
+    },
+  ]);
+  const committedAssistant = chat
+    .messages()
+    .find(
+      (message) =>
+        message.role === 'assistant' && message.reasoningDetails !== undefined,
+    );
+  if (committedAssistant?.role !== 'assistant') {
+    throw new Error('Expected a committed assistant reasoning message.');
+  }
+  const capturedReasoning = secondRequest.input?.messages.find(
+    (message) => message.role === 'reasoning',
+  );
+  if (!capturedReasoning || capturedReasoning.role !== 'reasoning') {
+    throw new Error('Expected captured continuation reasoning.');
+  }
+  const capturedMetadata = capturedReasoning.metadata as {
+    provider: { trace: string[] };
+  };
+  const committedReasoning = committedAssistant.reasoningDetails?.[0];
+  const committedMetadata = committedReasoning?.metadata as {
+    provider: { trace: string[] };
+  };
+  const originalEncryptedValue = capturedReasoning.encryptedValue;
+
+  expect(capturedReasoning === committedReasoning).toBe(false);
+  expect(capturedMetadata).not.toBe(committedMetadata);
+  expect(capturedMetadata.provider).not.toBe(committedMetadata.provider);
+  expect(
+    typeof originalEncryptedValue === 'string' &&
+      originalEncryptedValue.length > 0 &&
+      committedReasoning?.encryptedValue === originalEncryptedValue,
+  ).toBe(true);
+  capturedReasoning.encryptedValue = 'mutated-captured-value';
+  capturedMetadata.provider.trace[0] = 'mutated-captured-metadata';
+
+  expect(committedReasoning?.encryptedValue === originalEncryptedValue).toBe(
+    true,
+  );
+  expect(committedMetadata).toEqual({ provider: { trace: ['original'] } });
+
+  teardown();
 });
 
 test('sends one RunAgentInput and requests only tools, structured, and ui', async () => {

@@ -89,6 +89,246 @@ test('maps assistant content and function tool calls', () => {
   ] satisfies Message[]);
 });
 
+test('emits ordered reasoning details before the assistant and its tool results', () => {
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'assistant',
+      content: 'Checking.',
+      reasoning: 'Stale display reasoning.',
+      reasoningDetails: [
+        {
+          id: 'reasoning-readable',
+          role: 'reasoning',
+          content: 'I need the weather.',
+          encryptedValue: 'encrypted-readable',
+          subagentRunId: 'subagent-1',
+          metadata: { provider: { cache: ['hit'] } },
+        },
+        {
+          id: 'reasoning-opaque',
+          role: 'reasoning',
+          content: '',
+          encryptedValue: 'encrypted-opaque',
+          subagentRunId: 'subagent-2',
+          metadata: { provider: { cache: ['opaque'] } },
+        },
+      ],
+      toolCalls: [
+        {
+          index: 0,
+          id: 'call-weather',
+          type: 'function',
+          function: { name: 'getWeather', arguments: '{"city":"Paris"}' },
+        },
+      ],
+    },
+    {
+      role: 'tool',
+      toolCallId: 'call-weather',
+      toolName: 'getWeather',
+      content: { status: 'fulfilled', value: 'Sunny' },
+    },
+  ];
+
+  const input = createInput({ messages });
+
+  expect(input.messages).toEqual([
+    {
+      id: 'reasoning-readable',
+      role: 'reasoning',
+      content: 'I need the weather.',
+      encryptedValue: 'encrypted-readable',
+      subagentRunId: 'subagent-1',
+      metadata: { provider: { cache: ['hit'] } },
+    },
+    {
+      id: 'reasoning-opaque',
+      role: 'reasoning',
+      content: '',
+      encryptedValue: 'encrypted-opaque',
+      subagentRunId: 'subagent-2',
+      metadata: { provider: { cache: ['opaque'] } },
+    },
+    {
+      id: 'thread-1:message:0',
+      role: 'assistant',
+      content: 'Checking.',
+      toolCalls: [
+        {
+          id: 'call-weather',
+          type: 'function',
+          function: { name: 'getWeather', arguments: '{"city":"Paris"}' },
+        },
+      ],
+    },
+    {
+      id: 'call-weather',
+      role: 'tool',
+      toolCallId: 'call-weather',
+      content: 'Sunny',
+    },
+  ] satisfies Message[]);
+});
+
+test('emits metadata-free display reasoning with a deterministic ID', () => {
+  const input = createInput({
+    messages: [
+      {
+        role: 'assistant',
+        content: 'Answer.',
+        reasoning: 'Visible reasoning.',
+      },
+    ],
+  });
+
+  expect(input.messages).toEqual([
+    {
+      id: 'thread-1:message:0:reasoning',
+      role: 'reasoning',
+      content: 'Visible reasoning.',
+    },
+    {
+      id: 'thread-1:message:0',
+      role: 'assistant',
+      content: 'Answer.',
+    },
+  ] satisfies Message[]);
+});
+
+test('emits display-only empty reasoning', () => {
+  const input = createInput({
+    messages: [{ role: 'assistant', content: 'Answer.', reasoning: '' }],
+  });
+
+  expect(input.messages).toEqual([
+    {
+      id: 'thread-1:message:0:reasoning',
+      role: 'reasoning',
+      content: '',
+    },
+    {
+      id: 'thread-1:message:0',
+      role: 'assistant',
+      content: 'Answer.',
+    },
+  ] satisfies Message[]);
+});
+
+test('prefers empty reasoning details over stale display reasoning', () => {
+  const input = createInput({
+    messages: [
+      {
+        role: 'assistant',
+        content: 'Answer.',
+        reasoning: 'Stale display reasoning.',
+        reasoningDetails: [],
+      },
+    ],
+  });
+
+  expect(input.messages).toEqual([
+    {
+      id: 'thread-1:message:0',
+      role: 'assistant',
+      content: 'Answer.',
+    },
+  ] satisfies Message[]);
+});
+
+test('emits no reasoning record for an assistant without reasoning fields', () => {
+  const input = createInput({
+    messages: [{ role: 'assistant', content: 'Answer.' }],
+  });
+
+  expect(input.messages).toEqual([
+    {
+      id: 'thread-1:message:0',
+      role: 'assistant',
+      content: 'Answer.',
+    },
+  ] satisfies Message[]);
+});
+
+test('isolates reasoning detail metadata from source and sibling output records', () => {
+  const metadata = { provider: { cache: ['original'] } };
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'assistant',
+      content: 'Answer.',
+      reasoningDetails: [
+        { id: 'reasoning-1', role: 'reasoning', content: 'First.', metadata },
+        { id: 'reasoning-2', role: 'reasoning', content: 'Second.', metadata },
+      ],
+    },
+  ];
+
+  const input = createInput({ messages });
+  metadata.provider.cache[0] = 'source-mutated';
+  const output = input.messages.filter(
+    (message): message is Extract<Message, { role: 'reasoning' }> =>
+      message.role === 'reasoning',
+  );
+  const firstMetadata = output[0]?.metadata as {
+    provider: { cache: string[] };
+  };
+  firstMetadata.provider.cache[0] = 'output-mutated';
+
+  expect(output).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: 'First.',
+      metadata: { provider: { cache: ['output-mutated'] } },
+    },
+    {
+      id: 'reasoning-2',
+      role: 'reasoning',
+      content: 'Second.',
+      metadata: { provider: { cache: ['original'] } },
+    },
+  ]);
+});
+
+test('keeps unrelated system, user, and tool messages unchanged without reasoning', () => {
+  const input = createInput({
+    system: 'System prompt.',
+    messages: [
+      { role: 'user', content: 'Hello.' },
+      { role: 'assistant', content: 'Calling a tool.' },
+      {
+        role: 'tool',
+        toolCallId: 'call-1',
+        toolName: 'echo',
+        content: { status: 'fulfilled', value: { greeting: 'Hello.' } },
+      },
+    ],
+  });
+
+  expect(input.messages).toEqual([
+    {
+      id: 'thread-1:system',
+      role: 'system',
+      content: 'System prompt.',
+    },
+    {
+      id: 'thread-1:message:0',
+      role: 'user',
+      content: 'Hello.',
+    },
+    {
+      id: 'thread-1:message:1',
+      role: 'assistant',
+      content: 'Calling a tool.',
+    },
+    {
+      id: 'call-1',
+      role: 'tool',
+      toolCallId: 'call-1',
+      content: '{"greeting":"Hello."}',
+    },
+  ] satisfies Message[]);
+});
+
 test('maps fulfilled tool results without losing strings', () => {
   const messages: Chat.Api.Message[] = [
     {

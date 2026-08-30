@@ -1,6 +1,71 @@
 import * as Chat from './public_api';
+import type { ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue, resolveWithSchema } from '../utils';
+
+type ReasoningInput = {
+  readonly reasoning?: string;
+  readonly reasoningDetails?: readonly Readonly<ReasoningMessage>[];
+};
+
+function cloneReasoningMessage(
+  reasoning: Readonly<ReasoningMessage>,
+): ReasoningMessage {
+  return {
+    ...reasoning,
+    ...(reasoning.metadata
+      ? { metadata: structuredClone(reasoning.metadata) }
+      : {}),
+  };
+}
+
+function cloneReasoningDetails(
+  details: readonly Readonly<ReasoningMessage>[],
+): readonly ReasoningMessage[] {
+  return details.map(cloneReasoningMessage);
+}
+
+function toInternalReasoning(
+  message: ReasoningInput,
+): Chat.Internal.ɵInternalReasoning | undefined {
+  if (message.reasoningDetails !== undefined) {
+    return {
+      kind: 'details',
+      details: cloneReasoningDetails(message.reasoningDetails),
+    };
+  }
+
+  if (message.reasoning !== undefined) {
+    return {
+      kind: 'display',
+      text: message.reasoning,
+    };
+  }
+
+  return undefined;
+}
+
+function toReasoningOutput(
+  reasoning: Chat.Internal.ɵInternalReasoning | undefined,
+): ReasoningInput {
+  if (reasoning?.kind === 'details') {
+    const text = reasoning.details
+      .map((detail) => detail.content)
+      .filter((content) => content.length > 0)
+      .join('\n\n');
+
+    return {
+      ...(text ? { reasoning: text } : {}),
+      reasoningDetails: cloneReasoningDetails(reasoning.details),
+    };
+  }
+
+  if (reasoning?.kind === 'display') {
+    return { reasoning: reasoning.text };
+  }
+
+  return {};
+}
 
 function normalizeAssistantContent(
   resolved: JsonValue | undefined,
@@ -54,12 +119,14 @@ export function toInternalMessagesFromView(
         typeof message.content === 'string'
           ? (message.content as string | undefined)
           : JSON.stringify(message.content);
+      const reasoning = toInternalReasoning(message);
       return [
         {
           role: 'assistant',
           content,
           contentResolved,
           toolCallIds: message.toolCalls.map((toolCall) => toolCall.toolCallId),
+          ...(reasoning ? { reasoning } : {}),
         },
       ];
     }
@@ -114,6 +181,7 @@ export function toViewMessagesFromInternal(
         {
           role: 'assistant',
           content,
+          ...toReasoningOutput(message.reasoning),
           toolCalls: message.toolCallIds.flatMap(
             (toolCallId): Chat.AnyToolCall[] => {
               const toolCall = toolCalls[toolCallId];
@@ -238,6 +306,7 @@ export function toApiMessagesFromInternal(
         {
           role: 'assistant',
           content,
+          ...toReasoningOutput(message.reasoning),
           toolCalls: toolCallsForMessage.map((toolCall, index) => ({
             id: toolCall.id,
             index,
@@ -472,6 +541,7 @@ export function toInternalMessagesFromApi(
   const rawContent = output ? output.function.arguments : message.content;
   const content =
     typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
+  const reasoning = toInternalReasoning(message);
 
   return [
     {
@@ -482,6 +552,7 @@ export function toInternalMessagesFromApi(
         message.toolCalls
           ?.filter((toolCall) => toolCall.function.name !== 'output')
           .map((toolCall) => toolCall.id) || [],
+      ...(reasoning ? { reasoning } : {}),
     },
   ];
 }

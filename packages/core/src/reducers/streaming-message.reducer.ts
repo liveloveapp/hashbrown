@@ -1,4 +1,14 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import {
+  type AGUIEvent,
+  EventType,
+  mergeMetadata,
+  type Metadata,
+  type ReasoningEncryptedValueEvent,
+  type ReasoningMessage,
+  type ReasoningMessageContentEvent,
+  type ReasoningMessageEndEvent,
+  type ReasoningMessageStartEvent,
+} from '@ag-ui/core';
 import {
   create,
   finish,
@@ -25,6 +35,7 @@ export interface StreamingMessageState {
   toolParserStateById: ParserMap;
   toolCacheById: CacheMap;
   finalizedToolCallIds: Record<string, true>;
+  reasoningMessageStatusById: Record<string, 'active' | 'complete'>;
   configSnapshot?: {
     responseSchema?: s.HashbrownType;
     emulateStructuredOutput: boolean;
@@ -43,6 +54,7 @@ export const initialState: StreamingMessageState = {
   toolParserStateById: {},
   toolCacheById: {},
   finalizedToolCallIds: {},
+  reasoningMessageStatusById: {},
   configSnapshot: undefined,
   error: undefined,
 };
@@ -147,6 +159,200 @@ function getToolCallMetadata(rawEvent: unknown) {
   }
 
   return metadata as Record<string, unknown>;
+}
+
+function cloneMetadata(metadata: Metadata | undefined) {
+  return metadata === undefined ? undefined : structuredClone(metadata);
+}
+
+function withStreamError(
+  state: StreamingMessageState,
+  message: string,
+): StreamingMessageState {
+  return {
+    ...state,
+    error: state.error ?? new Error(message),
+  };
+}
+
+function getReasoningDetails(
+  message: Chat.Internal.AssistantMessage | null,
+): readonly Readonly<ReasoningMessage>[] {
+  return message?.reasoning?.kind === 'details'
+    ? message.reasoning.details
+    : [];
+}
+
+function updateReasoningDetail(
+  state: StreamingMessageState,
+  messageId: string,
+  update: (detail: Readonly<ReasoningMessage>) => ReasoningMessage,
+): StreamingMessageState | undefined {
+  const message = state.message;
+  const details = getReasoningDetails(message);
+  const detailIndex = details.findIndex((detail) => detail.id === messageId);
+  if (!message || detailIndex === -1) {
+    return undefined;
+  }
+
+  return {
+    ...state,
+    message: {
+      ...message,
+      reasoning: {
+        kind: 'details',
+        details: details.map((detail, index) =>
+          index === detailIndex ? update(detail) : detail,
+        ),
+      },
+    },
+  };
+}
+
+function mergeReasoningEventFields(
+  detail: Readonly<ReasoningMessage>,
+  event: {
+    metadata?: Metadata;
+    subagentRunId?: string;
+  },
+): ReasoningMessage {
+  const metadata = mergeMetadata(
+    detail.metadata,
+    cloneMetadata(event.metadata),
+  );
+
+  return {
+    ...detail,
+    ...(event.subagentRunId !== undefined
+      ? { subagentRunId: event.subagentRunId }
+      : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+  };
+}
+
+function startReasoningMessage(
+  state: StreamingMessageState,
+  event: ReasoningMessageStartEvent,
+): StreamingMessageState {
+  if (Object.hasOwn(state.reasoningMessageStatusById, event.messageId)) {
+    return withStreamError(
+      state,
+      `Reasoning message ${event.messageId} has already started`,
+    );
+  }
+
+  const details = getReasoningDetails(state.message);
+  const metadata = mergeMetadata(undefined, cloneMetadata(event.metadata));
+  const detail: ReasoningMessage = {
+    id: event.messageId,
+    role: 'reasoning',
+    content: '',
+    ...(event.subagentRunId !== undefined
+      ? { subagentRunId: event.subagentRunId }
+      : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+  };
+  const message = state.message ?? {
+    role: 'assistant' as const,
+    content: '',
+    toolCallIds: state.toolCalls.map((toolCall) => toolCall.id),
+  };
+
+  return {
+    ...state,
+    message: {
+      ...message,
+      reasoning: {
+        kind: 'details',
+        details: [...details, detail],
+      },
+    },
+    reasoningMessageStatusById: {
+      ...state.reasoningMessageStatusById,
+      [event.messageId]: 'active',
+    },
+  };
+}
+
+function appendReasoningContent(
+  state: StreamingMessageState,
+  event: ReasoningMessageContentEvent,
+): StreamingMessageState {
+  if (
+    !Object.hasOwn(state.reasoningMessageStatusById, event.messageId) ||
+    state.reasoningMessageStatusById[event.messageId] !== 'active'
+  ) {
+    return withStreamError(
+      state,
+      `Reasoning message ${event.messageId} is not active`,
+    );
+  }
+
+  const next = updateReasoningDetail(state, event.messageId, (detail) => ({
+    ...mergeReasoningEventFields(detail, event),
+    content: detail.content + event.delta,
+  }));
+  return (
+    next ??
+    withStreamError(
+      state,
+      `Reasoning message ${event.messageId} does not exist`,
+    )
+  );
+}
+
+function endReasoningMessage(
+  state: StreamingMessageState,
+  event: ReasoningMessageEndEvent,
+): StreamingMessageState {
+  if (
+    !Object.hasOwn(state.reasoningMessageStatusById, event.messageId) ||
+    state.reasoningMessageStatusById[event.messageId] !== 'active'
+  ) {
+    return withStreamError(
+      state,
+      `Reasoning message ${event.messageId} is not active`,
+    );
+  }
+
+  const next = updateReasoningDetail(state, event.messageId, (detail) =>
+    mergeReasoningEventFields(detail, event),
+  );
+  if (!next) {
+    return withStreamError(
+      state,
+      `Reasoning message ${event.messageId} does not exist`,
+    );
+  }
+
+  return {
+    ...next,
+    reasoningMessageStatusById: {
+      ...next.reasoningMessageStatusById,
+      [event.messageId]: 'complete',
+    },
+  };
+}
+
+function applyReasoningEncryptedValue(
+  state: StreamingMessageState,
+  event: ReasoningEncryptedValueEvent,
+): StreamingMessageState {
+  if (event.subtype === 'tool-call') {
+    return state;
+  }
+
+  const next = updateReasoningDetail(state, event.entityId, (detail) => ({
+    ...detail,
+    encryptedValue: event.encryptedValue,
+    ...(event.subagentRunId !== undefined
+      ? { subagentRunId: event.subagentRunId }
+      : {}),
+  }));
+  return (
+    next ??
+    withStreamError(state, `Reasoning message ${event.entityId} does not exist`)
+  );
 }
 
 function startTextMessage(
@@ -549,7 +755,17 @@ function finalizeToolCalls(
 }
 
 function finishRun(state: StreamingMessageState): StreamingMessageState {
-  return finalizeToolCalls(finalizeOutput(state));
+  const activeReasoningMessageId = Object.entries(
+    state.reasoningMessageStatusById,
+  ).find(([, status]) => status === 'active')?.[0];
+  const next = activeReasoningMessageId
+    ? withStreamError(
+        state,
+        `Reasoning message ${activeReasoningMessageId} is still active`,
+      )
+    : state;
+
+  return finalizeToolCalls(finalizeOutput(next));
 }
 
 function reduceEvent(
@@ -557,6 +773,17 @@ function reduceEvent(
   event: AGUIEvent,
 ): StreamingMessageState {
   switch (event.type) {
+    case EventType.REASONING_START:
+    case EventType.REASONING_END:
+      return state;
+    case EventType.REASONING_MESSAGE_START:
+      return startReasoningMessage(state, event);
+    case EventType.REASONING_MESSAGE_CONTENT:
+      return appendReasoningContent(state, event);
+    case EventType.REASONING_ENCRYPTED_VALUE:
+      return applyReasoningEncryptedValue(state, event);
+    case EventType.REASONING_MESSAGE_END:
+      return endReasoningMessage(state, event);
     case EventType.TEXT_MESSAGE_START:
       return startTextMessage(state, event);
     case EventType.TEXT_MESSAGE_CONTENT:

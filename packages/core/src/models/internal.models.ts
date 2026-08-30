@@ -1,6 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
+
+/**
+ * Internal provider-neutral representation of assistant reasoning.
+ *
+ * @internal
+ */
+export type ɵInternalReasoning =
+  | {
+      readonly kind: 'details';
+      readonly details: readonly Readonly<ReasoningMessage>[];
+    }
+  | {
+      readonly kind: 'display';
+      readonly text: string;
+    };
 
 /**
  * @public
@@ -34,6 +50,7 @@ export interface AssistantMessage {
   content?: string;
   contentResolved?: JsonValue;
   toolCallIds: string[];
+  reasoning?: ɵInternalReasoning;
 }
 
 /**

@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  signal,
+} from '@angular/core';
 import { chatResource, createTool } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
 
@@ -51,6 +56,15 @@ function errorText(error: unknown): string {
         [textContent]="toErrorText(chat.generatingError())"
       ></div>
       <div data-testid="tool-count">{{ toolCount() }}</div>
+      <div data-testid="reasoning" [textContent]="reasoningText()"></div>
+      <div
+        data-testid="reasoning-detail-count"
+        [textContent]="reasoningDetails().length"
+      ></div>
+      <div
+        data-testid="reasoning-has-opaque-value"
+        [textContent]="reasoningHasOpaqueValue() ? 'true' : 'false'"
+      ></div>
     </section>
   `,
 })
@@ -78,6 +92,33 @@ export class PlainSmoke {
     system: 'Runtime smoke system prompt.',
     tools: isToolScenario() ? [this.getWeather] : [],
   });
+  protected readonly reasoningDetails = computed(() => {
+    const snapshot = this.chat.snapshot();
+    if (snapshot.status === 'error') {
+      return [];
+    }
+
+    const message = [...snapshot.value]
+      .reverse()
+      .find(
+        (candidate) =>
+          candidate.role === 'assistant' &&
+          candidate.reasoningDetails !== undefined,
+      );
+
+    return message?.role === 'assistant'
+      ? (message.reasoningDetails ?? [])
+      : [];
+  });
+  protected readonly reasoningText = computed(() =>
+    this.reasoningDetails()
+      .map((detail) => detail.content)
+      .filter((content) => content.length > 0)
+      .join('\n\n'),
+  );
+  protected readonly reasoningHasOpaqueValue = computed(() =>
+    this.reasoningDetails().some((detail) => Boolean(detail.encryptedValue)),
+  );
 
   protected onPromptInput(event: Event): void {
     this.prompt.set((event.currentTarget as HTMLInputElement).value);

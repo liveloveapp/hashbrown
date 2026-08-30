@@ -1,4 +1,9 @@
-import type { Message, RunAgentInput, Tool } from '@ag-ui/core';
+import type {
+  Message,
+  ReasoningMessage,
+  RunAgentInput,
+  Tool,
+} from '@ag-ui/core';
 import { Chat } from '../models';
 
 /**
@@ -64,18 +69,29 @@ function normalizeRejection(reason: unknown): string {
   return normalizeValue(reason);
 }
 
+function cloneReasoningMessage(
+  reasoning: Readonly<ReasoningMessage>,
+): ReasoningMessage {
+  return {
+    ...reasoning,
+    ...(reasoning.metadata
+      ? { metadata: structuredClone(reasoning.metadata) }
+      : {}),
+  };
+}
+
 function mapMessage(
   message: Chat.Api.Message,
   threadId: string,
   index: number,
-): Message | undefined {
+): Message[] {
   const id = `${threadId}:message:${index}`;
 
   switch (message.role) {
     case 'user':
-      return { id, role: 'user', content: message.content };
-    case 'assistant':
-      return {
+      return [{ id, role: 'user', content: message.content }];
+    case 'assistant': {
+      const assistant: Message = {
         id,
         role: 'assistant',
         ...(message.content !== undefined ? { content: message.content } : {}),
@@ -92,27 +108,52 @@ function mapMessage(
             }
           : {}),
       };
+
+      if (message.reasoningDetails !== undefined) {
+        return [
+          ...message.reasoningDetails.map(cloneReasoningMessage),
+          assistant,
+        ];
+      }
+
+      if (message.reasoning !== undefined) {
+        return [
+          {
+            id: `${id}:reasoning`,
+            role: 'reasoning',
+            content: message.reasoning,
+          },
+          assistant,
+        ];
+      }
+
+      return [assistant];
+    }
     case 'tool': {
       if (message.content.status === 'fulfilled') {
-        return {
-          id: message.toolCallId,
-          role: 'tool',
-          toolCallId: message.toolCallId,
-          content: normalizeValue(message.content.value),
-        };
+        return [
+          {
+            id: message.toolCallId,
+            role: 'tool',
+            toolCallId: message.toolCallId,
+            content: normalizeValue(message.content.value),
+          },
+        ];
       }
 
       const error = normalizeRejection(message.content.reason);
-      return {
-        id: message.toolCallId,
-        role: 'tool',
-        toolCallId: message.toolCallId,
-        content: error,
-        error,
-      };
+      return [
+        {
+          id: message.toolCallId,
+          role: 'tool',
+          toolCallId: message.toolCallId,
+          content: error,
+          error,
+        },
+      ];
     }
     case 'error':
-      return undefined;
+      return [];
   }
 }
 
@@ -138,10 +179,9 @@ export function createHashbrownRunAgentInput({
   responseSchema,
   ui,
 }: CreateHashbrownRunAgentInputOptions): HashbrownRunAgentInput {
-  const history = messages.flatMap((message, index) => {
-    const mapped = mapMessage(message, threadId, index);
-    return mapped ? [mapped] : [];
-  });
+  const history = messages.flatMap((message, index) =>
+    mapMessage(message, threadId, index),
+  );
   const hashbrown =
     responseSchema !== undefined || ui === true
       ? {

@@ -1,0 +1,14 @@
+{
+  "fixtures": [
+    {
+      "match": { "userMessage": "return provider error" },
+      "response": {
+        "status": 400,
+        "error": {
+          "message": "Deterministic provider error from aimock.",
+          "type": "invalid_request_error"
+        }
+      }
+    }
+  ]
+}

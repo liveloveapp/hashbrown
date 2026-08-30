@@ -1,486 +1,86 @@
-import {
-  Chat,
-  encodeFrame,
-  Frame,
-  mergeMessagesForThread,
-  updateAssistantMessage,
-} from '@hashbrownai/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import Anthropic from '@anthropic-ai/sdk';
+import { mapAnthropicEvents } from './anthropic-events';
+import { createAnthropicRequestOptions } from './anthropic-request';
+import type { AnthropicTextStreamOptions } from './types';
 
-type BaseAnthropicTextStreamOptions = {
-  apiKey: string;
-  baseURL?: string;
-  request: Chat.Api.CompletionCreateParams;
-  transformRequestOptions?: (
-    options: Anthropic.Messages.MessageCreateParamsStreaming,
-  ) =>
-    | Anthropic.Messages.MessageCreateParamsStreaming
-    | Promise<Anthropic.Messages.MessageCreateParamsStreaming>;
-};
+type AnthropicProviderStream =
+  AsyncIterable<Anthropic.Messages.RawMessageStreamEvent> & {
+    readonly controller: AbortController;
+  };
 
-type ThreadPersistenceOptions = {
-  loadThread: (threadId: string) => Promise<Chat.Api.Message[]>;
-  saveThread: (
-    thread: Chat.Api.Message[],
-    threadId?: string,
-  ) => Promise<string>;
-};
+function normalizeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
-type ThreadlessOptions = BaseAnthropicTextStreamOptions & {
-  loadThread?: undefined;
-  saveThread?: undefined;
-};
-
-type ThreadfulOptions = BaseAnthropicTextStreamOptions &
-  ThreadPersistenceOptions;
-
-export type AnthropicTextStreamOptions = ThreadlessOptions | ThreadfulOptions;
-
-const DEFAULT_MAX_TOKENS = 4096;
-
-export function text(options: ThreadfulOptions): AsyncIterable<Uint8Array>;
-export function text(options: ThreadlessOptions): AsyncIterable<Uint8Array>;
-
+/**
+ * Streams canonical AG-UI events from an Anthropic message request.
+ *
+ * @param options - Provider configuration and AG-UI run input.
+ * @returns An asynchronous stream of canonical AG-UI events.
+ *
+ * @public
+ */
 export async function* text(
   options: AnthropicTextStreamOptions,
-): AsyncIterable<Uint8Array> {
-  const {
-    apiKey,
-    baseURL,
-    request,
-    transformRequestOptions,
-    loadThread,
-    saveThread,
-  } = options;
-  const { model, tools, toolChoice, system } = request;
-  const threadId = request.threadId;
-  let loadedThread: Chat.Api.Message[] = [];
-  let effectiveThreadId = threadId;
+): AsyncIterable<AGUIEvent> {
+  const { apiKey, baseURL, model, input, signal, transformRequestOptions } =
+    options;
+  const { threadId, runId } = input;
+  const messageId = `${runId}:assistant`;
+  let providerStream: AnthropicProviderStream | undefined;
 
-  const anthropic = new Anthropic({
-    apiKey,
-    baseURL,
-  });
-
-  const shouldLoadThread = Boolean(request.threadId);
-  const shouldHydrateThreadOnTheClient = Boolean(
-    request.operation === 'load-thread',
-  );
-
-  if (shouldLoadThread) {
-    yield encodeFrame({ type: 'thread-load-start' });
-
-    if (!loadThread) {
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: 'Thread loading is not available for this transport.',
-      });
-      return;
-    }
-
-    try {
-      loadedThread = await loadThread(request.threadId as string);
-      if (shouldHydrateThreadOnTheClient) {
-        yield encodeFrame({
-          type: 'thread-load-success',
-          thread: loadedThread,
-        });
-      } else {
-        yield encodeFrame({ type: 'thread-load-success' });
-      }
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-load-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
-  }
-
-  if (request.operation === 'load-thread') {
+  yield { type: EventType.RUN_STARTED, threadId, runId };
+  if (signal?.aborted) {
     return;
   }
 
-  const mergedMessages =
-    request.threadId && shouldLoadThread
-      ? mergeMessagesForThread(loadedThread, request.messages ?? [])
-      : (request.messages ?? []);
-  let assistantMessage: Chat.Api.AssistantMessage | null = null;
-
   try {
-    const baseOptions: Anthropic.Messages.MessageCreateParamsStreaming = {
-      stream: true,
-      model: model as string,
-      max_tokens: DEFAULT_MAX_TOKENS,
-      system,
-      messages: toAnthropicMessages(mergedMessages),
-      tools: tools && tools.length > 0 ? tools.map(toAnthropicTool) : undefined,
-      tool_choice: mapToolChoice(toolChoice),
-    };
+    const baseOptions = createAnthropicRequestOptions(input, model);
+    const requestOptions = transformRequestOptions
+      ? await transformRequestOptions(baseOptions)
+      : baseOptions;
 
-    const resolvedOptions: Anthropic.Messages.MessageCreateParams =
-      transformRequestOptions
-        ? await transformRequestOptions(baseOptions)
-        : baseOptions;
+    if (signal?.aborted) {
+      return;
+    }
 
-    const stream = anthropic.messages.stream(resolvedOptions);
-    const debugStream = process.env['DEBUG_HASHBROWN_ANTHROPIC'] === '1';
+    const anthropic = new Anthropic({ apiKey, baseURL });
+    providerStream = await anthropic.messages.create(requestOptions, {
+      signal,
+    });
 
-    let finishReason: string | null = null;
-    const toolCallBlocks = new Map<
-      number,
-      {
-        id: string;
-        name: string;
-        index: number;
-        buffer?: string;
-        isOutput: boolean;
-      }
-    >();
-    let toolCallCount = 0;
+    if (signal?.aborted) {
+      return;
+    }
 
-    yield encodeFrame({ type: 'generation-start' });
-
-    for await (const event of stream) {
-      let contentDelta: string | undefined;
-      let toolCallDeltas: Chat.Api.ToolCall[] | undefined;
-
-      if (debugStream) {
-        console.log('[anthropic:event]', JSON.stringify(event));
-      }
-
-      switch (event.type) {
-        case 'content_block_delta': {
-          if (event.delta.type === 'text_delta') {
-            contentDelta = event.delta.text;
-          } else if (event.delta.type === 'input_json_delta') {
-            const base = toolCallBlocks.get(event.index);
-            if (base) {
-              if (base.isOutput) {
-                base.buffer = (base.buffer ?? '') + event.delta.partial_json;
-                toolCallBlocks.set(event.index, base);
-              } else {
-                toolCallDeltas = [
-                  {
-                    index: base.index,
-                    id: base.id,
-                    type: 'function',
-                    function: {
-                      name: base.name,
-                      arguments: event.delta.partial_json,
-                    },
-                  },
-                ];
-              }
-            }
-          }
-          break;
-        }
-        case 'content_block_start': {
-          if (event.content_block.type === 'tool_use') {
-            const base = {
-              id: event.content_block.id,
-              name: event.content_block.name,
-              index: toolCallCount++,
-              buffer: undefined,
-              isOutput: event.content_block.name === 'output',
-            };
-
-            toolCallBlocks.set(event.index, base);
-
-            if (!base.isOutput) {
-              toolCallDeltas = [
-                {
-                  index: base.index,
-                  id: base.id,
-                  type: 'function',
-                  function: {
-                    name: base.name,
-                    arguments: '',
-                  },
-                },
-              ];
-            }
-          }
-          break;
-        }
-        case 'content_block_stop': {
-          const base = toolCallBlocks.get(event.index);
-          toolCallBlocks.delete(event.index);
-
-          if (base?.isOutput && base.buffer) {
-            contentDelta = normalizeOutputArguments(base.buffer);
-          }
-          break;
-        }
-        case 'message_delta': {
-          finishReason = event.delta.stop_reason || null;
-          break;
-        }
-      }
-
-      if (contentDelta !== undefined || toolCallDeltas) {
-        const chunkMessage: Chat.Api.CompletionChunk = {
-          choices: [
-            {
-              index: 0,
-              delta: {
-                content: contentDelta ?? null,
-                role: 'assistant',
-                toolCalls: toolCallDeltas,
-              },
-              finishReason,
-            },
-          ],
-        };
-
-        if (debugStream && toolCallDeltas) {
-          console.log('[anthropic:tool-delta]', JSON.stringify(toolCallDeltas));
-        }
-
-        assistantMessage = updateAssistantMessage(
-          assistantMessage,
-          chunkMessage,
-        );
-
-        yield encodeFrame({ type: 'generation-chunk', chunk: chunkMessage });
+    for await (const event of mapAnthropicEvents({
+      events: providerStream,
+      messageId,
+      signal,
+    })) {
+      yield event;
+      if (signal?.aborted) {
+        return;
       }
     }
 
-    yield encodeFrame({ type: 'generation-finish' });
+    if (signal?.aborted) {
+      return;
+    }
+
+    yield { type: EventType.RUN_FINISHED, threadId, runId };
+    if (signal?.aborted) {
+      return;
+    }
   } catch (error: unknown) {
-    const { message, stack } = normalizeError(error);
-    const frame: Frame = {
-      type: 'generation-error',
-      error: message,
-      stacktrace: stack,
-    };
-
-    yield encodeFrame(frame);
-    return;
-  }
-
-  if (saveThread) {
-    const threadToSave = mergeMessagesForThread(mergedMessages, [
-      ...(assistantMessage ? [assistantMessage] : []),
-    ]);
-    yield encodeFrame({ type: 'thread-save-start' });
-    try {
-      const savedThreadId = await saveThread(threadToSave, effectiveThreadId);
-      if (effectiveThreadId && savedThreadId !== effectiveThreadId) {
-        throw new Error(
-          'Save returned a different threadId than the existing thread',
-        );
-      }
-      effectiveThreadId = savedThreadId;
-      yield encodeFrame({
-        type: 'thread-save-success',
-        threadId: savedThreadId,
-      });
-    } catch (error: unknown) {
-      const { message, stack } = normalizeError(error);
-      yield encodeFrame({
-        type: 'thread-save-failure',
-        error: message,
-        stacktrace: stack,
-      });
-      return;
-    }
-  }
-}
-
-function toAnthropicMessages(
-  messages: Chat.Api.Message[],
-): Anthropic.Messages.MessageParam[] {
-  return messages.map((message): Anthropic.Messages.MessageParam => {
-    if (message.role === 'user') {
-      return {
-        role: 'user',
-        content: message.content ?? '',
-      };
-    }
-
-    if (message.role === 'assistant') {
-      const contentBlocks: Array<
-        Anthropic.Messages.TextBlockParam | Anthropic.Messages.ToolUseBlockParam
-      > = [];
-
-      if (message.content) {
-        contentBlocks.push({
-          type: 'text',
-          text:
-            typeof message.content === 'string'
-              ? message.content
-              : JSON.stringify(message.content),
-        });
-      }
-
-      if (message.toolCalls?.length) {
-        contentBlocks.push(
-          ...message.toolCalls.map((toolCall) => ({
-            type: 'tool_use' as const,
-            id: toolCall.id,
-            name: toolCall.function.name,
-            input: parseJson(toolCall.function.arguments),
-          })),
-        );
-      }
-
-      if (contentBlocks.length === 0) {
-        return {
-          role: 'assistant',
-          content: '',
-        };
-      }
-
-      if (contentBlocks.length === 1 && contentBlocks[0].type === 'text') {
-        return {
-          role: 'assistant',
-          content: (contentBlocks[0] as Anthropic.Messages.TextBlockParam).text,
-        };
-      }
-
-      return {
-        role: 'assistant',
-        content: contentBlocks,
-      };
-    }
-
-    if (message.role === 'tool') {
-      const serializedResult = serializeToolResult(message.content);
-
-      return {
-        role: 'user',
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: message.toolCallId || '',
-            content: serializedResult,
-            is_error: message.content.status === 'rejected',
-          },
-        ],
-      };
-    }
-
-    throw new Error(`Invalid message role: ${message['role']}`);
-  });
-}
-
-function toAnthropicTool(tool: Chat.Api.Tool): Anthropic.Tool {
-  return {
-    name: tool.name,
-    description: tool.description,
-    input_schema: tool.parameters as Anthropic.Tool.InputSchema,
-  };
-}
-
-function mapToolChoice(
-  choice?: Chat.Api.CompletionToolChoiceOption,
-): Anthropic.Messages.MessageCreateParams['tool_choice'] {
-  switch (choice) {
-    case 'auto': {
-      return { type: 'auto' };
-    }
-    case 'required': {
-      return { type: 'any' };
-    }
-    case 'none':
-    default:
-      return undefined;
-  }
-}
-
-function parseJson(value: unknown): unknown {
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
-}
-
-function serializeToolResult(result: PromiseSettledResult<any>): string {
-  if (result.status === 'fulfilled') {
-    const value = result.value;
-    return typeof value === 'string' ? value : JSON.stringify(value ?? '');
-  }
-
-  const reason = result.reason ?? 'Tool call failed';
-  return typeof reason === 'string' ? reason : JSON.stringify(reason);
-}
-
-function normalizeOutputArguments(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw);
-    const normalized = normalizeNestedJson(parsed);
-    return JSON.stringify(normalized);
-  } catch {
-    return raw;
-  }
-}
-
-function normalizeNestedJson(value: unknown, parentKey?: string): unknown {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-
-    if (looksLikeJson(trimmed)) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        const normalized = normalizeNestedJson(parsed, parentKey);
-
-        if (
-          parentKey &&
-          isPlainObject(normalized) &&
-          Object.keys(normalized).length === 1 &&
-          Object.prototype.hasOwnProperty.call(normalized, parentKey)
-        ) {
-          return normalizeNestedJson(normalized[parentKey], parentKey);
-        }
-
-        return normalized;
-      } catch {
-        return value;
+    if (!signal?.aborted) {
+      yield { type: EventType.RUN_ERROR, message: normalizeError(error) };
+      if (signal?.aborted) {
+        return;
       }
     }
-
-    return value;
+  } finally {
+    providerStream?.controller.abort();
   }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => normalizeNestedJson(item, parentKey));
-  }
-
-  if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, val]) => [
-        key,
-        normalizeNestedJson(val, key),
-      ]),
-    );
-  }
-
-  return value;
-}
-
-function looksLikeJson(value: string): boolean {
-  return (
-    (value.startsWith('{') && value.endsWith('}')) ||
-    (value.startsWith('[') && value.endsWith(']'))
-  );
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function normalizeError(error: unknown): { message: string; stack?: string } {
-  if (error instanceof Error) {
-    return { message: error.message, stack: error.stack };
-  }
-  return { message: String(error) };
 }

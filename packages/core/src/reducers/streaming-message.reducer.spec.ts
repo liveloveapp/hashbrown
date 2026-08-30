@@ -1,4 +1,4 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type ReasoningMessage } from '@ag-ui/core';
 import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
@@ -91,6 +91,74 @@ function runFinished(): AGUIEvent {
     threadId: 'thread-1',
     runId: 'run-1',
   };
+}
+
+function reasoningStart(
+  messageId: string,
+  options: {
+    metadata?: Record<string, unknown>;
+    subagentRunId?: string;
+  } = {},
+): AGUIEvent {
+  return {
+    type: EventType.REASONING_MESSAGE_START,
+    messageId,
+    role: 'reasoning',
+    ...options,
+  };
+}
+
+function reasoningContent(
+  messageId: string,
+  delta: string,
+  options: {
+    metadata?: Record<string, unknown>;
+    subagentRunId?: string;
+  } = {},
+): AGUIEvent {
+  return {
+    type: EventType.REASONING_MESSAGE_CONTENT,
+    messageId,
+    delta,
+    ...options,
+  };
+}
+
+function reasoningEnd(
+  messageId: string,
+  options: {
+    metadata?: Record<string, unknown>;
+    subagentRunId?: string;
+  } = {},
+): AGUIEvent {
+  return {
+    type: EventType.REASONING_MESSAGE_END,
+    messageId,
+    ...options,
+  };
+}
+
+function reasoningEncryptedValue(
+  entityId: string,
+  encryptedValue: string,
+  subtype: 'message' | 'tool-call' = 'message',
+  metadata?: Record<string, unknown>,
+): AGUIEvent {
+  return {
+    type: EventType.REASONING_ENCRYPTED_VALUE,
+    subtype,
+    entityId,
+    encryptedValue,
+    metadata,
+  };
+}
+
+function reasoningDetails(
+  state: StreamingMessageState,
+): readonly Readonly<ReasoningMessage>[] {
+  return state.message?.reasoning?.kind === 'details'
+    ? state.message.reasoning.details
+    : [];
 }
 
 const generationSilentlyRetiredAction =
@@ -539,6 +607,439 @@ test('stores AG-UI run errors without discarding the partial message', () => {
 
   expect(state.message?.content).toBe('partial');
   expect(state.error).toEqual(new Error('provider failed'));
+});
+
+test('creates a pending assistant placeholder from the first reasoning message start', () => {
+  const state = startState();
+
+  const next = reduceEvents(state, [reasoningStart('reasoning-1')]);
+
+  expect(next.message).toEqual({
+    role: 'assistant',
+    content: '',
+    toolCallIds: [],
+    reasoning: {
+      kind: 'details',
+      details: [
+        {
+          id: 'reasoning-1',
+          role: 'reasoning',
+          content: '',
+        },
+      ],
+    },
+  });
+});
+
+test('finalizes a reasoning-only assistant message', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningContent('reasoning-1', 'I considered the options.'),
+    reasoningEnd('reasoning-1'),
+    runFinished(),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(state.message).toEqual({
+    role: 'assistant',
+    content: '',
+    toolCallIds: [],
+    reasoning: {
+      kind: 'details',
+      details: [
+        {
+          id: 'reasoning-1',
+          role: 'reasoning',
+          content: 'I considered the options.',
+        },
+      ],
+    },
+  });
+});
+
+test('completes reasoning with a prototype-named message id', () => {
+  const state = startState();
+
+  const next = reduceEvents(state, [
+    reasoningStart('constructor'),
+    reasoningContent('constructor', 'Analysis'),
+    reasoningEnd('constructor'),
+    runFinished(),
+  ]);
+
+  expect(next.error).toBeUndefined();
+  expect(reasoningDetails(next)).toEqual([
+    { id: 'constructor', role: 'reasoning', content: 'Analysis' },
+  ]);
+});
+
+test('finalizes reasoning followed by assistant text', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningContent('reasoning-1', 'Analysis'),
+    reasoningEnd('reasoning-1'),
+    ...textEvents('Answer'),
+    runFinished(),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(state.message?.content).toBe('Answer');
+  expect(reasoningDetails(state)).toEqual([
+    { id: 'reasoning-1', role: 'reasoning', content: 'Analysis' },
+  ]);
+});
+
+test('finalizes reasoning followed by a tool call', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningContent('reasoning-1', 'I need a lookup.'),
+    reasoningEnd('reasoning-1'),
+    ...toolEvents('call-1', 'lookup', '{}'),
+    runFinished(),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(state.message?.toolCallIds).toEqual(['call-1']);
+  expect(reasoningDetails(state)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: 'I need a lookup.',
+    },
+  ]);
+});
+
+test('preserves multiple reasoning details in lifecycle order', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningContent('reasoning-1', 'First'),
+    reasoningEnd('reasoning-1'),
+    reasoningStart('reasoning-2'),
+    reasoningContent('reasoning-2', 'Second'),
+    reasoningEnd('reasoning-2'),
+    runFinished(),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(reasoningDetails(state)).toEqual([
+    { id: 'reasoning-1', role: 'reasoning', content: 'First' },
+    { id: 'reasoning-2', role: 'reasoning', content: 'Second' },
+  ]);
+});
+
+test('finalizes a redacted reasoning detail with empty display content', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningEncryptedValue('reasoning-1', 'opaque'),
+    reasoningEnd('reasoning-1'),
+    runFinished(),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(reasoningDetails(state)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: '',
+      encryptedValue: 'opaque',
+    },
+  ]);
+  expect(state.message?.content).toBe('');
+});
+
+test('keeps readable reasoning content separate from its encrypted value', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningContent('reasoning-1', 'Readable summary'),
+    reasoningEncryptedValue('reasoning-1', 'opaque'),
+    reasoningEnd('reasoning-1'),
+    runFinished(),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(reasoningDetails(state)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: 'Readable summary',
+      encryptedValue: 'opaque',
+    },
+  ]);
+  expect(state.message?.content).toBe('');
+});
+
+test('preserves the latest mechanically supplied reasoning subagent run id', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1', { subagentRunId: 'subagent-start' }),
+    reasoningContent('reasoning-1', 'Analysis', {
+      subagentRunId: 'subagent-content',
+    }),
+    reasoningEnd('reasoning-1', { subagentRunId: 'subagent-end' }),
+  ]);
+
+  expect(reasoningDetails(state)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: 'Analysis',
+      subagentRunId: 'subagent-end',
+    },
+  ]);
+});
+
+test('merges cloned reasoning metadata shallowly across start content and end', () => {
+  const startMetadata = {
+    stable: 'start',
+    replaced: { start: true },
+    list: ['start'],
+  };
+  const contentMetadata = {
+    replaced: { content: true },
+    list: ['content'],
+    contentOnly: true,
+  };
+  const endMetadata = {
+    stable: 'end',
+    endOnly: true,
+  };
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1', { metadata: startMetadata }),
+    reasoningContent('reasoning-1', 'Analysis', {
+      metadata: contentMetadata,
+    }),
+    reasoningEnd('reasoning-1', { metadata: endMetadata }),
+  ]);
+  startMetadata.replaced.start = false;
+  startMetadata.list.push('mutated');
+  contentMetadata.replaced.content = false;
+  contentMetadata.list.push('mutated');
+  endMetadata.stable = 'mutated';
+
+  expect(reasoningDetails(state)[0]?.metadata).toEqual({
+    stable: 'end',
+    replaced: { content: true },
+    list: ['content'],
+    contentOnly: true,
+    endOnly: true,
+  });
+});
+
+test('keeps encrypted-value event metadata local to that event', () => {
+  const encryptedMetadata = { provider: { signature: 'event-only' } };
+  let state = startState();
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1', {
+      metadata: { accumulated: 'detail' },
+    }),
+    reasoningEncryptedValue(
+      'reasoning-1',
+      'opaque',
+      'message',
+      encryptedMetadata,
+    ),
+  ]);
+
+  encryptedMetadata.provider.signature = 'mutated';
+
+  expect(reasoningDetails(state)[0]).toEqual({
+    id: 'reasoning-1',
+    role: 'reasoning',
+    content: '',
+    encryptedValue: 'opaque',
+    metadata: { accumulated: 'detail' },
+  });
+});
+
+test('sets encrypted values on active and completed reasoning details', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-active'),
+    reasoningEncryptedValue('reasoning-active', 'active-opaque'),
+    reasoningStart('reasoning-complete'),
+    reasoningEnd('reasoning-complete'),
+    reasoningEncryptedValue('reasoning-complete', 'complete-opaque'),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(reasoningDetails(state)).toEqual([
+    {
+      id: 'reasoning-active',
+      role: 'reasoning',
+      content: '',
+      encryptedValue: 'active-opaque',
+    },
+    {
+      id: 'reasoning-complete',
+      role: 'reasoning',
+      content: '',
+      encryptedValue: 'complete-opaque',
+    },
+  ]);
+});
+
+test('reports a stream error for a duplicate reasoning start', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningStart('reasoning-1'),
+  ]);
+
+  expect(state.error?.message).toBe(
+    'Reasoning message reasoning-1 has already started',
+  );
+});
+
+test('reports a stream error for reasoning content without a start', () => {
+  const state = startState();
+
+  const next = reduceEvents(state, [
+    reasoningContent('reasoning-unknown', 'Analysis'),
+  ]);
+
+  expect(next.error?.message).toBe(
+    'Reasoning message reasoning-unknown is not active',
+  );
+});
+
+test('reports a stream error for reasoning content after end', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningEnd('reasoning-1'),
+    reasoningContent('reasoning-1', 'Too late'),
+  ]);
+
+  expect(state.error?.message).toBe(
+    'Reasoning message reasoning-1 is not active',
+  );
+});
+
+test('reports a stream error for ending an unknown reasoning message', () => {
+  const state = startState();
+
+  const next = reduceEvents(state, [reasoningEnd('reasoning-unknown')]);
+
+  expect(next.error?.message).toBe(
+    'Reasoning message reasoning-unknown is not active',
+  );
+});
+
+test('reports a stream error for a duplicate reasoning end', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningEnd('reasoning-1'),
+    reasoningEnd('reasoning-1'),
+  ]);
+
+  expect(state.error?.message).toBe(
+    'Reasoning message reasoning-1 is not active',
+  );
+});
+
+test('reports a stream error for an unknown message encrypted-value id', () => {
+  const state = startState();
+
+  const next = reduceEvents(state, [
+    reasoningEncryptedValue('reasoning-unknown', 'opaque'),
+  ]);
+
+  expect(next.error?.message).toBe(
+    'Reasoning message reasoning-unknown does not exist',
+  );
+});
+
+test('reports a stream error when a run finishes with active reasoning', () => {
+  let state = startState();
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningContent('reasoning-1', 'Unfinished'),
+    runFinished(),
+  ]);
+
+  expect(state.error?.message).toBe(
+    'Reasoning message reasoning-1 is still active',
+  );
+});
+
+test('accepts top-level reasoning grouping events as exact no-ops', () => {
+  const state = startState();
+
+  const afterStart = reduceEvents(state, [
+    {
+      type: EventType.REASONING_START,
+      messageId: 'reasoning-group-1',
+    },
+  ]);
+  const afterEnd = reduceEvents(afterStart, [
+    {
+      type: EventType.REASONING_END,
+      messageId: 'reasoning-group-1',
+    },
+  ]);
+
+  expect(afterStart).toBe(state);
+  expect(afterEnd).toBe(state);
+});
+
+test('accepts tool-call encrypted values as exact no-ops', () => {
+  const state = startState();
+
+  const next = reduceEvents(state, [
+    reasoningEncryptedValue('unknown-tool-call', 'opaque', 'tool-call', {
+      eventOnly: true,
+    }),
+  ]);
+
+  expect(next).toBe(state);
+  expect(next.error).toBeUndefined();
+});
+
+test('isolates reasoning content and encrypted values from structured output parsing', () => {
+  const responseSchema = s.object('output', {
+    message: s.string('message'),
+  });
+  let state = startState(responseSchema, false);
+
+  state = reduceEvents(state, [
+    reasoningStart('reasoning-1'),
+    reasoningContent('reasoning-1', '{"message":"reasoning"}'),
+    reasoningEncryptedValue('reasoning-1', '{"message":"encrypted"}'),
+    reasoningEnd('reasoning-1'),
+  ]);
+
+  expect(state.outputParserState).toBeUndefined();
+  expect(state.message?.content).toBe('');
+  expect(state.message?.contentResolved).toBeUndefined();
+
+  state = reduceEvents(state, [
+    ...textEvents('{"message":"text"}'),
+    runFinished(),
+  ]);
+
+  expect(state.error).toBeUndefined();
+  expect(state.message?.contentResolved).toEqual({ message: 'text' });
 });
 
 test('silent retirement resets all partial generation state', () => {

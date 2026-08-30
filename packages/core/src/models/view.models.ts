@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue, Prettify } from '../utils';
 
@@ -69,6 +70,19 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
   role: 'assistant';
   content?: Output;
   toolCalls: ToolCall<ToolUnion>[];
+
+  /**
+   * Human-readable reasoning. When `reasoningDetails` is present, this value
+   * is derived from the ordered records' nonempty content.
+   */
+  reasoning?: string;
+
+  /**
+   * Ordered AG-UI reasoning records, including opaque continuation data such
+   * as encrypted values, subagent run IDs, and metadata. When present, these
+   * records take precedence over `reasoning`.
+   */
+  readonly reasoningDetails?: readonly Readonly<ReasoningMessage>[];
 }
 
 /**
