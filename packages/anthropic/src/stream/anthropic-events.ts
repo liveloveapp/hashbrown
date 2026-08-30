@@ -14,7 +14,23 @@ interface ToolBlockState {
   readonly receivedDelta: boolean;
 }
 
-type ContentBlockState = TextBlockState | ToolBlockState;
+interface ThinkingBlockState {
+  readonly kind: 'thinking';
+  readonly messageId: string;
+  readonly initialSignature: string;
+  readonly signatureDelta: string | undefined;
+}
+
+interface RedactedThinkingBlockState {
+  readonly kind: 'redacted_thinking';
+  readonly messageId: string;
+}
+
+type ContentBlockState =
+  | TextBlockState
+  | ToolBlockState
+  | ThinkingBlockState
+  | RedactedThinkingBlockState;
 type RawEvent = Anthropic.Messages.RawMessageStreamEvent;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -173,7 +189,9 @@ export async function* mapAnthropicEvents(
   const activeBlocks = new Map<number, ContentBlockState>();
   let messageStarted = false;
   let messageStopped = false;
+  let nativeTextBlockStarted = false;
   let textStarted = false;
+  let clientToolStarted = false;
   let sourceCompleted = false;
   let hasPrimaryError = false;
 
@@ -239,7 +257,12 @@ export async function* mapAnthropicEvents(
           }
 
           const blockType = contentBlock['type'];
-          if (blockType !== 'text' && blockType !== 'tool_use') {
+          if (
+            blockType !== 'text' &&
+            blockType !== 'tool_use' &&
+            blockType !== 'thinking' &&
+            blockType !== 'redacted_thinking'
+          ) {
             throw new Error(
               `Anthropic content block at index ${index} has unsupported type ` +
                 formatDiagnosticValue(blockType),
@@ -247,6 +270,98 @@ export async function* mapAnthropicEvents(
           }
 
           seenIndexes.add(index);
+          if (blockType === 'thinking' || blockType === 'redacted_thinking') {
+            if (nativeTextBlockStarted || clientToolStarted) {
+              throw new Error(
+                `Anthropic reasoning block at index ${index} cannot start ` +
+                  'after assistant text or a client tool block',
+              );
+            }
+
+            const messageId = `${options.messageId}:reasoning:${index}`;
+            if (blockType === 'thinking') {
+              const thinking = contentBlock['thinking'];
+              if (typeof thinking !== 'string') {
+                throw new Error(
+                  `Anthropic thinking block at index ${index} has ` +
+                    'non-string thinking',
+                );
+              }
+
+              const signature = contentBlock['signature'];
+              if (typeof signature !== 'string') {
+                throw new Error(
+                  `Anthropic thinking block at index ${index} has ` +
+                    'non-string signature',
+                );
+              }
+
+              activeBlocks.set(index, {
+                kind: 'thinking',
+                messageId,
+                initialSignature: signature,
+                signatureDelta: undefined,
+              });
+              yield {
+                type: EventType.REASONING_MESSAGE_START,
+                messageId,
+                role: 'reasoning',
+                metadata: { anthropic: { blockType: 'thinking' } },
+              };
+              if (options.signal?.aborted) {
+                return;
+              }
+
+              if (thinking.length > 0) {
+                yield {
+                  type: EventType.REASONING_MESSAGE_CONTENT,
+                  messageId,
+                  delta: thinking,
+                };
+                if (options.signal?.aborted) {
+                  return;
+                }
+              }
+              break;
+            }
+
+            const data = contentBlock['data'];
+            if (typeof data !== 'string') {
+              throw new Error(
+                `Anthropic redacted_thinking block at index ${index} has ` +
+                  'non-string data',
+              );
+            }
+            if (data.length === 0) {
+              throw new Error(
+                `Anthropic redacted_thinking block at index ${index} has ` +
+                  'empty data',
+              );
+            }
+
+            activeBlocks.set(index, { kind: 'redacted_thinking', messageId });
+            yield {
+              type: EventType.REASONING_MESSAGE_START,
+              messageId,
+              role: 'reasoning',
+              metadata: { anthropic: { blockType: 'redacted_thinking' } },
+            };
+            if (options.signal?.aborted) {
+              return;
+            }
+
+            yield {
+              type: EventType.REASONING_ENCRYPTED_VALUE,
+              subtype: 'message',
+              entityId: messageId,
+              encryptedValue: data,
+            };
+            if (options.signal?.aborted) {
+              return;
+            }
+            break;
+          }
+
           if (blockType === 'text') {
             const text = contentBlock['text'];
             if (typeof text !== 'string') {
@@ -255,6 +370,7 @@ export async function* mapAnthropicEvents(
               );
             }
 
+            nativeTextBlockStarted = true;
             activeBlocks.set(index, { kind: 'text' });
             if (text.length === 0) {
               break;
@@ -313,6 +429,7 @@ export async function* mapAnthropicEvents(
           }
 
           seenToolIds.add(id);
+          clientToolStarted = true;
           activeBlocks.set(index, {
             kind: 'tool',
             id,
@@ -350,7 +467,12 @@ export async function* mapAnthropicEvents(
           }
 
           const deltaType = delta['type'];
-          if (deltaType !== 'text_delta' && deltaType !== 'input_json_delta') {
+          if (
+            deltaType !== 'text_delta' &&
+            deltaType !== 'input_json_delta' &&
+            deltaType !== 'thinking_delta' &&
+            deltaType !== 'signature_delta'
+          ) {
             throw new Error(
               `Anthropic content delta at index ${index} has unsupported type ` +
                 formatDiagnosticValue(deltaType),
@@ -398,33 +520,92 @@ export async function* mapAnthropicEvents(
             break;
           }
 
-          if (deltaType !== 'input_json_delta') {
+          if (block.kind === 'tool') {
+            if (deltaType !== 'input_json_delta') {
+              throw new Error(
+                `Anthropic tool block at index ${index} cannot receive ` +
+                  deltaType,
+              );
+            }
+
+            const partialJson = delta['partial_json'];
+            if (typeof partialJson !== 'string') {
+              throw new Error(
+                `Anthropic input_json_delta at index ${index} has ` +
+                  'non-string partial_json',
+              );
+            }
+
+            activeBlocks.set(index, {
+              ...block,
+              receivedDelta: true,
+            });
+            yield {
+              type: EventType.TOOL_CALL_ARGS,
+              toolCallId: block.id,
+              delta: partialJson,
+            };
+            if (options.signal?.aborted) {
+              return;
+            }
+            break;
+          }
+
+          if (block.kind === 'redacted_thinking') {
             throw new Error(
-              `Anthropic tool block at index ${index} cannot receive ` +
+              `Anthropic redacted_thinking block at index ${index} cannot ` +
+                `receive ${deltaType}`,
+            );
+          }
+
+          if (deltaType === 'thinking_delta') {
+            const thinking = delta['thinking'];
+            if (typeof thinking !== 'string') {
+              throw new Error(
+                `Anthropic thinking_delta at index ${index} has ` +
+                  'non-string thinking',
+              );
+            }
+            if (thinking.length === 0) {
+              break;
+            }
+
+            yield {
+              type: EventType.REASONING_MESSAGE_CONTENT,
+              messageId: block.messageId,
+              delta: thinking,
+            };
+            if (options.signal?.aborted) {
+              return;
+            }
+            break;
+          }
+
+          if (deltaType !== 'signature_delta') {
+            throw new Error(
+              `Anthropic thinking block at index ${index} cannot receive ` +
                 deltaType,
             );
           }
 
-          const partialJson = delta['partial_json'];
-          if (typeof partialJson !== 'string') {
+          const signature = delta['signature'];
+          if (typeof signature !== 'string') {
             throw new Error(
-              `Anthropic input_json_delta at index ${index} has ` +
-                'non-string partial_json',
+              `Anthropic signature_delta at index ${index} has ` +
+                'non-string signature',
+            );
+          }
+          if (block.signatureDelta !== undefined) {
+            throw new Error(
+              `Anthropic thinking block at index ${index} received more than ` +
+                'one signature_delta',
             );
           }
 
           activeBlocks.set(index, {
             ...block,
-            receivedDelta: true,
+            signatureDelta: signature,
           });
-          yield {
-            type: EventType.TOOL_CALL_ARGS,
-            toolCallId: block.id,
-            delta: partialJson,
-          };
-          if (options.signal?.aborted) {
-            return;
-          }
           break;
         }
 
@@ -440,6 +621,46 @@ export async function* mapAnthropicEvents(
 
           activeBlocks.delete(index);
           if (block.kind === 'text') {
+            break;
+          }
+
+          if (block.kind === 'thinking') {
+            const signature = block.signatureDelta ?? block.initialSignature;
+            if (signature.length === 0) {
+              throw new Error(
+                `Anthropic thinking block at index ${index} has an empty ` +
+                  'final signature',
+              );
+            }
+
+            yield {
+              type: EventType.REASONING_ENCRYPTED_VALUE,
+              subtype: 'message',
+              entityId: block.messageId,
+              encryptedValue: signature,
+            };
+            if (options.signal?.aborted) {
+              return;
+            }
+
+            yield {
+              type: EventType.REASONING_MESSAGE_END,
+              messageId: block.messageId,
+            };
+            if (options.signal?.aborted) {
+              return;
+            }
+            break;
+          }
+
+          if (block.kind === 'redacted_thinking') {
+            yield {
+              type: EventType.REASONING_MESSAGE_END,
+              messageId: block.messageId,
+            };
+            if (options.signal?.aborted) {
+              return;
+            }
             break;
           }
 
