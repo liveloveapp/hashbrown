@@ -1,8 +1,16 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import Anthropic from '@anthropic-ai/sdk';
 import { mapAnthropicEvents } from './anthropic-events';
-
-type RawEvent = Anthropic.Messages.RawMessageStreamEvent;
+import {
+  collectEvents,
+  collectIterable,
+  contentStop,
+  deepFreeze,
+  messageDelta,
+  messageStart,
+  messageStop,
+  rawEvent,
+  type RawEvent,
+} from './anthropic-events.test-utils';
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
@@ -19,10 +27,6 @@ function createDeferred<T>(): Deferred<T> {
   });
 
   return { promise, reject, resolve };
-}
-
-function rawEvent(value: unknown): RawEvent {
-  return value as RawEvent;
 }
 
 function withFailureTimeout<T>(promise: Promise<T>): Promise<T> {
@@ -42,58 +46,6 @@ function withFailureTimeout<T>(promise: Promise<T>): Promise<T> {
       },
     );
   });
-}
-
-function messageStart(): RawEvent {
-  return {
-    type: 'message_start',
-    message: {
-      id: 'anthropic-message-1',
-      type: 'message',
-      role: 'assistant',
-      content: [],
-      model: 'claude-test',
-      container: null,
-      stop_reason: null,
-      stop_sequence: null,
-      stop_details: null,
-      usage: {
-        cache_creation: null,
-        cache_creation_input_tokens: null,
-        cache_read_input_tokens: null,
-        inference_geo: null,
-        input_tokens: 1,
-        output_tokens: 0,
-        output_tokens_details: null,
-        server_tool_use: null,
-        service_tier: null,
-      },
-    },
-  };
-}
-
-function messageDelta(): RawEvent {
-  return {
-    type: 'message_delta',
-    delta: {
-      container: null,
-      stop_details: null,
-      stop_reason: 'end_turn',
-      stop_sequence: null,
-    },
-    usage: {
-      cache_creation_input_tokens: null,
-      cache_read_input_tokens: null,
-      input_tokens: null,
-      output_tokens: 1,
-      output_tokens_details: null,
-      server_tool_use: null,
-    },
-  };
-}
-
-function messageStop(): RawEvent {
-  return { type: 'message_stop' };
 }
 
 function textStart(index: number, text = ''): RawEvent {
@@ -137,53 +89,6 @@ function inputJsonDelta(index: number, partialJson: string): RawEvent {
     index,
     delta: { type: 'input_json_delta', partial_json: partialJson },
   };
-}
-
-function contentStop(index: number): RawEvent {
-  return { type: 'content_block_stop', index };
-}
-
-async function* toAsyncIterable(
-  events: readonly RawEvent[],
-): AsyncIterable<RawEvent> {
-  for (const event of events) {
-    yield event;
-  }
-}
-
-async function collectEvents(
-  events: readonly RawEvent[],
-  signal?: AbortSignal,
-): Promise<AGUIEvent[]> {
-  return collectIterable(toAsyncIterable(events), signal);
-}
-
-async function collectIterable(
-  events: AsyncIterable<RawEvent>,
-  signal?: AbortSignal,
-): Promise<AGUIEvent[]> {
-  const result: AGUIEvent[] = [];
-
-  for await (const event of mapAnthropicEvents({
-    events,
-    messageId: 'assistant-message-1',
-    signal,
-  })) {
-    result.push(event);
-  }
-
-  return result;
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object') {
-    for (const nestedValue of Object.values(value)) {
-      deepFreeze(nestedValue);
-    }
-    Object.freeze(value);
-  }
-
-  return value;
 }
 
 function createTrackedSource(events: readonly RawEvent[]) {

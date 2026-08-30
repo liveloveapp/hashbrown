@@ -1,24 +1,16 @@
 import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
-import Anthropic from '@anthropic-ai/sdk';
 import { mapAnthropicEvents } from './anthropic-events';
-
-type RawEvent = Anthropic.Messages.RawMessageStreamEvent;
-
-function rawEvent(value: unknown): RawEvent {
-  return value as RawEvent;
-}
-
-function messageStart(): RawEvent {
-  return rawEvent({ type: 'message_start' });
-}
-
-function messageDelta(): RawEvent {
-  return rawEvent({ type: 'message_delta' });
-}
-
-function messageStop(): RawEvent {
-  return rawEvent({ type: 'message_stop' });
-}
+import {
+  collectEvents,
+  contentStop,
+  deepFreeze,
+  messageDelta,
+  messageStart,
+  messageStop,
+  rawEvent,
+  type RawEvent,
+  toAsyncIterable,
+} from './anthropic-events.test-utils';
 
 function thinkingStart(
   index: number,
@@ -78,46 +70,6 @@ function toolStart(index: number): RawEvent {
       input: {},
     },
   });
-}
-
-function contentStop(index: number): RawEvent {
-  return rawEvent({ type: 'content_block_stop', index });
-}
-
-async function* toAsyncIterable(
-  events: readonly RawEvent[],
-): AsyncIterable<RawEvent> {
-  for (const event of events) {
-    yield event;
-  }
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object') {
-    for (const nestedValue of Object.values(value)) {
-      deepFreeze(nestedValue);
-    }
-    Object.freeze(value);
-  }
-
-  return value;
-}
-
-async function collectEvents(
-  events: readonly RawEvent[],
-  signal?: AbortSignal,
-): Promise<AGUIEvent[]> {
-  const result: AGUIEvent[] = [];
-
-  for await (const event of mapAnthropicEvents({
-    events: toAsyncIterable(events),
-    messageId: 'assistant-message-1',
-    signal,
-  })) {
-    result.push(EventSchemas.parse(event));
-  }
-
-  return result;
 }
 
 function reasoningStartEvent(messageId: string, blockType: string): AGUIEvent {

@@ -26,12 +26,39 @@ interface RedactedThinkingBlockState {
   readonly messageId: string;
 }
 
+interface ServerToolBlockState {
+  readonly kind: 'server_tool';
+}
+
+type RawTerminalBlockType =
+  | 'web_search_tool_result'
+  | 'web_fetch_tool_result'
+  | 'code_execution_tool_result'
+  | 'bash_code_execution_tool_result'
+  | 'text_editor_code_execution_tool_result'
+  | 'tool_search_tool_result'
+  | 'container_upload';
+
+interface RawTerminalBlockState {
+  readonly kind: 'raw_terminal';
+  readonly nativeType: RawTerminalBlockType;
+}
+
 type ContentBlockState =
   | TextBlockState
   | ToolBlockState
   | ThinkingBlockState
-  | RedactedThinkingBlockState;
+  | RedactedThinkingBlockState
+  | ServerToolBlockState
+  | RawTerminalBlockState;
 type RawEvent = Anthropic.Messages.RawMessageStreamEvent;
+type NativeContentBlock =
+  Anthropic.Messages.RawContentBlockStartEvent['content_block'];
+type NativeContentDelta = Anthropic.Messages.RawContentBlockDeltaEvent['delta'];
+type RawTerminalBlock = Extract<
+  NativeContentBlock,
+  { type: RawTerminalBlockType }
+>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -49,6 +76,108 @@ function assertNever(value: never): never {
   throw new Error(
     'Anthropic stream received an unhandled event ' +
       formatDiagnosticValue(value),
+  );
+}
+
+function assertUnsupportedContentBlock(value: never, index: number): never {
+  const record = value as unknown as Record<string, unknown>;
+  throw new Error(
+    `Anthropic content block at index ${index} has unsupported type ` +
+      formatDiagnosticValue(record['type']),
+  );
+}
+
+function assertUnsupportedContentDelta(value: never, index: number): never {
+  const record = value as unknown as Record<string, unknown>;
+  throw new Error(
+    `Anthropic content delta at index ${index} has unsupported type ` +
+      formatDiagnosticValue(record['type']),
+  );
+}
+
+function readContentBlock(
+  event: Anthropic.Messages.RawContentBlockStartEvent,
+  index: number,
+): NativeContentBlock {
+  const eventRecord = event as unknown as Record<string, unknown>;
+  if (!isRecord(eventRecord['content_block'])) {
+    throw new Error(
+      `Anthropic content block at index ${index} must be an object`,
+    );
+  }
+
+  const contentBlock = event.content_block;
+  switch (contentBlock.type) {
+    case 'text':
+    case 'tool_use':
+    case 'thinking':
+    case 'redacted_thinking':
+    case 'server_tool_use':
+    case 'web_search_tool_result':
+    case 'web_fetch_tool_result':
+    case 'code_execution_tool_result':
+    case 'bash_code_execution_tool_result':
+    case 'text_editor_code_execution_tool_result':
+    case 'tool_search_tool_result':
+    case 'container_upload':
+      return contentBlock;
+    default:
+      return assertUnsupportedContentBlock(contentBlock, index);
+  }
+}
+
+function readContentDelta(
+  event: Anthropic.Messages.RawContentBlockDeltaEvent,
+  index: number,
+): NativeContentDelta {
+  const eventRecord = event as unknown as Record<string, unknown>;
+  if (!isRecord(eventRecord['delta'])) {
+    throw new Error(
+      `Anthropic content delta at index ${index} must be an object`,
+    );
+  }
+
+  const delta = event.delta;
+  switch (delta.type) {
+    case 'text_delta':
+    case 'input_json_delta':
+    case 'citations_delta':
+    case 'thinking_delta':
+    case 'signature_delta':
+      return delta;
+    default:
+      return assertUnsupportedContentDelta(delta, index);
+  }
+}
+
+function rawEvent(event: RawEvent): AGUIEvent {
+  let clonedEvent: RawEvent;
+  try {
+    clonedEvent = structuredClone(event);
+  } catch (cause) {
+    const error = new Error('Failed to clone Anthropic native stream event');
+    Object.defineProperty(error, 'cause', { configurable: true, value: cause });
+    throw error;
+  }
+
+  return {
+    type: EventType.RAW,
+    source: 'anthropic',
+    event: clonedEvent,
+  };
+}
+
+function isRawTerminalBlock(
+  value: NativeContentBlock,
+): value is RawTerminalBlock {
+  return (
+    value.type === 'web_search_tool_result' ||
+    value.type === 'web_fetch_tool_result' ||
+    value.type === 'code_execution_tool_result' ||
+    value.type === 'bash_code_execution_tool_result' ||
+    value.type === 'text_editor_code_execution_tool_result' ||
+    value.type === 'tool_search_tool_result' ||
+    value.type === 'container_upload'
   );
 }
 
@@ -248,26 +377,8 @@ export async function* mapAnthropicEvents(
             );
           }
 
-          const eventRecord = event as unknown as Record<string, unknown>;
-          const contentBlock = eventRecord['content_block'];
-          if (!isRecord(contentBlock)) {
-            throw new Error(
-              `Anthropic content block at index ${index} must be an object`,
-            );
-          }
-
-          const blockType = contentBlock['type'];
-          if (
-            blockType !== 'text' &&
-            blockType !== 'tool_use' &&
-            blockType !== 'thinking' &&
-            blockType !== 'redacted_thinking'
-          ) {
-            throw new Error(
-              `Anthropic content block at index ${index} has unsupported type ` +
-                formatDiagnosticValue(blockType),
-            );
-          }
+          const contentBlock = readContentBlock(event, index);
+          const blockType = contentBlock.type;
 
           seenIndexes.add(index);
           if (blockType === 'thinking' || blockType === 'redacted_thinking') {
@@ -372,27 +483,56 @@ export async function* mapAnthropicEvents(
 
             nativeTextBlockStarted = true;
             activeBlocks.set(index, { kind: 'text' });
-            if (text.length === 0) {
-              break;
-            }
+            if (text.length > 0) {
+              if (!textStarted) {
+                textStarted = true;
+                yield {
+                  type: EventType.TEXT_MESSAGE_START,
+                  messageId: options.messageId,
+                  role: 'assistant',
+                };
+                if (options.signal?.aborted) {
+                  return;
+                }
+              }
 
-            if (!textStarted) {
-              textStarted = true;
               yield {
-                type: EventType.TEXT_MESSAGE_START,
+                type: EventType.TEXT_MESSAGE_CONTENT,
                 messageId: options.messageId,
-                role: 'assistant',
+                delta: text,
               };
               if (options.signal?.aborted) {
                 return;
               }
             }
 
-            yield {
-              type: EventType.TEXT_MESSAGE_CONTENT,
-              messageId: options.messageId,
-              delta: text,
-            };
+            if (
+              Array.isArray(contentBlock.citations) &&
+              contentBlock.citations.length > 0
+            ) {
+              yield rawEvent(event);
+              if (options.signal?.aborted) {
+                return;
+              }
+            }
+            break;
+          }
+
+          if (blockType === 'server_tool_use') {
+            activeBlocks.set(index, { kind: 'server_tool' });
+            yield rawEvent(event);
+            if (options.signal?.aborted) {
+              return;
+            }
+            break;
+          }
+
+          if (isRawTerminalBlock(contentBlock)) {
+            activeBlocks.set(index, {
+              kind: 'raw_terminal',
+              nativeType: contentBlock.type,
+            });
+            yield rawEvent(event);
             if (options.signal?.aborted) {
               return;
             }
@@ -458,28 +598,18 @@ export async function* mapAnthropicEvents(
             );
           }
 
-          const eventRecord = event as unknown as Record<string, unknown>;
-          const delta = eventRecord['delta'];
-          if (!isRecord(delta)) {
-            throw new Error(
-              `Anthropic content delta at index ${index} must be an object`,
-            );
-          }
-
-          const deltaType = delta['type'];
-          if (
-            deltaType !== 'text_delta' &&
-            deltaType !== 'input_json_delta' &&
-            deltaType !== 'thinking_delta' &&
-            deltaType !== 'signature_delta'
-          ) {
-            throw new Error(
-              `Anthropic content delta at index ${index} has unsupported type ` +
-                formatDiagnosticValue(deltaType),
-            );
-          }
+          const delta = readContentDelta(event, index);
+          const deltaType = delta.type;
 
           if (block.kind === 'text') {
+            if (deltaType === 'citations_delta') {
+              yield rawEvent(event);
+              if (options.signal?.aborted) {
+                return;
+              }
+              break;
+            }
+
             if (deltaType !== 'text_delta') {
               throw new Error(
                 `Anthropic text block at index ${index} cannot receive ` +
@@ -549,6 +679,36 @@ export async function* mapAnthropicEvents(
               return;
             }
             break;
+          }
+
+          if (block.kind === 'server_tool') {
+            if (deltaType !== 'input_json_delta') {
+              throw new Error(
+                `Anthropic server_tool_use block at index ${index} cannot ` +
+                  `receive ${deltaType}`,
+              );
+            }
+
+            const partialJson = delta['partial_json'];
+            if (typeof partialJson !== 'string') {
+              throw new Error(
+                `Anthropic input_json_delta at index ${index} has ` +
+                  'non-string partial_json',
+              );
+            }
+
+            yield rawEvent(event);
+            if (options.signal?.aborted) {
+              return;
+            }
+            break;
+          }
+
+          if (block.kind === 'raw_terminal') {
+            throw new Error(
+              `Anthropic ${block.nativeType} block at index ${index} cannot ` +
+                `receive ${deltaType}`,
+            );
           }
 
           if (block.kind === 'redacted_thinking') {
@@ -621,6 +781,14 @@ export async function* mapAnthropicEvents(
 
           activeBlocks.delete(index);
           if (block.kind === 'text') {
+            break;
+          }
+
+          if (block.kind === 'server_tool' || block.kind === 'raw_terminal') {
+            yield rawEvent(event);
+            if (options.signal?.aborted) {
+              return;
+            }
             break;
           }
 
