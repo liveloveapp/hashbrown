@@ -126,6 +126,9 @@ export function toInternalMessagesFromView(
           content,
           contentResolved,
           toolCallIds: message.toolCalls.map((toolCall) => toolCall.toolCallId),
+          ...(message.encryptedValue !== undefined
+            ? { encryptedValue: message.encryptedValue }
+            : {}),
           ...(reasoning ? { reasoning } : {}),
         },
       ];
@@ -181,6 +184,9 @@ export function toViewMessagesFromInternal(
         {
           role: 'assistant',
           content,
+          ...(message.encryptedValue !== undefined
+            ? { encryptedValue: message.encryptedValue }
+            : {}),
           ...toReasoningOutput(message.reasoning),
           toolCalls: message.toolCallIds.flatMap(
             (toolCallId): Chat.AnyToolCall[] => {
@@ -210,6 +216,9 @@ export function toViewMessagesFromInternal(
                       status: 'done',
                       name: toolCall.name,
                       toolCallId,
+                      ...(toolCall.encryptedValue !== undefined
+                        ? { encryptedValue: toolCall.encryptedValue }
+                        : {}),
                       args: s.isHashbrownType(tool.schema)
                         ? (resolvedArgs ?? null)
                         : (resolvedArgs ?? JSON.parse(toolArgsString)),
@@ -230,6 +239,9 @@ export function toViewMessagesFromInternal(
                       name: toolCall.name,
                       toolCallId,
                       progress: toolCall.progress,
+                      ...(toolCall.encryptedValue !== undefined
+                        ? { encryptedValue: toolCall.encryptedValue }
+                        : {}),
                       args: s.isHashbrownType(tool.schema)
                         ? (resolvedArgs ?? null)
                         : (resolvedArgs ?? null),
@@ -306,6 +318,9 @@ export function toApiMessagesFromInternal(
         {
           role: 'assistant',
           content,
+          ...(message.encryptedValue !== undefined
+            ? { encryptedValue: message.encryptedValue }
+            : {}),
           ...toReasoningOutput(message.reasoning),
           toolCalls: toolCallsForMessage.map((toolCall, index) => ({
             id: toolCall.id,
@@ -318,6 +333,9 @@ export function toApiMessagesFromInternal(
                   ? toolCall.arguments
                   : JSON.stringify(toolCall.arguments),
             },
+            ...(toolCall.encryptedValue !== undefined
+              ? { encryptedValue: toolCall.encryptedValue }
+              : {}),
             metadata: toolCall.metadata,
           })),
         },
@@ -392,6 +410,9 @@ export function toInternalToolCallsFromApi(
           ? toolCall.function.arguments
           : undefined,
       status: 'pending',
+      ...(toolCall.encryptedValue !== undefined
+        ? { encryptedValue: toolCall.encryptedValue }
+        : {}),
       metadata: toolCall.metadata,
     },
   ];
@@ -437,6 +458,9 @@ export function toInternalToolCallsFromApiMessages(
               ? toolCall.function.arguments
               : undefined),
           status: 'pending',
+          ...(toolCall.encryptedValue !== undefined
+            ? { encryptedValue: toolCall.encryptedValue }
+            : {}),
           metadata: toolCall.metadata,
         };
       });
@@ -453,6 +477,9 @@ export function toInternalToolCallsFromApiMessages(
         arguments: existing?.arguments ?? '',
         status: 'done',
         result: message.content,
+        ...(existing?.encryptedValue !== undefined
+          ? { encryptedValue: existing.encryptedValue }
+          : {}),
         metadata: existing?.metadata,
       };
     }
@@ -486,6 +513,9 @@ export function toInternalToolCallsFromView(
             argumentsResolved: toolCall.args,
             status: 'done',
             result: toolCall.result,
+            ...(toolCall.encryptedValue !== undefined
+              ? { encryptedValue: toolCall.encryptedValue }
+              : {}),
           };
         }
         case 'pending': {
@@ -495,6 +525,9 @@ export function toInternalToolCallsFromView(
             status: 'pending',
             arguments: JSON.stringify(toolCall.args),
             argumentsResolved: toolCall.args,
+            ...(toolCall.encryptedValue !== undefined
+              ? { encryptedValue: toolCall.encryptedValue }
+              : {}),
           };
         }
       }
@@ -548,6 +581,9 @@ export function toInternalMessagesFromApi(
       role: 'assistant',
       content,
       contentResolved: typeof rawContent === 'object' ? rawContent : undefined,
+      ...(message.encryptedValue !== undefined
+        ? { encryptedValue: message.encryptedValue }
+        : {}),
       toolCallIds:
         message.toolCalls
           ?.filter((toolCall) => toolCall.function.name !== 'output')

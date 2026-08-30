@@ -38,23 +38,34 @@ export type UserMessage = {
  */
 export type ToolCall<ToolUnion extends AnyTool> = Prettify<
   ToolUnion extends Tool<infer Name, infer Args, infer Result>
-    ?
-        | {
-            role: 'tool';
-            status: 'done';
-            name: Name;
-            args: Args;
-            result: PromiseSettledResult<Result>;
-            toolCallId: string;
-          }
-        | {
-            role: 'tool';
-            status: 'pending';
-            name: Name;
-            args: Args;
-            toolCallId: string;
-            progress?: number;
-          }
+    ? | {
+          role: 'tool';
+          status: 'done';
+          name: Name;
+          args: Args;
+          result: PromiseSettledResult<Result>;
+          toolCallId: string;
+
+          /**
+           * Opaque provider continuation data preserved across AG-UI runs.
+           * Hashbrown does not inspect or display this value.
+           */
+          encryptedValue?: string;
+        }
+      | {
+          role: 'tool';
+          status: 'pending';
+          name: Name;
+          args: Args;
+          toolCallId: string;
+          progress?: number;
+
+          /**
+           * Opaque provider continuation data preserved across AG-UI runs.
+           * Hashbrown does not inspect or display this value.
+           */
+          encryptedValue?: string;
+        }
     : never
 >;
 
@@ -70,6 +81,12 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
   role: 'assistant';
   content?: Output;
   toolCalls: ToolCall<ToolUnion>[];
+
+  /**
+   * Opaque provider continuation data preserved across AG-UI runs.
+   * Hashbrown does not inspect or display this value.
+   */
+  encryptedValue?: string;
 
   /**
    * Human-readable reasoning. When `reasoningDetails` is present, this value
@@ -97,9 +114,7 @@ export type ErrorMessage = {
  * @public
  */
 export type Message<Output, Tools extends AnyTool> =
-  | UserMessage
-  | AssistantMessage<Output, Tools>
-  | ErrorMessage;
+  UserMessage | AssistantMessage<Output, Tools> | ErrorMessage;
 
 /**
  * @public
