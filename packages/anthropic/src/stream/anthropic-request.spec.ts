@@ -1,4 +1,5 @@
 import type { RunAgentInput } from '@ag-ui/core';
+import type Anthropic from '@anthropic-ai/sdk';
 import { createAnthropicRequestOptions } from './anthropic-request';
 
 type TestRunAgentInput = RunAgentInput & {
@@ -21,6 +22,16 @@ function createInput(
     forwardedProps: {},
     ...overrides,
   };
+}
+
+function requireClientTool(
+  tool: Anthropic.Messages.ToolUnion | undefined,
+): Anthropic.Messages.Tool {
+  if (!tool || !('input_schema' in tool)) {
+    throw new Error('Expected an Anthropic client tool');
+  }
+
+  return tool;
 }
 
 test('creates fresh streaming options with the server-owned model', () => {
@@ -363,8 +374,10 @@ test('does not perform full JSON Schema validation', () => {
 
   const result = createAnthropicRequestOptions(input, 'claude-test');
 
-  expect(result.tools?.[0]?.input_schema).toEqual(minimallyValidSchema);
-  expect(result.tools?.[0]?.input_schema).not.toBe(minimallyValidSchema);
+  const mappedTool = requireClientTool(result.tools?.[0]);
+
+  expect(mappedTool.input_schema).toEqual(minimallyValidSchema);
+  expect(mappedTool.input_schema).not.toBe(minimallyValidSchema);
 });
 
 test('isolates mapped tool schemas from later source mutations', () => {
@@ -383,7 +396,8 @@ test('isolates mapped tool schemas from later source mutations', () => {
   });
 
   const result = createAnthropicRequestOptions(input, 'claude-test');
-  const mappedSchema = result.tools?.[0]?.input_schema as typeof schema;
+  const mappedSchema = requireClientTool(result.tools?.[0])
+    .input_schema as typeof schema;
   schema.properties.city.type = 'number';
 
   expect(mappedSchema.properties.city.type).toBe('string');
@@ -405,7 +419,8 @@ test('isolates source tool schemas from later request mutations', () => {
   });
 
   const result = createAnthropicRequestOptions(input, 'claude-test');
-  const mappedSchema = result.tools?.[0]?.input_schema as typeof schema;
+  const mappedSchema = requireClientTool(result.tools?.[0])
+    .input_schema as typeof schema;
   mappedSchema.properties.city.type = 'number';
 
   expect(schema.properties.city.type).toBe('string');

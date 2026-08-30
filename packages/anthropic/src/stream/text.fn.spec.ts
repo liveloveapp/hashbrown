@@ -59,13 +59,9 @@ function createOptions(
   };
 }
 
-function rawEvent(value: unknown): RawEvent {
-  return value as RawEvent;
-}
-
 function completeTextEvents(textValue = 'Hello from Anthropic.'): RawEvent[] {
   return [
-    rawEvent({
+    {
       type: 'message_start',
       message: {
         id: 'provider-message',
@@ -73,28 +69,52 @@ function completeTextEvents(textValue = 'Hello from Anthropic.'): RawEvent[] {
         role: 'assistant',
         content: [],
         model: 'claude-server-model',
+        container: null,
         stop_reason: null,
         stop_sequence: null,
-        usage: { input_tokens: 1, output_tokens: 0 },
+        stop_details: null,
+        usage: {
+          cache_creation: null,
+          cache_creation_input_tokens: null,
+          cache_read_input_tokens: null,
+          inference_geo: null,
+          input_tokens: 1,
+          output_tokens: 0,
+          output_tokens_details: null,
+          server_tool_use: null,
+          service_tier: null,
+        },
       },
-    }),
-    rawEvent({
+    },
+    {
       type: 'content_block_start',
       index: 0,
-      content_block: { type: 'text', text: '' },
-    }),
-    rawEvent({
+      content_block: { type: 'text', text: '', citations: null },
+    },
+    {
       type: 'content_block_delta',
       index: 0,
       delta: { type: 'text_delta', text: textValue },
-    }),
-    rawEvent({ type: 'content_block_stop', index: 0 }),
-    rawEvent({
+    },
+    { type: 'content_block_stop', index: 0 },
+    {
       type: 'message_delta',
-      delta: { stop_reason: 'end_turn', stop_sequence: null },
-      usage: { output_tokens: 4 },
-    }),
-    rawEvent({ type: 'message_stop' }),
+      delta: {
+        container: null,
+        stop_details: null,
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+      },
+      usage: {
+        cache_creation_input_tokens: null,
+        cache_read_input_tokens: null,
+        input_tokens: null,
+        output_tokens: 4,
+        output_tokens_details: null,
+        server_tool_use: null,
+      },
+    },
+    { type: 'message_stop' },
   ];
 }
 
@@ -432,7 +452,7 @@ test('cancellation after mapper content suppresses later lifecycle events', asyn
 
 test('aborts the raw provider stream after a protocol error', async () => {
   const provider = mockProvider([
-    rawEvent({
+    {
       type: 'message_start',
       message: {
         id: 'provider-message',
@@ -440,16 +460,28 @@ test('aborts the raw provider stream after a protocol error', async () => {
         role: 'assistant',
         content: [],
         model: 'claude-server-model',
+        container: null,
         stop_reason: null,
         stop_sequence: null,
-        usage: { input_tokens: 1, output_tokens: 0 },
+        stop_details: null,
+        usage: {
+          cache_creation: null,
+          cache_creation_input_tokens: null,
+          cache_read_input_tokens: null,
+          inference_geo: null,
+          input_tokens: 1,
+          output_tokens: 0,
+          output_tokens_details: null,
+          server_tool_use: null,
+          service_tier: null,
+        },
       },
-    }),
-    rawEvent({
+    },
+    {
       type: 'content_block_delta',
       index: 0,
       delta: { type: 'text_delta', text: 'invalid' },
-    }),
+    },
   ]);
 
   const events = await collectEvents(createOptions());

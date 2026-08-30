@@ -53,9 +53,21 @@ function messageStart(): RawEvent {
       role: 'assistant',
       content: [],
       model: 'claude-test',
+      container: null,
       stop_reason: null,
       stop_sequence: null,
-      usage: { input_tokens: 1, output_tokens: 0 },
+      stop_details: null,
+      usage: {
+        cache_creation: null,
+        cache_creation_input_tokens: null,
+        cache_read_input_tokens: null,
+        inference_geo: null,
+        input_tokens: 1,
+        output_tokens: 0,
+        output_tokens_details: null,
+        server_tool_use: null,
+        service_tier: null,
+      },
     },
   };
 }
@@ -63,8 +75,20 @@ function messageStart(): RawEvent {
 function messageDelta(): RawEvent {
   return {
     type: 'message_delta',
-    delta: { stop_reason: 'end_turn', stop_sequence: null },
-    usage: { output_tokens: 1 },
+    delta: {
+      container: null,
+      stop_details: null,
+      stop_reason: 'end_turn',
+      stop_sequence: null,
+    },
+    usage: {
+      cache_creation_input_tokens: null,
+      cache_read_input_tokens: null,
+      input_tokens: null,
+      output_tokens: 1,
+      output_tokens_details: null,
+      server_tool_use: null,
+    },
   };
 }
 
@@ -76,7 +100,7 @@ function textStart(index: number, text = ''): RawEvent {
   return {
     type: 'content_block_start',
     index,
-    content_block: { type: 'text', text },
+    content_block: { type: 'text', text, citations: null },
   };
 }
 
@@ -89,7 +113,13 @@ function toolStart(
   return {
     type: 'content_block_start',
     index,
-    content_block: { type: 'tool_use', id, name, input },
+    content_block: {
+      type: 'tool_use',
+      id,
+      name,
+      input,
+      caller: { type: 'direct' },
+    },
   };
 }
 

@@ -342,9 +342,11 @@ test('Anthropic maps complete AG-UI request history for aimock', async () => {
     ],
   });
   expect(capturedOptions).not.toHaveProperty('response_format');
-  expect(capturedOptions?.tools?.some((tool) => tool.name === 'output')).toBe(
-    false,
-  );
+  expect(
+    capturedOptions?.tools?.some(
+      (tool) => 'name' in tool && tool.name === 'output',
+    ),
+  ).toBe(false);
   expect(events.at(-1)?.type).toBe(EventType.RUN_FINISHED);
 });
 

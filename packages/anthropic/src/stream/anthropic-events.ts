@@ -29,6 +29,13 @@ function formatDiagnosticValue(value: unknown): string {
   }
 }
 
+function assertNever(value: never): never {
+  throw new Error(
+    'Anthropic stream received an unhandled event ' +
+      formatDiagnosticValue(value),
+  );
+}
+
 function isRawEventType(value: unknown): value is RawEvent['type'] {
   return (
     value === 'message_start' ||
@@ -483,6 +490,9 @@ export async function* mapAnthropicEvents(
             }
           }
           break;
+
+        default:
+          assertNever(event);
       }
     }
 
