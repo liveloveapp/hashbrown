@@ -4,6 +4,16 @@ import type { AnthropicHashbrownRunAgentInput } from './types';
 
 const DEFAULT_MAX_TOKENS = 4096;
 
+type AnthropicAssistantContentBlock =
+  | Anthropic.Messages.TextBlockParam
+  | Anthropic.Messages.ThinkingBlockParam
+  | Anthropic.Messages.RedactedThinkingBlockParam
+  | Anthropic.Messages.ToolUseBlockParam;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function parseToolArguments(argumentsValue: string): unknown {
   try {
     return JSON.parse(argumentsValue);
@@ -14,10 +24,13 @@ function parseToolArguments(argumentsValue: string): unknown {
 
 function mapAssistantMessage(
   message: Extract<Message, { role: 'assistant' }>,
+  reasoningBlocks: Array<
+    | Anthropic.Messages.ThinkingBlockParam
+    | Anthropic.Messages.RedactedThinkingBlockParam
+  > = [],
 ): Anthropic.Messages.MessageParam {
-  const content: Array<
-    Anthropic.Messages.TextBlockParam | Anthropic.Messages.ToolUseBlockParam
-  > = [
+  const content: AnthropicAssistantContentBlock[] = [
+    ...reasoningBlocks,
     ...(message.content
       ? [{ type: 'text' as const, text: message.content }]
       : []),
@@ -33,6 +46,92 @@ function mapAssistantMessage(
     role: 'assistant',
     content: content.length > 0 ? content : '',
   };
+}
+
+function mapReasoningMessage(
+  message: Extract<Message, { role: 'reasoning' }>,
+):
+  | Anthropic.Messages.ThinkingBlockParam
+  | Anthropic.Messages.RedactedThinkingBlockParam
+  | undefined {
+  const metadata = message.metadata;
+  if (
+    !isRecord(metadata) ||
+    !Object.prototype.hasOwnProperty.call(metadata, 'anthropic')
+  ) {
+    return undefined;
+  }
+
+  const marker = metadata['anthropic'];
+  const messageReference = `Anthropic reasoning message "${message.id}"`;
+  if (!isRecord(marker)) {
+    throw new Error(`${messageReference} metadata.anthropic must be an object`);
+  }
+
+  const blockType = marker['blockType'];
+  if (blockType !== 'thinking' && blockType !== 'redacted_thinking') {
+    throw new Error(
+      `${messageReference} metadata.anthropic.blockType must be "thinking" or "redacted_thinking"`,
+    );
+  }
+
+  if (typeof message.content !== 'string') {
+    throw new Error(`${messageReference} content must be a string`);
+  }
+
+  if (
+    typeof message.encryptedValue !== 'string' ||
+    message.encryptedValue.length === 0
+  ) {
+    throw new Error(
+      `${messageReference} encryptedValue must be a non-empty string`,
+    );
+  }
+
+  if (blockType === 'redacted_thinking') {
+    if (message.content !== '') {
+      throw new Error(
+        `${messageReference} redacted_thinking content must be empty`,
+      );
+    }
+
+    return { type: 'redacted_thinking', data: message.encryptedValue };
+  }
+
+  return {
+    type: 'thinking',
+    thinking: message.content,
+    signature: message.encryptedValue,
+  };
+}
+
+function mapPrecedingReasoning(
+  messages: Message[],
+  assistantIndex: number,
+): Array<
+  | Anthropic.Messages.ThinkingBlockParam
+  | Anthropic.Messages.RedactedThinkingBlockParam
+> {
+  let reasoningStart = assistantIndex;
+  while (
+    reasoningStart > 0 &&
+    messages[reasoningStart - 1]?.role === 'reasoning'
+  ) {
+    reasoningStart -= 1;
+  }
+
+  return messages
+    .slice(reasoningStart, assistantIndex)
+    .flatMap((message) =>
+      message.role === 'reasoning' ? [mapReasoningMessage(message)] : [],
+    )
+    .filter(
+      (
+        block,
+      ): block is
+        | Anthropic.Messages.ThinkingBlockParam
+        | Anthropic.Messages.RedactedThinkingBlockParam => block !== undefined,
+    );
 }
 
 function mapMessage(
@@ -133,8 +232,14 @@ export function createAnthropicRequestOptions(
       ? [message.content]
       : [],
   );
-  const messages = input.messages.flatMap((message) => {
-    const mapped = mapMessage(message);
+  const messages = input.messages.flatMap((message, index) => {
+    const mapped =
+      message.role === 'assistant'
+        ? mapAssistantMessage(
+            message,
+            mapPrecedingReasoning(input.messages, index),
+          )
+        : mapMessage(message);
     return mapped ? [mapped] : [];
   });
   const tools = input.tools.map(mapTool);
