@@ -110,12 +110,12 @@ export interface UseCompletionResult {
   isRunningToolCalls: boolean;
 
   /**
-   * Transport/request failure before generation frames arrive.
+   * Transport/request failure before generation events arrive.
    */
   sendingError: Error | undefined;
 
   /**
-   * Error emitted during generation frames.
+   * Error emitted during generation events.
    */
   generatingError: Error | undefined;
 

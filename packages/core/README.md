@@ -47,7 +47,7 @@ Configure the provider:
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHashbrown({
-      baseUrl: '/api/chat',
+      baseUrl: '/run',
     }),
   ],
 };

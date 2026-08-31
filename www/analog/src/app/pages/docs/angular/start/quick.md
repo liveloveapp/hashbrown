@@ -31,7 +31,7 @@ npm install @hashbrownai/{core,angular,openai} --save
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHashbrown({
-      baseUrl: '/api/chat',
+      baseUrl: '/run',
     }),
   ],
 };

@@ -536,7 +536,7 @@ exactly what arguments and props it needs, resulting in less guesswork and more 
 
 ## 7. Run and Interact
 
-Wrap your app with `<HashbrownProvider url="/api/chat">` as per quick start, and try chatting:
+Wrap your app with `<HashbrownProvider url="/run">` as per quick start, and try chatting:
 
 <hb-code-example header="main.tsx">
 
@@ -547,7 +547,7 @@ import { SmartHomeProvider } from './smart-home';
 import { Chatbot } from './Chatbot';
 
 export const App = () => (
-  <HashbrownProvider url="/api/chat">
+  <HashbrownProvider url="/run">
     <SmartHomeProvider>
       <Chatbot />
     </SmartHomeProvider>

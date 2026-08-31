@@ -1,345 +1,198 @@
 ---
-title: 'Custom Adapter (Angular): Hashbrown Angular Docs'
+title: 'Custom Provider: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.'
+    content: 'Map a provider SDK stream to canonical AG-UI events for Hashbrown.'
 ---
-# Custom Adapter (Angular)
 
-Hashbrown uses the adapter pattern to support multiple AI providers. While we provide official adapters for popular platforms, you can create custom adapters for any LLM provider that supports streaming chat completions.
+# Custom Provider
 
-## Overview
+Hashbrown's HTTP transport speaks AG-UI. A custom provider integration accepts an AG-UI `RunAgentInput`, calls the provider's native SDK, and yields canonical `AGUIEvent` values. The HTTP route then encodes those events as AG-UI SSE.
 
-A Hashbrown adapter is a package that implements the streaming interface for a specific AI provider. The adapter:
+Use this approach when a vendor does not have an official Hashbrown package. If an official package exists, prefer it because it already covers provider-specific message, tool, reasoning, structured-output, cancellation, and error behavior.
 
-1. Accepts a standardized request format (`Chat.Api.CompletionCreateParams`)
-2. Streams responses as encoded frames (`Uint8Array`)
-3. Handles tool calling, structured outputs, and error conditions
-4. Uses the provider's native SDK or API
+## Provider Boundary
 
-## Core Interfaces
+A provider integration is responsible for:
 
-### Request Format
+1. Accepting `RunAgentInput` from `@ag-ui/core`
+2. Selecting the model and credentials on the server
+3. Mapping AG-UI messages, tools, and Hashbrown extensions to the provider SDK
+4. Mapping the provider stream to an `AsyncIterable<AGUIEvent>`
+5. Preserving AG-UI run, text, tool-call, reasoning, and error lifecycle ordering
+6. Stopping provider work when the supplied `AbortSignal` is aborted
+
+Consume AG-UI types directly in the provider package. Do not duplicate or re-export them from your adapter.
+
+## Input
+
+Hashbrown sends a standard AG-UI run input and may add a `hashbrown` object for framework-specific generation modes.
 
 ```ts
-interface CompletionCreateParams {
-  model: KnownModelIds;
-  system: string;
-  messages: Message[];
-  responseFormat?: object;
-  toolChoice?: 'auto' | 'none' | 'required';
-  tools?: Tool[];
+import type { RunAgentInput } from '@ag-ui/core';
+
+export interface CustomHashbrownRunAgentInput extends RunAgentInput {
+  hashbrown?: {
+    responseSchema?: object;
+    ui?: boolean;
+  };
+}
+
+export interface CustomTextStreamOptions {
+  apiKey: string;
+  model: string;
+  input: CustomHashbrownRunAgentInput;
+  signal?: AbortSignal;
+  transformRequestOptions?: (
+    options: ProviderRequest,
+  ) => ProviderRequest | Promise<ProviderRequest>;
 }
 ```
 
-### Response Format
+The client does not choose a provider model. Bind a model to the endpoint, choose one from authenticated server-side policy, or expose separate endpoints for separate model classes.
 
-Adapters return an async generator that yields encoded frames:
+## Map the Provider Stream
 
-```ts
-export async function* text(options: CustomAdapterOptions): AsyncIterable<Uint8Array>
-```
-
-## Implementation Guide
-
-### 1. Create Package Structure
-
-```sh
-mkdir packages/custom-adapter
-cd packages/custom-adapter
-npm init -y
-```
-
-### 2. Define Package Dependencies
-
-```json
-{
-  "name": "@your-org/custom-adapter",
-  "version": "1.0.0",
-  "dependencies": {
-    "@hashbrownai/core": "^0.3.0",
-    "your-provider-sdk": "^1.0.0"
-  }
-}
-```
-
-### 3. Implement the Adapter
+The exact SDK types differ by vendor, but the event lifecycle remains the same. This focused text example shows the required run and message events.
 
 ```ts
-// src/stream/text.fn.ts
-import { Chat, encodeFrame, Frame } from '@hashbrownai/core';
+import {
+  type AGUIEvent,
+  EventType,
+  type Message,
+} from '@ag-ui/core';
 import { YourProviderSDK } from 'your-provider-sdk';
 
-export interface CustomAdapterOptions {
-  apiKey: string;
-  baseURL?: string;
-  request: Chat.Api.CompletionCreateParams;
-  transformRequestOptions?: (options: any) => any | Promise<any>;
+function normalizeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-export async function* text(options: CustomAdapterOptions): AsyncIterable<Uint8Array> {
-  const { apiKey, baseURL, request, transformRequestOptions } = options;
-  const { messages, model, tools, responseFormat, toolChoice, system } = request;
+function mapMessages(messages: Message[]): ProviderMessage[] {
+  // Map every role and content shape supported by your provider.
+  return messages.map((message) => mapMessage(message));
+}
 
-  const client = new YourProviderSDK({ apiKey, baseURL });
+export async function* text(
+  options: CustomTextStreamOptions,
+): AsyncIterable<AGUIEvent> {
+  const { apiKey, model, input, signal, transformRequestOptions } = options;
+  const { threadId, runId } = input;
+  const messageId = `${runId}:assistant`;
+  const client = new YourProviderSDK({ apiKey });
+  let textStarted = false;
+
+  yield { type: EventType.RUN_STARTED, threadId, runId };
 
   try {
-    // Transform messages to provider format
-    const providerMessages = transformMessages(messages, system);
-
-    // Transform tools to provider format
-    const providerTools = tools ? transformTools(tools) : undefined;
-
-    // Prepare request options
-    const baseOptions = {
-      model: model as string,
-      messages: providerMessages,
-      tools: providerTools,
-      toolChoice,
-      responseFormat,
+    const baseRequest: ProviderRequest = {
+      model,
+      messages: mapMessages(input.messages),
+      tools: mapTools(input.tools),
+      responseSchema: input.hashbrown?.responseSchema,
       stream: true,
     };
+    const request = transformRequestOptions
+      ? await transformRequestOptions(baseRequest)
+      : baseRequest;
+    const stream = client.stream(request, { signal });
 
-    // Apply transformations if provided
-    const resolvedOptions = transformRequestOptions
-      ? await transformRequestOptions(baseOptions)
-      : baseOptions;
-
-    // Create streaming request
-    const stream = client.chat.completions.create(resolvedOptions);
-
-    // Process streaming response
     for await (const chunk of stream) {
-      const chunkMessage: Chat.Api.CompletionChunk = {
-        choices: chunk.choices.map(choice => ({
-          index: choice.index,
-          delta: {
-            content: choice.delta.content,
-            role: choice.delta.role,
-            toolCalls: choice.delta.tool_calls,
-          },
-          finishReason: choice.finish_reason,
-        })),
-      };
+      if (signal?.aborted) return;
 
-      const frame: Frame = {
-        type: 'chunk',
-        chunk: chunkMessage,
-      };
+      const delta = readTextDelta(chunk);
+      if (!delta) continue;
 
-      yield encodeFrame(frame);
+      if (!textStarted) {
+        textStarted = true;
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId,
+          role: 'assistant',
+        };
+      }
+
+      yield {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId,
+        delta,
+      };
     }
+
+    if (signal?.aborted) return;
+    if (textStarted) {
+      yield { type: EventType.TEXT_MESSAGE_END, messageId };
+    }
+    yield { type: EventType.RUN_FINISHED, threadId, runId };
   } catch (error: unknown) {
-    const frame: Frame = {
-      type: 'error',
-      error: error instanceof Error ? error.toString() : String(error),
-      stacktrace: error instanceof Error ? error.stack : undefined,
-    };
-
-    yield encodeFrame(frame);
-  } finally {
-    const frame: Frame = {
-      type: 'finish',
-    };
-
-    yield encodeFrame(frame);
+    if (!signal?.aborted) {
+      yield { type: EventType.RUN_ERROR, message: normalizeError(error) };
+    }
   }
 }
-
-// Helper functions
-function transformMessages(messages: Chat.Api.Message[], system: string): any[] {
-  const systemMessage = system ? [{ role: 'system', content: system }] : [];
-
-  return [
-    ...systemMessage,
-    ...messages.map(message => {
-      switch (message.role) {
-        case 'user':
-          return { role: message.role, content: message.content };
-        case 'assistant':
-          return {
-            role: message.role,
-            content: message.content,
-            tool_calls: message.toolCalls,
-          };
-        case 'tool':
-          return {
-            role: message.role,
-            content: JSON.stringify(message.content),
-            tool_call_id: message.toolCallId,
-          };
-        default:
-          throw new Error(`Unsupported message role: ${message.role}`);
-      }
-    }),
-  ];
-}
-
-function transformTools(tools: Chat.Api.Tool[]): any[] {
-  return tools.map(tool => ({
-    type: 'function',
-    function: {
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters,
-    },
-  }));
-}
 ```
 
-### 4. Export the Adapter
+For tool calls, emit `TOOL_CALL_START` once the call ID and name are known, stream argument fragments with `TOOL_CALL_ARGS`, and finish with `TOOL_CALL_END`. Preserve the provider's call ID so later tool-result messages correlate correctly. Map provider reasoning to AG-UI reasoning events and use `RAW` for useful provider details that have no canonical event.
+
+If the provider supports native structured output, map `input.hashbrown?.responseSchema` to that capability. Hashbrown continues to incrementally parse the resulting assistant text; the provider integration should not add a second parser or validate the full output itself.
+
+## Expose POST `/run`
+
+SSE encoding belongs at the HTTP boundary, not in the provider mapper.
 
 ```ts
-// src/index.ts
-import { text } from './stream/text.fn';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import express from 'express';
+import { text } from './text';
 
-export const CustomAdapter = {
-  stream: {
-    text,
-  },
-};
-```
+const app = express();
+app.use(express.json());
 
-### 5. Add TypeScript Configuration
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
+  const events = text({
+    apiKey: process.env.PROVIDER_API_KEY!,
+    model: process.env.PROVIDER_MODEL!,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
 
-```json
-// tsconfig.json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "declaration": true,
-    "outDir": "./dist"
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
-}
-```
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-## Usage with Angular
+  for await (const event of events) {
+    res.write(encoder.encodeSSE(event));
+  }
 
-### Backend Integration
-
-```ts
-// server/chat.controller.ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
-import { Response } from 'express';
-import { CustomAdapter } from '@your-org/custom-adapter';
-
-@Controller('chat')
-export class ChatController {
-  @Post()
-  async chat(@Body() request: any, @Res() res: Response) {
-    const stream = CustomAdapter.stream.text({
-      apiKey: process.env.CUSTOM_API_KEY!,
-      request, // Chat.Api.CompletionCreateParams
-    });
-
-    res.header('Content-Type', 'application/octet-stream');
-
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-
+  if (!res.writableEnded) {
     res.end();
   }
-}
+});
 ```
 
-### Frontend Integration
+Point Angular at the endpoint:
 
 ```ts
-// app.config.ts
 import { provideHashbrown } from '@hashbrownai/angular';
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideHashbrown({
-      baseUrl: '/api/chat',
-    }),
-  ],
+  providers: [provideHashbrown({ baseUrl: '/run' })],
 };
 ```
 
-## Key Considerations
+## Test the Contract
 
-### Message Transformation
+Test event sequences rather than encoded bytes:
 
-- Convert Hashbrown's message format to your provider's format
-- Handle all message roles: `user`, `assistant`, `tool`
-- Include system messages appropriately
-- Serialize tool call arguments as JSON strings
+- Parse every yielded value with `EventSchemas.parse(...)` from `@ag-ui/core`.
+- Cover text, tool calls with fragmented arguments, reasoning, structured output, and provider errors.
+- Assert one `RUN_STARTED` and one terminal event for completed runs.
+- Assert cancellation stops the provider stream without emitting a synthetic error.
+- Run an HTTP smoke test that decodes the SSE response with an AG-UI client.
 
-### Tool Calling
-
-- Transform Hashbrown tool definitions to provider format
-- Handle tool choice options (`auto`, `none`, `required`)
-- Process tool call deltas in streaming responses
-- Maintain tool call IDs for proper correlation
-
-### Error Handling
-
-- Catch and wrap provider errors
-- Yield error frames with descriptive messages
-- Include stack traces when available
-- Always yield a finish frame
-
-### Streaming
-
-- Process chunks as they arrive
-- Encode each chunk as a frame using `encodeFrame()`
-- Handle partial responses and deltas
-- Maintain proper finish reason handling
-
-## Advanced Features
-
-### Transform Request Options
-
-Allow users to modify requests before sending:
-
-```ts
-export interface CustomAdapterOptions {
-  transformRequestOptions?: (options: ProviderRequest) => ProviderRequest | Promise<ProviderRequest>;
-}
-```
-
-### Custom Configuration
-
-Add provider-specific options:
-
-```ts
-export interface CustomAdapterOptions {
-  apiKey: string;
-  baseURL?: string;
-  temperature?: number;
-  maxTokens?: number;
-  // ... other provider-specific options
-}
-```
-
-## Testing Your Adapter
-
-Create comprehensive tests for your adapter:
-
-```ts
-// Test basic streaming
-// Test tool calling
-// Test error handling
-// Test message transformation
-// Test request transformation
-```
-
-## Publishing
-
-1. Build your package: `npm run build`
-2. Publish to npm: `npm publish`
-3. Users can install: `npm install @your-org/custom-adapter`
-
-## Need Help?
-
-If you encounter issues implementing a custom adapter:
-
-- Check the [OpenAI adapter](https://github.com/liveloveapp/hashbrown/tree/main/packages/openai) as a reference
-- Review the [core types](https://github.com/liveloveapp/hashbrown/tree/main/packages/core/src/models)
-- Open an issue on [GitHub](https://github.com/liveloveapp/hashbrown/issues) for guidance
-
-Custom adapters enable Hashbrown to work with any AI provider, making it a truly extensible framework for AI-powered applications.
+Use the [OpenAI provider](https://github.com/liveloveapp/hashbrown/tree/main/packages/openai) as a compact reference and compare other official providers for vendor-specific reasoning and tool-call behavior.
