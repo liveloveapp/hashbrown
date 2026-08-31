@@ -19,22 +19,37 @@
 npm install @hashbrownai/google --save
 ```
 
-Deploy an express server with a single /chat endpoint to use Hashbrown with Google Gemini.
+Deploy an Express server with a `/run` endpoint to use Hashbrown with Google Gemini.
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownGoogle } from '@hashbrownai/google';
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownGoogle.stream.text({
     apiKey: process.env.GOOGLE_API_KEY!,
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
-  for await (const chunk of stream) {
-    res.write(chunk);
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
-  res.end();
+
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 ```
 

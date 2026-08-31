@@ -1,10 +1,11 @@
 import { resolve } from 'node:path';
-import type { Chat, Frame, GenerationChunkFrame } from '@hashbrownai/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
   type AimockHandle,
-  runProviderTextWithAimock,
+  runProviderAGUIWithAimock,
 } from '@hashbrownai/testing/aimock';
 import { HashbrownGoogle } from './index';
+import type { GoogleHashbrownRunAgentInput } from './stream/types';
 
 const GOOGLE_MODEL = 'gemini-2.5-flash';
 const GOOGLE_BASE_URL_ENV = 'HASHBROWN_GOOGLE_API_BASE_URL';
@@ -13,44 +14,44 @@ function fixturePath(name: string): string {
   return resolve(__dirname, '../../../tools/testing/aimock/fixtures', name);
 }
 
-function generationChunks(frames: Frame[]): GenerationChunkFrame[] {
-  return frames.filter(
-    (frame): frame is GenerationChunkFrame => frame.type === 'generation-chunk',
-  );
-}
-
-function streamedContent(frames: Frame[]): string {
-  return generationChunks(frames)
-    .map((frame) => frame.chunk.choices[0]?.delta.content ?? '')
-    .join('');
-}
-
-function baseRequest(userMessage: string): Chat.Api.CompletionCreateParams {
+function baseInput(userMessage: string): GoogleHashbrownRunAgentInput {
   return {
-    operation: 'generate',
-    model: GOOGLE_MODEL,
-    system: 'You are a deterministic test assistant.',
-    messages: [{ role: 'user', content: userMessage }],
+    threadId: 'thread-google',
+    runId: 'run-google',
+    messages: [
+      {
+        id: 'system-google',
+        role: 'system',
+        content: 'You are a deterministic test assistant.',
+      },
+      {
+        id: 'user-google',
+        role: 'user',
+        content: userMessage,
+      },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
   };
-}
-
-async function consumeProviderStream(
-  stream: AsyncIterable<Uint8Array>,
-): Promise<void> {
-  for await (const chunk of stream) {
-    void chunk;
-  }
 }
 
 async function* googleTextWithAimock(
   aimock: AimockHandle,
-  createStream: () => AsyncIterable<Uint8Array>,
-): AsyncIterable<Uint8Array> {
+  signal: AbortSignal,
+  input: GoogleHashbrownRunAgentInput,
+): AsyncIterable<AGUIEvent> {
   const previousBaseUrl = process.env[GOOGLE_BASE_URL_ENV];
   process.env[GOOGLE_BASE_URL_ENV] = aimock.url;
 
   try {
-    yield* createStream();
+    yield* HashbrownGoogle.stream.text({
+      apiKey: 'test-not-used',
+      model: GOOGLE_MODEL,
+      input,
+      signal,
+    });
   } finally {
     if (previousBaseUrl === undefined) {
       delete process.env[GOOGLE_BASE_URL_ENV];
@@ -60,195 +61,239 @@ async function* googleTextWithAimock(
   }
 }
 
-test('Google JSON response format mode requests JSON without a schema', async () => {
-  let capturedConfig: unknown;
+async function runFixture(
+  fixtureName: string,
+  input: GoogleHashbrownRunAgentInput,
+): Promise<AGUIEvent[]> {
+  return runProviderAGUIWithAimock({
+    fixturePath: fixturePath(fixtureName),
+    createStream: (aimock, signal) =>
+      googleTextWithAimock(aimock, signal, input),
+  });
+}
 
-  await consumeProviderStream(
-    HashbrownGoogle.stream.text({
-      apiKey: 'test-api-key',
-      request: {
-        ...baseRequest('Hello'),
-        system: 'Respond with JSON.',
-        responseFormatMode: 'json',
-      },
-      transformRequestOptions: (options) => {
-        capturedConfig = options.config;
-        throw new Error('stop');
-      },
-    }),
+function contentEvents(events: AGUIEvent[]) {
+  return events.filter(
+    (event) => event.type === EventType.TEXT_MESSAGE_CONTENT,
   );
+}
 
-  expect(capturedConfig).toEqual(
-    expect.objectContaining({
-      responseMimeType: 'application/json',
-      responseJsonSchema: undefined,
-    }),
-  );
+function streamedContent(events: AGUIEvent[]): string {
+  return contentEvents(events)
+    .map((event) => event.delta)
+    .join('');
+}
+
+test('Google consumes AG-UI input and emits a canonical text run', async () => {
+  const events = await runFixture('text.json', baseInput('say hi briefly'));
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-google',
+      runId: 'run-google',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'run-google:assistant',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'run-google:assistant',
+      delta: 'Hello from aimock.',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'run-google:assistant',
+    },
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-google',
+      runId: 'run-google',
+    },
+  ]);
 });
 
-test('Google text streaming emits Hashbrown generation frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
-      googleTextWithAimock(aimock, () =>
-        HashbrownGoogle.stream.text({
-          apiKey: 'test-not-used',
-          request: baseRequest('say hi briefly'),
-        }),
-      ),
-  });
+test('Google preserves streamed text across multiple AG-UI events', async () => {
+  const events = await runFixture(
+    'streaming.json',
+    baseInput('stream deterministic text'),
+  );
 
-  expect(frames[0].type).toBe('generation-start');
-  expect(frames.at(-1)?.type).toBe('generation-finish');
-  expect(streamedContent(frames)).toBe('Hello from aimock.');
-});
-
-test('Google streaming preserves chunked content across multiple frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('streaming.json'),
-    createStream: (aimock) =>
-      googleTextWithAimock(aimock, () =>
-        HashbrownGoogle.stream.text({
-          apiKey: 'test-not-used',
-          request: baseRequest('stream deterministic text'),
-        }),
-      ),
-  });
-
-  expect(generationChunks(frames).length).toBeGreaterThan(1);
-  expect(streamedContent(frames)).toContain(
+  expect(contentEvents(events).length).toBeGreaterThan(1);
+  expect(streamedContent(events)).toContain(
     'Streaming fixture response with enough text',
   );
 });
 
-test('Google tool calling emits tool call deltas', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('tool-call.json'),
-    createStream: (aimock) =>
-      googleTextWithAimock(aimock, () =>
-        HashbrownGoogle.stream.text({
-          apiKey: 'test-not-used',
-          request: {
-            ...baseRequest('call the lookup tool'),
-            tools: [
-              {
-                name: 'lookup',
-                description: 'Lookup deterministic fixture data.',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    query: { type: 'string' },
-                  },
-                  required: ['query'],
-                },
-              },
-            ],
-            toolChoice: 'required',
-          },
-        }),
-      ),
-  });
+test('Google emits complete AG-UI tool call lifecycles', async () => {
+  const input = baseInput('call the lookup tool');
+  input.tools = [
+    {
+      name: 'lookup',
+      description: 'Lookup deterministic fixture data.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+        },
+        required: ['query'],
+      },
+    },
+  ];
 
-  const toolCallDeltas = generationChunks(frames).flatMap(
-    (frame) => frame.chunk.choices[0]?.delta.toolCalls ?? [],
+  const events = await runFixture('tool-call.json', input);
+  const start = events.find(
+    (event) => event.type === EventType.TOOL_CALL_START,
   );
+  const args = events
+    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
+    .map((event) => event.delta)
+    .join('');
+  const end = events.find((event) => event.type === EventType.TOOL_CALL_END);
 
-  expect(toolCallDeltas.some((toolCall) => toolCall.id)).toBe(true);
-  expect(
-    toolCallDeltas.some((toolCall) => toolCall.function?.name === 'lookup'),
-  ).toBe(true);
-  expect(
-    toolCallDeltas
-      .map((toolCall) => toolCall.function?.arguments ?? '')
-      .join(''),
-  ).toContain('"query":"hashbrown"');
+  expect(start).toMatchObject({
+    type: EventType.TOOL_CALL_START,
+    toolCallName: 'lookup',
+    parentMessageId: 'run-google:assistant',
+  });
+  expect(args).toContain('"query":"hashbrown"');
+  expect(end).toMatchObject({
+    type: EventType.TOOL_CALL_END,
+    toolCallId:
+      start?.type === EventType.TOOL_CALL_START
+        ? start.toolCallId
+        : 'missing-tool-call',
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: input.threadId,
+    runId: input.runId,
+  });
 });
 
-test('Google structured output emits JSON text content', async () => {
-  const frames = await runProviderTextWithAimock({
+test('Google maps Gemini thought parts to AG-UI reasoning records', async () => {
+  const input = baseInput('reason before calling lookup');
+  input.tools = [
+    {
+      name: 'lookup',
+      description: 'Lookup deterministic fixture data.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+        },
+        required: ['query'],
+      },
+    },
+  ];
+
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('google/reasoning-tool-call.json'),
+    chunkSize: 8,
+    createStream: (aimock, signal) =>
+      googleTextWithAimock(aimock, signal, input),
+  });
+  const reasoningEvents = events.filter((event) =>
+    [
+      EventType.REASONING_MESSAGE_START,
+      EventType.REASONING_MESSAGE_CONTENT,
+      EventType.REASONING_MESSAGE_END,
+    ].includes(event.type),
+  );
+
+  expect(reasoningEvents[0]).toMatchObject({
+    type: EventType.REASONING_MESSAGE_START,
+    role: 'reasoning',
+    metadata: { google: { thought: true } },
+  });
+  expect(
+    reasoningEvents
+      .filter((event) => event.type === EventType.REASONING_MESSAGE_CONTENT)
+      .map((event) => event.delta)
+      .join(''),
+  ).toBe('I need the lookup result.');
+  expect(reasoningEvents.at(-1)).toMatchObject({
+    type: EventType.REASONING_MESSAGE_END,
+  });
+  expect(events).toContainEqual(
+    expect.objectContaining({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call_google_reasoning_fixture',
+      toolCallName: 'lookup',
+    }),
+  );
+});
+
+test('Google maps the Hashbrown response schema to native structured output', async () => {
+  const input = baseInput('return structured output');
+  input.hashbrown = {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        ok: { type: 'boolean' },
+      },
+      required: ['text', 'ok'],
+    },
+  };
+  let capturedConfig: unknown;
+  const events = await runProviderAGUIWithAimock({
     fixturePath: fixturePath('structured-output.json'),
-    createStream: (aimock) =>
-      googleTextWithAimock(aimock, () =>
-        HashbrownGoogle.stream.text({
-          apiKey: 'test-not-used',
-          request: {
-            ...baseRequest('return structured output'),
-            responseFormat: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' },
-                ok: { type: 'boolean' },
-              },
-              required: ['text', 'ok'],
+    createStream: (aimock, signal) => {
+      const previousBaseUrl = process.env[GOOGLE_BASE_URL_ENV];
+      process.env[GOOGLE_BASE_URL_ENV] = aimock.url;
+
+      return (async function* () {
+        try {
+          yield* HashbrownGoogle.stream.text({
+            apiKey: 'test-not-used',
+            model: GOOGLE_MODEL,
+            input,
+            signal,
+            transformRequestOptions: (options) => {
+              capturedConfig = options.config;
+              return options;
             },
-          },
-        }),
-      ),
+          });
+        } finally {
+          if (previousBaseUrl === undefined) {
+            delete process.env[GOOGLE_BASE_URL_ENV];
+          } else {
+            process.env[GOOGLE_BASE_URL_ENV] = previousBaseUrl;
+          }
+        }
+      })();
+    },
   });
 
-  expect(JSON.parse(streamedContent(frames))).toEqual({
+  expect(capturedConfig).toEqual(
+    expect.objectContaining({
+      responseMimeType: 'application/json',
+      responseJsonSchema: input.hashbrown.responseSchema,
+    }),
+  );
+  expect(JSON.parse(streamedContent(events))).toEqual({
     text: 'Hello from structured aimock.',
     ok: true,
   });
 });
 
-test('Google provider errors emit generation-error frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('error.json'),
-    createStream: (aimock) =>
-      googleTextWithAimock(aimock, () =>
-        HashbrownGoogle.stream.text({
-          apiKey: 'test-not-used',
-          request: baseRequest('return provider error'),
-        }),
-      ),
-  });
+test('Google provider errors emit a canonical run error', async () => {
+  const input = baseInput('return provider error');
 
-  expect(frames).toEqual([
+  const events = await runFixture('error.json', input);
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: input.threadId,
+      runId: input.runId,
+    },
     expect.objectContaining({
-      type: 'generation-error',
-      error: expect.stringContaining('Deterministic provider error'),
+      type: EventType.RUN_ERROR,
+      message: expect.stringContaining('Deterministic provider error'),
     }),
   ]);
-});
-
-test('Google thread persistence wraps generation with thread frames', async () => {
-  const savedThreads: Chat.Api.Message[][] = [];
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
-      googleTextWithAimock(aimock, () =>
-        HashbrownGoogle.stream.text({
-          apiKey: 'test-not-used',
-          request: {
-            ...baseRequest('say hi briefly'),
-            threadId: 'google-thread',
-          },
-          loadThread: async () => [
-            {
-              role: 'user',
-              content: 'previous message',
-            },
-          ],
-          saveThread: async (thread) => {
-            savedThreads.push(thread);
-            return 'google-thread';
-          },
-        }),
-      ),
-  });
-
-  expect(frames.map((frame) => frame.type)).toEqual([
-    'thread-load-start',
-    'thread-load-success',
-    'generation-start',
-    ...generationChunks(frames).map((frame) => frame.type),
-    'generation-finish',
-    'thread-save-start',
-    'thread-save-success',
-  ]);
-  expect(savedThreads).toHaveLength(1);
-  expect(savedThreads[0].map((message) => message.content)).toContain(
-    'Hello from aimock.',
-  );
 });
