@@ -182,9 +182,7 @@ async function main() {
 
   // Pre-load relevant API reports (core + both frameworks)
   const apiReports = await Promise.all(
-    ['core', FROM, TO, 'azure', 'google', 'openai', 'writer'].map(
-      loadApiReport,
-    ),
+    ['core', FROM, TO, 'azure', 'google', 'openai'].map(loadApiReport),
   );
 
   for (const file of mdFiles.filter((p) => p.endsWith('.md'))) {

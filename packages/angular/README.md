@@ -41,7 +41,6 @@ Hashbrown supports multiple providers:
 - [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
 - [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
 - [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
-- [Writer](https://hashbrown.dev/docs/angular/platform/writer)
 - [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
 
 ## Magic Text Renderer

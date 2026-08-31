@@ -344,9 +344,7 @@ async function main() {
   // Pre-load relevant API reports (core + framework + common providers)
   console.log(chalk.gray(' - Loading API reports... '));
   const apiReports = await Promise.all(
-    ['core', FRAMEWORK, 'azure', 'google', 'openai', 'writer'].map(
-      loadApiReport,
-    ),
+    ['core', FRAMEWORK, 'azure', 'google', 'openai'].map(loadApiReport),
   );
   if (apiReports.length === 0) {
     console.log(chalk.red('Error: No API reports found'));

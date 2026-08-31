@@ -16,7 +16,6 @@ Hashbrown publishes these packages together at one version:
 - `@hashbrownai/ollama`
 - `@hashbrownai/openai`
 - `@hashbrownai/react`
-- `@hashbrownai/writer`
 
 Each package must have an npm trusted publisher entry with:
 
@@ -41,8 +40,8 @@ node scripts/verify-release-versions.mjs --tag vX.Y.Z
 actionlint .github/workflows/*.yml
 npx nx test cloudflare-deployment
 npx nx lint cloudflare-deployment
-npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer --parallel=3
-npx nx run-many -t test -p angular anthropic azure bedrock core google ollama openai writer --parallel=3
+npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react --parallel=3
+npx nx run-many -t test -p angular anthropic azure bedrock core google ollama openai --parallel=3
 npx nx run-many -t lint -p angular anthropic azure bedrock core google ollama openai --parallel=3
 npx nx release publish --dry-run
 ```

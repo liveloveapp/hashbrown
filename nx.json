@@ -70,11 +70,10 @@
       "packages/google",
       "packages/ollama",
       "packages/openai",
-      "packages/react",
-      "packages/writer"
+      "packages/react"
     ],
     "version": {
-      "preVersionCommand": "npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer"
+      "preVersionCommand": "npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react"
     }
   },
   "sync": {

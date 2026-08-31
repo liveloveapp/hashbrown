@@ -4,14 +4,15 @@ meta:
   - name: description
     content: 'Intercept and modify requests before they are sent to LLM providers.'
 ---
+
 # Transform Request Options
 
 <p class="subtitle">Intercept and modify requests before they are sent to LLM providers.</p>
 
-The `transformRequestOptions` method enables developers to intercept requests in the adapter to mutate the request before it is sent to the LLM provider. 
+The `transformRequestOptions` method enables developers to intercept requests in the adapter to mutate the request before it is sent to the LLM provider.
 
 - Server-side prompts: Inject additional context or instructions that shouldn't be exposed to the client
-- Message mutations: Modify, filter, or enhance messages based on business logic  
+- Message mutations: Modify, filter, or enhance messages based on business logic
 - Request summarization: Compress or summarize lengthy conversation history
 - Evaluation and logging: Log requests for debugging, monitoring, or evaluation purposes
 - Dynamic configuration: Adjust model parameters based on runtime conditions
@@ -69,7 +70,7 @@ const stream = HashbrownOpenAI.stream.text({
   request: req.body,
   transformRequestOptions: (options) => {
     const userContext = getUserContext(req.user.id);
-    
+
     return {
       ...options,
       messages: [
@@ -107,7 +108,7 @@ const stream = HashbrownOpenAI.stream.text({
   transformRequestOptions: (options) => {
     return {
       ...options,
-      messages: options.messages.map(message => {
+      messages: options.messages.map((message) => {
         if (message.role === 'user') {
           // Filter out sensitive information
           const filteredContent = filterSensitiveData(message.content);
@@ -136,7 +137,7 @@ const stream = HashbrownOpenAI.stream.text({
   request: req.body,
   transformRequestOptions: (options) => {
     const userPlan = getUserPlan(req.user.id);
-    
+
     return {
       ...options,
       temperature: userPlan === 'creative' ? 0.8 : 0.2,
@@ -163,7 +164,7 @@ const stream = HashbrownOpenAI.stream.text({
   request: req.body,
   transformRequestOptions: async (options) => {
     const userPreferences = await fetchUserPreferences(req.user.id);
-    
+
     return {
       ...options,
       messages: [
@@ -185,15 +186,15 @@ const stream = HashbrownOpenAI.stream.text({
 ## Platform-Specific Considerations
 
 ### OpenAI
+
 Supports all OpenAI chat completion parameters. Can modify `tools`, `tool_choice`, `response_format`, and more.
 
 ### Google (Gemini)
+
 Uses `GenerateContentParameters` format with different message structure. System instructions are provided via `systemInstruction` parameter.
 
-### Writer
-Uses Writer-specific parameter format with similar capabilities to OpenAI.
-
 ### Azure OpenAI
+
 Same parameters as OpenAI but ensure compatibility with your Azure deployment configuration.
 
 ---

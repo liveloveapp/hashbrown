@@ -43,7 +43,6 @@ export type {
   GoogleKnownModelIds,
   KnownModelIds,
   OpenAiKnownModelIds,
-  WriterKnownModelIds,
 } from './utils/llm';
 export type { ModelInput } from './transport/model-spec';
 export type { StateSignal } from './utils/micro-ngrx';

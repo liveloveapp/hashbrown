@@ -328,6 +328,27 @@ test('production build creates a deployable Cloudflare Pages artifact', async ()
   );
 });
 
+test('production build excludes removed Writer provider artifacts', async () => {
+  const files = await listJavaScriptFiles(deploymentDirectory);
+  const writerFiles = files.filter((file) =>
+    /(?:^|\/)writer-[^/]+\.js$/.test(file.pathname),
+  );
+  const writerReferences = [];
+
+  for (const file of files) {
+    const source = await readFile(file, 'utf8');
+
+    if (
+      /@hashbrownai\/writer|WriterKnownModelIds|Writer adapter/.test(source)
+    ) {
+      writerReferences.push(file.href.slice(deploymentDirectory.href.length));
+    }
+  }
+
+  assert.deepEqual(writerFiles, []);
+  assert.deepEqual(writerReferences, []);
+});
+
 test('production HTML references a built favicon', async () => {
   const html = await readFile(
     new URL('index.html', deploymentDirectory),

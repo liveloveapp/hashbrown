@@ -119,7 +119,6 @@ async function main() {
       loadApiReport('google'),
       loadApiReport('openai'),
       loadApiReport('react'),
-      loadApiReport('writer'),
     ]);
 
     function loadApiReport(packageName: string) {

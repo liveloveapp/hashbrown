@@ -33,4 +33,3 @@ jobs:
           AZURE_API_KEY: ${{ secrets.AZURE_API_KEY }}
           AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
           AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
-          WRITER_API_KEY: ${{ secrets.WRITER_API_KEY }}

@@ -102,12 +102,6 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx lint ollama`
   - `npx nx build-api-report ollama`
   - `npx nx nx-release-publish ollama`
-- `writer`
-  - `npx nx build writer`
-  - `npx nx test writer`
-  - `npx nx e2e writer`
-  - `npx nx build-api-report writer`
-  - `npx nx nx-release-publish writer`
 
 ### Samples / apps
 
