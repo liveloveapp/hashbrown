@@ -2,80 +2,93 @@
 title: 'Anthropic: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Hashbrown’s Anthropic adapter streams Claude completions with tool use, thread persistence, and request transforms for Angular apps.'
+    content: 'Hashbrown’s Anthropic adapter maps AG-UI runs to the Claude Messages API and streams canonical AG-UI events.'
 ---
 
 # Anthropic
 
-First, install the Anthropic adapter (and the required SDK peer dependency):
+Install the Anthropic adapter, the official Anthropic SDK, and the AG-UI SSE encoder:
 
 ```sh
-npm install @hashbrownai/anthropic @anthropic-ai/sdk
+npm install @hashbrownai/anthropic @anthropic-ai/sdk @ag-ui/core @ag-ui/encoder
 ```
 
 ## Streaming Text Responses
 
-Hashbrown’s Anthropic adapter lets you **stream Claude chat completions** with support for tool use, request transforms, and optional thread persistence.
+`HashbrownAnthropic.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. The adapter uses Anthropic's streaming Messages API. Encode its events as AG-UI SSE at your HTTP boundary.
+
+The model is server configuration and is not read from the client run input.
 
 ### API Reference
 
-#### `HashbrownAnthropic.stream.text(options)`
+| Name                      | Type                                    | Description                                                                  |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------- |
+| `apiKey`                  | `string`                                | Anthropic API key.                                                           |
+| `baseURL`                 | `string`                                | _(Optional)_ Anthropic-compatible API base URL.                              |
+| `model`                   | `string`                                | Server-selected Anthropic model.                                             |
+| `input`                   | `AnthropicHashbrownRunAgentInput`       | AG-UI run input, including messages and tools.                               |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Anthropic request when the HTTP client disconnects. |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Messages API request.            |
 
-Streams a Claude completion as encoded frames. Handles content, tool calls, thread load/save signals, and errors; yields each frame as a `Uint8Array`.
+The adapter maps system and developer instructions, message history, tool definitions, tool results, and native structured output. Claude thinking, signatures, and redacted thinking become AG-UI reasoning records that can be sent back on continuation. Provider metadata and unsupported native events are preserved as AG-UI `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-**Options:**
+Set `input.hashbrown.responseSchema` to use Anthropic native structured output on a model that supports it:
 
-| Name                      | Type                                        | Description                                                                                        |
-| ------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `apiKey`                  | `string`                                    | Your Anthropic API key.                                                                            |
-| `baseURL`                 | `string`                                    | _(Optional)_ Custom Anthropic API origin (self-hosted gateway, proxy, etc.).                       |
-| `request`                 | `Chat.Api.CompletionCreateParams`           | Chat request: model, messages, tools, toolChoice, system, threadId, operation, etc.                |
-| `transformRequestOptions` | `(params) => params \| Promise<params>`     | _(Optional)_ Modify the final Anthropic request before sending (e.g., tune `max_tokens`).          |
-| `loadThread`              | `(threadId) => Promise<Chat.Api.Message[]>` | _(Optional)_ Load a stored thread when `request.threadId` is present.                              |
-| `saveThread`              | `(thread, threadId?) => Promise<string>`    | _(Optional)_ Persist the merged thread after a run; returns the thread id to send back downstream. |
+```ts
+const input = {
+  ...runInput,
+  hashbrown: {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        answer: { type: 'string' },
+      },
+      required: ['answer'],
+      additionalProperties: false,
+    },
+  },
+};
+```
 
-**Supported Features:**
-
-- **Roles:** `user`, `assistant`, `tool` (tool results are serialized as Claude `tool_result` blocks).
-- **Tools:** Maps Hashbrown tool schemas to Claude tool definitions; streams `tool_use` blocks and arguments.
-- **Tool Choice:** Supports `auto`, `required` (mapped to Claude `any`), and `none`.
-- **Threading:** Optional `threadId` load/save flow with `thread-load-*` and `thread-save-*` frames for persistence.
-- **Streaming:** Text deltas and tool call deltas are framed as `Uint8Array` chunks; default `max_tokens` is 4096, override in `transformRequestOptions`.
-
-### How It Works
-
-- **Messages:** Hashbrown messages are converted to Claude’s Messages API (assistant text plus `tool_use` blocks; tool results become `tool_result` blocks on the user side).
-- **Tools:** Each tool’s JSON schema is sent as `input_schema`; tool outputs can be streamed via the special `output` tool when present.
-- **Tool Choice:** `toolChoice: 'required'` translates to Claude’s `{ type: 'any' }`; `auto` uses Claude’s auto-selection.
-- **Thread Persistence:** If `request.threadId` is set and `loadThread` is provided, the adapter loads, merges, and (optionally) hydrates the thread. When `saveThread` is provided, it emits save frames after generation to persist history.
-- **Error Handling:** Exceptions are emitted as error frames before termination.
-
-### Example: Node.js Server Integration
+### Node.js Server Integration
 
 <hb-backend-code-example>
 
 <div backend="express">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAnthropic } from '@hashbrownai/anthropic';
 import express from 'express';
 
 const app = express();
 app.use(express.json());
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownAnthropic.stream.text({
     apiKey: process.env.ANTHROPIC_API_KEY!,
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 
 app.listen(3000);
@@ -86,24 +99,36 @@ app.listen(3000);
 <div backend="fastify">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAnthropic } from '@hashbrownai/anthropic';
 import Fastify from 'fastify';
 
 const fastify = Fastify();
 
-fastify.post('/chat', async (request, reply) => {
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
   const stream = HashbrownAnthropic.stream.text({
     apiKey: process.env.ANTHROPIC_API_KEY!,
-    request: request.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  reply.header('Content-Type', 'application/octet-stream');
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
 
-  for await (const chunk of stream) {
-    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
   }
 
-  reply.raw.end();
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
 });
 
 fastify.listen({ port: 3000 });
@@ -114,26 +139,43 @@ fastify.listen({ port: 3000 });
 <div backend="nestjs">
 
 ```ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 
 @Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Res() res: Response) {
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
     const stream = HashbrownAnthropic.stream.text({
       apiKey: process.env.ANTHROPIC_API_KEY!,
-      request: body, // must be Chat.Api.CompletionCreateParams
+      model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
+      input,
+      signal: abortController.signal,
     });
+    const encoder = new EventEncoder();
 
-    res.header('Content-Type', 'application/octet-stream');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
 
-    for await (const chunk of stream) {
-      res.write(chunk); // Pipe each encoded frame as it arrives
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
     }
 
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
 ```
@@ -143,31 +185,37 @@ export class ChatController {
 <div backend="hono">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAnthropic } from '@hashbrownai/anthropic';
 import { Hono } from 'hono';
 
 const app = new Hono();
 
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
   const stream = HashbrownAnthropic.stream.text({
     apiKey: process.env.ANTHROPIC_API_KEY!,
-    request: body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
+    input,
+    signal: c.req.raw.signal,
   });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
         }
         controller.close();
       },
     }),
     {
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
       },
     },
   );
@@ -180,152 +228,37 @@ export default app;
 
 </hb-backend-code-example>
 
----
+## Extended Thinking
 
-### Transform Request Options
-
-Use `transformRequestOptions` to adjust the Anthropic request before it is sent. Common tweaks include raising `max_tokens`, injecting a server-side system prompt, or logging.
-
-<hb-backend-code-example>
-
-<div backend="express">
+Enable provider-owned reasoning settings with `transformRequestOptions`. Hashbrown emits Claude thinking and redacted thinking as AG-UI reasoning events and preserves their signatures for subsequent requests.
 
 ```ts
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
-app.post('/chat', async (req, res) => {
-  const stream = HashbrownAnthropic.stream.text({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    request: req.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        system: 'You are a helpful assistant.', // prepend server-side system prompt
-        max_tokens: 6000, // override default 4096
-      };
-    },
-  });
-
-  res.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    res.write(chunk);
-  }
-
-  res.end();
+const stream = HashbrownAnthropic.stream.text({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    max_tokens: 4096,
+    thinking: { type: 'enabled', budget_tokens: 1024 },
+  }),
 });
 ```
 
-</div>
+## Transform Request Options
 
-<div backend="fastify">
+Use `transformRequestOptions` for server-owned provider settings such as token limits, service tiers, or a server-side system instruction.
 
 ```ts
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/chat', async (request, reply) => {
-  const stream = HashbrownAnthropic.stream.text({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    request: request.body,
-    transformRequestOptions: (options) => ({
-      ...options,
-      system: 'You are a helpful assistant.',
-      max_tokens: 6000,
-    }),
-  });
-
-  reply.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    reply.raw.write(chunk);
-  }
-
-  reply.raw.end();
+const stream = HashbrownAnthropic.stream.text({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    max_tokens: 2048,
+  }),
 });
 ```
 
-</div>
-
-<div backend="nestjs">
-
-```ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import { Response } from 'express';
-
-@Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Res() res: Response) {
-    const stream = HashbrownAnthropic.stream.text({
-      apiKey: process.env.ANTHROPIC_API_KEY!,
-      request: body,
-      transformRequestOptions: (options) => ({
-        ...options,
-        system: 'You are a helpful assistant.',
-        max_tokens: 6000,
-      }),
-    });
-
-    res.header('Content-Type', 'application/octet-stream');
-
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-
-    res.end();
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
-
-```ts
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-
-  const stream = HashbrownAnthropic.stream.text({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    request: body,
-    transformRequestOptions: (options) => ({
-      ...options,
-      system: 'You are a helpful assistant.',
-      max_tokens: 6000,
-    }),
-  });
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk);
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-    },
-  );
-});
-```
-
-</div>
-
-</hb-backend-code-example>
+[Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)

@@ -2,77 +2,93 @@
 title: 'OpenAI: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Hashbrown’s OpenAI adapter lets you stream chat completions from OpenAI’s GPT models, including support for function calling, response schemas, and request transforms.'
+    content: 'Hashbrown’s OpenAI adapter maps AG-UI runs to the OpenAI Chat Completions API and streams canonical AG-UI events.'
 ---
+
 # OpenAI
 
-First, install the OpenAI adapter package:
+Install the OpenAI adapter, the official OpenAI SDK, and the AG-UI SSE encoder:
 
 ```sh
-npm install @hashbrownai/openai
+npm install @hashbrownai/openai openai @ag-ui/core @ag-ui/encoder
 ```
 
 ## Streaming Text Responses
 
-Hashbrown’s OpenAI adapter lets you **stream chat completions** from OpenAI’s GPT models, including support for function calling, response schemas, and request transforms.
+`HashbrownOpenAI.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. The adapter uses OpenAI's streaming Chat Completions API. Encode its events as AG-UI SSE at your HTTP boundary.
+
+The model is server configuration and is not read from the client run input.
 
 ### API Reference
 
-#### `HashbrownOpenAI.stream.text(options)`
+| Name                      | Type                                    | Description                                                               |
+| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------- |
+| `apiKey`                  | `string`                                | OpenAI API key.                                                           |
+| `baseURL`                 | `string`                                | _(Optional)_ OpenAI-compatible API base URL.                              |
+| `model`                   | `string`                                | Server-selected OpenAI model.                                             |
+| `input`                   | `OpenAIHashbrownRunAgentInput`          | AG-UI run input, including messages and tools.                            |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the OpenAI request when the HTTP client disconnects. |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Chat Completions request.     |
 
-Streams an OpenAI chat completion as a series of encoded frames. Handles content, tool calls, and errors, and yields each frame as a `Uint8Array`.
+The adapter maps system and developer instructions, message history, tool definitions, and tool results. Text and tool calls become canonical AG-UI events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-**Options:**
+Set `input.hashbrown.responseSchema` to use OpenAI native JSON schema output:
 
-| Name                      | Type                                    | Description                                                                    |
-| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `apiKey`                  | `string`                                | Your OpenAI API Key.                                                           |
-| `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.         |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final OpenAI request before it is sent. |
+```ts
+const input = {
+  ...runInput,
+  hashbrown: {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        answer: { type: 'string' },
+      },
+      required: ['answer'],
+      additionalProperties: false,
+    },
+  },
+};
+```
 
-**Supported Features:**
-
-- **Roles:** `user`, `assistant`, `tool`
-- **Tools:** Supports OpenAI function calling, including `toolCalls` and strict function schemas.
-- **Response Format:** Optionally specify a JSON schema for structured output (uses OpenAI’s `response_format` parameter).
-- **System Prompt:** Included as the first message if provided.
-- **Function Calling:** Handles OpenAI function calling modes and emits tool call frames.
-- **Streaming:** Each chunk is encoded into a resilient streaming format
-
-### How It Works
-
-- **Messages:** Translated to OpenAI's message format, supporting all roles and tool calls.
-- **Tools/Functions:** Tools are passed as OpenAI function definitions, using your JSON schemas as `parameters`.
-- **Response Format:** Pass a JSON schema in `responseFormat` for OpenAI to validate the model output.
-- **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
-- **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
-
-### Example: Node.js Server Integration
+### Node.js Server Integration
 
 <hb-backend-code-example>
 
 <div backend="express">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import express from 'express';
 
 const app = express();
 app.use(express.json());
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownOpenAI.stream.text({
     apiKey: process.env.OPENAI_API_KEY!,
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 
 app.listen(3000);
@@ -83,24 +99,36 @@ app.listen(3000);
 <div backend="fastify">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import Fastify from 'fastify';
 
 const fastify = Fastify();
 
-fastify.post('/chat', async (request, reply) => {
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
   const stream = HashbrownOpenAI.stream.text({
     apiKey: process.env.OPENAI_API_KEY!,
-    request: request.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  reply.header('Content-Type', 'application/octet-stream');
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
 
-  for await (const chunk of stream) {
-    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
   }
 
-  reply.raw.end();
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
 });
 
 fastify.listen({ port: 3000 });
@@ -111,26 +139,43 @@ fastify.listen({ port: 3000 });
 <div backend="nestjs">
 
 ```ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 
 @Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Res() res: Response) {
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
     const stream = HashbrownOpenAI.stream.text({
       apiKey: process.env.OPENAI_API_KEY!,
-      request: body, // must be Chat.Api.CompletionCreateParams
+      model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+      input,
+      signal: abortController.signal,
     });
+    const encoder = new EventEncoder();
 
-    res.header('Content-Type', 'application/octet-stream');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
 
-    for await (const chunk of stream) {
-      res.write(chunk); // Pipe each encoded frame as it arrives
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
     }
 
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
 ```
@@ -140,33 +185,39 @@ export class ChatController {
 <div backend="hono">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import { Hono } from 'hono';
 
 const app = new Hono();
 
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-  
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
   const stream = HashbrownOpenAI.stream.text({
     apiKey: process.env.OPENAI_API_KEY!,
-    request: body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+    input,
+    signal: c.req.raw.signal,
   });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
         }
         controller.close();
       },
     }),
     {
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
       },
-    }
+    },
   );
 });
 
@@ -177,193 +228,20 @@ export default app;
 
 </hb-backend-code-example>
 
+## Transform Request Options
 
-
----
-
----
-
-### Transform Request Options
-
-The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to OpenAI. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
-
-<hb-backend-code-example>
-
-<div backend="express">
+`transformRequestOptions` receives the final OpenAI SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
 
 ```ts
-import { HashbrownOpenAI } from '@hashbrownai/openai';
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
-app.post('/chat', async (req, res) => {
-  const stream = HashbrownOpenAI.stream.text({
-    apiKey: process.env.OPENAI_API_KEY!,
-    request: req.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust temperature based on user preferences
-        temperature: getUserPreferences(req.user.id).creativity,
-      };
-    },
-  });
-
-  res.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    res.write(chunk);
-  }
-
-  res.end();
+const stream = HashbrownOpenAI.stream.text({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    max_completion_tokens: 2048,
+  }),
 });
 ```
-
-</div>
-
-<div backend="fastify">
-
-```ts
-import { HashbrownOpenAI } from '@hashbrownai/openai';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/chat', async (request, reply) => {
-  const stream = HashbrownOpenAI.stream.text({
-    apiKey: process.env.OPENAI_API_KEY!,
-    request: request.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust temperature based on user preferences
-        temperature: getUserPreferences(request.user.id).creativity,
-      };
-    },
-  });
-
-  reply.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    reply.raw.write(chunk);
-  }
-
-  reply.raw.end();
-});
-```
-
-</div>
-
-<div backend="nestjs">
-
-```ts
-import { Controller, Post, Body, Res, Req } from '@nestjs/common';
-import { HashbrownOpenAI } from '@hashbrownai/openai';
-import { Response, Request } from 'express';
-
-@Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
-    const stream = HashbrownOpenAI.stream.text({
-      apiKey: process.env.OPENAI_API_KEY!,
-      request: body,
-      transformRequestOptions: (options) => {
-        return {
-          ...options,
-          // Add server-side system prompt
-          messages: [
-            { role: 'system', content: 'You are a helpful assistant.' },
-            ...options.messages,
-          ],
-          // Adjust temperature based on user preferences
-          temperature: getUserPreferences(req.user.id).creativity,
-        };
-      },
-    });
-
-    res.header('Content-Type', 'application/octet-stream');
-
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-
-    res.end();
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
-
-```ts
-import { HashbrownOpenAI } from '@hashbrownai/openai';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-  
-  const stream = HashbrownOpenAI.stream.text({
-    apiKey: process.env.OPENAI_API_KEY!,
-    request: body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust temperature based on user preferences
-        temperature: getUserPreferences(c.req.user.id).creativity,
-      };
-    },
-  });
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk);
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-    }
-  );
-});
-```
-
-</div>
-
-</hb-backend-code-example>
 
 [Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
-
----
-
-### Advanced: Tools, Function Calling, and Response Schema
-
-- **Tools:** Add tools using OpenAI-style function specs (name, description, parameters).
-- **Function Calling:** Supported via `toolChoice` (`auto`, `required`, `none`, etc.).
-- **Response Format:** Pass a JSON schema in `responseFormat` for OpenAI to return validated structured output.
-
