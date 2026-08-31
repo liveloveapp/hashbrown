@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ReasoningMessage } from '@ag-ui/core';
+import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
 
@@ -47,7 +47,7 @@ export interface ToolCall {
   encryptedValue?: string;
 
   /** Provider metadata preserved across AG-UI runs. */
-  metadata?: Record<string, unknown>;
+  metadata?: Metadata;
 }
 
 /**
@@ -66,7 +66,7 @@ export interface AssistantMessage {
   encryptedValue?: string;
 
   /** Provider metadata preserved across AG-UI runs. */
-  metadata?: Record<string, unknown>;
+  metadata?: Metadata;
 
   reasoning?: ɵInternalReasoning;
 }

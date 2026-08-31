@@ -1,5 +1,6 @@
 import type {
   Message,
+  Metadata,
   ReasoningMessage,
   RunAgentInput,
   Tool,
@@ -69,9 +70,7 @@ function normalizeRejection(reason: unknown): string {
   return normalizeValue(reason);
 }
 
-function cloneMetadata(
-  metadata: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
+function cloneMetadata(metadata: Metadata | undefined): Metadata | undefined {
   return metadata === undefined ? undefined : structuredClone(metadata);
 }
 

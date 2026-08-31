@@ -1,5 +1,5 @@
 import * as Chat from './public_api';
-import type { ReasoningMessage } from '@ag-ui/core';
+import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue, resolveWithSchema } from '../utils';
 
@@ -8,9 +8,7 @@ type ReasoningInput = {
   readonly reasoningDetails?: readonly Readonly<ReasoningMessage>[];
 };
 
-function cloneMetadata(
-  metadata: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
+function cloneMetadata(metadata: Metadata | undefined): Metadata | undefined {
   return metadata === undefined ? undefined : structuredClone(metadata);
 }
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ReasoningMessage } from '@ag-ui/core';
+import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { DeepPartial } from '../utils';
 import { ModelInput } from '../transport';
 
@@ -31,7 +31,7 @@ export interface ToolCall {
   encryptedValue?: string;
 
   /** Provider metadata preserved across AG-UI runs. */
-  metadata?: Record<string, unknown>;
+  metadata?: Metadata;
 }
 
 /**
@@ -49,7 +49,7 @@ export interface AssistantMessage {
   encryptedValue?: string;
 
   /** Provider metadata preserved across AG-UI runs. */
-  metadata?: Record<string, unknown>;
+  metadata?: Metadata;
 
   /**
    * Human-readable reasoning. When `reasoningDetails` is present, this value
