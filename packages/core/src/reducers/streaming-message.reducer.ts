@@ -143,26 +143,15 @@ function warnRecoveredTrailingTokenFromSource(
   warnRecoveredTrailingToken(parsedData, source.slice(parserError.index));
 }
 
-function getToolCallMetadata(rawEvent: unknown) {
-  if (!rawEvent || typeof rawEvent !== 'object' || Array.isArray(rawEvent)) {
-    return undefined;
-  }
-
-  const hashbrown = (rawEvent as Record<string, unknown>)['hashbrown'];
-  if (!hashbrown || typeof hashbrown !== 'object' || Array.isArray(hashbrown)) {
-    return undefined;
-  }
-
-  const metadata = (hashbrown as Record<string, unknown>)['metadata'];
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
-    return undefined;
-  }
-
-  return metadata as Record<string, unknown>;
-}
-
 function cloneMetadata(metadata: Metadata | undefined) {
   return metadata === undefined ? undefined : structuredClone(metadata);
+}
+
+function mergeClonedMetadata(
+  existing: Metadata | undefined,
+  incoming: Metadata | undefined,
+) {
+  return mergeMetadata(existing, cloneMetadata(incoming));
 }
 
 function withStreamError(
@@ -385,16 +374,36 @@ function startTextMessage(
   }
 
   if (state.message && state.messageId === event.messageId) {
-    return state;
+    if (event.metadata === undefined) {
+      return state;
+    }
+
+    const metadata = mergeClonedMetadata(
+      state.message.metadata,
+      event.metadata,
+    );
+    return {
+      ...state,
+      message: {
+        ...state.message,
+        ...(metadata !== undefined ? { metadata } : {}),
+      },
+    };
   }
+
+  const message = state.message ?? {
+    role: 'assistant' as const,
+    content: '',
+    toolCallIds: state.toolCalls.map((toolCall) => toolCall.id),
+  };
+  const metadata = mergeClonedMetadata(message.metadata, event.metadata);
 
   return {
     ...state,
     messageId: event.messageId,
-    message: state.message ?? {
-      role: 'assistant',
-      content: '',
-      toolCallIds: state.toolCalls.map((toolCall) => toolCall.id),
+    message: {
+      ...message,
+      ...(metadata !== undefined ? { metadata } : {}),
     },
   };
 }
@@ -406,22 +415,24 @@ function appendTextContent(
   if (
     !state.message ||
     state.messageId !== event.messageId ||
-    event.delta.length === 0
+    (event.delta.length === 0 && event.metadata === undefined)
   ) {
     return state;
   }
 
   const responseSchema = state.configSnapshot?.responseSchema;
   const content = (state.message.content ?? '') + event.delta;
+  const metadata = mergeClonedMetadata(state.message.metadata, event.metadata);
   let message: Chat.Internal.AssistantMessage = {
     ...state.message,
     content,
+    ...(metadata !== undefined ? { metadata } : {}),
   };
   let outputParserState = state.outputParserState;
   let outputCache = state.outputCache;
   let error = state.error;
 
-  if (responseSchema) {
+  if (responseSchema && event.delta.length > 0) {
     outputParserState = push(ensureParserState(outputParserState), event.delta);
     const output = resolveSchemaValue(
       responseSchema,
@@ -449,15 +460,69 @@ function appendTextContent(
   };
 }
 
+function endTextMessage(
+  state: StreamingMessageState,
+  event: Extract<AGUIEvent, { type: EventType.TEXT_MESSAGE_END }>,
+): StreamingMessageState {
+  if (
+    !state.message ||
+    state.messageId !== event.messageId ||
+    event.metadata === undefined
+  ) {
+    return state;
+  }
+
+  const metadata = mergeClonedMetadata(state.message.metadata, event.metadata);
+  return {
+    ...state,
+    message: {
+      ...state.message,
+      ...(metadata !== undefined ? { metadata } : {}),
+    },
+  };
+}
+
 function startToolCall(
   state: StreamingMessageState,
   event: Extract<AGUIEvent, { type: EventType.TOOL_CALL_START }>,
 ): StreamingMessageState {
-  if (state.toolCalls.some((toolCall) => toolCall.id === event.toolCallId)) {
-    return state.activeToolCallId === event.toolCallId
-      ? state
-      : { ...state, activeToolCallId: event.toolCallId };
+  const existingToolCallIndex = state.toolCalls.findIndex(
+    (toolCall) => toolCall.id === event.toolCallId,
+  );
+  if (existingToolCallIndex !== -1) {
+    const existingToolCall = state.toolCalls[existingToolCallIndex];
+    if (!existingToolCall) {
+      return state;
+    }
+    if (
+      state.activeToolCallId === event.toolCallId &&
+      event.metadata === undefined
+    ) {
+      return state;
+    }
+
+    const metadata = mergeClonedMetadata(
+      existingToolCall.metadata,
+      event.metadata,
+    );
+    return {
+      ...state,
+      activeToolCallId: event.toolCallId,
+      toolCalls:
+        event.metadata === undefined
+          ? state.toolCalls
+          : state.toolCalls.map((toolCall, index) =>
+              index === existingToolCallIndex
+                ? {
+                    ...toolCall,
+                    ...(metadata !== undefined ? { metadata } : {}),
+                  }
+                : toolCall,
+            ),
+    };
   }
+
+  const metadata = mergeClonedMetadata(undefined, event.metadata);
 
   const toolCalls = [
     ...state.toolCalls,
@@ -466,7 +531,7 @@ function startToolCall(
       name: event.toolCallName,
       arguments: '',
       status: 'pending' as const,
-      metadata: getToolCallMetadata(event.rawEvent),
+      ...(metadata !== undefined ? { metadata } : {}),
     },
   ];
   const message = state.message ?? {
@@ -503,15 +568,13 @@ function appendToolArguments(
     return state;
   }
 
-  const incomingMetadata = getToolCallMetadata(event.rawEvent);
-  if (event.delta.length === 0 && !incomingMetadata) {
+  const incomingMetadata = cloneMetadata(event.metadata);
+  if (event.delta.length === 0 && incomingMetadata === undefined) {
     return state;
   }
 
   const argumentsString = toolCall.arguments + event.delta;
-  const metadata = incomingMetadata
-    ? { ...(toolCall.metadata ?? {}), ...incomingMetadata }
-    : toolCall.metadata;
+  const metadata = mergeMetadata(toolCall.metadata, incomingMetadata);
   const tool = state.configSnapshot?.toolsByName[toolCall.name];
   let argumentsResolved = toolCall.argumentsResolved;
   let toolParserStateById = state.toolParserStateById;
@@ -560,7 +623,7 @@ function appendToolArguments(
           ...current,
           arguments: argumentsString,
           argumentsResolved,
-          metadata,
+          ...(metadata !== undefined ? { metadata } : {}),
         }
       : current,
   );
@@ -591,6 +654,7 @@ function applyTextMessageChunk(
       messageId,
       role: event.role ?? 'assistant',
       name: event.name,
+      metadata: event.metadata,
       rawEvent: event.rawEvent,
       timestamp: event.timestamp,
     });
@@ -604,6 +668,7 @@ function applyTextMessageChunk(
     type: EventType.TEXT_MESSAGE_CONTENT,
     messageId,
     delta: event.delta,
+    metadata: event.metadata,
     rawEvent: event.rawEvent,
     timestamp: event.timestamp,
   });
@@ -631,6 +696,7 @@ function applyToolCallChunk(
       toolCallId,
       toolCallName: event.toolCallName,
       parentMessageId: event.parentMessageId,
+      metadata: event.metadata,
       rawEvent: event.rawEvent,
       timestamp: event.timestamp,
     });
@@ -638,7 +704,11 @@ function applyToolCallChunk(
     next = { ...state, activeToolCallId: toolCallId };
   }
 
-  if (event.delta === undefined && event.rawEvent === undefined) {
+  if (
+    event.delta === undefined &&
+    event.metadata === undefined &&
+    event.rawEvent === undefined
+  ) {
     return next;
   }
 
@@ -646,6 +716,7 @@ function applyToolCallChunk(
     type: EventType.TOOL_CALL_ARGS,
     toolCallId,
     delta: event.delta ?? '',
+    metadata: event.metadata,
     rawEvent: event.rawEvent,
     timestamp: event.timestamp,
   });
@@ -809,6 +880,8 @@ function reduceEvent(
       return startTextMessage(state, event);
     case EventType.TEXT_MESSAGE_CONTENT:
       return appendTextContent(state, event);
+    case EventType.TEXT_MESSAGE_END:
+      return endTextMessage(state, event);
     case EventType.TEXT_MESSAGE_CHUNK:
       return applyTextMessageChunk(state, event);
     case EventType.TOOL_CALL_START:
@@ -818,7 +891,15 @@ function reduceEvent(
     case EventType.TOOL_CALL_CHUNK:
       return applyToolCallChunk(state, event);
     case EventType.TOOL_CALL_END:
-      return finalizeToolCalls(state, new Set([event.toolCallId]));
+      return finalizeToolCalls(
+        appendToolArguments(state, {
+          type: EventType.TOOL_CALL_ARGS,
+          toolCallId: event.toolCallId,
+          delta: '',
+          metadata: event.metadata,
+        }),
+        new Set([event.toolCallId]),
+      );
     case EventType.RUN_FINISHED:
       return finishRun(state);
     case EventType.RUN_ERROR:
