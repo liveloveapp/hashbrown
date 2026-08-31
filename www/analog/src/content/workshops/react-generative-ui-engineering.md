@@ -28,7 +28,7 @@ You will learn how to:
 3. Work with model APIs: tokens, temperature, structured outputs, and verbosity.
 4. Measure token usage and cost for your application.
 5. Write effective system instructions to shape model behavior.
-6. Understand the differences between AI vendors like OpenAI, Google Gemini, Anthropic, Azure, Writer, Ollama, and more.
+6. Understand the differences between AI vendors like OpenAI, Google Gemini, Anthropic, Azure, Ollama, and more.
 
 **Demo:** Build a simple "Ask Anything" text completion widget that responds to user queries while tracking token usage.
 

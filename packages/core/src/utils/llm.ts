@@ -50,21 +50,6 @@ export type GoogleKnownModelIds =
   | 'gemini-1.5-flash-8b';
 
 /**
- * This is a list of known Models for Writer.
- * Refer to: https://dev.writer.com/home/models
- *
- * @public
- */
-export type WriterKnownModelIds =
-  | 'palmyra-x5'
-  | 'palmyra-x4'
-  | 'palmyra-x-003-instruct'
-  | 'palmyra-vision'
-  | 'palmyra-med'
-  | 'palmyra-fin'
-  | 'palmyra-creative';
-
-/**
  * This is a list of known Models for Amazon Bedrock that are suitable for
  * conversational, coding, and structured output use-cases.
  * Refer to: https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html
@@ -101,7 +86,6 @@ export type AzureKnownModelIds = `${OpenAiKnownModelIds}@${string}`;
 export type KnownModelIds = Prettify<
   | OpenAiKnownModelIds
   | GoogleKnownModelIds
-  | WriterKnownModelIds
   | BedrockKnownModelIds
   | AzureKnownModelIds
   | (string & {})

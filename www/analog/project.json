@@ -9,7 +9,7 @@
       "executor": "@analogjs/platform:vite",
       "defaultConfiguration": "production",
       "outputs": ["{workspaceRoot}/dist/www/analog"],
-      "dependsOn": ["collect-docs", "generate-llms"],
+      "dependsOn": ["clean-output", "collect-docs", "generate-llms"],
       "options": {
         "main": "www/analog/src/main.ts",
         "configFile": "www/analog/vite.config.ts",
@@ -43,6 +43,13 @@
         "production": {
           "buildTarget": "www:build:production"
         }
+      }
+    },
+    "clean-output": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node www/analog/src/tools/clean-build-output.mjs"
       }
     },
     "test": {
@@ -86,15 +93,7 @@
       "executor": "nx:run-script",
       "dependsOn": [
         {
-          "projects": [
-            "angular",
-            "azure",
-            "core",
-            "google",
-            "openai",
-            "react",
-            "writer"
-          ],
+          "projects": ["angular", "azure", "core", "google", "openai", "react"],
           "target": "build-api-report"
         }
       ],
@@ -106,15 +105,7 @@
       "executor": "nx:run-script",
       "dependsOn": [
         {
-          "projects": [
-            "angular",
-            "azure",
-            "core",
-            "google",
-            "openai",
-            "react",
-            "writer"
-          ],
+          "projects": ["angular", "azure", "core", "google", "openai", "react"],
           "target": "build-api-report"
         }
       ],

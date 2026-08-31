@@ -244,7 +244,7 @@ export class Features {
     {
       title: 'Bring Your Own Model',
       description:
-        'Hashbrown works with the LLM vendor of your choice, with built-in support for OpenAI, Azure, Google Gemini, Writer, Anthropic, and AWS Bedrock. Use open weight models via Ollama.',
+        'Hashbrown works with the LLM vendor of your choice, with built-in support for OpenAI, Azure, Google Gemini, Anthropic, and AWS Bedrock. Use open weight models via Ollama.',
       docsPath: ['platform', 'openai'],
       imageUrl: '/image/landing-page/features/vendor-agnostic.svg',
     },

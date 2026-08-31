@@ -27,8 +27,7 @@
       "@hashbrownai/azure": ["dist/packages/azure/src/index.d.ts"],
       "@hashbrownai/google": ["dist/packages/google/src/index.d.ts"],
       "@hashbrownai/ollama": ["dist/packages/ollama/src/index.d.ts"],
-      "@hashbrownai/openai": ["dist/packages/openai/src/index.d.ts"],
-      "@hashbrownai/writer": ["dist/packages/writer/src/index.d.ts"]
+      "@hashbrownai/openai": ["dist/packages/openai/src/index.d.ts"]
     }
   },
   "include": ["dist/packages/**/*.d.ts"],

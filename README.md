@@ -71,7 +71,6 @@ They include:
 - [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
 - [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
 - [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
-- [Writer](https://hashbrown.dev/docs/angular/platform/writer)
 
 Note that any model supported by a vendor's SDK will generally be usable via Hashbrown. That said, not all models (especially some older, smaller ones) will be able to handle the full feature set of Hashbrown.
 

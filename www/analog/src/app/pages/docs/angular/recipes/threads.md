@@ -24,7 +24,7 @@ What you'll learn:
 - **State restoration:** Provide a `threadId` and Hashbrown will fetch the saved messages, letting you reopen chats and continue.
 - **Explicit loading/saving flags:** Hooks/resources surface `isLoadingThread`, `isSavingThread`, and corresponding errors so you can show spinners or toasts.
 - **Opt-in only:** If you don’t pass `loadThread` / `saveThread`, behavior is unchanged.
-- **Not for local/browser transports:** Threads require server transports (OpenAI/Azure/Google/Writer/Ollama). Local browser models skip thread logic.
+- **Not for local/browser transports:** Threads require server transports (OpenAI/Azure/Google/Ollama). Local browser models skip thread logic.
 
 ---
 
@@ -87,12 +87,8 @@ const chat = uiChatResource({
   model: 'gpt-4.1',
   threadId: 'a06c6efd-6e1d-428b-8419-1fb04538b6b2', // existing chat to rehydrate
   system: 'You are a helpful assistant for a smart home app.',
-  components: [
-    /* exposed UI components */
-  ],
-  tools: [
-    /* createTool(...) definitions */
-  ],
+  components: [/* exposed UI components */],
+  tools: [/* createTool(...) definitions */],
 });
 ```
 

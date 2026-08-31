@@ -5,7 +5,6 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Angular } from '../../icons/Angular';
 import { BrandGoogle } from '../../icons/BrandGoogle';
 import { BrandOpenAi } from '../../icons/BrandOpenAi';
-import { BrandWriter } from '../../icons/BrandWriter';
 import { React } from '../../icons/React';
 import { AppConfig, ConfigService } from '../../services/ConfigService';
 import { CodeExampleGroup } from '../CodeExampleGroup';
@@ -74,21 +73,9 @@ const googleExamples: [string, string][] = Object.entries(
   value as string,
 ]);
 
-const writerExamples: [string, string][] = Object.entries(
-  import.meta.glob('/src/examples/getting-started/writer/**/*.md', {
-    eager: true,
-    query: 'raw',
-    import: 'default',
-  }),
-).map(([key, value]) => [
-  key.split('/').pop()?.replace(/\.md$/, '.ts') ?? '',
-  value as string,
-]);
-
 const providerExamplesSources: Record<string, [string, string][]> = {
   openai: openaiExamples,
   google: googleExamples,
-  writer: writerExamples,
 };
 
 interface Section {
@@ -104,7 +91,6 @@ interface Section {
     Angular,
     BrandGoogle,
     BrandOpenAi,
-    BrandWriter,
     ChevronDown,
     CodeExampleGroup,
     CodeExampleGroupItem,
@@ -253,18 +239,6 @@ interface Section {
                           width="16px"
                           fill="#774625"
                         />Google</span
-                      >
-                      <www-chevron-down height="16px" width="16px" />
-                    </label>
-                  }
-                  @case ('writer') {
-                    <label>
-                      <span
-                        ><www-brand-writer
-                          height="16px"
-                          width="16px"
-                          fill="#774625"
-                        />Writer</span
                       >
                       <www-chevron-down height="16px" width="16px" />
                     </label>
@@ -651,11 +625,6 @@ export class GettingStarted {
       label: 'Google',
       value: 'google',
       icon: BrandGoogle,
-    },
-    {
-      label: 'Writer',
-      value: 'writer',
-      icon: BrandWriter,
     },
   ]);
 

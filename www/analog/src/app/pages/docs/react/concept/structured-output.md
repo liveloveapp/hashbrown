@@ -108,7 +108,7 @@ The available modes are:
 | `json`   | Requests JSON output without sending the provider schema. Hashbrown still validates locally. |
 | `tool`   | Uses Hashbrown's reserved output tool for emulated structured output.                        |
 
-Provider support differs. OpenAI and Azure use JSON object mode, Google sets the response MIME type to JSON, Ollama uses `format: 'json'`, and Writer omits `response_format` because its SDK currently supports only `text` and `json_schema`.
+Provider support differs. OpenAI and Azure use JSON object mode, Google sets the response MIME type to JSON, and Ollama uses `format: 'json'`.
 
 ---
 

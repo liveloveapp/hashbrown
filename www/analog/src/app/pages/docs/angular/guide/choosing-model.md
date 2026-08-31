@@ -2,8 +2,9 @@
 title: 'Choosing Model: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Hashbrown''s Angular SDK supports a variety of LLM providers and models.'
+    content: "Hashbrown's Angular SDK supports a variety of LLM providers and models."
 ---
+
 # Choosing Model
 
 Hashbrown's Angular SDK supports a variety of LLM providers and models. You can specify the model to use by passing the `model` option to any of the Angular composables, such as `useChat`, `useCompletion`, `useStructuredChat`, or `useStructuredCompletion`.
@@ -12,21 +13,18 @@ Hashbrown's Angular SDK supports a variety of LLM providers and models. You can 
 
 - **OpenAI** (e.g., `gpt-4o`, `gpt-4.1`)
 - **Google** (e.g., `gemini-pro`)
-- **Writer** (e.g., `palmyra-x-002`)
 - **Azure** (OpenAI-compatible)
 
 ## Specifying a Model
 
-You must provide a model ID as the `model` option. This can be a string literal or a variable. For OpenAI, Google, and Writer, you can use the model IDs as documented by each provider.
+You must provide a model ID as the `model` option. This can be a string literal or a variable. For OpenAI and Google, you can use the model IDs as documented by each provider.
 
 ```typescript
 import { useChat } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-chat',
-  template: `
-    <!-- Render chat UI here -->
-  `
+  template: ` <!-- Render chat UI here --> `,
 })
 export class ChatComponent {
   chat = useChat({
@@ -52,17 +50,16 @@ import { HashbrownProvider, useChat } from '@hashbrownai/angular';
     <hashbrown-provider [url]="azureUrl">
       <app-chat></app-chat>
     </hashbrown-provider>
-  `
+  `,
 })
 export class AppComponent {
-  azureUrl = 'https://your-azure-endpoint.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2023-03-15-preview';
+  azureUrl =
+    'https://your-azure-endpoint.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2023-03-15-preview';
 }
 
 @Component({
   selector: 'app-chat',
-  template: `
-    <!-- Render chat UI here -->
-  `
+  template: ` <!-- Render chat UI here --> `,
 })
 export class ChatComponent {
   chat = useChat({
@@ -81,34 +78,11 @@ import { useChat } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-chat',
-  template: `
-    <!-- Render chat UI here -->
-  `
+  template: ` <!-- Render chat UI here --> `,
 })
 export class ChatComponent {
   chat = useChat({
     model: 'gemini-pro',
-    system: 'You are a helpful assistant.',
-  });
-}
-```
-
-## Writer
-
-For Writer, use the model ID as provided by Writer (e.g., `palmyra-x-002`).
-
-```typescript
-import { useChat } from '@hashbrownai/angular';
-
-@Component({
-  selector: 'app-chat',
-  template: `
-    <!-- Render chat UI here -->
-  `
-})
-export class ChatComponent {
-  chat = useChat({
-    model: 'palmyra-x-002',
     system: 'You are a helpful assistant.',
   });
 }

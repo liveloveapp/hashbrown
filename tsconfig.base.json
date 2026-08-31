@@ -33,7 +33,6 @@
       "@hashbrownai/vox/loader-single": [
         "packages/vox/src/assets/vad_audio_worklet.single"
       ],
-      "@hashbrownai/writer": ["packages/writer/src/index.ts"],
       "tater-js": ["packages/streaming-json-parser/index.ts"]
     },
     "noUncheckedSideEffectImports": false,

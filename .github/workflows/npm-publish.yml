@@ -62,7 +62,7 @@ jobs:
         run: node scripts/verify-release-versions.mjs
 
       - name: Build release packages
-        run: npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react writer --parallel=3
+        run: npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react --parallel=3
 
       - name: Publish packages
         run: npx nx release publish --tag=${{ steps.channel.outputs.dist_tag }} --access=public --parallel=1

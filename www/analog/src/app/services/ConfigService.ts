@@ -15,7 +15,7 @@ export type Backend = 'express' | 'fastify' | 'nestjs' | 'hono';
 
 export interface AppConfig {
   sdk: 'angular' | 'react';
-  provider: 'google' | 'openai' | 'writer';
+  provider: 'google' | 'openai';
   backend: Backend;
 }
 
@@ -25,13 +25,42 @@ const DEFAULT_CONFIG: AppConfig = {
   backend: 'express',
 };
 
+/**
+ * Normalize persisted configuration and replace unsupported values with defaults.
+ */
+export function normalizeAppConfig(value: unknown): AppConfig {
+  if (!value || typeof value !== 'object') {
+    return DEFAULT_CONFIG;
+  }
+
+  const config = value as Record<string, unknown>;
+  const sdk = config['sdk'];
+  const provider = config['provider'];
+  const backend = config['backend'];
+
+  return {
+    sdk: sdk === 'angular' || sdk === 'react' ? sdk : DEFAULT_CONFIG.sdk,
+    provider:
+      provider === 'google' || provider === 'openai'
+        ? provider
+        : DEFAULT_CONFIG.provider,
+    backend:
+      backend === 'express' ||
+      backend === 'fastify' ||
+      backend === 'nestjs' ||
+      backend === 'hono'
+        ? backend
+        : DEFAULT_CONFIG.backend,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private location = inject(Location);
   private config = signal<AppConfig>(
-    this.loadFromLocalStorage('config') ?? DEFAULT_CONFIG,
+    normalizeAppConfig(this.loadFromLocalStorage('config')),
   );
   private path = toSignal(
     this.router.events.pipe(

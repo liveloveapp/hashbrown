@@ -2,8 +2,9 @@
 title: 'Choosing Model: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Hashbrown''s React SDK supports a variety of LLM providers and models. You can specify the model to use by passing the model option to any of the React hooks, such as useChat, useCompletion, useStructuredChat, or useStructuredCompletion.'
+    content: "Hashbrown's React SDK supports a variety of LLM providers and models. You can specify the model to use by passing the model option to any of the React hooks, such as useChat, useCompletion, useStructuredChat, or useStructuredCompletion."
 ---
+
 # Choosing Model
 
 Hashbrown's React SDK supports a variety of LLM providers and models. You can specify the model to use by passing the `model` option to any of the React hooks, such as `useChat`, `useCompletion`, `useStructuredChat`, or `useStructuredCompletion`.
@@ -12,12 +13,11 @@ Hashbrown's React SDK supports a variety of LLM providers and models. You can sp
 
 - **OpenAI** (e.g., `gpt-4o`, `gpt-4.1`)
 - **Google** (e.g., `gemini-pro`)
-- **Writer** (e.g., `palmyra-x-002`)
 - **Azure** (OpenAI-compatible)
 
 ## Specifying a Model
 
-You must provide a model ID as the `model` option. This can be a string literal or a variable. For OpenAI, Google, and Writer, you can use the model IDs as documented by each provider.
+You must provide a model ID as the `model` option. This can be a string literal or a variable. For OpenAI and Google, you can use the model IDs as documented by each provider.
 
 ```tsx
 import { useChat } from '@hashbrownai/react';
@@ -61,17 +61,6 @@ For Google Gemini, use the model ID as provided by Google (e.g., `gemini-pro`).
 ```tsx
 const { messages, sendMessage } = useChat({
   model: 'gemini-pro',
-  system: 'You are a helpful assistant.',
-});
-```
-
-## Writer
-
-For Writer, use the model ID as provided by Writer (e.g., `palmyra-x-002`).
-
-```tsx
-const { messages, sendMessage } = useChat({
-  model: 'palmyra-x-002',
   system: 'You are a helpful assistant.',
 });
 ```

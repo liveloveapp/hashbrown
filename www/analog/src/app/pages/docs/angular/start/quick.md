@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Take your first steps with Hashbrown.'
 ---
+
 # Angular Quick Start
 
 <p class="subtitle">Take your first steps with Hashbrown.</p>
@@ -82,7 +83,6 @@ To get started, we recommend running a local express server following the Hashbr
 - [Anthropic](/docs/angular/platform/anthropic)
 - [Amazon Bedrock](/docs/angular/platform/bedrock)
 - [Google Gemini](/docs/angular/platform/google)
-- [Writer](/docs/angular/platform/writer)
 - [Ollama](/docs/angular/platform/ollama)
 
 ---

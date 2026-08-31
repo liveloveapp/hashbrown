@@ -25,6 +25,7 @@ import {
   MinimizedApiPackageReport,
   MinimizedApiReport,
 } from '../app/models/api-report.models';
+import { resetReferenceOutput } from './reference-output';
 
 interface ApiPackage {
   name: string;
@@ -494,14 +495,11 @@ async function writeFinalizedApiReport() {
     './www/analog/src/app/reference/api-report.min.json',
   );
 
-  // Ensure the base reference directory exists
   const baseReferencePath = path.join(
     MONOREPO_ROOT,
     './www/analog/src/app/reference',
   );
-  if (!fs.existsSync(baseReferencePath)) {
-    fs.mkdirSync(baseReferencePath, { recursive: true });
-  }
+  resetReferenceOutput(baseReferencePath);
 
   for (const packageName of report.packageNames) {
     const packageReport = report.packages[packageName];

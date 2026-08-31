@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Take your first steps with Hashbrown.'
 ---
+
 # React Quick Start
 
 <p class="subtitle">Take your first steps with Hashbrown.</p>
@@ -84,8 +85,8 @@ To get started, we recommend running a local express server following the Hashbr
 - [Anthropic](/docs/react/platform/anthropic)
 - [Amazon Bedrock](/docs/react/platform/bedrock)
 - [Google Gemini](/docs/react/platform/google)
-- [Writer](/docs/react/platform/writer)
 - [Ollama](/docs/react/platform/ollama)
+
 ---
 
 ## The `useChat()` Hook

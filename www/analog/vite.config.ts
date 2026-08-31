@@ -9,6 +9,7 @@ import { resolve } from 'path';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
+import { normalizeNitroPublicAssetPaths } from './src/tools/nitro-public-assets';
 
 export default defineConfig(({ command, mode }) => {
   return {
@@ -52,6 +53,7 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       angular(),
       analog({
+        workspaceRoot: resolve(__dirname, '../..'),
         apiPrefix: '_',
         index:
           command === 'build' && mode === 'production'
@@ -98,6 +100,7 @@ export default defineConfig(({ command, mode }) => {
               ),
             },
           })),
+      normalizeNitroPublicAssetPaths(__dirname),
       nxViteTsPaths(),
       hashbrownStackblitzPlugin(),
     ],

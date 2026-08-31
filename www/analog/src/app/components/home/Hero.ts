@@ -11,7 +11,6 @@ import { Squircle } from '../Squircle';
 import { Gemini } from './providers/Gemini';
 import { Ollama } from './providers/Ollama';
 import { OpenAi } from './providers/OpenAi';
-import { Writer } from './providers/Writer';
 import { Anthropic } from './providers/Anthropic';
 import { Bedrock } from './providers/Bedrock';
 import { Angular as AngularIcon } from '../../icons/Angular';
@@ -28,7 +27,6 @@ import { Scene } from '../hashy-skates/Scene';
     Ollama,
     OpenAi,
     ReactIcon,
-    Writer,
     Scene,
     Anthropic,
     Bedrock,
@@ -75,7 +73,6 @@ import { Scene } from '../hashy-skates/Scene';
           <app-home-openai class="provider"></app-home-openai>
           <app-home-gemini class="provider"></app-home-gemini>
           <app-home-ollama class="provider"></app-home-ollama>
-          <app-home-writer class="provider"></app-home-writer>
           <app-home-anthropic class="provider"></app-home-anthropic>
           <app-home-bedrock class="provider"></app-home-bedrock>
         </div>

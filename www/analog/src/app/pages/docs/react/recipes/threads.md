@@ -24,7 +24,7 @@ What you'll learn:
 - **State restoration:** Provide a `threadId` and Hashbrown will fetch saved messages so users can reopen and continue chats.
 - **Explicit loading/saving flags:** Hooks expose `isLoadingThread`, `isSavingThread`, plus errors for UI affordances.
 - **Opt-in only:** If you don’t pass `loadThread` / `saveThread`, behavior stays the same.
-- **Not for local/browser transports:** Threads require server transports (OpenAI/Azure/Google/Writer/Ollama). Local browser models skip thread logic.
+- **Not for local/browser transports:** Threads require server transports (OpenAI/Azure/Google/Ollama). Local browser models skip thread logic.
 
 ---
 
