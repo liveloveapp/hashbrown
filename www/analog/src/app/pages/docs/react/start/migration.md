@@ -2,14 +2,35 @@
 title: 'Migration Notes: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Notes for migrating persisted Hashbrown v0.4 JSON outputs to Hashbrown v0.5 schemas.'
+    content: 'Notes for migrating Hashbrown transports and persisted schema output across breaking releases.'
 ---
 
 # Migration Notes
 
-Hashbrown v0.5 changes how Skillet schemas are printed for models and how parsed values are resolved internally. Most apps do not need to migrate anything manually.
+Hashbrown's current transport uses AG-UI over HTTP and SSE. Earlier releases used Hashbrown-specific binary frames. Hashbrown v0.5 also changed how Skillet schemas are printed for models and how parsed values are resolved internally.
 
-You only need these notes if your app persisted JSON that was generated from Hashbrown v0.4 schemas and you now want to read that stored JSON with Hashbrown v0.5 code.
+The transport and persisted-data migrations are independent. Follow only the sections that apply to your application.
+
+---
+
+## AG-UI Transport
+
+The following server and custom-provider APIs are breaking changes:
+
+| Earlier releases | Current API |
+| --- | --- |
+| Completion request owned by Hashbrown | `RunAgentInput` from `@ag-ui/core` |
+| Model selected from the client request | Model selected by the server endpoint |
+| `AsyncIterable<Uint8Array>` of Hashbrown frames | `AsyncIterable<AGUIEvent>` |
+| `encodeFrame`, `decodeFrames`, and `Frame` from `@hashbrownai/core` | Canonical event types and `EventType` from `@ag-ui/core` |
+| `application/octet-stream` response | AG-UI SSE encoded with `EventEncoder` |
+| Common POST `/chat` examples | Default POST `/run` endpoint |
+
+Update custom providers to map native SDK streams to canonical AG-UI events. Keep provider credentials and model policy on the server, and encode events only at the HTTP boundary. See [Custom Provider](/docs/react/platform/custom) for the event lifecycle and endpoint shape.
+
+Hashbrown no longer asks provider adapters to load, merge, or save conversations. Applications that persist chats should load the complete message history, hydrate the hook with `messages` or `setMessages(...)`, and save updated messages through their own data layer. `threadId` remains opaque AG-UI identity. See [Persist and Resume Threads](/docs/react/recipes/threads).
+
+There is no compatibility export for the binary frame API. Migrate the server endpoint and client URL together.
 
 ---
 

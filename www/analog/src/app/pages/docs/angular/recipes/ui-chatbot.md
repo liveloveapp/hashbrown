@@ -520,7 +520,7 @@ Drop `<app-chatbot />` into your app (wrap with `provideHashbrown()` as per quic
 import { provideHashbrown } from '@hashbrownai/angular';
 
 export const appConfig = {
-  providers: [provideHashbrown({ baseUrl: '/api/chat' })],
+  providers: [provideHashbrown({ baseUrl: '/run' })],
 };
 ```
 

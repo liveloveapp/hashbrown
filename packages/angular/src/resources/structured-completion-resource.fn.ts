@@ -35,9 +35,9 @@ export interface StructuredCompletionResourceRef<
   isRunningToolCalls: Signal<boolean>;
   /** Aggregate loading flag across transport, generation, and tool calls. */
   isLoading: Signal<boolean>;
-  /** Transport/request error before generation frames arrive. */
+  /** Transport/request error before generation events arrive. */
   sendingError: Signal<Error | undefined>;
-  /** Error emitted during generation frames. */
+  /** Error emitted during generation events. */
   generatingError: Signal<Error | undefined>;
   /**
    * Reloads the resource.

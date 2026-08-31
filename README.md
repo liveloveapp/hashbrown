@@ -83,29 +83,42 @@ Hashbrown backend SDK wrappers put a consistent API surface around varied SDK AP
 Hashbrown uses HTTP streaming to communicate between Node backends and UI
 hooks/resources.
 
-The below example demonstrates exposing a POST endpoint `/chat` that:
+The below example demonstrates exposing a POST endpoint `/run` that:
 
-- takes in a completion parameters, like a set of messages, schema and tool calls/definitions
-- streams LLM responses back to the Hashbrown UI mechanisms
+- accepts an AG-UI run input containing messages, context, state, and tool definitions
+- streams AG-UI events back to the Hashbrown UI mechanisms over SSE
 
-Note: the URL is configurable in Hashbrown and need not be 'chat', so long as it matches in the backend and UI.
+Hashbrown uses `/run` by default. You can configure another URL as long as the backend and UI use the same value.
 
 ```typescript
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownOpenAI.stream.text({
     apiKey: process.env.OPENAI_API_KEY!,
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 ```
 
@@ -137,7 +150,7 @@ Configure the provider:
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHashbrown({
-      baseUrl: '/api/chat',
+      baseUrl: '/run',
     }),
   ],
 };

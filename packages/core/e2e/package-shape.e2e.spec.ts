@@ -82,21 +82,20 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
       join(coreDistPath, 'src/public_api.d.ts'),
       'utf8',
     );
-    const frameDeclarations = readFileSync(
+    const frameDeclarationsExist = existsSync(
       join(coreDistPath, 'src/frames/index.d.ts'),
-      'utf8',
     );
 
     writeFileSync(
       join(sandboxPath, 'consumer.ts'),
       `
         import {
-          encodeFrame,
-          type Frame,
           type Transport,
           type TransportRequest,
           type TransportResponse,
         } from '@hashbrownai/core';
+        // @ts-expect-error Legacy frame encoding is no longer public.
+        import { encodeFrame, type Frame } from '@hashbrownai/core';
 
         const input: TransportRequest['input'] = {
           threadId: 'thread-1',
@@ -204,10 +203,11 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
           ]) {
             if (
               'framesToLengthPrefixedStream' in core ||
-              typeof core.encodeFrame !== 'function'
+              'encodeFrame' in core ||
+              'decodeFrames' in core
             ) {
               throw new Error(
-                \`\${format} transport and frame exports do not match the public package boundary\`,
+                \`\${format} exposes a legacy frame API\`,
               );
             }
 
@@ -248,11 +248,8 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
         (file) => !existsSync(join(installedCorePath, file)),
       ),
     ).toEqual([]);
-    expect(publicApiDeclarations).toContain("export * from './frames';");
-    expect(frameDeclarations).toContain(
-      "export { encodeFrame } from './encode-frame';",
-    );
-    expect(frameDeclarations).toContain('export { type Frame,');
+    expect(publicApiDeclarations).not.toContain("export * from './frames';");
+    expect(frameDeclarationsExist).toBe(false);
     expect({
       status: compileResult.status,
       signal: compileResult.signal,

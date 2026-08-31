@@ -116,7 +116,7 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
   isSending: boolean;
 
   /**
-   * Whether the chat is currently generating (between start and finish/error frames).
+   * Whether the chat is currently generating (between start and finish/error events).
    */
   isGenerating: boolean;
 
@@ -136,12 +136,12 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
   exhaustedRetries: boolean;
 
   /**
-   * Transport/request failure before generation frames arrive.
+   * Transport/request failure before generation events arrive.
    */
   sendingError: Error | undefined;
 
   /**
-   * Error emitted during generation frames.
+   * Error emitted during generation events.
    */
   generatingError: Error | undefined;
 

@@ -1,127 +1,159 @@
 ---
-title: 'Threads: Delta Sends & Chat Rehydration'
+title: 'Persist and Resume Threads: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Opt into Hashbrown Threads to persist chats, send only message deltas, and rehydrate Angular resources with threadId.'
+    content: 'Persist Hashbrown Angular messages in your application and resume a chat with an opaque AG-UI threadId.'
 ---
 
-# Threads: Persisted Chats with Delta Sends
+# Persist and Resume Threads
 
-<p class="subtitle">Enable threads to shrink payloads, resume chats, and surface clear loading/saving state in your Angular apps.</p>
+<p class="subtitle">Keep conversation storage in your application while Hashbrown handles the active AG-UI run.</p>
 
-What you'll learn:
+Hashbrown treats `threadId` as opaque AG-UI identity. On every model run, the client sends that identity and its current transcript to POST `/run`. Hashbrown does not load or save conversations for you.
 
-1. How thread mode changes Hashbrown’s HTTP behavior (deltas instead of full history)
-2. How to opt in by adding `loadThread` / `saveThread` to your adapter
-3. How to rehydrate Angular resources by supplying a `threadId`
-4. Where to read thread UI state (`isLoadingThread`, `isSavingThread`, errors)
+This separation keeps the model transport focused on streaming and lets your application own authorization, retention, indexing, titles, branching, and storage.
 
----
+## Data Flow
 
-## 0. What changes when threads are on?
+1. Your application creates or resolves a thread ID.
+2. Your data layer loads the stored messages for that ID.
+3. Pass those messages to the chat resource, or call `setMessages(...)` after loading.
+4. Hashbrown sends the current transcript with each AG-UI run.
+5. Your application persists the updated transcript after generation and tool calls settle.
 
-- **Delta-only sends:** After a thread is established, Hashbrown only posts the **new messages since the last assistant turn**. Your backend merges them with the stored thread before calling the model.
-- **State restoration:** Provide a `threadId` and Hashbrown will fetch the saved messages, letting you reopen chats and continue.
-- **Explicit loading/saving flags:** Hooks/resources surface `isLoadingThread`, `isSavingThread`, and corresponding errors so you can show spinners or toasts.
-- **Opt-in only:** If you don’t pass `loadThread` / `saveThread`, behavior is unchanged.
-- **Not for local/browser transports:** Threads require server transports (OpenAI/Azure/Google/Ollama). Local browser models skip thread logic.
+The request is not a message delta. The current transcript is included so the provider can generate with the complete context that the client is using.
 
----
+## Keep `/run` Focused on the Model
 
-## 1. Opt in on the server adapter (save/load thread)
+The Hashbrown endpoint maps a run to provider events. Conversation storage is a separate application concern.
 
-Add two callbacks to your Hashbrown adapter. `saveThread` should reuse a provided `threadId` or generate one; returning a new id flips the client into thread mode.
-
-<hb-code-example header="server/threads-example.ts">
+<hb-code-example header="server/run.ts">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from './db'; // your persistence layer (SQL, NoSQL, KV, etc.)
 
-app.post('/chat', async (req, res) => {
-  const request = req.body as Chat.Api.CompletionCreateParams;
-
-  const stream = HashbrownOpenAI.stream.text({
-    apiKey: OPENAI_API_KEY,
-    request,
-    loadThread: async (threadId: string) => {
-      // Fetch full message history from your database
-      const thread = await db.threads.get(threadId);
-      if (!thread) throw new Error(`thread not found: ${threadId}`);
-      return thread;
-    },
-    saveThread: async (thread, threadId = uuidv4()) => {
-      // Upsert the merged thread to storage
-      await db.threads.put(threadId, thread);
-      return threadId;
-    },
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
+  const events = HashbrownOpenAI.stream.text({
+    apiKey: process.env.OPENAI_API_KEY!,
+    model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
-  for await (const chunk of stream) res.write(chunk);
-  res.end();
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for await (const event of events) {
+    res.write(encoder.encodeSSE(event));
+  }
+
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 ```
 
 </hb-code-example>
 
-Key points:
-
-- `loadThread(threadId)` returns the full message history you’ve stored (DB, cache, KV, etc.).
-- `saveThread(thread, threadId?)` persists the merged thread. Return the id you saved; if you generated one, that id activates delta sending for future calls.
-- If you already had a `threadId`, return the same one—changing it mid-flight is treated as an error.
-
----
-
-## 2. Start Angular resources in thread mode
-
-Pass a `threadId` to any chat resource or hook to fetch history and continue with deltas. If messages are empty, Hashbrown auto-calls `load-thread` before generation; if you pre-seed messages, it skips the load.
-
-<hb-code-example header="samples/kitchen-sink/angular/src/app/features/chat/chat-panel.component.ts">
+Expose authenticated application endpoints or server functions for thread storage. Store the full Hashbrown message shape, including assistant tool calls and tool results.
 
 ```ts
-import { uiChatResource } from '@hashbrownai/angular';
+import type { Chat } from '@hashbrownai/core';
 
-const chat = uiChatResource({
-  model: 'gpt-4.1',
-  threadId: 'a06c6efd-6e1d-428b-8419-1fb04538b6b2', // existing chat to rehydrate
-  system: 'You are a helpful assistant for a smart home app.',
-  components: [/* exposed UI components */],
-  tools: [/* createTool(...) definitions */],
-});
+export async function readThreadMessages(
+  threadId: string,
+): Promise<Chat.Message<string, Chat.AnyTool>[]> {
+  const response = await fetch(`/api/threads/${threadId}`);
+  if (!response.ok) throw new Error('Unable to load thread');
+  return response.json();
+}
+
+export async function writeThreadMessages(
+  threadId: string,
+  messages: Chat.Message<string, Chat.AnyTool>[],
+): Promise<void> {
+  const response = await fetch(`/api/threads/${threadId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
+  if (!response.ok) throw new Error('Unable to save thread');
+}
+```
+
+These functions belong to the application. They are not provider-adapter options and are never called by `/run`.
+
+## Hydrate `chatResource`
+
+Load history through your application data service. Use `setMessages(...)` when the load completes, then persist only after hydration and active generation settle.
+
+<hb-code-example header="thread-chat.component.ts">
+
+```ts
+import { Component, effect, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import type { Chat } from '@hashbrownai/core';
+import { chatResource } from '@hashbrownai/angular';
+import { ThreadStorage } from './thread-storage';
+
+@Component({
+  selector: 'app-thread-chat',
+  templateUrl: './thread-chat.component.html',
+})
+export class ThreadChatComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly storage = inject(ThreadStorage);
+  readonly threadId = this.route.snapshot.paramMap.get('threadId')!;
+  readonly isHydrating = signal(true);
+  readonly chat = chatResource({
+    model: 'gpt-5',
+    system: 'You are a helpful assistant.',
+    threadId: this.threadId,
+  });
+  private lastSaved = '[]';
+
+  constructor() {
+    effect(() => {
+      const messages = this.chat.value();
+      if (this.isHydrating() || this.chat.isLoading()) return;
+
+      const snapshot = JSON.stringify(messages);
+      if (snapshot === this.lastSaved) return;
+
+      this.lastSaved = snapshot;
+      void this.storage.writeMessages(this.threadId, messages);
+    });
+  }
+
+  async ngOnInit() {
+    const messages = await this.storage.readMessages(this.threadId);
+    this.lastSaved = JSON.stringify(messages);
+    this.chat.setMessages(messages);
+    this.isHydrating.set(false);
+  }
+
+  send(content: string) {
+    this.chat.sendMessage({ role: 'user', content });
+  }
+}
 ```
 
 </hb-code-example>
 
-Notes:
+Use the same pattern with `uiChatResource` and `structuredChatResource`. Persist their complete message values rather than extracting text, because UI payloads, structured values, tool calls, and tool results are part of the conversation state.
 
-- To **start fresh but keep deltas**, omit `threadId`; the first `saveThread` return value will create one.
-- To **resume** an existing chat, set `threadId` up front—Hashbrown will load history, then only send new messages.
-- Same pattern works with all of Hashbrown's Angular resources.
+## Operational Guidance
 
----
-
-## 3. Show loading/saving state in your UI
-
-Thread flows surface state you can bind to spinners or error banners.
-
-```ts
-chat.isLoadingThread(); // true while loading history (init or pre-generate refresh)
-chat.isSavingThread(); // true while persisting after generation
-chat.loadThreadError(); // Error | undefined
-chat.saveThreadError(); // Error | undefined
-```
-
-You can render these alongside `chat.isReceiving()` / `chat.isSending()` to distinguish network work from thread persistence.
-
----
-
-## 4. How the request/response changes
-
-1. **Initialize:** If `threadId` is set and messages are empty, Hashbrown sends `operation: 'load-thread'` to your backend. Backend returns the full thread; UI sets `isLoadingThread` during this call.
-2. **Generate:** On each new turn, Hashbrown:
-   - Refetches the stored thread via `loadThread` (payload omitted in the success frame).
-   - Merges it with the client-side delta (new user/tool messages) before calling the LLM.
-   - After streaming finishes, calls `saveThread` and emits `isSavingThread`.
-3. **Subsequent turns:** Only the delta is sent; your backend combines it with stored history so the model still sees the full context.
+- Authorize every read and write using application identity; an opaque ID is not an access-control mechanism.
+- Decide whether to save only completed turns or periodic streaming checkpoints. The example saves after Hashbrown's aggregate loading state settles.
+- Use optimistic concurrency or version checks when the same thread can be open in multiple tabs.
+- Apply retention, redaction, and encryption policies in the persistence layer.
+- Keep provider credentials and model policy on the server-side `/run` endpoint.
