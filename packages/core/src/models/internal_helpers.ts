@@ -8,6 +8,12 @@ type ReasoningInput = {
   readonly reasoningDetails?: readonly Readonly<ReasoningMessage>[];
 };
 
+function cloneMetadata(
+  metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  return metadata === undefined ? undefined : structuredClone(metadata);
+}
+
 function cloneReasoningMessage(
   reasoning: Readonly<ReasoningMessage>,
 ): ReasoningMessage {
@@ -129,6 +135,9 @@ export function toInternalMessagesFromView(
           ...(message.encryptedValue !== undefined
             ? { encryptedValue: message.encryptedValue }
             : {}),
+          ...(message.metadata !== undefined
+            ? { metadata: cloneMetadata(message.metadata) }
+            : {}),
           ...(reasoning ? { reasoning } : {}),
         },
       ];
@@ -187,6 +196,9 @@ export function toViewMessagesFromInternal(
           ...(message.encryptedValue !== undefined
             ? { encryptedValue: message.encryptedValue }
             : {}),
+          ...(message.metadata !== undefined
+            ? { metadata: cloneMetadata(message.metadata) }
+            : {}),
           ...toReasoningOutput(message.reasoning),
           toolCalls: message.toolCallIds.flatMap(
             (toolCallId): Chat.AnyToolCall[] => {
@@ -219,6 +231,9 @@ export function toViewMessagesFromInternal(
                       ...(toolCall.encryptedValue !== undefined
                         ? { encryptedValue: toolCall.encryptedValue }
                         : {}),
+                      ...(toolCall.metadata !== undefined
+                        ? { metadata: cloneMetadata(toolCall.metadata) }
+                        : {}),
                       args: s.isHashbrownType(tool.schema)
                         ? (resolvedArgs ?? null)
                         : (resolvedArgs ?? JSON.parse(toolArgsString)),
@@ -241,6 +256,9 @@ export function toViewMessagesFromInternal(
                       progress: toolCall.progress,
                       ...(toolCall.encryptedValue !== undefined
                         ? { encryptedValue: toolCall.encryptedValue }
+                        : {}),
+                      ...(toolCall.metadata !== undefined
+                        ? { metadata: cloneMetadata(toolCall.metadata) }
                         : {}),
                       args: s.isHashbrownType(tool.schema)
                         ? (resolvedArgs ?? null)
@@ -321,6 +339,9 @@ export function toApiMessagesFromInternal(
           ...(message.encryptedValue !== undefined
             ? { encryptedValue: message.encryptedValue }
             : {}),
+          ...(message.metadata !== undefined
+            ? { metadata: cloneMetadata(message.metadata) }
+            : {}),
           ...toReasoningOutput(message.reasoning),
           toolCalls: toolCallsForMessage.map((toolCall, index) => ({
             id: toolCall.id,
@@ -336,7 +357,9 @@ export function toApiMessagesFromInternal(
             ...(toolCall.encryptedValue !== undefined
               ? { encryptedValue: toolCall.encryptedValue }
               : {}),
-            metadata: toolCall.metadata,
+            ...(toolCall.metadata !== undefined
+              ? { metadata: cloneMetadata(toolCall.metadata) }
+              : {}),
           })),
         },
         ...toolMessages,
@@ -413,7 +436,9 @@ export function toInternalToolCallsFromApi(
       ...(toolCall.encryptedValue !== undefined
         ? { encryptedValue: toolCall.encryptedValue }
         : {}),
-      metadata: toolCall.metadata,
+      ...(toolCall.metadata !== undefined
+        ? { metadata: cloneMetadata(toolCall.metadata) }
+        : {}),
     },
   ];
 }
@@ -461,7 +486,9 @@ export function toInternalToolCallsFromApiMessages(
           ...(toolCall.encryptedValue !== undefined
             ? { encryptedValue: toolCall.encryptedValue }
             : {}),
-          metadata: toolCall.metadata,
+          ...(toolCall.metadata !== undefined
+            ? { metadata: cloneMetadata(toolCall.metadata) }
+            : {}),
         };
       });
     }
@@ -480,7 +507,9 @@ export function toInternalToolCallsFromApiMessages(
         ...(existing?.encryptedValue !== undefined
           ? { encryptedValue: existing.encryptedValue }
           : {}),
-        metadata: existing?.metadata,
+        ...(existing?.metadata !== undefined
+          ? { metadata: cloneMetadata(existing.metadata) }
+          : {}),
       };
     }
   });
@@ -516,6 +545,9 @@ export function toInternalToolCallsFromView(
             ...(toolCall.encryptedValue !== undefined
               ? { encryptedValue: toolCall.encryptedValue }
               : {}),
+            ...(toolCall.metadata !== undefined
+              ? { metadata: cloneMetadata(toolCall.metadata) }
+              : {}),
           };
         }
         case 'pending': {
@@ -527,6 +559,9 @@ export function toInternalToolCallsFromView(
             argumentsResolved: toolCall.args,
             ...(toolCall.encryptedValue !== undefined
               ? { encryptedValue: toolCall.encryptedValue }
+              : {}),
+            ...(toolCall.metadata !== undefined
+              ? { metadata: cloneMetadata(toolCall.metadata) }
               : {}),
           };
         }
@@ -583,6 +618,9 @@ export function toInternalMessagesFromApi(
       contentResolved: typeof rawContent === 'object' ? rawContent : undefined,
       ...(message.encryptedValue !== undefined
         ? { encryptedValue: message.encryptedValue }
+        : {}),
+      ...(message.metadata !== undefined
+        ? { metadata: cloneMetadata(message.metadata) }
         : {}),
       toolCallIds:
         message.toolCalls

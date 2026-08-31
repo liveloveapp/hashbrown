@@ -372,3 +372,183 @@ test('omits assistant and tool-call encrypted values when absent', () => {
     'encryptedValue',
   );
 });
+
+test('preserves and isolates assistant and tool-call metadata through API messages', () => {
+  // Arrange
+  const assistantMetadata = { google: { runId: 'run-1' } };
+  const toolMetadata = { google: { steps: [{ index: 1 }] } };
+  const message = {
+    role: 'assistant',
+    content: '',
+    toolCallIds: ['call-1'],
+    metadata: assistantMetadata,
+  } as Chat.Internal.AssistantMessage & {
+    metadata: Record<string, unknown>;
+  };
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'call-1',
+    name: 'search',
+    arguments: '{}',
+    status: 'pending',
+    metadata: toolMetadata,
+  };
+
+  // Act
+  const [api] = toApiMessagesFromInternal(message, [toolCall]);
+  if (api?.role !== 'assistant') {
+    throw new Error('Expected an API assistant message.');
+  }
+  const apiAssistant = api as Chat.Api.AssistantMessage & {
+    metadata?: Record<string, unknown>;
+  };
+  assistantMetadata.google.runId = 'source mutation';
+  toolMetadata.google.steps[0]!.index = 99;
+  const [roundTrippedMessage] = toInternalMessagesFromApi(apiAssistant);
+  const [roundTrippedToolCall] = toInternalToolCallsFromApiMessages([api]);
+  const apiGoogle = apiAssistant.metadata?.['google'] as {
+    runId: string;
+  };
+  const apiToolGoogle = apiAssistant.toolCalls?.[0]?.metadata?.['google'] as {
+    steps: { index: number }[];
+  };
+  if (apiGoogle) {
+    apiGoogle.runId = 'API mutation';
+  }
+  if (apiToolGoogle) {
+    apiToolGoogle.steps[0]!.index = 100;
+  }
+
+  // Assert
+  expect(roundTrippedMessage).toMatchObject({
+    role: 'assistant',
+    metadata: { google: { runId: 'run-1' } },
+  });
+  expect(roundTrippedToolCall).toMatchObject({
+    id: 'call-1',
+    metadata: { google: { steps: [{ index: 1 }] } },
+  });
+});
+
+test('preserves and isolates assistant and tool-call metadata through view messages', () => {
+  // Arrange
+  const assistantMetadata = { google: { runId: 'run-1' } };
+  const pendingMetadata = { google: { steps: [{ index: 1 }] } };
+  const doneMetadata = { google: { steps: [{ index: 2 }] } };
+  const message = {
+    role: 'assistant',
+    content: '',
+    toolCallIds: ['call-pending', 'call-done'],
+    metadata: assistantMetadata,
+  } as Chat.Internal.AssistantMessage & {
+    metadata: Record<string, unknown>;
+  };
+  const pendingToolCall: Chat.Internal.ToolCall = {
+    id: 'call-pending',
+    name: 'search',
+    arguments: '{}',
+    argumentsResolved: {},
+    status: 'pending',
+    metadata: pendingMetadata,
+  };
+  const doneToolCall: Chat.Internal.ToolCall = {
+    id: 'call-done',
+    name: 'search',
+    arguments: '{}',
+    argumentsResolved: {},
+    status: 'done',
+    result: { status: 'fulfilled', value: 'done' },
+    metadata: doneMetadata,
+  };
+  const tool: Chat.AnyTool = {
+    name: 'search',
+    description: 'Search records.',
+    schema: { type: 'object', properties: {} },
+    handler: async () => undefined,
+  };
+
+  // Act
+  const [view] = toViewMessagesFromInternal(
+    message,
+    {
+      'call-pending': pendingToolCall,
+      'call-done': doneToolCall,
+    },
+    [tool],
+  );
+  if (view?.role !== 'assistant') {
+    throw new Error('Expected a view assistant message.');
+  }
+  const viewAssistantMessage = view as typeof view & {
+    metadata?: Record<string, unknown>;
+  };
+  const viewToolCalls = viewAssistantMessage.toolCalls as Array<
+    (typeof viewAssistantMessage.toolCalls)[number] & {
+      metadata?: Record<string, unknown>;
+    }
+  >;
+  assistantMetadata.google.runId = 'source mutation';
+  pendingMetadata.google.steps[0]!.index = 99;
+  doneMetadata.google.steps[0]!.index = 100;
+  const [roundTrippedMessage] =
+    toInternalMessagesFromView(viewAssistantMessage);
+  const [roundTrippedPending, roundTrippedDone] = toInternalToolCallsFromView([
+    viewAssistantMessage,
+  ]);
+  const viewGoogle = viewAssistantMessage.metadata?.['google'] as {
+    runId: string;
+  };
+  const viewPendingGoogle = viewToolCalls[0]?.metadata?.['google'] as {
+    steps: { index: number }[];
+  };
+  const viewDoneGoogle = viewToolCalls[1]?.metadata?.['google'] as {
+    steps: { index: number }[];
+  };
+  if (viewGoogle) {
+    viewGoogle.runId = 'view mutation';
+  }
+  if (viewPendingGoogle) {
+    viewPendingGoogle.steps[0]!.index = 101;
+  }
+  if (viewDoneGoogle) {
+    viewDoneGoogle.steps[0]!.index = 102;
+  }
+
+  // Assert
+  expect(roundTrippedMessage).toMatchObject({
+    role: 'assistant',
+    metadata: { google: { runId: 'run-1' } },
+  });
+  expect(roundTrippedPending).toMatchObject({
+    id: 'call-pending',
+    metadata: { google: { steps: [{ index: 1 }] } },
+  });
+  expect(roundTrippedDone).toMatchObject({
+    id: 'call-done',
+    metadata: { google: { steps: [{ index: 2 }] } },
+  });
+});
+
+test('omits assistant and tool-call metadata when absent', () => {
+  // Arrange
+  const message: Chat.Internal.AssistantMessage = {
+    role: 'assistant',
+    content: '',
+    toolCallIds: ['call-1'],
+  };
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'call-1',
+    name: 'search',
+    arguments: '{}',
+    status: 'pending',
+  };
+
+  // Act
+  const [api] = toApiMessagesFromInternal(message, [toolCall]);
+  if (api?.role !== 'assistant') {
+    throw new Error('Expected an API assistant message.');
+  }
+
+  // Assert
+  expect(api).not.toHaveProperty('metadata');
+  expect(api.toolCalls?.[0]).not.toHaveProperty('metadata');
+});

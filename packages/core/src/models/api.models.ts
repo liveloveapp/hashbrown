@@ -30,6 +30,7 @@ export interface ToolCall {
    */
   encryptedValue?: string;
 
+  /** Provider metadata preserved across AG-UI runs. */
   metadata?: Record<string, unknown>;
 }
 
@@ -46,6 +47,9 @@ export interface AssistantMessage {
    * Hashbrown does not inspect or display this value.
    */
   encryptedValue?: string;
+
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Record<string, unknown>;
 
   /**
    * Human-readable reasoning. When `reasoningDetails` is present, this value

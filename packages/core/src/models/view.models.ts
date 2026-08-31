@@ -51,6 +51,9 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
            * Hashbrown does not inspect or display this value.
            */
           encryptedValue?: string;
+
+          /** Provider metadata preserved across AG-UI runs. */
+          metadata?: Record<string, unknown>;
         }
       | {
           role: 'tool';
@@ -65,6 +68,9 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
            * Hashbrown does not inspect or display this value.
            */
           encryptedValue?: string;
+
+          /** Provider metadata preserved across AG-UI runs. */
+          metadata?: Record<string, unknown>;
         }
     : never
 >;
@@ -87,6 +93,9 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
    * Hashbrown does not inspect or display this value.
    */
   encryptedValue?: string;
+
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Record<string, unknown>;
 
   /**
    * Human-readable reasoning. When `reasoningDetails` is present, this value
