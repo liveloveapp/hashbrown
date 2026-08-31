@@ -2,91 +2,75 @@
 title: 'Ollama: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'First, install the Ollama adapter package:'
+    content: 'Hashbrown maps AG-UI runs to the official Ollama SDK and streams canonical AG-UI events.'
 ---
+
 # Ollama
 
-First, install the Ollama adapter package:
-
-<hb-code-example header="terminal">
+Install the Ollama adapter, official Ollama SDK, and AG-UI SSE packages:
 
 ```sh
-npm install @hashbrownai/ollama
+npm install @hashbrownai/ollama ollama @ag-ui/core @ag-ui/encoder
 ```
 
-</hb-code-example>
+## Streaming Text Responses
 
----
+`HashbrownOllama.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. The adapter uses the official Ollama SDK streaming chat API. Encode its events as AG-UI SSE at your HTTP boundary.
 
-## `HashbrownOllama.stream.text(options)`
+The model is server configuration and is not read from the client run input. By default the official SDK connects to the local Ollama server. Pass `host` for a remote or containerized server, or pass a preconfigured `client` for custom headers and transport settings. An explicit `client` takes precedence over `host`.
 
-Streams an Ollama chat completion as a series of encoded frames. Handles content, tool calls, and errors, and yields each frame as a `Uint8Array`.
+### API Reference
 
-**Options:**
+| Name                      | Type                                    | Description                                                            |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| `client`                  | `Ollama`                                | _(Optional)_ Preconfigured official Ollama SDK client.                 |
+| `host`                    | `string`                                | _(Optional)_ Ollama host URL used when creating a client for this run. |
+| `model`                   | `string`                                | Server-selected Ollama model.                                          |
+| `input`                   | `OllamaHashbrownRunAgentInput`          | AG-UI run input, including messages and tools.                         |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Ollama request when the client disconnects.   |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Ollama `ChatRequest`.      |
 
-| Name                       | Type                              | Description                                                                                        |
-| -------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `host`                     | `string`                          | _(Optional)_ Ollama host URL, such as `http://localhost:11434` or a container host.                |
-| `client`                   | `Ollama`                          | _(Optional)_ Preconfigured Ollama SDK client for advanced transport settings.                      |
-| `turbo.apiKey`             | `string`                          | _(Optional)_ Use Ollama Turbo by providing an API key.                                             |
-| `request`                  | `Chat.Api.CompletionCreateParams` | The chat request: model, messages, tools, system, `responseFormat`, etc.                           |
-| `transformRequestOptions`  | `function`                        | _(Optional)_ Async function to transform Ollama request options before sending (e.g., for `think` parameter). |
+The adapter maps system and developer instructions, text message history, tool definitions, tool calls, and tool results. Text and tool calls become canonical AG-UI events. Ollama thinking becomes AG-UI reasoning records and is restored as `thinking` when that assistant message is sent back for continuation. Terminal response details, including metrics and log probabilities, are preserved as Ollama `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-**Supported Features:**
-
-- **Roles:** `user`, `assistant`, `tool`
-- **Tools:** Function calling with strict function schemas
-- **Response Format:** Optionally specify a JSON schema in `responseFormat` (forwarded to Ollama `format`)
-- **System Prompt:** Included as the first message if provided
-- **Streaming:** Each chunk is encoded into a resilient streaming format
-- **Local, Hosted, or Turbo:** Connects to the default Ollama client, a configured `host`, an explicit `client`, or Ollama Turbo
-
----
-
-## How It Works
-
-- **Messages:** Translated to Ollama’s message format, supporting `user`, `assistant`, and `tool` roles. Tool results are stringified as tool messages.
-- **Tools/Functions:** Tools are passed as function definitions with `name`, `description`, and JSON Schema `parameters` (`strict: true`).
-- **Response Format:** Pass a JSON schema in `responseFormat`; forwarded to Ollama as `format` for structured output.
-- **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
-- **Client Selection:**
-  - `client`: use a preconfigured Ollama SDK client
-  - `turbo.apiKey`: route requests through Ollama Turbo
-  - `host`: create an Ollama SDK client for the configured host URL
-  - Default: use the default `ollama` Node client
-- **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
-
----
-
-## Example: Node.js Server Integration
+### Node.js Server Integration
 
 <hb-backend-code-example>
 
 <div backend="express">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOllama } from '@hashbrownai/ollama';
 import express from 'express';
 
 const app = express();
 app.use(express.json());
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownOllama.stream.text({
-    // Optional: connect to a remote or containerized Ollama server
-    // host: 'http://ollama:11434',
-    // Optional: use Ollama Turbo
-    // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    host: process.env.OLLAMA_HOST,
+    model: process.env.OLLAMA_MODEL ?? 'gemma3',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 
 app.listen(3000);
@@ -97,25 +81,36 @@ app.listen(3000);
 <div backend="fastify">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOllama } from '@hashbrownai/ollama';
 import Fastify from 'fastify';
 
 const fastify = Fastify();
 
-fastify.post('/chat', async (request, reply) => {
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
   const stream = HashbrownOllama.stream.text({
-    // Optional: use Ollama Turbo
-    // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
-    request: request.body, // must be Chat.Api.CompletionCreateParams
+    host: process.env.OLLAMA_HOST,
+    model: process.env.OLLAMA_MODEL ?? 'gemma3',
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  reply.header('Content-Type', 'application/octet-stream');
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
 
-  for await (const chunk of stream) {
-    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
   }
 
-  reply.raw.end();
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
 });
 
 fastify.listen({ port: 3000 });
@@ -126,27 +121,43 @@ fastify.listen({ port: 3000 });
 <div backend="nestjs">
 
 ```ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { HashbrownOllama } from '@hashbrownai/ollama';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 
 @Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Res() res: Response) {
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
     const stream = HashbrownOllama.stream.text({
-      // Optional: use Ollama Turbo
-      // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
-      request: body, // must be Chat.Api.CompletionCreateParams
+      host: process.env.OLLAMA_HOST,
+      model: process.env.OLLAMA_MODEL ?? 'gemma3',
+      input,
+      signal: abortController.signal,
     });
+    const encoder = new EventEncoder();
 
-    res.header('Content-Type', 'application/octet-stream');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
 
-    for await (const chunk of stream) {
-      res.write(chunk); // Pipe each encoded frame as it arrives
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
     }
 
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
 ```
@@ -156,34 +167,39 @@ export class ChatController {
 <div backend="hono">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOllama } from '@hashbrownai/ollama';
 import { Hono } from 'hono';
 
 const app = new Hono();
 
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-  
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
   const stream = HashbrownOllama.stream.text({
-    // Optional: use Ollama Turbo
-    // turbo: { apiKey: process.env.OLLAMA_API_KEY! },
-    request: body, // must be Chat.Api.CompletionCreateParams
+    host: process.env.OLLAMA_HOST,
+    model: process.env.OLLAMA_MODEL ?? 'gemma3',
+    input,
+    signal: c.req.raw.signal,
   });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
         }
         controller.close();
       },
     }),
     {
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
       },
-    }
+    },
   );
 });
 
@@ -194,216 +210,81 @@ export default app;
 
 </hb-backend-code-example>
 
----
+## Structured Output
 
----
+Set `input.hashbrown.responseSchema` to use Ollama native structured output. Hashbrown forwards a cloned JSON Schema as the Ollama `format` request field; it does not emulate or prevalidate provider support.
 
-### Transform Request Options
+```ts
+const input = {
+  ...runInput,
+  hashbrown: {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        answer: { type: 'string' },
+      },
+      required: ['answer'],
+    },
+  },
+};
+```
 
-The `transformRequestOptions` parameter allows you to intercept and modify the chat request before it's sent to Ollama. Use `host` or `client` for transport settings such as the Ollama server URL.
+Ollama Cloud does not currently support structured outputs. Use a local or self-hosted model that supports `format` when setting `responseSchema`.
 
-<hb-backend-code-example>
+## Ollama Cloud
 
-<div backend="express">
+Configure the official SDK client with the Ollama Cloud host and authorization header, then pass it to Hashbrown:
 
 ```ts
 import { HashbrownOllama } from '@hashbrownai/ollama';
-import express from 'express';
+import { Ollama } from 'ollama';
 
-const app = express();
-app.use(express.json());
+const client = new Ollama({
+  host: 'https://ollama.com',
+  headers: {
+    Authorization: `Bearer ${process.env.OLLAMA_API_KEY!}`,
+  },
+});
 
-app.post('/chat', async (req, res) => {
-  const stream = HashbrownOllama.stream.text({
-    request: req.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust parameters based on user preferences
-        temperature: getUserPreferences(req.user.id).creativity,
-      };
-    },
-  });
-
-  res.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    res.write(chunk);
-  }
-
-  res.end();
+const stream = HashbrownOllama.stream.text({
+  client,
+  model: process.env.OLLAMA_MODEL ?? 'gpt-oss:120b',
+  input,
 });
 ```
 
-</div>
+## Thinking
 
-<div backend="fastify">
+Use `transformRequestOptions` to enable thinking on a compatible model. Thinking chunks are emitted as AG-UI reasoning records and are included in provider continuation messages.
 
 ```ts
-import { HashbrownOllama } from '@hashbrownai/ollama';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/chat', async (request, reply) => {
-  const stream = HashbrownOllama.stream.text({
-    request: request.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust parameters based on user preferences
-        temperature: getUserPreferences(request.user.id).creativity,
-      };
-    },
-  });
-
-  reply.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    reply.raw.write(chunk);
-  }
-
-  reply.raw.end();
+const stream = HashbrownOllama.stream.text({
+  model: process.env.OLLAMA_MODEL ?? 'deepseek-r1',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    think: true,
+  }),
 });
 ```
 
-</div>
+## Transform Request Options
 
-<div backend="nestjs">
-
-```ts
-import { Controller, Post, Body, Res, Req } from '@nestjs/common';
-import { HashbrownOllama } from '@hashbrownai/ollama';
-import { Response, Request } from 'express';
-
-@Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
-    const stream = HashbrownOllama.stream.text({
-      request: body,
-      transformRequestOptions: (options) => {
-        return {
-          ...options,
-          // Add server-side system prompt
-          messages: [
-            { role: 'system', content: 'You are a helpful assistant.' },
-            ...options.messages,
-          ],
-          // Adjust parameters based on user preferences
-          temperature: getUserPreferences(req.user.id).creativity,
-        };
-      },
-    });
-
-    res.header('Content-Type', 'application/octet-stream');
-
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-
-    res.end();
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
+`transformRequestOptions` receives the final Ollama SDK request after AG-UI input has been mapped. Use it for server-owned model settings.
 
 ```ts
-import { HashbrownOllama } from '@hashbrownai/ollama';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-  
-  const stream = HashbrownOllama.stream.text({
-    request: body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust parameters based on user preferences
-        temperature: getUserPreferences(c.req.user.id).creativity,
-      };
+const stream = HashbrownOllama.stream.text({
+  model: process.env.OLLAMA_MODEL ?? 'gemma3',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    options: {
+      ...options.options,
+      temperature: 0.2,
+      num_predict: 2048,
     },
-  });
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk);
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-    }
-  );
+  }),
 });
 ```
-
-</div>
-
-</hb-backend-code-example>
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
-
----
-
-## Advanced: Tools, Function Calling, and Response Schema
-
-- **Tools:** Add tools using function specs (name, description, parameters as JSON Schema). The adapter forwards them to Ollama with `strict` mode enabled.
-- **Function Calling:** Ollama can return `tool_calls` which are streamed as frames; execute your tool and continue the conversation by sending a `tool` message.
-- **Response Format:** Pass a JSON schema in `responseFormat` to request validated structured output from models that support it.
-
----
-
-## Using Extended Thinking with DeepSeek Models
-
-DeepSeek R1 and similar models support an extended thinking mode via the `think` parameter. You can enable this using `transformRequestOptions`:
-
-```ts
-import { HashbrownOllama } from '@hashbrownai/ollama';
-
-app.post('/chat', async (req, res) => {
-  const stream = HashbrownOllama.stream.text({
-    request: req.body,
-    transformRequestOptions: async (options) => ({
-      ...options,
-      think: true, // Enable extended thinking for DeepSeek R1
-    }),
-  });
-
-  res.header('Content-Type', 'application/octet-stream');
-  for await (const chunk of stream) {
-    res.write(chunk);
-  }
-  res.end();
-});
-```
-
-The `think` parameter accepts:
-- `true` - Enable thinking
-- `false` - Disable thinking (default)

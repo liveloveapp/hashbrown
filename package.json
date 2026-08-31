@@ -70,7 +70,7 @@
     "marked-shiki": "^1.2.1",
     "mermaid": "^10.9.6",
     "ngx-markdown": "22.0.0",
-    "ollama": "^0.5.18",
+    "ollama": "0.6.3",
     "quickjs-emscripten-core": "0.31.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",

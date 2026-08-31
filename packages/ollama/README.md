@@ -15,8 +15,49 @@
 
 ## Getting Started
 
+Install the Hashbrown adapter, official Ollama SDK, and AG-UI packages:
+
 ```sh
-npm install @hashbrownai/ollama --save
+npm install @hashbrownai/ollama ollama @ag-ui/core @ag-ui/encoder
+```
+
+`HashbrownOllama.stream.text()` maps an AG-UI run to Ollama and returns canonical AG-UI events. Encode the events as SSE at your HTTP boundary:
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
+  const stream = HashbrownOllama.stream.text({
+    model: process.env.OLLAMA_MODEL ?? 'gemma3',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
+
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
+  }
+
+  if (!res.writableEnded) {
+    res.end();
+  }
+});
+
+app.listen(3000);
 ```
 
 ## Docs
