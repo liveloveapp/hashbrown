@@ -1,0 +1,63 @@
+name: Bedrock Runtime Verification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: bedrock-runtime-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify real Bedrock streaming
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate configuration
+        env:
+          HASHBROWN_BEDROCK_ROLE_ARN: ${{ vars.HASHBROWN_BEDROCK_ROLE_ARN }}
+          HASHBROWN_BEDROCK_REGION: ${{ vars.HASHBROWN_BEDROCK_REGION }}
+          HASHBROWN_BEDROCK_MODEL_ID: ${{ vars.HASHBROWN_BEDROCK_MODEL_ID }}
+        run: |
+          missing=0
+          for name in HASHBROWN_BEDROCK_ROLE_ARN HASHBROWN_BEDROCK_REGION HASHBROWN_BEDROCK_MODEL_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required GitHub variable: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.HASHBROWN_BEDROCK_ROLE_ARN }}
+          aws-region: ${{ vars.HASHBROWN_BEDROCK_REGION }}
+          role-session-name: hashbrown-bedrock-runtime
+          role-duration-seconds: 900
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Bedrock runtime
+        run: npx nx runtime-verification bedrock --skip-nx-cache
+        env:
+          AWS_REGION: ${{ vars.HASHBROWN_BEDROCK_REGION }}
+          BEDROCK_MODEL_ID: ${{ vars.HASHBROWN_BEDROCK_MODEL_ID }}

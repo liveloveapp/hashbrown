@@ -1,11 +1,15 @@
 import { resolve } from 'node:path';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
-import type { Chat, Frame, GenerationChunkFrame } from '@hashbrownai/core';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
-import { type AimockHandle, runProviderTextWithAimock } from '@hashbrownai/testing/aimock';
+import {
+  type AimockHandle,
+  runProviderAGUIWithAimock,
+} from '@hashbrownai/testing/aimock';
 import { HashbrownBedrock } from './index';
+import type { BedrockHashbrownRunAgentInput } from './stream/types';
 
-const BEDROCK_MODEL_ID = 'anthropic.claude-3-5-sonnet-20240620-v1:0';
+const BEDROCK_MODEL = 'anthropic.claude-3-5-sonnet-20240620-v1:0';
 
 function fixturePath(name: string): string {
   return resolve(__dirname, '../../../tools/testing/aimock/fixtures', name);
@@ -23,172 +27,213 @@ function createBedrockClient(aimock: AimockHandle): BedrockRuntimeClient {
   });
 }
 
-function generationChunks(frames: Frame[]): GenerationChunkFrame[] {
-  return frames.filter(
-    (frame): frame is GenerationChunkFrame => frame.type === 'generation-chunk',
-  );
-}
-
-function streamedContent(frames: Frame[]): string {
-  return generationChunks(frames)
-    .map((frame) => frame.chunk.choices[0]?.delta.content ?? '')
-    .join('');
-}
-
-function baseRequest(
-  userMessage: string,
-): Chat.Api.CompletionCreateParams {
+function baseInput(userMessage: string): BedrockHashbrownRunAgentInput {
   return {
-    operation: 'generate',
-    model: BEDROCK_MODEL_ID,
-    system: 'You are a deterministic test assistant.',
-    messages: [{ role: 'user', content: userMessage }],
+    threadId: 'thread-bedrock',
+    runId: 'run-bedrock',
+    messages: [
+      {
+        id: 'system-bedrock',
+        role: 'system',
+        content: 'You are a deterministic test assistant.',
+      },
+      { id: 'user-bedrock', role: 'user', content: userMessage },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
   };
 }
 
-test('Amazon Bedrock text streaming emits Hashbrown generation frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
+async function runFixture(
+  fixtureName: string,
+  input: BedrockHashbrownRunAgentInput,
+  transformRequestOptions?: Parameters<
+    typeof HashbrownBedrock.stream.text
+  >[0]['transformRequestOptions'],
+): Promise<AGUIEvent[]> {
+  return runProviderAGUIWithAimock({
+    fixturePath: fixturePath(fixtureName),
+    createStream: (aimock, signal) =>
       HashbrownBedrock.stream.text({
         client: createBedrockClient(aimock),
-        request: baseRequest('say hi briefly'),
+        model: BEDROCK_MODEL,
+        input,
+        signal,
+        transformRequestOptions,
       }),
   });
+}
 
-  expect(frames[0].type).toBe('generation-start');
-  expect(frames.at(-1)?.type).toBe('generation-finish');
-  expect(streamedContent(frames)).toBe('Hello from aimock.');
+function streamedContent(events: AGUIEvent[]): string {
+  return events
+    .filter((event) => event.type === EventType.TEXT_MESSAGE_CONTENT)
+    .map((event) => event.delta)
+    .join('');
+}
+
+test('Bedrock consumes AG-UI input and emits a canonical text run', async () => {
+  const input = baseInput('say hi briefly');
+
+  const events = await runFixture('text.json', input);
+
+  expect(events[0]).toEqual({
+    type: EventType.RUN_STARTED,
+    threadId: input.threadId,
+    runId: input.runId,
+  });
+  expect(streamedContent(events)).toBe('Hello from aimock.');
+  expect(events).toContainEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId: 'run-bedrock:assistant',
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: input.threadId,
+    runId: input.runId,
+  });
 });
 
-test('Amazon Bedrock streaming preserves chunked content across multiple frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('streaming.json'),
-    createStream: (aimock) =>
-      HashbrownBedrock.stream.text({
-        client: createBedrockClient(aimock),
-        request: baseRequest('stream deterministic text'),
-      }),
-  });
+test('Bedrock preserves streamed text across multiple AG-UI events', async () => {
+  const input = baseInput('stream deterministic text');
 
-  expect(generationChunks(frames).length).toBeGreaterThan(1);
-  expect(streamedContent(frames)).toContain(
+  const events = await runFixture('streaming.json', input);
+  const contentEvents = events.filter(
+    (event) => event.type === EventType.TEXT_MESSAGE_CONTENT,
+  );
+
+  expect(contentEvents.length).toBeGreaterThan(1);
+  expect(streamedContent(events)).toContain(
     'Streaming fixture response with enough text',
   );
 });
 
-test('Amazon Bedrock tool calling emits tool call deltas', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('tool-call.json'),
-    createStream: (aimock) =>
-      HashbrownBedrock.stream.text({
-        client: createBedrockClient(aimock),
-        request: {
-          ...baseRequest('call the lookup tool'),
-          tools: [
-            {
-              name: 'lookup',
-              description: 'Lookup deterministic fixture data.',
-              parameters: {
-                type: 'object',
-                properties: {
-                  query: { type: 'string' },
-                },
-                required: ['query'],
-              },
-            },
-          ],
-          toolChoice: 'required',
-        },
-      }),
-  });
+test('Bedrock emits complete AG-UI tool call lifecycles', async () => {
+  const input = baseInput('call the lookup tool');
+  input.tools = [
+    {
+      name: 'lookup',
+      description: 'Lookup deterministic fixture data.',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query'],
+      },
+    },
+  ];
 
-  const toolCallDeltas = generationChunks(frames).flatMap(
-    (frame) => frame.chunk.choices[0]?.delta.toolCalls ?? [],
+  const events = await runFixture('tool-call.json', input, (options) => ({
+    ...options,
+    toolConfig: options.toolConfig
+      ? { ...options.toolConfig, toolChoice: { any: {} } }
+      : undefined,
+  }));
+  const start = events.find(
+    (event) => event.type === EventType.TOOL_CALL_START,
   );
+  const args = events
+    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
+    .map((event) => event.delta)
+    .join('');
 
-  expect(toolCallDeltas.some((toolCall) => toolCall.id)).toBe(true);
-  expect(
-    toolCallDeltas.some(
-      (toolCall) => toolCall.function?.name === 'lookup',
-    ),
-  ).toBe(true);
-  expect(
-    toolCallDeltas
-      .map((toolCall) => toolCall.function?.arguments ?? '')
-      .join(''),
-  ).toContain('"query":"hashbrown"');
+  expect(start).toMatchObject({
+    type: EventType.TOOL_CALL_START,
+    toolCallName: 'lookup',
+    parentMessageId: 'run-bedrock:assistant',
+  });
+  expect(JSON.parse(args)).toEqual({ query: 'hashbrown' });
+  expect(events).toContainEqual({
+    type: EventType.TOOL_CALL_END,
+    toolCallId:
+      start?.type === EventType.TOOL_CALL_START
+        ? start.toolCallId
+        : 'missing-tool-call',
+  });
 });
 
-test('Amazon Bedrock structured output fixture emits JSON text content', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('structured-output.json'),
-    createStream: (aimock) =>
-      HashbrownBedrock.stream.text({
-        client: createBedrockClient(aimock),
-        request: baseRequest('return structured output'),
-      }),
-  });
+test('Bedrock maps the Hashbrown response schema to native structured output', async () => {
+  const input = baseInput('return structured output');
+  input.hashbrown = {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        ok: { type: 'boolean' },
+      },
+      required: ['text', 'ok'],
+      additionalProperties: false,
+    },
+  };
+  let outputConfig: unknown;
 
-  expect(JSON.parse(streamedContent(frames))).toEqual({
+  const events = await runFixture(
+    'structured-output.json',
+    input,
+    (options) => {
+      outputConfig = options.outputConfig;
+      return options;
+    },
+  );
+
+  expect(JSON.parse(streamedContent(events))).toEqual({
     text: 'Hello from structured aimock.',
     ok: true,
   });
+  expect(outputConfig).toEqual({
+    textFormat: {
+      type: 'json_schema',
+      structure: {
+        jsonSchema: {
+          schema: JSON.stringify(input.hashbrown.responseSchema),
+        },
+      },
+    },
+  });
 });
 
-test('Amazon Bedrock provider errors emit generation-error frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('error.json'),
-    createStream: (aimock) =>
-      HashbrownBedrock.stream.text({
-        client: createBedrockClient(aimock),
-        request: baseRequest('return provider error'),
-      }),
-  });
+test('Bedrock provider errors emit an AG-UI RUN_ERROR', async () => {
+  const events = await runFixture(
+    'error.json',
+    baseInput('return provider error'),
+  );
 
-  expect(frames).toEqual([
-    expect.objectContaining({
-      type: 'generation-error',
-      error: expect.any(String),
-    }),
-  ]);
+  expect(events[0]?.type).toBe(EventType.RUN_STARTED);
+  expect(events.at(-1)).toMatchObject({
+    type: EventType.RUN_ERROR,
+    message: expect.any(String),
+  });
+  expect(events).not.toContainEqual(
+    expect.objectContaining({ type: EventType.RUN_FINISHED }),
+  );
 });
 
-test('Amazon Bedrock thread persistence wraps generation with thread frames', async () => {
-  const savedThreads: Chat.Api.Message[][] = [];
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
+test('Bedrock cancellation stops without synthetic terminal events', async () => {
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('streaming.json'),
+    chunkSize: 8,
+    createStream: (aimock, signal) =>
       HashbrownBedrock.stream.text({
         client: createBedrockClient(aimock),
-        request: {
-          ...baseRequest('say hi briefly'),
-          threadId: 'bedrock-thread',
-        },
-        loadThread: async () => [
-          {
-            role: 'user',
-            content: 'previous message',
-          },
-        ],
-        saveThread: async (thread) => {
-          savedThreads.push(thread);
-          return 'bedrock-thread';
-        },
+        model: BEDROCK_MODEL,
+        input: baseInput('stream deterministic text'),
+        signal,
       }),
+    onEvent: (event, controls) => {
+      if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
+        controls.abort();
+      }
+    },
   });
 
-  expect(frames.map((frame) => frame.type)).toEqual([
-    'thread-load-start',
-    'thread-load-success',
-    'generation-start',
-    ...generationChunks(frames).map((frame) => frame.type),
-    'generation-finish',
-    'thread-save-start',
-    'thread-save-success',
-  ]);
-  expect(savedThreads).toHaveLength(1);
-  expect(savedThreads[0].map((message) => message.content)).toContain(
-    'Hello from aimock.',
+  expect(
+    events.some((event) => event.type === EventType.TEXT_MESSAGE_CONTENT),
+  ).toBe(true);
+  expect(events).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ type: EventType.TEXT_MESSAGE_END }),
+      expect.objectContaining({ type: EventType.RUN_FINISHED }),
+      expect.objectContaining({ type: EventType.RUN_ERROR }),
+    ]),
   );
 });

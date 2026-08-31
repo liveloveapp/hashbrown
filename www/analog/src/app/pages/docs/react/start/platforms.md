@@ -37,14 +37,14 @@ Can't find your preferred AI provider? [Create a custom adapter](/docs/react/pla
 
 ## Platform Limitations
 
-| Platform         | Limitations                                  |
-| ---------------- | -------------------------------------------- |
-| OpenAI           | None                                         |
-| Microsoft Azure  | None                                         |
-| Anthropic Claude | Requires `@anthropic-ai/sdk` peer dependency |
-| Amazon Bedrock   | Requires emulated structured outputs         |
-| Google Gemini    | Requires emulated structured outputs         |
-| Ollama           | Limited model support                        |
+| Platform         | Limitations                                      |
+| ---------------- | ------------------------------------------------ |
+| OpenAI           | None                                             |
+| Microsoft Azure  | None                                             |
+| Anthropic Claude | Requires `@anthropic-ai/sdk` peer dependency     |
+| Amazon Bedrock   | Native structured output support varies by model |
+| Google Gemini    | Native structured output support varies by model |
+| Ollama           | Limited model support                            |
 
 ## Where is X platform?
 

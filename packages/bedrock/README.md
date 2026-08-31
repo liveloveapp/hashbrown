@@ -16,47 +16,41 @@
 ## Getting Started
 
 ```sh
-npm install @hashbrownai/bedrock --save
+npm install @hashbrownai/bedrock @aws-sdk/client-bedrock-runtime @ag-ui/core @ag-ui/encoder --save
 ```
 
-Deploy an express server with a single /chat endpoint to use Hashbrown with Amazon Bedrock.
+Deploy an Express server with a `/run` endpoint to use Hashbrown with Amazon Bedrock.
 
 ```ts
-import { Chat } from '@hashbrownai/core';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownBedrock } from '@hashbrownai/bedrock';
 
-app.post('/chat', async (req, res) => {
-  const request = req.body as Chat.Api.CompletionCreateParams;
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownBedrock.stream.text({
-    region: process.env.AWS_REGION!,
-    request,
+    clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
+    model: process.env.BEDROCK_MODEL_ID!,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk);
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
-```
-
-In the UI package for your chosen framework, set the emulateStructuredOutput flag to true.
-
-In Angular:
-
-```
-import { provideHashbrown } from '@hashbrownai/angular';
-
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideHashbrown({
-      baseUrl: '/api/chat',
-      emulateStructuredOutput: true,
-    }),
-  ],
-};
 ```
 
 ## Docs
