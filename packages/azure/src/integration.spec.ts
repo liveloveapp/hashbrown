@@ -1,224 +1,216 @@
 import { resolve } from 'node:path';
-import type { Chat, Frame, GenerationChunkFrame } from '@hashbrownai/core';
-import { runProviderTextWithAimock } from '@hashbrownai/testing/aimock';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { runProviderAGUIWithAimock } from '@hashbrownai/testing/aimock';
 import { HashbrownAzure } from './index';
-import type { AzureCompletionCreateParams } from './stream/text.fn';
+import type { AzureHashbrownRunAgentInput } from './stream/types';
 
-const AZURE_MODEL = 'gpt-4o@2025-01-01-preview';
+const AZURE_MODEL = 'gpt-4o';
+const AZURE_API_VERSION = '2025-01-01-preview';
 
 function fixturePath(name: string): string {
   return resolve(__dirname, '../../../tools/testing/aimock/fixtures', name);
 }
 
-function generationChunks(frames: Frame[]): GenerationChunkFrame[] {
-  return frames.filter(
-    (frame): frame is GenerationChunkFrame => frame.type === 'generation-chunk',
-  );
-}
-
-function streamedContent(frames: Frame[]): string {
-  return generationChunks(frames)
-    .map((frame) => frame.chunk.choices[0]?.delta.content ?? '')
-    .join('');
-}
-
-function baseRequest(userMessage: string): AzureCompletionCreateParams {
+function baseInput(userMessage: string): AzureHashbrownRunAgentInput {
   return {
-    operation: 'generate',
-    model: AZURE_MODEL,
-    system: 'You are a deterministic test assistant.',
-    messages: [{ role: 'user', content: userMessage }],
+    threadId: 'thread-azure',
+    runId: 'run-azure',
+    messages: [
+      {
+        id: 'system-azure',
+        role: 'system',
+        content: 'You are a deterministic test assistant.',
+      },
+      {
+        id: 'user-azure',
+        role: 'user',
+        content: userMessage,
+      },
+    ],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
   };
 }
 
-async function consumeProviderStream(
-  stream: AsyncIterable<Uint8Array>,
-): Promise<void> {
-  for await (const chunk of stream) {
-    void chunk;
-  }
+async function runFixture(
+  fixtureName: string,
+  input: AzureHashbrownRunAgentInput,
+): Promise<AGUIEvent[]> {
+  return runProviderAGUIWithAimock({
+    fixturePath: fixturePath(fixtureName),
+    createStream: (aimock, signal) =>
+      HashbrownAzure.stream.text({
+        clientOptions: {
+          apiKey: 'test-not-used',
+          endpoint: aimock.url,
+          apiVersion: AZURE_API_VERSION,
+          deployment: AZURE_MODEL,
+        },
+        model: AZURE_MODEL,
+        input,
+        signal,
+      }),
+  });
 }
 
-test('Azure JSON response format mode requests JSON object output', async () => {
-  let capturedResponseFormat: unknown;
+function contentEvents(events: AGUIEvent[]) {
+  return events.filter(
+    (event) => event.type === EventType.TEXT_MESSAGE_CONTENT,
+  );
+}
 
-  await consumeProviderStream(
-    HashbrownAzure.stream.text({
-      apiKey: 'test-api-key',
-      endpoint: 'https://example.openai.azure.com/',
-      request: {
-        ...baseRequest('Hello'),
-        system: 'Respond with JSON.',
-        responseFormatMode: 'json',
-      },
-      transformRequestOptions: (options) => {
-        capturedResponseFormat = options.response_format;
-        throw new Error('stop');
-      },
-    }),
+function streamedContent(events: AGUIEvent[]): string {
+  return contentEvents(events)
+    .map((event) => event.delta)
+    .join('');
+}
+
+test('Azure OpenAI consumes AG-UI input and emits a canonical text run', async () => {
+  const events = await runFixture('text.json', baseInput('say hi briefly'));
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-azure',
+      runId: 'run-azure',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'run-azure:assistant',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'run-azure:assistant',
+      delta: 'Hello from aimock.',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'run-azure:assistant',
+    },
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-azure',
+      runId: 'run-azure',
+    },
+  ]);
+});
+
+test('Azure OpenAI preserves streamed text across multiple AG-UI events', async () => {
+  const events = await runFixture(
+    'streaming.json',
+    baseInput('stream deterministic text'),
   );
 
-  expect(capturedResponseFormat).toEqual({ type: 'json_object' });
-});
-
-test('Azure OpenAI text streaming emits Hashbrown generation frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
-      HashbrownAzure.stream.text({
-        apiKey: 'test-not-used',
-        endpoint: aimock.url,
-        request: baseRequest('say hi briefly'),
-      }),
-  });
-
-  expect(frames[0].type).toBe('generation-start');
-  expect(frames.at(-1)?.type).toBe('generation-finish');
-  expect(streamedContent(frames)).toBe('Hello from aimock.');
-});
-
-test('Azure OpenAI streaming preserves chunked content across multiple frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('streaming.json'),
-    createStream: (aimock) =>
-      HashbrownAzure.stream.text({
-        apiKey: 'test-not-used',
-        endpoint: aimock.url,
-        request: baseRequest('stream deterministic text'),
-      }),
-  });
-
-  expect(generationChunks(frames).length).toBeGreaterThan(1);
-  expect(streamedContent(frames)).toContain(
+  expect(contentEvents(events).length).toBeGreaterThan(1);
+  expect(streamedContent(events)).toContain(
     'Streaming fixture response with enough text',
   );
 });
 
-test('Azure OpenAI tool calling emits tool call deltas', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('tool-call.json'),
-    createStream: (aimock) =>
-      HashbrownAzure.stream.text({
-        apiKey: 'test-not-used',
-        endpoint: aimock.url,
-        request: {
-          ...baseRequest('call the lookup tool'),
-          tools: [
-            {
-              name: 'lookup',
-              description: 'Lookup deterministic fixture data.',
-              parameters: {
-                type: 'object',
-                properties: {
-                  query: { type: 'string' },
-                },
-                required: ['query'],
-              },
-            },
-          ],
-          toolChoice: 'required',
-        },
-      }),
-  });
+test('Azure OpenAI emits complete AG-UI tool call lifecycles', async () => {
+  const input = baseInput('call the lookup tool');
+  input.tools = [
+    {
+      name: 'lookup',
+      description: 'Lookup deterministic fixture data.',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query'],
+      },
+    },
+  ];
 
-  const toolCallDeltas = generationChunks(frames).flatMap(
-    (frame) => frame.chunk.choices[0]?.delta.toolCalls ?? [],
+  const events = await runFixture('tool-call.json', input);
+  const start = events.find(
+    (event) => event.type === EventType.TOOL_CALL_START,
   );
+  const args = events
+    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
+    .map((event) => event.delta)
+    .join('');
+  const end = events.find((event) => event.type === EventType.TOOL_CALL_END);
 
-  expect(toolCallDeltas.some((toolCall) => toolCall.id)).toBe(true);
-  expect(
-    toolCallDeltas.some((toolCall) => toolCall.function?.name === 'lookup'),
-  ).toBe(true);
-  expect(
-    toolCallDeltas
-      .map((toolCall) => toolCall.function?.arguments ?? '')
-      .join(''),
-  ).toContain('"query":"hashbrown"');
+  expect(start).toMatchObject({
+    type: EventType.TOOL_CALL_START,
+    toolCallName: 'lookup',
+    parentMessageId: 'run-azure:assistant',
+  });
+  expect(args).toContain('"query":"hashbrown"');
+  expect(end).toMatchObject({
+    type: EventType.TOOL_CALL_END,
+    toolCallId:
+      start?.type === EventType.TOOL_CALL_START
+        ? start.toolCallId
+        : 'missing-tool-call',
+  });
 });
 
-test('Azure OpenAI structured output emits JSON text content', async () => {
-  const frames = await runProviderTextWithAimock({
+test('Azure OpenAI maps the Hashbrown response schema to native structured output', async () => {
+  const input = baseInput('return structured output');
+  input.hashbrown = {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        ok: { type: 'boolean' },
+      },
+      required: ['text', 'ok'],
+    },
+  };
+  let capturedResponseFormat: unknown;
+  const events = await runProviderAGUIWithAimock({
     fixturePath: fixturePath('structured-output.json'),
-    createStream: (aimock) =>
+    createStream: (aimock, signal) =>
       HashbrownAzure.stream.text({
-        apiKey: 'test-not-used',
-        endpoint: aimock.url,
-        request: {
-          ...baseRequest('return structured output'),
-          responseFormat: {
-            type: 'object',
-            properties: {
-              text: { type: 'string' },
-              ok: { type: 'boolean' },
-            },
-            required: ['text', 'ok'],
-          },
+        clientOptions: {
+          apiKey: 'test-not-used',
+          endpoint: aimock.url,
+          apiVersion: AZURE_API_VERSION,
+          deployment: AZURE_MODEL,
+        },
+        model: AZURE_MODEL,
+        input,
+        signal,
+        transformRequestOptions: (options) => {
+          capturedResponseFormat = options.response_format;
+          return options;
         },
       }),
   });
 
-  expect(JSON.parse(streamedContent(frames))).toEqual({
+  expect(capturedResponseFormat).toEqual({
+    type: 'json_schema',
+    json_schema: {
+      strict: true,
+      name: 'schema',
+      description: '',
+      schema: input.hashbrown.responseSchema,
+    },
+  });
+  expect(JSON.parse(streamedContent(events))).toEqual({
     text: 'Hello from structured aimock.',
     ok: true,
   });
 });
 
-test('Azure OpenAI provider errors emit generation-error frames', async () => {
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('error.json'),
-    createStream: (aimock) =>
-      HashbrownAzure.stream.text({
-        apiKey: 'test-not-used',
-        endpoint: aimock.url,
-        request: baseRequest('return provider error'),
-      }),
-  });
+test('Azure OpenAI provider errors emit a canonical run error', async () => {
+  const input = baseInput('return provider error');
 
-  expect(frames).toEqual([
-    { type: 'generation-start' },
+  const events = await runFixture('error.json', input);
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: input.threadId,
+      runId: input.runId,
+    },
     expect.objectContaining({
-      type: 'generation-error',
-      error: expect.stringContaining('Deterministic provider error'),
+      type: EventType.RUN_ERROR,
+      message: expect.stringContaining('Deterministic provider error'),
     }),
   ]);
-});
-
-test('Azure OpenAI thread persistence wraps generation with thread frames', async () => {
-  const savedThreads: Chat.Api.Message[][] = [];
-  const frames = await runProviderTextWithAimock({
-    fixturePath: fixturePath('text.json'),
-    createStream: (aimock) =>
-      HashbrownAzure.stream.text({
-        apiKey: 'test-not-used',
-        endpoint: aimock.url,
-        request: {
-          ...baseRequest('say hi briefly'),
-          threadId: 'azure-thread',
-        },
-        loadThread: async () => [
-          {
-            role: 'user',
-            content: 'previous message',
-          },
-        ],
-        saveThread: async (thread) => {
-          savedThreads.push(thread);
-          return 'azure-thread';
-        },
-      }),
-  });
-
-  expect(frames.map((frame) => frame.type)).toEqual([
-    'thread-load-start',
-    'thread-load-success',
-    'generation-start',
-    ...generationChunks(frames).map((frame) => frame.type),
-    'generation-finish',
-    'thread-save-start',
-    'thread-save-success',
-  ]);
-  expect(savedThreads).toHaveLength(1);
-  expect(savedThreads[0].map((message) => message.content)).toContain(
-    'Hello from aimock.',
-  );
 });

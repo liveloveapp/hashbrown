@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { RunAgentInput } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
 import { Chat } from '@hashbrownai/core';
@@ -18,6 +17,9 @@ const OPENAI_BASE_URL = process.env['OPENAI_BASE_URL'];
 const OPENAI_MODEL = process.env['OPENAI_MODEL'] ?? 'gpt-5-nano';
 const AZURE_API_KEY = process.env['AZURE_API_KEY'] ?? '';
 const AZURE_ENDPOINT = process.env['AZURE_ENDPOINT'] ?? '';
+const AZURE_API_VERSION = process.env['AZURE_API_VERSION'] ?? '';
+const AZURE_DEPLOYMENT = process.env['AZURE_DEPLOYMENT'];
+const AZURE_MODEL = process.env['AZURE_MODEL'] ?? '';
 const GOOGLE_API_KEY = process.env['GOOGLE_API_KEY'] ?? '';
 const GOOGLE_MODEL = process.env['GOOGLE_MODEL'] ?? 'gemini-2.5-flash';
 const OLLAMA_API_KEY = process.env['OLLAMA_API_KEY'] ?? '';
@@ -53,6 +55,37 @@ app.post('/chat', async (req, res) => {
     apiKey: OPENAI_API_KEY,
     baseURL: OPENAI_BASE_URL,
     model: OPENAI_MODEL,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
+
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
+  }
+
+  if (!res.writableEnded) {
+    res.end();
+  }
+});
+
+app.post('/azure/chat', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
+  const stream = HashbrownAzure.stream.text({
+    clientOptions: {
+      apiKey: AZURE_API_KEY,
+      endpoint: AZURE_ENDPOINT,
+      apiVersion: AZURE_API_VERSION,
+      deployment: AZURE_DEPLOYMENT,
+    },
+    model: AZURE_MODEL,
     input: req.body as RunAgentInput,
     signal: abortController.signal,
   });
