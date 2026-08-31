@@ -12,12 +12,11 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "tslib": "^2.3.0",
-    "@aws-sdk/types": "3.922.0"
+    "@ag-ui/core": "0.0.59",
+    "tslib": "^2.3.0"
   },
   "peerDependencies": {
-    "@hashbrownai/core": "0.5.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.936.0"
+    "@aws-sdk/client-bedrock-runtime": "^3.1106.0"
   },
   "sideEffects": false,
   "publishConfig": {
@@ -31,6 +30,6 @@
     "typescript"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

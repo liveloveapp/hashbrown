@@ -2,78 +2,93 @@
 title: 'Amazon Bedrock: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Hashbrown’s Amazon Bedrock adapter lets you stream chat completions from AWS Bedrock models with built-in tool calling and streaming support.'
+    content: 'Hashbrown’s Amazon Bedrock adapter maps AG-UI runs to the AWS Bedrock Converse API and streams canonical AG-UI events.'
 ---
 
 # Amazon Bedrock
 
-First, install the Amazon Bedrock adapter package:
+Install the Bedrock adapter, the AWS Bedrock Runtime SDK, and the AG-UI SSE encoder:
 
 ```sh
-npm install @hashbrownai/bedrock
+npm install @hashbrownai/bedrock @aws-sdk/client-bedrock-runtime @ag-ui/core @ag-ui/encoder
 ```
 
 ## Streaming Text Responses
 
-Hashbrown’s Bedrock adapter lets you **stream chat completions** from any AWS Bedrock model (Claude, Mistral, Meta, Llama, etc.) while preserving tool calling semantics and the Hashbrown streaming frame format.
+`HashbrownBedrock.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. The adapter uses the AWS SDK's `ConverseStream` API. Encode its events as AG-UI SSE at your HTTP boundary.
+
+The model or inference profile is server configuration and is not read from the client run input.
 
 ### API Reference
 
-#### `HashbrownBedrock.stream.text(options)`
+| Name                      | Type                                    | Description                                                                    |
+| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| `model`                   | `string`                                | Server-selected Bedrock model or inference profile ID.                         |
+| `input`                   | `BedrockHashbrownRunAgentInput`         | AG-UI run input, including messages and tools.                                 |
+| `clientOptions`           | `BedrockRuntimeClientConfig`            | _(Optional)_ AWS SDK client configuration. Mutually exclusive with `client`.   |
+| `client`                  | `BedrockRuntimeClient`                  | _(Optional)_ Reusable AWS SDK client. Mutually exclusive with `clientOptions`. |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Bedrock request when the HTTP client disconnects.     |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final Bedrock `ConverseStreamCommandInput`.        |
 
-Streams an Amazon Bedrock chat completion as a series of encoded frames. Handles content, tool calls, errors, and yields each frame as a `Uint8Array`.
+The adapter maps system and developer instructions, message history, tools, tool results, and native structured output. Bedrock reasoning text, signatures, and redacted reasoning become AG-UI reasoning records that can be sent back on continuation. Citations, images, response metadata, and unsupported native blocks are preserved as AG-UI `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-**Options:**
+Set `input.hashbrown.responseSchema` to use Bedrock native structured output on a model that supports it:
 
-| Name          | Type                                                       | Description                                                                                       |
-| ------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `request`     | `Chat.Api.CompletionCreateParams`                          | The chat request: model (e.g. `anthropic.claude-3-5-sonnet-20241022-v1:0`), messages, tools, etc. |
-| `region`      | `string`                                                   | _(Optional)_ AWS region for Bedrock (falls back to the AWS SDK default chain if omitted).         |
-| `credentials` | `AwsCredentialIdentity \| Provider<AwsCredentialIdentity>` | _(Optional)_ Explicit AWS credentials if not using the default credential chain.                  |
-| `client`      | `BedrockRuntimeClient`                                     | _(Optional)_ Pre-configured Bedrock client to reuse connections, retries, or custom middleware.   |
+```ts
+const input = {
+  ...runInput,
+  hashbrown: {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        answer: { type: 'string' },
+      },
+      required: ['answer'],
+      additionalProperties: false,
+    },
+  },
+};
+```
 
-**Supported Features:**
-
-- **Roles:** `user`, `assistant`, `tool`
-- **Tools:** Converts Hashbrown tools into Bedrock `toolConfig` definitions and streams tool call arguments.
-- **System Prompt:** Added as a Bedrock system message when supplied.
-- **Tool Calling:** Streams tool call deltas (`toolUse`) and tool results in the same order Hashbrown expects.
-- **Streaming:** Emits resilient Hashbrown frames for every text delta, tool call update, finish reason, or error.
-
-### How It Works
-
-- **Messages:** User, assistant, and tool messages are mapped to Bedrock `messages` (tool results become `toolResult` blocks).
-- **Tool Configuration:** Tools are sent via `toolConfig` with the JSON schema you pass in `parameters`.
-- **Tool Call Streaming:** Bedrock’s `toolUse` events are buffered and emitted as incremental Hashbrown tool call frames.
-- **Error Handling:** Any SDK or service error is converted into an error frame before Hashbrown sends `finish`.
-- **Structured Output:** Amazon Bedrock does not yet honor JSON schemas directly—use `emulateStructuredOutput` in your React provider to coerce tool responses (see below).
-
-### Example: Node.js Server Integration
+### Node.js Server Integration
 
 <hb-backend-code-example>
 
 <div backend="express">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownBedrock } from '@hashbrownai/bedrock';
 import express from 'express';
 
 const app = express();
 app.use(express.json());
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownBedrock.stream.text({
-    region: process.env.AWS_REGION ?? 'us-east-1',
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
+    model: process.env.BEDROCK_MODEL_ID!,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 
 app.listen(3000);
@@ -84,24 +99,36 @@ app.listen(3000);
 <div backend="fastify">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownBedrock } from '@hashbrownai/bedrock';
 import Fastify from 'fastify';
 
 const fastify = Fastify();
 
-fastify.post('/chat', async (request, reply) => {
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
   const stream = HashbrownBedrock.stream.text({
-    region: process.env.AWS_REGION ?? 'us-east-1',
-    request: request.body, // must be Chat.Api.CompletionCreateParams
+    clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
+    model: process.env.BEDROCK_MODEL_ID!,
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  reply.header('Content-Type', 'application/octet-stream');
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
 
-  for await (const chunk of stream) {
-    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
   }
 
-  reply.raw.end();
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
 });
 
 fastify.listen({ port: 3000 });
@@ -112,26 +139,43 @@ fastify.listen({ port: 3000 });
 <div backend="nestjs">
 
 ```ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { HashbrownBedrock } from '@hashbrownai/bedrock';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 
 @Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Res() res: Response) {
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
     const stream = HashbrownBedrock.stream.text({
-      region: process.env.AWS_REGION ?? 'us-east-1',
-      request: body, // must be Chat.Api.CompletionCreateParams
+      clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
+      model: process.env.BEDROCK_MODEL_ID!,
+      input,
+      signal: abortController.signal,
     });
+    const encoder = new EventEncoder();
 
-    res.header('Content-Type', 'application/octet-stream');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
 
-    for await (const chunk of stream) {
-      res.write(chunk); // Pipe each encoded frame as it arrives
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
     }
 
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
 ```
@@ -141,31 +185,37 @@ export class ChatController {
 <div backend="hono">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownBedrock } from '@hashbrownai/bedrock';
 import { Hono } from 'hono';
 
 const app = new Hono();
 
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
   const stream = HashbrownBedrock.stream.text({
-    region: process.env.AWS_REGION ?? 'us-east-1',
-    request: body, // must be Chat.Api.CompletionCreateParams
+    clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
+    model: process.env.BEDROCK_MODEL_ID!,
+    input,
+    signal: c.req.raw.signal,
   });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
         }
         controller.close();
       },
     }),
     {
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
       },
     },
   );
@@ -178,41 +228,40 @@ export default app;
 
 </hb-backend-code-example>
 
----
+## AWS Credentials and Client Reuse
 
-## AWS Credentials & Client Reuse
-
-The adapter uses the AWS SDK’s [default credential provider chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html). Provide credentials via environment variables, IAM roles, or pass them explicitly:
+`clientOptions` uses the AWS SDK default credential provider chain, including environment variables, shared AWS config, ECS task roles, EC2 instance roles, and web identity credentials.
 
 ```ts
 const stream = HashbrownBedrock.stream.text({
-  request,
-  region: 'us-west-2',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  clientOptions: {
+    region: 'us-east-1',
   },
+  model: process.env.BEDROCK_MODEL_ID!,
+  input,
 });
 ```
 
-If you already configure retries, logging, or custom middleware on a `BedrockRuntimeClient`, pass it with the `client` option to reuse it.
+Pass a configured `BedrockRuntimeClient` through `client` when you need to reuse connections, retries, or middleware. Hashbrown destroys clients it creates from `clientOptions`; it never destroys a client supplied through `client`.
 
----
+## Transform Request Options
 
-## Structured Output & React Providers
+Use `transformRequestOptions` for provider-owned inference settings, guardrails, request metadata, performance configuration, or a forced tool choice.
 
-Amazon Bedrock does not currently enforce JSON schemas the way OpenAI or Azure do. Enable `emulateStructuredOutput` to have Hashbrown enforce your schemas client-side:
-
-```tsx
-import { HashbrownProvider } from '@hashbrownai/react';
-
-export function App({ children }: { children: React.ReactNode }) {
-  return (
-    <HashbrownProvider baseUrl="/api/chat" emulateStructuredOutput>
-      {children}
-    </HashbrownProvider>
-  );
-}
+```ts
+const stream = HashbrownBedrock.stream.text({
+  clientOptions: { region: 'us-east-1' },
+  model: process.env.BEDROCK_MODEL_ID!,
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    inferenceConfig: {
+      maxTokens: 2048,
+      temperature: 0.2,
+    },
+    requestMetadata: {
+      application: 'my-app',
+    },
+  }),
+});
 ```
-
-This flag ensures Hashbrown keeps your React components in sync with tool responses even when the provider does not validate the schema.
