@@ -1125,6 +1125,18 @@ test('continues client tools with isolated reasoning details in transcript order
             messageId: 'reasoning-weather',
           },
           {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'assistant-weather',
+            role: 'assistant',
+          },
+          {
+            type: EventType.TEXT_MESSAGE_END,
+            messageId: 'assistant-weather',
+            metadata: {
+              provider: { assistantSteps: [{ index: 0 }] },
+            },
+          },
+          {
             type: EventType.TOOL_CALL_START,
             toolCallId: 'call-weather',
             toolCallName: 'getWeather',
@@ -1150,6 +1162,9 @@ test('continues client tools with isolated reasoning details in transcript order
           {
             type: EventType.TOOL_CALL_END,
             toolCallId: 'call-weather',
+            metadata: {
+              provider: { toolSteps: [{ index: 1 }] },
+            },
           },
         ]),
       };
@@ -1264,11 +1279,17 @@ test('continues client tools with isolated reasoning details in transcript order
       role: 'assistant',
       content: '',
       hasEncryptedValue: true,
+      metadata: {
+        provider: { assistantSteps: [{ index: 0 }] },
+      },
       toolCalls: [
         {
           id: 'call-weather',
           type: 'function',
           hasEncryptedValue: true,
+          metadata: {
+            provider: { toolSteps: [{ index: 1 }] },
+          },
           function: {
             name: 'getWeather',
             arguments: '{"city":"Paris"}',
@@ -1319,12 +1340,32 @@ test('continues client tools with isolated reasoning details in transcript order
   const originalEncryptedValue = capturedReasoning.encryptedValue;
   const originalAssistantEncryptedValue = capturedAssistant.encryptedValue;
   const originalToolEncryptedValue = capturedToolCall.encryptedValue;
+  const capturedAssistantMetadata = capturedAssistant.metadata as {
+    provider: { assistantSteps: { index: number }[] };
+  };
+  const committedAssistantMetadata = committedAssistant.metadata as {
+    provider: { assistantSteps: { index: number }[] };
+  };
+  const capturedToolMetadata = capturedToolCall.metadata as {
+    provider: { toolSteps: { index: number }[] };
+  };
+  const committedToolMetadata = committedToolCall.metadata as {
+    provider: { toolSteps: { index: number }[] };
+  };
 
   expect(capturedAssistant).not.toBe(committedAssistant);
   expect(capturedToolCall).not.toBe(committedToolCall);
   expect(capturedReasoning === committedReasoning).toBe(false);
   expect(capturedMetadata).not.toBe(committedMetadata);
   expect(capturedMetadata.provider).not.toBe(committedMetadata.provider);
+  expect(capturedAssistantMetadata).not.toBe(committedAssistantMetadata);
+  expect(capturedAssistantMetadata.provider).not.toBe(
+    committedAssistantMetadata.provider,
+  );
+  expect(capturedToolMetadata).not.toBe(committedToolMetadata);
+  expect(capturedToolMetadata.provider).not.toBe(
+    committedToolMetadata.provider,
+  );
   expect(
     typeof originalEncryptedValue === 'string' &&
       originalEncryptedValue.length > 0 &&
@@ -1340,6 +1381,8 @@ test('continues client tools with isolated reasoning details in transcript order
   capturedToolCall.encryptedValue = 'mutated-captured-tool-call';
   capturedReasoning.encryptedValue = 'mutated-captured-value';
   capturedMetadata.provider.trace[0] = 'mutated-captured-metadata';
+  capturedAssistantMetadata.provider.assistantSteps[0]!.index = 99;
+  capturedToolMetadata.provider.toolSteps[0]!.index = 100;
 
   expect(committedAssistant.encryptedValue).toBe(
     originalAssistantEncryptedValue,
@@ -1349,6 +1392,12 @@ test('continues client tools with isolated reasoning details in transcript order
     true,
   );
   expect(committedMetadata).toEqual({ provider: { trace: ['original'] } });
+  expect(committedAssistantMetadata).toEqual({
+    provider: { assistantSteps: [{ index: 0 }] },
+  });
+  expect(committedToolMetadata).toEqual({
+    provider: { toolSteps: [{ index: 1 }] },
+  });
 
   teardown();
 });
