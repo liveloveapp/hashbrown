@@ -62,7 +62,6 @@ test('omits absent assistant and tool-call encrypted values', () => {
             name: 'getWeather',
             arguments: '{"city":"Paris"}',
           },
-          metadata: { provider: 'opaque' },
         },
       ],
     },
@@ -87,6 +86,88 @@ test('omits absent assistant and tool-call encrypted values', () => {
       ],
     },
   ] satisfies Message[]);
+});
+
+test('clones assistant and tool-call metadata into the next run input', () => {
+  const metadata = { google: { steps: [{ index: 1 }] } };
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'assistant',
+      content: 'Checking.',
+      metadata,
+      reasoningDetails: [
+        {
+          id: 'reasoning-1',
+          role: 'reasoning',
+          content: 'Need a lookup.',
+        },
+      ],
+      toolCalls: [
+        {
+          index: 0,
+          id: 'call-lookup',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+          metadata,
+        },
+      ],
+    },
+  ];
+
+  const input = createInput({ messages });
+  const [sourceStep] = metadata.google.steps;
+  if (!sourceStep) {
+    throw new Error('Expected source metadata step.');
+  }
+  sourceStep.index = 99;
+  const assistant = input.messages.find(
+    (message): message is Extract<Message, { role: 'assistant' }> =>
+      message.role === 'assistant',
+  );
+  const assistantMetadata = assistant?.metadata as {
+    google: { steps: { index: number }[] };
+  };
+  const toolMetadata = assistant?.toolCalls?.[0]?.metadata as {
+    google: { steps: { index: number }[] };
+  };
+  const [assistantStep] = assistantMetadata.google.steps;
+  if (!assistantStep) {
+    throw new Error('Expected assistant metadata step.');
+  }
+  assistantStep.index = 100;
+
+  expect(input.messages.map((message) => message.role)).toEqual([
+    'reasoning',
+    'assistant',
+  ]);
+  expect(assistantMetadata).toEqual({ google: { steps: [{ index: 100 }] } });
+  expect(toolMetadata).toEqual({ google: { steps: [{ index: 1 }] } });
+});
+
+test('omits absent assistant and tool-call metadata from the next run input', () => {
+  const messages: Chat.Api.Message[] = [
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          index: 0,
+          id: 'call-lookup',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+  ];
+
+  const input = createInput({ messages });
+  const assistant = input.messages.find(
+    (message): message is Extract<Message, { role: 'assistant' }> =>
+      message.role === 'assistant',
+  );
+
+  expect(assistant).not.toHaveProperty('metadata');
+  expect(assistant?.toolCalls?.[0]).not.toHaveProperty('metadata');
 });
 
 test('emits ordered reasoning details before the assistant and its tool results', () => {

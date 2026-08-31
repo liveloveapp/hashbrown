@@ -69,11 +69,17 @@ function createContinuationMessages(
       role: 'assistant',
       content: '',
       encryptedValue: 'fixture-assistant-opaque-value',
+      metadata: {
+        provider: { assistantSteps: [{ index: 0 }] },
+      },
       toolCalls: [
         {
           id: 'call-weather',
           type: 'function',
           encryptedValue: 'fixture-tool-opaque-value',
+          metadata: {
+            provider: { toolSteps: [{ index: 1 }] },
+          },
           function: {
             name: 'getWeather',
             arguments: '{"city":"Paris"}',
@@ -174,42 +180,59 @@ function createToolContinuationEvents(
         timestamp: 1_700_000_002_004,
       },
       {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: `${input.threadId}:message:1`,
+        role: 'assistant',
+        timestamp: 1_700_000_002_005,
+      },
+      {
+        type: EventType.TEXT_MESSAGE_END,
+        messageId: `${input.threadId}:message:1`,
+        metadata: {
+          provider: { assistantSteps: [{ index: 0 }] },
+        },
+        timestamp: 1_700_000_002_006,
+      },
+      {
         type: EventType.TOOL_CALL_START,
         toolCallId: 'call-weather',
         toolCallName: 'getWeather',
         parentMessageId: `${input.threadId}:message:1`,
-        timestamp: 1_700_000_002_005,
+        timestamp: 1_700_000_002_007,
       },
       {
         type: EventType.REASONING_ENCRYPTED_VALUE,
         subtype: 'message',
         entityId: `${input.threadId}:message:1`,
         encryptedValue: 'fixture-assistant-opaque-value',
-        timestamp: 1_700_000_002_006,
+        timestamp: 1_700_000_002_008,
       },
       {
         type: EventType.REASONING_ENCRYPTED_VALUE,
         subtype: 'tool-call',
         entityId: 'call-weather',
         encryptedValue: 'fixture-tool-opaque-value',
-        timestamp: 1_700_000_002_007,
+        timestamp: 1_700_000_002_009,
       },
       {
         type: EventType.TOOL_CALL_ARGS,
         toolCallId: 'call-weather',
         delta: '{"city":"Paris"}',
-        timestamp: 1_700_000_002_008,
+        timestamp: 1_700_000_002_010,
       },
       {
         type: EventType.TOOL_CALL_END,
         toolCallId: 'call-weather',
-        timestamp: 1_700_000_002_009,
+        metadata: {
+          provider: { toolSteps: [{ index: 1 }] },
+        },
+        timestamp: 1_700_000_002_011,
       },
       {
         type: EventType.RUN_FINISHED,
         threadId: input.threadId,
         runId: input.runId,
-        timestamp: 1_700_000_002_010,
+        timestamp: 1_700_000_002_012,
       },
     ];
   }
@@ -303,6 +326,12 @@ test('executes a tool once and automatically continues the run', async ({
     'fixture-assistant-opaque-value',
   );
   expect(continuationToolCall.encryptedValue).toBe('fixture-tool-opaque-value');
+  expect(continuationAssistant.metadata).toEqual({
+    provider: { assistantSteps: [{ index: 0 }] },
+  });
+  expect(continuationToolCall.metadata).toEqual({
+    provider: { toolSteps: [{ index: 1 }] },
+  });
   expect(firstInput).toEqual({
     threadId: firstInput.threadId,
     runId: firstInput.runId,

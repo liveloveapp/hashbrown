@@ -1,5 +1,6 @@
 import type {
   Message,
+  Metadata,
   ReasoningMessage,
   RunAgentInput,
   Tool,
@@ -69,13 +70,17 @@ function normalizeRejection(reason: unknown): string {
   return normalizeValue(reason);
 }
 
+function cloneMetadata(metadata: Metadata | undefined): Metadata | undefined {
+  return metadata === undefined ? undefined : structuredClone(metadata);
+}
+
 function cloneReasoningMessage(
   reasoning: Readonly<ReasoningMessage>,
 ): ReasoningMessage {
   return {
     ...reasoning,
-    ...(reasoning.metadata
-      ? { metadata: structuredClone(reasoning.metadata) }
+    ...(reasoning.metadata !== undefined
+      ? { metadata: cloneMetadata(reasoning.metadata) }
       : {}),
   };
 }
@@ -98,6 +103,9 @@ function mapMessage(
         ...(message.encryptedValue !== undefined
           ? { encryptedValue: message.encryptedValue }
           : {}),
+        ...(message.metadata !== undefined
+          ? { metadata: cloneMetadata(message.metadata) }
+          : {}),
         ...(message.toolCalls !== undefined
           ? {
               toolCalls: message.toolCalls.map((toolCall) => ({
@@ -105,6 +113,9 @@ function mapMessage(
                 type: 'function' as const,
                 ...(toolCall.encryptedValue !== undefined
                   ? { encryptedValue: toolCall.encryptedValue }
+                  : {}),
+                ...(toolCall.metadata !== undefined
+                  ? { metadata: cloneMetadata(toolCall.metadata) }
                   : {}),
                 function: {
                   name: toolCall.function.name,

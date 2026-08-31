@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ReasoningMessage } from '@ag-ui/core';
+import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
 
@@ -46,7 +46,8 @@ export interface ToolCall {
    */
   encryptedValue?: string;
 
-  metadata?: Record<string, unknown>;
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Metadata;
 }
 
 /**
@@ -63,6 +64,9 @@ export interface AssistantMessage {
    * Hashbrown does not inspect or display this value.
    */
   encryptedValue?: string;
+
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Metadata;
 
   reasoning?: ɵInternalReasoning;
 }

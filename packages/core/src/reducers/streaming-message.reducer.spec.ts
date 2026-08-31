@@ -382,7 +382,71 @@ test('finalizes AG-UI tool arguments only once across tool and run completion', 
   }
 });
 
-test('preserves Hashbrown tool metadata from later AG-UI tool events', () => {
+test('merges cloned text metadata shallowly across start content and end', () => {
+  const startMetadata = {
+    stable: 'start',
+    replaced: { start: true },
+    list: ['start'],
+  };
+  const contentMetadata = {
+    replaced: { content: true },
+    list: ['content'],
+    contentOnly: true,
+  };
+  const endMetadata = {
+    stable: 'end',
+    endOnly: true,
+  };
+  let state = startState();
+
+  state = reduceEvents(state, [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'message-1',
+      role: 'assistant',
+      metadata: startMetadata,
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'message-1',
+      delta: 'Answer',
+      metadata: contentMetadata,
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'message-1',
+      metadata: endMetadata,
+    },
+  ]);
+  startMetadata.replaced.start = false;
+  startMetadata.list.push('mutated');
+  contentMetadata.replaced.content = false;
+  contentMetadata.list.push('mutated');
+  endMetadata.stable = 'mutated';
+
+  expect(state.message?.content).toBe('Answer');
+  expect(state.message?.metadata).toEqual({
+    stable: 'end',
+    replaced: { content: true },
+    list: ['content'],
+    contentOnly: true,
+    endOnly: true,
+  });
+});
+
+test('merges cloned tool metadata shallowly across start arguments and end', () => {
+  const startMetadata = {
+    stable: 'start',
+    replaced: { start: true },
+  };
+  const argumentsMetadata = {
+    replaced: { arguments: true },
+    argumentsOnly: true,
+  };
+  const endMetadata = {
+    stable: 'end',
+    endOnly: true,
+  };
   let state = startState();
 
   state = reduceEvents(state, [
@@ -391,28 +455,60 @@ test('preserves Hashbrown tool metadata from later AG-UI tool events', () => {
       toolCallId: 'call-1',
       toolCallName: 'search',
       parentMessageId: 'message-1',
-      rawEvent: {
-        hashbrown: {
-          metadata: { initial: 'preserved' },
-        },
-      },
+      metadata: startMetadata,
     },
     {
       type: EventType.TOOL_CALL_ARGS,
       toolCallId: 'call-1',
       delta: '',
-      rawEvent: {
-        hashbrown: {
-          metadata: { signature: 'opaque' },
-        },
-      },
+      metadata: argumentsMetadata,
+    },
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'call-1',
+      metadata: endMetadata,
     },
   ]);
+  startMetadata.replaced.start = false;
+  argumentsMetadata.replaced.arguments = false;
+  endMetadata.stable = 'mutated';
 
+  expect(state.toolCalls[0]?.arguments).toBe('');
   expect(state.toolCalls[0]?.metadata).toEqual({
-    initial: 'preserved',
-    signature: 'opaque',
+    stable: 'end',
+    replaced: { arguments: true },
+    argumentsOnly: true,
+    endOnly: true,
   });
+});
+
+test('preserves canonical metadata from text and tool chunk events', () => {
+  const textMetadata = { provider: { textStep: 1 } };
+  const toolMetadata = { provider: { toolStep: 2 } };
+  let state = startState();
+
+  state = reduceEvents(state, [
+    {
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'message-1',
+      role: 'assistant',
+      delta: 'Answer',
+      metadata: textMetadata,
+    },
+    {
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'call-1',
+      toolCallName: 'search',
+      parentMessageId: 'message-1',
+      delta: '{}',
+      metadata: toolMetadata,
+    },
+  ]);
+  textMetadata.provider.textStep = 99;
+  toolMetadata.provider.toolStep = 100;
+
+  expect(state.message?.metadata).toEqual({ provider: { textStep: 1 } });
+  expect(state.toolCalls[0]?.metadata).toEqual({ provider: { toolStep: 2 } });
 });
 
 test('streams multiple AG-UI tool calls keyed by toolCallId', () => {

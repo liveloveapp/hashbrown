@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ReasoningMessage } from '@ag-ui/core';
+import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { DeepPartial } from '../utils';
 import { ModelInput } from '../transport';
 
@@ -30,7 +30,8 @@ export interface ToolCall {
    */
   encryptedValue?: string;
 
-  metadata?: Record<string, unknown>;
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Metadata;
 }
 
 /**
@@ -46,6 +47,9 @@ export interface AssistantMessage {
    * Hashbrown does not inspect or display this value.
    */
   encryptedValue?: string;
+
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Metadata;
 
   /**
    * Human-readable reasoning. When `reasoningDetails` is present, this value

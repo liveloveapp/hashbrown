@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ReasoningMessage } from '@ag-ui/core';
+import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue, Prettify } from '../utils';
 
@@ -51,6 +51,9 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
            * Hashbrown does not inspect or display this value.
            */
           encryptedValue?: string;
+
+          /** Provider metadata preserved across AG-UI runs. */
+          metadata?: Metadata;
         }
       | {
           role: 'tool';
@@ -65,6 +68,9 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
            * Hashbrown does not inspect or display this value.
            */
           encryptedValue?: string;
+
+          /** Provider metadata preserved across AG-UI runs. */
+          metadata?: Metadata;
         }
     : never
 >;
@@ -87,6 +93,9 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
    * Hashbrown does not inspect or display this value.
    */
   encryptedValue?: string;
+
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Metadata;
 
   /**
    * Human-readable reasoning. When `reasoningDetails` is present, this value
