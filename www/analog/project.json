@@ -27,6 +27,9 @@
         }
       }
     },
+    "typecheck": {
+      "dependsOn": ["collect-docs"]
+    },
     "serve": {
       "executor": "@analogjs/platform:vite-dev-server",
       "defaultConfiguration": "development",
