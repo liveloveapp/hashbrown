@@ -15,129 +15,43 @@
 
 ## Getting Started
 
-### Installation
-
 ```sh
-npm install @hashbrownai/anthropic --save
+npm install @hashbrownai/anthropic @anthropic-ai/sdk @ag-ui/core @ag-ui/encoder --save
 ```
 
-You'll also need to install the Anthropic SDK as a peer dependency:
-
-```sh
-npm install @anthropic-ai/sdk --save
-```
-
-### Basic Usage
-
-Deploy an express server with a single `/chat` endpoint to use Hashbrown with Anthropic.
+Deploy an Express server with a `/run` endpoint to use Hashbrown with Anthropic.
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAnthropic } from '@hashbrownai/anthropic';
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownAnthropic.stream.text({
     apiKey: process.env.ANTHROPIC_API_KEY!,
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 ```
-
-### Advanced Usage with Custom Base URL
-
-```ts
-import { HashbrownAnthropic } from '@hashbrownai/anthropic';
-
-const stream = HashbrownAnthropic.stream.text({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-  baseURL: 'https://api.anthropic.com', // Optional custom base URL
-  request: {
-    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
-    system: 'You are a helpful assistant.',
-    messages: [
-      {
-        role: 'user',
-        content: 'Hello, how are you?',
-      },
-    ],
-    // Optional: Add tools for function calling
-    tools: [
-      {
-        name: 'get_weather',
-        description: 'Get the current weather for a location',
-        parameters: {
-          type: 'object',
-          properties: {
-            location: {
-              type: 'string',
-              description: 'The city and state, e.g. San Francisco, CA',
-            },
-          },
-          required: ['location'],
-        },
-      },
-    ],
-    toolChoice: 'auto',
-    // Optional: Add structured output schema
-    responseFormat: {
-      type: 'object',
-      properties: {
-        answer: { type: 'string' },
-        confidence: { type: 'number' },
-      },
-      required: ['answer'],
-    },
-  },
-  // Optional: Transform request options before sending to Anthropic
-  transformRequestOptions: (options) => {
-    // Modify options as needed
-    return {
-      ...options,
-      max_tokens: 1000, // Override max tokens
-    };
-  },
-});
-```
-
-## API Reference
-
-### `HashbrownAnthropic.stream.text(options)`
-
-Creates a streaming text completion using Anthropic's Claude models.
-
-#### Parameters
-
-- `options.apiKey` (string, required): Your Anthropic API key
-- `options.baseURL` (string, optional): Custom base URL for Anthropic API
-- `options.request` (Chat.Api.CompletionCreateParams, required): The completion request parameters
-- `options.transformRequestOptions` (function, optional): Function to modify request options before sending
-
-#### Returns
-
-An async iterable that yields `Uint8Array` chunks encoded with Hashbrown's frame protocol.
-
-## Supported Features
-
-- ✅ **Text Streaming**: Real-time streaming of text completions
-- ✅ **Tool Calling**: Function calling with automatic tool execution
-- ✅ **Structured Output**: JSON schema validation for responses
-- ✅ **System Messages**: Custom system prompts and instructions
-- ✅ **Message History**: Full conversation context support
-- ✅ **Error Handling**: Proper error propagation through the stream
-
-## Models
-
-The adapter supports all Anthropic Claude models. We currently recommend using
-`claude-haiku-4-5-20251001`, which is widely available for streaming and tool
-calling. Switch to newer releases by setting the `ANTHROPIC_MODEL` environment
-variable.
 
 ## Docs
 
