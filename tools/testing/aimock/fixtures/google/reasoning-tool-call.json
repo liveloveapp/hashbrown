@@ -1,0 +1,20 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "reason before calling lookup",
+        "hasToolResult": false
+      },
+      "response": {
+        "reasoning": "I need the lookup result.",
+        "toolCalls": [
+          {
+            "id": "call_google_reasoning_fixture",
+            "name": "lookup",
+            "arguments": "{\"query\":\"hashbrown\"}"
+          }
+        ]
+      }
+    }
+  ]
+}

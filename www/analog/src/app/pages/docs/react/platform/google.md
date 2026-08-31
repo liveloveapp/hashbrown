@@ -2,105 +2,118 @@
 title: 'Google Gemini: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Hashbrown’s Google Gemini adapter lets you stream chat completions from Google Gemini models, handling function calls, response schemas, and request transforms.'
+    content: 'Hashbrown’s Google Gemini adapter maps AG-UI runs to the Google Gen AI SDK and streams canonical AG-UI events.'
 ---
 
 # Google Gemini
 
-First, install the Google adapter package:
+Install the Google adapter, the Google Gen AI SDK, and the AG-UI SSE encoder:
 
 ```sh
-npm install @hashbrownai/google
+npm install @hashbrownai/google @google/genai @ag-ui/encoder
 ```
 
 ## Authentication
 
-The adapter supports two mutually exclusive authentication modes.
+The adapter supports two mutually exclusive authentication modes. The model is server configuration and is not read from the client run input.
 
-**API Key (Gemini Developer API):**
+**Gemini Developer API:**
 
 ```ts
 HashbrownGoogle.stream.text({
   apiKey: process.env.GOOGLE_API_KEY!,
-  request: req.body,
+  model: 'gemini-2.5-flash',
+  input,
 });
 ```
 
-**Vertex AI (project + location via ADC):**
+**Vertex AI with Application Default Credentials:**
 
 ```ts
 HashbrownGoogle.stream.text({
   vertexai: true,
   project: 'your-gcp-project',
   location: 'us-central1',
-  request: req.body,
+  model: 'gemini-2.5-flash',
+  input,
 });
 ```
 
 ## Streaming Text Responses
 
-Hashbrown’s Google Gemini adapter lets you **stream chat completions** from Google Gemini models, handling function calls, response schemas, and request transforms.
+`HashbrownGoogle.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. Encode those events as AG-UI SSE at your HTTP boundary.
 
 ### API Reference
 
-#### `HashbrownGoogle.stream.text(options)`
+| Name                      | Type                                    | Description                                                               |
+| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------- |
+| `apiKey`                  | `string`                                | Gemini Developer API key. Mutually exclusive with `vertexai`.             |
+| `vertexai`                | `true`                                  | Enables Vertex AI. Mutually exclusive with `apiKey`.                      |
+| `project`                 | `string`                                | GCP project ID. Required with `vertexai: true`.                           |
+| `location`                | `string`                                | GCP region. Required with `vertexai: true`.                               |
+| `model`                   | `string`                                | Server-selected Google model.                                             |
+| `input`                   | `GoogleHashbrownRunAgentInput`          | AG-UI run input, including messages and tools.                            |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Google request when the HTTP client disconnects. |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final Google `GenerateContentParameters`.     |
 
-Streams a Gemini chat completion as a series of encoded frames. Handles content, tool calls, and errors, and yields each frame as a `Uint8Array`.
+The adapter maps system instructions, message history, tool definitions, tool results, and native structured output. Gemini thought parts become AG-UI reasoning records, and Gemini thought signatures are preserved for continuation. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-**Options:**
+Set `input.hashbrown.responseSchema` to use Gemini's native JSON schema output:
 
-| Name                      | Type                                    | Description                                                                                    |
-| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `apiKey`                  | `string`                                | Gemini Developer API key. Mutually exclusive with `vertexai`.                                  |
-| `vertexai`                | `true`                                  | Enable Vertex AI auth. Mutually exclusive with `apiKey`.                                       |
-| `project`                 | `string`                                | GCP project ID. Required when `vertexai: true`.                                                |
-| `location`                | `string`                                | GCP region (e.g. `us-central1`). Required when `vertexai: true`.                              |
-| `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.                         |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final Gemini request before it is sent.                 |
+```ts
+const input = {
+  ...runInput,
+  hashbrown: {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        answer: { type: 'string' },
+      },
+      required: ['answer'],
+    },
+  },
+};
+```
 
-**Supported Features:**
-
-- **Roles:** `user`, `assistant`, `tool`, `error`
-- **Tools:** Supports tool calling with OpenAPI schemas automatically converted to Gemini format.
-- **Response Format:** Optionally specify a JSON schema for model output validation.
-- **System Prompt:** Included as Gemini’s `systemInstruction`.
-- **Tool Calling:** Handles Gemini’s tool calling modes and emits tool call frames.
-- **Streaming:** Each chunk/frame is encoded using `@hashbrownai/core`’s `encodeFrame`.
-
-### How It Works
-
-- **Messages** are mapped to Gemini's `Content` objects, including tool calls and tool responses.
-- **Tools/Functions:** Tools are converted to Gemini `FunctionDeclaration` format, including parameter schema conversion via OpenAPI.
-- **Response Schema:** If you specify `responseFormat`, it's converted and set as `responseSchema` for Gemini.
-- **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
-- **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
-
-### Example: Node.js Server Integration
+### Node.js Server Integration
 
 <hb-backend-code-example>
 
 <div backend="express">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownGoogle } from '@hashbrownai/google';
 import express from 'express';
 
 const app = express();
 app.use(express.json());
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownGoogle.stream.text({
     apiKey: process.env.GOOGLE_API_KEY!,
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 
 app.listen(3000);
@@ -111,24 +124,36 @@ app.listen(3000);
 <div backend="fastify">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownGoogle } from '@hashbrownai/google';
 import Fastify from 'fastify';
 
 const fastify = Fastify();
 
-fastify.post('/chat', async (request, reply) => {
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
   const stream = HashbrownGoogle.stream.text({
     apiKey: process.env.GOOGLE_API_KEY!,
-    request: request.body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  reply.header('Content-Type', 'application/octet-stream');
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
 
-  for await (const chunk of stream) {
-    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
   }
 
-  reply.raw.end();
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
 });
 
 fastify.listen({ port: 3000 });
@@ -139,26 +164,43 @@ fastify.listen({ port: 3000 });
 <div backend="nestjs">
 
 ```ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { HashbrownGoogle } from '@hashbrownai/google';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 
 @Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Res() res: Response) {
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
     const stream = HashbrownGoogle.stream.text({
       apiKey: process.env.GOOGLE_API_KEY!,
-      request: body, // must be Chat.Api.CompletionCreateParams
+      model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+      input,
+      signal: abortController.signal,
     });
+    const encoder = new EventEncoder();
 
-    res.header('Content-Type', 'application/octet-stream');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
 
-    for await (const chunk of stream) {
-      res.write(chunk); // Pipe each encoded frame as it arrives
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
     }
 
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
 ```
@@ -168,31 +210,37 @@ export class ChatController {
 <div backend="hono">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownGoogle } from '@hashbrownai/google';
 import { Hono } from 'hono';
 
 const app = new Hono();
 
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
   const stream = HashbrownGoogle.stream.text({
     apiKey: process.env.GOOGLE_API_KEY!,
-    request: body, // must be Chat.Api.CompletionCreateParams
+    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+    input,
+    signal: c.req.raw.signal,
   });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
         }
         controller.close();
       },
     }),
     {
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
       },
     },
   );
@@ -205,200 +253,26 @@ export default app;
 
 </hb-backend-code-example>
 
----
-
----
-
 ### Transform Request Options
 
-The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Google Gemini. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
-
-<hb-backend-code-example>
-
-<div backend="express">
+`transformRequestOptions` receives the final Google SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
 
 ```ts
-import { HashbrownGoogle } from '@hashbrownai/google';
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
-app.post('/chat', async (req, res) => {
-  const stream = HashbrownGoogle.stream.text({
-    apiKey: process.env.GOOGLE_API_KEY!,
-    request: req.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add system instructions for Gemini
-        systemInstruction: {
-          parts: [{ text: 'You are a helpful AI assistant.' }],
-        },
-        // Adjust generation config
-        generationConfig: {
-          ...options.generationConfig,
-          temperature: getUserPreferences(req.user.id).creativity,
-        },
-      };
-    },
-  });
-
-  res.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    res.write(chunk);
-  }
-
-  res.end();
-});
-```
-
-</div>
-
-<div backend="fastify">
-
-```ts
-import { HashbrownGoogle } from '@hashbrownai/google';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/chat', async (request, reply) => {
-  const stream = HashbrownGoogle.stream.text({
-    apiKey: process.env.GOOGLE_API_KEY!,
-    request: request.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add system instructions for Gemini
-        systemInstruction: {
-          parts: [{ text: 'You are a helpful AI assistant.' }],
-        },
-        // Adjust generation config
-        generationConfig: {
-          ...options.generationConfig,
-          temperature: getUserPreferences(request.user.id).creativity,
-        },
-      };
-    },
-  });
-
-  reply.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    reply.raw.write(chunk);
-  }
-
-  reply.raw.end();
-});
-```
-
-</div>
-
-<div backend="nestjs">
-
-```ts
-import { Controller, Post, Body, Res, Req } from '@nestjs/common';
-import { HashbrownGoogle } from '@hashbrownai/google';
-import { Response, Request } from 'express';
-
-@Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
-    const stream = HashbrownGoogle.stream.text({
-      apiKey: process.env.GOOGLE_API_KEY!,
-      request: body,
-      transformRequestOptions: (options) => {
-        return {
-          ...options,
-          // Add system instructions for Gemini
-          systemInstruction: {
-            parts: [{ text: 'You are a helpful AI assistant.' }],
-          },
-          // Adjust generation config
-          generationConfig: {
-            ...options.generationConfig,
-            temperature: getUserPreferences(req.user.id).creativity,
-          },
-        };
-      },
-    });
-
-    res.header('Content-Type', 'application/octet-stream');
-
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-
-    res.end();
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
-
-```ts
-import { HashbrownGoogle } from '@hashbrownai/google';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-
-  const stream = HashbrownGoogle.stream.text({
-    apiKey: process.env.GOOGLE_API_KEY!,
-    request: body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add system instructions for Gemini
-        systemInstruction: {
-          parts: [{ text: 'You are a helpful AI assistant.' }],
-        },
-        // Adjust generation config
-        generationConfig: {
-          ...options.generationConfig,
-          temperature: getUserPreferences(c.req.user.id).creativity,
-        },
-      };
-    },
-  });
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk);
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Content-Type': 'application/octet-stream',
+const stream = HashbrownGoogle.stream.text({
+  apiKey: process.env.GOOGLE_API_KEY!,
+  model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    config: {
+      ...options.config,
+      temperature: 0.2,
+      systemInstruction: {
+        parts: [{ text: 'You are a helpful assistant.' }],
       },
     },
-  );
+  }),
 });
 ```
-
-</div>
-
-</hb-backend-code-example>
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
-
-[Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
-
----
-
-### Advanced: Tools and Response Schema
-
-- **Tools:** Add tools using OpenAI-style function specs. They will be auto-converted for Gemini.
-- **Tool Calling:** Supported via Gemini's tool configuration, with control over `auto`, `required`, or `none` modes.
-- **Response Format:** Pass a JSON schema in `responseFormat` for structured output.

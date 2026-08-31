@@ -7,5 +7,5 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/google',
-  testPathIgnorePatterns: ['(?!.*integration).*\\.ts$'],
+  testPathIgnorePatterns: ['/integration\\.spec\\.ts$'],
 };
