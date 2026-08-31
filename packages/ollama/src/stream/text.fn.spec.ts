@@ -1,206 +1,246 @@
-import OllamaClient, { Ollama } from 'ollama';
-import { Chat } from '@hashbrownai/core';
+import { EventType, type RunAgentInput } from '@ag-ui/core';
+import { type ChatResponse, Ollama } from 'ollama';
 import { text } from './text.fn';
 
-jest.mock('ollama', () => {
-  const defaultClient = {
-    chat: jest.fn(),
-  };
-
-  return {
-    __esModule: true,
-    default: defaultClient,
-    Ollama: jest.fn(),
-  };
-});
+jest.mock('ollama', () => ({
+  Ollama: jest.fn(),
+}));
 
 const MockedOllama = jest.mocked(Ollama);
-const mockedDefaultClient = jest.mocked(OllamaClient);
 
-test('uses the default Ollama client when no client options are provided', async () => {
-  resetOllamaMocks();
-  const defaultChat = jest.fn().mockResolvedValue(createOllamaStream());
-  mockedDefaultClient.chat = defaultChat;
-  const request = createRequest();
+function resetOllamaMock(): void {
+  MockedOllama.mockReset();
+}
 
-  await consumeStream(
-    text({
-      request,
-    }),
+function createInput(): RunAgentInput {
+  return {
+    threadId: 'thread-ollama',
+    runId: 'run-ollama',
+    messages: [{ id: 'user-ollama', role: 'user', content: 'Hello' }],
+    tools: [],
+    context: [],
+    state: {},
+    forwardedProps: {},
+  };
+}
+
+function createChunk(content: string, done = false): ChatResponse {
+  return {
+    model: 'qwen3',
+    created_at: new Date('2026-08-31T00:00:00.000Z'),
+    message: { role: 'assistant', content },
+    done,
+    done_reason: done ? 'stop' : '',
+    total_duration: done ? 10 : 0,
+    load_duration: 0,
+    prompt_eval_count: 0,
+    prompt_eval_duration: 0,
+    eval_count: done ? 1 : 0,
+    eval_duration: 0,
+  };
+}
+
+function createProviderStream(values: ChatResponse[]) {
+  const abort = jest.fn();
+  return {
+    abort,
+    async *[Symbol.asyncIterator]() {
+      for (const value of values) {
+        yield value;
+      }
+    },
+  };
+}
+
+test('creates a host client and streams a complete AG-UI run', async () => {
+  resetOllamaMock();
+  const providerStream = createProviderStream([
+    createChunk('Hello'),
+    createChunk('', true),
+  ]);
+  const chat = jest.fn().mockResolvedValue(providerStream);
+  const abort = jest.fn();
+  MockedOllama.mockImplementationOnce(
+    () => ({ chat, abort }) as unknown as Ollama,
   );
 
-  expect(defaultChat).toHaveBeenCalledWith(
-    expect.objectContaining({
-      model: request.model,
-      stream: true,
-    }),
-  );
-  expect(MockedOllama).not.toHaveBeenCalled();
-});
-
-test('creates an Ollama client with the configured host', async () => {
-  resetOllamaMocks();
-  const chat = jest.fn().mockResolvedValue(createOllamaStream());
-  MockedOllama.mockImplementationOnce(() => ({ chat }) as unknown as Ollama);
-  const request = createRequest();
-
-  await consumeStream(
+  const result = await Array.fromAsync(
     text({
       host: 'http://ollama:11434',
-      request,
+      model: 'qwen3',
+      input: createInput(),
     }),
   );
 
   expect(MockedOllama).toHaveBeenCalledWith({
     host: 'http://ollama:11434',
   });
-  expect(chat).toHaveBeenCalledWith(
-    expect.objectContaining({
-      model: request.model,
-      stream: true,
-    }),
-  );
+  expect(chat).toHaveBeenCalledWith({
+    stream: true,
+    model: 'qwen3',
+    messages: [{ role: 'user', content: 'Hello' }],
+  });
+  expect(result.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.RAW,
+    EventType.TEXT_MESSAGE_END,
+    EventType.RUN_FINISHED,
+  ]);
 });
 
-test('uses an explicit Ollama client when provided', async () => {
-  resetOllamaMocks();
-  const chat = jest.fn().mockResolvedValue(createOllamaStream());
-  const client = { chat } as unknown as Ollama;
-  const request = createRequest();
+test('uses an explicit client instead of constructing a host client', async () => {
+  resetOllamaMock();
+  const chat = jest
+    .fn()
+    .mockResolvedValue(createProviderStream([createChunk('', true)]));
+  const client = { chat, abort: jest.fn() } as unknown as Ollama;
 
-  await consumeStream(
+  await Array.fromAsync(
     text({
       client,
-      host: 'http://ollama:11434',
-      turbo: { apiKey: 'test-api-key' },
-      request,
+      host: 'http://ignored:11434',
+      model: 'qwen3',
+      input: createInput(),
     }),
   );
 
-  expect(chat).toHaveBeenCalledWith(
-    expect.objectContaining({
-      model: request.model,
-      stream: true,
-    }),
-  );
+  expect(chat).toHaveBeenCalledTimes(1);
   expect(MockedOllama).not.toHaveBeenCalled();
 });
 
-test('creates an Ollama Turbo client before the configured host when turbo is provided', async () => {
-  resetOllamaMocks();
-  const chat = jest.fn().mockResolvedValue(createOllamaStream());
-  MockedOllama.mockImplementationOnce(() => ({ chat }) as unknown as Ollama);
-  const request = createRequest();
-
-  await consumeStream(
-    text({
-      host: 'http://ollama:11434',
-      turbo: { apiKey: 'test-api-key' },
-      request,
-    }),
+test('passes transformed request options to Ollama', async () => {
+  resetOllamaMock();
+  const chat = jest
+    .fn()
+    .mockResolvedValue(createProviderStream([createChunk('', true)]));
+  MockedOllama.mockImplementationOnce(
+    () => ({ chat, abort: jest.fn() }) as unknown as Ollama,
   );
 
-  expect(MockedOllama).toHaveBeenCalledWith({
-    host: 'https://ollama.com',
-    headers: {
-      Authorization: 'Bearer test-api-key',
-    },
-  });
-  expect(chat).toHaveBeenCalledWith(
-    expect.objectContaining({
-      model: request.model,
-      stream: true,
-    }),
-  );
-});
-
-test('passes transformed request options to the selected client', async () => {
-  resetOllamaMocks();
-  const chat = jest.fn().mockResolvedValue(createOllamaStream());
-  mockedDefaultClient.chat = chat;
-
-  await consumeStream(
+  await Array.fromAsync(
     text({
-      request: createRequest(),
-      transformRequestOptions: (options) => ({
-        ...options,
-        options: {
-          temperature: 0,
-        },
+      model: 'gpt-oss:20b',
+      input: createInput(),
+      transformRequestOptions: async (request) => ({
+        ...request,
+        think: 'high',
+        options: { temperature: 0 },
       }),
     }),
   );
 
   expect(chat).toHaveBeenCalledWith(
     expect.objectContaining({
-      options: {
-        temperature: 0,
-      },
+      model: 'gpt-oss:20b',
+      think: 'high',
+      options: { temperature: 0 },
     }),
   );
 });
 
-test('uses Ollama JSON format for JSON response format mode', async () => {
-  resetOllamaMocks();
-  const chat = jest.fn().mockResolvedValue(createOllamaStream());
-  mockedDefaultClient.chat = chat;
+test('maps request and provider failures to one RUN_ERROR event', async () => {
+  resetOllamaMock();
+  const chat = jest.fn().mockRejectedValue(new Error('provider unavailable'));
+  MockedOllama.mockImplementationOnce(
+    () => ({ chat, abort: jest.fn() }) as unknown as Ollama,
+  );
 
-  await consumeStream(
+  const result = await Array.fromAsync(
+    text({ model: 'qwen3', input: createInput() }),
+  );
+
+  expect(result).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-ollama',
+      runId: 'run-ollama',
+    },
+    { type: EventType.RUN_ERROR, message: 'provider unavailable' },
+  ]);
+});
+
+test('does not start an Ollama request when already aborted', async () => {
+  resetOllamaMock();
+  const controller = new AbortController();
+  controller.abort();
+
+  const result = await Array.fromAsync(
     text({
-      request: {
-        ...createRequest(),
-        responseFormatMode: 'json',
-      },
+      model: 'qwen3',
+      input: createInput(),
+      signal: controller.signal,
     }),
   );
 
-  expect(chat).toHaveBeenCalledWith(
-    expect.objectContaining({
-      format: 'json',
-    }),
-  );
+  expect(result).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-ollama',
+      runId: 'run-ollama',
+    },
+  ]);
+  expect(MockedOllama).not.toHaveBeenCalled();
 });
 
-async function consumeStream(stream: AsyncIterable<Uint8Array>): Promise<void> {
-  for await (const chunk of stream) {
-    void chunk;
-    // Consume the stream so client selection and chat execution happen.
-  }
-}
+test('aborts an owned client while waiting for its stream', async () => {
+  resetOllamaMock();
+  const abort = jest.fn();
+  let resolveStream!: (stream: ReturnType<typeof createProviderStream>) => void;
+  const chat = jest.fn(
+    () =>
+      new Promise<ReturnType<typeof createProviderStream>>((resolve) => {
+        resolveStream = resolve;
+      }),
+  );
+  MockedOllama.mockImplementationOnce(
+    () => ({ chat, abort }) as unknown as Ollama,
+  );
+  const controller = new AbortController();
+  const iterator = text({
+    model: 'qwen3',
+    input: createInput(),
+    signal: controller.signal,
+  })[Symbol.asyncIterator]();
 
-function resetOllamaMocks(): void {
-  MockedOllama.mockReset();
-  mockedDefaultClient.chat = jest.fn().mockResolvedValue(createOllamaStream());
-}
+  await iterator.next();
+  const pending = iterator.next();
+  await Promise.resolve();
+  controller.abort();
+  await Promise.resolve();
 
-function createRequest(): Chat.Api.CompletionCreateParams {
-  return {
-    operation: 'generate',
-    model: 'llama3.2',
-    system: 'Respond tersely.',
-    messages: [
-      {
-        role: 'user',
-        content: 'Hello',
-      },
-    ],
-  };
-}
+  expect(abort).toHaveBeenCalledTimes(1);
+  resolveStream(createProviderStream([]));
+  await expect(pending).resolves.toEqual({ done: true, value: undefined });
+});
 
-async function* createOllamaStream() {
-  yield {
-    done: false,
-    message: {
-      role: 'assistant',
-      content: 'Hello',
-    },
-  };
+test('does not globally abort an explicit client while waiting for its stream', async () => {
+  resetOllamaMock();
+  const abort = jest.fn();
+  let resolveStream!: (stream: ReturnType<typeof createProviderStream>) => void;
+  const chat = jest.fn(
+    () =>
+      new Promise<ReturnType<typeof createProviderStream>>((resolve) => {
+        resolveStream = resolve;
+      }),
+  );
+  const client = { chat, abort } as unknown as Ollama;
+  const controller = new AbortController();
+  const iterator = text({
+    client,
+    model: 'qwen3',
+    input: createInput(),
+    signal: controller.signal,
+  })[Symbol.asyncIterator]();
 
-  yield {
-    done: true,
-    message: {
-      role: 'assistant',
-      content: '',
-    },
-  };
-}
+  await iterator.next();
+  const pending = iterator.next();
+  await Promise.resolve();
+  controller.abort();
+  await Promise.resolve();
+
+  expect(abort).not.toHaveBeenCalled();
+  resolveStream(createProviderStream([]));
+  await expect(pending).resolves.toEqual({ done: true, value: undefined });
+});

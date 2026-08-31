@@ -1,0 +1,29 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "continue after the lookup",
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": {
+              "query": "hashbrown"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "continue after the lookup",
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "Ollama continuation complete."
+      }
+    }
+  ]
+}

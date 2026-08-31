@@ -12,11 +12,11 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
+    "@ag-ui/core": "0.0.59",
     "tslib": "^2.3.0"
   },
   "peerDependencies": {
-    "ollama": "^0.5.16",
-    "@hashbrownai/core": "0.5.0"
+    "ollama": "0.6.3"
   },
   "sideEffects": false,
   "publishConfig": {
@@ -30,6 +30,6 @@
     "typescript"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
