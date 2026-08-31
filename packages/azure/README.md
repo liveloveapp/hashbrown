@@ -16,30 +16,45 @@
 ## Getting Started
 
 ```sh
-npm install @hashbrownai/azure --save
+npm install @hashbrownai/azure openai @ag-ui/core @ag-ui/encoder --save
 ```
 
-Deploy an express server with a single /chat endpoint to use Hashbrown with Azure OpenAI.
+Deploy an Express server with a `/run` endpoint to use Hashbrown with Azure OpenAI.
 
 ```ts
-import { Chat } from '@hashbrownai/core';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAzure } from '@hashbrownai/azure';
 
-app.post('/chat', async (req, res) => {
-  const request = req.body as Chat.CompletionCreateParams;
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownAzure.stream.text({
-    apiKey: AZURE_API_KEY,
-    endpoint: AZURE_ENDPOINT,
-    request,
+    clientOptions: {
+      apiKey: process.env.AZURE_API_KEY!,
+      endpoint: process.env.AZURE_ENDPOINT!,
+      apiVersion: process.env.AZURE_API_VERSION!,
+      deployment: process.env.AZURE_DEPLOYMENT,
+    },
+    model: process.env.AZURE_MODEL!,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk);
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 ```
 

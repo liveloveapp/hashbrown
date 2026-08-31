@@ -1,80 +1,129 @@
 ---
-title: 'Microsoft Azure: Hashbrown React Docs'
+title: 'Microsoft Azure OpenAI: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'First, install the Microsoft Azure adapter package:'
+    content: 'Hashbrown’s Microsoft Azure OpenAI adapter maps AG-UI runs to the Azure OpenAI SDK and streams canonical AG-UI events.'
 ---
-# Microsoft Azure
 
-First, install the Microsoft Azure adapter package:
+# Microsoft Azure OpenAI
 
-```shell
-npm install @hashbrownai/azure
+Install the Azure adapter, the Azure OpenAI SDK, and the AG-UI SSE encoder:
+
+```sh
+npm install @hashbrownai/azure openai @ag-ui/core @ag-ui/encoder
+```
+
+## Client Configuration
+
+Pass the official SDK's `AzureClientOptions` directly as `clientOptions`. This supports API keys, Microsoft Entra token providers, Azure endpoints, custom base URLs, deployment aliases, retries, and custom fetch implementations without Hashbrown wrapping those options. The model remains server configuration and is not read from the client run input.
+
+**API key:**
+
+```ts
+HashbrownAzure.stream.text({
+  clientOptions: {
+    apiKey: process.env.AZURE_API_KEY!,
+    endpoint: process.env.AZURE_ENDPOINT!,
+    apiVersion: process.env.AZURE_API_VERSION!,
+    deployment: process.env.AZURE_DEPLOYMENT,
+  },
+  model: process.env.AZURE_MODEL!,
+  input,
+});
+```
+
+**Microsoft Entra token provider:**
+
+```ts
+HashbrownAzure.stream.text({
+  clientOptions: {
+    azureADTokenProvider,
+    endpoint: process.env.AZURE_ENDPOINT!,
+    apiVersion: process.env.AZURE_API_VERSION!,
+    deployment: process.env.AZURE_DEPLOYMENT,
+  },
+  model: process.env.AZURE_MODEL!,
+  input,
+});
 ```
 
 ## Streaming Text Responses
 
-Hashbrown's Azure adapter lets you **stream chat completions** from Azure OpenAI Service, with support for Azure-specific configuration like endpoints and API versions.
+`HashbrownAzure.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. Encode those events as AG-UI SSE at your HTTP boundary.
 
 ### API Reference
 
-#### `HashbrownAzure.stream.text(options)`
+| Name                      | Type                                    | Description                                                                          |
+| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `clientOptions`           | `AzureClientOptions`                    | Official Azure OpenAI SDK configuration, passed through unchanged.                   |
+| `model`                   | `string`                                | Server-selected Azure OpenAI model.                                                  |
+| `input`                   | `AzureHashbrownRunAgentInput`           | AG-UI run input, including messages and tools.                                       |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Azure OpenAI request when the HTTP client disconnects.      |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final OpenAI chat-completions streaming request options. |
 
-Streams an Azure OpenAI chat completion as a series of encoded frames. Handles content, tool calls, and errors, and yields each frame as a `Uint8Array`.
+The adapter maps system and developer instructions, message history, tool definitions, tool results, and native structured output. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-**Options:**
+Set `input.hashbrown.responseSchema` to use Azure OpenAI native JSON schema output:
 
-| Name                      | Type                                    | Description                                                                    |
-| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `apiKey`                  | `string`                                | Your Azure OpenAI API Key.                                                     |
-| `endpoint`                | `string`                                | Your Azure OpenAI endpoint URL.                                                |
-| `request`                 | `Chat.Api.CompletionCreateParams`       | The chat request: model, messages, tools, system, responseFormat, etc.         |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transform or override the final Azure request before it is sent.  |
+```ts
+const input = {
+  ...runInput,
+  hashbrown: {
+    responseSchema: {
+      type: 'object',
+      properties: {
+        answer: { type: 'string' },
+      },
+      required: ['answer'],
+    },
+  },
+};
+```
 
-**Supported Features:**
-
-- **Roles:** `user`, `assistant`, `tool`
-- **Tools:** Supports Azure OpenAI tool calling, including `toolCalls` and strict function schemas.
-- **Response Format:** Optionally specify a JSON schema for structured output.
-- **System Prompt:** Included as the first message if provided.
-- **Tool Calling:** Handles Azure OpenAI tool calling modes and emits tool call frames.
-- **Streaming:** Each chunk is encoded into a resilient streaming format.
-
-### How It Works
-
-- **Messages:** Translated to Azure OpenAI's message format, supporting all roles and tool calls.
-- **Tools/Functions:** Tools are passed as Azure OpenAI function definitions, using your JSON schemas as `parameters`.
-- **Response Format:** Pass a JSON schema in `responseFormat` for Azure OpenAI to validate the model output.
-- **Streaming:** All data is sent as a stream of encoded frames (`Uint8Array`). Chunks may contain text, tool calls, errors, or finish signals.
-- **Error Handling:** Any thrown errors are sent as error frames before the stream ends.
-
-### Example: Node.js Server Integration
+### Node.js Server Integration
 
 <hb-backend-code-example>
 
 <div backend="express">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import express from 'express';
 
 const app = express();
 app.use(express.json());
 
-app.post('/chat', async (req, res) => {
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
   const stream = HashbrownAzure.stream.text({
-    apiKey: process.env.AZURE_API_KEY!,
-    endpoint: process.env.AZURE_ENDPOINT!,
-    request: req.body, // must be Chat.Api.CompletionCreateParams
+    clientOptions: {
+      apiKey: process.env.AZURE_API_KEY!,
+      endpoint: process.env.AZURE_ENDPOINT!,
+      apiVersion: process.env.AZURE_API_VERSION!,
+      deployment: process.env.AZURE_DEPLOYMENT,
+    },
+    model: process.env.AZURE_MODEL!,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  res.header('Content-Type', 'application/octet-stream');
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  for await (const chunk of stream) {
-    res.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
   }
 
-  res.end();
+  if (!res.writableEnded) {
+    res.end();
+  }
 });
 
 app.listen(3000);
@@ -85,25 +134,41 @@ app.listen(3000);
 <div backend="fastify">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import Fastify from 'fastify';
 
 const fastify = Fastify();
 
-fastify.post('/chat', async (request, reply) => {
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
   const stream = HashbrownAzure.stream.text({
-    apiKey: process.env.AZURE_API_KEY!,
-    endpoint: process.env.AZURE_ENDPOINT!,
-    request: request.body, // must be Chat.Api.CompletionCreateParams
+    clientOptions: {
+      apiKey: process.env.AZURE_API_KEY!,
+      endpoint: process.env.AZURE_ENDPOINT!,
+      apiVersion: process.env.AZURE_API_VERSION!,
+      deployment: process.env.AZURE_DEPLOYMENT,
+    },
+    model: process.env.AZURE_MODEL!,
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
   });
+  const encoder = new EventEncoder();
 
-  reply.header('Content-Type', 'application/octet-stream');
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
 
-  for await (const chunk of stream) {
-    reply.raw.write(chunk); // Pipe each encoded frame as it arrives
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
   }
 
-  reply.raw.end();
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
 });
 
 fastify.listen({ port: 3000 });
@@ -114,27 +179,48 @@ fastify.listen({ port: 3000 });
 <div backend="nestjs">
 
 ```ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { HashbrownAzure } from '@hashbrownai/azure';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 
 @Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Res() res: Response) {
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
     const stream = HashbrownAzure.stream.text({
-      apiKey: process.env.AZURE_API_KEY!,
-      endpoint: process.env.AZURE_ENDPOINT!,
-      request: body, // must be Chat.Api.CompletionCreateParams
+      clientOptions: {
+        apiKey: process.env.AZURE_API_KEY!,
+        endpoint: process.env.AZURE_ENDPOINT!,
+        apiVersion: process.env.AZURE_API_VERSION!,
+        deployment: process.env.AZURE_DEPLOYMENT,
+      },
+      model: process.env.AZURE_MODEL!,
+      input,
+      signal: abortController.signal,
     });
+    const encoder = new EventEncoder();
 
-    res.header('Content-Type', 'application/octet-stream');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
 
-    for await (const chunk of stream) {
-      res.write(chunk); // Pipe each encoded frame as it arrives
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
     }
 
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
 ```
@@ -144,34 +230,44 @@ export class ChatController {
 <div backend="hono">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownAzure } from '@hashbrownai/azure';
 import { Hono } from 'hono';
 
 const app = new Hono();
 
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-  
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
   const stream = HashbrownAzure.stream.text({
-    apiKey: process.env.AZURE_API_KEY!,
-    endpoint: process.env.AZURE_ENDPOINT!,
-    request: body, // must be Chat.Api.CompletionCreateParams
+    clientOptions: {
+      apiKey: process.env.AZURE_API_KEY!,
+      endpoint: process.env.AZURE_ENDPOINT!,
+      apiVersion: process.env.AZURE_API_VERSION!,
+      deployment: process.env.AZURE_DEPLOYMENT,
+    },
+    model: process.env.AZURE_MODEL!,
+    input,
+    signal: c.req.raw.signal,
   });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk); // Pipe each encoded frame as it arrives
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
         }
         controller.close();
       },
     }),
     {
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
       },
-    }
+    },
   );
 });
 
@@ -182,204 +278,29 @@ export default app;
 
 </hb-backend-code-example>
 
-
-
----
-
----
-
 ### Transform Request Options
 
-The `transformRequestOptions` parameter allows you to intercept and modify the request before it's sent to Azure OpenAI. This is useful for server-side prompts, message filtering, logging, and dynamic configuration.
-
-<hb-backend-code-example>
-
-<div backend="express">
+`transformRequestOptions` receives the final Azure OpenAI SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
 
 ```ts
-import { HashbrownAzure } from '@hashbrownai/azure';
-import express from 'express';
-
-const app = express();
-app.use(express.json());
-
-app.post('/chat', async (req, res) => {
-  const stream = HashbrownAzure.stream.text({
+const stream = HashbrownAzure.stream.text({
+  clientOptions: {
     apiKey: process.env.AZURE_API_KEY!,
     endpoint: process.env.AZURE_ENDPOINT!,
-    request: req.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust temperature based on user preferences
-        temperature: getUserPreferences(req.user.id).creativity,
-      };
-    },
-  });
-
-  res.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    res.write(chunk);
-  }
-
-  res.end();
+    apiVersion: process.env.AZURE_API_VERSION!,
+    deployment: process.env.AZURE_DEPLOYMENT,
+  },
+  model: process.env.AZURE_MODEL!,
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    temperature: 0.2,
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      ...options.messages,
+    ],
+  }),
 });
 ```
-
-</div>
-
-<div backend="fastify">
-
-```ts
-import { HashbrownAzure } from '@hashbrownai/azure';
-import Fastify from 'fastify';
-
-const fastify = Fastify();
-
-fastify.post('/chat', async (request, reply) => {
-  const stream = HashbrownAzure.stream.text({
-    apiKey: process.env.AZURE_API_KEY!,
-    endpoint: process.env.AZURE_ENDPOINT!,
-    request: request.body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust temperature based on user preferences
-        temperature: getUserPreferences(request.user.id).creativity,
-      };
-    },
-  });
-
-  reply.header('Content-Type', 'application/octet-stream');
-
-  for await (const chunk of stream) {
-    reply.raw.write(chunk);
-  }
-
-  reply.raw.end();
-});
-```
-
-</div>
-
-<div backend="nestjs">
-
-```ts
-import { Controller, Post, Body, Res, Req } from '@nestjs/common';
-import { HashbrownAzure } from '@hashbrownai/azure';
-import { Response, Request } from 'express';
-
-@Controller()
-export class ChatController {
-  @Post('chat')
-  async chat(@Body() body: any, @Req() req: Request, @Res() res: Response) {
-    const stream = HashbrownAzure.stream.text({
-      apiKey: process.env.AZURE_API_KEY!,
-      endpoint: process.env.AZURE_ENDPOINT!,
-      request: body,
-      transformRequestOptions: (options) => {
-        return {
-          ...options,
-          // Add server-side system prompt
-          messages: [
-            { role: 'system', content: 'You are a helpful assistant.' },
-            ...options.messages,
-          ],
-          // Adjust temperature based on user preferences
-          temperature: getUserPreferences(req.user.id).creativity,
-        };
-      },
-    });
-
-    res.header('Content-Type', 'application/octet-stream');
-
-    for await (const chunk of stream) {
-      res.write(chunk);
-    }
-
-    res.end();
-  }
-}
-```
-
-</div>
-
-<div backend="hono">
-
-```ts
-import { HashbrownAzure } from '@hashbrownai/azure';
-import { Hono } from 'hono';
-
-const app = new Hono();
-
-app.post('/chat', async (c) => {
-  const body = await c.req.json();
-  
-  const stream = HashbrownAzure.stream.text({
-    apiKey: process.env.AZURE_API_KEY!,
-    endpoint: process.env.AZURE_ENDPOINT!,
-    request: body,
-    transformRequestOptions: (options) => {
-      return {
-        ...options,
-        // Add server-side system prompt
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          ...options.messages,
-        ],
-        // Adjust temperature based on user preferences
-        temperature: getUserPreferences(c.req.user.id).creativity,
-      };
-    },
-  });
-
-  return new Response(
-    new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk);
-        }
-        controller.close();
-      },
-    }),
-    {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-    }
-  );
-});
-```
-
-</div>
-
-</hb-backend-code-example>
 
 [Learn more about transformRequestOptions](/docs/react/concept/transform-request-options)
-
----
-
-## Model Versions
-
-Azure requires model versions to be supplied when making a request. To do this, specify the model version in the `model` string when using any React Hashbrown hook or resource:
-
-```ts
-import { useCompletion } from '@hashbrownai/react';
-
-const { output, isReceiving } = useCompletion({
-  model: 'gpt-4.1@2025-01-01-preview',
-  input: 'Hello, world!',
-  system: 'You are a helpful assistant.',
-});
-```

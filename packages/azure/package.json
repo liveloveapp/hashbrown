@@ -12,10 +12,10 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
+    "@ag-ui/core": "0.0.59",
     "tslib": "^2.3.0"
   },
   "peerDependencies": {
-    "@hashbrownai/core": "0.5.0",
     "openai": "^6.9.0"
   },
   "sideEffects": false,
