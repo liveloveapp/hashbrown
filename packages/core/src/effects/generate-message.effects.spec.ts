@@ -1352,6 +1352,12 @@ test('continues client tools with isolated reasoning details in transcript order
   const committedToolMetadata = committedToolCall.metadata as {
     provider: { toolSteps: { index: number }[] };
   };
+  const [capturedAssistantStep] =
+    capturedAssistantMetadata.provider.assistantSteps;
+  const [capturedToolStep] = capturedToolMetadata.provider.toolSteps;
+  if (!capturedAssistantStep || !capturedToolStep) {
+    throw new Error('Expected captured provider metadata steps.');
+  }
 
   expect(capturedAssistant).not.toBe(committedAssistant);
   expect(capturedToolCall).not.toBe(committedToolCall);
@@ -1381,8 +1387,8 @@ test('continues client tools with isolated reasoning details in transcript order
   capturedToolCall.encryptedValue = 'mutated-captured-tool-call';
   capturedReasoning.encryptedValue = 'mutated-captured-value';
   capturedMetadata.provider.trace[0] = 'mutated-captured-metadata';
-  capturedAssistantMetadata.provider.assistantSteps[0]!.index = 99;
-  capturedToolMetadata.provider.toolSteps[0]!.index = 100;
+  capturedAssistantStep.index = 99;
+  capturedToolStep.index = 100;
 
   expect(committedAssistant.encryptedValue).toBe(
     originalAssistantEncryptedValue,

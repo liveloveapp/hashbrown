@@ -401,8 +401,12 @@ test('preserves and isolates assistant and tool-call metadata through API messag
   const apiAssistant = api as Chat.Api.AssistantMessage & {
     metadata?: Record<string, unknown>;
   };
+  const [sourceToolStep] = toolMetadata.google.steps;
+  if (!sourceToolStep) {
+    throw new Error('Expected source tool metadata step.');
+  }
   assistantMetadata.google.runId = 'source mutation';
-  toolMetadata.google.steps[0]!.index = 99;
+  sourceToolStep.index = 99;
   const [roundTrippedMessage] = toInternalMessagesFromApi(apiAssistant);
   const [roundTrippedToolCall] = toInternalToolCallsFromApiMessages([api]);
   const apiGoogle = apiAssistant.metadata?.['google'] as {
@@ -415,7 +419,11 @@ test('preserves and isolates assistant and tool-call metadata through API messag
     apiGoogle.runId = 'API mutation';
   }
   if (apiToolGoogle) {
-    apiToolGoogle.steps[0]!.index = 100;
+    const [apiToolStep] = apiToolGoogle.steps;
+    if (!apiToolStep) {
+      throw new Error('Expected API tool metadata step.');
+    }
+    apiToolStep.index = 100;
   }
 
   // Assert
@@ -486,9 +494,14 @@ test('preserves and isolates assistant and tool-call metadata through view messa
       metadata?: Record<string, unknown>;
     }
   >;
+  const [sourcePendingStep] = pendingMetadata.google.steps;
+  const [sourceDoneStep] = doneMetadata.google.steps;
+  if (!sourcePendingStep || !sourceDoneStep) {
+    throw new Error('Expected source view metadata steps.');
+  }
   assistantMetadata.google.runId = 'source mutation';
-  pendingMetadata.google.steps[0]!.index = 99;
-  doneMetadata.google.steps[0]!.index = 100;
+  sourcePendingStep.index = 99;
+  sourceDoneStep.index = 100;
   const [roundTrippedMessage] =
     toInternalMessagesFromView(viewAssistantMessage);
   const [roundTrippedPending, roundTrippedDone] = toInternalToolCallsFromView([
@@ -507,10 +520,18 @@ test('preserves and isolates assistant and tool-call metadata through view messa
     viewGoogle.runId = 'view mutation';
   }
   if (viewPendingGoogle) {
-    viewPendingGoogle.steps[0]!.index = 101;
+    const [viewPendingStep] = viewPendingGoogle.steps;
+    if (!viewPendingStep) {
+      throw new Error('Expected pending view metadata step.');
+    }
+    viewPendingStep.index = 101;
   }
   if (viewDoneGoogle) {
-    viewDoneGoogle.steps[0]!.index = 102;
+    const [viewDoneStep] = viewDoneGoogle.steps;
+    if (!viewDoneStep) {
+      throw new Error('Expected done view metadata step.');
+    }
+    viewDoneStep.index = 102;
   }
 
   // Assert

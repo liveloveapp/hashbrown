@@ -115,7 +115,11 @@ test('clones assistant and tool-call metadata into the next run input', () => {
   ];
 
   const input = createInput({ messages });
-  metadata.google.steps[0]!.index = 99;
+  const [sourceStep] = metadata.google.steps;
+  if (!sourceStep) {
+    throw new Error('Expected source metadata step.');
+  }
+  sourceStep.index = 99;
   const assistant = input.messages.find(
     (message): message is Extract<Message, { role: 'assistant' }> =>
       message.role === 'assistant',
@@ -126,9 +130,11 @@ test('clones assistant and tool-call metadata into the next run input', () => {
   const toolMetadata = assistant?.toolCalls?.[0]?.metadata as {
     google: { steps: { index: number }[] };
   };
-  if (assistantMetadata) {
-    assistantMetadata.google.steps[0]!.index = 100;
+  const [assistantStep] = assistantMetadata.google.steps;
+  if (!assistantStep) {
+    throw new Error('Expected assistant metadata step.');
   }
+  assistantStep.index = 100;
 
   expect(input.messages.map((message) => message.role)).toEqual([
     'reasoning',
