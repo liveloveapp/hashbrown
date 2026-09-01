@@ -551,12 +551,9 @@ test('fryHashbrown adopts a generated thread identity and reuses it on the next 
         ),
     );
     const hashbrown = fryHashbrown({
-      model: {
-        name: 'aimock-text-model',
-        transport: createHttpTransport({
-          baseUrl: testAimock.handle.aguiRunUrl,
-        }),
-      },
+      transport: createHttpTransport({
+        baseUrl: testAimock.handle.aguiRunUrl,
+      }),
       system: 'Answer briefly.',
       retries: 0,
     });
@@ -663,13 +660,9 @@ test('fryHashbrown resolves chunked structured output and sends the response sch
       25,
     );
     const hashbrown = fryHashbrown({
-      model: {
-        name: 'aimock-structured-model',
-        transport: createHttpTransport({
-          baseUrl: testAimock.handle.aguiRunUrl,
-        }),
-        capabilities: { structured: true },
-      },
+      transport: createHttpTransport({
+        baseUrl: testAimock.handle.aguiRunUrl,
+      }),
       system: 'Return a structured answer.',
       responseSchema,
       retries: 0,
@@ -751,13 +744,9 @@ test('fryHashbrown resolves validated generative UI state and marks the request 
         ),
     );
     const hashbrown = fryHashbrown({
-      model: {
-        name: 'aimock-ui-model',
-        transport: createHttpTransport({
-          baseUrl: testAimock.handle.aguiRunUrl,
-        }),
-        capabilities: { structured: true, ui: true },
-      },
+      transport: createHttpTransport({
+        baseUrl: testAimock.handle.aguiRunUrl,
+      }),
       system: 'Return the requested UI.',
       responseSchema,
       ui: true,
@@ -882,14 +871,10 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
       75,
     );
     const hashbrown = fryHashbrown({
-      model: {
-        name: 'aimock-cancellation-model',
-        transport: new HttpTransport({
-          baseUrl: testAimock.handle.aguiRunUrl,
-          fetchImpl: createObservedFetch(observedResponses),
-        }),
-        capabilities: { tools: true },
-      },
+      transport: new HttpTransport({
+        baseUrl: testAimock.handle.aguiRunUrl,
+        fetchImpl: createObservedFetch(observedResponses),
+      }),
       system: 'Use tools only when needed.',
       tools: [tool],
       retries: 2,
@@ -993,13 +978,10 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
       75,
     );
     const hashbrown = fryHashbrown({
-      model: {
-        name: 'aimock-error-model',
-        transport: new HttpTransport({
-          baseUrl: testAimock.handle.aguiRunUrl,
-          fetchImpl: createObservedFetch(observedResponses),
-        }),
-      },
+      transport: new HttpTransport({
+        baseUrl: testAimock.handle.aguiRunUrl,
+        fetchImpl: createObservedFetch(observedResponses),
+      }),
       system: 'Answer briefly.',
       retries: 2,
     });
@@ -1173,17 +1155,13 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
       75,
     );
     const hashbrown = fryHashbrown({
-      model: {
-        name: 'aimock-tool-model',
-        transport: new HttpTransport({
-          baseUrl: testAimock.handle.aguiRunUrl,
-          fetchImpl: createObservedFetch(
-            observedResponses,
-            responseObserved.resolve,
-          ),
-        }),
-        capabilities: { tools: true },
-      },
+      transport: new HttpTransport({
+        baseUrl: testAimock.handle.aguiRunUrl,
+        fetchImpl: createObservedFetch(
+          observedResponses,
+          responseObserved.resolve,
+        ),
+      }),
       system: 'Answer weather questions with the available tool.',
       tools: [tool],
       threadId: 'thread-tool',

@@ -690,7 +690,6 @@ export class SearchOverlay implements OnDestroy {
   iconHovered = signal(false);
 
   chat = uiChatResource({
-    model: 'gpt-5-nano',
     debugName: 'search-overlay',
     system: prompt`
       ## ROLE & TONE

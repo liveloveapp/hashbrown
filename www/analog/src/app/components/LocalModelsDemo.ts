@@ -241,26 +241,23 @@ export class LocalModelsDemo {
   );
 
   readonly summary = structuredCompletionResource({
-    model: this.isBrowser
-      ? [
-          experimental_local({
-            events: {
-              availability: (status: string | undefined) =>
-                this.availability.set(status ?? null),
-              downloadProgress: (percent: number | undefined) =>
-                this.downloadProgress.set(
-                  typeof percent === 'number' ? Math.round(percent) : null,
-                ),
-              downloadRequired: (required: unknown) =>
-                this.downloadRequired.set(Boolean(required)),
-              sessionState: (
-                state: 'created' | 'destroyed' | 'error' | undefined,
-              ) => this.sessionState.set(state ?? null),
-            },
-          }),
-          'gpt-5-mini',
-        ]
-      : ['gpt-5-mini'],
+    transport: this.isBrowser
+      ? experimental_local({
+          events: {
+            availability: (status: string | undefined) =>
+              this.availability.set(status ?? null),
+            downloadProgress: (percent: number | undefined) =>
+              this.downloadProgress.set(
+                typeof percent === 'number' ? Math.round(percent) : null,
+              ),
+            downloadRequired: (required: unknown) =>
+              this.downloadRequired.set(Boolean(required)),
+            sessionState: (
+              state: 'created' | 'destroyed' | 'error' | undefined,
+            ) => this.sessionState.set(state ?? null),
+          },
+        })
+      : undefined,
     schema: LocalSummarySchema,
     system:
       'Return concise, upbeat copy. Keep the headline punchy and the payoff sentence under 140 characters.',
