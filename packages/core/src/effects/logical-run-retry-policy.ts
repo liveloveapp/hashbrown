@@ -40,14 +40,18 @@ export type LogicalRunFailureDecision =
   | { readonly kind: 'stop'; readonly exhaustedRetries: boolean };
 
 /**
- * Creates retry state before the first attempt of a logical run.
+ * Creates retry state before the first attempt of a logical run. Invalid retry
+ * counts are normalized to zero.
  *
  * @internal
  */
 export function createLogicalRunRetryState(
   retries: number,
 ): LogicalRunRetryState {
-  return { retries, attempt: 0 };
+  const normalizedRetries =
+    Number.isSafeInteger(retries) && retries >= 0 ? retries : 0;
+
+  return { retries: normalizedRetries, attempt: 0 };
 }
 
 /**

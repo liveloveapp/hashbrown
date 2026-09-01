@@ -99,63 +99,25 @@ test('stops with zero retries without reporting exhaustion', () => {
   });
 });
 
-test('preserves a negative retries value in the attempt context', () => {
-  const state = createLogicalRunRetryState(-1);
+test.each([
+  { label: 'negative', retries: -1 },
+  { label: 'fractional', retries: 0.5 },
+  { label: 'NaN', retries: Number.NaN },
+  { label: 'positive infinity', retries: Number.POSITIVE_INFINITY },
+  { label: 'negative infinity', retries: Number.NEGATIVE_INFINITY },
+  { label: 'unsafe integer', retries: Number.MAX_SAFE_INTEGER + 1 },
+])('normalizes $label retries to zero', ({ retries }) => {
+  const error = new Error('send failed');
 
+  const state = createLogicalRunRetryState(retries);
   const started = startLogicalRunAttempt(state);
+  const decision = decideLogicalRunFailure(started.state, error);
 
+  expect(state).toEqual({ retries: 0, attempt: 0 });
   expect(started).toEqual({
-    state: { retries: -1, attempt: 1 },
-    context: { attempt: 1, maxAttempts: 0 },
+    state: { retries: 0, attempt: 1 },
+    context: { attempt: 1, maxAttempts: 1 },
   });
-});
-
-test('uses the raw fractional retries value for retry decisions', () => {
-  const error = new Error('send failed');
-  const initialState = createLogicalRunRetryState(0.5);
-  const first = startLogicalRunAttempt(initialState);
-  const second = startLogicalRunAttempt(first.state);
-
-  const retryDecision = decideLogicalRunFailure(first.state, error);
-  const stopDecision = decideLogicalRunFailure(second.state, error);
-
-  expect(retryDecision).toEqual({ kind: 'retry' });
-  expect(stopDecision).toEqual({
-    kind: 'stop',
-    exhaustedRetries: true,
-  });
-});
-
-test('retries when retries is NaN', () => {
-  const error = new Error('send failed');
-  const state = startLogicalRunAttempt(
-    createLogicalRunRetryState(Number.NaN),
-  ).state;
-
-  const decision = decideLogicalRunFailure(state, error);
-
-  expect(decision).toEqual({ kind: 'retry' });
-});
-
-test('retries when retries is positive infinity', () => {
-  const error = new Error('send failed');
-  const state = startLogicalRunAttempt(
-    createLogicalRunRetryState(Number.POSITIVE_INFINITY),
-  ).state;
-
-  const decision = decideLogicalRunFailure(state, error);
-
-  expect(decision).toEqual({ kind: 'retry' });
-});
-
-test('stops when retries is negative infinity without reporting exhaustion', () => {
-  const error = new Error('send failed');
-  const state = startLogicalRunAttempt(
-    createLogicalRunRetryState(Number.NEGATIVE_INFINITY),
-  ).state;
-
-  const decision = decideLogicalRunFailure(state, error);
-
   expect(decision).toEqual({
     kind: 'stop',
     exhaustedRetries: false,
