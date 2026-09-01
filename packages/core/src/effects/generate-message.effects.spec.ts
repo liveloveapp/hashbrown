@@ -193,6 +193,126 @@ async function waitForDispatchedEvent(
   throw new Error(`Timed out waiting for ${eventType}`);
 }
 
+async function waitForRuntimeIdle(runtime: { isLoading: () => boolean }) {
+  for (let attempt = 0; attempt < 1_000; attempt++) {
+    if (!runtime.isLoading()) {
+      return;
+    }
+
+    await Promise.resolve();
+  }
+
+  throw new Error('Timed out waiting for the chat runtime to become idle');
+}
+
+type ScriptedToolRound = {
+  readonly callId: string;
+  readonly value: number;
+};
+
+type ToolTranscriptEntry =
+  | {
+      readonly role: 'assistant';
+      readonly toolCalls: readonly {
+        readonly id: string;
+        readonly name: string;
+        readonly arguments: string;
+      }[];
+    }
+  | {
+      readonly role: 'tool';
+      readonly toolCallId: string;
+      readonly content: string;
+    };
+
+function createToolRoundEvents(
+  request: TransportRequest,
+  round: ScriptedToolRound,
+): AsyncIterable<AGUIEvent> {
+  const messageId = `assistant-${round.callId}`;
+
+  return successfulEvents(request, [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId,
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId,
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: round.callId,
+      toolCallName: 'recordValue',
+      parentMessageId: messageId,
+    },
+    {
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: round.callId,
+      delta: JSON.stringify({ value: round.value }),
+    },
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: round.callId,
+    },
+  ]);
+}
+
+function summarizeToolTranscript(request: TransportRequest) {
+  return request.input.messages.reduce<ToolTranscriptEntry[]>(
+    (entries, message) => {
+      if (message.role === 'assistant' && message.toolCalls?.length) {
+        return [
+          ...entries,
+          {
+            role: message.role,
+            toolCalls: message.toolCalls.map((toolCall) => ({
+              id: toolCall.id,
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments,
+            })),
+          },
+        ];
+      }
+
+      if (message.role === 'tool') {
+        return [
+          ...entries,
+          {
+            role: message.role,
+            toolCallId: message.toolCallId,
+            content: message.content,
+          },
+        ];
+      }
+
+      return entries;
+    },
+    [],
+  );
+}
+
+function expectedToolTranscript(rounds: readonly ScriptedToolRound[]) {
+  return rounds.flatMap<ToolTranscriptEntry>((round) => [
+    {
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: round.callId,
+          name: 'recordValue',
+          arguments: JSON.stringify({ value: round.value }),
+        },
+      ],
+    },
+    {
+      role: 'tool',
+      toolCallId: round.callId,
+      content: JSON.stringify({ recorded: round.value }),
+    },
+  ]);
+}
+
 test('updateMessagesWithDelta works without an initial message', () => {
   const delta: Chat.Api.CompletionChunk = {
     choices: [
@@ -1258,6 +1378,272 @@ test('continues client tools with isolated reasoning details in transcript order
   expect(committedToolMetadata).toEqual({
     provider: { toolSteps: [{ index: 1 }] },
   });
+
+  teardown();
+});
+
+test('continues three sequential tool rounds before the terminal response', async () => {
+  jest.clearAllMocks();
+  const scriptedToolRounds: readonly ScriptedToolRound[] = [
+    { callId: 'call-round-1', value: 1 },
+    { callId: 'call-round-2', value: 2 },
+    { callId: 'call-round-3', value: 3 },
+  ];
+  const expectedToolRounds: readonly ScriptedToolRound[] = [
+    { callId: 'call-round-1', value: 1 },
+    { callId: 'call-round-2', value: 2 },
+    { callId: 'call-round-3', value: 3 },
+  ];
+  const capturedRequests: TransportRequest[] = [];
+  const terminalRequestStarted = createDeferred<void>();
+  const toolHandler = jest.fn(async ({ value }: { value: number }) => ({
+    recorded: value,
+  }));
+  const { send } = makeSelection(async (request) => {
+    capturedRequests.push(request);
+    const toolRound = scriptedToolRounds[capturedRequests.length - 1];
+    if (toolRound) {
+      return { events: createToolRoundEvents(request, toolRound) };
+    }
+
+    terminalRequestStarted.resolve();
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-terminal',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-terminal',
+          delta: 'All values recorded.',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-terminal',
+        },
+      ]),
+    };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: toolHandler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  runtime.sendMessage({ role: 'user', content: 'Record three values.' });
+  await terminalRequestStarted.promise;
+  await waitForRuntimeIdle(runtime);
+
+  expect(capturedRequests).toHaveLength(4);
+  const identities = capturedRequests.map(getInputIdentity);
+  expect(new Set(identities.map(({ threadId }) => threadId)).size).toBe(1);
+  expect(new Set(identities.map(({ runId }) => runId)).size).toBe(4);
+  expect(capturedRequests.map(summarizeToolTranscript)).toEqual([
+    expectedToolTranscript([]),
+    expectedToolTranscript(expectedToolRounds.slice(0, 1)),
+    expectedToolTranscript(expectedToolRounds.slice(0, 2)),
+    expectedToolTranscript(expectedToolRounds),
+  ]);
+  expect(toolHandler).toHaveBeenCalledTimes(3);
+  expect(toolHandler.mock.calls.map(([input]) => input)).toEqual([
+    { value: 1 },
+    { value: 2 },
+    { value: 3 },
+  ]);
+  expect(send).toHaveBeenCalledTimes(4);
+
+  teardown();
+});
+
+test('resets retry attempts for each logical tool continuation run', async () => {
+  jest.clearAllMocks();
+  const requests: TransportRequest[] = [];
+  const terminalRequestStarted = createDeferred<void>();
+  const toolHandler = jest.fn(async ({ value }: { value: number }) => ({
+    recorded: value,
+  }));
+  let transportAttemptWithinRun = 0;
+  let successfulRuns = 0;
+  makeSelection(async (request) => {
+    requests.push(request);
+    transportAttemptWithinRun++;
+    if (transportAttemptWithinRun === 1) {
+      throw new Error(`Retry logical run ${successfulRuns + 1}`);
+    }
+
+    transportAttemptWithinRun = 0;
+    successfulRuns++;
+    if (successfulRuns === 1) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: 'call-retry-reset',
+          value: 7,
+        }),
+      };
+    }
+
+    terminalRequestStarted.resolve();
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    retries: 1,
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: toolHandler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+  await terminalRequestStarted.promise;
+  await waitForRuntimeIdle(runtime);
+
+  expect(requests.map(({ attempt }) => attempt)).toEqual([1, 2, 1, 2]);
+  expect(requests.map(({ maxAttempts }) => maxAttempts)).toEqual([2, 2, 2, 2]);
+  expect(toolHandler).toHaveBeenCalledTimes(1);
+
+  teardown();
+});
+
+test('stopping during a later tool handler prevents another run', async () => {
+  jest.clearAllMocks();
+  const laterHandlerStarted = createDeferred<void>();
+  const releaseLaterHandler = createDeferred<void>();
+  const handlerFinished = createDeferred<void>();
+  const scriptedToolRounds: readonly ScriptedToolRound[] = [
+    { callId: 'call-before-stop', value: 1 },
+    { callId: 'call-at-stop', value: 2 },
+  ];
+  let laterHandlerSignal: AbortSignal | undefined;
+  const toolHandler = jest.fn(
+    async ({ value }: { value: number }, signal: AbortSignal) => {
+      if (value === 1) {
+        return { recorded: value };
+      }
+
+      laterHandlerSignal = signal;
+      laterHandlerStarted.resolve();
+      try {
+        await releaseLaterHandler.promise;
+        return { recorded: value };
+      } finally {
+        handlerFinished.resolve();
+      }
+    },
+  );
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    const toolRound = scriptedToolRounds[requestCount];
+    requestCount++;
+    if (toolRound) {
+      return { events: createToolRoundEvents(request, toolRound) };
+    }
+
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: toolHandler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  runtime.sendMessage({
+    role: 'user',
+    content: 'Record values until stopped.',
+  });
+  await laterHandlerStarted.promise;
+  runtime.stop(true);
+  const transportCountAtStop = send.mock.calls.length;
+
+  expect(laterHandlerSignal?.aborted).toBe(true);
+
+  releaseLaterHandler.resolve();
+  await handlerFinished.promise;
+  await waitForRuntimeIdle(runtime);
+
+  expect(toolHandler).toHaveBeenCalledTimes(2);
+  expect(transportCountAtStop).toBe(2);
+  expect(send).toHaveBeenCalledTimes(transportCountAtStop);
+
+  teardown();
+});
+
+test('handles 25 sequential tool rounds before a final response', async () => {
+  jest.clearAllMocks();
+  const scriptedToolRounds: readonly ScriptedToolRound[] = Array.from(
+    { length: 25 },
+    (_, index) => ({
+      callId: `call-sentinel-${index + 1}`,
+      value: index + 1,
+    }),
+  );
+  const terminalRequestStarted = createDeferred<void>();
+  const toolHandler = jest.fn(async ({ value }: { value: number }) => ({
+    recorded: value,
+  }));
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    const toolRound = scriptedToolRounds[requestCount];
+    requestCount++;
+    if (toolRound) {
+      return { events: createToolRoundEvents(request, toolRound) };
+    }
+
+    terminalRequestStarted.resolve();
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: toolHandler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  runtime.sendMessage({ role: 'user', content: 'Record the sentinel values.' });
+  await terminalRequestStarted.promise;
+  await waitForRuntimeIdle(runtime);
+
+  expect(send).toHaveBeenCalledTimes(26);
+  expect(toolHandler).toHaveBeenCalledTimes(25);
 
   teardown();
 });
