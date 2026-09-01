@@ -1,4 +1,4 @@
-import type { AstNode, StreamError } from '@cacheplane/partial-json';
+import type { AstNode, StreamError } from '@cacheplane/json-stream';
 import { internal, PRIMITIVE_WRAPPER_FIELD_NAME } from './constants';
 import type {
   FromJsonAstCache,

@@ -1,4 +1,4 @@
-import { create, push } from '@cacheplane/partial-json';
+import { create, push } from '@cacheplane/json-stream';
 import * as publicApi from '../public_api';
 import * as s from './public_api';
 

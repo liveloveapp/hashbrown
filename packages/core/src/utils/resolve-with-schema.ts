@@ -1,5 +1,5 @@
 import { s } from '../schema';
-import { create, finish, push } from '@cacheplane/partial-json';
+import { create, finish, push } from '@cacheplane/json-stream';
 import { JsonValue } from './types';
 
 export function resolveWithSchema(

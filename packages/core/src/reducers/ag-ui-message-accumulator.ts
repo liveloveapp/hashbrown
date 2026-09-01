@@ -15,7 +15,7 @@ import {
   push,
   resolve,
   type StreamState,
-} from '@cacheplane/partial-json';
+} from '@cacheplane/json-stream';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
@@ -101,7 +101,7 @@ function ensureParserState(state: StreamState | undefined) {
 
 function isRecoverableTrailingToken(parserState: StreamState) {
   if (
-    parserState.error?.message !== 'Unexpected token after root value' ||
+    parserState.error?.code !== 'TRAILING_CONTENT' ||
     parserState.rootId === null
   ) {
     return false;
