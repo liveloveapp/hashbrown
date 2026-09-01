@@ -522,6 +522,81 @@ test('accumulates reasoning, encrypted values, metadata, and associations', () =
   expect(state.toolCalls[0]?.encryptedValue).toBe('tool-opaque');
 });
 
+test('merges cloned assistant and tool metadata across lifecycle events', () => {
+  const textStartMetadata = {
+    stable: 'text-start',
+    replaced: { at: 'text-start' },
+  };
+  const textContentMetadata = {
+    replaced: { at: 'text-content' },
+    contentOnly: true,
+  };
+  const toolStartMetadata = {
+    stable: 'tool-start',
+    replaced: { at: 'tool-start' },
+  };
+  const toolArgsMetadata = {
+    replaced: { at: 'tool-args' },
+    argsOnly: true,
+  };
+  const state = createState();
+
+  const next = accumulateEvents(state, [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'message-1',
+      role: 'assistant',
+      metadata: textStartMetadata,
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'message-1',
+      delta: 'Answer',
+      metadata: textContentMetadata,
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'message-1',
+      metadata: { stable: 'text-end', endOnly: true },
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'search',
+      parentMessageId: 'message-1',
+      metadata: toolStartMetadata,
+    },
+    {
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'call-1',
+      delta: '{}',
+      metadata: toolArgsMetadata,
+    },
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'call-1',
+      metadata: { stable: 'tool-end', endOnly: true },
+    },
+  ]);
+  textStartMetadata.replaced.at = 'mutated';
+  textContentMetadata.replaced.at = 'mutated';
+  toolStartMetadata.replaced.at = 'mutated';
+  toolArgsMetadata.replaced.at = 'mutated';
+
+  expect(next.message?.metadata).toEqual({
+    stable: 'text-end',
+    replaced: { at: 'text-content' },
+    contentOnly: true,
+    endOnly: true,
+  });
+  expect(next.toolCalls[0]?.metadata).toEqual({
+    stable: 'tool-end',
+    replaced: { at: 'tool-args' },
+    argsOnly: true,
+    endOnly: true,
+  });
+});
+
 test('keeps reasoning separate from structured output parsing', () => {
   const schema = s.object('output', { message: s.string('message') });
   const state = accumulateEvents(createState(schema), [
@@ -561,6 +636,137 @@ test('preserves multiple reasoning messages and tool calls in lifecycle order', 
   ]);
   expect(state.toolCalls.map(({ id }) => id)).toEqual(['call-1', 'call-2']);
   expect(state.message?.toolCallIds).toEqual(['call-1', 'call-2']);
+});
+
+test('preserves reasoning placeholder, redaction, completion, and latest event fields', () => {
+  const started = accumulateAgUiMessageEvent(
+    createState(),
+    reasoningStart('reasoning-1', { phase: 'start' }),
+  );
+  const completed = accumulateEvents(started, [
+    reasoningContent('reasoning-1', '', 'subagent-content'),
+    reasoningEnd('reasoning-1', { phase: 'end' }),
+    {
+      ...encryptedValue('reasoning-1', 'opaque'),
+      subagentRunId: 'subagent-encrypted',
+    },
+    runFinished(),
+  ]);
+
+  expect(started.message).toEqual({
+    role: 'assistant',
+    content: '',
+    toolCallIds: [],
+    reasoning: {
+      kind: 'details',
+      details: [
+        {
+          id: 'reasoning-1',
+          role: 'reasoning',
+          content: '',
+          metadata: { phase: 'start' },
+        },
+      ],
+    },
+  });
+  expect(completed.error).toBeUndefined();
+  expect(reasoningDetails(completed)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: '',
+      encryptedValue: 'opaque',
+      subagentRunId: 'subagent-encrypted',
+      metadata: { phase: 'end' },
+    },
+  ]);
+});
+
+test('reports every malformed reasoning end and content ordering', () => {
+  const completed = accumulateEvents(createState(), [
+    reasoningStart('reasoning-1'),
+    reasoningEnd('reasoning-1'),
+  ]);
+
+  const contentAfterEnd = accumulateAgUiMessageEvent(
+    completed,
+    reasoningContent('reasoning-1', 'late'),
+  );
+  const duplicateEnd = accumulateAgUiMessageEvent(
+    completed,
+    reasoningEnd('reasoning-1'),
+  );
+  const unknownEnd = accumulateAgUiMessageEvent(
+    createState(),
+    reasoningEnd('unknown'),
+  );
+
+  expect(contentAfterEnd.error?.message).toBe(
+    'Reasoning message reasoning-1 is not active',
+  );
+  expect(duplicateEnd.error?.message).toBe(
+    'Reasoning message reasoning-1 is not active',
+  );
+  expect(unknownEnd.error?.message).toBe(
+    'Reasoning message unknown is not active',
+  );
+});
+
+test('keeps latest encrypted values and ignores unknown encrypted entities', () => {
+  const state = accumulateEvents(createState(), [
+    textStart('message-1'),
+    textContent('Answer', 'message-1'),
+    toolStart('call-1', 'search'),
+  ]);
+
+  const unknownMessage = accumulateAgUiMessageEvent(
+    state,
+    encryptedValue('unknown-message', 'ignored'),
+  );
+  const unknownTool = accumulateAgUiMessageEvent(
+    state,
+    encryptedValue('unknown-tool', 'ignored', 'tool-call'),
+  );
+  const next = accumulateEvents(state, [
+    encryptedValue('message-1', 'assistant-first'),
+    encryptedValue('message-1', 'assistant-latest'),
+    encryptedValue('call-1', 'tool-first', 'tool-call'),
+    encryptedValue('call-1', 'tool-latest', 'tool-call'),
+  ]);
+
+  expect(unknownMessage).toBe(state);
+  expect(unknownTool).toBe(state);
+  expect(next.message?.encryptedValue).toBe('assistant-latest');
+  expect(next.toolCalls[0]?.encryptedValue).toBe('tool-latest');
+});
+
+test('clones metadata supplied through text and tool chunk shorthand', () => {
+  const textMetadata = { provider: { step: 1 } };
+  const toolMetadata = { provider: { step: 2 } };
+  const state = createState();
+
+  const next = accumulateEvents(state, [
+    {
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'message-1',
+      role: 'assistant',
+      delta: 'Answer',
+      metadata: textMetadata,
+    },
+    {
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'call-1',
+      toolCallName: 'search',
+      parentMessageId: 'message-1',
+      delta: '{}',
+      metadata: toolMetadata,
+    },
+  ]);
+  textMetadata.provider.step = 99;
+  toolMetadata.provider.step = 100;
+
+  expect(next.message?.metadata).toEqual({ provider: { step: 1 } });
+  expect(next.toolCalls[0]?.metadata).toEqual({ provider: { step: 2 } });
 });
 
 test('preserves current single-assistant accumulation when message ids change', () => {
