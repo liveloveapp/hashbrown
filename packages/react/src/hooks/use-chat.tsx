@@ -1,7 +1,7 @@
 import {
   type Chat,
-  fryHashbrown,
-  Hashbrown,
+  createChatRuntime,
+  type ChatRuntime,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
@@ -199,12 +199,10 @@ export function useChat<Tools extends Chat.AnyTool>(
   }
 
   const hasThreadId = Object.hasOwn(options, 'threadId');
-  const hashbrownRef = useRef<Hashbrown<string, Tools> | null>(null);
+  const runtimeRef = useRef<ChatRuntime<string, Tools> | null>(null);
 
-  if (!hashbrownRef.current) {
-    hashbrownRef.current = fryHashbrown<Tools>({
-      apiUrl: config.url,
-      middleware: config.middleware,
+  if (!runtimeRef.current) {
+    runtimeRef.current = createChatRuntime<Tools>({
       debugName: options.debugName,
       system: options.system,
       messages: [...(options.messages ?? [])],
@@ -217,24 +215,22 @@ export function useChat<Tools extends Chat.AnyTool>(
     });
   }
 
-  function getHashbrown() {
-    const instance = hashbrownRef.current;
+  function getRuntime() {
+    const instance = runtimeRef.current;
 
     if (!instance) {
-      throw new Error('Hashbrown not found');
+      throw new Error('Chat runtime not found');
     }
 
     return instance;
   }
 
   useEffect(() => {
-    return getHashbrown().sizzle();
+    return getRuntime().start();
   }, []);
 
   useEffect(() => {
-    getHashbrown().updateOptions({
-      apiUrl: config.url,
-      middleware: config.middleware,
+    getRuntime().updateOptions({
       debugName: options.debugName,
       system: options.system,
       tools,
@@ -245,8 +241,6 @@ export function useChat<Tools extends Chat.AnyTool>(
       ...(hasThreadId ? { threadId: options.threadId } : {}),
     });
   }, [
-    config.url,
-    config.middleware,
     config.transport,
     options.debounceTime,
     options.debugName,
@@ -259,41 +253,41 @@ export function useChat<Tools extends Chat.AnyTool>(
   ]);
 
   const internalMessages = useHashbrownSignal<Chat.Message<string, Tools>[]>(
-    getHashbrown().messages,
+    getRuntime().messages,
   );
-  const isReceiving = useHashbrownSignal<boolean>(getHashbrown().isReceiving);
-  const isSending = useHashbrownSignal<boolean>(getHashbrown().isSending);
-  const isGenerating = useHashbrownSignal<boolean>(getHashbrown().isGenerating);
+  const isReceiving = useHashbrownSignal<boolean>(getRuntime().isReceiving);
+  const isSending = useHashbrownSignal<boolean>(getRuntime().isSending);
+  const isGenerating = useHashbrownSignal<boolean>(getRuntime().isGenerating);
   const isRunningToolCalls = useHashbrownSignal<boolean>(
-    getHashbrown().isRunningToolCalls,
+    getRuntime().isRunningToolCalls,
   );
-  const isLoading = useHashbrownSignal<boolean>(getHashbrown().isLoading);
+  const isLoading = useHashbrownSignal<boolean>(getRuntime().isLoading);
   const exhaustedRetries = useHashbrownSignal<boolean>(
-    getHashbrown().exhaustedRetries,
+    getRuntime().exhaustedRetries,
   );
-  const error = useHashbrownSignal<Error | undefined>(getHashbrown().error);
+  const error = useHashbrownSignal<Error | undefined>(getRuntime().error);
   const sendingError = useHashbrownSignal<Error | undefined>(
-    getHashbrown().sendingError,
+    getRuntime().sendingError,
   );
   const generatingError = useHashbrownSignal<Error | undefined>(
-    getHashbrown().generatingError,
+    getRuntime().generatingError,
   );
   const lastAssistantMessage = useHashbrownSignal<
     Chat.AssistantMessage<string, Tools> | undefined
-  >(getHashbrown().lastAssistantMessage);
+  >(getRuntime().lastAssistantMessage);
   const sendMessage = useCallback((message: Chat.Message<string, Tools>) => {
-    getHashbrown().sendMessage(message);
+    getRuntime().sendMessage(message);
   }, []);
 
   const setMessages = useCallback((messages: Chat.Message<string, Tools>[]) => {
-    getHashbrown().setMessages(messages);
+    getRuntime().setMessages(messages);
   }, []);
 
   const reload = useCallback(() => {
     const lastMessage = internalMessages[internalMessages.length - 1];
 
     if (lastMessage.role === 'assistant') {
-      getHashbrown().setMessages(internalMessages.slice(0, -1));
+      getRuntime().setMessages(internalMessages.slice(0, -1));
 
       return true;
     }
@@ -302,7 +296,7 @@ export function useChat<Tools extends Chat.AnyTool>(
   }, [internalMessages]);
 
   const stop = useCallback((clearStreamingMessage = false) => {
-    getHashbrown().stop(clearStreamingMessage);
+    getRuntime().stop(clearStreamingMessage);
   }, []);
 
   return {

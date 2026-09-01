@@ -10,7 +10,11 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import { Chat, fryHashbrown, type TransportOrFactory } from '@hashbrownai/core';
+import {
+  Chat,
+  createChatRuntime,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import {
   readReactiveOption,
@@ -19,6 +23,7 @@ import {
 } from '../utils/signals';
 import { ReactiveOption } from '../utils/types';
 import { bindToolToInjector } from '../utils/create-tool.fn';
+import { createTransport } from '../utils/create-transport.fn';
 import {
   createResourceSnapshot,
   createResourceValue,
@@ -173,20 +178,25 @@ export function chatResource<Tools extends Chat.AnyTool>(
   const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
-  const hashbrown = fryHashbrown({
-    apiUrl:
-      options.apiUrl !== undefined
-        ? readReactiveOption(options.apiUrl)
-        : config.baseUrl,
-    middleware: config.middleware?.map((m): Chat.Middleware => {
-      return (requestInit) =>
-        runInInjectionContext(injector, () => m(requestInit));
-    }),
+  const resolveTransport = () =>
+    createTransport({
+      transport: options.transport ?? config.transport,
+      readBaseUrl: () =>
+        options.apiUrl !== undefined
+          ? readReactiveOption(options.apiUrl)
+          : config.baseUrl,
+      createMiddleware: () =>
+        config.middleware?.map((middleware): Chat.Middleware => {
+          return (requestInit) =>
+            runInInjectionContext(injector, () => middleware(requestInit));
+        }),
+    });
+  const runtime = createChatRuntime({
     system: readReactiveOption(options.system),
     messages: options.messages ? [...readSignalLike(options.messages)] : [],
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     debugName: options.debugName,
-    transport: options.transport ?? config.transport,
+    transport: resolveTransport(),
     ui: false,
     threadId:
       options.threadId !== undefined
@@ -195,19 +205,11 @@ export function chatResource<Tools extends Chat.AnyTool>(
   });
 
   const optionsEffect = effect(() => {
-    hashbrown.updateOptions({
-      apiUrl:
-        options.apiUrl !== undefined
-          ? readReactiveOption(options.apiUrl)
-          : config.baseUrl,
-      middleware: config.middleware?.map((m): Chat.Middleware => {
-        return (requestInit) =>
-          runInInjectionContext(injector, () => m(requestInit));
-      }),
+    runtime.updateOptions({
       system: readReactiveOption(options.system),
       tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
       debugName: options.debugName,
-      transport: options.transport ?? config.transport,
+      transport: resolveTransport(),
       ui: false,
       ...(options.threadId !== undefined
         ? { threadId: readReactiveOption(options.threadId) }
@@ -215,7 +217,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     });
   });
 
-  const teardown = hashbrown.sizzle();
+  const teardown = runtime.start();
 
   destroyRef.onDestroy(() => {
     teardown();
@@ -223,43 +225,43 @@ export function chatResource<Tools extends Chat.AnyTool>(
   });
 
   const rawValue = toNgSignal(
-    hashbrown.messages,
+    runtime.messages,
     options.debugName && `${options.debugName}.rawValue`,
   );
   const isReceiving = toNgSignal(
-    hashbrown.isReceiving,
+    runtime.isReceiving,
     options.debugName && `${options.debugName}.isReceiving`,
   );
   const isSending = toNgSignal(
-    hashbrown.isSending,
+    runtime.isSending,
     options.debugName && `${options.debugName}.isSending`,
   );
   const isGenerating = toNgSignal(
-    hashbrown.isGenerating,
+    runtime.isGenerating,
     options.debugName && `${options.debugName}.isGenerating`,
   );
   const isRunningToolCalls = toNgSignal(
-    hashbrown.isRunningToolCalls,
+    runtime.isRunningToolCalls,
     options.debugName && `${options.debugName}.isRunningToolCalls`,
   );
   const isLoading = toNgSignal(
-    hashbrown.isLoading,
+    runtime.isLoading,
     options.debugName && `${options.debugName}.isLoading`,
   );
   const error = toNgSignal(
-    hashbrown.error,
+    runtime.error,
     options.debugName && `${options.debugName}.error`,
   );
   const sendingError = toNgSignal(
-    hashbrown.sendingError,
+    runtime.sendingError,
     options.debugName && `${options.debugName}.sendingError`,
   );
   const generatingError = toNgSignal(
-    hashbrown.generatingError,
+    runtime.generatingError,
     options.debugName && `${options.debugName}.generatingError`,
   );
   const lastAssistantMessage = toNgSignal(
-    hashbrown.lastAssistantMessage,
+    runtime.lastAssistantMessage,
     options.debugName && `${options.debugName}.lastAssistantMessage`,
   );
   const status = computed(
@@ -302,7 +304,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     const lastMessage = messages[messages.length - 1];
 
     if (lastMessage?.role === 'assistant') {
-      hashbrown.setMessages(messages.slice(0, -1));
+      runtime.setMessages(messages.slice(0, -1));
 
       return true;
     }
@@ -318,15 +320,15 @@ export function chatResource<Tools extends Chat.AnyTool>(
   }
 
   function sendMessage(message: Chat.UserMessage) {
-    hashbrown.sendMessage(message);
+    runtime.sendMessage(message);
   }
 
   function setMessages(messages: Chat.Message<string, Tools>[]) {
-    hashbrown.setMessages(messages);
+    runtime.setMessages(messages);
   }
 
   function stop(clearStreamingMessage = false) {
-    hashbrown.stop(clearStreamingMessage);
+    runtime.stop(clearStreamingMessage);
   }
 
   return {

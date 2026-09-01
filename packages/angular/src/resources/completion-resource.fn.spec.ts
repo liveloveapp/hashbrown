@@ -3,25 +3,25 @@ import { TestBed } from '@angular/core/testing';
 import { provideHashbrown } from '../providers/provide-hashbrown.fn';
 import { completionResource } from './completion-resource.fn';
 
-const fryHashbrownMock = vi.hoisted(() => vi.fn());
+const createChatRuntimeMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@hashbrownai/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@hashbrownai/core')>();
 
   return {
     ...actual,
-    fryHashbrown: fryHashbrownMock,
+    createChatRuntime: createChatRuntimeMock,
   };
 });
 
 test('completionResource updates runtime options when option signals change', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const apiUrl = signal('/completion-a');
   const system = signal('System A');
   const threadId = signal<string | undefined>('thread-a');
   const input = signal('Summarize this');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -36,11 +36,11 @@ test('completionResource updates runtime options when option signals change', ()
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      apiUrl: '/completion-a',
       system: 'System A',
       threadId: 'thread-a',
+      transport: expect.any(Function),
     }),
   );
   expect(resource).not.toHaveProperty('isLoadingThread');
@@ -54,18 +54,18 @@ test('completionResource updates runtime options when option signals change', ()
   threadId.set('thread-b');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      apiUrl: '/completion-b',
       system: 'System B',
       threadId: 'thread-b',
+      transport: expect.any(Function),
     }),
   );
 
   threadId.set(undefined);
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: undefined,
     }),
@@ -74,7 +74,7 @@ test('completionResource updates runtime options when option signals change', ()
   threadId.set('');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -82,11 +82,11 @@ test('completionResource updates runtime options when option signals change', ()
 });
 
 test('completionResource preserves an empty apiUrl option', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const apiUrl = signal('');
   const input = signal('Summarize this');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -100,37 +100,37 @@ test('completionResource preserves an empty apiUrl option', () => {
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      apiUrl: '',
+      transport: expect.any(Function),
     }),
   );
 
   apiUrl.set('/completion-b');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      apiUrl: '/completion-b',
+      transport: expect.any(Function),
     }),
   );
 
   apiUrl.set('');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      apiUrl: '',
+      transport: expect.any(Function),
     }),
   );
 });
 
 test('completionResource preserves an empty threadId option', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const input = signal('Summarize this');
   const threadId = signal<string | undefined>('');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -144,7 +144,7 @@ test('completionResource preserves an empty threadId option', () => {
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -153,7 +153,7 @@ test('completionResource preserves an empty threadId option', () => {
   threadId.set('thread-b');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: 'thread-b',
     }),
@@ -162,7 +162,7 @@ test('completionResource preserves an empty threadId option', () => {
   threadId.set('');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -170,10 +170,10 @@ test('completionResource preserves an empty threadId option', () => {
 });
 
 test('completionResource preserves a literal empty threadId option', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const input = signal('Summarize this');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -187,7 +187,7 @@ test('completionResource preserves a literal empty threadId option', () => {
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -195,7 +195,7 @@ test('completionResource preserves a literal empty threadId option', () => {
 
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -203,11 +203,11 @@ test('completionResource preserves a literal empty threadId option', () => {
 });
 
 test('completionResource omits threadId from runtime updates when not provided', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const system = signal('System A');
   const input = signal('Summarize this');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -222,7 +222,7 @@ test('completionResource omits threadId from runtime updates when not provided',
 
   system.set('System B');
   TestBed.flushEffects();
-  const lastOptions = getLastUpdateOptions(hashbrown);
+  const lastOptions = getLastUpdateOptions(runtime);
 
   expect(Object.prototype.hasOwnProperty.call(lastOptions, 'threadId')).toBe(
     false,
@@ -230,11 +230,11 @@ test('completionResource omits threadId from runtime updates when not provided',
 });
 
 test('completionResource exposes a resolved snapshot after a successful completion', () => {
-  fryHashbrownMock.mockReset();
-  const hashbrown = createHashbrownStub({
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({
     messages: [{ role: 'assistant', content: 'Completed response' }],
   });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -256,11 +256,11 @@ test('completionResource exposes a resolved snapshot after a successful completi
 });
 
 test('completionResource retains a successful empty string', () => {
-  fryHashbrownMock.mockReset();
-  const hashbrown = createHashbrownStub({
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({
     messages: [{ role: 'assistant', content: '' }],
   });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -279,14 +279,14 @@ test('completionResource retains a successful empty string', () => {
 });
 
 test('completionResource exposes a non-retryable terminal error', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const failure = new Error('Request cannot be retried');
-  const hashbrown = createHashbrownStub({
+  const runtime = createRuntimeStub({
     messages: [],
     error: failure,
     exhaustedRetries: false,
   });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -305,14 +305,14 @@ test('completionResource exposes a non-retryable terminal error', () => {
 });
 
 test('completionResource reloads a resolved completion without mutating message history', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const messages = [
     { role: 'user' as const, content: 'Summarize this' },
     { role: 'assistant' as const, content: 'Completed response' },
   ];
   const originalMessages = structuredClone(messages);
-  const hashbrown = createHashbrownStub({ messages });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages });
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -322,24 +322,24 @@ test('completionResource reloads a resolved completion without mutating message 
       input: signal('Summarize this'),
     }),
   );
-  hashbrown.setMessages.mockClear();
+  runtime.setMessages.mockClear();
 
   const reloaded = resource.reload();
 
   expect(reloaded).toBe(true);
-  expect(hashbrown.setMessages).toHaveBeenCalledTimes(1);
-  expect(hashbrown.setMessages).toHaveBeenCalledWith([messages[0]]);
-  expect(hashbrown.resendMessages).not.toHaveBeenCalled();
+  expect(runtime.setMessages).toHaveBeenCalledTimes(1);
+  expect(runtime.setMessages).toHaveBeenCalledWith([messages[0]]);
+  expect(runtime.resendMessages).not.toHaveBeenCalled();
   expect(messages).toEqual(originalMessages);
 });
 
 test('completionResource retries a failed completion with user-only history', () => {
-  fryHashbrownMock.mockReset();
-  const hashbrown = createHashbrownStub({
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({
     messages: [{ role: 'user', content: 'Summarize this' }],
     error: new Error('Request failed'),
   });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -349,19 +349,19 @@ test('completionResource retries a failed completion with user-only history', ()
       input: signal('Summarize this'),
     }),
   );
-  hashbrown.setMessages.mockClear();
+  runtime.setMessages.mockClear();
 
   const reloaded = resource.reload();
 
   expect(reloaded).toBe(true);
-  expect(hashbrown.resendMessages).toHaveBeenCalledTimes(1);
-  expect(hashbrown.setMessages).not.toHaveBeenCalled();
+  expect(runtime.resendMessages).toHaveBeenCalledTimes(1);
+  expect(runtime.setMessages).not.toHaveBeenCalled();
 });
 
 test('completionResource reload returns false when there is no request', () => {
-  fryHashbrownMock.mockReset();
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -371,18 +371,18 @@ test('completionResource reload returns false when there is no request', () => {
       input: signal<string | null>(null),
     }),
   );
-  hashbrown.setMessages.mockClear();
+  runtime.setMessages.mockClear();
 
   const reloaded = resource.reload();
 
   expect(reloaded).toBe(false);
-  expect(hashbrown.setMessages).not.toHaveBeenCalled();
-  expect(hashbrown.resendMessages).not.toHaveBeenCalled();
+  expect(runtime.setMessages).not.toHaveBeenCalled();
+  expect(runtime.resendMessages).not.toHaveBeenCalled();
 });
 
 test('completionResource reload does not resend an already-answered history', () => {
-  fryHashbrownMock.mockReset();
-  const hashbrown = createHashbrownStub({
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({
     messages: [
       { role: 'user', content: 'Summarize this' },
       { role: 'assistant', content: 'Completed response' },
@@ -390,7 +390,7 @@ test('completionResource reload does not resend an already-answered history', ()
     ],
     error: new Error('Follow-up operation failed'),
   });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -400,16 +400,16 @@ test('completionResource reload does not resend an already-answered history', ()
       input: signal('Summarize this'),
     }),
   );
-  hashbrown.setMessages.mockClear();
+  runtime.setMessages.mockClear();
 
   const reloaded = resource.reload();
 
   expect(reloaded).toBe(false);
-  expect(hashbrown.setMessages).not.toHaveBeenCalled();
-  expect(hashbrown.resendMessages).not.toHaveBeenCalled();
+  expect(runtime.setMessages).not.toHaveBeenCalled();
+  expect(runtime.resendMessages).not.toHaveBeenCalled();
 });
 
-function createHashbrownStub({
+function createRuntimeStub({
   messages,
   error,
   exhaustedRetries = false,
@@ -436,7 +436,7 @@ function createHashbrownStub({
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),
     threadSaveError: createSignal(undefined),
-    sizzle: vi.fn(() => vi.fn()),
+    start: vi.fn(() => vi.fn()),
     updateOptions: vi.fn(),
     sendMessage: vi.fn(),
     resendMessages: vi.fn(),
@@ -445,10 +445,10 @@ function createHashbrownStub({
   } as never;
 }
 
-function getLastUpdateOptions(hashbrown: {
+function getLastUpdateOptions(runtime: {
   updateOptions: { mock: { calls: [Record<string, unknown>][] } };
 }) {
-  const calls = hashbrown.updateOptions.mock.calls;
+  const calls = runtime.updateOptions.mock.calls;
 
   return calls[calls.length - 1]?.[0];
 }

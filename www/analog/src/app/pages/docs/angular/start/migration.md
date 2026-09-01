@@ -66,6 +66,44 @@ Local browser models are now transports. Replace `model: experimental_local(...)
 
 ---
 
+## Core Runtime Naming
+
+The direct core API now uses technical lifecycle names:
+
+```ts
+// Before
+const hashbrown = fryHashbrown(options);
+const teardown = hashbrown.sizzle();
+
+// After
+const runtime = createChatRuntime(options);
+const teardown = runtime.start();
+```
+
+The exported `Hashbrown<Output, Tools>` type is now `ChatRuntime<Output, Tools>`. The old factory, type, and lifecycle method were removed without deprecated aliases.
+
+---
+
+## Direct Core HTTP Configuration
+
+The core runtime now stores only transport configuration. `provideHashbrown(...)` and resource `apiUrl` options remain supported, but direct `createChatRuntime(...)` calls configure non-default HTTP endpoints through `createHttpTransport`:
+
+```ts
+import { createHttpTransport, createChatRuntime } from '@hashbrownai/core';
+
+const runtime = createChatRuntime({
+  system: 'You are a helpful assistant.',
+  transport: createHttpTransport({
+    baseUrl: '/alternate-run',
+    middleware: [addAuthorization],
+  }),
+});
+```
+
+Omit `transport` to use AG-UI over POST `/run`.
+
+---
+
 ## Structured Output Controls
 
 Structured resources now use their `schema` option as the sole client-side structured output control. Hashbrown sends that schema in `RunAgentInput.hashbrown.responseSchema`; the server adapter owns provider-specific schema enforcement or JSON-mode settings.

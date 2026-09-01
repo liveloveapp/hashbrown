@@ -1,5 +1,8 @@
-import { createContext } from 'react';
-import { type TransportOrFactory } from '@hashbrownai/core';
+import { createContext, useMemo } from 'react';
+import {
+  createHttpTransport,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 
 /**
  * The options for the Hashbrown provider.
@@ -12,7 +15,7 @@ export interface HashbrownProviderOptions {
    */
   url?: string;
   /**
-   * The headers to send with the POST request to the Hashbrown endpoint.
+   * Middleware applied before POST requests to the Hashbrown endpoint.
    */
   middleware?: Array<
     (request: RequestInit) => RequestInit | Promise<RequestInit>
@@ -24,11 +27,7 @@ export interface HashbrownProviderOptions {
 }
 
 interface HashbrownProviderContext {
-  url?: string;
-  middleware?: Array<
-    (request: RequestInit) => RequestInit | Promise<RequestInit>
-  >;
-  transport?: TransportOrFactory;
+  transport: TransportOrFactory;
 }
 
 export const HashbrownContext = createContext<
@@ -36,7 +35,7 @@ export const HashbrownContext = createContext<
 >(undefined);
 
 /**
- * The context for the Hashbrown provider.  This is used to store the URL and middleware for contacting the Hashbrown endpoint.
+ * Configures the transport used by descendant Hashbrown hooks.
  *
  * @public
  * @example
@@ -55,11 +54,23 @@ export const HashbrownProvider = (
   },
 ) => {
   const { url, middleware, transport, children } = props;
+  const configuredTransport = useMemo<TransportOrFactory>(
+    () =>
+      transport ??
+      (() =>
+        createHttpTransport({
+          baseUrl: url,
+          middleware,
+        })),
+    [middleware, transport, url],
+  );
+  const context = useMemo(
+    () => ({ transport: configuredTransport }),
+    [configuredTransport],
+  );
 
   return (
-    <HashbrownContext.Provider
-      value={{ url, middleware, transport }}
-    >
+    <HashbrownContext.Provider value={context}>
       {children}
     </HashbrownContext.Provider>
   );

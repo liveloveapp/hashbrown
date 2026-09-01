@@ -1,22 +1,18 @@
 import { devActions } from '../actions';
-import { Chat } from '../models';
 import { s } from '../schema';
 import { TransportOrFactory } from '../transport';
 import { createReducer, on } from '../utils/micro-ngrx';
 
 export interface ConfigState {
-  apiUrl?: string;
   system: string;
   debounce: number;
   responseSchema?: s.HashbrownType;
-  middleware?: Chat.Middleware[];
   retries: number;
   transport?: TransportOrFactory;
   ui?: boolean;
 }
 
 const initialState: ConfigState = {
-  apiUrl: '',
   system: '',
   debounce: 150,
   retries: 0,
@@ -31,11 +27,9 @@ export const reducer = createReducer(
       : undefined;
     return {
       ...state,
-      apiUrl: action.payload.apiUrl,
       system: action.payload.system,
       debounce: action.payload.debounce ?? state.debounce,
       responseSchema,
-      middleware: action.payload.middleware,
       retries: action.payload.retries ?? state.retries,
       transport: action.payload.transport ?? state.transport,
       ui: action.payload.ui ?? state.ui,
@@ -47,6 +41,7 @@ export const reducer = createReducer(
       system = state.system,
       debounce = state.debounce,
       retries = state.retries,
+      transport = state.transport,
       ui = state.ui,
       ...configPayload
     } = action.payload;
@@ -61,18 +56,17 @@ export const reducer = createReducer(
       system,
       debounce,
       retries,
+      transport,
       ui,
       responseSchema,
     };
   }),
 );
 
-export const selectApiUrl = (state: ConfigState) => state.apiUrl;
 export const selectSystem = (state: ConfigState) => state.system;
 export const selectDebounce = (state: ConfigState) => state.debounce;
 export const selectResponseSchema = (state: ConfigState) =>
   state.responseSchema;
-export const selectMiddleware = (state: ConfigState) => state.middleware;
 export const selectRetries = (state: ConfigState) => state.retries;
 export const selectTransport = (state: ConfigState) => state.transport;
 export const selectUiRequested = (state: ConfigState) => state.ui ?? false;

@@ -146,7 +146,7 @@ export class LocalItinerary {
 
 ## 4. Structured output on-device
 
-Both transports forward Hashbrown's `responseFormat` to each browser's `responseConstraint`:
+Both transports forward Hashbrown's response schema to each browser's `responseConstraint`:
 
 - Keep schemas small; models are SLMs.
 - Schemas support the `streaming` keyword letting you eagerly parse JSON as it is being generated.

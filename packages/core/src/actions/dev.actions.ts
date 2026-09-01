@@ -5,13 +5,11 @@ import { createActionGroup, props } from '../utils/micro-ngrx';
 
 export default createActionGroup('dev', {
   init: props<{
-    apiUrl?: string;
     system: string;
     debounce?: number;
     messages?: Chat.AnyMessage[];
     tools?: Chat.AnyTool[];
     responseSchema?: s.SchemaOutput;
-    middleware?: Chat.Middleware[];
     retries?: number;
     transport?: TransportOrFactory;
     ui?: boolean;
@@ -28,11 +26,9 @@ export default createActionGroup('dev', {
   resendMessages: props<void>,
   updateOptions: props<{
     debugName?: string;
-    apiUrl?: string;
     system?: string;
     tools?: Chat.AnyTool[];
     responseSchema?: s.SchemaOutput;
-    middleware?: Chat.Middleware[];
     debounce?: number;
     retries?: number;
     transport?: TransportOrFactory;
