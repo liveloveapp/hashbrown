@@ -1580,12 +1580,19 @@ test('resets retry attempts for each logical tool continuation run', async () =>
 
 test('stopping during a later tool handler prevents another run', async () => {
   jest.clearAllMocks();
+  const startActionType = internalActions.start.type;
+  const startActions = jest.spyOn(internalActions, 'start');
+  Object.assign(startActions, { type: startActionType });
   const skippedToolCalls = observeSkippedToolCalls();
   const laterHandlerStarted = createDeferred<void>();
   const releaseLaterHandler = createDeferred<void>();
   const handlerFinished = createDeferred<void>();
   const probeRequestStarted = createDeferred<void>();
   const probePrompt = 'Confirm cancellation completion.';
+  const startupStartActionCount = 1;
+  const toolContinuationStartActionCount = 1;
+  const expectedStartActionCount =
+    startupStartActionCount + toolContinuationStartActionCount;
   const scriptedToolRounds: readonly ScriptedToolRound[] = [
     { callId: 'call-before-stop', value: 1 },
     { callId: 'call-at-stop', value: 2 },
@@ -1679,6 +1686,7 @@ test('stopping during a later tool handler prevents another run', async () => {
     await waitForRuntimeIdle(runtime);
 
     expect(toolHandler).toHaveBeenCalledTimes(2);
+    expect(startActions).toHaveBeenCalledTimes(expectedStartActionCount);
     expect(transportCountAtStop).toBe(2);
     expect(send).toHaveBeenCalledTimes(transportCountAtStop + 1);
     expect(requests).toHaveLength(3);
@@ -1690,6 +1698,7 @@ test('stopping during a later tool handler prevents another run', async () => {
   } finally {
     releaseLaterHandler.resolve();
     skippedToolCalls.restore();
+    startActions.mockRestore();
     teardown();
   }
 });
