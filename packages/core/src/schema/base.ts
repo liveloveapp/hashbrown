@@ -14,7 +14,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { AstNode, StreamError } from '@cacheplane/partial-json';
+import type { AstNode, StreamError } from '@cacheplane/json-stream';
 import { internal } from './constants';
 import {
   emptyCache,

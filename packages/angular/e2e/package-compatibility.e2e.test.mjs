@@ -112,8 +112,10 @@ test('published package declares the Angular 22 compatibility boundary', async (
 
   assert.equal(packageJson.peerDependencies['@angular/core'], '^22.0.0');
   assert.equal(packageJson.peerDependencies['@angular/common'], '^22.0.0');
-  assert.equal(packageJson.dependencies['@cacheplane/partial-json'], '0.2.2');
+  assert.equal(packageJson.dependencies['@cacheplane/partial-json'], '0.3.0');
+  assert.equal(packageJson.dependencies['@cacheplane/json-stream'], undefined);
   assert.match(bundle, /from '@cacheplane\/partial-json'/);
+  assert.doesNotMatch(bundle, /from '@cacheplane\/json-stream'/);
   assert.match(bundle, /ChangeDetectionStrategy\.Eager/);
 });
 
@@ -180,6 +182,13 @@ test(
             import { createRequire } from 'node:module';
 
             const require = createRequire(import.meta.url);
+            const partialJsonPackage = require('@cacheplane/partial-json/package.json');
+            const partialJsonRequire = createRequire(
+              require.resolve('@cacheplane/partial-json/package.json'),
+            );
+            const jsonStreamPackage = partialJsonRequire(
+              '@cacheplane/json-stream/package.json',
+            );
             await import('@angular/compiler');
             const angular = await import('@hashbrownai/angular');
             const cjsCore = require('@hashbrownai/core');
@@ -195,6 +204,15 @@ test(
 
             if (typeof esmCore.HttpTransport !== 'function') {
               throw new Error('ESM core did not load the AG-UI transport dependency tree');
+            }
+
+            if (
+              partialJsonPackage.version !== '0.3.0' ||
+              partialJsonPackage.dependencies?.['@cacheplane/json-stream'] !==
+                '^0.1.0' ||
+              jsonStreamPackage.version !== '0.1.0'
+            ) {
+              throw new Error('Angular resolved incompatible Cacheplane packages');
             }
           `,
       ];

@@ -4,7 +4,7 @@ import {
   finish,
   push,
   type StreamState,
-} from '@cacheplane/partial-json';
+} from '@cacheplane/json-stream';
 import { HashbrownTypeCtor, PRIMITIVE_WRAPPER_FIELD_NAME } from './base';
 import { Component, createComponentSchema, ExposedComponent } from '../ui';
 

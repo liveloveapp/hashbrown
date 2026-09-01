@@ -19,7 +19,7 @@
   "dependencies": {
     "@ag-ui/client": "0.0.59",
     "@ag-ui/core": "0.0.59",
-    "@cacheplane/partial-json": "0.2.2"
+    "@cacheplane/json-stream": "0.1.0"
   },
   "engines": {
     "node": ">=20"
