@@ -573,3 +573,73 @@ test('omits assistant and tool-call metadata when absent', () => {
   expect(api).not.toHaveProperty('metadata');
   expect(api.toolCalls?.[0]).not.toHaveProperty('metadata');
 });
+
+test('preserves a developer tool call named output', () => {
+  const message: Chat.Api.AssistantMessage = {
+    role: 'assistant',
+    content: '',
+    toolCalls: [
+      {
+        id: 'call-output',
+        index: 0,
+        type: 'function',
+        function: {
+          name: 'output',
+          arguments: '{"value":"result"}',
+        },
+      },
+    ],
+  };
+
+  const toolCalls = toInternalToolCallsFromApiMessages([message]);
+  const [internalMessage] = toInternalMessagesFromApi(message);
+
+  expect(toolCalls).toEqual([
+    {
+      id: 'call-output',
+      name: 'output',
+      arguments: '{"value":"result"}',
+      argumentsResolved: undefined,
+      status: 'pending',
+    },
+  ]);
+  expect(internalMessage).toEqual({
+    role: 'assistant',
+    content: '',
+    contentResolved: undefined,
+    toolCallIds: ['call-output'],
+  });
+});
+
+test('includes a developer tool named output in API history', () => {
+  const message: Chat.Internal.AssistantMessage = {
+    role: 'assistant',
+    content: '',
+    toolCallIds: ['call-output'],
+  };
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'call-output',
+    name: 'output',
+    arguments: '{"value":"result"}',
+    argumentsResolved: { value: 'result' },
+    status: 'pending',
+  };
+
+  const [apiMessage] = toApiMessagesFromInternal(message, [toolCall]);
+
+  expect(apiMessage).toEqual({
+    role: 'assistant',
+    content: '',
+    toolCalls: [
+      {
+        id: 'call-output',
+        index: 0,
+        type: 'function',
+        function: {
+          name: 'output',
+          arguments: '{"value":"result"}',
+        },
+      },
+    ],
+  });
+});

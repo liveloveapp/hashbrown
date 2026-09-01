@@ -309,10 +309,8 @@ export function toApiMessagesFromInternal(
           : message.contentResolved
             ? JSON.stringify(message.contentResolved)
             : '';
-      const toolCallsForMessage = toolCalls.filter(
-        (toolCall) =>
-          message.toolCallIds.includes(toolCall.id) &&
-          toolCall.name !== 'output',
+      const toolCallsForMessage = toolCalls.filter((toolCall) =>
+        message.toolCallIds.includes(toolCall.id),
       );
       const toolMessages = toolCallsForMessage.flatMap(
         (toolCall): Chat.Api.ToolMessage[] => {
@@ -379,27 +377,14 @@ export function toApiMessagesFromInternal(
  */
 export function toApiToolsFromInternal(
   tools: Chat.Internal.Tool[],
-  emulateStructuredOutput: boolean,
-  outputSchema: s.HashbrownType,
 ): Chat.Api.Tool[] {
-  const apiTools = tools.map((tool) => ({
+  return tools.map((tool) => ({
     description: tool.description,
     name: tool.name,
     parameters: s.isHashbrownType(tool.schema)
       ? s.toJsonSchema(tool.schema)
       : tool.schema,
   }));
-
-  if (emulateStructuredOutput) {
-    apiTools.push({
-      description:
-        'This should be your final tool call. Generate a response that matches the provided schema.',
-      name: 'output',
-      parameters: s.toJsonSchema(outputSchema),
-    });
-  }
-
-  return apiTools;
 }
 
 /**
@@ -412,10 +397,6 @@ export function toApiToolsFromInternal(
 export function toInternalToolCallsFromApi(
   toolCall: Chat.Api.ToolCall,
 ): Chat.Internal.ToolCall[] {
-  if (toolCall.function.name === 'output') {
-    return [];
-  }
-
   const rawArguments =
     typeof toolCall.function.arguments === 'string'
       ? toolCall.function.arguments
@@ -457,10 +438,6 @@ export function toInternalToolCallsFromApiMessages(
   messages.forEach((message) => {
     if (message.role === 'assistant' && message.toolCalls) {
       message.toolCalls.forEach((toolCall) => {
-        if (toolCall.function.name === 'output') {
-          return;
-        }
-
         const rawArguments =
           typeof toolCall.function.arguments === 'string'
             ? toolCall.function.arguments
@@ -600,11 +577,7 @@ export function toInternalMessagesFromApi(
     ];
   }
 
-  const output = message.toolCalls?.find(
-    (toolCall) => toolCall.function.name === 'output',
-  );
-
-  const rawContent = output ? output.function.arguments : message.content;
+  const rawContent = message.content;
   const content =
     typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
   const reasoning = toInternalReasoning(message);
@@ -620,10 +593,7 @@ export function toInternalMessagesFromApi(
       ...(message.metadata !== undefined
         ? { metadata: cloneMetadata(message.metadata) }
         : {}),
-      toolCallIds:
-        message.toolCalls
-          ?.filter((toolCall) => toolCall.function.name !== 'output')
-          .map((toolCall) => toolCall.id) || [],
+      toolCallIds: message.toolCalls?.map((toolCall) => toolCall.id) || [],
       ...(reasoning ? { reasoning } : {}),
     },
   ];

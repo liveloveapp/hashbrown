@@ -236,7 +236,6 @@ test('silent retirement clears active streaming state without changing committed
   );
   store.dispatch(
     apiActions.generateMessageStart({
-      emulateStructuredOutput: false,
       toolsByName: {},
     }),
   );

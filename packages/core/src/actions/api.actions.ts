@@ -6,7 +6,6 @@ import { s } from '../schema';
 export default createActionGroup('api', {
   generateMessageStart: props<{
     responseSchema?: s.SchemaOutput;
-    emulateStructuredOutput: boolean;
     toolsByName: Record<string, Chat.Internal.Tool>;
   }>(),
   generateMessageEvent: props<AGUIEvent>(),

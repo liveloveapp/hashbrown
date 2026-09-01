@@ -77,33 +77,11 @@ The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `
 
 ---
 
-### Structured Output Modes
+### Provider Enforcement
 
-Structured resources use provider schema enforcement by default. For very large or complex schemas, you can ask the provider for JSON without sending the full schema, while Hashbrown still parses, streams, validates, and retries locally.
+The `schema` option is the only client-side structured output control. Hashbrown includes its JSON Schema in `RunAgentInput.hashbrown.responseSchema`, then incrementally parses and validates the text events returned by the AG-UI endpoint.
 
-<hb-code-example header="use JSON mode for a complex schema">
-
-```ts
-chat = structuredChatResource({
-  model: 'gpt-4.1',
-  system: 'Return a dashboard configuration for the current user.',
-  schema: dashboardSchema,
-  structuredOutput: { mode: 'json' },
-  retries: 2,
-});
-```
-
-</hb-code-example>
-
-The available modes are:
-
-| Mode     | Behavior                                                                                     |
-| -------- | -------------------------------------------------------------------------------------------- |
-| `strict` | Default. Sends the schema to providers that support schema-constrained structured output.    |
-| `json`   | Requests JSON output without sending the provider schema. Hashbrown still validates locally. |
-| `tool`   | Uses Hashbrown's reserved output tool for emulated structured output.                        |
-
-Provider support differs. OpenAI and Azure use JSON object mode, Google sets the response MIME type to JSON, and Ollama uses `format: 'json'`.
+The server adapter decides how to request structured output from its provider. It may use native schema enforcement, JSON mode, or provider-specific request options. Hashbrown does not synthesize an `output` tool; developers may use that name for a normal tool.
 
 ---
 
@@ -121,7 +99,6 @@ Provider support differs. OpenAI and Azure use JSON object mode, Google sets the
 | `retries`          | `number`                              | No       | The number of retries for the structured chat resource          |
 | `apiUrl`           | `ReactiveOption<string>`              | No       | The API URL to use for the structured chat resource             |
 | `threadId`         | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation       |
-| `structuredOutput` | `StructuredOutputOptions`             | No       | Controls how the provider is asked to produce structured output |
 
 ---
 
@@ -216,7 +193,6 @@ When the user types a scene name, the LLM will predict which lights should be ad
 | `debugName`        | `string`                              | No       | The debug name for the structured completion resource           |
 | `apiUrl`           | `ReactiveOption<string>`              | No       | The API URL to use for the structured completion resource       |
 | `threadId`         | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation       |
-| `structuredOutput` | `StructuredOutputOptions`             | No       | Controls how the provider is asked to produce structured output |
 
 ---
 

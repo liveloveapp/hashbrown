@@ -121,11 +121,6 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
   transport?: TransportOrFactory;
 
   /**
-   * Controls how the provider is asked to produce structured output.
-   */
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
-
-  /**
    * Optional opaque AG-UI thread identity.
    */
   threadId?: string | undefined;

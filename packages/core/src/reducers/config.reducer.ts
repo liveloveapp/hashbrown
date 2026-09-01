@@ -10,9 +10,7 @@ export interface ConfigState {
   system: string;
   debounce: number;
   responseSchema?: s.HashbrownType;
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
   middleware?: Chat.Middleware[];
-  emulateStructuredOutput: boolean;
   retries: number;
   transport?: TransportOrFactory;
   ui?: boolean;
@@ -23,7 +21,6 @@ const initialState: ConfigState = {
   model: '',
   system: '',
   debounce: 150,
-  emulateStructuredOutput: false,
   retries: 0,
   ui: false,
 };
@@ -41,10 +38,7 @@ export const reducer = createReducer(
       system: action.payload.system,
       debounce: action.payload.debounce ?? state.debounce,
       responseSchema,
-      structuredOutput: action.payload.structuredOutput,
       middleware: action.payload.middleware,
-      emulateStructuredOutput:
-        action.payload.emulateStructuredOutput ?? state.emulateStructuredOutput,
       retries: action.payload.retries ?? state.retries,
       transport: action.payload.transport ?? state.transport,
       ui: action.payload.ui ?? state.ui,
@@ -56,7 +50,6 @@ export const reducer = createReducer(
       model = state.model,
       system = state.system,
       debounce = state.debounce,
-      emulateStructuredOutput = state.emulateStructuredOutput,
       retries = state.retries,
       ui = state.ui,
       ...configPayload
@@ -72,7 +65,6 @@ export const reducer = createReducer(
       model,
       system,
       debounce,
-      emulateStructuredOutput,
       retries,
       ui,
       responseSchema,
@@ -86,11 +78,7 @@ export const selectSystem = (state: ConfigState) => state.system;
 export const selectDebounce = (state: ConfigState) => state.debounce;
 export const selectResponseSchema = (state: ConfigState) =>
   state.responseSchema;
-export const selectStructuredOutput = (state: ConfigState) =>
-  state.structuredOutput;
 export const selectMiddleware = (state: ConfigState) => state.middleware;
-export const selectEmulateStructuredOutput = (state: ConfigState) =>
-  state.emulateStructuredOutput;
 export const selectRetries = (state: ConfigState) => state.retries;
 export const selectTransport = (state: ConfigState) => state.transport;
 export const selectUiRequested = (state: ConfigState) => state.ui ?? false;

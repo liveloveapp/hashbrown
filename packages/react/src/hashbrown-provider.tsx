@@ -18,15 +18,6 @@ export interface HashbrownProviderOptions {
     (request: RequestInit) => RequestInit | Promise<RequestInit>
   >;
   /**
-   * Whether to emulate structured output. Useful for models
-   * that don't support tool calling with structured outputs
-   * enabled. When set to true, Hashbrown silently adds an
-   * "output" tool to the the list of tools the model can
-   * call, and then handles the arguments to the tool call
-   * as if the model has produced it via structured outputs.
-   */
-  emulateStructuredOutput?: boolean;
-  /**
    * Optional transport override applied to all descendant hooks.
    */
   transport?: TransportOrFactory;
@@ -37,7 +28,6 @@ interface HashbrownProviderContext {
   middleware?: Array<
     (request: RequestInit) => RequestInit | Promise<RequestInit>
   >;
-  emulateStructuredOutput?: boolean;
   transport?: TransportOrFactory;
 }
 
@@ -64,12 +54,11 @@ export const HashbrownProvider = (
     children: React.ReactNode;
   },
 ) => {
-  const { url, middleware, emulateStructuredOutput, transport, children } =
-    props;
+  const { url, middleware, transport, children } = props;
 
   return (
     <HashbrownContext.Provider
-      value={{ url, middleware, emulateStructuredOutput, transport }}
+      value={{ url, middleware, transport }}
     >
       {children}
     </HashbrownContext.Provider>

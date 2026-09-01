@@ -43,36 +43,6 @@ test('useStructuredChat initializes with the provided message history', () => {
   expect(result.current.messages).toEqual(messages);
 });
 
-test('useStructuredChat passes structured output options to Hashbrown', async () => {
-  fryHashbrownMock.mockReset();
-  fryHashbrownMock.mockImplementation((init) =>
-    createHashbrownStub({ messages: init.messages ?? [] }),
-  );
-
-  renderHook(
-    () =>
-      useStructuredChat({
-        model: 'gpt-4.1',
-        system: 'You are a portfolio analyst.',
-        schema: s.object('risk summary', {
-          risk: s.string('Risk level'),
-        }),
-        structuredOutput: { mode: 'json' },
-      }),
-    { wrapper: ProviderWrapper },
-  );
-
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
-    expect.objectContaining({
-      structuredOutput: { mode: 'json' },
-    }),
-  );
-});
-
 test('useStructuredChat preserves thread identity property presence on updates', () => {
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReset();

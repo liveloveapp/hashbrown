@@ -68,9 +68,7 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
       system: string;
       tools: Tools[];
       responseSchema: s.SchemaOutput;
-      structuredOutput: Chat.Api.StructuredOutputOptions;
       middleware: Chat.Middleware[];
-      emulateStructuredOutput: boolean;
       debounce: number;
       retries: number;
       transport: TransportOrFactory;
@@ -101,12 +99,9 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
  *   - `messages`: Initial message history
  *   - `tools`: Array of tools to enable in the instance
  *   - `responseSchema`: JSON schema for validating structured output
- *   - `structuredOutput`: Resource-level structured output mode
  *   - `middleware`: Middleware functions to run on messages
- *   - `emulateStructuredOutput`: Whether to emulate structured output behavior
  *   - `debounce`: Debounce interval in milliseconds for sending messages
  * @returns A configured Hashbrown instance.
- * @throws If a reserved tool name ("output") is used.
  */
 export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
@@ -116,8 +111,6 @@ export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
   middleware?: Chat.Middleware[];
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
-  emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
   transport?: TransportOrFactory;
@@ -139,9 +132,7 @@ export function fryHashbrown<
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
   responseSchema: Schema;
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
   middleware?: Chat.Middleware[];
-  emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
   transport?: TransportOrFactory;
@@ -159,9 +150,7 @@ export function fryHashbrown(init: {
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
   responseSchema?: s.SchemaOutput;
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
   middleware?: Chat.Middleware[];
-  emulateStructuredOutput?: boolean;
   debounce?: number;
   retries?: number;
   transport?: TransportOrFactory;
@@ -169,16 +158,6 @@ export function fryHashbrown(init: {
   threadId?: string;
 }): Hashbrown<any, Chat.AnyTool> {
   const initialThreadId = init.threadId;
-
-  const hasIllegalOutputTool = init.tools?.some(
-    (tool) => tool.name === 'output',
-  );
-
-  if (hasIllegalOutputTool) {
-    throw new Error(
-      'The "output" tool name is a reserved tool name and cannot be used.',
-    );
-  }
 
   const state = createStore({
     debugName: init.debugName,
@@ -207,9 +186,7 @@ export function fryHashbrown(init: {
       messages: init.messages as Chat.AnyMessage[],
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
-      structuredOutput: init.structuredOutput,
       middleware: init.middleware,
-      emulateStructuredOutput: init.emulateStructuredOutput,
       debounce: init.debounce,
       retries: init.retries,
       transport: init.transport,
@@ -248,9 +225,7 @@ export function fryHashbrown(init: {
       system: string;
       tools: Chat.AnyTool[];
       responseSchema: s.SchemaOutput;
-      structuredOutput: Chat.Api.StructuredOutputOptions;
       middleware: Chat.Middleware[];
-      emulateStructuredOutput: boolean;
       debounce: number;
       retries: number;
       transport: TransportOrFactory;

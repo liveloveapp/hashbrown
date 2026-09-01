@@ -38,7 +38,6 @@ export interface StreamingMessageState {
   reasoningMessageStatusById: Record<string, 'active' | 'complete'>;
   configSnapshot?: {
     responseSchema?: s.HashbrownType;
-    emulateStructuredOutput: boolean;
     toolsByName: Record<string, Chat.Internal.Tool>;
   };
   error?: Error;
@@ -924,7 +923,6 @@ export const reducer = createReducer(
         ...initialState,
         configSnapshot: {
           responseSchema,
-          emulateStructuredOutput: action.payload.emulateStructuredOutput,
           toolsByName: action.payload.toolsByName,
         },
       };

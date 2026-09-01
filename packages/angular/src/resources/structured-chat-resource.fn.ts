@@ -159,10 +159,6 @@ export interface StructuredChatResourceOptions<
    */
   transport?: TransportOrFactory;
   /**
-   * Controls how the provider is asked to produce structured output.
-   */
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
-  /**
    * Whether this structured chat is generating UI content.
    */
   ui?: boolean;
@@ -205,11 +201,9 @@ export function structuredChatResource<
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     responseSchema: options.schema,
     debugName: options.debugName,
-    emulateStructuredOutput: config.emulateStructuredOutput,
     debounce: options.debounce,
     retries: options.retries,
     transport: options.transport ?? config.transport,
-    structuredOutput: options.structuredOutput,
     ui: options.ui ?? false,
     threadId:
       options.threadId !== undefined
@@ -225,7 +219,6 @@ export function structuredChatResource<
           : config.baseUrl,
       model: readReactiveOption(options.model),
       system: readReactiveOption(options.system),
-      structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
       ...(options.threadId !== undefined
         ? { threadId: readReactiveOption(options.threadId) }

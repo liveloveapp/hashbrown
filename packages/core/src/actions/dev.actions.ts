@@ -12,9 +12,7 @@ export default createActionGroup('dev', {
     messages?: Chat.AnyMessage[];
     tools?: Chat.AnyTool[];
     responseSchema?: s.SchemaOutput;
-    structuredOutput?: Chat.Api.StructuredOutputOptions;
     middleware?: Chat.Middleware[];
-    emulateStructuredOutput?: boolean;
     retries?: number;
     transport?: TransportOrFactory;
     ui?: boolean;
@@ -36,9 +34,7 @@ export default createActionGroup('dev', {
     system?: string;
     tools?: Chat.AnyTool[];
     responseSchema?: s.SchemaOutput;
-    structuredOutput?: Chat.Api.StructuredOutputOptions;
     middleware?: Chat.Middleware[];
-    emulateStructuredOutput?: boolean;
     debounce?: number;
     retries?: number;
     transport?: TransportOrFactory;
