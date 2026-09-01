@@ -38,6 +38,10 @@ const weatherRounds: readonly WeatherRound[] = [
     toolOpaqueValue: 'fixture-tool-opaque-tokyo',
   },
 ];
+const initialPrompt = 'Get the weather for Paris, London, and Tokyo.';
+const terminalResponse = 'All three cities are 21 C and sunny.';
+const probePrompt = 'Confirm the completed run.';
+const probeResponse = 'Completion confirmed.';
 const expectedWeatherTool = {
   name: 'getWeather',
   description: 'Get the current weather for a city.',
@@ -68,7 +72,24 @@ function createInitialMessages(
     {
       id: `${threadId}:message:0`,
       role: 'user',
-      content: 'Get the weather for Paris, London, and Tokyo.',
+      content: initialPrompt,
+    },
+  ];
+}
+
+function createProbeMessages(threadId: string): HashbrownRunInput['messages'] {
+  return [
+    ...createContinuationMessages(threadId, weatherRounds.length),
+    {
+      id: `${threadId}:message:7`,
+      role: 'assistant',
+      content: terminalResponse,
+      toolCalls: [],
+    },
+    {
+      id: `${threadId}:message:8`,
+      role: 'user',
+      content: probePrompt,
     },
   ];
 }
@@ -184,8 +205,17 @@ function createToolContinuationEvents(
     return createTextRunEvents(
       input,
       'message-weather-final',
-      ['All three cities are 21 C and sunny.'],
+      [terminalResponse],
       1_700_000_006_000,
+    );
+  }
+
+  if (requestIndex === weatherRounds.length + 1) {
+    return createTextRunEvents(
+      input,
+      'message-probe-final',
+      [probeResponse],
+      1_700_000_007_000,
     );
   }
 
@@ -309,13 +339,15 @@ test('executes three sequential tools once each before the terminal response', a
           const firstThreadId = captured[0]?.threadId;
 
           return (
-            requestIndex <= weatherRounds.length &&
+            requestIndex <= weatherRounds.length + 1 &&
             (requestIndex === 0 || input.threadId === firstThreadId) &&
             isDeepStrictEqual(
               input.messages,
               requestIndex === 0
                 ? createInitialMessages(input.threadId)
-                : createContinuationMessages(input.threadId, requestIndex),
+                : requestIndex <= weatherRounds.length
+                  ? createContinuationMessages(input.threadId, requestIndex)
+                  : createProbeMessages(input.threadId),
             )
           );
         },
@@ -326,11 +358,9 @@ test('executes three sequential tools once each before the terminal response', a
   });
   const driver = createAppDriver(page);
 
-  await driver.send('Get the weather for Paris, London, and Tokyo.');
+  await driver.send(initialPrompt);
 
-  await expect(driver.userMessage()).toHaveText(
-    'Get the weather for Paris, London, and Tokyo.',
-  );
+  await expect(driver.userMessage()).toHaveText(initialPrompt);
   await driver.expectLoading();
   await expect(driver.reasoning()).toHaveText('I need the weather tools.');
   await expect(driver.reasoningDetailCount()).toHaveText('1');
@@ -339,7 +369,7 @@ test('executes three sequential tools once each before the terminal response', a
   await expect.poll(() => captured.length).toBe(4);
   await expect(driver.assistant()).toHaveJSProperty(
     'textContent',
-    'All three cities are 21 C and sunny.',
+    terminalResponse,
   );
   await driver.expectIdle();
   await expect(driver.reasoning()).toHaveText('I need the weather tools.');
@@ -349,12 +379,12 @@ test('executes three sequential tools once each before the terminal response', a
   await expect(driver.error()).toHaveJSProperty('textContent', '');
   await expect(driver.sendingError()).toHaveJSProperty('textContent', '');
   await expect(driver.generatingError()).toHaveJSProperty('textContent', '');
+  expect(attempted).toHaveLength(4);
   expect(captured).toHaveLength(4);
   const [firstInput, , , fourthInput] = captured;
   if (!firstInput || !fourthInput) {
     throw new Error('Expected four captured tool continuation run inputs.');
   }
-  expect(attempted).toHaveLength(4);
   expect(new Set(captured.map(({ threadId }) => threadId)).size).toBe(1);
   expect(new Set(captured.map(({ runId }) => runId)).size).toBe(4);
   expect(fourthInput.messages.map(({ role }) => role)).toEqual([
@@ -427,6 +457,39 @@ test('executes three sequential tools once each before the terminal response', a
     });
   }
 
+  await driver.send(probePrompt);
+
+  await expect.poll(() => attempted.length).toBe(5);
+  await expect.poll(() => captured.length).toBe(5);
+  await expect(driver.userMessage()).toHaveText(probePrompt);
+  await expect(driver.assistant()).toHaveJSProperty(
+    'textContent',
+    probeResponse,
+  );
+  await driver.expectIdle();
+  await expect(driver.toolCount()).toHaveText('3');
+  expect(attempted).toHaveLength(5);
+  expect(captured).toHaveLength(5);
+  const fifthInput = captured[4];
+  if (!fifthInput) {
+    throw new Error('Expected a captured post-completion probe run input.');
+  }
+  expect(new Set(captured.map(({ threadId }) => threadId)).size).toBe(1);
+  expect(new Set(captured.map(({ runId }) => runId)).size).toBe(5);
+  expect({
+    ...fifthInput,
+    messages: safeTranscript(fifthInput.messages),
+  }).toEqual({
+    threadId: firstInput.threadId,
+    runId: fifthInput.runId,
+    messages: safeTranscript(createProbeMessages(firstInput.threadId)),
+    tools: [expectedWeatherTool],
+    context: [],
+    state: {},
+    forwardedProps: {},
+  });
+
   await hygiene.assertClean();
-  expect(attempted).toHaveLength(4);
+  expect(attempted).toHaveLength(5);
+  expect(captured).toHaveLength(5);
 });

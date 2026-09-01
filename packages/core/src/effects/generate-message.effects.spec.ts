@@ -205,6 +205,34 @@ async function waitForRuntimeIdle(runtime: { isLoading: () => boolean }) {
   throw new Error('Timed out waiting for the chat runtime to become idle');
 }
 
+function observeSkippedToolCalls() {
+  const waiters = new Map<number, ReturnType<typeof createDeferred<void>>>();
+  let invocationCount = 0;
+  const original = internalActions.skippedToolCalls;
+  const spy = jest
+    .spyOn(internalActions, 'skippedToolCalls')
+    .mockImplementation(() => {
+      invocationCount++;
+      waiters.get(invocationCount)?.resolve();
+
+      return original();
+    });
+
+  return {
+    count: () => invocationCount,
+    restore: () => spy.mockRestore(),
+    waitFor: (expectedInvocationCount: number) => {
+      if (invocationCount >= expectedInvocationCount) {
+        return Promise.resolve();
+      }
+
+      const waiter = createDeferred<void>();
+      waiters.set(expectedInvocationCount, waiter);
+      return waiter.promise;
+    },
+  };
+}
+
 type ScriptedToolRound = {
   readonly callId: string;
   readonly value: number;
@@ -1384,6 +1412,7 @@ test('continues client tools with isolated reasoning details in transcript order
 
 test('continues three sequential tool rounds before the terminal response', async () => {
   jest.clearAllMocks();
+  const skippedToolCalls = observeSkippedToolCalls();
   const scriptedToolRounds: readonly ScriptedToolRound[] = [
     { callId: 'call-round-1', value: 1 },
     { callId: 'call-round-2', value: 2 },
@@ -1442,33 +1471,39 @@ test('continues three sequential tool rounds before the terminal response', asyn
   });
   const teardown = runtime.start();
 
-  runtime.sendMessage({ role: 'user', content: 'Record three values.' });
-  await terminalRequestStarted.promise;
-  await waitForRuntimeIdle(runtime);
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record three values.' });
+    await terminalRequestStarted.promise;
+    await skippedToolCalls.waitFor(1);
+    await waitForRuntimeIdle(runtime);
 
-  expect(capturedRequests).toHaveLength(4);
-  const identities = capturedRequests.map(getInputIdentity);
-  expect(new Set(identities.map(({ threadId }) => threadId)).size).toBe(1);
-  expect(new Set(identities.map(({ runId }) => runId)).size).toBe(4);
-  expect(capturedRequests.map(summarizeToolTranscript)).toEqual([
-    expectedToolTranscript([]),
-    expectedToolTranscript(expectedToolRounds.slice(0, 1)),
-    expectedToolTranscript(expectedToolRounds.slice(0, 2)),
-    expectedToolTranscript(expectedToolRounds),
-  ]);
-  expect(toolHandler).toHaveBeenCalledTimes(3);
-  expect(toolHandler.mock.calls.map(([input]) => input)).toEqual([
-    { value: 1 },
-    { value: 2 },
-    { value: 3 },
-  ]);
-  expect(send).toHaveBeenCalledTimes(4);
-
-  teardown();
+    expect(skippedToolCalls.count()).toBe(1);
+    expect(capturedRequests).toHaveLength(4);
+    const identities = capturedRequests.map(getInputIdentity);
+    expect(new Set(identities.map(({ threadId }) => threadId)).size).toBe(1);
+    expect(new Set(identities.map(({ runId }) => runId)).size).toBe(4);
+    expect(capturedRequests.map(summarizeToolTranscript)).toEqual([
+      expectedToolTranscript([]),
+      expectedToolTranscript(expectedToolRounds.slice(0, 1)),
+      expectedToolTranscript(expectedToolRounds.slice(0, 2)),
+      expectedToolTranscript(expectedToolRounds),
+    ]);
+    expect(toolHandler).toHaveBeenCalledTimes(3);
+    expect(toolHandler.mock.calls.map(([input]) => input)).toEqual([
+      { value: 1 },
+      { value: 2 },
+      { value: 3 },
+    ]);
+    expect(send).toHaveBeenCalledTimes(4);
+  } finally {
+    skippedToolCalls.restore();
+    teardown();
+  }
 });
 
 test('resets retry attempts for each logical tool continuation run', async () => {
   jest.clearAllMocks();
+  const skippedToolCalls = observeSkippedToolCalls();
   const requests: TransportRequest[] = [];
   const terminalRequestStarted = createDeferred<void>();
   const toolHandler = jest.fn(async ({ value }: { value: number }) => ({
@@ -1495,7 +1530,19 @@ test('resets retry attempts for each logical tool continuation run', async () =>
     }
 
     terminalRequestStarted.resolve();
-    return { events: successfulEvents(request) };
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-retry-terminal',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-retry-terminal',
+        },
+      ]),
+    };
   });
   const runtime = createChatRuntime({
     system: 'You are a test bot',
@@ -1514,26 +1561,37 @@ test('resets retry attempts for each logical tool continuation run', async () =>
   });
   const teardown = runtime.start();
 
-  runtime.sendMessage({ role: 'user', content: 'Record a value.' });
-  await terminalRequestStarted.promise;
-  await waitForRuntimeIdle(runtime);
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+    await terminalRequestStarted.promise;
+    await skippedToolCalls.waitFor(1);
+    await waitForRuntimeIdle(runtime);
 
-  expect(requests.map(({ attempt }) => attempt)).toEqual([1, 2, 1, 2]);
-  expect(requests.map(({ maxAttempts }) => maxAttempts)).toEqual([2, 2, 2, 2]);
-  expect(toolHandler).toHaveBeenCalledTimes(1);
-
-  teardown();
+    expect(requests.map(({ attempt }) => attempt)).toEqual([1, 2, 1, 2]);
+    expect(requests.map(({ maxAttempts }) => maxAttempts)).toEqual([
+      2, 2, 2, 2,
+    ]);
+    expect(toolHandler).toHaveBeenCalledTimes(1);
+  } finally {
+    skippedToolCalls.restore();
+    teardown();
+  }
 });
 
 test('stopping during a later tool handler prevents another run', async () => {
   jest.clearAllMocks();
+  const skippedToolCalls = observeSkippedToolCalls();
   const laterHandlerStarted = createDeferred<void>();
   const releaseLaterHandler = createDeferred<void>();
   const handlerFinished = createDeferred<void>();
+  const probeRequestStarted = createDeferred<void>();
+  const probePrompt = 'Confirm cancellation completion.';
   const scriptedToolRounds: readonly ScriptedToolRound[] = [
     { callId: 'call-before-stop', value: 1 },
     { callId: 'call-at-stop', value: 2 },
   ];
+  const requests: TransportRequest[] = [];
+  let probeSkippedInvocation = 0;
   let laterHandlerSignal: AbortSignal | undefined;
   const toolHandler = jest.fn(
     async ({ value }: { value: number }, signal: AbortSignal) => {
@@ -1551,15 +1609,35 @@ test('stopping during a later tool handler prevents another run', async () => {
       }
     },
   );
-  let requestCount = 0;
   const { send } = makeSelection(async (request) => {
-    const toolRound = scriptedToolRounds[requestCount];
-    requestCount++;
+    requests.push(request);
+    const toolRound = scriptedToolRounds[requests.length - 1];
     if (toolRound) {
       return { events: createToolRoundEvents(request, toolRound) };
     }
 
-    return { events: successfulEvents(request) };
+    if (
+      request.input.messages.some(
+        (message) => message.role === 'user' && message.content === probePrompt,
+      )
+    ) {
+      probeSkippedInvocation = skippedToolCalls.count() + 1;
+      probeRequestStarted.resolve();
+    }
+
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-cancellation-probe',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-cancellation-probe',
+        },
+      ]),
+    };
   });
   const runtime = createChatRuntime({
     system: 'You are a test bot',
@@ -1577,29 +1655,48 @@ test('stopping during a later tool handler prevents another run', async () => {
   });
   const teardown = runtime.start();
 
-  runtime.sendMessage({
-    role: 'user',
-    content: 'Record values until stopped.',
-  });
-  await laterHandlerStarted.promise;
-  runtime.stop(true);
-  const transportCountAtStop = send.mock.calls.length;
+  try {
+    runtime.sendMessage({
+      role: 'user',
+      content: 'Record values until stopped.',
+    });
+    await laterHandlerStarted.promise;
+    const laterHandlerPromise = toolHandler.mock.results[1]?.value;
+    if (!laterHandlerPromise) {
+      throw new Error('Expected the later tool handler promise.');
+    }
+    runtime.stop(true);
+    const transportCountAtStop = send.mock.calls.length;
 
-  expect(laterHandlerSignal?.aborted).toBe(true);
+    expect(laterHandlerSignal?.aborted).toBe(true);
 
-  releaseLaterHandler.resolve();
-  await handlerFinished.promise;
-  await waitForRuntimeIdle(runtime);
+    releaseLaterHandler.resolve();
+    await handlerFinished.promise;
+    await laterHandlerPromise;
+    runtime.sendMessage({ role: 'user', content: probePrompt });
+    await probeRequestStarted.promise;
+    await skippedToolCalls.waitFor(probeSkippedInvocation);
+    await waitForRuntimeIdle(runtime);
 
-  expect(toolHandler).toHaveBeenCalledTimes(2);
-  expect(transportCountAtStop).toBe(2);
-  expect(send).toHaveBeenCalledTimes(transportCountAtStop);
-
-  teardown();
+    expect(toolHandler).toHaveBeenCalledTimes(2);
+    expect(transportCountAtStop).toBe(2);
+    expect(send).toHaveBeenCalledTimes(transportCountAtStop + 1);
+    expect(requests).toHaveLength(3);
+    expect(
+      requests[2]?.input.messages.some(
+        (message) => message.role === 'user' && message.content === probePrompt,
+      ),
+    ).toBe(true);
+  } finally {
+    releaseLaterHandler.resolve();
+    skippedToolCalls.restore();
+    teardown();
+  }
 });
 
 test('handles 25 sequential tool rounds before a final response', async () => {
   jest.clearAllMocks();
+  const skippedToolCalls = observeSkippedToolCalls();
   const scriptedToolRounds: readonly ScriptedToolRound[] = Array.from(
     { length: 25 },
     (_, index) => ({
@@ -1620,7 +1717,19 @@ test('handles 25 sequential tool rounds before a final response', async () => {
     }
 
     terminalRequestStarted.resolve();
-    return { events: successfulEvents(request) };
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-sentinel-terminal',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-sentinel-terminal',
+        },
+      ]),
+    };
   });
   const runtime = createChatRuntime({
     system: 'You are a test bot',
@@ -1638,14 +1747,22 @@ test('handles 25 sequential tool rounds before a final response', async () => {
   });
   const teardown = runtime.start();
 
-  runtime.sendMessage({ role: 'user', content: 'Record the sentinel values.' });
-  await terminalRequestStarted.promise;
-  await waitForRuntimeIdle(runtime);
+  try {
+    runtime.sendMessage({
+      role: 'user',
+      content: 'Record the sentinel values.',
+    });
+    await terminalRequestStarted.promise;
+    await skippedToolCalls.waitFor(1);
+    await waitForRuntimeIdle(runtime);
 
-  expect(send).toHaveBeenCalledTimes(26);
-  expect(toolHandler).toHaveBeenCalledTimes(25);
-
-  teardown();
+    expect(skippedToolCalls.count()).toBe(1);
+    expect(send).toHaveBeenCalledTimes(26);
+    expect(toolHandler).toHaveBeenCalledTimes(25);
+  } finally {
+    skippedToolCalls.restore();
+    teardown();
+  }
 });
 
 test('sends one RunAgentInput with tools, structured output, and UI metadata', async () => {
