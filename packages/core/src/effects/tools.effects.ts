@@ -7,7 +7,7 @@ import {
   selectToolEntities,
   selectUnifiedError,
 } from '../reducers';
-import { s } from '../schema';
+import { executeToolTurn, type ToolCallExecution } from './tool-turn-executor';
 
 interface ActiveToolTurn {
   readonly toolCalls: Chat.Internal.ToolCall[];
@@ -41,64 +41,6 @@ function toToolMessages(
     toolCallId: toolCall.id,
     toolName: toolCall.name,
   }));
-}
-
-async function executeToolCall(
-  toolCall: Chat.Internal.ToolCall,
-  tool: Chat.Internal.Tool | undefined,
-  controller: AbortController,
-): Promise<PromiseSettledResult<unknown>> {
-  const signal = controller.signal;
-  if (signal.aborted) {
-    return { status: 'rejected', reason: createCancellationError() };
-  }
-
-  const execution = Promise.resolve().then(async () => {
-    try {
-      if (signal.aborted) {
-        throw createCancellationError();
-      }
-
-      if (!tool) {
-        throw new Error(`Tool ${toolCall.name} not found`);
-      }
-
-      let args: unknown = toolCall.arguments;
-      if (typeof args === 'string') {
-        args = JSON.parse(args);
-        if (typeof args === 'string') {
-          try {
-            args = JSON.parse(args);
-          } catch {
-            // Keep the original string if it isn't valid JSON.
-          }
-        }
-      }
-
-      if (s.isHashbrownType(tool.schema)) {
-        tool.schema.validate(args);
-      }
-
-      const value = await tool.handler(args, signal);
-      return { status: 'fulfilled', value } as const;
-    } catch (reason) {
-      return { status: 'rejected', reason } as const;
-    }
-  });
-
-  let onAbort = () => undefined;
-  const cancellation = new Promise<PromiseSettledResult<unknown>>((resolve) => {
-    onAbort = () => {
-      resolve({ status: 'rejected', reason: createCancellationError() });
-    };
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
-
-  try {
-    return await Promise.race([execution, cancellation]);
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
 }
 
 export const runTools = createEffect((store) => {
@@ -186,11 +128,14 @@ export const runTools = createEffect((store) => {
     };
     activeTurn = turn;
 
-    const results = await Promise.all(
-      executions.map(({ toolCall, controller }) =>
-        executeToolCall(toolCall, toolEntities[toolCall.name], controller),
-      ),
+    const toolCallExecutions: ToolCallExecution[] = executions.map(
+      ({ toolCall, controller }) => ({
+        toolCall,
+        tool: toolEntities[toolCall.name],
+        signal: controller.signal,
+      }),
     );
+    const results = await executeToolTurn(toolCallExecutions);
     settleTurn(turn, results, 'continue');
   });
 
