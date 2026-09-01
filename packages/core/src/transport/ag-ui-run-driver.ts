@@ -142,18 +142,13 @@ async function consumeResponse({
     }
     cleanedUp = true;
 
+    const cleanupTasks: Promise<void>[] = [];
     if (!iteratorDone && iterator) {
-      try {
-        const returnIterator = iterator.return;
-        if (returnIterator) {
-          await returnIterator.call(iterator);
-        }
-      } catch {
-        // Cleanup must not replace the attempt's primary result or error.
-      }
+      cleanupTasks.push(closeIterator(iterator));
     }
+    cleanupTasks.push(disposeResponse(response));
 
-    await disposeResponse(response);
+    await Promise.allSettled(cleanupTasks);
   };
 
   try {
@@ -336,6 +331,19 @@ async function disposeResponse(response: TransportResponse): Promise<void> {
     const dispose = response.dispose;
     if (dispose) {
       await dispose.call(response);
+    }
+  } catch {
+    // Cleanup must not replace the attempt's primary result or error.
+  }
+}
+
+async function closeIterator(
+  iterator: AsyncIterator<AGUIEvent>,
+): Promise<void> {
+  try {
+    const returnIterator = iterator.return;
+    if (returnIterator) {
+      await returnIterator.call(iterator);
     }
   } catch {
     // Cleanup must not replace the attempt's primary result or error.

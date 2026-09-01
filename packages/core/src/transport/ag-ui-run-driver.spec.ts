@@ -477,10 +477,11 @@ test('retirement wins when both signals abort during onStarted', async () => {
   expect(outcome).toEqual({ kind: 'retired' });
 });
 
-test('awaits iterator return before disposing and before rejecting', async () => {
+test('invokes iterator return before dispose and awaits both before rejecting', async () => {
   const request = createRequest();
   const returnRelease = createDeferred<IteratorResult<AGUIEvent>>();
   const returnStarted = createDeferred<void>();
+  const disposeRelease = createDeferred<void>();
   const order: string[] = [];
   const events = [createFinished(request)];
   const iterator = events[Symbol.iterator]();
@@ -491,8 +492,10 @@ test('awaits iterator return before disposing and before rejecting', async () =>
     order.push('return:end');
     return result;
   });
-  const dispose = jest.fn(() => {
-    order.push('dispose');
+  const dispose = jest.fn(async () => {
+    order.push('dispose:start');
+    await disposeRelease.promise;
+    order.push('dispose:end');
   });
   const transport = createTransport(async () => ({
     events: {
@@ -505,13 +508,97 @@ test('awaits iterator return before disposing and before rejecting', async () =>
 
   const attempt = runAttempt({ transport, request });
   await returnStarted.promise;
-  expect(order).toEqual(['return:start']);
+  await Promise.resolve();
+  expect(order).toEqual(['return:start', 'dispose:start']);
   returnRelease.resolve({ done: true, value: undefined });
+  await Promise.resolve();
+  disposeRelease.resolve();
   await expect(attempt).rejects.toMatchObject({
     message: `Received ${EventType.RUN_FINISHED} before RUN_STARTED`,
   });
 
-  expect(order).toEqual(['return:start', 'return:end', 'dispose']);
+  expect(order).toEqual([
+    'return:start',
+    'dispose:start',
+    'return:end',
+    'dispose:end',
+  ]);
+  expect(iteratorReturn).toHaveBeenCalledTimes(1);
+  expect(dispose).toHaveBeenCalledTimes(1);
+});
+
+test('disposal unblocks pending iterator cleanup without ending cleanup early', async () => {
+  const request = createRequest();
+  const nextStarted = createDeferred<void>();
+  const nextRelease = createDeferred<IteratorResult<AGUIEvent>>();
+  const returnInvoked = createDeferred<void>();
+  const returnRelease = createDeferred<void>();
+  const disposeInvoked = createDeferred<void>();
+  const disposeRelease = createDeferred<void>();
+  const order: string[] = [];
+  let nextCount = 0;
+  const iteratorReturn = jest.fn(async () => {
+    order.push('return:invoked');
+    returnInvoked.resolve();
+    await disposeInvoked.promise;
+    await returnRelease.promise;
+    order.push('return:settled');
+    return { done: true as const, value: undefined };
+  });
+  const dispose = jest.fn(async () => {
+    order.push('dispose:invoked');
+    disposeInvoked.resolve();
+    nextRelease.resolve({ done: true, value: undefined });
+    await disposeRelease.promise;
+    order.push('dispose:settled');
+  });
+  const transport = createTransport(async () => ({
+    events: {
+      [Symbol.asyncIterator]() {
+        return {
+          next: async () => {
+            nextCount++;
+            if (nextCount === 1) {
+              return { done: false, value: createStarted(request) };
+            }
+
+            nextStarted.resolve();
+            return nextRelease.promise;
+          },
+          return: iteratorReturn,
+        };
+      },
+    },
+    dispose,
+  }));
+  const cancelController = new AbortController();
+
+  const attempt = runAttempt({
+    transport,
+    request,
+    cancelSignal: cancelController.signal,
+  });
+  await nextStarted.promise;
+  cancelController.abort();
+  await returnInvoked.promise;
+
+  expect(order).toEqual(['return:invoked', 'dispose:invoked']);
+  let completed = false;
+  void attempt.then(() => {
+    completed = true;
+  });
+  returnRelease.resolve();
+  await Promise.resolve();
+  expect(completed).toBe(false);
+  disposeRelease.resolve();
+  await expect(attempt).resolves.toEqual({ kind: 'cancelled' });
+
+  expect(order).toEqual([
+    'return:invoked',
+    'dispose:invoked',
+    'return:settled',
+    'dispose:settled',
+  ]);
   expect(iteratorReturn).toHaveBeenCalledTimes(1);
   expect(dispose).toHaveBeenCalledTimes(1);
 });
