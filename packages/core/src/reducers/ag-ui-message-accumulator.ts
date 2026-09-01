@@ -735,6 +735,25 @@ function applyToolCallChunk(
   });
 }
 
+function freezeJsonValue(value: JsonValue): JsonValue {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map(freezeJsonValue)) as JsonValue;
+  }
+
+  if (value !== null && typeof value === 'object') {
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(value).map(([key, child]) => [
+          key,
+          freezeJsonValue(child),
+        ]),
+      ),
+    ) as JsonValue;
+  }
+
+  return value;
+}
+
 function addTrailingContentDiagnostic(
   state: AgUiMessageAccumulatorState,
   diagnostic: AgUiMessageAccumulatorDiagnostic,
@@ -772,7 +791,7 @@ function addTrailingContentDiagnosticFromSource(
     type: 'recovered-trailing-content',
     source,
     entityId,
-    parsedData,
+    parsedData: freezeJsonValue(parsedData),
     extraData: content.slice(parserError.index),
   });
 }

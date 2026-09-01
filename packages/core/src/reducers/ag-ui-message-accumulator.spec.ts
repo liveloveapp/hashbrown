@@ -361,6 +361,10 @@ test('records recoverable structured-output trailing content as immutable diagno
     },
   ]);
   expect(Object.isFrozen(next.diagnostics[0])).toBe(true);
+  expect(Object.isFrozen(next.diagnostics[0]?.parsedData)).toBe(true);
+  expect(
+    Object.isFrozen((next.diagnostics[0]?.parsedData as { ui: unknown[] }).ui),
+  ).toBe(true);
 });
 
 test('records a tool trailing-content diagnostic once across repeated finalization', () => {
