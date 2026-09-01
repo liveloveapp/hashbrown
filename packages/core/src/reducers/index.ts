@@ -130,11 +130,6 @@ export const selectThreadIdState = select(
  * Config
  */
 export const selectConfigState = (state: State) => state.config;
-export const selectApiUrl = select(selectConfigState, fromConfig.selectApiUrl);
-export const selectMiddleware = select(
-  selectConfigState,
-  fromConfig.selectMiddleware,
-);
 export const selectSystem = select(selectConfigState, fromConfig.selectSystem);
 export const selectDebounce = select(
   selectConfigState,

@@ -1,12 +1,10 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
-import { fryHashbrown } from '../hashbrown';
+import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
 import {
   selectApiMessages,
-  selectApiUrl,
   selectDebounce,
-  selectMiddleware,
   selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
@@ -62,8 +60,6 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const actions: ActionLike[] = [];
   const handlers: TestHandler[] = [];
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
-    [selectApiUrl, 'https://example.test'],
-    [selectMiddleware, undefined],
     [selectResponseSchema, undefined],
     [
       selectApiMessages,
@@ -420,7 +416,7 @@ test('configured thread with no messages sends no request', async () => {
   );
   const teardown = generateMessage(store);
 
-  await store.trigger(internalActions.sizzle());
+  await store.trigger(internalActions.start());
 
   expect(send).not.toHaveBeenCalled();
 
@@ -454,6 +450,38 @@ test('transport factory failure dispatches the initialization error', async () =
   ).toHaveLength(0);
 
   teardown?.();
+});
+
+test('missing transport reports configuration error without issuing HTTP', async () => {
+  jest.clearAllMocks();
+  const fetchSpy = jest
+    .spyOn(globalThis, 'fetch')
+    .mockRejectedValue(new Error('HTTP must not be used by the runtime'));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectTransport, undefined]]),
+  );
+  const teardown = generateMessage(store);
+
+  try {
+    await store.trigger(
+      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    );
+
+    const errors = getActionsOfType(
+      store.actions,
+      apiActions.generateMessageError.type,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.payload).toMatchObject({
+      message: 'No transport configured',
+      code: 'CONFIGURATION_ERROR',
+      retryable: false,
+    });
+  } finally {
+    teardown?.();
+    fetchSpy.mockRestore();
+  }
 });
 
 test('first user message uses the configured thread ID', async () => {
@@ -905,7 +933,7 @@ test('validated start then tool continuation reuses the same thread ID', async (
       continuation: 'continue',
     }),
   );
-  await store.trigger(internalActions.sizzle());
+  await store.trigger(internalActions.start());
 
   expect(send).toHaveBeenCalledTimes(2);
   expect(send.mock.calls[1]?.[0].input?.threadId).toBe(acceptedThreadId);
@@ -1013,7 +1041,7 @@ test('continues client tools with isolated reasoning details in transcript order
       ]),
     };
   });
-  const chat = fryHashbrown({
+  const runtime = createChatRuntime({
     system: 'You are a test bot',
     transport: configuredTransport,
     tools: [
@@ -1027,9 +1055,12 @@ test('continues client tools with isolated reasoning details in transcript order
       },
     ],
   });
-  const teardown = chat.sizzle();
+  const teardown = runtime.start();
 
-  chat.sendMessage({ role: 'user', content: 'What is the weather in Paris?' });
+  runtime.sendMessage({
+    role: 'user',
+    content: 'What is the weather in Paris?',
+  });
   const secondRequest = await secondInputCaptured.promise;
 
   expect(toolHandler).toHaveBeenCalledWith(
@@ -1127,7 +1158,7 @@ test('continues client tools with isolated reasoning details in transcript order
       content: '{"city":"Paris","condition":"sunny"}',
     },
   ]);
-  const committedAssistant = chat
+  const committedAssistant = runtime
     .messages()
     .find(
       (message) =>
@@ -2560,7 +2591,7 @@ test('does not generate after a non-continuing tool settlement', async () => {
   );
 
   expect(send).not.toHaveBeenCalled();
-  expect(store.actions).not.toContainEqual(internalActions.sizzle());
+  expect(store.actions).not.toContainEqual(internalActions.start());
 
   teardown?.();
 });

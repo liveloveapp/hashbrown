@@ -25,16 +25,17 @@ import {
 } from './reducers';
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
-import { TransportOrFactory } from './transport';
+import { createHttpTransport, TransportOrFactory } from './transport';
 
 /**
- * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
+ * A stateful client runtime for sending messages, processing AG-UI events,
+ * executing tools, and exposing reactive chat state.
  *
  * @public
  * @typeParam Output - The type of messages received from the LLM, either a string or structured output defined by HashbrownType.
  * @typeParam Tools - The set of tools available to the chat instance.
  */
-export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
+export interface ChatRuntime<Output, Tools extends Chat.AnyTool> {
   messages: StateSignal<Chat.Message<Output, Tools>[]>;
   error: StateSignal<Error | undefined>;
   isReceiving: StateSignal<boolean>;
@@ -63,11 +64,9 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   updateOptions: (
     options: Partial<{
       debugName?: string;
-      apiUrl?: string;
       system: string;
       tools: Tools[];
       responseSchema: s.SchemaOutput;
-      middleware: Chat.Middleware[];
       debounce: number;
       retries: number;
       transport: TransportOrFactory;
@@ -80,79 +79,72 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
   /** Stop the current LLM interaction. */
   stop: (clearStreamingMessage?: boolean) => void;
 
-  /** Start the Hashbrown effect loop. */
-  sizzle: () => () => void;
+  /** Start the runtime effect loop and return a function that disposes it. */
+  start: () => () => void;
 }
 
 /**
- * Initialize a Hashbrown chat instance with the given configuration.
+ * Create a stateful client chat runtime with the given configuration.
  *
  * @public
  * @typeParam Output - The type of messages expected from the LLM.
  * @typeParam Tools - The set of tools to register with the chat instance.
  * @param init - Initialization options containing:
  *   - `debugName`: Optional debug name for devtools tracing
- *   - `apiUrl`: Base URL of the Hashbrown API endpoint
  *   - `system`: System prompt or initial context for the chat
  *   - `messages`: Initial message history
  *   - `tools`: Array of tools to enable in the instance
  *   - `responseSchema`: JSON schema for validating structured output
- *   - `middleware`: Middleware functions to run on messages
  *   - `debounce`: Debounce interval in milliseconds for sending messages
- * @returns A configured Hashbrown instance.
+ * @returns A configured chat runtime. Call `start()` to activate its effects.
  */
-export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
+export function createChatRuntime<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
-  apiUrl?: string;
   system: string;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
-  middleware?: Chat.Middleware[];
   debounce?: number;
   retries?: number;
   transport?: TransportOrFactory;
   ui?: boolean;
   threadId?: string;
-}): Hashbrown<string, Tools>;
+}): ChatRuntime<string, Tools>;
 /**
  * @public
  */
-export function fryHashbrown<
+export function createChatRuntime<
   Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 >(init: {
   debugName?: string;
-  apiUrl?: string;
   system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
   responseSchema: Schema;
-  middleware?: Chat.Middleware[];
   debounce?: number;
   retries?: number;
   transport?: TransportOrFactory;
   ui?: boolean;
   threadId?: string;
-}): Hashbrown<Output, Tools>;
+}): ChatRuntime<Output, Tools>;
 /**
  * @public
  */
-export function fryHashbrown(init: {
+export function createChatRuntime(init: {
   debugName?: string;
-  apiUrl?: string;
   system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
   responseSchema?: s.SchemaOutput;
-  middleware?: Chat.Middleware[];
   debounce?: number;
   retries?: number;
   transport?: TransportOrFactory;
   ui?: boolean;
   threadId?: string;
-}): Hashbrown<any, Chat.AnyTool> {
+}): ChatRuntime<any, Chat.AnyTool> {
   const initialThreadId = init.threadId;
+  const transport = init.transport ?? (() => createHttpTransport({}));
 
   const state = createStore({
     debugName: init.debugName,
@@ -175,15 +167,13 @@ export function fryHashbrown(init: {
 
   state.dispatch(
     devActions.init({
-      apiUrl: init.apiUrl,
       system: init.system,
       messages: init.messages as Chat.AnyMessage[],
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
-      middleware: init.middleware,
       debounce: init.debounce,
       retries: init.retries,
-      transport: init.transport,
+      transport,
       ui: init.ui,
       threadId: initialThreadId,
     }),
@@ -214,11 +204,9 @@ export function fryHashbrown(init: {
   function updateOptions(
     options: Partial<{
       debugName?: string;
-      apiUrl: string;
       system: string;
       tools: Chat.AnyTool[];
       responseSchema: s.SchemaOutput;
-      middleware: Chat.Middleware[];
       debounce: number;
       retries: number;
       transport: TransportOrFactory;
@@ -229,7 +217,7 @@ export function fryHashbrown(init: {
     state.dispatch(devActions.updateOptions(options));
   }
 
-  function sizzle() {
+  function start() {
     const abortController = new AbortController();
     let effectCleanupFn: () => void;
 
@@ -240,7 +228,7 @@ export function fryHashbrown(init: {
 
       effectCleanupFn = state.runEffects();
 
-      state.dispatch(internalActions.sizzle());
+      state.dispatch(internalActions.start());
     });
 
     return () => {
@@ -265,7 +253,7 @@ export function fryHashbrown(init: {
     resendMessages,
     updateOptions,
     stop,
-    sizzle,
+    start,
     messages: state.createSignal(selectViewMessages),
     error: state.createSignal(selectUnifiedError),
     isReceiving: state.createSignal(selectIsReceiving),

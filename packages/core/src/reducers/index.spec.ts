@@ -1,7 +1,6 @@
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions } from '../actions';
-import { fryHashbrown } from '../hashbrown';
-import { Chat } from '../models';
+import { createChatRuntime } from '../chat-runtime';
 import { s } from '../schema';
 import {
   reducers,
@@ -40,9 +39,9 @@ function reduceAll(
   };
 }
 
-test('fryHashbrown accepts a developer tool named output', () => {
-  const createHashbrown = () =>
-    fryHashbrown({
+test('createChatRuntime accepts a developer tool named output', () => {
+  const createRuntime = () =>
+    createChatRuntime({
       system: 'test',
       tools: [
         {
@@ -54,7 +53,18 @@ test('fryHashbrown accepts a developer tool named output', () => {
       ],
     });
 
-  expect(createHashbrown).not.toThrow();
+  expect(createRuntime).not.toThrow();
+});
+
+test('direct core HTTP configuration is expressed as a transport', () => {
+  const runtime = createChatRuntime({ system: 'test' });
+
+  // @ts-expect-error Direct core endpoint configuration has moved to HttpTransport.
+  createChatRuntime({ system: 'test', apiUrl: '/alternate-run' });
+  // @ts-expect-error Direct core HTTP middleware has moved to HttpTransport.
+  runtime.updateOptions({ middleware: [(request) => request] });
+
+  expect(runtime).toBeDefined();
 });
 
 test('RUN_STARTED updates the selected thread ID', () => {
@@ -284,8 +294,7 @@ test('undefined non-clearable options preserve current config values', () => {
   });
 });
 
-test('undefined clearable options clear current config values', () => {
-  const middleware: Chat.Middleware = (request) => request;
+test('an undefined transport option preserves the current transport', () => {
   const transport = {
     name: 'test-transport',
     send: async () => {
@@ -295,9 +304,7 @@ test('undefined clearable options clear current config values', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
-      apiUrl: 'https://example.test',
       system: 'test',
-      middleware: [middleware],
       transport,
     }),
   );
@@ -305,26 +312,22 @@ test('undefined clearable options clear current config values', () => {
   const nextState = reduceAll(
     state,
     devActions.updateOptions({
-      apiUrl: undefined,
-      middleware: undefined,
       transport: undefined,
     }),
   );
 
-  expect(nextState.config).toHaveProperty('apiUrl', undefined);
-  expect(nextState.config).toHaveProperty('middleware', undefined);
-  expect(nextState.config).toHaveProperty('transport', undefined);
+  expect(nextState.config).toHaveProperty('transport', transport);
 });
 
 test('public options explicitly clear the current thread identity', () => {
-  const hashbrown = fryHashbrown({
+  const runtime = createChatRuntime({
     system: 'test',
     threadId: 'current-thread',
   });
 
-  hashbrown.updateOptions({ threadId: undefined });
+  runtime.updateOptions({ threadId: undefined });
 
-  expect(hashbrown.threadId()).toBeUndefined();
+  expect(runtime.threadId()).toBeUndefined();
 });
 
 test('devtools state includes only the current thread identity', () => {
@@ -345,7 +348,7 @@ test('devtools state includes only the current thread identity', () => {
   });
 
   try {
-    fryHashbrown({
+    createChatRuntime({
       debugName: 'thread-identity-test',
       system: 'test',
       threadId: 'devtools-thread',

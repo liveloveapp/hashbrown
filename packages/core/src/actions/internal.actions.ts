@@ -2,7 +2,7 @@ import { createActionGroup, emptyProps, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 
 export default createActionGroup('internal', {
-  sizzle: emptyProps(),
+  start: emptyProps(),
   generationSilentlyRetired: emptyProps(),
   toolTurnSettled: props<{
     toolCalls: Chat.Internal.ToolCall[];

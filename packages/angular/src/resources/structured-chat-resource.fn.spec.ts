@@ -4,24 +4,24 @@ import { s } from '@hashbrownai/core';
 import { provideHashbrown } from '../providers/provide-hashbrown.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
-const fryHashbrownMock = vi.hoisted(() => vi.fn());
+const createChatRuntimeMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@hashbrownai/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@hashbrownai/core')>();
 
   return {
     ...actual,
-    fryHashbrown: fryHashbrownMock,
+    createChatRuntime: createChatRuntimeMock,
   };
 });
 
 test('structuredChatResource updates runtime options when option signals change', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const apiUrl = signal('/structured-a');
   const system = signal('System A');
   const threadId = signal<string | undefined>('thread-a');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -38,11 +38,11 @@ test('structuredChatResource updates runtime options when option signals change'
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      apiUrl: '/structured-a',
       system: 'System A',
       threadId: 'thread-a',
+      transport: expect.any(Function),
     }),
   );
   expect(resource).not.toHaveProperty('isLoadingThread');
@@ -56,18 +56,18 @@ test('structuredChatResource updates runtime options when option signals change'
   threadId.set('thread-b');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      apiUrl: '/structured-b',
       system: 'System B',
       threadId: 'thread-b',
+      transport: expect.any(Function),
     }),
   );
 
   threadId.set(undefined);
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: undefined,
     }),
@@ -76,7 +76,7 @@ test('structuredChatResource updates runtime options when option signals change'
   threadId.set('');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -84,10 +84,10 @@ test('structuredChatResource updates runtime options when option signals change'
 });
 
 test('structuredChatResource preserves an empty apiUrl option', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const apiUrl = signal('');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -103,36 +103,36 @@ test('structuredChatResource preserves an empty apiUrl option', () => {
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      apiUrl: '',
+      transport: expect.any(Function),
     }),
   );
 
   apiUrl.set('/structured-b');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      apiUrl: '/structured-b',
+      transport: expect.any(Function),
     }),
   );
 
   apiUrl.set('');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      apiUrl: '',
+      transport: expect.any(Function),
     }),
   );
 });
 
 test('structuredChatResource preserves an empty threadId option', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const threadId = signal<string | undefined>('');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -148,7 +148,7 @@ test('structuredChatResource preserves an empty threadId option', () => {
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -157,7 +157,7 @@ test('structuredChatResource preserves an empty threadId option', () => {
   threadId.set('thread-b');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: 'thread-b',
     }),
@@ -166,7 +166,7 @@ test('structuredChatResource preserves an empty threadId option', () => {
   threadId.set('');
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -174,9 +174,9 @@ test('structuredChatResource preserves an empty threadId option', () => {
 });
 
 test('structuredChatResource preserves a literal empty threadId option', () => {
-  fryHashbrownMock.mockReset();
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -192,7 +192,7 @@ test('structuredChatResource preserves a literal empty threadId option', () => {
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -200,7 +200,7 @@ test('structuredChatResource preserves a literal empty threadId option', () => {
 
   TestBed.flushEffects();
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
       threadId: '',
     }),
@@ -208,10 +208,10 @@ test('structuredChatResource preserves a literal empty threadId option', () => {
 });
 
 test('structuredChatResource omits threadId from runtime updates when not provided', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const system = signal('System A');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
 
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
@@ -228,7 +228,7 @@ test('structuredChatResource omits threadId from runtime updates when not provid
 
   system.set('System B');
   TestBed.flushEffects();
-  const lastOptions = getLastUpdateOptions(hashbrown);
+  const lastOptions = getLastUpdateOptions(runtime);
 
   expect(Object.prototype.hasOwnProperty.call(lastOptions, 'threadId')).toBe(
     false,
@@ -236,14 +236,14 @@ test('structuredChatResource omits threadId from runtime updates when not provid
 });
 
 test('structuredChatResource exposes a terminal error when retries are disabled', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const failure = new Error('Invalid request');
-  const hashbrown = createHashbrownStub({
+  const runtime = createRuntimeStub({
     messages: [],
     error: failure,
     exhaustedRetries: false,
   });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -258,7 +258,7 @@ test('structuredChatResource exposes a terminal error when retries are disabled'
     }),
   );
 
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
+  expect(createChatRuntimeMock).toHaveBeenCalledWith(
     expect.objectContaining({ retries: 0 }),
   );
   expect(resource.error()).toBe(failure);
@@ -268,7 +268,7 @@ test('structuredChatResource exposes a terminal error when retries are disabled'
 });
 
 test('structuredChatResource reload removes the last assistant response without mutating history', () => {
-  fryHashbrownMock.mockReset();
+  createChatRuntimeMock.mockReset();
   const messages = [
     { role: 'user' as const, content: 'Summarize this' },
     {
@@ -278,8 +278,8 @@ test('structuredChatResource reload removes the last assistant response without 
     },
   ];
   const originalMessages = structuredClone(messages);
-  const hashbrown = createHashbrownStub({ messages });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages });
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -295,15 +295,15 @@ test('structuredChatResource reload removes the last assistant response without 
   const reloaded = resource.reload();
 
   expect(reloaded).toBe(true);
-  expect(hashbrown.setMessages).toHaveBeenCalledTimes(1);
-  expect(hashbrown.setMessages).toHaveBeenCalledWith([messages[0]]);
+  expect(runtime.setMessages).toHaveBeenCalledTimes(1);
+  expect(runtime.setMessages).toHaveBeenCalledWith([messages[0]]);
   expect(messages).toEqual(originalMessages);
 });
 
 test('structuredChatResource reload returns false when messages are empty', () => {
-  fryHashbrownMock.mockReset();
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
   TestBed.configureTestingModule({
     providers: [provideHashbrown({ baseUrl: '/chat' })],
   });
@@ -319,10 +319,10 @@ test('structuredChatResource reload returns false when messages are empty', () =
   const reloaded = resource.reload();
 
   expect(reloaded).toBe(false);
-  expect(hashbrown.setMessages).not.toHaveBeenCalled();
+  expect(runtime.setMessages).not.toHaveBeenCalled();
 });
 
-function createHashbrownStub({
+function createRuntimeStub({
   messages,
   error,
   exhaustedRetries = false,
@@ -349,7 +349,7 @@ function createHashbrownStub({
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),
     threadSaveError: createSignal(undefined),
-    sizzle: vi.fn(() => vi.fn()),
+    start: vi.fn(() => vi.fn()),
     updateOptions: vi.fn(),
     sendMessage: vi.fn(),
     resendMessages: vi.fn(),
@@ -358,10 +358,10 @@ function createHashbrownStub({
   } as never;
 }
 
-function getLastUpdateOptions(hashbrown: {
+function getLastUpdateOptions(runtime: {
   updateOptions: { mock: { calls: [Record<string, unknown>][] } };
 }) {
-  const calls = hashbrown.updateOptions.mock.calls;
+  const calls = runtime.updateOptions.mock.calls;
 
   return calls[calls.length - 1]?.[0];
 }

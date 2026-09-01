@@ -3,9 +3,7 @@ import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import {
   selectApiMessages,
-  selectApiUrl,
   selectDebounce,
-  selectMiddleware,
   selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
@@ -22,7 +20,6 @@ import {
 } from '../reducers';
 import { s } from '../schema';
 import {
-  createHttpTransport,
   resolveTransport,
   TransportError,
   type TransportResponse,
@@ -60,7 +57,7 @@ export const generateMessage = createEffect((store) => {
   let activeGeneration: ActiveGeneration | undefined;
 
   store.when(
-    internalActions.sizzle,
+    internalActions.start,
     devActions.setMessages,
     devActions.sendMessage,
     devActions.resendMessages,
@@ -103,8 +100,6 @@ export const generateMessage = createEffect((store) => {
         activeGeneration = generation;
       }
 
-      const apiUrl = store.read(selectApiUrl);
-      const middleware = store.read(selectMiddleware);
       const responseSchema = store.read(selectResponseSchema);
       const messages = store.read(selectApiMessages);
       const debounce = store.read(selectDebounce);
@@ -129,12 +124,13 @@ export const generateMessage = createEffect((store) => {
       const transportProvider = store.read(selectTransport);
       let transport;
       try {
-        transport =
-          resolveTransport(transportProvider) ??
-          createHttpTransport({
-            baseUrl: apiUrl,
-            middleware: middleware ?? undefined,
+        transport = resolveTransport(transportProvider);
+        if (!transport) {
+          throw new TransportError('No transport configured', {
+            retryable: false,
+            code: 'CONFIGURATION_ERROR',
           });
+        }
       } catch (error) {
         if (retiredSignal.aborted || runCancelSignal.aborted) {
           releaseGeneration();
@@ -493,7 +489,7 @@ export const generateMessage = createEffect((store) => {
       return;
     }
 
-    store.dispatch(internalActions.sizzle());
+    store.dispatch(internalActions.start());
   });
 
   store.when(devActions.stopMessageGeneration, () => {

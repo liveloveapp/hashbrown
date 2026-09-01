@@ -4,14 +4,14 @@ import { s } from '@hashbrownai/core';
 import { HashbrownProvider } from '../hashbrown-provider';
 import { useStructuredChat } from './use-structured-chat';
 
-const fryHashbrownMock = vi.hoisted(() => vi.fn());
+const createChatRuntimeMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@hashbrownai/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@hashbrownai/core')>();
 
   return {
     ...actual,
-    fryHashbrown: fryHashbrownMock,
+    createChatRuntime: createChatRuntimeMock,
   };
 });
 
@@ -22,9 +22,9 @@ test('useStructuredChat initializes with the provided message history', () => {
       content: 'What is the current portfolio risk?',
     },
   ];
-  fryHashbrownMock.mockReset();
-  fryHashbrownMock.mockImplementation((init) =>
-    createHashbrownStub({ messages: init.messages ?? [] }),
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockImplementation((init) =>
+    createRuntimeStub({ messages: init.messages ?? [] }),
   );
 
   const { result } = renderHook(
@@ -43,9 +43,9 @@ test('useStructuredChat initializes with the provided message history', () => {
 });
 
 test('useStructuredChat preserves thread identity property presence on updates', () => {
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReset();
-  fryHashbrownMock.mockReturnValue(hashbrown);
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
   type HookProps = {
     system: string;
     threadId?: string | undefined;
@@ -73,11 +73,11 @@ test('useStructuredChat preserves thread identity property presence on updates',
   expect(result.current).not.toHaveProperty('threadLoadError');
   expect(result.current).not.toHaveProperty('threadSaveError');
   expect(result.current).not.toHaveProperty('threadId');
-  hashbrown.updateOptions.mockClear();
+  runtime.updateOptions.mockClear();
 
   rerender({ system: 'You are a concise portfolio analyst.' });
 
-  const omittedUpdate = hashbrown.updateOptions.mock.calls.at(-1)?.[0];
+  const omittedUpdate = runtime.updateOptions.mock.calls.at(-1)?.[0];
   expect(omittedUpdate).toBeDefined();
   expect(Object.hasOwn(omittedUpdate, 'threadId')).toBe(false);
 
@@ -86,7 +86,7 @@ test('useStructuredChat preserves thread identity property presence on updates',
     threadId: undefined,
   });
 
-  const clearedUpdate = hashbrown.updateOptions.mock.calls.at(-1)?.[0];
+  const clearedUpdate = runtime.updateOptions.mock.calls.at(-1)?.[0];
   expect(Object.hasOwn(clearedUpdate, 'threadId')).toBe(true);
   expect(clearedUpdate).toMatchObject({ threadId: undefined });
 
@@ -95,13 +95,13 @@ test('useStructuredChat preserves thread identity property presence on updates',
     threadId: 'thread-changed',
   });
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({ threadId: 'thread-changed' }),
   );
 
   rerender({ system: 'You are a concise portfolio analyst.', threadId: '' });
 
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({ threadId: '' }),
   );
 });
@@ -110,7 +110,7 @@ function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }
 
-function createHashbrownStub({ messages }: { messages: unknown[] }) {
+function createRuntimeStub({ messages }: { messages: unknown[] }) {
   return {
     messages: createSignal(messages),
     isReceiving: createSignal(false),
@@ -127,7 +127,7 @@ function createHashbrownStub({ messages }: { messages: unknown[] }) {
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),
     threadSaveError: createSignal(undefined),
-    sizzle: vi.fn(() => vi.fn()),
+    start: vi.fn(() => vi.fn()),
     updateOptions: vi.fn(),
     sendMessage: vi.fn(),
     resendMessages: vi.fn(),

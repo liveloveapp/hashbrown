@@ -90,11 +90,17 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
       join(sandboxPath, 'consumer.ts'),
       `
         import {
+          type ChatRuntime,
           type Chat,
+          createChatRuntime,
           type Transport,
           type TransportRequest,
           type TransportResponse,
         } from '@hashbrownai/core';
+        // @ts-expect-error The legacy runtime factory is no longer public.
+        import { fryHashbrown } from '@hashbrownai/core';
+        // @ts-expect-error The branded runtime type has been replaced by ChatRuntime.
+        import type { Hashbrown } from '@hashbrownai/core';
         // @ts-expect-error Legacy frame encoding is no longer public.
         import { encodeFrame, type Frame } from '@hashbrownai/core';
 
@@ -123,6 +129,11 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
             return response;
           },
         };
+        const runtime: ChatRuntime<string, Chat.AnyTool> = createChatRuntime({
+          system: 'test',
+          transport,
+        });
+        const teardown = runtime.start();
         const frame: Frame = { type: 'generation-start' };
         const encoded = encodeFrame(frame);
 
@@ -143,6 +154,12 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
         response.frames;
         // @ts-expect-error Thread-loading capability is not part of Transport.
         transport.supportsLegacyThreadLoading;
+        // @ts-expect-error The legacy lifecycle method has been replaced by start().
+        runtime.sizzle();
+        // @ts-expect-error Direct core endpoint configuration belongs to HttpTransport.
+        createChatRuntime({ system: 'test', apiUrl: '/alternate-run' });
+        // @ts-expect-error Direct core middleware belongs to HttpTransport.
+        runtime.updateOptions({ middleware: [] });
         // @ts-expect-error Provider structured-output modes are no longer public.
         type RemovedStructuredOutputOptions = Chat.Api.StructuredOutputOptions;
         // @ts-expect-error Provider structured-output mode names are no longer public.
@@ -152,7 +169,9 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
         // @ts-expect-error Legacy completion parameters are no longer public.
         type RemovedCompletionCreateParams = Chat.Api.CompletionCreateParams;
 
-        void [encoded, missingInput, missingEvents];
+        void [encoded, missingInput, missingEvents, teardown];
+        void fryHashbrown;
+        void (null as unknown as Hashbrown<string, Chat.AnyTool>);
         void (null as unknown as RemovedStructuredOutputOptions);
         void (null as unknown as RemovedStructuredOutputMode);
         void (null as unknown as RemovedResponseFormatMode);

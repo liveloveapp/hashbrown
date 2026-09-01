@@ -544,18 +544,19 @@ export class SongPickerViewComponent {
         }),
         result: s.string('The completion'),
         handler: ({ system, input }, abortSignal) => {
-          const hashbrown = fryHashbrown({
-            apiUrl: 'http://localhost:5150/chat',
-            model: 'gpt-4.1-mini',
+          const runtime = createChatRuntime({
             debugName: 'inception completion',
             system,
             messages: [{ role: 'user', content: input }],
+            transport: createHttpTransport({
+              baseUrl: 'http://localhost:5150/chat',
+            }),
           });
 
-          const teardown = hashbrown.sizzle();
+          const teardown = runtime.start();
 
           return new Promise<string>((resolve, reject) => {
-            const unsubscribe = hashbrown.messages.subscribe((messages) => {
+            const unsubscribe = runtime.messages.subscribe((messages) => {
               const assistantMessage = messages.find(
                 (m) => m.role === 'assistant',
               );

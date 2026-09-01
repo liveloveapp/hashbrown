@@ -1,4 +1,4 @@
-export { fryHashbrown, type Hashbrown } from './hashbrown';
+export { createChatRuntime, type ChatRuntime } from './chat-runtime';
 export * from './models';
 export * from './transport';
 export { prompt } from './prompt/prompt';

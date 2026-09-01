@@ -6,9 +6,9 @@ import type {
 } from '@copilotkit/aimock/agui';
 import {
   Chat,
+  type ChatRuntime,
+  createChatRuntime,
   createHttpTransport,
-  fryHashbrown,
-  type Hashbrown,
   HttpTransport,
   s,
   type StateSignal,
@@ -145,13 +145,13 @@ function waitForSignal<State>(
 }
 
 async function waitForIdle(
-  hashbrown: Pick<Hashbrown<unknown, Chat.AnyTool>, 'isLoading'>,
+  runtime: Pick<ChatRuntime<unknown, Chat.AnyTool>, 'isLoading'>,
 ): Promise<void> {
-  await waitForSignal(hashbrown.isLoading, (value) => !value);
+  await waitForSignal(runtime.isLoading, (value) => !value);
   await Promise.resolve();
 }
 
-async function drainHashbrownEffects(): Promise<void> {
+async function drainRuntimeEffects(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
 }
@@ -531,7 +531,59 @@ test('createHttpTransport posts Hashbrown run input and collects text events ove
   }
 });
 
-test('fryHashbrown adopts a generated thread identity and reuses it on the next text run', async () => {
+test('createChatRuntime defaults to AG-UI POST /run', async () => {
+  const nativeFetch = globalThis.fetch.bind(globalThis);
+  let testAimock: TestAimock | undefined;
+  let teardown: (() => void) | undefined;
+  let fetchSpy: jest.SpiedFunction<typeof fetch> | undefined;
+
+  try {
+    testAimock = await startTestAimock();
+    registerIdentityFixture(
+      testAimock.handle.aguiMock,
+      [],
+      () => true,
+      (input) =>
+        createTextRunEvents(
+          input,
+          'message-default-run',
+          ['Default route.'],
+          1_700_000_009_000,
+        ),
+    );
+    fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation((input, init) => {
+        return nativeFetch(
+          testAimock?.handle.aguiRunUrl ?? String(input),
+          init,
+        );
+      });
+    const runtime = createChatRuntime({
+      system: 'Answer briefly.',
+      retries: 0,
+    });
+    teardown = runtime.start();
+
+    runtime.sendMessage({ role: 'user', content: 'Use the default route.' });
+    const assistant = await waitForSignal(
+      runtime.lastAssistantMessage,
+      (message) => message?.content === 'Default route.',
+    );
+
+    expect(assistant?.content).toBe('Default route.');
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/run',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  } finally {
+    teardown?.();
+    fetchSpy?.mockRestore();
+    await testAimock?.stop();
+  }
+});
+
+test('createChatRuntime adopts a generated thread identity and reuses it on the next text run', async () => {
   const capturedInputs: HashbrownRunInput[] = [];
   let testAimock: TestAimock | undefined;
   let teardown: (() => void) | undefined;
@@ -550,37 +602,37 @@ test('fryHashbrown adopts a generated thread identity and reuses it on the next 
           1_700_000_010_000 + requestIndex * 100,
         ),
     );
-    const hashbrown = fryHashbrown({
+    const runtime = createChatRuntime({
       transport: createHttpTransport({
         baseUrl: testAimock.handle.aguiRunUrl,
       }),
       system: 'Answer briefly.',
       retries: 0,
     });
-    teardown = hashbrown.sizzle();
+    teardown = runtime.start();
 
-    await drainHashbrownEffects();
+    await drainRuntimeEffects();
 
     expect(capturedInputs).toEqual([]);
-    expect(hashbrown.threadId()).toBeUndefined();
+    expect(runtime.threadId()).toBeUndefined();
 
-    hashbrown.sendMessage({ role: 'user', content: 'First turn' });
+    runtime.sendMessage({ role: 'user', content: 'First turn' });
     await waitForSignal(
-      hashbrown.lastAssistantMessage,
+      runtime.lastAssistantMessage,
       (message) => message?.content === 'First response.',
     );
-    await waitForIdle(hashbrown);
+    await waitForIdle(runtime);
 
     const generatedThreadId = capturedInputs[0]?.threadId;
     expect(generatedThreadId).toEqual(expect.any(String));
-    expect(hashbrown.threadId()).toBe(generatedThreadId);
+    expect(runtime.threadId()).toBe(generatedThreadId);
 
-    hashbrown.sendMessage({ role: 'user', content: 'Second turn' });
+    runtime.sendMessage({ role: 'user', content: 'Second turn' });
     const secondResponse = await waitForSignal(
-      hashbrown.lastAssistantMessage,
+      runtime.lastAssistantMessage,
       (message) => message?.content === 'Second response.',
     );
-    await waitForIdle(hashbrown);
+    await waitForIdle(runtime);
 
     expect(secondResponse).toEqual({
       role: 'assistant',
@@ -590,15 +642,15 @@ test('fryHashbrown adopts a generated thread identity and reuses it on the next 
     expect(capturedInputs).toHaveLength(2);
     expect(capturedInputs[1]?.threadId).toBe(generatedThreadId);
     expect(capturedInputs[0]?.runId).not.toBe(capturedInputs[1]?.runId);
-    expect(hashbrown.threadId()).toBe(generatedThreadId);
-    expect(hashbrown.error()).toBeUndefined();
+    expect(runtime.threadId()).toBe(generatedThreadId);
+    expect(runtime.error()).toBeUndefined();
   } finally {
     teardown?.();
     await testAimock?.stop();
   }
 }, 10_000);
 
-test('fryHashbrown resolves chunked structured output and sends the response schema in hashbrown metadata', async () => {
+test('createChatRuntime resolves chunked structured output and sends the response schema in hashbrown metadata', async () => {
   const responseSchema = s.object('answer', {
     answer: s.streaming.string('answer text'),
     count: s.number('result count'),
@@ -659,7 +711,7 @@ test('fryHashbrown resolves chunked structured output and sends the response sch
       ],
       25,
     );
-    const hashbrown = fryHashbrown({
+    const runtime = createChatRuntime({
       transport: createHttpTransport({
         baseUrl: testAimock.handle.aguiRunUrl,
       }),
@@ -667,21 +719,21 @@ test('fryHashbrown resolves chunked structured output and sends the response sch
       responseSchema,
       retries: 0,
     });
-    unsubscribeContent = hashbrown.lastAssistantMessage.subscribe((message) => {
+    unsubscribeContent = runtime.lastAssistantMessage.subscribe((message) => {
       if (message) {
         observedContent.push(message.content);
       }
     });
-    teardown = hashbrown.sizzle();
+    teardown = runtime.start();
 
-    hashbrown.sendMessage({ role: 'user', content: 'Count the results' });
+    runtime.sendMessage({ role: 'user', content: 'Count the results' });
     const assistant = await waitForSignal(
-      hashbrown.lastAssistantMessage,
+      runtime.lastAssistantMessage,
       (message) =>
         message?.content?.answer === 'deterministic' &&
         message.content.count === 2,
     );
-    await waitForIdle(hashbrown);
+    await waitForIdle(runtime);
 
     expect(assistant?.content).toEqual({
       answer: 'deterministic',
@@ -695,7 +747,7 @@ test('fryHashbrown resolves chunked structured output and sends the response sch
     expect(capturedInputs[0]).not.toHaveProperty('responseSchema');
     expect(capturedInputs[0]).not.toHaveProperty('params');
     expect(capturedInputs[0]?.forwardedProps).toEqual({});
-    expect(hashbrown.error()).toBeUndefined();
+    expect(runtime.error()).toBeUndefined();
   } finally {
     unsubscribeContent?.();
     teardown?.();
@@ -703,7 +755,7 @@ test('fryHashbrown resolves chunked structured output and sends the response sch
   }
 }, 10_000);
 
-test('fryHashbrown resolves validated generative UI state and marks the request as UI', async () => {
+test('createChatRuntime resolves validated generative UI state and marks the request as UI', async () => {
   function StatusComponent(_props: { title: string; count: number }) {
     void _props;
     return null;
@@ -743,7 +795,7 @@ test('fryHashbrown resolves validated generative UI state and marks the request 
           1_700_000_012_000,
         ),
     );
-    const hashbrown = fryHashbrown({
+    const runtime = createChatRuntime({
       transport: createHttpTransport({
         baseUrl: testAimock.handle.aguiRunUrl,
       }),
@@ -752,19 +804,19 @@ test('fryHashbrown resolves validated generative UI state and marks the request 
       ui: true,
       retries: 0,
     });
-    teardown = hashbrown.sizzle();
+    teardown = runtime.start();
 
-    hashbrown.sendMessage({ role: 'user', content: 'Show status' });
+    runtime.sendMessage({ role: 'user', content: 'Show status' });
     const partialAssistant = await waitForSignal(
-      hashbrown.lastAssistantMessage,
+      runtime.lastAssistantMessage,
       (message) => message?.content?.ui?.length === 1,
     );
     expect(
       partialAssistant?.content?.ui[0]?.status?.props?.partialValue,
     ).toEqual({ title: 'Re' });
 
-    await waitForIdle(hashbrown);
-    const assistant = hashbrown.lastAssistantMessage();
+    await waitForIdle(runtime);
+    const assistant = runtime.lastAssistantMessage();
 
     expect(assistant?.content).toEqual({
       ui: [
@@ -785,14 +837,14 @@ test('fryHashbrown resolves validated generative UI state and marks the request 
       responseSchema: s.toJsonSchema(responseSchema),
       ui: true,
     });
-    expect(hashbrown.error()).toBeUndefined();
+    expect(runtime.error()).toBeUndefined();
   } finally {
     teardown?.();
     await testAimock?.stop();
   }
 }, 10_000);
 
-test('fryHashbrown cancels a delayed SSE run after the first content without later mutations or continuation', async () => {
+test('createChatRuntime cancels a delayed SSE run after the first content without later mutations or continuation', async () => {
   const toolHandler = jest.fn(async ({ value }: { value: string }) => value);
   const tool: Chat.Tool<'delayedTool', { value: string }, string> = {
     name: 'delayedTool',
@@ -870,7 +922,7 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
       ],
       75,
     );
-    const hashbrown = fryHashbrown({
+    const runtime = createChatRuntime({
       transport: new HttpTransport({
         baseUrl: testAimock.handle.aguiRunUrl,
         fetchImpl: createObservedFetch(observedResponses),
@@ -879,14 +931,14 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
       tools: [tool],
       retries: 2,
     });
-    teardown = hashbrown.sizzle();
+    teardown = runtime.start();
 
-    hashbrown.sendMessage({
+    runtime.sendMessage({
       role: 'user',
       content: 'Start a delayed response',
     });
     const messagesBeforeCancellation = await waitForSignal(
-      hashbrown.messages,
+      runtime.messages,
       (messages) =>
         messages.some(
           (message) =>
@@ -902,11 +954,11 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
         toolCalls: [],
       },
     ]);
-    expect(hashbrown.threadId()).toBe(capturedInputs[0]?.threadId);
+    expect(runtime.threadId()).toBe(capturedInputs[0]?.threadId);
 
-    hashbrown.stop();
-    await waitForIdle(hashbrown);
-    const messagesAfterCancellation = hashbrown.messages();
+    runtime.stop();
+    await waitForIdle(runtime);
+    const messagesAfterCancellation = runtime.messages();
     expect(observedResponses).toHaveLength(1);
     const cancellationResponse = observedResponses[0];
     if (!cancellationResponse) {
@@ -918,7 +970,7 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
     expect(messagesAfterCancellation).toEqual([
       { role: 'user', content: 'Start a delayed response' },
     ]);
-    expect(hashbrown.messages()).toEqual(messagesAfterCancellation);
+    expect(runtime.messages()).toEqual(messagesAfterCancellation);
     expect(capturedInputs).toHaveLength(1);
     expect(cancellationResponse.cancelCount).toBe(1);
     expect(cancellationResponse.eventTypes).toEqual([
@@ -930,19 +982,19 @@ test('fryHashbrown cancels a delayed SSE run after the first content without lat
     expect(cancellationResponse.readCount).toBe(cancellation.readCount);
     expect(cancellation.readCount).toBeLessThan(9);
     expect(toolHandler).not.toHaveBeenCalled();
-    expect(hashbrown.error()).toBeUndefined();
-    expect(hashbrown.isLoading()).toBe(false);
-    expect(hashbrown.isReceiving()).toBe(false);
-    expect(hashbrown.isSending()).toBe(false);
-    expect(hashbrown.isGenerating()).toBe(false);
-    expect(hashbrown.isRunningToolCalls()).toBe(false);
+    expect(runtime.error()).toBeUndefined();
+    expect(runtime.isLoading()).toBe(false);
+    expect(runtime.isReceiving()).toBe(false);
+    expect(runtime.isSending()).toBe(false);
+    expect(runtime.isGenerating()).toBe(false);
+    expect(runtime.isRunningToolCalls()).toBe(false);
   } finally {
     teardown?.();
     await testAimock?.stop();
   }
 }, 10_000);
 
-test('fryHashbrown surfaces one server run error and closes the SSE response without retrying', async () => {
+test('createChatRuntime surfaces one server run error and closes the SSE response without retrying', async () => {
   const capturedInputs: HashbrownRunInput[] = [];
   const observedResponses: ObservedResponse[] = [];
   const observedErrors: Error[] = [];
@@ -977,7 +1029,7 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
       ],
       75,
     );
-    const hashbrown = fryHashbrown({
+    const runtime = createChatRuntime({
       transport: new HttpTransport({
         baseUrl: testAimock.handle.aguiRunUrl,
         fetchImpl: createObservedFetch(observedResponses),
@@ -985,19 +1037,19 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
       system: 'Answer briefly.',
       retries: 2,
     });
-    unsubscribeError = hashbrown.error.subscribe((error) => {
+    unsubscribeError = runtime.error.subscribe((error) => {
       if (error) {
         observedErrors.push(error);
       }
     });
-    teardown = hashbrown.sizzle();
+    teardown = runtime.start();
 
-    hashbrown.sendMessage({
+    runtime.sendMessage({
       role: 'user',
       content: 'Trigger the server error',
     });
-    const error = await waitForSignal(hashbrown.error, Boolean);
-    await waitForIdle(hashbrown);
+    const error = await waitForSignal(runtime.error, Boolean);
+    await waitForIdle(runtime);
     expect(observedResponses).toHaveLength(1);
     const errorResponse = observedResponses[0];
     if (!errorResponse) {
@@ -1010,12 +1062,12 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
     expect(observedErrors.map((value) => value.message)).toEqual([
       'Deterministic server failure',
     ]);
-    expect(hashbrown.messages()).toEqual([
+    expect(runtime.messages()).toEqual([
       { role: 'user', content: 'Trigger the server error' },
       { role: 'error', content: 'Deterministic server failure' },
     ]);
     expect(
-      hashbrown.messages().filter((message) => message.role === 'error'),
+      runtime.messages().filter((message) => message.role === 'error'),
     ).toHaveLength(1);
     expect(capturedInputs).toHaveLength(1);
     expect(errorResponse.response.bodyUsed).toBe(true);
@@ -1027,11 +1079,11 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
     expect(errorResponse.reachedEof).toBe(false);
     expect(errorResponse.readCount).toBe(cancellation.readCount);
     expect(cancellation.readCount).toBeLessThan(7);
-    expect(hashbrown.isLoading()).toBe(false);
-    expect(hashbrown.isReceiving()).toBe(false);
-    expect(hashbrown.isSending()).toBe(false);
-    expect(hashbrown.isGenerating()).toBe(false);
-    expect(hashbrown.isRunningToolCalls()).toBe(false);
+    expect(runtime.isLoading()).toBe(false);
+    expect(runtime.isReceiving()).toBe(false);
+    expect(runtime.isSending()).toBe(false);
+    expect(runtime.isGenerating()).toBe(false);
+    expect(runtime.isRunningToolCalls()).toBe(false);
   } finally {
     unsubscribeError?.();
     teardown?.();
@@ -1039,7 +1091,7 @@ test('fryHashbrown surfaces one server run error and closes the SSE response wit
   }
 }, 10_000);
 
-test('fryHashbrown executes and continues an AG-UI tool call over real SSE', async () => {
+test('createChatRuntime executes and continues an AG-UI tool call over real SSE', async () => {
   const handlerStarted = createDeferred<void>();
   const handlerResult = createDeferred<{
     city: string;
@@ -1154,7 +1206,7 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
       },
       75,
     );
-    const hashbrown = fryHashbrown({
+    const runtime = createChatRuntime({
       transport: new HttpTransport({
         baseUrl: testAimock.handle.aguiRunUrl,
         fetchImpl: createObservedFetch(
@@ -1166,10 +1218,10 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
       tools: [tool],
       threadId: 'thread-tool',
     });
-    teardown = hashbrown.sizzle();
+    teardown = runtime.start();
     await Promise.resolve();
 
-    hashbrown.sendMessage({
+    runtime.sendMessage({
       role: 'user',
       content: 'What is the weather in Paris?',
     });
@@ -1208,14 +1260,14 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
       'second-request',
     ]);
 
-    const messages = await waitForSignal(hashbrown.messages, (value) =>
+    const messages = await waitForSignal(runtime.messages, (value) =>
       value.some(
         (message) =>
           message.role === 'assistant' &&
           message.content === 'It is 21 C and sunny in Paris.',
       ),
     );
-    await waitForIdle(hashbrown);
+    await waitForIdle(runtime);
 
     expect(messages).toEqual([
       { role: 'user', content: 'What is the weather in Paris?' },
@@ -1246,13 +1298,13 @@ test('fryHashbrown executes and continues an AG-UI tool call over real SSE', asy
         toolCalls: [],
       },
     ]);
-    expect(hashbrown.error()).toBeUndefined();
-    expect(hashbrown.isLoading()).toBe(false);
-    expect(hashbrown.isReceiving()).toBe(false);
-    expect(hashbrown.isSending()).toBe(false);
-    expect(hashbrown.isGenerating()).toBe(false);
-    expect(hashbrown.isRunningToolCalls()).toBe(false);
-    expect(hashbrown.lastAssistantMessage()).toEqual(messages[2]);
+    expect(runtime.error()).toBeUndefined();
+    expect(runtime.isLoading()).toBe(false);
+    expect(runtime.isReceiving()).toBe(false);
+    expect(runtime.isSending()).toBe(false);
+    expect(runtime.isGenerating()).toBe(false);
+    expect(runtime.isRunningToolCalls()).toBe(false);
+    expect(runtime.lastAssistantMessage()).toEqual(messages[2]);
     expect(toolHandler).toHaveBeenCalledTimes(1);
     expect(toolHandler).toHaveBeenCalledWith(
       { city: 'Paris' },
