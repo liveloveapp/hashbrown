@@ -1368,6 +1368,94 @@ test('generic send rejection retries with exact attempt progression', async () =
   teardown?.();
 });
 
+test('retry uses a fresh attempt after cleanup completes', async () => {
+  jest.clearAllMocks();
+  const returnStarted = createDeferred<void>();
+  const returnRelease = createDeferred<IteratorResult<AGUIEvent>>();
+  const disposeStarted = createDeferred<void>();
+  const disposeRelease = createDeferred<void>();
+  const requests: TransportRequest[] = [];
+  const iterators: AsyncIterator<AGUIEvent>[] = [];
+  const firstIteratorReturn = jest.fn(async () => {
+    returnStarted.resolve();
+    return returnRelease.promise;
+  });
+  const firstDispose = jest.fn(async () => {
+    disposeStarted.resolve();
+    await disposeRelease.promise;
+  });
+  const { send } = makeSelection(async (request) => {
+    requests.push(request);
+    if (requests.length === 1) {
+      const events = [
+        {
+          type: EventType.CUSTOM,
+          name: 'invalid-before-start',
+          value: null,
+        } as AGUIEvent,
+      ];
+      const values = events[Symbol.iterator]();
+      const eventIterator = {
+        next: async () => values.next(),
+        return: firstIteratorReturn,
+      };
+      iterators.push(eventIterator);
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return eventIterator;
+          },
+        },
+        dispose: firstDispose,
+      };
+    }
+
+    const events = successfulEvents(request);
+    const eventIterator = events[Symbol.asyncIterator]();
+    iterators.push(eventIterator);
+
+    return {
+      events: {
+        [Symbol.asyncIterator]() {
+          return eventIterator;
+        },
+      },
+    };
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 1],
+      [
+        selectRawStreamingMessage,
+        { role: 'assistant', content: 'Recovered', toolCallIds: [] },
+      ],
+    ]),
+  );
+  const teardown = generateMessage(store);
+
+  const generation = store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+  );
+  await returnStarted.promise;
+  expect(send).toHaveBeenCalledTimes(1);
+  returnRelease.resolve({ done: true, value: undefined });
+  await disposeStarted.promise;
+  expect(send).toHaveBeenCalledTimes(1);
+  disposeRelease.resolve();
+  await generation;
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(requests[0]).not.toBe(requests[1]);
+  expect(requests[0]?.requestId).not.toBe(requests[1]?.requestId);
+  expect(requests[0]?.input.runId).not.toBe(requests[1]?.input.runId);
+  expect(iterators[0]).not.toBe(iterators[1]);
+  expect(firstIteratorReturn).toHaveBeenCalledTimes(1);
+  expect(firstDispose).toHaveBeenCalledTimes(1);
+
+  teardown?.();
+});
+
 test('exhausted generic send retries dispatches the exhausted action', async () => {
   jest.clearAllMocks();
   const error = new Error('still broken');
