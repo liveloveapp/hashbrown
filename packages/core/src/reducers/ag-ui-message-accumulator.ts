@@ -754,17 +754,27 @@ function freezeJsonValue(value: JsonValue): JsonValue {
   return value;
 }
 
+/** Returns whether a trailing-content diagnostic key is already present. */
+function hasTrailingContentDiagnostic(
+  state: AgUiMessageAccumulatorState,
+  source: AgUiMessageAccumulatorDiagnostic['source'],
+  entityId: string | undefined,
+) {
+  return state.diagnostics.some(
+    (current) =>
+      current.type === 'recovered-trailing-content' &&
+      current.source === source &&
+      current.entityId === entityId,
+  );
+}
+
 function addTrailingContentDiagnostic(
   state: AgUiMessageAccumulatorState,
   diagnostic: AgUiMessageAccumulatorDiagnostic,
 ): AgUiMessageAccumulatorState {
-  const exists = state.diagnostics.some(
-    (current) =>
-      current.type === diagnostic.type &&
-      current.source === diagnostic.source &&
-      current.entityId === diagnostic.entityId,
-  );
-  if (exists) {
+  if (
+    hasTrailingContentDiagnostic(state, diagnostic.source, diagnostic.entityId)
+  ) {
     return state;
   }
 
@@ -786,6 +796,9 @@ function addTrailingContentDiagnosticFromSource(
   if (!parserError || !isRecoverableTrailingToken(parserState)) {
     return state;
   }
+  if (hasTrailingContentDiagnostic(state, source, entityId)) {
+    return state;
+  }
 
   return addTrailingContentDiagnostic(state, {
     type: 'recovered-trailing-content',
@@ -801,6 +814,11 @@ function finalizeOutput(
 ): AgUiMessageAccumulatorState {
   const responseSchema = state.configSnapshot?.responseSchema;
   if (!responseSchema || !state.outputParserState) {
+    return state;
+  }
+  if (
+    hasTrailingContentDiagnostic(state, 'structured-output', state.messageId)
+  ) {
     return state;
   }
 
@@ -920,6 +938,20 @@ function finalizeToolCalls(
       ? toolCall
       : { ...toolCall, argumentsResolved };
   });
+
+  const toolCallsChanged = toolCalls.some(
+    (toolCall, index) => toolCall !== state.toolCalls[index],
+  );
+  if (
+    !toolCallsChanged &&
+    toolParserStateById === state.toolParserStateById &&
+    toolCacheById === state.toolCacheById &&
+    finalizedToolCallIds === state.finalizedToolCallIds &&
+    diagnostics === state.diagnostics &&
+    error === state.error
+  ) {
+    return state;
+  }
 
   return {
     ...state,

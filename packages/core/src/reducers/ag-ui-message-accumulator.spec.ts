@@ -485,18 +485,25 @@ test('owns immutable tool diagnostic data without freezing tool arguments', () =
   expect(Object.isFrozen(argumentsResolved.payload.items)).toBe(false);
 });
 
-test('does not duplicate a structured-output diagnostic when run completion is replayed', () => {
+test('replays structured-output completion without projecting or cloning diagnostics again', () => {
   const schema = s.object('output', { value: s.number('value') });
+  const projectFromJsonAst = jest.spyOn(schema, 'fromJsonAst');
   const state = accumulateEvents(createState(schema), [
     textStart(),
     textContent('{"value":1}\n{"value":2}'),
   ]);
 
   const finished = accumulateAgUiMessageEvent(state, runFinished());
+  const projectionCount = projectFromJsonAst.mock.calls.length;
   const replayed = accumulateAgUiMessageEvent(finished, runFinished());
+  const replayProjectionCount = projectFromJsonAst.mock.calls.length;
+  projectFromJsonAst.mockRestore();
 
   expect(finished.diagnostics).toHaveLength(1);
+  expect(replayed).toBe(finished);
   expect(replayed.diagnostics).toBe(finished.diagnostics);
+  expect(projectionCount).toBeGreaterThan(0);
+  expect(replayProjectionCount).toBe(projectionCount);
 });
 
 test('reports malformed structured output and incomplete finalization', () => {
@@ -1093,7 +1100,21 @@ test('does not mutate event inputs, prior state, parser state, cache, or schemas
     textStart(),
   );
   const eventSnapshot = structuredClone(contentEvent);
-  const priorSnapshot = {
+  const priorValueSnapshot = {
+    message: structuredClone(started.message),
+    toolCalls: structuredClone(started.toolCalls),
+    diagnostics: structuredClone(started.diagnostics),
+    schema: structuredClone(s.toJsonSchema(schema)),
+    toolsByName: {
+      submit: {
+        name: toolsByName['submit']?.name,
+        description: toolsByName['submit']?.description,
+        schema: structuredClone(s.toJsonSchema(schema)),
+        handler: toolsByName['submit']?.handler,
+      },
+    },
+  };
+  const priorIdentitySnapshot = {
     message: started.message,
     toolCalls: started.toolCalls,
     diagnostics: started.diagnostics,
@@ -1107,11 +1128,27 @@ test('does not mutate event inputs, prior state, parser state, cache, or schemas
   const next = accumulateAgUiMessageEvent(parsed, textContent(' '));
 
   expect(contentEvent).toEqual(eventSnapshot);
-  expect(started.message).toBe(priorSnapshot.message);
-  expect(started.toolCalls).toBe(priorSnapshot.toolCalls);
-  expect(started.diagnostics).toBe(priorSnapshot.diagnostics);
-  expect(started.configSnapshot?.responseSchema).toBe(priorSnapshot.schema);
-  expect(started.configSnapshot?.toolsByName).toBe(priorSnapshot.toolsByName);
+  expect(started.message).toEqual(priorValueSnapshot.message);
+  expect(started.toolCalls).toEqual(priorValueSnapshot.toolCalls);
+  expect(started.diagnostics).toEqual(priorValueSnapshot.diagnostics);
+  expect(s.toJsonSchema(schema)).toEqual(priorValueSnapshot.schema);
+  expect({
+    submit: {
+      name: toolsByName['submit']?.name,
+      description: toolsByName['submit']?.description,
+      schema: s.toJsonSchema(schema),
+      handler: toolsByName['submit']?.handler,
+    },
+  }).toEqual(priorValueSnapshot.toolsByName);
+  expect(started.message).toBe(priorIdentitySnapshot.message);
+  expect(started.toolCalls).toBe(priorIdentitySnapshot.toolCalls);
+  expect(started.diagnostics).toBe(priorIdentitySnapshot.diagnostics);
+  expect(started.configSnapshot?.responseSchema).toBe(
+    priorIdentitySnapshot.schema,
+  );
+  expect(started.configSnapshot?.toolsByName).toBe(
+    priorIdentitySnapshot.toolsByName,
+  );
   expect(parsed.outputParserState).toEqual(parserSnapshot);
   expect(parsed.outputCache).toEqual(cacheSnapshot);
   expect(next.outputParserState).not.toBe(parsed.outputParserState);
