@@ -59,7 +59,6 @@ export class App {
    * 2. Prompt the model with our components
    */
   ui = uiChatResource({
-    model: 'gpt-5',
     system: `Build a Spotify playlist app`,
     components,
   });

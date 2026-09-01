@@ -90,7 +90,6 @@ export class UiSmoke {
   protected readonly prompt = signal('');
   protected readonly submitted = signal('');
   protected readonly chat = uiChatResource({
-    model: 'gpt-4o',
     system: 'Runtime smoke system prompt.',
     components,
   });

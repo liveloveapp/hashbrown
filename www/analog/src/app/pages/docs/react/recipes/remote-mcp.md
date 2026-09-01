@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Expose remote MCP servers to models for better task following and responses.'
 ---
+
 # Remote Model Context Protocol (MCP)
 
 <p class="subtitle">Expose remote MCP servers to models for better task following and responses.</p>
@@ -354,7 +355,6 @@ function App({ accessToken }: { accessToken: string }) {
 
   // 4) Provide tools to the model
   const chat = useChat({
-    model: 'gpt-4o',
     system:
       'You are a helpful assistant with access to both local and remote tools.',
     tools,

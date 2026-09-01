@@ -94,7 +94,6 @@ import { productUiKit } from './product-ui-kit';
 })
 export class Assistant {
   chat = uiChatResource({
-    model: 'gpt-5',
     system:
       'Help the user compare products. Render product recommendations when useful.',
     components: [productUiKit],

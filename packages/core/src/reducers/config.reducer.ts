@@ -1,12 +1,11 @@
 import { devActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
-import { type ModelInput, TransportOrFactory } from '../transport';
+import { TransportOrFactory } from '../transport';
 import { createReducer, on } from '../utils/micro-ngrx';
 
 export interface ConfigState {
   apiUrl?: string;
-  model: ModelInput;
   system: string;
   debounce: number;
   responseSchema?: s.HashbrownType;
@@ -18,7 +17,6 @@ export interface ConfigState {
 
 const initialState: ConfigState = {
   apiUrl: '',
-  model: '',
   system: '',
   debounce: 150,
   retries: 0,
@@ -34,7 +32,6 @@ export const reducer = createReducer(
     return {
       ...state,
       apiUrl: action.payload.apiUrl,
-      model: action.payload.model,
       system: action.payload.system,
       debounce: action.payload.debounce ?? state.debounce,
       responseSchema,
@@ -47,7 +44,6 @@ export const reducer = createReducer(
   on(devActions.updateOptions, (state, action): ConfigState => {
     const {
       threadId: _threadId,
-      model = state.model,
       system = state.system,
       debounce = state.debounce,
       retries = state.retries,
@@ -62,7 +58,6 @@ export const reducer = createReducer(
     return {
       ...state,
       ...configPayload,
-      model,
       system,
       debounce,
       retries,
@@ -73,7 +68,6 @@ export const reducer = createReducer(
 );
 
 export const selectApiUrl = (state: ConfigState) => state.apiUrl;
-export const selectModel = (state: ConfigState) => state.model;
 export const selectSystem = (state: ConfigState) => state.system;
 export const selectDebounce = (state: ConfigState) => state.debounce;
 export const selectResponseSchema = (state: ConfigState) =>

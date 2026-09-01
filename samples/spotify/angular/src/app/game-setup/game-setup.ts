@@ -48,7 +48,6 @@ import { LoaderComponent } from '../loader';
 export class GameSetupComponent implements ChatService {
   mcp = inject(McpServerService);
   ui = uiChatResource({
-    model: 'gpt-4.1',
     debugName: 'Game Setup',
     system: `
       You are a helpful assistant that helps users set up a Spotify playlist

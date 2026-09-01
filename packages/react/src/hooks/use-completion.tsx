@@ -1,8 +1,4 @@
-import {
-  Chat,
-  type ModelInput,
-  type TransportOrFactory,
-} from '@hashbrownai/core';
+import { Chat, type TransportOrFactory } from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useChat } from './use-chat';
 
@@ -17,12 +13,6 @@ export interface UseCompletionOptions<Input> {
    * The input string to predict from.
    */
   input: Input | null | undefined;
-
-  /**
-   * The LLM model to use for the chat.
-   *
-   */
-  model: ModelInput;
 
   /**
    * The system message to use for the completion.
@@ -136,7 +126,6 @@ export interface UseCompletionResult {
  * @example
  * ```ts
  * const { output } = useCompletion({
- *   model: 'gpt-4o-mini',
  *   input: firstName,
  *   system: `Help the user generate a last name for the given first name.`,
  * });

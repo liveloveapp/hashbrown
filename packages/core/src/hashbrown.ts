@@ -25,7 +25,7 @@ import {
 } from './reducers';
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
-import { type ModelInput, TransportOrFactory } from './transport';
+import { TransportOrFactory } from './transport';
 
 /**
  * Represents a Hashbrown chat instance, providing methods to send and observe messages, track state, and handle errors.
@@ -64,7 +64,6 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
     options: Partial<{
       debugName?: string;
       apiUrl?: string;
-      model: ModelInput;
       system: string;
       tools: Tools[];
       responseSchema: s.SchemaOutput;
@@ -94,7 +93,6 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
  * @param init - Initialization options containing:
  *   - `debugName`: Optional debug name for devtools tracing
  *   - `apiUrl`: Base URL of the Hashbrown API endpoint
- *   - `model`: The LLM model identifier to use
  *   - `system`: System prompt or initial context for the chat
  *   - `messages`: Initial message history
  *   - `tools`: Array of tools to enable in the instance
@@ -106,7 +104,6 @@ export interface Hashbrown<Output, Tools extends Chat.AnyTool> {
 export function fryHashbrown<Tools extends Chat.AnyTool>(init: {
   debugName?: string;
   apiUrl?: string;
-  model: ModelInput;
   system: string;
   messages?: Chat.Message<string, Tools>[];
   tools?: Tools[];
@@ -127,7 +124,6 @@ export function fryHashbrown<
 >(init: {
   debugName?: string;
   apiUrl?: string;
-  model: ModelInput;
   system: string;
   messages?: Chat.Message<Output, Tools>[];
   tools?: Tools[];
@@ -145,7 +141,6 @@ export function fryHashbrown<
 export function fryHashbrown(init: {
   debugName?: string;
   apiUrl?: string;
-  model: ModelInput;
   system: string;
   messages?: Chat.Message<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
@@ -181,7 +176,6 @@ export function fryHashbrown(init: {
   state.dispatch(
     devActions.init({
       apiUrl: init.apiUrl,
-      model: init.model,
       system: init.system,
       messages: init.messages as Chat.AnyMessage[],
       tools: init.tools as Chat.AnyTool[],
@@ -221,7 +215,6 @@ export function fryHashbrown(init: {
     options: Partial<{
       debugName?: string;
       apiUrl: string;
-      model: ModelInput;
       system: string;
       tools: Chat.AnyTool[];
       responseSchema: s.SchemaOutput;

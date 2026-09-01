@@ -95,7 +95,6 @@ The @hashbrownai/angular!chatResource:function function from `@hashbrownai/angul
 
 ```ts
 chatResource({
-  model: 'gpt-5',
   system: 'hashbrowns should be covered and smothered',
   messages: [{ role: 'user', content: 'Write a short story about breakfast.' }],
 });
@@ -103,9 +102,8 @@ chatResource({
 
 </hb-code-example>
 
-1. First, we specify the `model`.
-2. Second, we provide [system instructions](/docs/angular/concept/system-instructions).
-3. Third, we send some initial `messages` to the model.
+1. First, we provide [system instructions](/docs/angular/concept/system-instructions).
+2. Second, we send some initial `messages` to the model.
 
 ---
 
@@ -114,7 +112,6 @@ chatResource({
 | Option    | Type                                                                   | Required | Description                                                       |
 | --------- | ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
 | system    | ReactiveOption<string>                                                 | Yes      | System (assistant) prompt.                                        |
-| model     | ReactiveOption<ModelInput>                                             | Yes      | Model identifier or model input to use.                           |
 | tools     | Tools[]                                                                | No       | Array of bound tools available to the chat.                       |
 | messages  | Chat.Message<string, Tools>[] \| Signal<Chat.Message<string, Tools>[]> | No       | Initial list of chat messages.                                    |
 | debounce  | number                                                                 | No       | Debounce interval in milliseconds between user inputs.            |
@@ -194,7 +191,6 @@ import { chatResource } from '@hashbrownai/angular';
 export class App {
   // 2. Generate the messages from a prompt
   chat = chatResource({
-    model: 'gpt-5',
     system: 'hashbrowns should be covered and smothered',
     messages: [
       { role: 'user', content: 'Write a short story about breakfast.' },
@@ -242,7 +238,6 @@ import { chatResource } from '@hashbrownai/angular';
 export class App {
   userMessage = input<string>('');
   chat = chatResource({
-    model: 'gpt-5',
     debugName: 'chat',
     system: 'hashbrowns should be covered and smothered',
     messages: [

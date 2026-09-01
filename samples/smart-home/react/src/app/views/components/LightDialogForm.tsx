@@ -37,7 +37,6 @@ export const LightDialogForm = (
   const [open, setOpen] = useState(false);
 
   const { output: nameCompletion, exhaustedRetries } = useCompletion({
-    model: 'gpt-4o-mini',
     input: open ? lightName : '',
     system: `
       Help the user generate a name for a light. The input will be what

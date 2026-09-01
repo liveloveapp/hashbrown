@@ -88,7 +88,6 @@ export class PlainSmoke {
   });
 
   protected readonly chat = chatResource({
-    model: 'gpt-4o',
     system: 'Runtime smoke system prompt.',
     tools: isToolScenario() ? [this.getWeather] : [],
   });

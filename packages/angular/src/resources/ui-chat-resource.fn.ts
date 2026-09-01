@@ -3,7 +3,6 @@ import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
   type ComponentTreeSchema,
-  type ModelInput,
   s,
   SystemPrompt,
   type TransportOrFactory,
@@ -42,11 +41,6 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
    * Optional prompt-based UI examples to include in the wrapper schema description.
    */
   examples?: SystemPrompt;
-
-  /**
-   * The model to use for the UI chat resource.
-   */
-  model: ReactiveOption<ModelInput>;
 
   /**
    * The system prompt to use for the UI chat resource.
@@ -156,7 +150,6 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
   });
 
   const chat = structuredChatResource({
-    model: args.model,
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
     system: systemAsString,

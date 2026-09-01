@@ -1,9 +1,10 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
+  experimental_local,
   type LocalPromptAdapter,
   type LocalPromptAdapterName,
 } from './experimental-local-transport';
-import { type DetectionResult } from './model-spec';
+import { type DetectionResult } from './transport';
 import { Transport, type TransportRequest } from './transport';
 import { TransportError } from './transport-error';
 import { createDelegatingTransport } from './experimental-local-transport';
@@ -68,6 +69,14 @@ function makeAdapter(
     ),
   };
 }
+
+test('experimental_local creates a delegating local transport factory', () => {
+  const factory = experimental_local({ order: [] });
+
+  const transport = factory();
+
+  expect(transport.name).toBe('DelegatingLocalPromptTransport');
+});
 
 test('uses the first adapter whose detection succeeds', async () => {
   const primary = makeAdapter('chrome-local');

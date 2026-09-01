@@ -79,7 +79,6 @@ import { useProductUiKit } from './product-ui-kit';
 export function Assistant() {
   const productKit = useProductUiKit();
   const { messages, sendMessage } = useUiChat({
-    model: 'gpt-5',
     system:
       'Help the user compare products. Render product recommendations when useful.',
     components: [productKit],

@@ -20,7 +20,6 @@ export class Suggestor {
     payload: object;
   } | null>(null);
   private readonly suggestionsResource = structuredCompletionResource({
-    model: 'gpt-4.1',
     debugName: 'suggestionsResource',
     system: `
       You are an AI smart home assistant tasked with predicting the next possible user action in a 

@@ -195,7 +195,6 @@ export class DashboardComponent {
   );
 
   layout = structuredCompletionResource({
-    model: 'gpt-4.1-nano',
     input: this.ambientState,
     system,
     schema: s.object('The layout of the dashboard', {

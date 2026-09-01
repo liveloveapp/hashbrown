@@ -8,12 +8,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { structuredCompletionResource } from '@hashbrownai/angular';
-import {
-  experimental_chrome,
-  experimental_edge,
-  experimental_local,
-  s,
-} from '@hashbrownai/core';
+import { experimental_local, s } from '@hashbrownai/core';
 
 const itinerarySchema = s.object('Weekend itinerary', {
   title: s.streaming.string('Short title for the plan'),
@@ -191,17 +186,14 @@ export class StructuredDemoComponent {
   sessionState = signal<any>(null);
 
   itinerary = structuredCompletionResource({
-    model: [
-      experimental_local({
-        events: {
-          availability: (status) => this.status.set(status),
-          downloadProgress: (percent) => this.downloadProgress.set(percent),
-          downloadRequired: (status) => this.downloadRequired.set(status),
-          sessionState: (state) => this.sessionState.set(state),
-        },
-      }),
-      'gpt-5-mini',
-    ],
+    transport: experimental_local({
+      events: {
+        availability: (status) => this.status.set(status),
+        downloadProgress: (percent) => this.downloadProgress.set(percent),
+        downloadRequired: (status) => this.downloadRequired.set(status),
+        sessionState: (state) => this.sessionState.set(state),
+      },
+    }),
     schema: itinerarySchema,
     system: `You are a travel assistant returning JSON that matches the schema strictly.`,
     input: computed(

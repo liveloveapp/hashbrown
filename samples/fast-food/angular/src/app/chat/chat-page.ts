@@ -133,7 +133,6 @@ export class ChatPage implements LinkClickHandler {
   readonly chatKit = inject(ChatKit);
 
   chat = uiCompletionResource({
-    model: 'gpt-5-chat-latest',
     debugName: 'fast-food-chat',
     system: prompt`
       You are a culinary insights analyst helping users explore an expanded
@@ -260,7 +259,6 @@ export class ChatPage implements LinkClickHandler {
   });
 
   readonly ephemeralLinkGenerator = structuredCompletionResource({
-    model: 'gpt-5-nano',
     system: `
       You route clicks on ephemeral fast-food knowledge links. Each request
       includes:

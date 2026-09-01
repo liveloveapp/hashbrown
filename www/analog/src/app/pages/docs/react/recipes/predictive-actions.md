@@ -2,8 +2,9 @@
 title: 'Building Predictive Suggestions and Shortcuts Using React: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Use Hashbrown structured outputs to suggest a user''s next action in your app.'
+    content: "Use Hashbrown structured outputs to suggest a user's next action in your app."
 ---
+
 # Building Predictive Suggestions and Shortcuts Using React
 
 <p class="subtitle">Use Hashbrown structured outputs to suggest a user's next action in your app.</p>
@@ -123,24 +124,22 @@ type Prediction = s.Infer<typeof PREDICTIONS_SCHEMA>;
 export function usePredictions() {
   const smartHome = useSmartHome();
   const lastAction = useLastUserAction();
-  
+
   const getLights = useTool({
     name: 'getLights',
     description: 'Get all lights in the smart home',
     handler: async (_abort) => await smartHome.loadLights(),
     deps: [smartHome],
   });
-  
+
   const getScenes = useTool({
     name: 'getScenes',
     description: 'Get all scenes in the smart home',
     handler: async (_abort) => await smartHome.loadScenes(),
     deps: [smartHome],
   });
-  
-  const { output } = useStructuredCompletion({
-    model: 'gpt-5',
 
+  const { output } = useStructuredCompletion({
     // 1. Recompute whenever `input` changes
     input: lastAction,
 
@@ -205,8 +204,8 @@ export function usePredictions() {
 
 1. First, we specify the `input` as the last user action to trigger new predictions.
 2. The system prompt provides clear instructions, rules, and examples to guide the model's output.
-4. We provide tools `getLights` and `getScenes` that the model can call to fetch current app state.
-5. The `schema` parameter ensures the model's output adheres to our defined structure.
+3. We provide tools `getLights` and `getScenes` that the model can call to fetch current app state.
+4. The `schema` parameter ensures the model's output adheres to our defined structure.
 
 ---
 

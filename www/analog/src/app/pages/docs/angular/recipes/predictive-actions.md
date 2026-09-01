@@ -2,8 +2,9 @@
 title: 'Building Predictive Suggestions and Shortcuts Using Angular: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Use Hashbrown structured outputs to suggest a user''s next action in your app.'
+    content: "Use Hashbrown structured outputs to suggest a user's next action in your app."
 ---
+
 # Building Predictive Suggestions and Shortcuts Using Angular
 
 <p class="subtitle">Use Hashbrown structured outputs to suggest a user's next action in your app.</p>
@@ -129,8 +130,6 @@ export class PredictionsComponent {
 
   // 2. Create the predictions resource
   predictions = structuredCompletionResource({
-    model: 'gpt-5',
-
     // 3. The predictions resource will re-compute when the `input` signal value is updated
     input: this.lastAction,
 

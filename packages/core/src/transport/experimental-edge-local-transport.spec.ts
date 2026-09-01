@@ -1,6 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { type TransportRequest } from './transport';
-import { ExperimentalEdgeLocalTransport } from './experimental-edge-local-transport';
+import {
+  experimental_edge,
+  ExperimentalEdgeLocalTransport,
+} from './experimental-edge-local-transport';
 
 const responseSchema = {
   type: 'object',
@@ -86,6 +89,14 @@ function createTextStream(chunks: string[]): ReadableStream<string> {
     },
   });
 }
+
+test('experimental_edge creates an Edge local transport factory', () => {
+  const factory = experimental_edge();
+
+  const transport = factory();
+
+  expect(transport).toBeInstanceOf(ExperimentalEdgeLocalTransport);
+});
 
 function createDeferred<T>() {
   let resolve: (value: T | PromiseLike<T>) => void = () => undefined;

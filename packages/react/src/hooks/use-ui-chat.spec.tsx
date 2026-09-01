@@ -66,7 +66,6 @@ test('useUiChat renders components from UiKit and exposed component inputs', () 
   // Act
   const { result } = renderHook(() =>
     useUiChat({
-      model: 'gpt-4o-mini',
       system: 'system prompt',
       components: [
         uiKit,
@@ -121,7 +120,6 @@ test('useUiChat compiles system prompts with normalized components', () => {
   // Act
   renderHook(() =>
     useUiChat({
-      model: 'gpt-4o-mini',
       system: systemPrompt,
       components: [uiKit],
     }),

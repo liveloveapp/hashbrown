@@ -122,7 +122,6 @@ export class RRuleParser {
     error: Signal<s.Infer<typeof ParseErrorSchema> | null>;
   } {
     const resource = structuredCompletionResource({
-      model: 'gpt-4.1',
       debugName: 'rruleParserResource',
       input: computed(() => {
         const value = input();

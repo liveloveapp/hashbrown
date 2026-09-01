@@ -70,7 +70,6 @@ export const SceneDialogForm = (
   const { output, isSending, exhaustedRetries } = useStructuredCompletion({
     debugName: 'SceneDialogForm',
     input,
-    model: 'gpt-4.1-mini',
     system: `
       You are an assistant that helps the user configure a lighting scene.
       The user will choose a name for the scene, and you will predict the

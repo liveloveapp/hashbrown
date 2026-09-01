@@ -722,7 +722,6 @@ test('setMessages cannot settle a same-id replacement call', async () => {
   });
   store.dispatch(
     devActions.init({
-      model: 'test-model',
       system: 'Test system',
       tools: [tool],
     }),

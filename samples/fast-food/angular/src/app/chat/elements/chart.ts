@@ -376,7 +376,6 @@ export class Chart {
     return result.message;
   });
   readonly completion = structuredCompletionResource({
-    model: 'gpt-5-chat-latest',
     debugName: `chart-${this.instanceId}`,
     system,
     input: computed(

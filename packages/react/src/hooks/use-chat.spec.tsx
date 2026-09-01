@@ -29,7 +29,6 @@ test('useChat initializes with the provided message history', () => {
   const { result } = renderHook(
     () =>
       useChat({
-        model: 'gpt-4.1',
         system: 'You are a helpful assistant.',
         messages,
       }),
@@ -51,7 +50,6 @@ test('useChat preserves thread identity property presence on updates', () => {
   const { result, rerender } = renderHook(
     ({ system, ...threadOptions }: HookProps) =>
       useChat({
-        model: 'gpt-4.1',
         system,
         ...threadOptions,
       }),

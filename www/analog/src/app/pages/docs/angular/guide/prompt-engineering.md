@@ -2,8 +2,9 @@
 title: 'Prompt Engineering: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Hashbrown''s Angular SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the Angular SDK.'
+    content: "Hashbrown's Angular SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the Angular SDK."
 ---
+
 # Prompt Engineering
 
 Hashbrown's Angular SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the Angular SDK.
@@ -19,7 +20,6 @@ constructor(private chat: HashbrownChatService) {}
 
 ngOnInit() {
   this.chat.initialize({
-    model: 'gpt-4',
     system: `You are a helpful assistant. Answer concisely.`,
   });
 }
@@ -44,7 +44,6 @@ const initialMessages = [
 ];
 
 const chat = chatResource({
-  model: 'gpt-4.1',
   system: 'You are a geography expert.',
   messages: initialMessages,
 });
@@ -77,7 +76,6 @@ constructor(private structuredChat: HashbrownStructuredChatService) {}
 
 ngOnInit() {
   this.structuredChat.initialize({
-    model: 'gpt-4',
     system: 'Provide city information as structured data.',
     schema: outputSchema,
   });
@@ -113,7 +111,6 @@ constructor(private chat: HashbrownChatService) {}
 
 ngOnInit() {
   this.chat.initialize({
-    model: 'gpt-4',
     system: 'You can call tools to fetch data.',
     tools: [getWeather],
   });
@@ -166,7 +163,6 @@ constructor(private uiChat: HashbrownUiChatService) {}
 
 ngOnInit() {
   this.uiChat.initialize({
-    model: 'gpt-4',
     system: 'Render city info using the CityCard component.',
     components: [exposedCityCard],
   });
@@ -190,7 +186,6 @@ constructor(private chat: HashbrownChatService) {}
 
 ngOnInit() {
   this.chat.initialize({
-    model: 'gpt-4',
     system: 'You are a helpful assistant.',
     debugName: 'support-chat',
   });

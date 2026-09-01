@@ -1,72 +1,51 @@
 ---
-title: 'Choosing Model: Hashbrown React Docs'
+title: 'Choosing a Model: Hashbrown React Docs'
 meta:
   - name: description
-    content: "Hashbrown's React SDK supports a variety of LLM providers and models. You can specify the model to use by passing the model option to any of the React hooks, such as useChat, useCompletion, useStructuredChat, or useStructuredCompletion."
+    content: 'Choose and configure the provider model on your AG-UI server while keeping Hashbrown React clients provider-independent.'
 ---
 
-# Choosing Model
+# Choosing a Model
 
-Hashbrown's React SDK supports a variety of LLM providers and models. You can specify the model to use by passing the `model` option to any of the React hooks, such as `useChat`, `useCompletion`, `useStructuredChat`, or `useStructuredCompletion`.
+Hashbrown React clients send AG-UI run requests to your configured endpoint. The server adapter chooses the provider and model, so hooks such as `useChat`, `useCompletion`, `useStructuredChat`, and `useStructuredCompletion` do not accept a `model` option.
 
-## Supported Providers
+## Select the Model on the Server
 
-- **OpenAI** (e.g., `gpt-4o`, `gpt-4.1`)
-- **Google** (e.g., `gemini-pro`)
-- **Azure** (OpenAI-compatible)
+Configure the model when you create the provider adapter:
 
-## Specifying a Model
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
 
-You must provide a model ID as the `model` option. This can be a string literal or a variable. For OpenAI and Google, you can use the model IDs as documented by each provider.
+const stream = HashbrownOpenAI.stream.text({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+  request,
+});
+```
+
+The client remains unchanged when the server switches models or providers:
 
 ```tsx
 import { useChat } from '@hashbrownai/react';
 
-const ChatComponent = () => {
-  const { messages, sendMessage, isSending, error } = useChat({
-    model: 'gpt-4.1', // OpenAI model
+export function Chat() {
+  const chat = useChat({
     system: 'You are a helpful assistant.',
   });
 
-  // ...render chat UI
-};
+  // Render chat.messages and call chat.sendMessage(...).
+}
 ```
 
-## Azure OpenAI
+## Route Between Models
 
-For Azure, use the deployment name as the model ID. You must also configure the API endpoint and authentication via the `HashbrownProvider`:
+If an application needs multiple models, expose separate AG-UI endpoints or choose the model in trusted server logic. Point a hook at an alternate endpoint with a nested `HashbrownProvider` or a custom transport. Do not send provider credentials or unrestricted model identifiers from the browser.
 
-```tsx
-import { HashbrownProvider, useChat } from '@hashbrownai/react';
+See the provider guides for server configuration:
 
-const App = () => (
-  <HashbrownProvider url="https://your-azure-endpoint.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2023-03-15-preview">
-    <ChatComponent />
-  </HashbrownProvider>
-);
-
-const ChatComponent = () => {
-  const { messages, sendMessage } = useChat({
-    model: 'your-deployment-name', // Azure deployment name
-    system: 'You are a helpful assistant.',
-  });
-  // ...
-};
-```
-
-## Google Gemini
-
-For Google Gemini, use the model ID as provided by Google (e.g., `gemini-pro`).
-
-```tsx
-const { messages, sendMessage } = useChat({
-  model: 'gemini-pro',
-  system: 'You are a helpful assistant.',
-});
-```
-
-## Model Option Reference
-
-- `model: string` — The model or deployment name to use. See your provider's documentation for available models.
-
-> **Note:** Some providers may require additional configuration, such as API keys or custom endpoints. Refer to the provider's documentation and the `HashbrownProvider` for details.
+- [OpenAI](/docs/react/platform/openai)
+- [Azure OpenAI](/docs/react/platform/azure)
+- [Anthropic](/docs/react/platform/anthropic)
+- [Amazon Bedrock](/docs/react/platform/bedrock)
+- [Google Gemini](/docs/react/platform/google)
+- [Ollama](/docs/react/platform/ollama)

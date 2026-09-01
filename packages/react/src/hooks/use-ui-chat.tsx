@@ -3,7 +3,6 @@
 import {
   Chat,
   type ComponentNode,
-  type ModelInput,
   SystemPrompt,
   type TransportOrFactory,
   type UiWrapper,
@@ -74,11 +73,6 @@ export type UiChatMessage<Tools extends Chat.AnyTool> =
  */
 export interface UiChatOptions<Tools extends Chat.AnyTool> {
   /**
-   * The LLM model to use for the chat.
-   */
-  model: ModelInput;
-
-  /**
    * The system message to use for the chat.
    */
   system: string | SystemPrompt;
@@ -145,7 +139,6 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
  * In this example, the LLM will respond with a UI component that can be rendered directly in your React application.
  * ```tsx
  * const { messages, sendMessage } = useUiChat({
- *   model: 'gpt-4o',
  *   system: 'You are a helpful assistant that can generate UI components.',
  *   components: [
  *     exposeComponent(Button, {

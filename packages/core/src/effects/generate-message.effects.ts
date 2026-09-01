@@ -6,7 +6,6 @@ import {
   selectApiUrl,
   selectDebounce,
   selectMiddleware,
-  selectModel,
   selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
@@ -23,8 +22,8 @@ import {
 } from '../reducers';
 import { s } from '../schema';
 import {
-  ModelResolver,
-  type RequestedFeatures,
+  createHttpTransport,
+  resolveTransport,
   TransportError,
   type TransportResponse,
 } from '../transport';
@@ -106,7 +105,6 @@ export const generateMessage = createEffect((store) => {
 
       const apiUrl = store.read(selectApiUrl);
       const middleware = store.read(selectMiddleware);
-      const model = store.read(selectModel);
       const responseSchema = store.read(selectResponseSchema);
       const messages = store.read(selectApiMessages);
       const debounce = store.read(selectDebounce);
@@ -122,12 +120,6 @@ export const generateMessage = createEffect((store) => {
       const threadId = configuredThreadId ?? _createRequestId();
       generation.threadId = threadId;
       const uiRequested = store.read(selectUiRequested);
-      const requestedFeatures: RequestedFeatures = {
-        tools: tools.length > 0,
-        structured: Boolean(responseSchema),
-        ui: uiRequested,
-      };
-
       await sleep(debounce, switchSignal);
       if (retiredSignal.aborted || runCancelSignal.aborted) {
         releaseGeneration();
@@ -135,14 +127,14 @@ export const generateMessage = createEffect((store) => {
       }
 
       const transportProvider = store.read(selectTransport);
-      const resolver = new ModelResolver(model, {
-        url: apiUrl,
-        middleware: middleware ?? undefined,
-        transport: transportProvider,
-      });
-      let selection: Awaited<ReturnType<ModelResolver['select']>>;
+      let transport;
       try {
-        selection = await resolver.select(requestedFeatures);
+        transport =
+          resolveTransport(transportProvider) ??
+          createHttpTransport({
+            baseUrl: apiUrl,
+            middleware: middleware ?? undefined,
+          });
       } catch (error) {
         if (retiredSignal.aborted || runCancelSignal.aborted) {
           releaseGeneration();
@@ -154,7 +146,7 @@ export const generateMessage = createEffect((store) => {
           apiActions.generateMessageError(
             error instanceof Error
               ? error
-              : new Error('Unknown model selection error'),
+              : new Error('Unknown transport initialization error'),
           ),
         );
         return;
@@ -164,18 +156,6 @@ export const generateMessage = createEffect((store) => {
         releaseGeneration();
         return;
       }
-      if (!selection) {
-        releaseGeneration();
-        store.dispatch(
-          apiActions.generateMessageError(
-            new Error(
-              'No compatible model spec found for the requested features.',
-            ),
-          ),
-        );
-        return;
-      }
-
       const finalizeGeneration = () => {
         const streamingError = store.read(selectStreamingMessageError);
         if (streamingError) {
@@ -204,20 +184,15 @@ export const generateMessage = createEffect((store) => {
       };
 
       let attempt = 0;
-      let reuseAttempt = false;
       let exhaustedRetries = false;
-      let suppressFinalization = false;
 
       try {
-        while (selection) {
+        while (true) {
           if (retiredSignal.aborted || runCancelSignal.aborted) {
             return;
           }
 
-          if (!reuseAttempt) {
-            attempt++;
-          }
-          reuseAttempt = false;
+          attempt++;
 
           const requestId = _createRequestId();
           const eventRequest = {
@@ -285,7 +260,7 @@ export const generateMessage = createEffect((store) => {
           let outcome: RunOutcome | undefined;
           let primaryError: Error | undefined;
           try {
-            transportResponse = await selection.transport.send(eventRequest);
+            transportResponse = await transport.send(eventRequest);
 
             if (retiredSignal.aborted) {
               outcome = { kind: 'retired' };
@@ -487,41 +462,6 @@ export const generateMessage = createEffect((store) => {
           synthesizeRunError(primaryError.message);
           store.dispatch(apiActions.generateMessageError(primaryError));
 
-          if (
-            primaryError instanceof TransportError &&
-            (primaryError.code === 'FEATURE_UNSUPPORTED' ||
-              primaryError.code === 'PLATFORM_UNSUPPORTED')
-          ) {
-            resolver.skipFromError(selection.spec, primaryError);
-            try {
-              selection = await resolver.select(requestedFeatures);
-            } catch (error) {
-              if (retiredSignal.aborted || runCancelSignal.aborted) {
-                suppressFinalization = true;
-                return;
-              }
-
-              store.dispatch(
-                apiActions.generateMessageError(
-                  error instanceof Error
-                    ? error
-                    : new Error('Unknown model selection error'),
-                ),
-              );
-              break;
-            }
-
-            if (retiredSignal.aborted || runCancelSignal.aborted) {
-              suppressFinalization = true;
-              return;
-            }
-            if (!selection) {
-              break;
-            }
-            reuseAttempt = true;
-            continue;
-          }
-
           const retryable =
             !(primaryError instanceof TransportError) ||
             primaryError.retryable !== false;
@@ -532,7 +472,7 @@ export const generateMessage = createEffect((store) => {
         }
       } finally {
         releaseGeneration();
-        if (!retiredSignal.aborted && !suppressFinalization) {
+        if (!retiredSignal.aborted) {
           store.dispatch(
             apiActions.assistantTurnFinalized({
               toolCalls: store.read(selectPendingToolCalls),

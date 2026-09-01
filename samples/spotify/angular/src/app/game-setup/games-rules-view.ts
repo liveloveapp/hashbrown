@@ -123,7 +123,6 @@ export class GamesRulesViewComponent {
   rulesDescription = signal('');
 
   validation = structuredCompletionResource({
-    model: 'gpt-4.1',
     input: this.rulesDescription,
     schema: s.object('Game Rules', {
       result: s.anyOf([

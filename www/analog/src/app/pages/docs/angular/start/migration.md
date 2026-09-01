@@ -17,20 +17,52 @@ The transport and persisted-data migrations are independent. Follow only the sec
 
 The following server and custom-provider APIs are breaking changes:
 
-| Earlier releases | Current API |
-| --- | --- |
-| Completion request owned by Hashbrown | `RunAgentInput` from `@ag-ui/core` |
-| Model selected from the client request | Model selected by the server endpoint |
-| `AsyncIterable<Uint8Array>` of Hashbrown frames | `AsyncIterable<AGUIEvent>` |
+| Earlier releases                                                    | Current API                                              |
+| ------------------------------------------------------------------- | -------------------------------------------------------- |
+| Completion request owned by Hashbrown                               | `RunAgentInput` from `@ag-ui/core`                       |
+| Model selected from the client request                              | Model selected by the server endpoint                    |
+| `AsyncIterable<Uint8Array>` of Hashbrown frames                     | `AsyncIterable<AGUIEvent>`                               |
 | `encodeFrame`, `decodeFrames`, and `Frame` from `@hashbrownai/core` | Canonical event types and `EventType` from `@ag-ui/core` |
-| `application/octet-stream` response | AG-UI SSE encoded with `EventEncoder` |
-| Common POST `/chat` examples | Default POST `/run` endpoint |
+| `application/octet-stream` response                                 | AG-UI SSE encoded with `EventEncoder`                    |
+| Common POST `/chat` examples                                        | Default POST `/run` endpoint                             |
 
 Update custom providers to map native SDK streams to canonical AG-UI events. Keep provider credentials and model policy on the server, and encode events only at the HTTP boundary. See [Custom Provider](/docs/angular/platform/custom) for the event lifecycle and endpoint shape.
 
 Hashbrown no longer asks provider adapters to load, merge, or save conversations. Applications that persist chats should load the complete message history, hydrate the resource with `messages` or `setMessages(...)`, and save updated messages through their own data layer. `threadId` remains opaque AG-UI identity. See [Persist and Resume Threads](/docs/angular/recipes/threads).
 
 There is no compatibility export for the binary frame API. Migrate the server endpoint and client URL together.
+
+---
+
+## Client Model Selection
+
+Angular resources no longer accept a `model` option. The client sends an AG-UI run request to the configured transport; the server adapter chooses the provider and model.
+
+Earlier releases:
+
+```ts
+readonly chat = chatResource({
+  model: 'gpt-4o-mini',
+  system: 'You are a helpful assistant.',
+});
+```
+
+Current API:
+
+```ts
+readonly chat = chatResource({
+  system: 'You are a helpful assistant.',
+});
+```
+
+Keep the provider-specific `model` setting in your server adapter. To target another endpoint from the client, configure `apiUrl` or provide a custom `transport` instead of passing a model identifier.
+
+The following core APIs were also removed:
+
+- `ModelInput`, `ModelSpec`, and `ModelResolver`
+- `KnownModelIds` and the exported known-model identifier lists
+
+Local browser models are now transports. Replace `model: experimental_local(...)` with `transport: experimental_local(...)`. Arrays that combined local and hosted model identifiers are no longer supported; implement endpoint routing on the server, or choose an explicit client transport for the local experience.
 
 ---
 

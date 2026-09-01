@@ -183,7 +183,6 @@ import { useAssistantUiKit } from './ui-kit';
 export function Assistant() {
   const uiKit = useAssistantUiKit();
   const { messages, sendMessage } = useUiChat({
-    model: 'gpt-5',
     components: [uiKit],
   });
 

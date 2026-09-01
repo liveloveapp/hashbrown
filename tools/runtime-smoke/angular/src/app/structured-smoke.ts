@@ -69,7 +69,6 @@ export class StructuredSmoke {
   protected readonly submitted = signal('');
   protected readonly toErrorText = errorText;
   protected readonly chat = structuredChatResource({
-    model: 'gpt-4o',
     system: 'Runtime smoke system prompt.',
     schema: answerSchema,
     retries: readRetries(),

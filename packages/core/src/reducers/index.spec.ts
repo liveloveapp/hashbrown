@@ -43,7 +43,6 @@ function reduceAll(
 test('fryHashbrown accepts a developer tool named output', () => {
   const createHashbrown = () =>
     fryHashbrown({
-      model: 'test-model',
       system: 'test',
       tools: [
         {
@@ -78,7 +77,6 @@ test('init and an explicit options update set the current thread identity', () =
   const initializedState = reduceAll(
     state,
     devActions.init({
-      model: 'test-model',
       system: 'test',
       threadId: 'initial-thread',
     }),
@@ -97,7 +95,6 @@ test('an options update without a threadId preserves the current identity', () =
   const state = reduceAll(
     createState(),
     devActions.init({
-      model: 'test-model',
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -115,7 +112,6 @@ test('an explicit undefined threadId clears the current identity', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
-      model: 'test-model',
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -133,7 +129,6 @@ test('an explicit empty threadId sets the current identity', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
-      model: 'test-model',
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -151,7 +146,6 @@ test('unrelated events preserve the current thread identity', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
-      model: 'test-model',
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -265,7 +259,6 @@ test('undefined non-clearable options preserve current config values', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
-      model: 'initial-model',
       system: 'initial-system',
       debounce: 250,
       retries: 3,
@@ -276,7 +269,6 @@ test('undefined non-clearable options preserve current config values', () => {
   const nextState = reduceAll(
     state,
     devActions.updateOptions({
-      model: undefined,
       system: undefined,
       debounce: undefined,
       retries: undefined,
@@ -285,7 +277,6 @@ test('undefined non-clearable options preserve current config values', () => {
   );
 
   expect(nextState.config).toMatchObject({
-    model: 'initial-model',
     system: 'initial-system',
     debounce: 250,
     retries: 3,
@@ -305,7 +296,6 @@ test('undefined clearable options clear current config values', () => {
     createState(),
     devActions.init({
       apiUrl: 'https://example.test',
-      model: 'test-model',
       system: 'test',
       middleware: [middleware],
       transport,
@@ -328,7 +318,6 @@ test('undefined clearable options clear current config values', () => {
 
 test('public options explicitly clear the current thread identity', () => {
   const hashbrown = fryHashbrown({
-    model: 'test-model',
     system: 'test',
     threadId: 'current-thread',
   });
@@ -358,7 +347,6 @@ test('devtools state includes only the current thread identity', () => {
   try {
     fryHashbrown({
       debugName: 'thread-identity-test',
-      model: 'test-model',
       system: 'test',
       threadId: 'devtools-thread',
     });

@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application.'
 ---
+
 # Streaming
 
 Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application. Hashbrown is architected to make streaming as easy and simple to consume for you, the developer, as possible.
@@ -57,7 +58,6 @@ function usePredictedLights(
     return { sceneName, lights };
   }, [sceneName, lights]);
   return useStructuredCompletion({
-    model: 'gpt-4.1',
     input,
     system: `
       Predict the lights that will be added to the scene based on the name. For example,

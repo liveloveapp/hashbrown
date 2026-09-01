@@ -1,6 +1,5 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { ModelInput } from '@hashbrownai/core';
 import { provideHashbrown } from '../providers/provide-hashbrown.fn';
 import { chatResource } from './chat-resource.fn';
 
@@ -33,7 +32,6 @@ test('chatResource initializes with the provided message history', () => {
 
   const chat = TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'You are a helpful assistant.',
       messages,
     }),
@@ -66,7 +64,6 @@ test('chatResource allows replacing message history', () => {
 
   const chat = TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'You are a helpful assistant.',
       messages: initialMessages,
     }),
@@ -79,7 +76,6 @@ test('chatResource allows replacing message history', () => {
 
 test('chatResource updates runtime options when option signals change', () => {
   fryHashbrownMock.mockReset();
-  const model = signal<ModelInput>('gpt-4.1');
   const apiUrl = signal('/chat-a');
   const system = signal('System A');
   const threadId = signal<string | undefined>('thread-a');
@@ -92,7 +88,6 @@ test('chatResource updates runtime options when option signals change', () => {
 
   const resource = TestBed.runInInjectionContext(() =>
     chatResource({
-      model,
       apiUrl,
       system,
       threadId,
@@ -101,7 +96,6 @@ test('chatResource updates runtime options when option signals change', () => {
 
   expect(fryHashbrownMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      model: 'gpt-4.1',
       apiUrl: '/chat-a',
       system: 'System A',
       threadId: 'thread-a',
@@ -113,7 +107,6 @@ test('chatResource updates runtime options when option signals change', () => {
   expect(resource).not.toHaveProperty('threadSaveError');
   expect(resource).not.toHaveProperty('threadId');
 
-  model.set('gpt-4.2');
   apiUrl.set('/chat-b');
   system.set('System B');
   threadId.set('thread-b');
@@ -121,7 +114,6 @@ test('chatResource updates runtime options when option signals change', () => {
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      model: 'gpt-4.2',
       apiUrl: '/chat-b',
       system: 'System B',
       threadId: 'thread-b',
@@ -147,38 +139,6 @@ test('chatResource updates runtime options when option signals change', () => {
   );
 });
 
-test('chatResource preserves direct model factory options', () => {
-  fryHashbrownMock.mockReset();
-  const model = vi.fn(() => ({
-    name: 'test-model',
-    transport: vi.fn(),
-  })) as unknown as ModelInput;
-  const system = signal('System A');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
-
-  TestBed.configureTestingModule({
-    providers: [provideHashbrown({ baseUrl: '/chat' })],
-  });
-
-  TestBed.runInInjectionContext(() =>
-    chatResource({
-      model,
-      system,
-    }),
-  );
-
-  expect(fryHashbrownMock.mock.calls[0]?.[0].model).toBe(model);
-  expect(model).not.toHaveBeenCalled();
-
-  system.set('System B');
-  TestBed.flushEffects();
-  const lastOptions = getLastUpdateOptions(hashbrown);
-
-  expect(lastOptions?.model).toBe(model);
-  expect(model).not.toHaveBeenCalled();
-});
-
 test('chatResource preserves an empty apiUrl option', () => {
   fryHashbrownMock.mockReset();
   const apiUrl = signal('');
@@ -191,7 +151,6 @@ test('chatResource preserves an empty apiUrl option', () => {
 
   TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       apiUrl,
       system: 'System A',
     }),
@@ -233,7 +192,6 @@ test('chatResource preserves a literal empty apiUrl option', () => {
 
   TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       apiUrl: '',
       system: 'System A',
     }),
@@ -266,7 +224,6 @@ test('chatResource preserves an empty threadId option', () => {
 
   TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'System A',
       threadId,
     }),
@@ -308,7 +265,6 @@ test('chatResource preserves a literal empty threadId option', () => {
 
   TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'System A',
       threadId: '',
     }),
@@ -331,7 +287,7 @@ test('chatResource preserves a literal empty threadId option', () => {
 
 test('chatResource omits threadId from runtime updates when not provided', () => {
   fryHashbrownMock.mockReset();
-  const model = signal<ModelInput>('gpt-4.1');
+  const system = signal('System A');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
 
@@ -341,20 +297,14 @@ test('chatResource omits threadId from runtime updates when not provided', () =>
 
   TestBed.runInInjectionContext(() =>
     chatResource({
-      model,
-      system: 'System A',
+      system,
     }),
   );
 
-  model.set('gpt-4.2');
+  system.set('System B');
   TestBed.flushEffects();
   const lastOptions = getLastUpdateOptions(hashbrown);
 
-  expect(lastOptions).toEqual(
-    expect.objectContaining({
-      model: 'gpt-4.2',
-    }),
-  );
   expect(Object.prototype.hasOwnProperty.call(lastOptions, 'threadId')).toBe(
     false,
   );
@@ -371,7 +321,6 @@ test('chatResource throws from value and snapshots a terminal error', () => {
 
   const resource = TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'System A',
     }),
   );
@@ -402,7 +351,6 @@ test('chatResource keeps stale messages readable while loading with an error', (
 
   const resource = TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'System A',
     }),
   );
@@ -430,7 +378,6 @@ test('chatResource reload removes the last assistant response without mutating h
   });
   const resource = TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'System A',
     }),
   );
@@ -452,7 +399,6 @@ test('chatResource reload returns false when messages are empty', () => {
   });
   const resource = TestBed.runInInjectionContext(() =>
     chatResource({
-      model: 'gpt-4.1',
       system: 'System A',
     }),
   );

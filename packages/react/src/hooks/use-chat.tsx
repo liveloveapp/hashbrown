@@ -2,7 +2,6 @@ import {
   type Chat,
   fryHashbrown,
   Hashbrown,
-  type ModelInput,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
@@ -16,12 +15,6 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
  * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export interface UseChatOptions<Tools extends Chat.AnyTool> {
-  /**
-   * The LLM model to use for the chat.
-   *
-   */
-  model: ModelInput;
-
   /**
    * The system message to use for the chat.
    */
@@ -166,7 +159,6 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * ```tsx
  * const MyChatComponent = () => {
  *   const { messages, sendMessage, status } = useChat({
- *     model: 'gpt-4o',
  *     system: 'You are a helpful assistant.',
  *     tools: [],
  *   });
@@ -214,7 +206,6 @@ export function useChat<Tools extends Chat.AnyTool>(
       apiUrl: config.url,
       middleware: config.middleware,
       debugName: options.debugName,
-      model: options.model,
       system: options.system,
       messages: [...(options.messages ?? [])],
       tools,
@@ -245,7 +236,6 @@ export function useChat<Tools extends Chat.AnyTool>(
       apiUrl: config.url,
       middleware: config.middleware,
       debugName: options.debugName,
-      model: options.model,
       system: options.system,
       tools,
       debounce: options.debounceTime,
@@ -260,7 +250,6 @@ export function useChat<Tools extends Chat.AnyTool>(
     config.transport,
     options.debounceTime,
     options.debugName,
-    options.model,
     options.retries,
     options.system,
     options.transport,

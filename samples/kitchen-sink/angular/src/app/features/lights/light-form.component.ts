@@ -168,7 +168,6 @@ export class LightFormComponent {
   protected lightNames = this.store.selectSignal(selectLightNames);
 
   readonly nameCompletion = completionResource({
-    model: 'gpt-4.1-mini',
     debugName: 'nameCompletion',
     system: `
       You are an assistant that helps the user finish typing a name for a light.

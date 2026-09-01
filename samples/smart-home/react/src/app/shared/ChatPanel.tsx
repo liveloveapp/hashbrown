@@ -37,7 +37,6 @@ export const ChatPanel = () => {
     isRunningToolCalls,
     stop,
   } = useChat({
-    model: 'gpt-4o-mini',
     system:
       'You are a helpful assistant that can answer questions and help with tasks.',
     tools: [getLights, controlLight],

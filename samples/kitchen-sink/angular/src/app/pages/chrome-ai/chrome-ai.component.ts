@@ -6,11 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import {
-  Chat,
-  experimental_chrome,
-  experimental_edge,
-} from '@hashbrownai/core';
+import { Chat, experimental_local } from '@hashbrownai/core';
 import { chatResource } from '@hashbrownai/angular';
 
 @Component({
@@ -22,8 +18,8 @@ import { chatResource } from '@hashbrownai/angular';
       <h1>Chrome Prompt API Demo</h1>
       <p>
         This page attempts to run Hashbrown against Chrome's on-device Gemini
-        Nano model. When the Prompt API is unavailable, requests automatically
-        fall back to the configured HTTP transport.
+        Nano model. When the Prompt API is unavailable, the request reports an
+        error.
       </p>
 
       <div class="status-panel">
@@ -184,7 +180,7 @@ export class ChromeAiComponent {
 
   prompt = 'Draft a two-sentence bedtime story about stars.';
 
-  private readonly chromeModelSpec = experimental_chrome({
+  private readonly localTransport = experimental_local({
     events: {
       downloadRequired: (
         status: 'available' | 'unavailable' | 'downloadable' | 'downloading',
@@ -203,16 +199,14 @@ export class ChromeAiComponent {
 
   chromeChat = chatResource({
     system: `You are an eloquent on-device assistant. Mention when you are responding locally.`,
-    model: [this.chromeModelSpec, experimental_edge(), 'gemini-2.5-flash'],
+    transport: this.localTransport,
     debounce: 50,
   });
 
   constructor() {
     effect(() => {
       if (this.chromeChat.status() === 'error') {
-        this.availabilityStatus.set(
-          'Request failed; likely fell back to HTTP.',
-        );
+        this.availabilityStatus.set('The local Prompt API request failed.');
       }
     });
   }

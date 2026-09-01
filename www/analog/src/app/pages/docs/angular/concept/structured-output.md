@@ -87,18 +87,17 @@ The server adapter decides how to request structured output from its provider. I
 
 ### `StructuredChatResourceOptions`
 
-| Option             | Type                                  | Required | Description                                                     |
-| ------------------ | ------------------------------------- | -------- | --------------------------------------------------------------- |
-| `model`            | `ReactiveOption<ModelInput>`          | Yes      | The model to use for the structured chat resource               |
-| `system`           | `ReactiveOption<string>`              | Yes      | The system prompt to use for the structured chat resource       |
-| `schema`           | `s.SchemaOutput`                      | Yes      | The schema to use for the structured chat resource              |
-| `tools`            | `Tools[]`                             | No       | The tools to use for the structured chat resource               |
-| `messages`         | `Chat.Message<Output, Tools>[]`       | No       | The initial messages for the structured chat resource           |
-| `debugName`        | `string`                              | No       | The debug name for the structured chat resource                 |
-| `debounce`         | `number`                              | No       | The debounce time for the structured chat resource              |
-| `retries`          | `number`                              | No       | The number of retries for the structured chat resource          |
-| `apiUrl`           | `ReactiveOption<string>`              | No       | The API URL to use for the structured chat resource             |
-| `threadId`         | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation       |
+| Option      | Type                                  | Required | Description                                               |
+| ----------- | ------------------------------------- | -------- | --------------------------------------------------------- |
+| `system`    | `ReactiveOption<string>`              | Yes      | The system prompt to use for the structured chat resource |
+| `schema`    | `s.SchemaOutput`                      | Yes      | The schema to use for the structured chat resource        |
+| `tools`     | `Tools[]`                             | No       | The tools to use for the structured chat resource         |
+| `messages`  | `Chat.Message<Output, Tools>[]`       | No       | The initial messages for the structured chat resource     |
+| `debugName` | `string`                              | No       | The debug name for the structured chat resource           |
+| `debounce`  | `number`                              | No       | The debounce time for the structured chat resource        |
+| `retries`   | `number`                              | No       | The number of retries for the structured chat resource    |
+| `apiUrl`    | `ReactiveOption<string>`              | No       | The API URL to use for the structured chat resource       |
+| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation |
 
 ---
 
@@ -183,16 +182,15 @@ When the user types a scene name, the LLM will predict which lights should be ad
 
 ### `StructuredCompletionResourceOptions`
 
-| Option             | Type                                  | Required | Description                                                     |
-| ------------------ | ------------------------------------- | -------- | --------------------------------------------------------------- |
-| `model`            | `ReactiveOption<ModelInput>`          | Yes      | The model to use for the structured completion resource         |
-| `input`            | `Signal<null \| undefined \| Input>`  | Yes      | The input to the structured completion resource                 |
-| `schema`           | `s.SchemaOutput`                      | Yes      | The schema to use for the structured completion resource        |
-| `system`           | `ReactiveOption<string>`              | Yes      | The system prompt to use for the structured completion resource |
-| `tools`            | `Chat.AnyTool[]`                      | No       | The tools to use for the structured completion resource         |
-| `debugName`        | `string`                              | No       | The debug name for the structured completion resource           |
-| `apiUrl`           | `ReactiveOption<string>`              | No       | The API URL to use for the structured completion resource       |
-| `threadId`         | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation       |
+| Option      | Type                                  | Required | Description                                                     |
+| ----------- | ------------------------------------- | -------- | --------------------------------------------------------------- |
+| `input`     | `Signal<null \| undefined \| Input>`  | Yes      | The input to the structured completion resource                 |
+| `schema`    | `s.SchemaOutput`                      | Yes      | The schema to use for the structured completion resource        |
+| `system`    | `ReactiveOption<string>`              | Yes      | The system prompt to use for the structured completion resource |
+| `tools`     | `Chat.AnyTool[]`                      | No       | The tools to use for the structured completion resource         |
+| `debugName` | `string`                              | No       | The debug name for the structured completion resource           |
+| `apiUrl`    | `ReactiveOption<string>`              | No       | The API URL to use for the structured completion resource       |
+| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation       |
 
 ---
 

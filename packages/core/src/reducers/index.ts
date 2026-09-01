@@ -135,7 +135,6 @@ export const selectMiddleware = select(
   selectConfigState,
   fromConfig.selectMiddleware,
 );
-export const selectModel = select(selectConfigState, fromConfig.selectModel);
 export const selectSystem = select(selectConfigState, fromConfig.selectSystem);
 export const selectDebounce = select(
   selectConfigState,

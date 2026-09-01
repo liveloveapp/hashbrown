@@ -16,7 +16,6 @@ import { s } from '@hashbrownai/core';
 export class App {
   chart = inject(ChartRuntime);
   chat = structuredChatResource({
-    model: 'gpt-5',
     system: `Build an interactive chart using chart.js `,
     tools: [
       createToolJavaScript({

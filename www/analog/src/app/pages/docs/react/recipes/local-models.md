@@ -2,17 +2,17 @@
 title: 'Local Browser Models (Chrome & Edge)'
 meta:
   - name: description
-    content: "Run Hashbrown on Chrome's Gemini Nano or Edge's Phi-4-mini using the experimental_local transport, with automatic cloud fallback."
+    content: "Run Hashbrown on Chrome's Gemini Nano or Edge's Phi-4-mini using the experimental_local transport."
 ---
 
 # Local Models (Chrome + Edge)
 
-<p class="subtitle">Ship AI features that stay on the user's device and fall back to the network when needed.</p>
+<p class="subtitle">Ship AI features that stay on the user's device.</p>
 
 What you'll learn:
 
 1. Enable the built-in models in Chrome or Edge (flags, hardware, languages)
-2. Wire `experimental_local` with cloud fallbacks in React
+2. Configure `experimental_local` as a React hook transport
 3. Surface download/availability state in your UI
 4. Keep structured outputs working without tool calls
 
@@ -22,7 +22,7 @@ What you'll learn:
 
 - **Privacy + offline**: prompts never leave the device once the model is downloaded.
 - **Zero per-request cost**: no API key usage while the browser model is used.
-- **Low latency**: tokens stream locally; Hashbrown framing stays the same.
+- **Low latency**: tokens stream locally through the same AG-UI event lifecycle used by HTTP transports.
 
 ---
 
@@ -41,14 +41,14 @@ After toggling flags, restart the browser and run `await LanguageModel.availabil
 
 - `useStructuredCompletion` from `@hashbrownai/react` to stream typed outputs.
 - `experimental_local()` from `@hashbrownai/core/transport` tries Chrome first, then Edge.
-- Pass a model array for fallback; Hashbrown advances on `FEATURE_UNSUPPORTED` or `PLATFORM_UNSUPPORTED`, but retries stay on the chosen adapter for generation errors.
+- Pass the factory through a hook's `transport` option. Provider and model selection for HTTP requests remains on the server.
 - Event hooks (`availability`, `downloadRequired`, `downloadProgress`) let you mirror browser download state in React state.
 
 ---
 
 ## 3. Quickstart: local-first structured completion
 
-This component streams a two-day itinerary schema. It prefers the on-device model and falls back to `gpt-5-mini` if local is unavailable or unsupported.
+This component streams a two-day itinerary schema from an on-device model.
 
 <hb-code-example header="LocalItinerary.tsx">
 
@@ -88,16 +88,13 @@ export function LocalItinerary() {
     input,
     system: 'Return a two-day itinerary as JSON that matches the schema.',
     schema: ItinerarySchema,
-    model: [
-      experimental_local({
-        events: {
-          availability: setAvailability,
-          downloadRequired: () => setDownloadRequired(true),
-          downloadProgress: setDownloadProgress,
-        },
-      }),
-      'gpt-5-mini', // cloud fallback
-    ],
+    transport: experimental_local({
+      events: {
+        availability: setAvailability,
+        downloadRequired: () => setDownloadRequired(true),
+        downloadProgress: setDownloadProgress,
+      },
+    }),
   });
 
   return (
@@ -140,7 +137,7 @@ export function LocalItinerary() {
 **How it works**
 
 - `experimental_local` creates a stable transport that reuses a browser session; events keep your UI in sync with download state.
-- If tools are requested, local returns `FEATURE_UNSUPPORTED` and Hashbrown falls back to `gpt-5-mini`.
+- If tools are requested, local reports `FEATURE_UNSUPPORTED` because browser prompt APIs do not support Hashbrown tools.
 - `reload` lets users retry after enabling flags or freeing disk space without remounting the component.
 
 ---
@@ -148,6 +145,6 @@ export function LocalItinerary() {
 ## 4. Troubleshooting (React focus)
 
 - `PLATFORM_UNSUPPORTED`: API missing, wrong browser channel, or flags off. Re-check the table above.
-- `FEATURE_UNSUPPORTED`: tools requested or schema unsupported; ensure a cloud fallback is present.
+- `FEATURE_UNSUPPORTED`: tools were requested or the schema is unsupported. Use an AG-UI HTTP endpoint for that feature.
 - Slow first token: the model may still be downloading; keep surfacing `downloadProgress`.
 - Model evicted because of low disk: rerun with `reload` after the browser re-downloads the model.

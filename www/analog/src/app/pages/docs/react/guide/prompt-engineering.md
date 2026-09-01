@@ -2,8 +2,9 @@
 title: 'Prompt Engineering: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Hashbrown''s React SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the React SDK.'
+    content: "Hashbrown's React SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the React SDK."
 ---
+
 # Prompt Engineering
 
 Hashbrown's React SDK enables you to build advanced prompt-driven chat and completion UIs with full type safety and composability. This guide covers best practices for prompt engineering using the React SDK.
@@ -16,7 +17,6 @@ The `system` prompt sets the context and behavior for the model. You provide it 
 import { useChat } from '@hashbrownai/react';
 
 const { messages, sendMessage } = useChat({
-  model: 'gpt-4',
   system: `You are a helpful assistant. Answer concisely.`,
 });
 ```
@@ -35,10 +35,11 @@ For persistence, pruning, and history mutation examples, see [Message History](/
 ```tsx
 import { useChat } from '@hashbrownai/react';
 
-const initialMessages = [{ role: 'user', content: 'What is the capital of France?' }];
+const initialMessages = [
+  { role: 'user', content: 'What is the capital of France?' },
+];
 
 const { messages, setMessages } = useChat({
-  model: 'gpt-4',
   system: 'You are a geography expert.',
   messages: initialMessages,
 });
@@ -64,7 +65,6 @@ const outputSchema = s.object('City info', {
 });
 
 const { messages, sendMessage } = useStructuredChat({
-  model: 'gpt-4',
   system: 'Provide city information as structured data.',
   schema: outputSchema,
 });
@@ -96,7 +96,6 @@ const getWeather = useTool({
 });
 
 const { messages, sendMessage } = useChat({
-  model: 'gpt-4',
   system: 'You can call tools to fetch data.',
   tools: [getWeather],
 });
@@ -114,7 +113,15 @@ For rich, component-based outputs, use the `useUiChat` hook and expose React com
 ```tsx
 import { useUiChat, exposeComponent } from '@hashbrownai/react';
 
-const CityCard = ({ name, country, population }: { name: string; country: string; population: number }) => (
+const CityCard = ({
+  name,
+  country,
+  population,
+}: {
+  name: string;
+  country: string;
+  population: number;
+}) => (
   <div>
     <h2>{name}</h2>
     <p>{country}</p>
@@ -133,7 +140,6 @@ const exposedCityCard = exposeComponent(CityCard, {
 });
 
 const { messages, sendMessage } = useUiChat({
-  model: 'gpt-4',
   system: 'Render city info using the CityCard component.',
   components: [exposedCityCard],
 });
@@ -151,7 +157,6 @@ const { messages, sendMessage } = useUiChat({
 
 ```tsx
 const { error, exhaustedRetries } = useChat({
-  model: 'gpt-4',
   system: 'You are a helpful assistant.',
   debugName: 'support-chat',
 });

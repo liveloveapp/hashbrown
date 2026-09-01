@@ -2,7 +2,6 @@ import {
   Chat,
   fryHashbrown,
   Hashbrown,
-  type ModelInput,
   s,
   type TransportOrFactory,
 } from '@hashbrownai/core';
@@ -30,12 +29,6 @@ export interface UseStructuredChatOptions<
   Tools extends Chat.AnyTool,
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 > {
-  /**
-   * The LLM model to use for the chat.
-   *
-   */
-  model: ModelInput;
-
   /**
    * The system message to use for the chat.
    */
@@ -199,7 +192,6 @@ export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
  * In this example, the LLM will respond with a JSON object containing the translations of the input message into English, Spanish, and French.
  * ```tsx
  * const { messages, sendMessage } = useStructuredChat({
- *   model: 'gpt-4o',
  *   system: 'You are a helpful translator that provides accurate translations.',
  *   schema: s.object('Translations', {
  *     english: s.string('English translation'),
@@ -236,7 +228,6 @@ export function useStructuredChat<
     hashbrown.current = fryHashbrown<Schema, Tools, Output>({
       apiUrl: config.url,
       middleware: config.middleware,
-      model: options.model,
       system: options.system,
       responseSchema: schema,
       messages: [...(options.messages ?? [])],
@@ -268,7 +259,6 @@ export function useStructuredChat<
     getHashbrown().updateOptions({
       apiUrl: config.url,
       middleware: config.middleware,
-      model: options.model,
       system: options.system,
       responseSchema: schema,
       tools,
@@ -283,7 +273,6 @@ export function useStructuredChat<
     config.url,
     config.middleware,
     config.transport,
-    options.model,
     options.system,
     options.debugName,
     schema,

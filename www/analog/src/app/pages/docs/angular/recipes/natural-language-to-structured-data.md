@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'This recipe shows how to replace complex form controls with a single natural-language input in Angular. We use a large-language model to parse what the user types and convert it into structured data that your backend already expects.'
 ---
+
 # Converting Natural Language to Structured Data
 
 This recipe shows how to replace complex form controls with a single natural-language input in Angular. We use a large-language model to parse what the user types and convert it into structured data that your backend already expects. You should be comfortable with:
@@ -270,7 +271,6 @@ export class ExpenseNlComponent {
   private requestInput = signal<string | null>(null);
 
   completion = structuredCompletionResource({
-    model: 'gpt-4.1',
     debugName: 'expense-nl',
     input: this.requestInput,
     tools: [listExpenseCategories],

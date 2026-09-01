@@ -66,7 +66,6 @@ export class ArticleAgent {
   readonly error = output<string>();
 
   protected agent = structuredCompletionResource({
-    model: 'gpt-5.1',
     input: this.article,
     schema: resultSchema,
     tools: [searchFastFoodItemsTool],

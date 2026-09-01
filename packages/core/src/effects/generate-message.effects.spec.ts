@@ -7,7 +7,6 @@ import {
   selectApiUrl,
   selectDebounce,
   selectMiddleware,
-  selectModel,
   selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
@@ -23,23 +22,11 @@ import {
   selectUiRequested,
 } from '../reducers';
 import { s } from '../schema';
-import {
-  ModelResolver,
-  TransportError,
-  type TransportRequest,
-} from '../transport';
+import { TransportError, type TransportRequest } from '../transport';
 import {
   _updateMessagesWithDelta,
   generateMessage,
 } from './generate-message.effects';
-
-jest.mock('../transport', () => {
-  const actual = jest.requireActual('../transport');
-  return {
-    ...actual,
-    ModelResolver: jest.fn(),
-  };
-});
 
 type SelectorKey = (state: never) => unknown;
 type ActionLike = { type: string; payload?: unknown };
@@ -52,10 +39,9 @@ type MockTransportResponse = {
   events?: AsyncIterable<AGUIEvent>;
   dispose?: jest.Mock;
 };
-type TestSelection = {
-  spec: { name: string };
-  transport: { send: jest.Mock };
-  metadata: { chosenSpec: string; skippedSpecs: [] };
+let configuredTransport: { name: string; send: jest.Mock } = {
+  name: 'unconfigured-test-transport',
+  send: jest.fn(),
 };
 
 const generationSilentlyRetiredType =
@@ -78,7 +64,6 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
     [selectApiUrl, 'https://example.test'],
     [selectMiddleware, undefined],
-    [selectModel, 'stub-model'],
     [selectResponseSchema, undefined],
     [
       selectApiMessages,
@@ -91,7 +76,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectTools, []],
     [selectSystem, 'You are a test bot'],
     [selectThreadId, undefined],
-    [selectTransport, { kind: 'test-transport' }],
+    [selectTransport, configuredTransport],
     [selectUiRequested, false],
     [selectRawStreamingMessage, null],
     [selectRawStreamingToolCalls, []],
@@ -163,68 +148,15 @@ function successfulEvents(
   })();
 }
 
-const ModelResolverMock = jest.mocked(ModelResolver);
-
 function makeSelection(
   transportResponseFactory: (
     request: TransportRequest,
   ) => Promise<MockTransportResponse>,
 ) {
   const send = jest.fn().mockImplementation(transportResponseFactory);
-  const selection = createTestSelection('selected-model', send);
-  const select = jest.fn(async () => selection);
-  const skipFromError = jest.fn();
-  ModelResolverMock.mockImplementation(
-    () =>
-      ({
-        select,
-        skipFromError,
-        getMetadata: jest.fn(() => selection.metadata),
-      }) as unknown as ModelResolver,
-  );
+  configuredTransport = { name: 'test-transport', send };
 
-  return { select, send, selection, skipFromError };
-}
-
-function createTestSelection(name: string, send: jest.Mock): TestSelection {
-  return {
-    spec: { name },
-    transport: { send },
-    metadata: { chosenSpec: name, skippedSpecs: [] },
-  };
-}
-
-function mockSelectionSequence(selections: Array<TestSelection | undefined>) {
-  const select = jest.fn();
-  for (const selection of selections) {
-    select.mockResolvedValueOnce(selection);
-  }
-  select.mockResolvedValue(undefined);
-  const skipFromError = jest.fn();
-  ModelResolverMock.mockImplementation(
-    () =>
-      ({
-        select,
-        skipFromError,
-        getMetadata: jest.fn(() => ({ skippedSpecs: [] })),
-      }) as unknown as ModelResolver,
-  );
-
-  return { select, skipFromError };
-}
-
-function mockResolverSelect(select: jest.Mock) {
-  const skipFromError = jest.fn();
-  ModelResolverMock.mockImplementation(
-    () =>
-      ({
-        select,
-        skipFromError,
-        getMetadata: jest.fn(() => ({ skippedSpecs: [] })),
-      }) as unknown as ModelResolver,
-  );
-
-  return { skipFromError };
+  return { send };
 }
 
 function getDispatchedEvents(actions: ActionLike[]) {
@@ -474,9 +406,9 @@ test('updateMessagesWithDelta returns null when there is nothing to update', () 
   expect(message).toBeNull();
 });
 
-test('configured thread with no messages sends no request and never selects', async () => {
+test('configured thread with no messages sends no request', async () => {
   jest.clearAllMocks();
-  const { select, send } = makeSelection(async (request) => ({
+  const { send } = makeSelection(async (request) => ({
     events: successfulEvents(request),
   }));
   const store = createTestStore(
@@ -490,133 +422,24 @@ test('configured thread with no messages sends no request and never selects', as
 
   await store.trigger(internalActions.sizzle());
 
-  expect(select).not.toHaveBeenCalled();
   expect(send).not.toHaveBeenCalled();
 
   teardown?.();
 });
 
-test.each(['undefined', 'rejection'] as const)(
-  'supersession owns a late initial selection %s',
-  async (settlement) => {
-    jest.clearAllMocks();
-    const selectionStarted = createDeferred<void>();
-    const delayedSelection = createDeferred<TestSelection | undefined>();
-    const secondSend = jest.fn(async (request: TransportRequest) => ({
-      events: successfulEvents(request),
-    }));
-    const secondSelection = createTestSelection('second', secondSend);
-    const select = jest
-      .fn()
-      .mockImplementationOnce(() => {
-        selectionStarted.resolve();
-        return delayedSelection.promise;
-      })
-      .mockResolvedValueOnce(secondSelection);
-    mockResolverSelect(select);
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([
-        [
-          selectRawStreamingMessage,
-          { role: 'assistant', content: 'Second', toolCallIds: [] },
-        ],
-      ]),
-    );
-    const teardown = generateMessage(store);
-
-    const firstGeneration = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
-    );
-    await selectionStarted.promise;
-    await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
-    );
-    const actionsBeforeSettlement = [...store.actions];
-    if (settlement === 'undefined') {
-      delayedSelection.resolve(undefined);
-    } else {
-      delayedSelection.reject(new Error('late selection failure'));
-    }
-    await expect(firstGeneration).resolves.toBeUndefined();
-
-    expect(store.actions).toEqual(actionsBeforeSettlement);
-    expect(secondSend).toHaveBeenCalledTimes(1);
-    expect(
-      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-    ).toHaveLength(1);
-
-    teardown?.();
-  },
-);
-
-test.each(['undefined', 'rejection'] as const)(
-  'explicit stop owns a late initial selection %s',
-  async (settlement) => {
-    jest.clearAllMocks();
-    const selectionStarted = createDeferred<void>();
-    const delayedSelection = createDeferred<TestSelection | undefined>();
-    const select = jest.fn(() => {
-      selectionStarted.resolve();
-      return delayedSelection.promise;
-    });
-    mockResolverSelect(select);
-    const store = createTestStore();
-    const teardown = generateMessage(store);
-
-    const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-    );
-    await selectionStarted.promise;
-    await store.trigger(devActions.stopMessageGeneration(true));
-    if (settlement === 'undefined') {
-      delayedSelection.resolve(undefined);
-    } else {
-      delayedSelection.reject(new Error('late selection failure'));
-    }
-    await expect(generation).resolves.toBeUndefined();
-
-    expect(store.actions).toHaveLength(0);
-
-    teardown?.();
-  },
-);
-
-test.each(['undefined', 'rejection'] as const)(
-  'effect teardown owns a late initial selection %s',
-  async (settlement) => {
-    jest.clearAllMocks();
-    const selectionStarted = createDeferred<void>();
-    const delayedSelection = createDeferred<TestSelection | undefined>();
-    const select = jest.fn(() => {
-      selectionStarted.resolve();
-      return delayedSelection.promise;
-    });
-    mockResolverSelect(select);
-    const store = createTestStore();
-    const teardown = generateMessage(store);
-
-    const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-    );
-    await selectionStarted.promise;
-    teardown?.();
-    if (settlement === 'undefined') {
-      delayedSelection.resolve(undefined);
-    } else {
-      delayedSelection.reject(new Error('late selection failure'));
-    }
-    await expect(generation).resolves.toBeUndefined();
-
-    expect(store.actions).toHaveLength(0);
-  },
-);
-
-test('active initial selection rejection dispatches the selection error', async () => {
+test('transport factory failure dispatches the initialization error', async () => {
   jest.clearAllMocks();
-  const selectionError = new Error('selection failed');
-  const select = jest.fn().mockRejectedValue(selectionError);
-  mockResolverSelect(select);
-  const store = createTestStore();
+  const initializationError = new Error('transport initialization failed');
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [
+        selectTransport,
+        () => {
+          throw initializationError;
+        },
+      ],
+    ]),
+  );
   const teardown = generateMessage(store);
 
   await store.trigger(
@@ -625,7 +448,7 @@ test('active initial selection rejection dispatches the selection error', async 
 
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
-  ).toEqual([apiActions.generateMessageError(selectionError)]);
+  ).toEqual([apiActions.generateMessageError(initializationError)]);
   expect(
     getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
   ).toHaveLength(0);
@@ -1191,8 +1014,8 @@ test('continues client tools with isolated reasoning details in transcript order
     };
   });
   const chat = fryHashbrown({
-    model: 'stub-model',
     system: 'You are a test bot',
+    transport: configuredTransport,
     tools: [
       {
         name: 'getWeather',
@@ -1408,7 +1231,7 @@ test('continues client tools with isolated reasoning details in transcript order
   teardown();
 });
 
-test('sends one RunAgentInput and requests only tools, structured, and ui', async () => {
+test('sends one RunAgentInput with tools, structured output, and UI metadata', async () => {
   jest.clearAllMocks();
   const responseSchema = s.object('answer', {
     answer: s.string('answer text'),
@@ -1420,7 +1243,7 @@ test('sends one RunAgentInput and requests only tools, structured, and ui', asyn
     handler: async () => undefined,
   };
   const dispose = jest.fn();
-  const { select, send } = makeSelection(async (request) => ({
+  const { send } = makeSelection(async (request) => ({
     events: successfulEvents(request),
     dispose,
   }));
@@ -1452,11 +1275,6 @@ test('sends one RunAgentInput and requests only tools, structured, and ui', asyn
   );
 
   const request = send.mock.calls[0]?.[0];
-  expect(select).toHaveBeenCalledWith({
-    tools: true,
-    structured: true,
-    ui: true,
-  });
   expect(Object.keys(request).sort()).toEqual(
     ['attempt', 'input', 'maxAttempts', 'requestId', 'signal'].sort(),
   );
@@ -1473,148 +1291,6 @@ test('sends one RunAgentInput and requests only tools, structured, and ui', asyn
     expect.objectContaining({ name: 'search' }),
   ]);
   expect(dispose).toHaveBeenCalledTimes(1);
-
-  teardown?.();
-});
-
-test.each(['FEATURE_UNSUPPORTED', 'PLATFORM_UNSUPPORTED'] as const)(
-  'falls back after %s without consuming a retry and preserves thread identity',
-  async (code) => {
-    jest.clearAllMocks();
-    const firstDispose = jest.fn();
-    const secondDispose = jest.fn();
-    const unsupportedSend = jest.fn<
-      Promise<MockTransportResponse>,
-      [TransportRequest]
-    >(async () => ({
-      events: {
-        [Symbol.asyncIterator]() {
-          return {
-            async next() {
-              throw new TransportError('unsupported transport', {
-                retryable: false,
-                code,
-              });
-            },
-          };
-        },
-      },
-      dispose: firstDispose,
-    }));
-    const replacementSend = jest.fn(async (request: TransportRequest) => ({
-      events: successfulEvents(request),
-      dispose: secondDispose,
-    }));
-    const firstSelection = createTestSelection('unsupported', unsupportedSend);
-    const secondSelection = createTestSelection('replacement', replacementSend);
-    const { select, skipFromError } = mockSelectionSequence([
-      firstSelection,
-      secondSelection,
-    ]);
-    const store = createTestStore(
-      new Map<SelectorKey, unknown>([
-        [
-          selectRawStreamingMessage,
-          { role: 'assistant', content: 'Done', toolCallIds: [] },
-        ],
-      ]),
-    );
-    const teardown = generateMessage(store);
-
-    await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-    );
-
-    const firstRequest = unsupportedSend.mock.calls[0]?.[0];
-    const secondRequest = replacementSend.mock.calls[0]?.[0];
-    expect(select).toHaveBeenCalledTimes(2);
-    expect(skipFromError).toHaveBeenCalledWith(
-      firstSelection.spec,
-      expect.objectContaining({ code }),
-    );
-    expect(firstRequest?.attempt).toBe(1);
-    expect(secondRequest?.attempt).toBe(1);
-    expect(firstRequest?.input?.threadId).toBe(secondRequest?.input?.threadId);
-    expect(firstDispose).toHaveBeenCalledTimes(1);
-    expect(secondDispose).toHaveBeenCalledTimes(1);
-
-    teardown?.();
-  },
-);
-
-test.each(['undefined', 'rejection'] as const)(
-  'explicit stop owns a late fallback selection %s',
-  async (settlement) => {
-    jest.clearAllMocks();
-    const fallbackStarted = createDeferred<void>();
-    const delayedFallback = createDeferred<TestSelection | undefined>();
-    const unsupportedError = new TransportError('unsupported transport', {
-      retryable: false,
-      code: 'FEATURE_UNSUPPORTED',
-    });
-    const unsupportedSend = jest.fn().mockRejectedValue(unsupportedError);
-    const firstSelection = createTestSelection('unsupported', unsupportedSend);
-    const select = jest
-      .fn()
-      .mockResolvedValueOnce(firstSelection)
-      .mockImplementationOnce(() => {
-        fallbackStarted.resolve();
-        return delayedFallback.promise;
-      });
-    const { skipFromError } = mockResolverSelect(select);
-    const store = createTestStore();
-    const teardown = generateMessage(store);
-
-    const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-    );
-    await fallbackStarted.promise;
-    await store.trigger(devActions.stopMessageGeneration(true));
-    const actionsBeforeSettlement = [...store.actions];
-    if (settlement === 'undefined') {
-      delayedFallback.resolve(undefined);
-    } else {
-      delayedFallback.reject(new Error('late fallback failure'));
-    }
-    await expect(generation).resolves.toBeUndefined();
-
-    expect(skipFromError).toHaveBeenCalledWith(
-      firstSelection.spec,
-      unsupportedError,
-    );
-    expect(store.actions).toEqual(actionsBeforeSettlement);
-
-    teardown?.();
-  },
-);
-
-test('active fallback selection rejection dispatches the selection error', async () => {
-  jest.clearAllMocks();
-  const unsupportedError = new TransportError('unsupported transport', {
-    retryable: false,
-    code: 'FEATURE_UNSUPPORTED',
-  });
-  const fallbackError = new Error('fallback selection failed');
-  const unsupportedSend = jest.fn().mockRejectedValue(unsupportedError);
-  const firstSelection = createTestSelection('unsupported', unsupportedSend);
-  const select = jest
-    .fn()
-    .mockResolvedValueOnce(firstSelection)
-    .mockRejectedValueOnce(fallbackError);
-  mockResolverSelect(select);
-  const store = createTestStore();
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-
-  expect(
-    getActionsOfType(store.actions, apiActions.generateMessageError.type),
-  ).toEqual([
-    apiActions.generateMessageError(unsupportedError),
-    apiActions.generateMessageError(fallbackError),
-  ]);
 
   teardown?.();
 });

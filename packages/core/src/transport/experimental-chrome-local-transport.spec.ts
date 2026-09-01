@@ -1,6 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { type TransportRequest } from './transport';
-import { ExperimentalChromeLocalTransport } from './experimental-chrome-local-transport';
+import {
+  experimental_chrome,
+  ExperimentalChromeLocalTransport,
+} from './experimental-chrome-local-transport';
 
 const responseSchema = {
   type: 'object',
@@ -86,6 +89,14 @@ function createTextStream(chunks: string[]): ReadableStream<string> {
     },
   });
 }
+
+test('experimental_chrome creates a Chrome local transport factory', () => {
+  const factory = experimental_chrome();
+
+  const transport = factory();
+
+  expect(transport).toBeInstanceOf(ExperimentalChromeLocalTransport);
+});
 
 function createDeferred<T>() {
   let resolve: (value: T | PromiseLike<T>) => void = () => undefined;
