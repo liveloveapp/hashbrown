@@ -1,4 +1,4 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import {
@@ -19,36 +19,19 @@ import {
   selectUiRequested,
 } from '../reducers';
 import { s } from '../schema';
+import { resolveTransport, TransportError } from '../transport';
 import {
-  resolveTransport,
-  TransportError,
-  type TransportResponse,
-} from '../transport';
+  type AgUiRunAttemptOutcome,
+  runAgUiAttempt,
+} from '../transport/ag-ui-run-driver';
 import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
 import { sleep, switchAsync } from '../utils/async';
 import { updateAssistantMessage } from '../utils/assistant-message';
 import { createEffect } from '../utils/micro-ngrx';
 
-type ActiveRun = {
-  threadId: string;
-  runId: string;
-  terminal: boolean;
-};
-
 type ActiveGeneration = {
   threadId: string | undefined;
 };
-
-type EventIterationResult =
-  | { kind: 'event'; result: IteratorResult<AGUIEvent> }
-  | { kind: 'cancelled' }
-  | { kind: 'retired' };
-
-type RunOutcome =
-  | { kind: 'finished' }
-  | { kind: 'server-error'; error: Error }
-  | { kind: 'cancelled' }
-  | { kind: 'retired' };
 
 export const generateMessage = createEffect((store) => {
   const effectAbortController = new AbortController();
@@ -206,45 +189,21 @@ export const generateMessage = createEffect((store) => {
             maxAttempts: retries + 1,
             requestId,
           };
-          let transportResponse: TransportResponse | undefined;
-          let eventIterator: AsyncIterator<AGUIEvent> | undefined;
-          let iteratorDone = false;
-          let cleanedUp = false;
-          let activeRun: ActiveRun | undefined;
-
-          const cleanup = async () => {
-            if (cleanedUp) {
-              return;
-            }
-            cleanedUp = true;
-
-            const cleanupTasks: Promise<unknown>[] = [];
-            if (!iteratorDone && eventIterator?.return) {
-              cleanupTasks.push(
-                Promise.resolve().then(() => eventIterator?.return?.()),
-              );
-            }
-            if (transportResponse?.dispose) {
-              cleanupTasks.push(
-                Promise.resolve().then(() => transportResponse?.dispose?.()),
-              );
-            }
-
-            await Promise.allSettled(cleanupTasks);
-          };
+          let runStarted = false;
+          let runTerminal = false;
 
           const synthesizeRunError = (
             message: string,
             allowCancelled = false,
           ) => {
-            if (!activeRun || activeRun.terminal || retiredSignal.aborted) {
+            if (!runStarted || runTerminal || retiredSignal.aborted) {
               return;
             }
             if (runCancelSignal.aborted && !allowCancelled) {
               return;
             }
 
-            activeRun = { ...activeRun, terminal: true };
+            runTerminal = true;
             store.dispatch(
               apiActions.generateMessageEvent({
                 type: EventType.RUN_ERROR,
@@ -253,178 +212,41 @@ export const generateMessage = createEffect((store) => {
             );
           };
 
-          let outcome: RunOutcome | undefined;
+          let outcome: AgUiRunAttemptOutcome | undefined;
           let primaryError: Error | undefined;
           try {
-            transportResponse = await transport.send(eventRequest);
-
-            if (retiredSignal.aborted) {
-              outcome = { kind: 'retired' };
-            } else if (runCancelSignal.aborted) {
-              outcome = { kind: 'cancelled' };
-            } else {
-              const events = transportResponse.events;
-              if (
-                !events ||
-                typeof events[Symbol.asyncIterator] !== 'function'
-              ) {
-                throw new TransportError(
-                  'Transport response did not provide an event stream',
-                  { retryable: true, code: 'PROTOCOL_ERROR' },
+            outcome = await runAgUiAttempt({
+              transport,
+              request: eventRequest,
+              cancelSignal: runCancelSignal,
+              retiredSignal,
+              onStarted: () => {
+                store.dispatch(
+                  apiActions.generateMessageStart({
+                    responseSchema,
+                    toolsByName,
+                  }),
                 );
-              }
-              eventIterator = events[Symbol.asyncIterator]();
-
-              while (!outcome) {
-                const iteration = await _nextEvent(
-                  eventIterator,
-                  retiredSignal,
-                  runCancelSignal,
-                );
-
-                if (iteration.kind === 'retired') {
-                  outcome = { kind: 'retired' };
-                  break;
-                }
-                if (iteration.kind === 'cancelled') {
-                  outcome = { kind: 'cancelled' };
-                  break;
-                }
-
-                const { result } = iteration;
-                if (result.done) {
-                  iteratorDone = true;
-                  if (!activeRun) {
-                    throw new TransportError(
-                      'Generation stream ended before RUN_STARTED',
-                      { retryable: true, code: 'PROTOCOL_ERROR' },
-                    );
-                  }
-                  if (!activeRun.terminal) {
-                    throw new TransportError(
-                      'Generation stream ended before RUN_FINISHED or RUN_ERROR',
-                      { retryable: true, code: 'PROTOCOL_ERROR' },
-                    );
-                  }
-                  break;
-                }
-
-                if (retiredSignal.aborted) {
-                  outcome = { kind: 'retired' };
-                  break;
-                }
-                if (runCancelSignal.aborted) {
-                  outcome = { kind: 'cancelled' };
-                  break;
-                }
-
-                const event = result.value;
-                if (!activeRun) {
-                  if (event.type !== EventType.RUN_STARTED) {
-                    throw new TransportError(
-                      `Received ${event.type} before RUN_STARTED`,
-                      { retryable: true, code: 'PROTOCOL_ERROR' },
-                    );
-                  }
-                  if (
-                    event.threadId !== threadId ||
-                    event.runId !== requestId
-                  ) {
-                    throw new TransportError(
-                      'RUN_STARTED identity does not match the attempted run',
-                      { retryable: true, code: 'PROTOCOL_ERROR' },
-                    );
-                  }
-
-                  if (retiredSignal.aborted || runCancelSignal.aborted) {
-                    outcome = retiredSignal.aborted
-                      ? { kind: 'retired' }
-                      : { kind: 'cancelled' };
-                    break;
-                  }
-                  store.dispatch(
-                    apiActions.generateMessageStart({
-                      responseSchema,
-                      toolsByName,
-                    }),
-                  );
-                  if (retiredSignal.aborted || runCancelSignal.aborted) {
-                    outcome = retiredSignal.aborted
-                      ? { kind: 'retired' }
-                      : { kind: 'cancelled' };
-                    break;
-                  }
-                  activeRun = {
-                    threadId: event.threadId,
-                    runId: event.runId,
-                    terminal: false,
-                  };
-                  store.dispatch(apiActions.generateMessageEvent(event));
-                  continue;
-                }
-
+              },
+              onEvent: (event) => {
                 if (event.type === EventType.RUN_STARTED) {
-                  throw new TransportError('Received duplicate RUN_STARTED', {
-                    retryable: true,
-                    code: 'PROTOCOL_ERROR',
-                  });
+                  runStarted = true;
+                }
+                if (
+                  event.type === EventType.RUN_FINISHED ||
+                  event.type === EventType.RUN_ERROR
+                ) {
+                  runTerminal = true;
                 }
 
-                if (event.type === EventType.RUN_FINISHED) {
-                  if (
-                    event.threadId !== activeRun.threadId ||
-                    event.runId !== activeRun.runId
-                  ) {
-                    throw new TransportError(
-                      'RUN_FINISHED identity does not match the active run',
-                      { retryable: true, code: 'PROTOCOL_ERROR' },
-                    );
-                  }
-
-                  activeRun = { ...activeRun, terminal: true };
-                  if (!retiredSignal.aborted && !runCancelSignal.aborted) {
-                    store.dispatch(apiActions.generateMessageEvent(event));
-                    outcome = { kind: 'finished' };
-                  } else {
-                    outcome = retiredSignal.aborted
-                      ? { kind: 'retired' }
-                      : { kind: 'cancelled' };
-                  }
-                  break;
-                }
-
-                if (event.type === EventType.RUN_ERROR) {
-                  activeRun = { ...activeRun, terminal: true };
-                  if (!retiredSignal.aborted && !runCancelSignal.aborted) {
-                    store.dispatch(apiActions.generateMessageEvent(event));
-                    outcome = {
-                      kind: 'server-error',
-                      error: new Error(event.message),
-                    };
-                  } else {
-                    outcome = retiredSignal.aborted
-                      ? { kind: 'retired' }
-                      : { kind: 'cancelled' };
-                  }
-                  break;
-                }
-
-                if (!retiredSignal.aborted && !runCancelSignal.aborted) {
-                  store.dispatch(apiActions.generateMessageEvent(event));
-                } else {
-                  outcome = retiredSignal.aborted
-                    ? { kind: 'retired' }
-                    : { kind: 'cancelled' };
-                }
-              }
-            }
+                store.dispatch(apiActions.generateMessageEvent(event));
+              },
+            });
           } catch (error) {
             primaryError =
               error instanceof Error
                 ? error
                 : new Error('Unknown transport error');
-          } finally {
-            await cleanup();
           }
 
           if (retiredSignal.aborted || outcome?.kind === 'retired') {
@@ -522,51 +344,6 @@ export const generateMessage = createEffect((store) => {
     threadIdentityAbortController.abort();
   };
 });
-
-function _nextEvent(
-  iterator: AsyncIterator<AGUIEvent>,
-  retiredSignal: AbortSignal,
-  cancelSignal: AbortSignal,
-): Promise<EventIterationResult> {
-  if (retiredSignal.aborted) {
-    return Promise.resolve({ kind: 'retired' });
-  }
-  if (cancelSignal.aborted) {
-    return Promise.resolve({ kind: 'cancelled' });
-  }
-
-  return new Promise<EventIterationResult>((resolve, reject) => {
-    let settled = false;
-    const cleanup = () => {
-      retiredSignal.removeEventListener('abort', handleRetired);
-      cancelSignal.removeEventListener('abort', handleCancelled);
-    };
-    const settle = (result: EventIterationResult) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      resolve(result);
-    };
-    const fail = (error: unknown) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      reject(error);
-    };
-    const handleRetired = () => settle({ kind: 'retired' });
-    const handleCancelled = () => settle({ kind: 'cancelled' });
-
-    retiredSignal.addEventListener('abort', handleRetired, { once: true });
-    cancelSignal.addEventListener('abort', handleCancelled, { once: true });
-    Promise.resolve()
-      .then(() => iterator.next())
-      .then((result) => settle({ kind: 'event', result }), fail);
-  });
-}
 
 function _createRequestId() {
   if (
