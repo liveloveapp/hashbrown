@@ -37,13 +37,6 @@ export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit'
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
 export { mergeMessagesForThread } from './utils/threading';
-export type {
-  AzureKnownModelIds,
-  GoogleKnownModelIds,
-  KnownModelIds,
-  OpenAiKnownModelIds,
-} from './utils/llm';
-export type { ModelInput } from './transport/model-spec';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
 export {

@@ -2,8 +2,9 @@
 title: 'System Instructions: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'The instruction defines the initial system-level guidance given to the language model. It sets the AI''s role, tone, and behavior across the interaction.'
+    content: "The instruction defines the initial system-level guidance given to the language model. It sets the AI's role, tone, and behavior across the interaction."
 ---
+
 # System Instructions
 
 The instruction defines the initial system-level guidance given to the language model. It sets the AI's role, tone, and behavior across the interaction. This is equivalent to OpenAI's system message or Google's system instruction setting — it influences how the assistant behaves before user input is considered.
@@ -157,7 +158,6 @@ const { output } = useCompletion({
     Help the user autocomplete this input. So far they have typed in: ${names().join(', ')}
   `,
   input: textInputValue,
-  model: 'gpt-3.5-turbo',
   system: 'Help the user autocomplete this input.',
 });
 ```
@@ -175,7 +175,6 @@ const { output } = useCompletion({
     currentValue: textInputValue,
     previousNames: names(),
   },
-  model: 'gpt-3.5-turbo',
 });
 ```
 
@@ -233,7 +232,6 @@ import { useChat } from '@hashbrownai/react';
 
 const chat = useChat({
   system: 'Provided on the server',
-  model: 'gpt-3.5-turbo',
 });
 ```
 

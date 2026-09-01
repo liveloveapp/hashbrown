@@ -185,7 +185,6 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   simpleChat = chatResource({
-    model: 'gemini-2.5-flash',
     system: `
       You are a helpful assistant that can answer questions and help with tasks.
     `,
@@ -277,10 +276,6 @@ export class ChatPanelComponent {
    * --------------------------------------------------------------------------
    */
   chat = uiChatResource({
-    model: 'gpt-4.1',
-    // model: 'gemini-2.5-pro',
-    // model: 'gpt-4o@2025-01-01-preview',
-    // model: 'palmyra-x5',
     debugName: 'ui-chat',
     system: `
       You are a helpful assistant for a smart home app. You are speaking to the user

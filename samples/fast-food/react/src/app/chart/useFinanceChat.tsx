@@ -402,7 +402,6 @@ export const useFinanceChat = (): FinanceChatState => {
     isRunningToolCalls,
     lastAssistantMessage,
   } = useUiChat({
-    model: 'gpt-4.1',
     debugName: 'chart-assistant',
     system,
     tools: [getIngredientsTool, toolJavaScript],

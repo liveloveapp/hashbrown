@@ -98,7 +98,6 @@ It provides a set of methods for sending and receiving messages, as well as mana
 
 ```ts
 useChat({
-  model: 'gpt-5',
   system: 'hashbrowns should be covered and smothered',
   messages: [{ role: 'user', content: 'Write a short story about breakfast.' }],
 });
@@ -106,9 +105,8 @@ useChat({
 
 </hb-code-example>
 
-1. First, we specify the `model`.
-2. Second, we provide [system instructions](/docs/react/concept/system-instructions).
-3. Third, we send some initial messages to the model.
+1. First, we provide [system instructions](/docs/react/concept/system-instructions).
+2. Second, we send some initial messages to the model.
 
 ---
 
@@ -116,7 +114,6 @@ useChat({
 
 | Property       | Type                            | Required | Default | Description                                                        |
 | -------------- | ------------------------------- | -------- | ------- | ------------------------------------------------------------------ |
-| `model`        | `KnownModelIds`                 | Yes      | -       | The LLM model to use for the chat.                                 |
 | `system`       | `string`                        | Yes      | -       | The system message to use for the chat.                            |
 | `messages`     | `Chat.Message<string, Tools>[]` | No       | `[]`    | The initial messages for the chat.                                 |
 | `tools`        | `Tools[]`                       | No       | `[]`    | The tools to make available for the chat.                          |
@@ -190,7 +187,6 @@ import { useChat } from '@hashbrownai/react';
 export function App() {
   // 1. Generate the messages from a prompt
   const { messages } = useChat({
-    model: 'gpt-5',
     system: 'hashbrowns should be covered and smothered',
     messages: [
       { role: 'user', content: 'Write a short story about breakfast.' },
@@ -231,7 +227,6 @@ import { useChat } from '@hashbrownai/react';
 export function App() {
   const [userMessage, setUserMessage] = useState('');
   const { messages, sendMessage } = useChat({
-    model: 'gpt-5',
     debugName: 'chat',
     system: 'hashbrowns should be covered and smothered',
   });

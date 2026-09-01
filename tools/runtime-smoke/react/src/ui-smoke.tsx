@@ -61,7 +61,6 @@ export function UiSmoke() {
     sendingError,
     stop,
   } = useUiChat({
-    model: 'gpt-4o',
     system: 'Runtime smoke system prompt.',
     components,
   });

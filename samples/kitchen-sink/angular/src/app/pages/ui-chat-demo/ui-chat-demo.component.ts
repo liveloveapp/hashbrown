@@ -6,7 +6,7 @@ import {
   RenderMessageComponent,
   uiChatResource,
 } from '@hashbrownai/angular';
-import { experimental_chrome, prompt, s } from '@hashbrownai/core';
+import { experimental_local, prompt, s } from '@hashbrownai/core';
 import { MarkdownComponent as NgxMarkdownComponent } from 'ngx-markdown';
 
 @Component({
@@ -191,7 +191,7 @@ export class UiChatDemoComponent {
   prompt = 'Create a customer testimonial card with a button.';
 
   uiChat = uiChatResource({
-    model: [experimental_chrome(), 'gpt-4o-mini'],
+    transport: experimental_local(),
     system: prompt`
       You are a UI designer. You output simple UI snippets using the provided components.
       <user>Create a customer testimonial card with a button.</user>

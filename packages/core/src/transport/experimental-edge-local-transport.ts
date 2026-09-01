@@ -1,10 +1,11 @@
 import {
+  type DetectionResult,
   type Transport,
+  type TransportFactory,
   type TransportRequest,
   type TransportResponse,
 } from './transport';
 import { TransportError } from './transport-error';
-import { type DetectionResult, type ModelSpecFactory } from './model-spec';
 import {
   type PromptMessage,
   type PromptOptions,
@@ -440,55 +441,13 @@ export function detectEdgePromptApi(
 }
 
 /**
- * Model spec factory for Edge Prompt API transport.
+ * Creates an experimental Edge Prompt API transport factory.
  * @alpha
  */
-export function experimentalEdgeLocalModelSpec(
-  userOptions: ExperimentalEdgeLocalTransportOptions = {},
-): ModelSpecFactory {
-  return (inject) => {
-    const mergedOptions: ExperimentalEdgeLocalTransportOptions = {
-      ...filterEdgeOptions(inject),
-      ...userOptions,
-    };
-
-    return {
-      name: 'edge-local',
-      capabilities: {
-        tools: false,
-        structured: true,
-        ui: true,
-      },
-      detect: () =>
-        detectEdgePromptApi(undefined, {
-          onAvailabilityChange: mergedOptions.events?.availability,
-        }),
-      transport: () => new ExperimentalEdgeLocalTransport(mergedOptions),
-    };
-  };
-}
-
-/**
- * Preferred snake_case helper name for consistency with other transport helpers.
- * Kept alongside the legacy `experimentalEdgeLocalModelSpec`.
- * @alpha
- */
-export const experimental_edge = experimentalEdgeLocalModelSpec;
-
-function filterEdgeOptions(
-  config?: Record<string, unknown>,
-): Partial<ExperimentalEdgeLocalTransportOptions> {
-  if (!config) {
-    return {};
-  }
-
-  const candidate = config as Partial<ExperimentalEdgeLocalTransportOptions>;
-
-  return {
-    events: candidate.events,
-    createSession: candidate.createSession,
-    transformRequest: candidate.transformRequest,
-  };
+export function experimental_edge(
+  options: ExperimentalEdgeLocalTransportOptions = {},
+): TransportFactory {
+  return () => new ExperimentalEdgeLocalTransport(options);
 }
 
 function getLanguageModel(): LanguageModelGlobal | undefined {

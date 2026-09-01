@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Expose trusted , tested , and compliant components to the model.'
 ---
+
 # Generative UI with Angular Components
 
 <p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>
@@ -170,16 +171,15 @@ chat = uiChatResource({
 
 ### `UiChatResourceOptions`
 
-| Option       | Type                                                  | Required | Description                                       |
-| ------------ | ----------------------------------------------------- | -------- | ------------------------------------------------- |
-| `components` | `ExposedComponent<any>[]`                             | Yes      | The components to use for the UI chat resource    |
-| `model`      | `ReactiveOption<ModelInput>`                          | Yes      | The model to use for the UI chat resource         |
-| `system`     | `ReactiveOption<string \| SystemPrompt>`              | Yes      | The system prompt to use for the UI chat resource |
-| `messages`   | `Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[]` | No       | The initial messages for the UI chat resource     |
-| `tools`      | `Tools[]`                                             | No       | The tools to use for the UI chat resource         |
-| `debugName`  | `string`                                              | No       | The debug name for the UI chat resource           |
-| `debounce`   | `number`                                              | No       | The debounce time for the UI chat resource        |
-| `apiUrl`     | `ReactiveOption<string>`                              | No       | The API URL to use for the UI chat resource       |
+| Option       | Type                                                  | Required | Description                                               |
+| ------------ | ----------------------------------------------------- | -------- | --------------------------------------------------------- |
+| `components` | `ExposedComponent<any>[]`                             | Yes      | The components to use for the UI chat resource            |
+| `system`     | `ReactiveOption<string \| SystemPrompt>`              | Yes      | The system prompt to use for the UI chat resource         |
+| `messages`   | `Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[]` | No       | The initial messages for the UI chat resource             |
+| `tools`      | `Tools[]`                                             | No       | The tools to use for the UI chat resource                 |
+| `debugName`  | `string`                                              | No       | The debug name for the UI chat resource                   |
+| `debounce`   | `number`                                              | No       | The debounce time for the UI chat resource                |
+| `apiUrl`     | `ReactiveOption<string>`                              | No       | The API URL to use for the UI chat resource               |
 | `threadId`   | `ReactiveOption<string \| undefined>`                 | No       | Thread identifier used to load or continue a conversation |
 
 ---

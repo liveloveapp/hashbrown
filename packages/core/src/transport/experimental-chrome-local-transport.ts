@@ -1,10 +1,10 @@
 import {
+  type DetectionResult,
   type Transport,
   type TransportFactory,
   type TransportRequest,
   type TransportResponse,
 } from './transport';
-import { type DetectionResult, type ModelSpecFactory } from './model-spec';
 import { createLocalTextEventStream } from './local-text-event-stream';
 import { raceTransportOperationWithAbort } from './race-transport-operation-with-abort';
 import { TransportError } from './transport-error';
@@ -569,63 +569,10 @@ export async function detectChromePromptApi(
 }
 
 /**
- * Model spec factory for Chrome Prompt API transport.
+ * Creates an experimental Chrome Prompt API transport factory.
  * @alpha
  */
-export function experimentalChromeLocalModelSpec(
-  userOptions: ExperimentalChromeLocalTransportOptions = {},
-): ModelSpecFactory {
-  return (inject) => {
-    const mergedOptions: ExperimentalChromeLocalTransportOptions = {
-      ...filterChromeOptions(inject),
-      ...userOptions,
-    };
-
-    return {
-      name: 'chrome-local',
-      capabilities: {
-        tools: false,
-        structured: true,
-        ui: true,
-      },
-      detect: () =>
-        detectChromePromptApi(
-          (mergedOptions as { sessionOptions?: LanguageModelCreateOptions })
-            ?.sessionOptions,
-          {
-            outputLanguage: mergedOptions.outputLanguage,
-            onAvailabilityChange: mergedOptions.events?.availability,
-          },
-        ),
-      transport: () => new ExperimentalChromeLocalTransport(mergedOptions),
-    };
-  };
-}
-
-/**
- * Preferred snake_case helper name for consistency with other transport helpers.
- * Kept alongside the legacy `experimentalChromeLocalModelSpec`.
- * @alpha
- */
-export const experimental_chrome = experimentalChromeLocalModelSpec;
-
-function filterChromeOptions(
-  config?: Record<string, unknown>,
-): Partial<ExperimentalChromeLocalTransportOptions> {
-  if (!config) {
-    return {};
-  }
-
-  const candidate =
-    config as unknown as Partial<ExperimentalChromeLocalTransportOptions>;
-
-  return {
-    events: candidate.events,
-    createSession: candidate.createSession,
-    transformRequest: candidate.transformRequest,
-    outputLanguage: candidate.outputLanguage,
-  };
-}
+export const experimental_chrome = createExperimentalChromeLocalTransport;
 
 function isUnsupportedContext(): boolean {
   if (typeof window === 'undefined' && typeof self !== 'undefined') {

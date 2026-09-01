@@ -10,12 +10,7 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import {
-  Chat,
-  fryHashbrown,
-  type ModelInput,
-  type TransportOrFactory,
-} from '@hashbrownai/core';
+import { Chat, fryHashbrown, type TransportOrFactory } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { ReactiveOption } from '../utils/types';
 import { readReactiveOption, toNgSignal } from '../utils/signals';
@@ -65,11 +60,6 @@ export interface CompletionResourceRef extends Resource<string | null> {
  */
 export interface CompletionResourceOptions<Input> {
   /**
-   * The model to use for the completion.
-   */
-  model: ReactiveOption<ModelInput>;
-
-  /**
    * The input to the completion.
    */
   input: Signal<Input | null | undefined>;
@@ -111,7 +101,7 @@ export interface CompletionResourceOptions<Input> {
 export function completionResource<Input>(
   options: CompletionResourceOptions<Input>,
 ): CompletionResourceRef {
-  const { model, input, system } = options;
+  const { input, system } = options;
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
   const config = ɵinjectHashbrownConfig();
@@ -125,7 +115,6 @@ export function completionResource<Input>(
       return (requestInit) =>
         runInInjectionContext(injector, () => m(requestInit));
     }),
-    model: readReactiveOption(model),
     system: readReactiveOption(system),
     messages: [],
     tools: [],
@@ -148,7 +137,6 @@ export function completionResource<Input>(
         return (requestInit) =>
           runInInjectionContext(injector, () => m(requestInit));
       }),
-      model: readReactiveOption(model),
       system: readReactiveOption(system),
       tools: [],
       retries: 3,

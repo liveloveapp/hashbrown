@@ -1,6 +1,20 @@
 import type { AGUIEvent, RunAgentInput } from '@ag-ui/core';
 
 /**
+ * Result of checking whether a transport-specific runtime is available.
+ *
+ * @public
+ */
+export type DetectionResult =
+  | { ok: true }
+  | {
+      ok: false;
+      code:
+        'FEATURE_UNSUPPORTED' | 'PLATFORM_UNSUPPORTED' | 'MODEL_UNAVAILABLE';
+      reason?: string;
+    };
+
+/**
  * Metadata returned alongside transport responses.
  *
  * @public

@@ -42,7 +42,6 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
     sendingError,
     stop,
   } = useChat({
-    model: 'gpt-4o',
     system: 'Runtime smoke system prompt.',
     tools: scenario === 'tool' ? [getWeather] : [],
   });
@@ -50,8 +49,7 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
     .reverse()
     .find(
       (message) =>
-        message.role === 'assistant' &&
-        message.reasoningDetails !== undefined,
+        message.role === 'assistant' && message.reasoningDetails !== undefined,
     );
   const reasoningDetails =
     reasoningMessage?.role === 'assistant'

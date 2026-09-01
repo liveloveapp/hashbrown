@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
-import { type ModelInput, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { uiCompletionResource } from './ui-completion-resource.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
@@ -56,7 +56,6 @@ test('uiCompletionResource wraps structured completion output with UI metadata',
       },
     ],
     input: signal('Describe a component'),
-    model: 'gpt-4o-mini',
     system: 'system prompt',
   });
 
@@ -122,7 +121,6 @@ test('uiCompletionResource accepts UiKit inputs', () => {
   const resource = uiCompletionResource({
     components: [uiKit],
     input: signal('Describe a component'),
-    model: 'gpt-4o-mini',
     system: 'system prompt',
   });
 
@@ -153,7 +151,6 @@ test('uiCompletionResource passes reactive options through to structuredCompleti
   structuredCompletionResourceMock.mockReturnValue(
     createCompletionStub(signal<any | null>(null)),
   );
-  const model = signal<ModelInput>('gpt-4.1');
   const apiUrl = signal('/ui-completion');
   const system = signal('System prompt');
   const threadId = signal<string | undefined>('thread-a');
@@ -168,7 +165,6 @@ test('uiCompletionResource passes reactive options through to structuredCompleti
       },
     ],
     input: signal('Describe a component'),
-    model,
     apiUrl,
     system,
     threadId,
@@ -180,7 +176,6 @@ test('uiCompletionResource passes reactive options through to structuredCompleti
 
   expect(delegatedOptions).toEqual(
     expect.objectContaining({
-      model,
       apiUrl,
       threadId,
     }),
@@ -210,7 +205,6 @@ test('uiCompletionResource snapshot uses the exposed assistant message', () => {
       },
     ],
     input: signal('Describe a component'),
-    model: 'gpt-4.1',
     system: 'System prompt',
   });
 
@@ -251,7 +245,6 @@ test('uiCompletionResource propagates terminal errors through value', () => {
       },
     ],
     input: signal('Describe a component'),
-    model: 'gpt-4.1',
     system: 'System prompt',
   });
 

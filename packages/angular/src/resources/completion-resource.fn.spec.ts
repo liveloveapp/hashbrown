@@ -1,6 +1,5 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { ModelInput } from '@hashbrownai/core';
 import { provideHashbrown } from '../providers/provide-hashbrown.fn';
 import { completionResource } from './completion-resource.fn';
 
@@ -17,7 +16,6 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
 
 test('completionResource updates runtime options when option signals change', () => {
   fryHashbrownMock.mockReset();
-  const model = signal('gpt-4.1');
   const apiUrl = signal('/completion-a');
   const system = signal('System A');
   const threadId = signal<string | undefined>('thread-a');
@@ -31,7 +29,6 @@ test('completionResource updates runtime options when option signals change', ()
 
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model,
       apiUrl,
       system,
       input,
@@ -41,7 +38,6 @@ test('completionResource updates runtime options when option signals change', ()
 
   expect(fryHashbrownMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      model: 'gpt-4.1',
       apiUrl: '/completion-a',
       system: 'System A',
       threadId: 'thread-a',
@@ -53,7 +49,6 @@ test('completionResource updates runtime options when option signals change', ()
   expect(resource).not.toHaveProperty('threadSaveError');
   expect(resource).not.toHaveProperty('threadId');
 
-  model.set('gpt-4.2');
   apiUrl.set('/completion-b');
   system.set('System B');
   threadId.set('thread-b');
@@ -61,7 +56,6 @@ test('completionResource updates runtime options when option signals change', ()
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      model: 'gpt-4.2',
       apiUrl: '/completion-b',
       system: 'System B',
       threadId: 'thread-b',
@@ -87,75 +81,6 @@ test('completionResource updates runtime options when option signals change', ()
   );
 });
 
-test('completionResource accepts fallback model input signals', () => {
-  fryHashbrownMock.mockReset();
-  const model = signal<ModelInput>(['gpt-4.1', 'gpt-4.1-mini']);
-  const input = signal('Summarize this');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
-
-  TestBed.configureTestingModule({
-    providers: [provideHashbrown({ baseUrl: '/chat' })],
-  });
-
-  TestBed.runInInjectionContext(() =>
-    completionResource({
-      model,
-      system: 'System A',
-      input,
-    }),
-  );
-
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
-    expect.objectContaining({
-      model: ['gpt-4.1', 'gpt-4.1-mini'],
-    }),
-  );
-
-  model.set(['gpt-4.2', 'gpt-4.2-mini']);
-  TestBed.flushEffects();
-
-  expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
-    expect.objectContaining({
-      model: ['gpt-4.2', 'gpt-4.2-mini'],
-    }),
-  );
-});
-
-test('completionResource preserves direct model factory options', () => {
-  fryHashbrownMock.mockReset();
-  const model = vi.fn(() => ({
-    name: 'test-model',
-    transport: vi.fn(),
-  })) as unknown as ModelInput;
-  const system = signal('System A');
-  const input = signal('Summarize this');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
-
-  TestBed.configureTestingModule({
-    providers: [provideHashbrown({ baseUrl: '/chat' })],
-  });
-
-  TestBed.runInInjectionContext(() =>
-    completionResource({
-      model,
-      system,
-      input,
-    }),
-  );
-
-  expect(fryHashbrownMock.mock.calls[0]?.[0].model).toBe(model);
-  expect(model).not.toHaveBeenCalled();
-
-  system.set('System B');
-  TestBed.flushEffects();
-  const lastOptions = getLastUpdateOptions(hashbrown);
-
-  expect(lastOptions?.model).toBe(model);
-  expect(model).not.toHaveBeenCalled();
-});
-
 test('completionResource preserves an empty apiUrl option', () => {
   fryHashbrownMock.mockReset();
   const apiUrl = signal('');
@@ -169,7 +94,6 @@ test('completionResource preserves an empty apiUrl option', () => {
 
   TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       apiUrl,
       system: 'System A',
       input,
@@ -214,7 +138,6 @@ test('completionResource preserves an empty threadId option', () => {
 
   TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input,
       threadId,
@@ -258,7 +181,6 @@ test('completionResource preserves a literal empty threadId option', () => {
 
   TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input,
       threadId: '',
@@ -282,7 +204,7 @@ test('completionResource preserves a literal empty threadId option', () => {
 
 test('completionResource omits threadId from runtime updates when not provided', () => {
   fryHashbrownMock.mockReset();
-  const model = signal('gpt-4.1');
+  const system = signal('System A');
   const input = signal('Summarize this');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
@@ -293,21 +215,15 @@ test('completionResource omits threadId from runtime updates when not provided',
 
   TestBed.runInInjectionContext(() =>
     completionResource({
-      model,
-      system: 'System A',
+      system,
       input,
     }),
   );
 
-  model.set('gpt-4.2');
+  system.set('System B');
   TestBed.flushEffects();
   const lastOptions = getLastUpdateOptions(hashbrown);
 
-  expect(lastOptions).toEqual(
-    expect.objectContaining({
-      model: 'gpt-4.2',
-    }),
-  );
   expect(Object.prototype.hasOwnProperty.call(lastOptions, 'threadId')).toBe(
     false,
   );
@@ -325,7 +241,6 @@ test('completionResource exposes a resolved snapshot after a successful completi
 
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input: signal('Summarize this'),
     }),
@@ -352,7 +267,6 @@ test('completionResource retains a successful empty string', () => {
 
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input: signal('Summarize this'),
     }),
@@ -379,7 +293,6 @@ test('completionResource exposes a non-retryable terminal error', () => {
 
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input: signal('Summarize this'),
     }),
@@ -405,7 +318,6 @@ test('completionResource reloads a resolved completion without mutating message 
   });
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input: signal('Summarize this'),
     }),
@@ -433,7 +345,6 @@ test('completionResource retries a failed completion with user-only history', ()
   });
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input: signal('Summarize this'),
     }),
@@ -456,7 +367,6 @@ test('completionResource reload returns false when there is no request', () => {
   });
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input: signal<string | null>(null),
     }),
@@ -486,7 +396,6 @@ test('completionResource reload does not resend an already-answered history', ()
   });
   const resource = TestBed.runInInjectionContext(() =>
     completionResource({
-      model: 'gpt-4.1',
       system: 'System A',
       input: signal('Summarize this'),
     }),

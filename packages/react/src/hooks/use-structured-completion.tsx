@@ -1,9 +1,4 @@
-import {
-  Chat,
-  type ModelInput,
-  s,
-  type TransportOrFactory,
-} from '@hashbrownai/core';
+import { Chat, s, type TransportOrFactory } from '@hashbrownai/core';
 import { useEffect, useMemo } from 'react';
 import { useStructuredChat } from './use-structured-chat';
 
@@ -22,11 +17,6 @@ export interface UseStructuredCompletionOptions<
    * The input string to predict from.
    */
   input: Input | null | undefined;
-
-  /**
-   * The LLM model to use for the chat.
-   */
-  model: ModelInput;
 
   /**
    * The system message to use for the chat.
@@ -160,7 +150,6 @@ export interface UseStructuredCompletionResult<Output> {
  * In this example, the LLM will predict a color palette based on a given theme or mood.
  * ```tsx
  * const { output } = useStructuredCompletion({
- *   model: 'gpt-4o',
  *   system: `Predict a color palette based on the given mood or theme. For example,
  *   if the theme is "Calm Ocean", suggest appropriate colors.`,
  *   input: theme,

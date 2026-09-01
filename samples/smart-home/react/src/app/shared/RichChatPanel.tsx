@@ -101,7 +101,6 @@ export const RichChatPanel = () => {
     isRunningToolCalls,
     stop,
   } = useUiChat({
-    model: 'gpt-4.1',
     debugName: 'RichChatPanel',
     system: prompt`
       You are a smart home assistant. You can control the lights in the house. 

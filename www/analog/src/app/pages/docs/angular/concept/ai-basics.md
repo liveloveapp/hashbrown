@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Understanding how Hashbrown (and most LLM APIs) model a conversation is the first step toward building anything useful. This page introduces the core vocabulary: messages, roles, the assistant turn, and a completion.'
 ---
+
 # AI Basics: Roles, Turns & Completions
 
 Understanding how Hashbrown (and most LLM APIs) model a conversation is the first step
@@ -136,7 +137,6 @@ import { completionResource } from '@hashbrownai/angular';
 export class WeatherComponent {
   input = signal('Weather in tokyo tomorrow?');
   completion = completionResource({
-    model: 'gpt-4.1',
     input: this.input,
     system: 'You are a terse weather bot.',
     tools: [getWeatherTool],
@@ -169,7 +169,6 @@ import { chat } from '@hashbrownai/angular';
 })
 export class ChatExampleComponent {
   chat = chatResource({
-    model: 'gpt-4.1',
     system: 'You are a helpful assistant.',
   });
 

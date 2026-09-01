@@ -242,7 +242,6 @@ export class PlannerComponent {
     ],
   });
   chat = structuredChatResource({
-    model: 'gpt-4.1-mini',
     debugName: 'planner-chat',
     system: `
       I am going to give you a description of a plan for how my
@@ -281,7 +280,6 @@ export class PlannerComponent {
   });
 
   codeReview = structuredCompletionResource({
-    model: 'gpt-4.1',
     debugName: 'planner-code-review',
     input: computed(() =>
       this.code()

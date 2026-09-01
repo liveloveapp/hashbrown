@@ -37,7 +37,6 @@ export function StructuredSmoke() {
     sendingError,
     stop,
   } = useStructuredChat({
-    model: 'gpt-4o',
     system: 'Runtime smoke system prompt.',
     schema: answerSchema,
     retries: readRetries(),

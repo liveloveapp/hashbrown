@@ -1,95 +1,53 @@
 ---
-title: 'Choosing Model: Hashbrown Angular Docs'
+title: 'Choosing a Model: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: "Hashbrown's Angular SDK supports a variety of LLM providers and models."
+    content: 'Choose and configure the provider model on your AG-UI server while keeping Hashbrown Angular clients provider-independent.'
 ---
 
-# Choosing Model
+# Choosing a Model
 
-Hashbrown's Angular SDK supports a variety of LLM providers and models. You can specify the model to use by passing the `model` option to any of the Angular composables, such as `useChat`, `useCompletion`, `useStructuredChat`, or `useStructuredCompletion`.
+Hashbrown Angular clients send AG-UI run requests to your configured endpoint. The server adapter chooses the provider and model, so resources such as `chatResource`, `completionResource`, `structuredChatResource`, and `structuredCompletionResource` do not accept a `model` option.
 
-## Supported Providers
+## Select the Model on the Server
 
-- **OpenAI** (e.g., `gpt-4o`, `gpt-4.1`)
-- **Google** (e.g., `gemini-pro`)
-- **Azure** (OpenAI-compatible)
+Configure the model when you create the provider adapter:
 
-## Specifying a Model
+```ts
+import { HashbrownOpenAI } from '@hashbrownai/openai';
 
-You must provide a model ID as the `model` option. This can be a string literal or a variable. For OpenAI and Google, you can use the model IDs as documented by each provider.
-
-```typescript
-import { useChat } from '@hashbrownai/angular';
-
-@Component({
-  selector: 'app-chat',
-  template: ` <!-- Render chat UI here --> `,
-})
-export class ChatComponent {
-  chat = useChat({
-    model: 'gpt-4.1', // OpenAI model
-    system: 'You are a helpful assistant.',
-  });
-
-  // Access chat.messages, chat.sendMessage(), chat.isSending, chat.error
-}
+const stream = HashbrownOpenAI.stream.text({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: process.env.OPENAI_MODEL ?? 'gpt-5-nano',
+  request,
+});
 ```
 
-## Azure OpenAI
+The client remains unchanged when the server switches models or providers:
 
-For Azure, use the deployment name as the model ID. You must also configure the API endpoint and authentication via the `HashbrownProvider`:
-
-```typescript
-import { Component } from '@angular/core';
-import { HashbrownProvider, useChat } from '@hashbrownai/angular';
-
-@Component({
-  selector: 'app-root',
-  template: `
-    <hashbrown-provider [url]="azureUrl">
-      <app-chat></app-chat>
-    </hashbrown-provider>
-  `,
-})
-export class AppComponent {
-  azureUrl =
-    'https://your-azure-endpoint.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2023-03-15-preview';
-}
+```ts
+import { chatResource } from '@hashbrownai/angular';
 
 @Component({
   selector: 'app-chat',
-  template: ` <!-- Render chat UI here --> `,
+  template: `<!-- Render chat.value() and call chat.sendMessage(...). -->`,
 })
 export class ChatComponent {
-  chat = useChat({
-    model: 'your-deployment-name', // Azure deployment name
+  chat = chatResource({
     system: 'You are a helpful assistant.',
   });
 }
 ```
 
-## Google Gemini
+## Route Between Models
 
-For Google Gemini, use the model ID as provided by Google (e.g., `gemini-pro`).
+If an application needs multiple models, expose separate AG-UI endpoints or choose the model in trusted server logic. Configure an alternate endpoint with `provideHashbrown`, the resource's `apiUrl` option, or a custom transport. Do not send provider credentials or unrestricted model identifiers from the browser.
 
-```typescript
-import { useChat } from '@hashbrownai/angular';
+See the provider guides for server configuration:
 
-@Component({
-  selector: 'app-chat',
-  template: ` <!-- Render chat UI here --> `,
-})
-export class ChatComponent {
-  chat = useChat({
-    model: 'gemini-pro',
-    system: 'You are a helpful assistant.',
-  });
-}
-```
-
-## Model Option Reference
-
-- `model: string` — The model or deployment name to use. See your provider's documentation for available models.
-
-> **Note:** Some providers may require additional configuration, such as API keys or custom endpoints. Refer to the provider's documentation and the `HashbrownProvider` for details.
+- [OpenAI](/docs/angular/platform/openai)
+- [Azure OpenAI](/docs/angular/platform/azure)
+- [Anthropic](/docs/angular/platform/anthropic)
+- [Amazon Bedrock](/docs/angular/platform/bedrock)
+- [Google Gemini](/docs/angular/platform/google)
+- [Ollama](/docs/angular/platform/ollama)

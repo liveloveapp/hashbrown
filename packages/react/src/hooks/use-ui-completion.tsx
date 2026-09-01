@@ -1,10 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  Chat,
-  type ModelInput,
-  SystemPrompt,
-  type TransportOrFactory,
-} from '@hashbrownai/core';
+import { Chat, SystemPrompt, type TransportOrFactory } from '@hashbrownai/core';
 import {
   Dispatch,
   ReactElement,
@@ -34,11 +29,6 @@ export interface UiCompletionOptions<
    * The input for the completion.
    */
   input: Input | null | undefined;
-
-  /**
-   * The model to use for the completion.
-   */
-  model: ModelInput;
 
   /**
    * The system prompt to use for the completion.

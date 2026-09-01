@@ -4,8 +4,13 @@ import { useChat, exposeComponent, s } from '@hashbrownai/react';
 export function App() {
   const chartTool = useChartTool();
 
-  const { messages, sendMessage, lastAssistantMessage, isSending, isReceiving } = useChat({
-    model: 'gpt-5',
+  const {
+    messages,
+    sendMessage,
+    lastAssistantMessage,
+    isSending,
+    isReceiving,
+  } = useChat({
     system: 'Build an interactive chart using chart.js',
     tools: [chartTool],
   });

@@ -152,7 +152,6 @@ export class SongPickerViewComponent {
         handler: ({ system, input }, abortSignal) => {
           const hashbrown = fryHashbrown({
             apiUrl: 'http://localhost:5150/chat',
-            model: 'gpt-4.1-mini',
             debugName: 'inception completion',
             system,
             messages: [{ role: 'user', content: input }],
@@ -206,7 +205,6 @@ export class SongPickerViewComponent {
   });
 
   songPickerUi = uiChatResource({
-    model: 'gpt-4.1',
     debugName: 'Song Picker',
     system: `
       You are a song picker for a Spotify playlist game.

@@ -47,7 +47,6 @@ test('useUiCompletion converts structured output into rendered React elements', 
   const { result } = renderHook(() =>
     useUiCompletion({
       input: 'Generate a UI',
-      model: 'gpt-4o-mini',
       system: 'system prompt',
       components: [
         {
@@ -111,7 +110,6 @@ test('useUiCompletion renders fallbacks when props are still streaming', () => {
   const { result } = renderHook(() =>
     useUiCompletion({
       input: 'Generate a UI',
-      model: 'gpt-4o-mini',
       system: 'system prompt',
       components: [
         {
@@ -157,7 +155,6 @@ test('useUiCompletion returns null output when the structured completion is empt
   const { result } = renderHook(() =>
     useUiCompletion({
       input: null,
-      model: 'gpt-4o-mini',
       system: 'system prompt',
       components: [
         {
@@ -224,7 +221,6 @@ test('useUiCompletion accepts UiKit inputs and renders their components', () => 
   const { result } = renderHook(() =>
     useUiCompletion({
       input: 'Generate a UI',
-      model: 'gpt-4o-mini',
       system: 'system prompt',
       components: [uiKit],
     }),
@@ -280,7 +276,6 @@ test('useUiCompletion compiles system prompts with normalized components', () =>
   renderHook(() =>
     useUiCompletion({
       input: 'Generate a UI',
-      model: 'gpt-4o-mini',
       system: systemPrompt,
       components: [uiKit],
     }),
@@ -316,7 +311,6 @@ test('useUiCompletion propagates thread identity without exposing persistence st
   const { result } = renderHook(() =>
     useUiCompletion({
       input: 'Generate a UI',
-      model: 'gpt-4o-mini',
       system: 'system prompt',
       components: [
         {

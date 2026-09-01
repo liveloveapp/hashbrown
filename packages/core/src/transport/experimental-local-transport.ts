@@ -8,8 +8,8 @@ import {
   ExperimentalEdgeLocalTransport,
   type ExperimentalEdgeLocalTransportOptions,
 } from './experimental-edge-local-transport';
-import { type DetectionResult, type ModelSpecFactory } from './model-spec';
 import {
+  type DetectionResult,
   type Transport,
   type TransportFactory,
   type TransportRequest,
@@ -144,29 +144,13 @@ function selectPreferredUnsupportedError(
 }
 
 /**
- * Model spec factory that delegates to available local prompt adapters.
+ * Creates a transport factory that delegates to available local prompt adapters.
  * @alpha
  */
 export function experimental_local(
   userOptions: ExperimentalLocalTransportOptions = {},
-): ModelSpecFactory {
-  return (inject) => {
-    const adapters = createAdapters({
-      ...filterLocalOptions(inject),
-      ...userOptions,
-    });
-
-    return {
-      name: 'local-prompt-api',
-      capabilities: {
-        tools: false,
-        structured: true,
-        ui: true,
-      },
-      detect: () => detectAny(adapters),
-      transport: () => new DelegatingLocalTransport(adapters),
-    };
-  };
+): TransportFactory {
+  return createDelegatingTransport(userOptions);
 }
 
 /**
@@ -202,23 +186,6 @@ function createAdapters(
       return undefined;
     })
     .filter(Boolean) as LocalPromptAdapter[];
-}
-
-async function detectAny(
-  adapters: LocalPromptAdapter[],
-): Promise<DetectionResult> {
-  for (const adapter of adapters) {
-    const result = await safeDetect(adapter);
-    if (result.ok) {
-      return result;
-    }
-  }
-
-  return {
-    ok: false,
-    code: 'PLATFORM_UNSUPPORTED',
-    reason: 'No local prompt API adapters available',
-  };
 }
 
 async function safeDetect(
@@ -290,22 +257,5 @@ function mergeEvents(
   return {
     ...(shared ?? {}),
     ...(scoped ?? {}),
-  };
-}
-
-function filterLocalOptions(
-  config?: Record<string, unknown>,
-): Partial<ExperimentalLocalTransportOptions> {
-  if (!config) {
-    return {};
-  }
-
-  const candidate = config as Partial<ExperimentalLocalTransportOptions>;
-
-  return {
-    events: candidate.events,
-    chrome: candidate.chrome,
-    edge: candidate.edge,
-    order: candidate.order,
   };
 }

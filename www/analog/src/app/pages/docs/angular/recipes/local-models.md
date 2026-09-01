@@ -2,17 +2,17 @@
 title: 'Local Browser Models (Chrome & Edge)'
 meta:
   - name: description
-    content: "Use Hashbrown's experimental local transport to target Gemini Nano in Chrome or Phi-4-mini in Edge, with automatic fallback to cloud models when needed."
+    content: "Use Hashbrown's experimental local transport to target Gemini Nano in Chrome or Phi-4-mini in Edge."
 ---
 
 # Local Models (Chrome + Edge)
 
-<p class="subtitle">Ship AI features that stay on the user's device and fall back to the network when needed.</p>
+<p class="subtitle">Ship AI features that stay on the user's device.</p>
 
 What you'll learn:
 
 1. Enable the built-in models in Chrome or Edge (flags, hardware, languages)
-2. Wire Hashbrown's `experimental_local` model spec with cloud fallbacks
+2. Configure Hashbrown's `experimental_local` transport
 3. Show download/availability state to the user
 4. Keep structured outputs working without tool calls
 
@@ -39,17 +39,17 @@ After toggling flags, restart the browser and run `await LanguageModel.availabil
 
 ## 2. Hashbrown building blocks
 
-- `experimental_local()` (in **@hashbrownai/core**): a model spec that tries **Chrome first, then Edge** by default.
+- `experimental_local()` (in **@hashbrownai/core**): a transport factory that tries **Chrome first, then Edge** by default.
 - Adapters:
   - Chrome -> `ExperimentalChromeLocalTransport` (Gemini Nano)
   - Edge -> `ExperimentalEdgeLocalTransport` (Phi-4-mini)
-- Fallback chaining: pass an array of model specs to your Angular resource; Hashbrown will advance when local is **feature- or platform-unsupported** but will **not** auto-advance on generation errors (retries stay on the chosen adapter).
+- Configure the resource's `transport` option with the factory. Provider and model selection for HTTP requests remains on the server.
 
 ---
 
 ## 3. Quickstart: local-first structured completion
 
-This component streams a travel itinerary schema. It shows availability/download UI while preferring the on-device model and falls back to `gpt-5-mini` automatically.
+This component streams a travel itinerary schema from an on-device model and shows availability and download state.
 
 <hb-code-example header="local-itinerary.component.ts">
 
@@ -112,16 +112,13 @@ export class LocalItinerary {
   downloadRequired = signal<unknown>(null);
 
   itinerary = structuredCompletionResource({
-    model: [
-      experimental_local({
-        events: {
-          availability: (s) => this.status.set(s),
-          downloadRequired: (s) => this.downloadRequired.set(s),
-          downloadProgress: (pct) => this.downloadProgress.set(pct),
-        },
-      }),
-      'gpt-5-mini', // fallback if local is unsupported/unavailable
-    ],
+    transport: experimental_local({
+      events: {
+        availability: (s) => this.status.set(s),
+        downloadRequired: (s) => this.downloadRequired.set(s),
+        downloadProgress: (pct) => this.downloadProgress.set(pct),
+      },
+    }),
     schema: ItinerarySchema,
     system: 'Return a concise two-day itinerary as JSON.',
     input: computed(() => `Plan a two-day visit to ${this.destination()}.`),
@@ -142,7 +139,7 @@ export class LocalItinerary {
 **How it works**
 
 - `experimental_local` selects Chrome or Edge once per session.
-- If the request includes tools, the local adapter throws `FEATURE_UNSUPPORTED`, and Hashbrown advances to `gpt-5-mini`.
+- If the request includes tools, the local adapter reports `FEATURE_UNSUPPORTED` because browser prompt APIs do not support Hashbrown tools.
 - `events` let you mirror download UX (`downloadRequired`, `downloadProgress`) without blocking the call; Chrome/Edge handle the download after a user gesture.
 
 ---
@@ -174,7 +171,7 @@ Both transports forward Hashbrown's `responseFormat` to each browser's `response
 
 ## 7. Troubleshooting
 
-- `PLATFORM_UNSUPPORTED`: API missing (wrong channel/flag), unsupported language, or disallowed context (service worker). Switch channel or disable the local spec.
-- `FEATURE_UNSUPPORTED`: tools requested, or schema not supported-ensure you have a fallback HTTP model in the array.
+- `PLATFORM_UNSUPPORTED`: API missing (wrong channel/flag), unsupported language, or disallowed context (service worker). Switch channel or use the default HTTP transport instead.
+- `FEATURE_UNSUPPORTED`: tools were requested or the schema is not supported. Use an AG-UI HTTP endpoint for that feature.
 - Slow first token: the model may still be downloading; keep showing progress events.
 - Storage reclaimed (<10 GB free on profile volume) will evict the model; Chrome re-downloads on the next prompt.

@@ -109,7 +109,6 @@ const productFilterSchema = s.object('Product filter', {
 
 export function useProductFilter(prompt: string) {
   return useStructuredCompletion({
-    model: 'gpt-5',
     system: 'Convert the user request into a product search filter.',
     input: prompt,
     schema: productFilterSchema,

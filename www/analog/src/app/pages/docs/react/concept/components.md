@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Expose trusted , tested , and compliant components to the model.'
 ---
+
 # Generative UI with React Components
 
 <p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>
@@ -177,7 +178,6 @@ const chat = useUiChat({
 | Option         | Type                                  | Required | Description                                   |
 | -------------- | ------------------------------------- | -------- | --------------------------------------------- |
 | `components`   | `ExposedComponent<any>[]`             | Yes      | The components to use for the UI chat hook    |
-| `model`        | `KnownModelIds`                       | Yes      | The model to use for the UI chat hook         |
 | `system`       | `string`                              | Yes      | The system prompt to use for the UI chat hook |
 | `messages`     | `Chat.Message<UiChatSchema, Tools>[]` | No       | The initial messages for the UI chat hook     |
 | `tools`        | `Tools[]`                             | No       | The tools to use for the UI chat hook         |

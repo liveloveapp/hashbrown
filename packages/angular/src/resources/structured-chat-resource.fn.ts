@@ -13,7 +13,6 @@ import {
 import {
   Chat,
   fryHashbrown,
-  type ModelInput,
   s,
   type TransportOrFactory,
 } from '@hashbrownai/core';
@@ -110,11 +109,6 @@ export interface StructuredChatResourceOptions<
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
 > {
   /**
-   * The model to use for the structured chat resource.
-   */
-  model: ReactiveOption<ModelInput>;
-
-  /**
    * The system prompt to use for the structured chat resource.
    */
   system: ReactiveOption<string>;
@@ -197,7 +191,6 @@ export function structuredChatResource<
     }),
     system: readReactiveOption(options.system),
     messages: [...(options.messages ?? [])],
-    model: readReactiveOption(options.model),
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     responseSchema: options.schema,
     debugName: options.debugName,
@@ -217,7 +210,6 @@ export function structuredChatResource<
         options.apiUrl !== undefined
           ? readReactiveOption(options.apiUrl)
           : config.baseUrl,
-      model: readReactiveOption(options.model),
       system: readReactiveOption(options.system),
       ui: options.ui ?? false,
       ...(options.threadId !== undefined

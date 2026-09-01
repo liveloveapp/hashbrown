@@ -10,12 +10,7 @@ import {
   runInInjectionContext,
   Signal,
 } from '@angular/core';
-import {
-  Chat,
-  fryHashbrown,
-  type ModelInput,
-  type TransportOrFactory,
-} from '@hashbrownai/core';
+import { Chat, fryHashbrown, type TransportOrFactory } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import {
   readReactiveOption,
@@ -97,7 +92,6 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
  * @param system - The system (assistant) prompt.
- * @param model - The model identifier to use for the chat.
  * @param tools - Optional array of bound tools available to the chat.
  * @param messages - Optional initial list of chat messages.
  * @param debounce - Optional debounce interval in milliseconds between user inputs.
@@ -109,11 +103,6 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
    * The system prompt to use for the chat.
    */
   system: ReactiveOption<string>;
-
-  /**
-   * The model to use for the chat.
-   */
-  model: ReactiveOption<ModelInput>;
 
   /**
    * The tools to use for the chat.
@@ -173,7 +162,6 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
  * ```ts
  * const chat = chatResource({
  *   system: 'hashbrowns should be covered and smothered',
- *   model: 'gpt-5',
  * });
  *
  * chat.sendMessage(\{ role: 'user', content: 'Write a short story about breakfast.' \});
@@ -196,7 +184,6 @@ export function chatResource<Tools extends Chat.AnyTool>(
     }),
     system: readReactiveOption(options.system),
     messages: options.messages ? [...readSignalLike(options.messages)] : [],
-    model: readReactiveOption(options.model),
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     debugName: options.debugName,
     transport: options.transport ?? config.transport,
@@ -218,7 +205,6 @@ export function chatResource<Tools extends Chat.AnyTool>(
           runInInjectionContext(injector, () => m(requestInit));
       }),
       system: readReactiveOption(options.system),
-      model: readReactiveOption(options.model),
       tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
       debugName: options.debugName,
       transport: options.transport ?? config.transport,

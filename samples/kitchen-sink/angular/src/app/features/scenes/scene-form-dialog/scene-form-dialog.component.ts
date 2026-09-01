@@ -231,7 +231,6 @@ export class SceneFormDialogComponent {
    * --------------------------------------------------------------------------
    */
   predictedLightsResource = structuredCompletionResource({
-    model: 'gpt-oss:20b',
     debugName: 'predictedLightsResource',
     system: `
       You are an assistant that helps the user configure a lighting scene.
@@ -269,7 +268,6 @@ export class SceneFormDialogComponent {
    * --------------------------------------------------------------------------
    */
   whenResource = structuredCompletionResource({
-    model: 'gpt-4.1',
     debugName: 'whenResource',
     input: this.whenPromptSignal,
     system: `

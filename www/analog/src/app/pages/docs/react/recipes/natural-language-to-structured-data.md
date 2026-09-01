@@ -2,8 +2,9 @@
 title: 'Converting Natural Language to Structured Data: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'This recipe guides you through replacing complex form controls with natural language inputs. It leverages large-language models to parse your user''s natural language and convert it into structured data.'
+    content: "This recipe guides you through replacing complex form controls with natural language inputs. It leverages large-language models to parse your user's natural language and convert it into structured data."
 ---
+
 # Converting Natural Language to Structured Data
 
 This recipe guides you through replacing complex form controls with natural language inputs. It leverages large-language models to parse your user's natural language and convert it into structured data. This recipe also covers error handling strategies. You should be comfortable with:
@@ -245,7 +246,6 @@ export function ExpenseNL({ onSubmit }: { onSubmit(expense: unknown): void }) {
   const categoryTool = useCategoryTool();
 
   const completion = useStructuredCompletion({
-    model: 'gpt-4.1',
     debugName: 'expense-nl',
     input, // drives the hook reactively
     tools: [categoryTool],

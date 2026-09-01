@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, effect, Resource, Signal } from '@angular/core';
-import {
-  Chat,
-  type ModelInput,
-  s,
-  type TransportOrFactory,
-} from '@hashbrownai/core';
+import { Chat, s, type TransportOrFactory } from '@hashbrownai/core';
 import { ReactiveOption } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { toDeepSignal } from '../utils/deep-signal';
@@ -62,10 +57,6 @@ export interface StructuredCompletionResourceOptions<
   Input,
   Schema extends s.SchemaOutput,
 > {
-  /**
-   * The model to use for the structured completion resource.
-   */
-  model: ReactiveOption<ModelInput>;
   /**
    * The input to the structured completion resource.
    */
@@ -128,20 +119,10 @@ export function structuredCompletionResource<
 >(
   options: StructuredCompletionResourceOptions<Input, Schema>,
 ): StructuredCompletionResourceRef<Output> {
-  const {
-    model,
-    input,
-    schema,
-    system,
-    tools,
-    debugName,
-    apiUrl,
-    retries,
-    debounce,
-  } = options;
+  const { input, schema, system, tools, debugName, apiUrl, retries, debounce } =
+    options;
 
   const resource = structuredChatResource<Schema, Chat.AnyTool, Output>({
-    model,
     system,
     schema,
     tools,

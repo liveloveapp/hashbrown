@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'Persist, restore, and mutate Hashbrown chat message history in React.'
 ---
+
 # Message History
 
 <p class="subtitle">Persist, restore, and prune the messages your chat sends to the model.</p>
@@ -30,10 +31,10 @@ import { useEffect } from 'react';
 import { type Chat } from '@hashbrownai/core';
 import { useChat } from '@hashbrownai/react';
 
-const STORAGE_KEY = "support-chat-messages";
+const STORAGE_KEY = 'support-chat-messages';
 
 function loadMessages(): Chat.Message<string, Chat.AnyTool>[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === 'undefined') return [];
 
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (!stored) return [];
@@ -47,7 +48,6 @@ function loadMessages(): Chat.Message<string, Chat.AnyTool>[] {
 
 export function SupportChat() {
   const chat = useChat({
-    model: 'gpt-4.1',
     system: 'You are a helpful support assistant.',
     messages: loadMessages(),
   });
@@ -108,7 +108,7 @@ This is useful for "clear chat", "delete message", "retry from here", and "trim 
 
 Hashbrown creates one chat instance for the hook and keeps its message history until you intentionally replace it. The `messages` option seeds the initial history only; changing the value you passed to `messages` later does not reset an active chat.
 
-Runtime options such as `model`, `system`, `apiUrl`, `threadId`, tools, transport, retries, and debounce settings are applied to future requests. Updating those options does not append a message, clear history, or resend the conversation by itself.
+Runtime options such as `system`, `apiUrl`, `threadId`, tools, transport, retries, and debounce settings are applied to future requests. Updating those options does not append a message, clear history, or resend the conversation by itself.
 
 Use `sendMessage` to add a new turn, `setMessages` to replace history, and `reload` to remove the last assistant message before retrying. For completion hooks, `input` is different from chat history: changing `input` synchronizes the backing single user message for the next completion.
 

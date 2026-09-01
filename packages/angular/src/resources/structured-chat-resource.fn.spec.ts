@@ -1,7 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { s } from '@hashbrownai/core';
-import type { ModelInput } from '@hashbrownai/core';
 import { provideHashbrown } from '../providers/provide-hashbrown.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
 
@@ -18,7 +17,6 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
 
 test('structuredChatResource updates runtime options when option signals change', () => {
   fryHashbrownMock.mockReset();
-  const model = signal<ModelInput>('gpt-4.1');
   const apiUrl = signal('/structured-a');
   const system = signal('System A');
   const threadId = signal<string | undefined>('thread-a');
@@ -31,7 +29,6 @@ test('structuredChatResource updates runtime options when option signals change'
 
   const resource = TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model,
       apiUrl,
       system,
       threadId,
@@ -43,7 +40,6 @@ test('structuredChatResource updates runtime options when option signals change'
 
   expect(fryHashbrownMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      model: 'gpt-4.1',
       apiUrl: '/structured-a',
       system: 'System A',
       threadId: 'thread-a',
@@ -55,7 +51,6 @@ test('structuredChatResource updates runtime options when option signals change'
   expect(resource).not.toHaveProperty('threadSaveError');
   expect(resource).not.toHaveProperty('threadId');
 
-  model.set('gpt-4.2');
   apiUrl.set('/structured-b');
   system.set('System B');
   threadId.set('thread-b');
@@ -63,7 +58,6 @@ test('structuredChatResource updates runtime options when option signals change'
 
   expect(hashbrown.updateOptions).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      model: 'gpt-4.2',
       apiUrl: '/structured-b',
       system: 'System B',
       threadId: 'thread-b',
@@ -89,41 +83,6 @@ test('structuredChatResource updates runtime options when option signals change'
   );
 });
 
-test('structuredChatResource preserves direct model factory options', () => {
-  fryHashbrownMock.mockReset();
-  const model = vi.fn(() => ({
-    name: 'test-model',
-    transport: vi.fn(),
-  })) as unknown as ModelInput;
-  const system = signal('System A');
-  const hashbrown = createHashbrownStub({ messages: [] });
-  fryHashbrownMock.mockReturnValue(hashbrown);
-
-  TestBed.configureTestingModule({
-    providers: [provideHashbrown({ baseUrl: '/chat' })],
-  });
-
-  TestBed.runInInjectionContext(() =>
-    structuredChatResource({
-      model,
-      system,
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
-    }),
-  );
-
-  expect(fryHashbrownMock.mock.calls[0]?.[0].model).toBe(model);
-  expect(model).not.toHaveBeenCalled();
-
-  system.set('System B');
-  TestBed.flushEffects();
-  const lastOptions = getLastUpdateOptions(hashbrown);
-
-  expect(lastOptions?.model).toBe(model);
-  expect(model).not.toHaveBeenCalled();
-});
-
 test('structuredChatResource preserves an empty apiUrl option', () => {
   fryHashbrownMock.mockReset();
   const apiUrl = signal('');
@@ -136,7 +95,6 @@ test('structuredChatResource preserves an empty apiUrl option', () => {
 
   TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model: 'gpt-4.1',
       apiUrl,
       system: 'System A',
       schema: s.object('risk summary', {
@@ -182,7 +140,6 @@ test('structuredChatResource preserves an empty threadId option', () => {
 
   TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model: 'gpt-4.1',
       system: 'System A',
       threadId,
       schema: s.object('risk summary', {
@@ -227,7 +184,6 @@ test('structuredChatResource preserves a literal empty threadId option', () => {
 
   TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model: 'gpt-4.1',
       system: 'System A',
       threadId: '',
       schema: s.object('risk summary', {
@@ -253,7 +209,7 @@ test('structuredChatResource preserves a literal empty threadId option', () => {
 
 test('structuredChatResource omits threadId from runtime updates when not provided', () => {
   fryHashbrownMock.mockReset();
-  const model = signal<ModelInput>('gpt-4.1');
+  const system = signal('System A');
   const hashbrown = createHashbrownStub({ messages: [] });
   fryHashbrownMock.mockReturnValue(hashbrown);
 
@@ -263,23 +219,17 @@ test('structuredChatResource omits threadId from runtime updates when not provid
 
   TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model,
-      system: 'System A',
+      system,
       schema: s.object('risk summary', {
         risk: s.string('Risk level'),
       }),
     }),
   );
 
-  model.set('gpt-4.2');
+  system.set('System B');
   TestBed.flushEffects();
   const lastOptions = getLastUpdateOptions(hashbrown);
 
-  expect(lastOptions).toEqual(
-    expect.objectContaining({
-      model: 'gpt-4.2',
-    }),
-  );
   expect(Object.prototype.hasOwnProperty.call(lastOptions, 'threadId')).toBe(
     false,
   );
@@ -300,7 +250,6 @@ test('structuredChatResource exposes a terminal error when retries are disabled'
 
   const resource = TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model: 'gpt-4.1',
       system: 'System A',
       schema: s.object('risk summary', {
         risk: s.string('Risk level'),
@@ -336,7 +285,6 @@ test('structuredChatResource reload removes the last assistant response without 
   });
   const resource = TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model: 'gpt-4.1',
       system: 'System A',
       schema: s.object('risk summary', {
         risk: s.string('Risk level'),
@@ -361,7 +309,6 @@ test('structuredChatResource reload returns false when messages are empty', () =
   });
   const resource = TestBed.runInInjectionContext(() =>
     structuredChatResource({
-      model: 'gpt-4.1',
       system: 'System A',
       schema: s.object('risk summary', {
         risk: s.string('Risk level'),

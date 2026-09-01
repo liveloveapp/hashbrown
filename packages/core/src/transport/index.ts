@@ -5,6 +5,7 @@ export type {
   TransportRequest,
   TransportResponse,
   TransportOrFactory,
+  DetectionResult,
 } from './transport';
 export { resolveTransport } from './transport';
 export { TransportError } from './transport-error';
@@ -17,7 +18,6 @@ export {
   ExperimentalChromeLocalTransport,
   createExperimentalChromeLocalTransport,
   detectChromePromptApi,
-  experimentalChromeLocalModelSpec,
   experimental_chrome,
   type ExperimentalChromeLocalTransportOptions,
   type PromptMessage,
@@ -27,7 +27,6 @@ export {
 export {
   ExperimentalEdgeLocalTransport,
   detectEdgePromptApi,
-  experimentalEdgeLocalModelSpec,
   experimental_edge,
   type ExperimentalEdgeLocalTransportOptions,
 } from './experimental-edge-local-transport';
@@ -38,16 +37,3 @@ export {
   type LocalPromptAdapterName,
   type ExperimentalLocalTransportOptions,
 } from './experimental-local-transport';
-export {
-  ModelResolver,
-  type DetectionResult,
-  type ModelCapabilities,
-  type ModelInput,
-  type ModelSelectionMetadata,
-  type ModelSpec,
-  type ModelSpecConfig,
-  type ModelSpecFactory,
-  type RequestedFeatures,
-  type ResolvedModelSpec,
-  type SkippedSpec,
-} from './model-spec';

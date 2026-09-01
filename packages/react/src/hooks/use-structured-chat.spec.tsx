@@ -30,7 +30,6 @@ test('useStructuredChat initializes with the provided message history', () => {
   const { result } = renderHook(
     () =>
       useStructuredChat({
-        model: 'gpt-4.1',
         system: 'You are a portfolio analyst.',
         schema: s.object('risk summary', {
           risk: s.string('Risk level'),
@@ -55,7 +54,6 @@ test('useStructuredChat preserves thread identity property presence on updates',
   const { result, rerender } = renderHook(
     ({ system, ...threadOptions }: HookProps) =>
       useStructuredChat({
-        model: 'gpt-4.1',
         system,
         schema: s.object('risk summary', {
           risk: s.string('Risk level'),

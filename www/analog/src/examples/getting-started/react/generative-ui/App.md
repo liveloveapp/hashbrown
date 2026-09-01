@@ -56,7 +56,6 @@ export function App() {
     isSending,
     isReceiving,
   } = useUiChat({
-    model: 'gpt-5',
     system: 'Build a Spotify playlist app',
     components,
   });

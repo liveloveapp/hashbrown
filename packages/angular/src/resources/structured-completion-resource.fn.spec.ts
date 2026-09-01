@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { ModelInput } from '@hashbrownai/core';
 import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { structuredChatResource } from './structured-chat-resource.fn';
@@ -43,7 +42,6 @@ test('structuredCompletionResource passes reactive options through without expos
   // Arrange
   structuredChatResourceMock.mockReset();
   structuredChatResourceMock.mockReturnValue(createChatStub(signal<any[]>([])));
-  const model = signal<ModelInput>('gpt-4.1');
   const apiUrl = signal('/completion');
   const system = signal('System prompt');
   const threadId = signal<string | undefined>('thread-a');
@@ -51,7 +49,6 @@ test('structuredCompletionResource passes reactive options through without expos
   // Act
   const resource = TestBed.runInInjectionContext(() =>
     structuredCompletionResource({
-      model,
       apiUrl,
       system,
       threadId,
@@ -65,7 +62,6 @@ test('structuredCompletionResource passes reactive options through without expos
   // Assert
   expect(structuredChatResourceMock).toHaveBeenCalledWith(
     expect.objectContaining({
-      model,
       apiUrl,
       system,
       threadId,
@@ -93,7 +89,6 @@ test('structuredCompletionResource preserves a literal empty threadId option', (
 
   TestBed.runInInjectionContext(() =>
     structuredCompletionResource({
-      model: 'gpt-4.1',
       system: 'System prompt',
       threadId: '',
       input: signal('Summarize this'),
@@ -125,7 +120,6 @@ test('structuredCompletionResource snapshot uses the exposed completion value', 
 
   const resource = TestBed.runInInjectionContext(() =>
     structuredCompletionResource({
-      model: 'gpt-4.1',
       system: 'System prompt',
       input: signal('Summarize this'),
       schema: s.object('summary', {
@@ -161,7 +155,6 @@ test.each([
 
   const resource = TestBed.runInInjectionContext(() =>
     structuredCompletionResource({
-      model: 'gpt-4.1',
       system: 'System prompt',
       input: signal('Return a falsey value'),
       schema: s.anyOf([
@@ -197,7 +190,6 @@ test('structuredCompletionResource propagates terminal errors through value', ()
   );
   const resource = TestBed.runInInjectionContext(() =>
     structuredCompletionResource({
-      model: 'gpt-4.1',
       system: 'System prompt',
       input: signal('Summarize this'),
       schema: s.object('summary', {

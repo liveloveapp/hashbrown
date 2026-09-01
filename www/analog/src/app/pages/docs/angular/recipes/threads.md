@@ -114,7 +114,6 @@ export class ThreadChatComponent implements OnInit {
   readonly threadId = this.route.snapshot.paramMap.get('threadId')!;
   readonly isHydrating = signal(true);
   readonly chat = chatResource({
-    model: 'gpt-5',
     system: 'You are a helpful assistant.',
     threadId: this.threadId,
   });

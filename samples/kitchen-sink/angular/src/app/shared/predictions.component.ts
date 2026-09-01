@@ -355,7 +355,6 @@ export class PredictionsComponent {
    * --------------------------------------------------------------------------
    */
   predictions = structuredCompletionResource({
-    model: 'gpt-4.1',
     input: this.lastAction,
     system: `
       You are an AI smart home assistant tasked with predicting the next possible user action in a 

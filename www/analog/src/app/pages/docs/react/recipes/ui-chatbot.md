@@ -2,8 +2,9 @@
 title: 'Building a Chatbot with Generative UI and Tool Calling: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'This step-by-step guide will walk you through building a conversational Smart Home chatbot using Hashbrown''s useUiChat React hook. Our assistant will:'
+    content: "This step-by-step guide will walk you through building a conversational Smart Home chatbot using Hashbrown's useUiChat React hook. Our assistant will:"
 ---
+
 # Building a Chatbot with Generative UI and Tool Calling
 
 This step-by-step guide will walk you through building a conversational Smart Home chatbot using Hashbrown's `useUiChat` React hook. Our assistant will:
@@ -446,7 +447,6 @@ export const Chatbot: React.FC = () => {
   const controlScene = useControlSceneTool();
 
   const { messages, sendMessage } = useUiChat({
-    model: 'gpt-4.1',
     debugName: 'smart-home-chatbot',
     system: `
       You are a smart home assistant chatbot. You can answer questions about and control lights and scenes.
@@ -515,7 +515,6 @@ Let's break this down:
 1. We can loop over `messages` to render each message, switching on `message.role` to determine if the message came from the user, the assistant, or an error message.
 2. When creating `useUiChat`, we provide:
 
-- `model` - The model ID from your LLM provider, in this case `gpt-4.1` for the OpenAI adapter.
 - `debugName` - Lets you debug and introspect the resource using the Redux Devtools browser extension.
 - `system` - We use a system instruction with a clear role, capabilities, and rules. You can write UI examples in your system instruction (using the `<ui>` XML tag). Hashbrown will convert them into the underlying JSON representation.
 - `components` - The list of components we want the LLM to use when generating responses.

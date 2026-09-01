@@ -385,7 +385,6 @@ export class Chat {
     ],
   });
   private readonly resource = uiChatResource({
-    model: 'gpt-4.1',
     debugName: 'chart-assistant',
     system: system,
     components: [

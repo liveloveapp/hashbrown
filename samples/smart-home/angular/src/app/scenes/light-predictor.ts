@@ -21,7 +21,6 @@ export class LightPredictor {
     isLoading: Signal<boolean>;
   } {
     const predictionResource = structuredCompletionResource({
-      model: 'gpt-4.1-mini',
       debugName: 'predictedLightsResource',
       system: `
         You are an assistant that helps the user configure a lighting scene.

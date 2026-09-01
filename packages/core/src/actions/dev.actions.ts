@@ -1,12 +1,11 @@
 import { Chat } from '../models';
 import { s } from '../schema';
-import { type ModelInput, TransportOrFactory } from '../transport';
+import { TransportOrFactory } from '../transport';
 import { createActionGroup, props } from '../utils/micro-ngrx';
 
 export default createActionGroup('dev', {
   init: props<{
     apiUrl?: string;
-    model: ModelInput;
     system: string;
     debounce?: number;
     messages?: Chat.AnyMessage[];
@@ -30,7 +29,6 @@ export default createActionGroup('dev', {
   updateOptions: props<{
     debugName?: string;
     apiUrl?: string;
-    model?: ModelInput;
     system?: string;
     tools?: Chat.AnyTool[];
     responseSchema?: s.SchemaOutput;

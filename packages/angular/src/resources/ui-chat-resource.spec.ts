@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
-import { type ModelInput, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { uiChatResource } from './ui-chat-resource.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
@@ -60,7 +60,6 @@ test('uiChatResource accepts UiKit inputs and decorates assistant messages', () 
 
   const resource = uiChatResource({
     components: [uiKit],
-    model: 'gpt-4o-mini',
     system: 'system prompt',
   });
 
@@ -107,7 +106,6 @@ test('uiChatResource provides empty tag registry when assistant has no content',
         description: 'Card component',
       },
     ],
-    model: 'gpt-4o-mini',
     system: 'system prompt',
   });
 
@@ -130,7 +128,6 @@ test('uiChatResource passes reactive options through without exposing persistenc
   // Arrange
   structuredChatResourceMock.mockReset();
   structuredChatResourceMock.mockReturnValue(createChatStub(signal<any[]>([])));
-  const model = signal<ModelInput>('gpt-4.1');
   const apiUrl = signal('/ui-chat');
   const system = signal('System prompt');
   const threadId = signal<string | undefined>('thread-a');
@@ -144,7 +141,6 @@ test('uiChatResource passes reactive options through without exposing persistenc
         description: 'Card component',
       },
     ],
-    model,
     apiUrl,
     system,
     threadId,
@@ -156,7 +152,6 @@ test('uiChatResource passes reactive options through without exposing persistenc
 
   expect(delegatedOptions).toEqual(
     expect.objectContaining({
-      model,
       apiUrl,
       threadId,
     }),
@@ -190,7 +185,6 @@ test('uiChatResource preserves a literal empty threadId option', () => {
         description: 'Card component',
       },
     ],
-    model: 'gpt-4.1',
     system: 'System prompt',
     threadId: '',
   });
@@ -225,7 +219,6 @@ test('uiChatResource snapshot uses the exposed decorated messages', () => {
         description: 'Card component',
       },
     ],
-    model: 'gpt-4.1',
     system: 'System prompt',
   });
 
@@ -270,7 +263,6 @@ test('uiChatResource propagates terminal errors through value', () => {
         description: 'Card component',
       },
     ],
-    model: 'gpt-4.1',
     system: 'System prompt',
   });
 

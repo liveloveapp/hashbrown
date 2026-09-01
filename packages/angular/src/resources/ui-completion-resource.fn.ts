@@ -2,7 +2,6 @@
 import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
-  type ModelInput,
   s,
   SystemPrompt,
   type TransportOrFactory,
@@ -41,11 +40,6 @@ export interface UiCompletionResourceOptions<
    * The signal that produces the input for the completion.
    */
   input: Signal<Input | null | undefined>;
-
-  /**
-   * The model to use for the UI completion resource.
-   */
-  model: ReactiveOption<ModelInput>;
 
   /**
    * The system prompt to use for the UI completion resource.
@@ -159,7 +153,6 @@ export function uiCompletionResource<
     typeof internalSchema,
     s.Infer<UiChatMessageOutput>
   >({
-    model: options.model,
     input: options.input,
     schema: internalSchema,
     system: systemAsString,

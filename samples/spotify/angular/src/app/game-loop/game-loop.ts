@@ -44,7 +44,6 @@ export class GameLoopComponent implements ChatService {
   }>();
 
   gameMaster = uiChatResource({
-    model: 'gpt-4.1',
     debugName: 'Game Master',
     system: `
       You are the game master for a user-defined Spotify playlist game.

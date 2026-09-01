@@ -92,16 +92,15 @@ The server adapter decides how to request structured output from its provider. I
 
 ### `UseStructuredChatOptions`
 
-| Option         | Type                            | Required | Description                                     |
-| -------------- | ------------------------------- | -------- | ----------------------------------------------- |
-| `model`        | `KnownModelIds`                 | Yes      | The model to use for the structured chat        |
-| `system`       | `string`                        | Yes      | The system prompt to use for the structured chat |
-| `schema`       | `s.SchemaOutput`                | Yes      | The schema to use for the structured chat       |
+| Option         | Type                            | Required | Description                                         |
+| -------------- | ------------------------------- | -------- | --------------------------------------------------- |
+| `system`       | `string`                        | Yes      | The system prompt to use for the structured chat    |
+| `schema`       | `s.SchemaOutput`                | Yes      | The schema to use for the structured chat           |
 | `tools`        | `Tools[]`                       | No       | The tools to make available for the structured chat |
-| `messages`     | `Chat.Message<Output, Tools>[]` | No       | The initial messages for the structured chat    |
-| `debugName`    | `string`                        | No       | The debug name for the structured chat          |
-| `debounceTime` | `number`                        | No       | The debounce time between sends to the endpoint |
-| `retries`      | `number`                        | No       | The number of retries if an error is received   |
+| `messages`     | `Chat.Message<Output, Tools>[]` | No       | The initial messages for the structured chat        |
+| `debugName`    | `string`                        | No       | The debug name for the structured chat              |
+| `debounceTime` | `number`                        | No       | The debounce time between sends to the endpoint     |
+| `retries`      | `number`                        | No       | The number of retries if an error is received       |
 
 ---
 
@@ -196,7 +195,6 @@ Let's review the code above.
 
 | Option         | Type                         | Required | Description                                               |
 | -------------- | ---------------------------- | -------- | --------------------------------------------------------- |
-| `model`        | `KnownModelIds`              | Yes      | The model to use for the structured completion            |
 | `input`        | `Input \| null \| undefined` | Yes      | The input to the structured completion                    |
 | `schema`       | `s.SchemaOutput`             | Yes      | The schema to use for the structured completion           |
 | `system`       | `string`                     | Yes      | The system prompt to use for the structured completion    |

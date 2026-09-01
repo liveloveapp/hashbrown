@@ -111,7 +111,6 @@ type ThreadChatProps = {
 export function ThreadChat({ threadId, initialMessages }: ThreadChatProps) {
   const lastSaved = useRef(JSON.stringify(initialMessages));
   const chat = useChat({
-    model: 'gpt-5',
     system: 'You are a helpful assistant.',
     threadId,
     messages: initialMessages,
