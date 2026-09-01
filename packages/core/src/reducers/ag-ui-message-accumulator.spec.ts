@@ -360,11 +360,18 @@ test('records recoverable structured-output trailing content as immutable diagno
       extraData: '{"ui":[{}]}',
     },
   ]);
+  expect(next.diagnostics[0]?.parsedData).not.toBe(
+    next.message?.contentResolved,
+  );
   expect(Object.isFrozen(next.diagnostics[0])).toBe(true);
   expect(Object.isFrozen(next.diagnostics[0]?.parsedData)).toBe(true);
   expect(
     Object.isFrozen((next.diagnostics[0]?.parsedData as { ui: unknown[] }).ui),
   ).toBe(true);
+  expect(Object.isFrozen(next.message?.contentResolved)).toBe(false);
+  expect(
+    Object.isFrozen((next.message?.contentResolved as { ui: unknown[] }).ui),
+  ).toBe(false);
 });
 
 test('records a tool trailing-content diagnostic once across repeated finalization', () => {
@@ -393,6 +400,47 @@ test('records a tool trailing-content diagnostic once across repeated finalizati
   expect(replayed.diagnostics).toBe(ended.diagnostics);
   expect(finished.diagnostics).toBe(ended.diagnostics);
   expect(ended.toolCalls[0]?.argumentsResolved).toEqual({ value: 1 });
+});
+
+test('owns immutable tool diagnostic data without freezing tool arguments', () => {
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    submit: {
+      name: 'submit',
+      description: '',
+      schema: s.object('arguments', {
+        payload: s.object('payload', {
+          items: s.array('items', s.number('item')),
+        }),
+      }),
+      handler: async () => undefined,
+    },
+  };
+  const state = accumulateEvents(createState(undefined, toolsByName), [
+    toolStart('call-submit', 'submit'),
+    toolArgs(
+      'call-submit',
+      '{"payload":{"items":[1]}}\n{"payload":{"items":[2]}}',
+    ),
+  ]);
+
+  const next = accumulateAgUiMessageEvent(state, {
+    type: EventType.TOOL_CALL_END,
+    toolCallId: 'call-submit',
+  });
+  const diagnosticData = next.diagnostics[0]?.parsedData as {
+    payload: { items: number[] };
+  };
+  const argumentsResolved = next.toolCalls[0]?.argumentsResolved as {
+    payload: { items: number[] };
+  };
+
+  expect(diagnosticData).not.toBe(argumentsResolved);
+  expect(Object.isFrozen(diagnosticData)).toBe(true);
+  expect(Object.isFrozen(diagnosticData.payload)).toBe(true);
+  expect(Object.isFrozen(diagnosticData.payload.items)).toBe(true);
+  expect(Object.isFrozen(argumentsResolved)).toBe(false);
+  expect(Object.isFrozen(argumentsResolved.payload)).toBe(false);
+  expect(Object.isFrozen(argumentsResolved.payload.items)).toBe(false);
 });
 
 test('does not duplicate a structured-output diagnostic when run completion is replayed', () => {
@@ -481,6 +529,22 @@ test('preserves the first parser or run error and all partial content', () => {
   expect(next.message?.content).toBe('{"value":,}');
   expect(next.error).toBe(state.error);
   expect(next.error?.message).toBe('Invalid structured output');
+});
+
+test('stores a first run error without discarding the partial message', () => {
+  const state = accumulateEvents(createState(), [
+    textStart(),
+    textContent('partial'),
+  ]);
+
+  const next = accumulateAgUiMessageEvent(state, {
+    type: EventType.RUN_ERROR,
+    message: 'provider failed',
+    code: 'provider_error',
+  });
+
+  expect(next.message?.content).toBe('partial');
+  expect(next.error).toEqual(new Error('provider failed'));
 });
 
 test('accumulates reasoning, encrypted values, metadata, and associations', () => {
@@ -686,6 +750,26 @@ test('preserves reasoning placeholder, redaction, completion, and latest event f
   ]);
 });
 
+test('completes reasoning with a prototype-named message id', () => {
+  const state = createState();
+
+  const next = accumulateEvents(state, [
+    reasoningStart('constructor'),
+    reasoningContent('constructor', 'Analysis'),
+    reasoningEnd('constructor'),
+    runFinished(),
+  ]);
+
+  expect(next.error).toBeUndefined();
+  expect(reasoningDetails(next)).toEqual([
+    {
+      id: 'constructor',
+      role: 'reasoning',
+      content: 'Analysis',
+    },
+  ]);
+});
+
 test('reports every malformed reasoning end and content ordering', () => {
   const completed = accumulateEvents(createState(), [
     reasoningStart('reasoning-1'),
@@ -742,6 +826,31 @@ test('keeps latest encrypted values and ignores unknown encrypted entities', () 
   expect(unknownTool).toBe(state);
   expect(next.message?.encryptedValue).toBe('assistant-latest');
   expect(next.toolCalls[0]?.encryptedValue).toBe('tool-latest');
+});
+
+test('keeps encrypted-value event metadata local to the event', () => {
+  const encryptedMetadata = { provider: { signature: 'event-only' } };
+  const state = accumulateAgUiMessageEvent(
+    createState(),
+    reasoningStart('reasoning-1', { accumulated: 'detail' }),
+  );
+
+  const next = accumulateAgUiMessageEvent(state, {
+    type: EventType.REASONING_ENCRYPTED_VALUE,
+    subtype: 'message',
+    entityId: 'reasoning-1',
+    encryptedValue: 'opaque',
+    metadata: encryptedMetadata,
+  });
+  encryptedMetadata.provider.signature = 'mutated';
+
+  expect(reasoningDetails(next)[0]).toEqual({
+    id: 'reasoning-1',
+    role: 'reasoning',
+    content: '',
+    encryptedValue: 'opaque',
+    metadata: { accumulated: 'detail' },
+  });
 });
 
 test('clones metadata supplied through text and tool chunk shorthand', () => {
