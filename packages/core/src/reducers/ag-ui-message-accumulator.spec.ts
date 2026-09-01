@@ -1,4 +1,5 @@
 import { type AGUIEvent, EventType, type ReasoningMessage } from '@ag-ui/core';
+import type { StreamError } from '@cacheplane/json-stream';
 import { Chat } from '../models';
 import { s } from '../schema';
 import {
@@ -414,6 +415,71 @@ test('records recoverable structured-output trailing content as immutable diagno
   expect(
     Object.isFrozen((next.message?.contentResolved as { ui: unknown[] }).ui),
   ).toBe(false);
+});
+
+test('recovers trailing content by parser error code when the message changes', () => {
+  const schema = s.object('output', { value: s.number('value') });
+  const parsed = accumulateEvents(createState(schema), [
+    textStart(),
+    textContent('{"value":1}\n{"value":2}'),
+  ]);
+  const parserState = parsed.outputParserState;
+  if (!parserState?.error) {
+    throw new Error('Expected trailing-content parser state');
+  }
+  const state: AgUiMessageAccumulatorState = {
+    ...parsed,
+    outputParserState: {
+      ...parserState,
+      error: {
+        ...parserState.error,
+        code: 'TRAILING_CONTENT',
+        message: 'Additional JSON value follows the completed root',
+      } satisfies StreamError,
+    },
+  };
+
+  const next = accumulateAgUiMessageEvent(state, runFinished());
+
+  expect(next.error).toBeUndefined();
+  expect(next.message?.contentResolved).toEqual({ value: 1 });
+  expect(next.diagnostics).toEqual([
+    {
+      type: 'recovered-trailing-content',
+      source: 'structured-output',
+      entityId: 'message-1',
+      parsedData: { value: 1 },
+      extraData: '{"value":2}',
+    },
+  ]);
+});
+
+test('does not recover a non-trailing parser error with the legacy message', () => {
+  const schema = s.object('output', { value: s.number('value') });
+  const parsed = accumulateEvents(createState(schema), [
+    textStart(),
+    textContent('{"value":1}\n{"value":2}'),
+  ]);
+  const parserState = parsed.outputParserState;
+  if (!parserState?.error) {
+    throw new Error('Expected trailing-content parser state');
+  }
+  const state: AgUiMessageAccumulatorState = {
+    ...parsed,
+    outputParserState: {
+      ...parserState,
+      error: {
+        ...parserState.error,
+        code: 'INVALID_SYNTAX',
+        message: 'Unexpected token after root value',
+      } satisfies StreamError,
+    },
+  };
+
+  const next = accumulateAgUiMessageEvent(state, runFinished());
+
+  expect(next.error).toEqual(new Error('Invalid structured output'));
+  expect(next.diagnostics).toEqual([]);
 });
 
 test('records a tool trailing-content diagnostic once across repeated finalization', () => {

@@ -214,24 +214,36 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
           const packageJson = require(packageJsonPath);
           const agUiCoreVersion = packageJson.dependencies?.['@ag-ui/core'];
           const agUiClientVersion = packageJson.dependencies?.['@ag-ui/client'];
+          const jsonStreamVersion =
+            packageJson.dependencies?.['@cacheplane/json-stream'];
           if (
             agUiCoreVersion !== '0.0.59' ||
-            agUiClientVersion !== agUiCoreVersion
+            agUiClientVersion !== agUiCoreVersion ||
+            jsonStreamVersion !== '0.1.0' ||
+            packageJson.dependencies?.['@cacheplane/partial-json'] !== undefined
           ) {
             throw new Error(
-              'Core must declare exact matching @ag-ui/core and @ag-ui/client dependencies',
+              'Core must declare exact AG-UI and json-stream dependencies without partial-json',
             );
           }
           const cjs = require('@hashbrownai/core');
-          const cjsPartialJson = require('@cacheplane/partial-json');
+          const cjsJsonStream = require('@cacheplane/json-stream');
           const esm = await import(
             pathToFileURL(join(dirname(packageJsonPath), packageJson.module))
           );
-          const esmPartialJson = await import('@cacheplane/partial-json');
+          const esmJsonStream = await import('@cacheplane/json-stream');
 
-          for (const [format, core, partialJson] of [
-            ['CJS', cjs, cjsPartialJson],
-            ['ESM', esm, esmPartialJson],
+          let partialJsonPath;
+          try {
+            partialJsonPath = require.resolve('@cacheplane/partial-json');
+          } catch {}
+          if (partialJsonPath !== undefined) {
+            throw new Error('Core installed partial-json directly');
+          }
+
+          for (const [format, core, jsonStream] of [
+            ['CJS', cjs, cjsJsonStream],
+            ['ESM', esm, esmJsonStream],
           ]) {
             if (
               'framesToLengthPrefixedStream' in core ||
@@ -249,8 +261,8 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
               'getResolvedValue',
               'parseChunk',
             ].filter((name) => name in core);
-            const parsed = partialJson.finish(
-              partialJson.push(partialJson.create(), '{"value":2}'),
+            const parsed = jsonStream.finish(
+              jsonStream.push(jsonStream.create(), '{"value":2}'),
             );
             const schema = core.s.object('result', {
               value: core.s.number('value'),

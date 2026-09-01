@@ -148,7 +148,7 @@ test('published React package metadata exposes ESM and CJS entrypoints', () => {
   expect(packageJson.types).toBe('./index.d.ts');
   expect(packageJson.module).toBe('./index.mjs');
   expect(packageJson.main).toBe('./index.cjs');
-  expect(packageJson.dependencies?.['@cacheplane/partial-json']).toBe('0.2.2');
+  expect(packageJson.dependencies?.['@cacheplane/partial-json']).toBe('0.3.0');
   expect(packageJson.exports?.['.']).toEqual({
     types: './index.d.ts',
     import: './index.mjs',
@@ -217,6 +217,8 @@ test('packed React and core packages install and load in a clean consumer', () =
         import { createRequire } from 'node:module';
 
         const require = createRequire(import.meta.url);
+        const partialJsonPackage = require('@cacheplane/partial-json/package.json');
+        const jsonStreamPackage = require('@cacheplane/json-stream/package.json');
         const cjs = require('@hashbrownai/react');
         const cjsCore = require('@hashbrownai/core');
         const esm = await import('@hashbrownai/react');
@@ -236,6 +238,13 @@ test('packed React and core packages install and load in a clean consumer', () =
 
         if (typeof esm.HashbrownProvider !== 'function') {
           throw new Error('ESM entrypoint did not expose HashbrownProvider');
+        }
+
+        if (
+          partialJsonPackage.version !== '0.3.0' ||
+          jsonStreamPackage.version !== '0.1.0'
+        ) {
+          throw new Error('React resolved incompatible Cacheplane packages');
         }
       `,
       sandboxPath,
