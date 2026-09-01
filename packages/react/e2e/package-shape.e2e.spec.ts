@@ -144,11 +144,14 @@ function createPackageSandbox(): string {
 
 test('published React package metadata exposes ESM and CJS entrypoints', () => {
   const packageJson = readReactPackageJson();
+  const esmBundle = readFileSync(join(reactDistPath, 'index.mjs'), 'utf8');
+  const cjsBundle = readFileSync(join(reactDistPath, 'index.cjs'), 'utf8');
 
   expect(packageJson.types).toBe('./index.d.ts');
   expect(packageJson.module).toBe('./index.mjs');
   expect(packageJson.main).toBe('./index.cjs');
   expect(packageJson.dependencies?.['@cacheplane/partial-json']).toBe('0.3.0');
+  expect(packageJson.dependencies?.['@cacheplane/json-stream']).toBeUndefined();
   expect(packageJson.exports?.['.']).toEqual({
     types: './index.d.ts',
     import: './index.mjs',
@@ -157,6 +160,10 @@ test('published React package metadata exposes ESM and CJS entrypoints', () => {
   expect(existsSync(join(reactDistPath, 'index.d.ts'))).toBe(true);
   expect(existsSync(join(reactDistPath, 'index.mjs'))).toBe(true);
   expect(existsSync(join(reactDistPath, 'index.cjs'))).toBe(true);
+  expect(esmBundle).toMatch(/from ['"]@cacheplane\/partial-json['"]/);
+  expect(esmBundle).not.toContain('@cacheplane/json-stream');
+  expect(cjsBundle).toMatch(/require\(['"]@cacheplane\/partial-json['"]\)/);
+  expect(cjsBundle).not.toContain('@cacheplane/json-stream');
 });
 
 test('packed React and core packages install and load in a clean consumer', () => {
@@ -218,7 +225,12 @@ test('packed React and core packages install and load in a clean consumer', () =
 
         const require = createRequire(import.meta.url);
         const partialJsonPackage = require('@cacheplane/partial-json/package.json');
-        const jsonStreamPackage = require('@cacheplane/json-stream/package.json');
+        const partialJsonRequire = createRequire(
+          require.resolve('@cacheplane/partial-json/package.json'),
+        );
+        const jsonStreamPackage = partialJsonRequire(
+          '@cacheplane/json-stream/package.json',
+        );
         const cjs = require('@hashbrownai/react');
         const cjsCore = require('@hashbrownai/core');
         const esm = await import('@hashbrownai/react');
@@ -242,6 +254,8 @@ test('packed React and core packages install and load in a clean consumer', () =
 
         if (
           partialJsonPackage.version !== '0.3.0' ||
+          partialJsonPackage.dependencies?.['@cacheplane/json-stream'] !==
+            '^0.1.0' ||
           jsonStreamPackage.version !== '0.1.0'
         ) {
           throw new Error('React resolved incompatible Cacheplane packages');
