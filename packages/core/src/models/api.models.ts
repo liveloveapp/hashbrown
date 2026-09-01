@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { DeepPartial } from '../utils';
-import { ModelInput } from '../transport';
 
 /**
  * @public
@@ -121,48 +120,3 @@ export interface CompletionChunk {
  * @public
  */
 export type CompletionToolChoiceOption = 'auto' | 'none' | 'required';
-
-/**
- * Controls how structured resource schemas are enforced by the provider.
- *
- * @public
- */
-export type StructuredOutputMode = 'strict' | 'json' | 'tool';
-
-/**
- * Options for structured output generation.
- *
- * @public
- */
-export interface StructuredOutputOptions {
-  /**
-   * The structured output mode to use.
-   *
-   * - `strict` sends the schema to providers that support schema-constrained output.
-   * - `json` asks the provider for JSON without schema-constrained decoding.
-   * - `tool` uses the reserved output tool for emulated structured output.
-   */
-  mode?: StructuredOutputMode;
-}
-
-/**
- * Provider-facing response format mode.
- *
- * @public
- */
-export type ResponseFormatMode = 'schema' | 'json';
-
-/**
- * @public
- */
-export interface CompletionCreateParams {
-  operation: 'load-thread' | 'generate';
-  model: ModelInput;
-  system: string;
-  messages: Message[];
-  responseFormat?: object;
-  responseFormatMode?: ResponseFormatMode;
-  toolChoice?: CompletionToolChoiceOption;
-  tools?: Tool[];
-  threadId?: string;
-}

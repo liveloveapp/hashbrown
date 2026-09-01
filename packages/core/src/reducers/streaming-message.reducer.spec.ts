@@ -10,14 +10,12 @@ import {
 
 function startState(
   responseSchema?: s.SchemaOutput,
-  emulateStructuredOutput = false,
   toolsByName: Record<string, Chat.Internal.Tool> = {},
 ) {
   return reducer(
     initialState,
     apiActions.generateMessageStart({
       responseSchema,
-      emulateStructuredOutput,
       toolsByName,
     }),
   );
@@ -168,7 +166,7 @@ test('parses structured output from AG-UI text events', () => {
   const responseSchema = s.object('output', {
     message: s.streaming.string('message'),
   });
-  let state = startState(responseSchema, false);
+  let state = startState(responseSchema);
 
   state = reduceEvents(state, textEvents('{"message":"he'));
 
@@ -186,7 +184,7 @@ test('streams Japanese and Chinese structured output from AG-UI text events', ()
   const responseSchema = s.object('output', {
     message: s.streaming.string('message'),
   });
-  let state = startState(responseSchema, false);
+  let state = startState(responseSchema);
 
   state = reduceEvents(state, textEvents('{"message":"こん'));
 
@@ -209,7 +207,7 @@ test('streams structured output from AG-UI text chunk shorthand', () => {
   const responseSchema = s.object('output', {
     message: s.streaming.string('message'),
   });
-  let state = startState(responseSchema, false);
+  let state = startState(responseSchema);
 
   state = reduceEvents(state, [
     {
@@ -238,7 +236,7 @@ test('recovers structured output from AG-UI text before trailing JSON', () => {
   });
 
   try {
-    let state = startState(responseSchema, false);
+    let state = startState(responseSchema);
 
     state = reduceEvents(state, textEvents('{"ui":[{}]}\n{"ui":[{}]}'));
 
@@ -274,14 +272,14 @@ test('parses Standard JSON Schema structured output when complete', () => {
       },
     },
   } as const satisfies s.StandardJSONSchemaV1<unknown, { message: string }>;
-  let state = startState(responseSchema, false);
+  let state = startState(responseSchema);
 
   state = reduceEvents(state, textEvents('{"message":"hello"}'));
 
   expect(state.message?.contentResolved).toEqual({ message: 'hello' });
 });
 
-test('streams output tool arguments from AG-UI events in emulated mode', () => {
+test('streams output tool arguments from AG-UI events', () => {
   const responseSchema = s.object('output', {
     answer: s.streaming.string('answer'),
   });
@@ -293,7 +291,7 @@ test('streams output tool arguments from AG-UI events in emulated mode', () => {
       handler: async () => undefined,
     },
   };
-  let state = startState(responseSchema, true, toolsByName);
+  let state = startState(responseSchema, toolsByName);
 
   state = reduceEvents(
     state,
@@ -328,7 +326,7 @@ test('recovers AG-UI tool arguments before trailing JSON', () => {
   };
 
   try {
-    let state = startState(responseSchema, true, toolsByName);
+    let state = startState(responseSchema, toolsByName);
 
     state = reduceEvents(
       state,
@@ -363,7 +361,7 @@ test('finalizes AG-UI tool arguments only once across tool and run completion', 
   };
 
   try {
-    let state = startState(undefined, false, toolsByName);
+    let state = startState(undefined, toolsByName);
     state = reduceEvents(
       state,
       toolEvents('call-submit', 'submit', '{"value":1}\n{"value":2}'),
@@ -526,7 +524,7 @@ test('streams multiple AG-UI tool calls keyed by toolCallId', () => {
       handler: async () => undefined,
     },
   };
-  let state = startState(undefined, false, toolsByName);
+  let state = startState(undefined, toolsByName);
 
   state = reduceEvents(
     state,
@@ -562,7 +560,7 @@ test('streams interleaved AG-UI tool call chunk shorthand', () => {
       handler: async () => undefined,
     },
   };
-  let state = startState(undefined, false, toolsByName);
+  let state = startState(undefined, toolsByName);
 
   state = reduceEvents(state, [
     {
@@ -613,7 +611,7 @@ test('uses the active tool call for AG-UI tool chunks with omitted ids', () => {
       handler: async () => undefined,
     },
   };
-  let state = startState(undefined, false, toolsByName);
+  let state = startState(undefined, toolsByName);
 
   state = reduceEvents(state, [
     {
@@ -650,7 +648,7 @@ test('non-hashbrown AG-UI tool arguments resolve only when complete', () => {
       handler: async () => undefined,
     },
   };
-  let state = startState(undefined, false, toolsByName);
+  let state = startState(undefined, toolsByName);
 
   state = reduceEvents(
     state,
@@ -668,7 +666,7 @@ test('does not recover malformed structured output before the root closes', () =
   const responseSchema = s.object('output', {
     ui: s.array('ui', s.object('component', {})),
   });
-  let state = startState(responseSchema, false);
+  let state = startState(responseSchema);
 
   state = reduceEvents(state, textEvents('{"ui":[{}],}'));
 
@@ -678,7 +676,7 @@ test('does not recover malformed structured output before the root closes', () =
 
 test('defers AG-UI parser errors until the run finishes', () => {
   const responseSchema = s.object('output', { message: s.string('message') });
-  let state = startState(responseSchema, false);
+  let state = startState(responseSchema);
 
   state = reduceEvents(state, textEvents('{"message":"oops'));
 
@@ -1165,7 +1163,7 @@ test('isolates reasoning content and encrypted values from structured output par
   const responseSchema = s.object('output', {
     message: s.string('message'),
   });
-  let state = startState(responseSchema, false);
+  let state = startState(responseSchema);
 
   state = reduceEvents(state, [
     reasoningStart('reasoning-1'),
@@ -1199,7 +1197,7 @@ test('silent retirement resets all partial generation state', () => {
       handler: async () => undefined,
     },
   };
-  let state = startState(responseSchema, false, toolsByName);
+  let state = startState(responseSchema, toolsByName);
   state = reduceEvents(state, textEvents('{"answer":"par'));
   state = reduceEvents(state, toolEvents('call-1', 'lookup', '{"query":"par'));
 

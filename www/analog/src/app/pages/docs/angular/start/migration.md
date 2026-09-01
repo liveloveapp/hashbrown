@@ -34,6 +34,20 @@ There is no compatibility export for the binary frame API. Migrate the server en
 
 ---
 
+## Structured Output Controls
+
+Structured resources now use their `schema` option as the sole client-side structured output control. Hashbrown sends that schema in `RunAgentInput.hashbrown.responseSchema`; the server adapter owns provider-specific schema enforcement or JSON-mode settings.
+
+Remove the following APIs when upgrading:
+
+- `structuredOutput` from structured chat, structured completion, and generative UI resource options
+- `emulateStructuredOutput` from `provideHashbrown(...)` and `fryHashbrown(...)`
+- `StructuredOutputMode`, `StructuredOutputOptions`, `ResponseFormatMode`, and `CompletionCreateParams` from `Chat.Api`
+
+Hashbrown no longer creates or interprets a reserved `output` tool. A developer-defined tool named `output` now behaves like any other tool and participates in tool execution and conversation history.
+
+---
+
 ## Who Is Affected
 
 You are likely unaffected if:

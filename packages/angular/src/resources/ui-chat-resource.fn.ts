@@ -88,11 +88,6 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
   transport?: TransportOrFactory;
 
   /**
-   * Controls how the provider is asked to produce structured output.
-   */
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
-
-  /**
    * Optional opaque AG-UI thread identity.
    */
   threadId?: ReactiveOption<string | undefined>;
@@ -170,7 +165,6 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     debounce: args.debounce,
     apiUrl: args.apiUrl,
     transport: args.transport,
-    structuredOutput: args.structuredOutput,
     ui: true,
     threadId: args.threadId,
   });

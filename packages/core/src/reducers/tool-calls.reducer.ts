@@ -68,7 +68,5 @@ export const selectToolCalls = select(
 );
 
 export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) => {
-  return toolCalls.filter(
-    (toolCall) => toolCall.status === 'pending' && toolCall.name !== 'output',
-  );
+  return toolCalls.filter((toolCall) => toolCall.status === 'pending');
 });

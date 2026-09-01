@@ -9,7 +9,6 @@ import {
   selectIsRunningToolCalls,
   selectThreadId,
   selectUnifiedError,
-  selectViewMessages,
 } from './index';
 
 const initAction = { type: '@@init' } as const;
@@ -41,115 +40,22 @@ function reduceAll(
   };
 }
 
-test('selectViewMessages uses output tool arguments in emulated mode', () => {
-  const responseSchema = s.object('output', { text: s.string('text') });
-
-  let state = createState();
-
-  state = reduceAll(
-    state,
-    devActions.init({
+test('fryHashbrown accepts a developer tool named output', () => {
+  const createHashbrown = () =>
+    fryHashbrown({
       model: 'test-model',
       system: 'test',
-      responseSchema,
-      emulateStructuredOutput: true,
-    }),
-  );
+      tools: [
+        {
+          name: 'output',
+          description: 'Return a result',
+          schema: s.object('result', { value: s.string('value') }),
+          handler: async () => undefined,
+        },
+      ],
+    });
 
-  const outputToolCall: Chat.Internal.ToolCall = {
-    id: 'call-output',
-    name: 'output',
-    arguments: '{"text":"hello"}',
-    argumentsResolved: { text: 'hello' },
-    status: 'pending',
-  };
-
-  const assistantMessage: Chat.Internal.AssistantMessage = {
-    role: 'assistant',
-    content: '',
-    toolCallIds: [outputToolCall.id],
-  };
-
-  state = reduceAll(
-    state,
-    apiActions.generateMessageSuccess({
-      message: assistantMessage,
-      toolCalls: [outputToolCall],
-    }),
-  );
-
-  const messages = selectViewMessages(state);
-  const assistant = messages.find((message) => message.role === 'assistant');
-
-  expect(assistant?.content).toEqual({ text: 'hello' });
-});
-
-test('selectViewMessages uses streaming output tool arguments', () => {
-  const responseSchema = s.object('output', {
-    text: s.streaming.string('text'),
-  });
-  const toolsByName: Record<string, Chat.Internal.Tool> = {
-    output: {
-      name: 'output',
-      description: '',
-      schema: responseSchema,
-      handler: async () => undefined,
-    },
-  };
-
-  let state = createState();
-
-  state = reduceAll(
-    state,
-    devActions.init({
-      model: 'test-model',
-      system: 'test',
-      responseSchema,
-      emulateStructuredOutput: true,
-    }),
-  );
-
-  state = reduceAll(
-    state,
-    apiActions.generateMessageStart({
-      responseSchema,
-      emulateStructuredOutput: true,
-      toolsByName,
-    }),
-  );
-
-  state = reduceAll(
-    state,
-    apiActions.generateMessageEvent({
-      type: EventType.TOOL_CALL_START,
-      toolCallId: 'call-output',
-      toolCallName: 'output',
-      parentMessageId: 'message-1',
-    }),
-  );
-
-  state = reduceAll(
-    state,
-    apiActions.generateMessageEvent({
-      type: EventType.TOOL_CALL_ARGS,
-      toolCallId: 'call-output',
-      delta: '{"text":"he',
-    }),
-  );
-
-  state = reduceAll(
-    state,
-    apiActions.generateMessageEvent({
-      type: EventType.TOOL_CALL_ARGS,
-      toolCallId: 'call-output',
-      delta: 'llo"}',
-    }),
-  );
-
-  const messages = selectViewMessages(state);
-  const assistant = messages.find((message) => message.role === 'assistant');
-
-  expect(assistant?.content).toEqual({ text: 'hello' });
+  expect(createHashbrown).not.toThrow();
 });
 
 test('RUN_STARTED updates the selected thread ID', () => {
@@ -362,7 +268,6 @@ test('undefined non-clearable options preserve current config values', () => {
       model: 'initial-model',
       system: 'initial-system',
       debounce: 250,
-      emulateStructuredOutput: true,
       retries: 3,
       ui: true,
     }),
@@ -374,7 +279,6 @@ test('undefined non-clearable options preserve current config values', () => {
       model: undefined,
       system: undefined,
       debounce: undefined,
-      emulateStructuredOutput: undefined,
       retries: undefined,
       ui: undefined,
     }),
@@ -384,7 +288,6 @@ test('undefined non-clearable options preserve current config values', () => {
     model: 'initial-model',
     system: 'initial-system',
     debounce: 250,
-    emulateStructuredOutput: true,
     retries: 3,
     ui: true,
   });
@@ -405,7 +308,6 @@ test('undefined clearable options clear current config values', () => {
       model: 'test-model',
       system: 'test',
       middleware: [middleware],
-      structuredOutput: { mode: 'json' },
       transport,
     }),
   );
@@ -415,14 +317,12 @@ test('undefined clearable options clear current config values', () => {
     devActions.updateOptions({
       apiUrl: undefined,
       middleware: undefined,
-      structuredOutput: undefined,
       transport: undefined,
     }),
   );
 
   expect(nextState.config).toHaveProperty('apiUrl', undefined);
   expect(nextState.config).toHaveProperty('middleware', undefined);
-  expect(nextState.config).toHaveProperty('structuredOutput', undefined);
   expect(nextState.config).toHaveProperty('transport', undefined);
 });
 

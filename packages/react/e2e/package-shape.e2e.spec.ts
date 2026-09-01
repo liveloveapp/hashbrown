@@ -28,6 +28,7 @@ const workspaceRoot = resolve(__dirname, '../../..');
 const reactDistPath = join(workspaceRoot, 'dist/packages/react');
 const coreDistPath = join(workspaceRoot, 'dist/packages/core');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const typescriptPath = join(workspaceRoot, 'node_modules/typescript/bin/tsc');
 const childProcessTimeoutMs = 90_000;
 
 function readReactPackageJson(): PackageJson {
@@ -129,6 +130,7 @@ function createPackageSandbox(): string {
         reactTarball,
         'react@19.2.8',
         'react-dom@19.2.8',
+        '@types/react@19.2.9',
       ],
       sandboxPath,
     );
@@ -161,6 +163,55 @@ test('packed React and core packages install and load in a clean consumer', () =
   const sandboxPath = createPackageSandbox();
 
   try {
+    writeFileSync(
+      join(sandboxPath, 'consumer.ts'),
+      `
+        import type {
+          HashbrownProviderOptions,
+          UiChatOptions,
+          UiCompletionOptions,
+          UseStructuredChatOptions,
+          UseStructuredCompletionOptions,
+        } from '@hashbrownai/react';
+
+        declare const providerOptions: HashbrownProviderOptions;
+        declare const structuredChatOptions: UseStructuredChatOptions<any, any>;
+        declare const structuredCompletionOptions: UseStructuredCompletionOptions<any, any>;
+        declare const uiChatOptions: UiChatOptions<any>;
+        declare const uiCompletionOptions: UiCompletionOptions<any, any>;
+
+        // @ts-expect-error Structured-output emulation is no longer configurable.
+        providerOptions.emulateStructuredOutput;
+        // @ts-expect-error Structured-output modes are owned by the server adapter.
+        structuredChatOptions.structuredOutput;
+        // @ts-expect-error Structured-output modes are owned by the server adapter.
+        structuredCompletionOptions.structuredOutput;
+        // @ts-expect-error Structured-output modes are owned by the server adapter.
+        uiChatOptions.structuredOutput;
+        // @ts-expect-error Structured-output modes are owned by the server adapter.
+        uiCompletionOptions.structuredOutput;
+      `,
+    );
+    const compileArgs = [
+      typescriptPath,
+      '--noEmit',
+      '--strict',
+      '--skipLibCheck',
+      '--target',
+      'ES2022',
+      '--module',
+      'Node16',
+      '--moduleResolution',
+      'Node16',
+      '--lib',
+      'ES2022,DOM',
+      'consumer.ts',
+    ];
+    const compileResult = spawnSync(process.execPath, compileArgs, {
+      cwd: sandboxPath,
+      encoding: 'utf8',
+      timeout: childProcessTimeoutMs,
+    });
     const result = runNodePackageCheck(
       `
         import { createRequire } from 'node:module';
@@ -190,6 +241,12 @@ test('packed React and core packages install and load in a clean consumer', () =
       sandboxPath,
     );
 
+    assertProcessSucceeded(
+      'Consumer TypeScript check',
+      process.execPath,
+      compileArgs,
+      compileResult,
+    );
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
   } finally {

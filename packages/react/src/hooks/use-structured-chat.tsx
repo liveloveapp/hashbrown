@@ -80,11 +80,6 @@ export interface UseStructuredChatOptions<
   transport?: TransportOrFactory;
 
   /**
-   * Controls how the provider is asked to produce structured output.
-   */
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
-
-  /**
    * Whether this structured chat is expected to produce UI elements.
    */
   ui?: boolean;
@@ -241,7 +236,6 @@ export function useStructuredChat<
     hashbrown.current = fryHashbrown<Schema, Tools, Output>({
       apiUrl: config.url,
       middleware: config.middleware,
-      emulateStructuredOutput: config.emulateStructuredOutput,
       model: options.model,
       system: options.system,
       responseSchema: schema,
@@ -251,7 +245,6 @@ export function useStructuredChat<
       debounce: options.debounceTime,
       retries: options.retries,
       transport: options.transport ?? config.transport,
-      structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
       threadId: options.threadId,
     });
@@ -275,7 +268,6 @@ export function useStructuredChat<
     getHashbrown().updateOptions({
       apiUrl: config.url,
       middleware: config.middleware,
-      emulateStructuredOutput: config.emulateStructuredOutput,
       model: options.model,
       system: options.system,
       responseSchema: schema,
@@ -284,14 +276,12 @@ export function useStructuredChat<
       debounce: options.debounceTime,
       retries: options.retries,
       transport: options.transport ?? config.transport,
-      structuredOutput: options.structuredOutput,
       ui: options.ui ?? false,
       ...(hasThreadId ? { threadId: options.threadId } : {}),
     });
   }, [
     config.url,
     config.middleware,
-    config.emulateStructuredOutput,
     config.transport,
     options.model,
     options.system,
@@ -301,7 +291,6 @@ export function useStructuredChat<
     options.debounceTime,
     options.retries,
     options.transport,
-    options.structuredOutput,
     options.ui,
     hasThreadId,
     options.threadId,

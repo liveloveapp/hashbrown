@@ -1,6 +1,30 @@
 import { apiActions, internalActions } from '../actions';
 import { Chat } from '../models';
-import { reducer } from './tool-calls.reducer';
+import { reducer, selectPendingToolCalls } from './tool-calls.reducer';
+
+test('includes a developer tool named output in pending tool calls', () => {
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'tool-call-output',
+    name: 'output',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const state = reducer(
+    undefined,
+    apiActions.generateMessageSuccess({
+      message: {
+        role: 'assistant',
+        content: '',
+        toolCallIds: [toolCall.id],
+      },
+      toolCalls: [toolCall],
+    }),
+  );
+
+  const pendingToolCalls = selectPendingToolCalls(state);
+
+  expect(pendingToolCalls).toEqual([toolCall]);
+});
 
 test('records tool results for a stopped tool turn', () => {
   const toolCall: Chat.Internal.ToolCall = {

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat } from '../models';
 import { Prettify } from '../utils/types';
-import { s } from '../schema';
 import { select } from '../utils/micro-ngrx';
 import * as fromConfig from './config.reducer';
 import * as fromMessages from './messages.reducer';
@@ -24,43 +23,6 @@ export const reducers = {
 type State = Prettify<{
   [P in keyof typeof reducers]: ReturnType<(typeof reducers)[P]>;
 }>;
-
-function applyEmulatedOutputToMessage(
-  message: Chat.Internal.Message,
-  toolCalls: Record<string, Chat.Internal.ToolCall>,
-  responseSchema: s.HashbrownType | undefined,
-  emulateStructuredOutput: boolean | undefined,
-): Chat.Internal.Message {
-  if (!emulateStructuredOutput || !responseSchema) {
-    return message;
-  }
-
-  if (message.role !== 'assistant') {
-    return message;
-  }
-
-  const outputToolCall = message.toolCallIds
-    .map((toolCallId) => toolCalls[toolCallId])
-    .find((toolCall) => toolCall?.name === 'output');
-
-  if (!outputToolCall) {
-    return message;
-  }
-
-  const rawArguments = outputToolCall.arguments;
-  const content =
-    typeof rawArguments === 'string'
-      ? rawArguments
-      : JSON.stringify(rawArguments);
-  const contentResolved =
-    outputToolCall.argumentsResolved ?? message.contentResolved;
-
-  return {
-    ...message,
-    content,
-    contentResolved,
-  };
-}
 
 /**
  * Messages
@@ -191,14 +153,6 @@ export const selectResponseSchema = select(
   selectConfigState,
   fromConfig.selectResponseSchema,
 );
-export const selectStructuredOutput = select(
-  selectConfigState,
-  fromConfig.selectStructuredOutput,
-);
-export const selectEmulateStructuredOutput = select(
-  selectConfigState,
-  fromConfig.selectEmulateStructuredOutput,
-);
 export const selectTransport = select(
   selectConfigState,
   fromConfig.selectTransport,
@@ -216,16 +170,10 @@ const selectNonStreamingViewMessages = select(
   selectToolCallEntities,
   selectTools,
   selectResponseSchema,
-  selectEmulateStructuredOutput,
-  (messages, toolCalls, tools, responseSchema, emulateStructuredOutput) => {
+  (messages, toolCalls, tools, responseSchema) => {
     return messages.flatMap((message): Chat.AnyMessage[] =>
       Chat.helpers.toViewMessagesFromInternal(
-        applyEmulatedOutputToMessage(
-          message,
-          toolCalls,
-          responseSchema,
-          emulateStructuredOutput,
-        ),
+        message,
         toolCalls,
         tools,
         responseSchema,
@@ -239,23 +187,11 @@ const selectStreamingViewMessages = select(
   selectStreamingToolCallEntities,
   selectTools,
   selectResponseSchema,
-  selectEmulateStructuredOutput,
-  (
-    streamingMessage,
-    streamingToolCalls,
-    tools,
-    responseSchema,
-    emulateStructuredOutput,
-  ) => {
+  (streamingMessage, streamingToolCalls, tools, responseSchema) => {
     return (streamingMessage ? [streamingMessage] : []).flatMap(
       (message): Chat.AnyMessage[] =>
         Chat.helpers.toViewMessagesFromInternal(
-          applyEmulatedOutputToMessage(
-            message,
-            streamingToolCalls,
-            responseSchema,
-            emulateStructuredOutput,
-          ),
+          message,
           streamingToolCalls,
           tools,
           responseSchema,
@@ -302,17 +238,8 @@ export const selectShouldGenerateMessage = select(
   },
 );
 
-export const selectApiTools = select(
-  selectTools,
-  selectResponseSchema,
-  selectEmulateStructuredOutput,
-  (tools, responseSchema, emulateStructuredOutput) => {
-    return Chat.helpers.toApiToolsFromInternal(
-      tools,
-      emulateStructuredOutput && !!responseSchema,
-      responseSchema ?? s.nullish(),
-    );
-  },
+export const selectApiTools = select(selectTools, (tools) =>
+  Chat.helpers.toApiToolsFromInternal(tools),
 );
 
 export const selectUnifiedError = select(

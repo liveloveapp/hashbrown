@@ -16,34 +16,6 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
   };
 });
 
-test('structuredChatResource passes structured output options to Hashbrown', () => {
-  fryHashbrownMock.mockReset();
-  fryHashbrownMock.mockImplementation((init) =>
-    createHashbrownStub({ messages: init.messages ?? [] }),
-  );
-
-  TestBed.configureTestingModule({
-    providers: [provideHashbrown({ baseUrl: '/chat' })],
-  });
-
-  TestBed.runInInjectionContext(() =>
-    structuredChatResource({
-      model: 'gpt-4.1',
-      system: 'You are a portfolio analyst.',
-      schema: s.object('risk summary', {
-        risk: s.string('Risk level'),
-      }),
-      structuredOutput: { mode: 'json' },
-    }),
-  );
-
-  expect(fryHashbrownMock).toHaveBeenCalledWith(
-    expect.objectContaining({
-      structuredOutput: { mode: 'json' },
-    }),
-  );
-});
-
 test('structuredChatResource updates runtime options when option signals change', () => {
   fryHashbrownMock.mockReset();
   const model = signal<ModelInput>('gpt-4.1');

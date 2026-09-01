@@ -83,11 +83,6 @@ export interface UiCompletionResourceOptions<
   transport?: TransportOrFactory;
 
   /**
-   * Controls how the provider is asked to produce structured output.
-   */
-  structuredOutput?: Chat.Api.StructuredOutputOptions;
-
-  /**
    * Optional opaque AG-UI thread identity.
    */
   threadId?: ReactiveOption<string | undefined>;
@@ -174,7 +169,6 @@ export function uiCompletionResource<
     retries: options.retries,
     debounce: options.debounce,
     transport: options.transport,
-    structuredOutput: options.structuredOutput,
     ui: true,
     threadId: options.threadId,
   });

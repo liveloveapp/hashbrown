@@ -90,6 +90,7 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
       join(sandboxPath, 'consumer.ts'),
       `
         import {
+          type Chat,
           type Transport,
           type TransportRequest,
           type TransportResponse,
@@ -142,8 +143,20 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
         response.frames;
         // @ts-expect-error Thread-loading capability is not part of Transport.
         transport.supportsLegacyThreadLoading;
+        // @ts-expect-error Provider structured-output modes are no longer public.
+        type RemovedStructuredOutputOptions = Chat.Api.StructuredOutputOptions;
+        // @ts-expect-error Provider structured-output mode names are no longer public.
+        type RemovedStructuredOutputMode = Chat.Api.StructuredOutputMode;
+        // @ts-expect-error Provider response-format modes are no longer public.
+        type RemovedResponseFormatMode = Chat.Api.ResponseFormatMode;
+        // @ts-expect-error Legacy completion parameters are no longer public.
+        type RemovedCompletionCreateParams = Chat.Api.CompletionCreateParams;
 
         void [encoded, missingInput, missingEvents];
+        void (null as unknown as RemovedStructuredOutputOptions);
+        void (null as unknown as RemovedStructuredOutputMode);
+        void (null as unknown as RemovedResponseFormatMode);
+        void (null as unknown as RemovedCompletionCreateParams);
       `,
     );
     const compileResult = run(

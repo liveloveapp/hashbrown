@@ -112,11 +112,7 @@ export const generateMessage = createEffect((store) => {
       const debounce = store.read(selectDebounce);
       const retries = store.read(selectRetries);
       const internalTools = store.read(selectTools);
-      const tools = Chat.helpers.toApiToolsFromInternal(
-        internalTools,
-        false,
-        responseSchema ?? s.nullish(),
-      );
+      const tools = Chat.helpers.toApiToolsFromInternal(internalTools);
       const toolsByName = store.read(selectToolEntities);
       const system = store.read(selectSystem);
       const responseJsonSchema = responseSchema
@@ -378,7 +374,6 @@ export const generateMessage = createEffect((store) => {
                   store.dispatch(
                     apiActions.generateMessageStart({
                       responseSchema,
-                      emulateStructuredOutput: false,
                       toolsByName,
                     }),
                   );
