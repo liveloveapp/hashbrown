@@ -180,6 +180,48 @@ test('streams tool arguments across arbitrary JSON chunk boundaries', () => {
   expect(next.error).toBeUndefined();
 });
 
+test('preserves resolved identities across unrelated tool events', () => {
+  const responseSchema = s.object('output', {
+    answer: s.streaming.string('answer'),
+  });
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    weather: {
+      name: 'weather',
+      description: '',
+      schema: s.object('arguments', {
+        city: s.streaming.string('city'),
+      }),
+      handler: async () => undefined,
+    },
+    noop: {
+      name: 'noop',
+      description: '',
+      schema: s.object('arguments', {}),
+      handler: async () => undefined,
+    },
+  };
+  const state = accumulateEvents(createState(responseSchema, toolsByName), [
+    textStart(),
+    textContent('{"answer":"ready"}'),
+    toolStart('call-weather', 'weather'),
+    toolArgs('call-weather', '{"city":"p'),
+  ]);
+  const contentResolved = state.message?.contentResolved;
+  const argumentsResolved = state.toolCalls[0]?.argumentsResolved;
+
+  const next = accumulateEvents(state, [
+    toolStart('call-noop', 'noop'),
+    toolArgs('call-noop', '{}'),
+  ]);
+
+  expect(next.message?.contentResolved).toBe(contentResolved);
+  expect(next.toolCalls[0]?.argumentsResolved).toBe(argumentsResolved);
+  expect(next.toolCalls.map(({ id }) => id)).toEqual([
+    'call-weather',
+    'call-noop',
+  ]);
+});
+
 test('expands text and tool chunk shorthand while preserving order and identity', () => {
   const toolsByName: Record<string, Chat.Internal.Tool> = {
     weather: {
@@ -588,6 +630,65 @@ test('accumulates reasoning, encrypted values, metadata, and associations', () =
     },
   ]);
   expect(state.toolCalls[0]?.encryptedValue).toBe('tool-opaque');
+});
+
+test('merges cloned reasoning lifecycle metadata and keeps the latest subagent run id', () => {
+  const startMetadata = {
+    stable: 'start',
+    replaced: { at: 'start' },
+    list: ['start'],
+  };
+  const contentMetadata = {
+    replaced: { at: 'content' },
+    list: ['content'],
+    contentOnly: true,
+  };
+  const endMetadata = { stable: 'end', endOnly: true };
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning',
+      subagentRunId: 'subagent-start',
+      metadata: startMetadata,
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: 'Analysis',
+      subagentRunId: 'subagent-content',
+      metadata: contentMetadata,
+    },
+    {
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-1',
+      subagentRunId: 'subagent-end',
+      metadata: endMetadata,
+    },
+  ];
+
+  const next = accumulateEvents(createState(), events);
+  startMetadata.replaced.at = 'mutated';
+  startMetadata.list.push('mutated');
+  contentMetadata.replaced.at = 'mutated';
+  contentMetadata.list.push('mutated');
+  endMetadata.stable = 'mutated';
+
+  expect(reasoningDetails(next)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: 'Analysis',
+      subagentRunId: 'subagent-end',
+      metadata: {
+        stable: 'end',
+        replaced: { at: 'content' },
+        list: ['content'],
+        contentOnly: true,
+        endOnly: true,
+      },
+    },
+  ]);
 });
 
 test('merges cloned assistant and tool metadata across lifecycle events', () => {
@@ -1021,6 +1122,119 @@ test('does not mutate event inputs, prior state, parser state, cache, or schemas
   expect(next.configSnapshot?.toolsByName).toBe(
     parsed.configSnapshot?.toolsByName,
   );
+});
+
+test('keeps output and tool parsing inputs unfrozen and unchanged when diagnostics are created', () => {
+  const responseSchema = s.object('output', {
+    payload: s.object('payload', {
+      items: s.array('items', s.number('item')),
+    }),
+  });
+  const toolSchema = s.object('arguments', {
+    payload: s.object('payload', {
+      items: s.array('items', s.number('item')),
+    }),
+  });
+  const handler = async () => undefined;
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    submit: {
+      name: 'submit',
+      description: 'Submit values',
+      schema: toolSchema,
+      handler,
+    },
+  };
+  const config = { responseSchema, toolsByName };
+  const events: AGUIEvent[] = [
+    textStart(),
+    textContent('{"payload":{"items":[1]}}'),
+    toolStart('call-submit', 'submit'),
+    toolArgs('call-submit', '{"payload":{"items":[2]}}'),
+  ];
+  const diagnosticEvents: AGUIEvent[] = [
+    textContent(' trailing output'),
+    toolArgs('call-submit', ' trailing tool'),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call-submit' },
+    runFinished(),
+  ];
+  const configSnapshot = {
+    responseSchema: structuredClone(s.toJsonSchema(responseSchema)),
+    toolsByName: {
+      submit: {
+        name: toolsByName['submit']?.name,
+        description: toolsByName['submit']?.description,
+        schema: structuredClone(s.toJsonSchema(toolSchema)),
+        handler: toolsByName['submit']?.handler,
+      },
+    },
+  };
+  const eventSnapshot = structuredClone(events);
+  const diagnosticEventSnapshot = structuredClone(diagnosticEvents);
+  const parsed = accumulateEvents(createAgUiMessageAccumulator(config), events);
+  const outputParserSnapshot = structuredClone(parsed.outputParserState);
+  const outputCacheSnapshot = structuredClone(parsed.outputCache);
+  const toolParserSnapshot = structuredClone(parsed.toolParserStateById);
+  const toolCacheSnapshot = structuredClone(parsed.toolCacheById);
+
+  const next = accumulateEvents(parsed, diagnosticEvents);
+
+  expect(events).toEqual(eventSnapshot);
+  expect(diagnosticEvents).toEqual(diagnosticEventSnapshot);
+  expect({
+    responseSchema: s.toJsonSchema(responseSchema),
+    toolsByName: {
+      submit: {
+        name: toolsByName['submit']?.name,
+        description: toolsByName['submit']?.description,
+        schema: s.toJsonSchema(toolSchema),
+        handler: toolsByName['submit']?.handler,
+      },
+    },
+  }).toEqual(configSnapshot);
+  expect(config.responseSchema).toBe(responseSchema);
+  expect(config.toolsByName).toBe(toolsByName);
+  expect(config.toolsByName['submit']?.schema).toBe(toolSchema);
+  expect(config.toolsByName['submit']?.handler).toBe(handler);
+  expect(parsed.outputParserState).toEqual(outputParserSnapshot);
+  expect(parsed.outputCache).toEqual(outputCacheSnapshot);
+  expect(parsed.toolParserStateById).toEqual(toolParserSnapshot);
+  expect(parsed.toolCacheById).toEqual(toolCacheSnapshot);
+  expect(next.diagnostics).toHaveLength(2);
+  expect(next.diagnostics.map(({ source }) => source)).toEqual([
+    'tool-arguments',
+    'structured-output',
+  ]);
+  expect(Object.isFrozen(responseSchema)).toBe(false);
+  expect(Object.isFrozen(toolSchema)).toBe(false);
+  expect(Object.isFrozen(config)).toBe(false);
+  expect(Object.isFrozen(toolsByName)).toBe(false);
+  expect(Object.isFrozen(toolsByName['submit'])).toBe(false);
+  expect(Object.isFrozen(events)).toBe(false);
+  expect(events.every((event) => !Object.isFrozen(event))).toBe(true);
+  expect(Object.isFrozen(diagnosticEvents)).toBe(false);
+  expect(diagnosticEvents.every((event) => !Object.isFrozen(event))).toBe(true);
+  expect(Object.isFrozen(parsed.outputParserState)).toBe(false);
+  expect(Object.isFrozen(parsed.outputParserState?.nodes)).toBe(false);
+  expect(Object.isFrozen(parsed.outputCache)).toBe(false);
+  expect(Object.isFrozen(parsed.outputCache?.byNodeId)).toBe(false);
+  expect(Object.isFrozen(parsed.outputCache?.byNodeIdAndSchemaId)).toBe(false);
+  expect(Object.isFrozen(parsed.toolParserStateById)).toBe(false);
+  expect(Object.isFrozen(parsed.toolParserStateById['call-submit'])).toBe(
+    false,
+  );
+  expect(
+    Object.isFrozen(parsed.toolParserStateById['call-submit']?.nodes),
+  ).toBe(false);
+  expect(Object.isFrozen(parsed.toolCacheById)).toBe(false);
+  expect(Object.isFrozen(parsed.toolCacheById['call-submit'])).toBe(false);
+  expect(Object.isFrozen(parsed.toolCacheById['call-submit']?.byNodeId)).toBe(
+    false,
+  );
+  expect(
+    Object.isFrozen(parsed.toolCacheById['call-submit']?.byNodeIdAndSchemaId),
+  ).toBe(false);
+  expect(Object.isFrozen(next.message?.contentResolved)).toBe(false);
+  expect(Object.isFrozen(next.toolCalls[0]?.argumentsResolved)).toBe(false);
 });
 
 test('structurally shares untouched message, tool, parser, cache, and diagnostic data', () => {
