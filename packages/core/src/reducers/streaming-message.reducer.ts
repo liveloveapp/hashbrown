@@ -11,9 +11,14 @@ import {
   initialAgUiMessageAccumulatorState,
 } from './ag-ui-message-accumulator';
 
-export type StreamingMessageState = AgUiMessageAccumulatorState;
+export type StreamingMessageState = AgUiMessageAccumulatorState & {
+  readonly attemptActive: boolean;
+};
 
-export const initialState = initialAgUiMessageAccumulatorState;
+export const initialState: StreamingMessageState = {
+  ...initialAgUiMessageAccumulatorState,
+  attemptActive: false,
+};
 
 function warnRecoveredTrailingContent(
   parsedData: JsonValue,
@@ -55,18 +60,35 @@ function accumulateEvent(
 
 export const reducer = createReducer(
   initialState,
-  on(apiActions.generateMessageStart, (_state, action): StreamingMessageState =>
-    createAgUiMessageAccumulator(action.payload),
+  on(
+    apiActions.generateMessageStart,
+    (_state, action): StreamingMessageState => ({
+      ...createAgUiMessageAccumulator(action.payload),
+      attemptActive: true,
+    }),
   ),
-  on(apiActions.generateMessageEvent, (state, action): StreamingMessageState =>
-    action.payload.type === EventType.MESSAGES_SNAPSHOT
-      ? { ...initialState, configSnapshot: state.configSnapshot }
-      : accumulateEvent(state, action.payload),
+  on(
+    apiActions.generateMessageEvent,
+    (state, action): StreamingMessageState => {
+      if (!state.attemptActive) {
+        return state;
+      }
+
+      return action.payload.type === EventType.MESSAGES_SNAPSHOT
+        ? {
+            ...initialState,
+            configSnapshot: state.configSnapshot,
+            attemptActive: true,
+          }
+        : { ...accumulateEvent(state, action.payload), attemptActive: true };
+    },
   ),
   on(
     apiActions.generateMessageSuccess,
     apiActions.generateMessageError,
+    internalActions.generationAttemptRolledBack,
     internalActions.generationSilentlyRetired,
+    internalActions.logicalGenerationSettled,
     devActions.stopMessageGeneration,
     devActions.sendMessage,
     devActions.setMessages,

@@ -8,6 +8,7 @@ import {
   selectIsRunningToolCalls,
   selectThreadId,
   selectUnifiedError,
+  selectViewMessages,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptStartToolCallIds,
   ɵselectCommittedAgentState,
@@ -113,6 +114,52 @@ test('combined state exposes transactional canonical message selectors', () => {
   });
   expect(ɵselectAttemptStartToolCallIds(active)).toEqual(['tool-1']);
   expect(ɵselectAgUiMessagesProtocolError(active)).toBeUndefined();
+});
+
+test('combined view replaces a snapshotted assistant with matching streaming ID', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({ toolsByName: {} }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotted = reduceAll(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'hello' },
+        { id: 'assistant-1', role: 'assistant', content: 'snapshot' },
+      ],
+    }),
+  );
+  const streamed = reduceAll(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: ' stream',
+    }),
+  );
+
+  expect(selectViewMessages(streamed)).toEqual([
+    { role: 'user', content: 'hello' },
+    { role: 'assistant', content: ' stream', toolCalls: [] },
+  ]);
+  expect(
+    selectViewMessages(streamed).filter(
+      (message) => message.role === 'assistant',
+    ),
+  ).toHaveLength(1);
 });
 
 test('createChatRuntime accepts a developer tool named output', () => {

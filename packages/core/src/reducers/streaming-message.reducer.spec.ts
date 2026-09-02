@@ -32,6 +32,7 @@ test('adapts generation start into the accumulator state shape', () => {
 
   expect(state).toEqual({
     ...initialState,
+    attemptActive: true,
     configSnapshot: {
       responseSchema,
       toolsByName,
@@ -213,4 +214,81 @@ test('resets every accumulator field for all terminal adapter actions', () => {
   const results = actions.map((action) => reducer(state, action));
 
   expect(results.every((result) => result === initialState)).toBe(true);
+});
+
+test('ignores lifecycle events outside an attempt and resets on rollback settlement', () => {
+  const outside = reducer(
+    initialState,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'ignored',
+    }),
+  );
+  const active = reducer(
+    startState(),
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'draft',
+    }),
+  );
+  const rolledBack = reducer(
+    active,
+    internalActions.generationAttemptRolledBack(),
+  );
+  const settled = reducer(active, internalActions.logicalGenerationSettled());
+
+  expect(outside).toBe(initialState);
+  expect(rolledBack).toBe(initialState);
+  expect(settled).toBe(initialState);
+});
+
+test('clears a pre-snapshot accumulator and rebuilds only the replacement assistant', () => {
+  const started = startState();
+  const first = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      delta: 'old',
+    }),
+  );
+  const snapshotted = reducer(
+    first,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'assistant-b', role: 'assistant', content: 'snapshot' }],
+    }),
+  );
+  const rebuilt = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-b',
+      role: 'assistant',
+      delta: ' stream',
+    }),
+  );
+  const superseded = reducer(rebuilt, devActions.resendMessages());
+  const late = reducer(
+    superseded,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-b',
+      role: 'assistant',
+      delta: ' late',
+    }),
+  );
+
+  expect(selectStreamingMessage(first)).toMatchObject({ id: 'assistant-a' });
+  expect(selectStreamingMessage(snapshotted)).toBeNull();
+  expect(selectStreamingMessage(rebuilt)).toMatchObject({
+    id: 'assistant-b',
+    content: ' stream',
+  });
+  expect(late).toBe(initialState);
 });

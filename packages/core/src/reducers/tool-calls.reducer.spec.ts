@@ -1,4 +1,5 @@
-import { apiActions, internalActions } from '../actions';
+import { EventType } from '@ag-ui/core';
+import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { reducer, selectPendingToolCalls } from './tool-calls.reducer';
 
@@ -113,4 +114,97 @@ test('does not settle a replacement tool call with the same id', () => {
   );
 
   expect(settledState.entities[replacement.id]).toBe(replacement);
+});
+
+test('keeps lifecycle tool calls in the draft, commits them, and replaces snapshot entities', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    }),
+  );
+  const updated = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      delta: '{"q":1}',
+    }),
+  );
+  const committed = reducer(
+    updated,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: ['tool-1'] },
+      toolCalls: [],
+    }),
+  );
+  const snapshotted = reducer(
+    reducer(committed, internalActions.generationAttemptStarted()),
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [],
+    }),
+  );
+
+  expect(updated.draft.entities['tool-1']).toMatchObject({
+    arguments: '{"q":1}',
+    status: 'pending',
+  });
+  expect(committed.entities['tool-1']).toMatchObject({ id: 'tool-1' });
+  expect(snapshotted.ids).toEqual([]);
+  expect(snapshotted.entities['tool-1']).toBeUndefined();
+});
+
+test('settles canonical tool results in a draft and rollback restores committed status', () => {
+  const canonical = [
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+  ];
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: canonical }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const settled = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'tool-1',
+      content: 'value',
+    }),
+  );
+  const rolledBack = reducer(
+    settled,
+    internalActions.generationAttemptRolledBack(),
+  );
+
+  expect(settled.entities['tool-1']).toMatchObject({
+    status: 'done',
+    result: { status: 'fulfilled', value: 'value' },
+  });
+  expect(rolledBack.entities['tool-1']).toMatchObject({ status: 'pending' });
 });
