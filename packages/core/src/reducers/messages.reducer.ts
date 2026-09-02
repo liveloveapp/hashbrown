@@ -4,7 +4,6 @@ import { Chat } from '../models';
 import { ErrorMessage } from '../models/view.models';
 import { s } from '../schema';
 import { createReducer, on } from '../utils/micro-ngrx';
-import { resolveWithSchema } from '../utils/resolve-with-schema';
 import { projectAgUiMessages } from './ag-ui-message-history';
 
 export interface MessagesState {
@@ -211,23 +210,4 @@ function projectCanonical(
     toolsByName,
     responseSchema ? s.normalizeSchemaOutput(responseSchema) : undefined,
   ).messages;
-}
-
-function hydrateResolvedContent(
-  messages: Chat.Internal.Message[],
-  responseSchema?: s.HashbrownType,
-): Chat.Internal.Message[] {
-  if (!responseSchema) return messages;
-  return messages.map((message) => {
-    if (
-      message.role !== 'assistant' ||
-      message.contentResolved !== undefined ||
-      typeof message.content !== 'string'
-    )
-      return message;
-    const resolved = resolveWithSchema(responseSchema, message.content);
-    return resolved === undefined
-      ? message
-      : { ...message, contentResolved: resolved };
-  });
 }
