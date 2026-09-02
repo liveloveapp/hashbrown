@@ -1,4 +1,4 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import type { AGUIEvent } from '@ag-ui/core';
 import type { Transport, TransportRequest } from '../transport';
 import { TransportError } from '../transport';
 import { runAgUiAttempt } from '../transport/ag-ui-run-driver';
@@ -82,21 +82,6 @@ export async function executeLogicalRun({
       ...startedAttempt.context,
       signal: AbortSignal.any([retiredSignal, cancelSignal]),
     });
-    let runStarted = false;
-    let runTerminal = false;
-
-    const emitRunError = (message: string, allowCancelled = false) => {
-      if (!runStarted || runTerminal || retiredSignal.aborted) {
-        return;
-      }
-      if (cancelSignal.aborted && !allowCancelled) {
-        return;
-      }
-
-      runTerminal = true;
-      onEvent({ type: EventType.RUN_ERROR, message });
-    };
-
     let primaryError: Error | undefined;
     try {
       const outcome = await runAgUiAttempt({
@@ -105,19 +90,7 @@ export async function executeLogicalRun({
         cancelSignal,
         retiredSignal,
         onStarted,
-        onEvent: (event) => {
-          if (event.type === EventType.RUN_STARTED) {
-            runStarted = true;
-          }
-          if (
-            event.type === EventType.RUN_FINISHED ||
-            event.type === EventType.RUN_ERROR
-          ) {
-            runTerminal = true;
-          }
-
-          onEvent(event);
-        },
+        onEvent,
       });
 
       if (retiredSignal.aborted || outcome.kind === 'retired') {
@@ -130,7 +103,6 @@ export async function executeLogicalRun({
         return outcome;
       }
       if (cancelSignal.aborted || outcome.kind === 'cancelled') {
-        emitRunError('Generation cancelled', true);
         return { kind: 'cancelled' };
       }
     } catch (error) {
@@ -146,7 +118,6 @@ export async function executeLogicalRun({
       return interruptionAfterFailure;
     }
     if (interruptionAfterFailure?.kind === 'cancelled') {
-      emitRunError('Generation cancelled', true);
       return interruptionAfterFailure;
     }
 
@@ -156,7 +127,6 @@ export async function executeLogicalRun({
         retryable: true,
         code: 'PROTOCOL_ERROR',
       });
-    emitRunError(error.message);
     onAttemptError(error);
 
     const failureDecision = decideLogicalRunFailure(retryState, error);

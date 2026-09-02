@@ -186,7 +186,7 @@ test('does not synthesize RUN_ERROR when an attempt fails before RUN_STARTED', a
   expect(onEvent).not.toHaveBeenCalled();
 });
 
-test('synthesizes one RUN_ERROR when an accepted attempt fails before a terminal event', async () => {
+test('reports an accepted transport failure without synthesizing a terminal event', async () => {
   const error = new Error('stream failed');
   const transport = createTransport(async (request) => ({
     events: (async function* () {
@@ -205,8 +205,36 @@ test('synthesizes one RUN_ERROR when an accepted attempt fails before a terminal
   });
   expect(onEvent.mock.calls.map(([event]) => event)).toEqual([
     expect.objectContaining({ type: EventType.RUN_STARTED }),
-    { type: EventType.RUN_ERROR, message: error.message },
   ]);
+});
+
+test('reports an accepted protocol failure without synthesizing a terminal event', async () => {
+  const transport = createTransport(async (request) => ({
+    events: createEvents([createStarted(request)]),
+  }));
+  const onEvent = jest.fn();
+  const onAttemptError = jest.fn();
+
+  const outcome = await execute({ transport, onEvent, onAttemptError });
+
+  expect(outcome).toMatchObject({
+    kind: 'failed',
+    error: {
+      name: 'TransportError',
+      code: 'PROTOCOL_ERROR',
+      message: 'Generation stream ended before RUN_FINISHED or RUN_ERROR',
+    },
+    exhaustedRetries: false,
+  });
+  expect(onEvent.mock.calls.map(([event]) => event)).toEqual([
+    expect.objectContaining({ type: EventType.RUN_STARTED }),
+  ]);
+  expect(onAttemptError).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: 'TransportError',
+      code: 'PROTOCOL_ERROR',
+    }),
+  );
 });
 
 test('returns a server RUN_ERROR without retrying or synthesizing another terminal', async () => {
@@ -239,7 +267,7 @@ test('returns a server RUN_ERROR without retrying or synthesizing another termin
   expect(onAttemptError).not.toHaveBeenCalled();
 });
 
-test('cancellation after RUN_STARTED synthesizes one cancellation terminal', async () => {
+test('cancellation after RUN_STARTED does not synthesize a terminal event', async () => {
   const cancelController = new AbortController();
   const transport = createTransport(async (request) => ({
     events: createEvents([createStarted(request), createFinished(request)]),
@@ -259,7 +287,6 @@ test('cancellation after RUN_STARTED synthesizes one cancellation terminal', asy
   expect(outcome).toEqual({ kind: 'cancelled' });
   expect(onEvent.mock.calls.map(([event]) => event)).toEqual([
     expect.objectContaining({ type: EventType.RUN_STARTED }),
-    { type: EventType.RUN_ERROR, message: 'Generation cancelled' },
   ]);
 });
 

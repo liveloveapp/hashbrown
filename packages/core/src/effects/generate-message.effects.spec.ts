@@ -161,6 +161,14 @@ function getDispatchedEvents(actions: ActionLike[]) {
     .map((action) => action.payload as AGUIEvent);
 }
 
+function getDispatchedTerminalEvents(actions: ActionLike[]) {
+  return getDispatchedEvents(actions).filter(
+    (event) =>
+      event.type === EventType.RUN_FINISHED ||
+      event.type === EventType.RUN_ERROR,
+  );
+}
+
 function getActionsOfType(actions: ActionLike[], type: string) {
   return actions.filter((action) => action.type === type);
 }
@@ -745,6 +753,7 @@ test.each([
     expect(
       getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
     ).toHaveLength(0);
+    expect(getDispatchedEvents(store.actions)).toHaveLength(0);
 
     teardown?.();
   },
@@ -2137,6 +2146,9 @@ test.each([
     );
     expect(send).toHaveBeenCalledTimes(2);
     expect(getDispatchedEvents(store.actions)).not.toContain(earlyEvent);
+    expect(
+      getDispatchedTerminalEvents(store.actions).map((event) => event.type),
+    ).toEqual([EventType.RUN_FINISHED]);
     expect(errors[0]?.payload).toMatchObject({
       name: 'TransportError',
       code: 'PROTOCOL_ERROR',
@@ -2147,7 +2159,7 @@ test.each([
   },
 );
 
-test('rejects duplicate RUN_STARTED and synthesizes one terminal error', async () => {
+test('rejects duplicate RUN_STARTED without synthesizing a terminal event', async () => {
   jest.clearAllMocks();
   const { send } = makeSelection(async (request) => {
     const identity = getInputIdentity(request);
@@ -2170,12 +2182,7 @@ test('rejects duplicate RUN_STARTED and synthesizes one terminal error', async (
   expect(
     events.filter((event) => event.type === EventType.RUN_STARTED),
   ).toHaveLength(1);
-  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual([
-    {
-      type: EventType.RUN_ERROR,
-      message: 'Received duplicate RUN_STARTED',
-    },
-  ]);
+  expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
 
   teardown?.();
 });
@@ -2220,15 +2227,13 @@ test('rejects a mismatched RUN_STARTED without accepting the run', async () => {
     getActionsOfType(store.actions, apiActions.generateMessageStart.type),
   ).toHaveLength(1);
   expect(
-    getDispatchedEvents(store.actions).filter(
-      (event) => event.type === EventType.RUN_ERROR,
-    ),
-  ).toHaveLength(0);
+    getDispatchedTerminalEvents(store.actions).map((event) => event.type),
+  ).toEqual([EventType.RUN_FINISHED]);
 
   teardown?.();
 });
 
-test('rejects a mismatched RUN_FINISHED and synthesizes one terminal error', async () => {
+test('rejects a mismatched RUN_FINISHED without synthesizing a terminal event', async () => {
   jest.clearAllMocks();
   const { send } = makeSelection(async (request) => {
     const identity = getInputIdentity(request);
@@ -2251,16 +2256,7 @@ test('rejects a mismatched RUN_FINISHED and synthesizes one terminal error', asy
   );
 
   expect(send).toHaveBeenCalledTimes(1);
-  expect(
-    getDispatchedEvents(store.actions).filter(
-      (event) => event.type === EventType.RUN_ERROR,
-    ),
-  ).toEqual([
-    {
-      type: EventType.RUN_ERROR,
-      message: 'RUN_FINISHED identity does not match the active run',
-    },
-  ]);
+  expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
 
   teardown?.();
 });
@@ -2316,15 +2312,13 @@ test.each([
   expect(firstDispose).toHaveBeenCalledTimes(1);
   expect(secondDispose).toHaveBeenCalledTimes(1);
   expect(
-    getDispatchedEvents(store.actions).filter(
-      (event) => event.type === EventType.RUN_ERROR,
-    ),
-  ).toHaveLength(start ? 1 : 0);
+    getDispatchedTerminalEvents(store.actions).map((event) => event.type),
+  ).toEqual([EventType.RUN_FINISHED]);
 
   teardown?.();
 });
 
-test('iterable failure after an accepted start synthesizes exactly one RUN_ERROR', async () => {
+test('iterable failure after an accepted start does not synthesize a terminal event', async () => {
   jest.clearAllMocks();
   const primaryError = new Error('event stream failed');
   const dispose = jest.fn();
@@ -2345,11 +2339,7 @@ test('iterable failure after an accepted start synthesizes exactly one RUN_ERROR
     devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
   );
 
-  expect(
-    getDispatchedEvents(store.actions).filter(
-      (event) => event.type === EventType.RUN_ERROR,
-    ),
-  ).toEqual([{ type: EventType.RUN_ERROR, message: primaryError.message }]);
+  expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
   ).toEqual([apiActions.generateMessageError(primaryError)]);
@@ -2386,9 +2376,7 @@ test('server RUN_ERROR after start dispatches once without synthesis or retry', 
 
   const events = getDispatchedEvents(store.actions);
   expect(send).toHaveBeenCalledTimes(1);
-  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual([
-    serverError,
-  ]);
+  expect(getDispatchedTerminalEvents(store.actions)).toEqual([serverError]);
   expect(events).not.toContainEqual(
     expect.objectContaining({ name: 'late-event' }),
   );
@@ -2585,7 +2573,7 @@ test('user stop while starting does not accept RUN_STARTED or add a terminal', a
   teardown?.();
 });
 
-test('user stop after start synthesizes one cancellation and finalizes once with stop', async () => {
+test('user stop after start adds no terminal and finalizes once with stop', async () => {
   jest.clearAllMocks();
   const started = createDeferred<void>();
   const dispose = jest.fn();
@@ -2648,9 +2636,7 @@ test('user stop after start synthesizes one cancellation and finalizes once with
 
   const events = getDispatchedEvents(store.actions);
   expect(send).toHaveBeenCalledTimes(1);
-  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual([
-    { type: EventType.RUN_ERROR, message: 'Generation cancelled' },
-  ]);
+  expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
   expect(events).not.toContainEqual(
     expect.objectContaining({ name: 'late-event' }),
   );
@@ -2758,10 +2744,8 @@ test('superseding input retires the old run and only the new run finishes', asyn
     getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
   ).toHaveLength(1);
   expect(
-    getDispatchedEvents(store.actions).filter(
-      (event) => event.type === EventType.RUN_FINISHED,
-    ),
-  ).toHaveLength(1);
+    getDispatchedTerminalEvents(store.actions).map((event) => event.type),
+  ).toEqual([EventType.RUN_FINISHED]);
 
   teardown?.();
 });
@@ -2948,13 +2932,7 @@ test('cleanup rejections do not replace a protocol failure', async () => {
     code: 'PROTOCOL_ERROR',
     message: 'Received duplicate RUN_STARTED',
   });
-  expect(
-    getDispatchedEvents(store.actions).filter(
-      (event) => event.type === EventType.RUN_ERROR,
-    ),
-  ).toEqual([
-    { type: EventType.RUN_ERROR, message: 'Received duplicate RUN_STARTED' },
-  ]);
+  expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
   expect(iteratorReturn).toHaveBeenCalledTimes(1);
   expect(dispose).toHaveBeenCalledTimes(1);
 
@@ -3010,11 +2988,7 @@ test('cleanup rejections do not replace user cancellation', async () => {
   await store.trigger(devActions.stopMessageGeneration(true));
   await generation;
 
-  expect(
-    getDispatchedEvents(store.actions).filter(
-      (event) => event.type === EventType.RUN_ERROR,
-    ),
-  ).toEqual([{ type: EventType.RUN_ERROR, message: 'Generation cancelled' }]);
+  expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
   ).toHaveLength(0);
@@ -3072,6 +3046,9 @@ test('missing events is retryable and disposes each response exactly once', asyn
       }),
     ),
   ]);
+  expect(
+    getDispatchedTerminalEvents(store.actions).map((event) => event.type),
+  ).toEqual([EventType.RUN_FINISHED]);
 
   teardown?.();
 });
@@ -3124,6 +3101,9 @@ test('non-async-iterable events are a retryable protocol error', async () => {
       }),
     ),
   ]);
+  expect(
+    getDispatchedTerminalEvents(store.actions).map((event) => event.type),
+  ).toEqual([EventType.RUN_FINISHED]);
 
   teardown?.();
 });
