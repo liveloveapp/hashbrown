@@ -19,6 +19,11 @@ export interface AgUiMessagesState {
   readonly protocolError: Error | undefined;
   readonly systemMessage: Readonly<SystemMessage> | undefined;
   readonly attemptStartToolCallIds: readonly string[];
+  readonly activeTextMessageId: string | undefined;
+  readonly activeReasoningMessageId: string | undefined;
+  readonly activeToolCallId: string | undefined;
+  readonly activeToolCallName: string | undefined;
+  readonly activeAssistantMessageId: string | undefined;
 }
 
 /** Initial canonical AG-UI message state. @internal */
@@ -29,6 +34,11 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
   protocolError: undefined,
   systemMessage: undefined,
   attemptStartToolCallIds: Object.freeze([]),
+  activeTextMessageId: undefined,
+  activeReasoningMessageId: undefined,
+  activeToolCallId: undefined,
+  activeToolCallName: undefined,
+  activeAssistantMessageId: undefined,
 });
 
 /** Reduces canonical AG-UI messages independently from Hashbrown projections. @internal */
@@ -45,6 +55,7 @@ export const reducer = createReducer(
       protocolError: undefined,
       systemMessage,
       attemptStartToolCallIds: Object.freeze([]),
+      ...inactiveLifecycle(),
     };
   }),
   on(devActions.updateOptions, (state, action): AgUiMessagesState => {
@@ -64,6 +75,7 @@ export const reducer = createReducer(
       attemptActive: true,
       protocolError: undefined,
       attemptStartToolCallIds: freezeStrings(findToolCallIds(state.committed)),
+      ...inactiveLifecycle(),
     };
   }),
   on(apiActions.generateMessageEvent, (state, action): AgUiMessagesState => {
@@ -72,13 +84,15 @@ export const reducer = createReducer(
     }
 
     try {
-      const draft = applyCanonicalMessageEvent(state.draft, action.payload);
+      const event = correlateEvent(state, action.payload);
+      const draft = applyCanonicalMessageEvent(state.draft, event);
       return draft === state.draft
         ? state
         : {
             ...state,
             draft: withoutSystemOverlay(draft, state.systemMessage),
             protocolError: undefined,
+            ...nextLifecycle(state, event),
           };
     } catch (error) {
       return {
@@ -101,6 +115,7 @@ export const reducer = createReducer(
       attemptActive: false,
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
+      ...inactiveLifecycle(),
     };
   }),
   on(internalActions.generationAttemptRolledBack, (state): AgUiMessagesState =>
@@ -123,6 +138,7 @@ export const reducer = createReducer(
       attemptActive: false,
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
+      ...inactiveLifecycle(),
     };
   }),
   on(devActions.setMessages, (state, action): AgUiMessagesState => {
@@ -134,6 +150,7 @@ export const reducer = createReducer(
       attemptActive: false,
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
+      ...inactiveLifecycle(),
     };
   }),
   on(devActions.resendMessages, (state): AgUiMessagesState => rollback(state)),
@@ -295,12 +312,101 @@ function rollback(state: AgUiMessagesState): AgUiMessagesState {
     attemptActive: false,
     protocolError: undefined,
     attemptStartToolCallIds: Object.freeze([]),
+    ...inactiveLifecycle(),
   };
+}
+
+function inactiveLifecycle() {
+  return {
+    activeTextMessageId: undefined,
+    activeReasoningMessageId: undefined,
+    activeToolCallId: undefined,
+    activeToolCallName: undefined,
+    activeAssistantMessageId: undefined,
+  } as const;
+}
+
+function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
+  switch (event.type) {
+    case EventType.TEXT_MESSAGE_CHUNK:
+      return event.messageId || !state.activeTextMessageId
+        ? event
+        : { ...event, messageId: state.activeTextMessageId };
+    case EventType.REASONING_MESSAGE_CHUNK:
+      return event.messageId || !state.activeReasoningMessageId
+        ? event
+        : { ...event, messageId: state.activeReasoningMessageId };
+    case EventType.TOOL_CALL_CHUNK:
+      return event.toolCallId || !state.activeToolCallId
+        ? event
+        : {
+            ...event,
+            toolCallId: state.activeToolCallId,
+            toolCallName: event.toolCallName ?? state.activeToolCallName,
+          };
+    case EventType.TOOL_CALL_START:
+      return event.parentMessageId || !state.activeAssistantMessageId
+        ? event
+        : { ...event, parentMessageId: state.activeAssistantMessageId };
+    default:
+      return event;
+  }
+}
+
+function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
+  switch (event.type) {
+    case EventType.TEXT_MESSAGE_START:
+      return {
+        ...inactiveLifecycle(),
+        activeTextMessageId: event.messageId,
+        activeAssistantMessageId:
+          event.role === 'assistant' ? event.messageId : undefined,
+      };
+    case EventType.TEXT_MESSAGE_END:
+      return event.messageId === state.activeTextMessageId
+        ? { activeTextMessageId: undefined }
+        : {};
+    case EventType.REASONING_MESSAGE_START:
+    case EventType.THINKING_TEXT_MESSAGE_START:
+      return { activeReasoningMessageId: event.messageId as string };
+    case EventType.REASONING_MESSAGE_END:
+    case EventType.THINKING_TEXT_MESSAGE_END:
+      return event.messageId === state.activeReasoningMessageId
+        ? { activeReasoningMessageId: undefined }
+        : {};
+    case EventType.TOOL_CALL_START:
+      return {
+        activeToolCallId: event.toolCallId,
+        activeToolCallName: event.toolCallName,
+      };
+    case EventType.TOOL_CALL_END:
+      return event.toolCallId === state.activeToolCallId
+        ? { activeToolCallId: undefined, activeToolCallName: undefined }
+        : {};
+    default:
+      return {};
+  }
 }
 
 function own(
   messages: readonly Readonly<Message>[],
 ): readonly Readonly<Message>[] {
+  const ids = new Set<string>();
+  for (const message of messages) {
+    if (ids.has(message.id)) {
+      throw new Error(`AG-UI message ID ${message.id} is duplicated`);
+    }
+    ids.add(message.id);
+    if (message.role !== 'assistant') continue;
+    for (const toolCall of message.toolCalls ?? []) {
+      if (ids.has(toolCall.id)) {
+        throw new Error(
+          `AG-UI tool call ID ${toolCall.id} conflicts with a message ID`,
+        );
+      }
+      ids.add(toolCall.id);
+    }
+  }
   return ownAgUiMessages(messages as readonly Message[]);
 }
 
@@ -338,6 +444,9 @@ function upsertText(
   event: AGUIEvent,
   append: boolean,
 ): readonly Readonly<Message>[] {
+  if (findToolCall(messages, id)) {
+    throw new Error(`AG-UI message ID ${id} conflicts with a tool call ID`);
+  }
   const index = messages.findIndex((message) => message.id === id);
   if (index === -1) {
     const nextRole = role ?? 'assistant';
@@ -403,6 +512,11 @@ function startToolCall(
   parentMessageId: string | undefined,
   event: AGUIEvent,
 ): readonly Readonly<Message>[] {
+  if (messages.some((message) => message.id === toolCallId)) {
+    throw new Error(
+      `AG-UI tool call ID ${toolCallId} conflicts with a message ID`,
+    );
+  }
   const existing = findToolCall(messages, toolCallId);
   if (existing) {
     if (existing.tool.function.name !== toolCallName) {
@@ -510,6 +624,20 @@ function upsertToolResult(
   if (index !== -1 && messages[index]?.role !== 'tool') {
     throw new Error(
       `AG-UI message ${event.messageId} cannot change role to tool`,
+    );
+  }
+  if (
+    index !== -1 &&
+    messages[index]?.role === 'tool' &&
+    messages[index].toolCallId !== event.toolCallId
+  ) {
+    throw new Error(
+      `AG-UI tool result ${event.messageId} cannot change tool call`,
+    );
+  }
+  if (findToolCall(messages, event.messageId)) {
+    throw new Error(
+      `AG-UI message ID ${event.messageId} conflicts with a tool call ID`,
     );
   }
   const input = event as AGUIEvent & { readonly error?: string };

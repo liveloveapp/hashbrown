@@ -1,4 +1,5 @@
 import { apiActions, devActions, internalActions } from '../actions';
+import { EventType } from '@ag-ui/core';
 import { Chat } from '../models';
 import { JsonValue } from '../utils';
 import { createReducer, on, select } from '../utils/micro-ngrx';
@@ -58,13 +59,18 @@ export const reducer = createReducer(
     createAgUiMessageAccumulator(action.payload),
   ),
   on(apiActions.generateMessageEvent, (state, action): StreamingMessageState =>
-    accumulateEvent(state, action.payload),
+    action.payload.type === EventType.MESSAGES_SNAPSHOT
+      ? { ...initialState, configSnapshot: state.configSnapshot }
+      : accumulateEvent(state, action.payload),
   ),
   on(
     apiActions.generateMessageSuccess,
     apiActions.generateMessageError,
     internalActions.generationSilentlyRetired,
     devActions.stopMessageGeneration,
+    devActions.sendMessage,
+    devActions.setMessages,
+    devActions.resendMessages,
     () => initialState,
   ),
 );

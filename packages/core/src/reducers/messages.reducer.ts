@@ -12,6 +12,7 @@ export interface MessagesState {
   readonly committed: readonly Chat.Internal.Message[];
   readonly draft: readonly Chat.Internal.Message[];
   readonly attemptActive: boolean;
+  readonly activeAssistantMessageId: string | undefined;
 }
 
 const initialState: MessagesState = {
@@ -19,6 +20,7 @@ const initialState: MessagesState = {
   committed: [],
   draft: [],
   attemptActive: false,
+  activeAssistantMessageId: undefined,
 };
 
 export const reducer = createReducer(
@@ -37,6 +39,7 @@ export const reducer = createReducer(
       committed: messages,
       draft: [],
       attemptActive: false,
+      activeAssistantMessageId: undefined,
     };
   }),
   on(devActions.setMessages, (state, action) => {
@@ -53,6 +56,7 @@ export const reducer = createReducer(
       committed: messages,
       draft: [],
       attemptActive: false,
+      activeAssistantMessageId: undefined,
     };
   }),
   on(devActions.sendMessage, (state, action) => {
@@ -66,6 +70,7 @@ export const reducer = createReducer(
       committed,
       draft: [],
       attemptActive: false,
+      activeAssistantMessageId: undefined,
     };
   }),
   on(internalActions.generationAttemptStarted, (state): MessagesState => ({
@@ -73,26 +78,80 @@ export const reducer = createReducer(
     draft: state.committed,
     messages: state.committed,
     attemptActive: true,
+    activeAssistantMessageId: undefined,
   })),
   on(apiActions.generateMessageEvent, (state, action): MessagesState => {
-    if (
-      !state.attemptActive ||
-      action.payload.type !== EventType.MESSAGES_SNAPSHOT
-    )
-      return state;
-    const draft = projectCanonical(action.payload.messages, {});
-    return { ...state, draft, messages: draft };
-  }),
-  on(apiActions.generateMessageSuccess, (state, action) => {
-    if (state.attemptActive)
+    if (!state.attemptActive) return state;
+    if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
+      const draft = projectCanonical(action.payload.messages, {});
       return {
         ...state,
-        committed: state.draft,
-        messages: state.draft,
-        attemptActive: false,
+        draft,
+        messages: draft,
+        activeAssistantMessageId: undefined,
       };
+    }
+    if (
+      action.payload.type === EventType.TEXT_MESSAGE_START &&
+      action.payload.role === 'assistant'
+    ) {
+      const message = Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant' as const, content: '', toolCallIds: [] },
+        action.payload.messageId,
+      );
+      const draft = reconcileAssistant(state.draft, message);
+      return {
+        ...state,
+        draft,
+        messages: draft,
+        activeAssistantMessageId: action.payload.messageId,
+      };
+    }
+    if (
+      (action.payload.type === EventType.TEXT_MESSAGE_CONTENT ||
+        action.payload.type === EventType.TEXT_MESSAGE_CHUNK) &&
+      (action.payload.type !== EventType.TEXT_MESSAGE_CHUNK ||
+        action.payload.role === 'assistant' ||
+        action.payload.messageId === state.activeAssistantMessageId)
+    ) {
+      const id = action.payload.messageId ?? state.activeAssistantMessageId;
+      if (!id) return state;
+      const current = state.draft.find(
+        (message) => 'id' in message && message.id === id,
+      );
+      const message = Chat.helpers.ɵwithInternalMessageId(
+        {
+          role: 'assistant' as const,
+          content: `${current?.role === 'assistant' ? (current.content ?? '') : ''}${action.payload.delta ?? ''}`,
+          toolCallIds: current?.role === 'assistant' ? current.toolCallIds : [],
+        },
+        id,
+      );
+      const draft = reconcileAssistant(state.draft, message);
+      return { ...state, draft, messages: draft, activeAssistantMessageId: id };
+    }
+    return state;
+  }),
+  on(apiActions.generateMessageSuccess, (state, action) => {
+    if (state.attemptActive) {
+      const draft = isAssistantOutput(action.payload.message)
+        ? reconcileAssistant(state.draft, action.payload.message)
+        : state.draft;
+      return {
+        ...state,
+        committed: draft,
+        messages: draft,
+        attemptActive: false,
+        activeAssistantMessageId: undefined,
+      };
+    }
     const messages = [...state.messages, action.payload.message];
-    return { ...state, messages, committed: messages };
+    return {
+      ...state,
+      messages,
+      committed: messages,
+      activeAssistantMessageId: undefined,
+    };
   }),
   on(internalActions.generationAttemptRolledBack, (state): MessagesState =>
     rollback(state),
@@ -123,8 +182,29 @@ function rollback(state: MessagesState): MessagesState {
         messages: state.committed,
         draft: state.committed,
         attemptActive: false,
+        activeAssistantMessageId: undefined,
       }
     : state;
+}
+
+function isAssistantOutput(message: Chat.Internal.AssistantMessage): boolean {
+  return (message.content ?? '').length > 0 || message.toolCallIds.length > 0;
+}
+
+function reconcileAssistant(
+  messages: readonly Chat.Internal.Message[],
+  assistant: Chat.Internal.AssistantMessage,
+): readonly Chat.Internal.Message[] {
+  const id = 'id' in assistant ? assistant.id : undefined;
+  const index =
+    id === undefined
+      ? -1
+      : messages.findIndex((message) => 'id' in message && message.id === id);
+  return index === -1
+    ? [...messages, assistant]
+    : messages.map((message, current) =>
+        current === index ? assistant : message,
+      );
 }
 
 function projectCanonical(

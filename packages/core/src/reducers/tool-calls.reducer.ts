@@ -9,6 +9,8 @@ export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly committed: EntityState<Chat.Internal.ToolCall>;
   readonly draft: EntityState<Chat.Internal.ToolCall>;
   readonly attemptActive: boolean;
+  readonly activeToolCallId: string | undefined;
+  readonly activeToolCallName: string | undefined;
 }
 
 const empty: EntityState<Chat.Internal.ToolCall> = { ids: [], entities: {} };
@@ -17,6 +19,8 @@ const initialState: ToolCallsState = {
   committed: empty,
   draft: empty,
   attemptActive: false,
+  activeToolCallId: undefined,
+  activeToolCallName: undefined,
 };
 
 export const reducer = createReducer(
@@ -31,13 +35,22 @@ export const reducer = createReducer(
         ? toInternalToolCallsFromView(action.payload.messages)
         : [];
     const committed = toEntityState(toolCalls);
-    return { ...committed, committed, draft: empty, attemptActive: false };
+    return {
+      ...committed,
+      committed,
+      draft: empty,
+      attemptActive: false,
+      activeToolCallId: undefined,
+      activeToolCallName: undefined,
+    };
   }),
   on(internalActions.generationAttemptStarted, (state): ToolCallsState => ({
     ...state.committed,
     committed: state.committed,
     draft: state.committed,
     attemptActive: true,
+    activeToolCallId: undefined,
+    activeToolCallName: undefined,
   })),
   on(apiActions.generateMessageEvent, (state, action): ToolCallsState => {
     if (!state.attemptActive) return state;
@@ -50,6 +63,51 @@ export const reducer = createReducer(
         committed: state.committed,
         draft,
         attemptActive: true,
+        activeToolCallId: undefined,
+        activeToolCallName: undefined,
+      };
+    }
+    if (action.payload.type === EventType.TOOL_CALL_START) {
+      const draft = addEntities(state.draft, [
+        {
+          id: action.payload.toolCallId,
+          name: action.payload.toolCallName,
+          arguments: '',
+          status: 'pending',
+        },
+      ]);
+      return {
+        ...draft,
+        committed: state.committed,
+        draft,
+        attemptActive: true,
+        activeToolCallId: action.payload.toolCallId,
+        activeToolCallName: action.payload.toolCallName,
+      };
+    }
+    if (
+      action.payload.type === EventType.TOOL_CALL_ARGS ||
+      action.payload.type === EventType.TOOL_CALL_END ||
+      action.payload.type === EventType.TOOL_CALL_CHUNK
+    ) {
+      const event = action.payload;
+      const id = event.toolCallId ?? state.activeToolCallId;
+      if (!id) return state;
+      const existing = state.draft.entities[id];
+      const delta = 'delta' in event ? (event.delta ?? '') : '';
+      const draft = existing
+        ? updateEntity(state.draft, id, {
+            arguments: `${existing.arguments}${delta}`,
+          })
+        : state.draft;
+      const ending = event.type === EventType.TOOL_CALL_END;
+      return {
+        ...draft,
+        committed: state.committed,
+        draft,
+        attemptActive: true,
+        activeToolCallId: ending ? undefined : id,
+        activeToolCallName: ending ? undefined : state.activeToolCallName,
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_RESULT) {
@@ -71,6 +129,8 @@ export const reducer = createReducer(
         committed: state.committed,
         draft,
         attemptActive: true,
+        activeToolCallId: state.activeToolCallId,
+        activeToolCallName: state.activeToolCallName,
       };
     }
     return state;
@@ -82,6 +142,8 @@ export const reducer = createReducer(
         committed: state.draft,
         draft: empty,
         attemptActive: false,
+        activeToolCallId: undefined,
+        activeToolCallName: undefined,
       };
     const committed = addEntities(state.committed, action.payload.toolCalls);
     return {
@@ -89,6 +151,8 @@ export const reducer = createReducer(
       committed,
       draft: state.draft,
       attemptActive: false,
+      activeToolCallId: undefined,
+      activeToolCallName: undefined,
     };
   }),
   on(internalActions.generationAttemptRolledBack, (state): ToolCallsState =>
@@ -101,6 +165,26 @@ export const reducer = createReducer(
     internalActions.logicalGenerationSettled,
     devActions.resendMessages,
     (state): ToolCallsState => rollback(state),
+  ),
+  on(
+    devActions.sendMessage,
+    devActions.setMessages,
+    (state, action): ToolCallsState => {
+      if (!action.payload.canonicalMessages) {
+        return rollback(state);
+      }
+      const committed = toEntityState(
+        projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls,
+      );
+      return {
+        ...committed,
+        committed,
+        draft: empty,
+        attemptActive: false,
+        activeToolCallId: undefined,
+        activeToolCallName: undefined,
+      };
+    },
   ),
   on(internalActions.toolTurnSettled, (state, action): ToolCallsState => {
     const expected = new Map(
@@ -124,12 +208,16 @@ export const reducer = createReducer(
           committed: state.committed,
           draft: updates,
           attemptActive: true,
+          activeToolCallId: state.activeToolCallId,
+          activeToolCallName: state.activeToolCallName,
         }
       : {
           ...updates,
           committed: updates,
           draft: state.draft,
           attemptActive: false,
+          activeToolCallId: undefined,
+          activeToolCallName: undefined,
         };
   }),
 );
@@ -152,6 +240,8 @@ function rollback(state: ToolCallsState): ToolCallsState {
         committed: state.committed,
         draft: state.committed,
         attemptActive: false,
+        activeToolCallId: undefined,
+        activeToolCallName: undefined,
       }
     : state;
 }
