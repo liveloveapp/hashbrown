@@ -35,7 +35,7 @@ export function lowerViewMessagesToAgUi(
         ? []
         : [
             {
-              id: `${id}:reasoning`,
+              id: options.createId(),
               role: 'reasoning' as const,
               content: message.reasoning,
             },
@@ -77,7 +77,7 @@ export function lowerViewMessagesToAgUi(
           : serializeResult(toolCall.result.value);
       return [
         {
-          id: `${id}:tool:${toolCall.toolCallId}`,
+          id: options.createId(),
           role: 'tool',
           toolCallId: toolCall.toolCallId,
           content,
@@ -113,13 +113,26 @@ export function createSystemMessage(
   ])[0] as Readonly<SystemMessage>;
 }
 
-/** Applies one system overlay to synchronized history without duplication. @internal */
+/**
+ * Applies one system overlay to synchronized history without duplication.
+ * An empty configured overlay removes only its matching stable ID; an absent
+ * overlay leaves synchronized history unchanged.
+ *
+ * @internal
+ */
 export function applySystemMessageOverlay(
   messages: readonly Readonly<Message>[],
   systemMessage: Readonly<SystemMessage> | undefined,
 ): readonly Readonly<Message>[] {
   if (!systemMessage) {
     return messages;
+  }
+
+  if (!systemMessage.content) {
+    const cleared = messages.filter(
+      (message) => message.id !== systemMessage.id,
+    );
+    return cleared.length === messages.length ? messages : cleared;
   }
 
   const index = messages.findIndex(
@@ -310,8 +323,11 @@ function cloneAgUiValue(
   path: string,
   ancestors: Set<object>,
 ): unknown {
+  if (value === undefined) {
+    throw invalidAgUiValue(path, 'undefined is not JSON-compatible');
+  }
+
   if (
-    value === undefined ||
     value === null ||
     typeof value === 'string' ||
     typeof value === 'boolean'

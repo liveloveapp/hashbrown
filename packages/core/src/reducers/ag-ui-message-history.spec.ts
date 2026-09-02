@@ -36,6 +36,17 @@ test('lowers locally created user messages with stable supplied IDs', () => {
 test('lowers assistant turns with tool results and opaque protocol fields', () => {
   // Arrange
   const metadata = { provider: { cursor: 'initial' } };
+  const allocatedIds: string[] = [];
+  const ids = ['assistant-1', 'reasoning-1', 'tool-result-1', 'tool-result-2'];
+  const createId = jest.fn(() => {
+    const id = ids[allocatedIds.length];
+    if (!id) {
+      throw new Error('Unexpected ID allocation.');
+    }
+
+    allocatedIds.push(id);
+    return id;
+  });
   const messages: readonly Chat.AnyMessage[] = [
     {
       role: 'assistant',
@@ -67,15 +78,13 @@ test('lowers assistant turns with tool results and opaque protocol fields', () =
   ];
 
   // Act
-  const lowered = lowerViewMessagesToAgUi(messages, {
-    createId: () => 'assistant-1',
-  });
+  const lowered = lowerViewMessagesToAgUi(messages, { createId });
   metadata.provider.cursor = 'mutated';
 
   // Assert
   expect(lowered).toEqual([
     {
-      id: 'assistant-1:reasoning',
+      id: 'reasoning-1',
       role: 'reasoning',
       content: 'consider the framework',
     },
@@ -104,19 +113,26 @@ test('lowers assistant turns with tool results and opaque protocol fields', () =
       ],
     },
     {
-      id: 'assistant-1:tool:call-1',
+      id: 'tool-result-1',
       role: 'tool',
       toolCallId: 'call-1',
       content: '{"matches":1}',
     },
     {
-      id: 'assistant-1:tool:call-2',
+      id: 'tool-result-2',
       role: 'tool',
       toolCallId: 'call-2',
       content: 'denied',
       error: 'denied',
     },
   ]);
+  expect(allocatedIds).toEqual([
+    'assistant-1',
+    'reasoning-1',
+    'tool-result-1',
+    'tool-result-2',
+  ]);
+  expect(createId).toHaveBeenCalledTimes(4);
   expect(Object.isFrozen(lowered[1]?.metadata)).toBe(true);
 });
 
@@ -160,6 +176,7 @@ test('preserves detailed reasoning identities without generating extra IDs', () 
     },
   ]);
   expect(createId).toHaveBeenCalledTimes(1);
+  expect(Object.keys(lowered[1] ?? {})).toEqual(['id', 'role', 'content']);
 });
 
 test('owns and freezes every canonical field without retaining untrusted prototypes', () => {
@@ -208,6 +225,30 @@ test('rejects canonical fields with exotic prototypes', () => {
   expect(own).toThrow('only plain objects are JSON-compatible');
 });
 
+test('rejects undefined canonical fields below the message root', () => {
+  // Arrange
+  const topLevel = {
+    id: 'user-1',
+    role: 'user' as const,
+    content: 'Hello',
+    future: undefined,
+  } as Message;
+  const nested = {
+    id: 'user-2',
+    role: 'user' as const,
+    content: 'Hello',
+    future: { values: ['valid', undefined] },
+  } as Message;
+
+  // Act
+  const ownTopLevel = () => ownAgUiMessages([topLevel]);
+  const ownNested = () => ownAgUiMessages([nested]);
+
+  // Assert
+  expect(ownTopLevel).toThrow('undefined is not JSON-compatible');
+  expect(ownNested).toThrow('undefined is not JSON-compatible');
+});
+
 test('inserts an owned system overlay without disturbing protocol order', () => {
   // Arrange
   const system = createSystemMessage('local-system', 'Be concise.');
@@ -230,10 +271,11 @@ test('inserts an owned system overlay without disturbing protocol order', () => 
   ]);
 });
 
-test('replaces an echoed system overlay in place and omits an empty overlay', () => {
+test('replaces an echoed system overlay in place and clears it by stable ID', () => {
   // Arrange
   const previous = createSystemMessage('local-system', 'Previous prompt.');
   const updated = createSystemMessage(previous.id, 'Updated prompt.');
+  const empty = createSystemMessage(previous.id, '');
   const messages: readonly Message[] = [
     { id: 'other-system', role: 'system', content: 'Retained policy.' },
     previous,
@@ -242,13 +284,7 @@ test('replaces an echoed system overlay in place and omits an empty overlay', ()
 
   // Act
   const overlaid = applySystemMessageOverlay(messages, updated);
-  const cleared = applySystemMessageOverlay(
-    [
-      { id: 'other-system', role: 'system', content: 'Retained policy.' },
-      { id: 'developer-1', role: 'developer', content: 'Retained developer.' },
-    ],
-    undefined,
-  );
+  const cleared = applySystemMessageOverlay(messages, empty);
 
   // Assert
   expect(overlaid).toEqual([
@@ -261,6 +297,13 @@ test('replaces an echoed system overlay in place and omits an empty overlay', ()
   );
   expect(cleared).toEqual([
     { id: 'other-system', role: 'system', content: 'Retained policy.' },
+    { id: 'developer-1', role: 'developer', content: 'Retained developer.' },
+  ]);
+  expect(cleared[0]).toBe(messages[0]);
+  expect(cleared[1]).toBe(messages[2]);
+  expect(messages).toEqual([
+    { id: 'other-system', role: 'system', content: 'Retained policy.' },
+    previous,
     { id: 'developer-1', role: 'developer', content: 'Retained developer.' },
   ]);
 });
