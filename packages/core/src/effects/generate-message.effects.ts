@@ -28,6 +28,11 @@ import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-i
 import { sleep, switchAsync } from '../utils/async';
 import { updateAssistantMessage } from '../utils/assistant-message';
 import { createEffect } from '../utils/micro-ngrx';
+import {
+  createLogicalRunRetryState,
+  decideLogicalRunFailure,
+  startLogicalRunAttempt,
+} from './logical-run-retry-policy';
 
 type ActiveGeneration = {
   threadId: string | undefined;
@@ -162,7 +167,7 @@ export const generateMessage = createEffect((store) => {
         );
       };
 
-      let attempt = 0;
+      let retryState = createLogicalRunRetryState(retries);
       let exhaustedRetries = false;
 
       try {
@@ -171,7 +176,9 @@ export const generateMessage = createEffect((store) => {
             return;
           }
 
-          attempt++;
+          const startedAttempt = startLogicalRunAttempt(retryState);
+          retryState = startedAttempt.state;
+          const { attempt, maxAttempts } = startedAttempt.context;
 
           const requestId = _createRequestId();
           const eventRequest = {
@@ -186,7 +193,7 @@ export const generateMessage = createEffect((store) => {
             }),
             signal: AbortSignal.any([retiredSignal, runCancelSignal]),
             attempt,
-            maxAttempts: retries + 1,
+            maxAttempts,
             requestId,
           };
           let runStarted = false;
@@ -280,11 +287,12 @@ export const generateMessage = createEffect((store) => {
           synthesizeRunError(primaryError.message);
           store.dispatch(apiActions.generateMessageError(primaryError));
 
-          const retryable =
-            !(primaryError instanceof TransportError) ||
-            primaryError.retryable !== false;
-          if (!retryable || attempt >= retries + 1) {
-            exhaustedRetries = retryable && retries > 0;
+          const failureDecision = decideLogicalRunFailure(
+            retryState,
+            primaryError,
+          );
+          if (failureDecision.kind === 'stop') {
+            exhaustedRetries = failureDecision.exhaustedRetries;
             break;
           }
         }

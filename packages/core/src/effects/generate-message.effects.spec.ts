@@ -2004,6 +2004,75 @@ test('exhausted generic send retries dispatches the exhausted action', async () 
   teardown?.();
 });
 
+test('non-retryable transport error stops without exhausting retries', async () => {
+  jest.clearAllMocks();
+  const error = new TransportError('invalid request', { retryable: false });
+  const { send } = makeSelection(async () => {
+    throw error;
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, 2]]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([apiActions.generateMessageError(error)]);
+  expect(
+    getActionsOfType(
+      store.actions,
+      apiActions.generateMessageExhaustedRetries.type,
+    ),
+  ).toHaveLength(0);
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(1);
+
+  teardown?.();
+});
+
+test('positive infinity retries normalize to one attempt without exhaustion', async () => {
+  jest.clearAllMocks();
+  const error = new Error('still broken');
+  const requests: TransportRequest[] = [];
+  const { send } = makeSelection(async (request) => {
+    requests.push(request);
+    throw error;
+  });
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([[selectRetries, Number.POSITIVE_INFINITY]]),
+  );
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    requests.map(({ attempt, maxAttempts }) => ({ attempt, maxAttempts })),
+  ).toEqual([{ attempt: 1, maxAttempts: 1 }]);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([apiActions.generateMessageError(error)]);
+  expect(
+    getActionsOfType(
+      store.actions,
+      apiActions.generateMessageExhaustedRetries.type,
+    ),
+  ).toHaveLength(0);
+  expect(
+    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
+  ).toHaveLength(1);
+
+  teardown?.();
+});
+
 test.each([
   {
     label: 'RUN_ERROR',
