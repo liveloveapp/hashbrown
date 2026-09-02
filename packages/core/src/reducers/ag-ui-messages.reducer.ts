@@ -7,7 +7,7 @@ import {
 import { apiActions, devActions, internalActions } from '../actions';
 import {
   applySystemMessageOverlay,
-  ownAgUiMessages,
+  ɵownValidatedAgUiMessages,
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
 
@@ -385,7 +385,7 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
         ? {
             activeTextMessageId: event.messageId,
             activeAssistantMessageId:
-              event.role === 'assistant'
+              (event.role ?? 'assistant') === 'assistant'
                 ? event.messageId
                 : state.activeAssistantMessageId,
           }
@@ -426,24 +426,7 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
 function own(
   messages: readonly Readonly<Message>[],
 ): readonly Readonly<Message>[] {
-  const owned = ownAgUiMessages(messages as readonly Message[]);
-  const ids = new Set<string>();
-  for (const message of owned) {
-    if (ids.has(message.id)) {
-      throw new Error(`AG-UI message ID ${message.id} is duplicated`);
-    }
-    ids.add(message.id);
-    if (message.role !== 'assistant') continue;
-    for (const toolCall of message.toolCalls ?? []) {
-      if (ids.has(toolCall.id)) {
-        throw new Error(
-          `AG-UI tool call ID ${toolCall.id} conflicts with a message ID`,
-        );
-      }
-      ids.add(toolCall.id);
-    }
-  }
-  return owned;
+  return ɵownValidatedAgUiMessages(messages as readonly Message[]);
 }
 
 function withoutSystemOverlay(

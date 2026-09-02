@@ -940,7 +940,6 @@ test('establishes compact text reasoning and tool correlation from first chunks'
     apiActions.generateMessageEvent({
       type: EventType.TEXT_MESSAGE_CHUNK,
       messageId: 'assistant-1',
-      role: 'assistant',
       delta: 'text',
     }),
   );

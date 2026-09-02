@@ -401,3 +401,55 @@ test('separates send set and resend tool-cache supersession semantics', () => {
   expect(replaced.entities['tool-old']).toBeUndefined();
   expect(resent.entities).toBe(initialized.committed.entities);
 });
+
+test('creates and commits a pending tool projection from compact chunks alone', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const first = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      delta: '{',
+    }),
+  );
+  const continued = reducer(
+    first,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      delta: '}',
+    }),
+  );
+  const ended = reducer(
+    continued,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'tool-1',
+    }),
+  );
+  const committed = reducer(
+    ended,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: ['tool-1'] },
+      toolCalls: [],
+    }),
+  );
+
+  expect(continued.draft.entities['tool-1']).toEqual({
+    id: 'tool-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  });
+  expect(ended.activeToolCallId).toBeUndefined();
+  expect(committed.entities['tool-1']).toEqual(
+    continued.draft.entities['tool-1'],
+  );
+});

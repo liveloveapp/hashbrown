@@ -2,7 +2,10 @@ import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { createReducer, EntityState, on, select } from '../utils/micro-ngrx';
-import { ownAgUiMessages, projectAgUiMessages } from './ag-ui-message-history';
+import {
+  projectAgUiMessages,
+  ɵownValidatedAgUiMessages,
+} from './ag-ui-message-history';
 
 export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly committed: EntityState<Chat.Internal.ToolCall>;
@@ -88,12 +91,19 @@ export const reducer = createReducer(
       const id = event.toolCallId ?? state.activeToolCallId;
       if (!id) return state;
       const existing = state.draft.entities[id];
-      const delta = 'delta' in event ? (event.delta ?? '') : '';
+      const delta = 'delta' in event ? ((event.delta ?? '') as string) : '';
+      const toolCallName =
+        (event as { readonly toolCallName?: string }).toolCallName ??
+        state.activeToolCallName;
       const draft = existing
         ? updateEntity(state.draft, id, {
             arguments: `${existing.arguments}${delta}`,
           })
-        : state.draft;
+        : toolCallName
+          ? addEntities(state.draft, [
+              { id, name: toolCallName, arguments: delta, status: 'pending' },
+            ])
+          : state.draft;
       const ending = event.type === EventType.TOOL_CALL_END;
       return {
         ...draft,
@@ -101,7 +111,7 @@ export const reducer = createReducer(
         draft,
         attemptActive: true,
         activeToolCallId: ending ? undefined : id,
-        activeToolCallName: ending ? undefined : state.activeToolCallName,
+        activeToolCallName: ending ? undefined : toolCallName,
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_RESULT) {
@@ -268,7 +278,9 @@ function projectRemoteSnapshot(
   try {
     return toEntityState(
       projectAgUiMessages(
-        ownAgUiMessages(messages as readonly import('@ag-ui/core').Message[]),
+        ɵownValidatedAgUiMessages(
+          messages as readonly import('@ag-ui/core').Message[],
+        ),
         {},
       ).toolCalls,
     );

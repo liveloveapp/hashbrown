@@ -330,12 +330,21 @@ test('root isolates malformed remote snapshots without reading accessors', () =>
       canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
     }),
   );
-  const active = reduceAll(
+  const activeStart = reduceAll(
     reduceAll(
       initialized,
       apiActions.generateMessageStart({ toolsByName: {} }),
     ),
     internalActions.generationAttemptStarted(),
+  );
+  const active = reduceAll(
+    activeStart,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-draft',
+      role: 'assistant',
+      delta: 'draft',
+    }),
   );
   const sparse = new Array(1);
   const accessor = new Array(1);
@@ -351,6 +360,13 @@ test('root isolates malformed remote snapshots without reading accessors', () =>
     { type: EventType.MESSAGES_SNAPSHOT, messages: {} },
     { type: EventType.MESSAGES_SNAPSHOT, messages: sparse },
     { type: EventType.MESSAGES_SNAPSHOT, messages: accessor },
+    {
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'duplicate', role: 'user', content: 'one' },
+        { id: 'duplicate', role: 'assistant', content: 'two' },
+      ],
+    },
   ];
   const results = malformed.map((event) =>
     reduceAll(
@@ -375,6 +391,7 @@ test('root isolates malformed remote snapshots without reading accessors', () =>
     expect(result.agUiMessages.draft).toBe(active.agUiMessages.draft);
     expect(result.messages).toBe(active.messages);
     expect(result.toolCalls).toBe(active.toolCalls);
+    expect(result.streamingMessage).toBe(active.streamingMessage);
   }
   expect(accesses).toBe(0);
   expect(valid.agUiMessages.protocolError).toBeUndefined();

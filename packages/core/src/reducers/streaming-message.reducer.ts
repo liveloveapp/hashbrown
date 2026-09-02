@@ -10,6 +10,7 @@ import {
   createAgUiMessageAccumulator,
   initialAgUiMessageAccumulatorState,
 } from './ag-ui-message-accumulator';
+import { ɵownValidatedAgUiMessages } from './ag-ui-message-history';
 
 export type StreamingMessageState = AgUiMessageAccumulatorState & {
   readonly attemptActive: boolean;
@@ -74,13 +75,20 @@ export const reducer = createReducer(
         return state;
       }
 
-      return action.payload.type === EventType.MESSAGES_SNAPSHOT
-        ? {
-            ...initialState,
-            configSnapshot: state.configSnapshot,
-            attemptActive: true,
-          }
-        : { ...accumulateEvent(state, action.payload), attemptActive: true };
+      if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
+        try {
+          ɵownValidatedAgUiMessages(action.payload.messages);
+        } catch {
+          return state;
+        }
+        return {
+          ...initialState,
+          configSnapshot: state.configSnapshot,
+          attemptActive: true,
+        };
+      }
+
+      return { ...accumulateEvent(state, action.payload), attemptActive: true };
     },
   ),
   on(

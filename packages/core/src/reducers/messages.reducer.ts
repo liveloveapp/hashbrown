@@ -4,7 +4,10 @@ import { Chat } from '../models';
 import { ErrorMessage } from '../models/view.models';
 import { s } from '../schema';
 import { createReducer, on } from '../utils/micro-ngrx';
-import { ownAgUiMessages, projectAgUiMessages } from './ag-ui-message-history';
+import {
+  projectAgUiMessages,
+  ɵownValidatedAgUiMessages,
+} from './ag-ui-message-history';
 
 export interface MessagesState {
   readonly messages: readonly Chat.Internal.Message[];
@@ -186,7 +189,7 @@ function projectRemoteSnapshot(
 ): readonly Chat.Internal.Message[] | undefined {
   try {
     return projectCanonical(
-      ownAgUiMessages(messages as readonly Message[]),
+      ɵownValidatedAgUiMessages(messages as readonly Message[]),
       {},
     );
   } catch {

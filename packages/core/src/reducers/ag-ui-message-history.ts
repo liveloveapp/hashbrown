@@ -107,6 +107,30 @@ export function ownAgUiMessages(
   ) as readonly Readonly<Message>[];
 }
 
+/** Owns canonical history and rejects duplicate global message and tool-call IDs. @internal */
+export function ɵownValidatedAgUiMessages(
+  messages: readonly Message[],
+): readonly Readonly<Message>[] {
+  const owned = ownAgUiMessages(messages);
+  const ids = new Set<string>();
+  for (const message of owned) {
+    if (ids.has(message.id)) {
+      throw new Error(`AG-UI message ID ${message.id} is duplicated`);
+    }
+    ids.add(message.id);
+    if (message.role !== 'assistant') continue;
+    for (const toolCall of message.toolCalls ?? []) {
+      if (ids.has(toolCall.id)) {
+        throw new Error(
+          `AG-UI tool call ID ${toolCall.id} conflicts with a message ID`,
+        );
+      }
+      ids.add(toolCall.id);
+    }
+  }
+  return owned;
+}
+
 /** Creates or updates the app-owned system overlay without changing its ID. @internal */
 export function createSystemMessage(
   id: string,
