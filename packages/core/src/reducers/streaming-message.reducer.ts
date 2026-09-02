@@ -97,8 +97,12 @@ export const reducer = createReducer(
   ),
 );
 
-export const selectRawStreamingMessage = (state: StreamingMessageState) =>
-  state.message;
+export const selectRawStreamingMessage = (
+  state: StreamingMessageState,
+): Chat.Internal.AssistantMessage | null =>
+  !state.message || !state.messageId
+    ? state.message
+    : Chat.helpers.ɵwithInternalMessageId(state.message, state.messageId);
 
 export const selectStreamingMessageId = (state: StreamingMessageState) =>
   state.messageId;

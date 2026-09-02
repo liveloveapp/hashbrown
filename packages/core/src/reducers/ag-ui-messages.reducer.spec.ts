@@ -928,3 +928,180 @@ test('logical settlement rolls an active draft back and cannot undo supersession
     'user-2',
   ]);
 });
+
+test('establishes compact text reasoning and tool correlation from first chunks', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'text',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      delta: ' more',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CHUNK,
+      messageId: 'reasoning-1',
+      delta: 'think',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CHUNK,
+      delta: ' more',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      delta: '{',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      delta: '}',
+    }),
+  );
+
+  expect(state.draft).toMatchObject([
+    {
+      id: 'assistant-1',
+      content: 'text more',
+      toolCalls: [
+        { id: 'tool-1', function: { name: 'lookup', arguments: '{}' } },
+      ],
+    },
+    { id: 'reasoning-1', content: 'think more' },
+  ]);
+  expect(state.activeTextMessageId).toBe('assistant-1');
+  expect(state.activeReasoningMessageId).toBe('reasoning-1');
+  expect(state.activeToolCallId).toBe('tool-1');
+});
+
+test('uses an existing non-active tool call name for an identified compact chunk', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  const next = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      delta: '{"q":1}',
+    }),
+  );
+
+  expect(next.draft[0]).toMatchObject({
+    toolCalls: [
+      { id: 'tool-1', function: { name: 'lookup', arguments: '{"q":1}' } },
+    ],
+  });
+  expect(next.activeToolCallName).toBe('lookup');
+});
+
+test('clears compact lifecycle correlation after a snapshot replacement', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-old',
+      role: 'assistant',
+      delta: 'old',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CHUNK,
+      messageId: 'reasoning-old',
+      delta: 'old',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-old',
+      toolCallName: 'old',
+      parentMessageId: 'assistant-old',
+      delta: '{}',
+    }),
+  );
+  const snapshotted = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'assistant-new', role: 'assistant', content: 'snapshot' },
+      ],
+    }),
+  );
+  const idless = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      delta: ' late',
+    }),
+  );
+  const fresh = reducer(
+    idless,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-new',
+      role: 'assistant',
+      delta: ' fresh',
+    }),
+  );
+
+  expect(snapshotted.activeTextMessageId).toBeUndefined();
+  expect(snapshotted.activeReasoningMessageId).toBeUndefined();
+  expect(snapshotted.activeToolCallId).toBeUndefined();
+  expect(idless.draft).toBe(snapshotted.draft);
+  expect(fresh.draft).toEqual([
+    { id: 'assistant-new', role: 'assistant', content: 'snapshot fresh' },
+  ]);
+});

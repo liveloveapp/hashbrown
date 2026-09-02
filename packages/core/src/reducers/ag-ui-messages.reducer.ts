@@ -338,9 +338,16 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
         : { ...event, messageId: state.activeReasoningMessageId };
     case EventType.TOOL_CALL_CHUNK:
       if (event.toolCallId) {
-        return event.toolCallName || event.toolCallId !== state.activeToolCallId
+        const existing = findToolCall(state.draft, event.toolCallId);
+        return event.toolCallName
           ? event
-          : { ...event, toolCallName: state.activeToolCallName };
+          : {
+              ...event,
+              toolCallName:
+                event.toolCallId === state.activeToolCallId
+                  ? state.activeToolCallName
+                  : existing?.tool.function.name,
+            };
       }
       return !state.activeToolCallId
         ? event
@@ -360,6 +367,8 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
 
 function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
   switch (event.type) {
+    case EventType.MESSAGES_SNAPSHOT:
+      return inactiveLifecycle();
     case EventType.TEXT_MESSAGE_START:
       return {
         ...inactiveLifecycle(),
@@ -371,6 +380,16 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
       return event.messageId === state.activeTextMessageId
         ? { activeTextMessageId: undefined }
         : {};
+    case EventType.TEXT_MESSAGE_CHUNK:
+      return event.messageId
+        ? {
+            activeTextMessageId: event.messageId,
+            activeAssistantMessageId:
+              event.role === 'assistant'
+                ? event.messageId
+                : state.activeAssistantMessageId,
+          }
+        : {};
     case EventType.REASONING_MESSAGE_START:
     case EventType.THINKING_TEXT_MESSAGE_START:
       return { activeReasoningMessageId: event.messageId as string };
@@ -378,6 +397,10 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
     case EventType.THINKING_TEXT_MESSAGE_END:
       return event.messageId === state.activeReasoningMessageId
         ? { activeReasoningMessageId: undefined }
+        : {};
+    case EventType.REASONING_MESSAGE_CHUNK:
+      return event.messageId
+        ? { activeReasoningMessageId: event.messageId }
         : {};
     case EventType.TOOL_CALL_START:
       return {
@@ -387,6 +410,13 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
     case EventType.TOOL_CALL_END:
       return event.toolCallId === state.activeToolCallId
         ? { activeToolCallId: undefined, activeToolCallName: undefined }
+        : {};
+    case EventType.TOOL_CALL_CHUNK:
+      return event.toolCallId
+        ? {
+            activeToolCallId: event.toolCallId,
+            activeToolCallName: event.toolCallName,
+          }
         : {};
     default:
       return {};
