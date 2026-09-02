@@ -998,6 +998,56 @@ test('establishes compact text reasoning and tool correlation from first chunks'
   expect(state.activeToolCallId).toBe('tool-1');
 });
 
+test('attaches a parentless compact tool chunk to the active role-less assistant', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      delta: 'hi',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      delta: '{"q":',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      delta: '1}',
+    }),
+  );
+
+  expect(state.draft).toEqual([
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'hi',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{"q":1}' },
+        },
+      ],
+    },
+  ]);
+  expect(
+    state.draft.find((message) => message.id === 'assistant-tool-1'),
+  ).toBeUndefined();
+});
+
 test('uses an existing non-active tool call name for an identified compact chunk', () => {
   let state = reducer(
     initialAgUiMessagesState,

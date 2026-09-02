@@ -339,15 +339,16 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
     case EventType.TOOL_CALL_CHUNK:
       if (event.toolCallId) {
         const existing = findToolCall(state.draft, event.toolCallId);
-        return event.toolCallName
-          ? event
-          : {
-              ...event,
-              toolCallName:
-                event.toolCallId === state.activeToolCallId
-                  ? state.activeToolCallName
-                  : existing?.tool.function.name,
-            };
+        return {
+          ...event,
+          parentMessageId:
+            event.parentMessageId ?? state.activeAssistantMessageId,
+          toolCallName:
+            event.toolCallName ??
+            (event.toolCallId === state.activeToolCallId
+              ? state.activeToolCallName
+              : existing?.tool.function.name),
+        };
       }
       return !state.activeToolCallId
         ? event
@@ -355,6 +356,8 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
             ...event,
             toolCallId: state.activeToolCallId,
             toolCallName: event.toolCallName ?? state.activeToolCallName,
+            parentMessageId:
+              event.parentMessageId ?? state.activeAssistantMessageId,
           };
     case EventType.TOOL_CALL_START:
       return event.parentMessageId || !state.activeAssistantMessageId
