@@ -7,33 +7,22 @@ import {
   selectToolEntities,
   selectUnifiedError,
 } from '../reducers';
-import { executeToolTurn, type ToolCallExecution } from './tool-turn-executor';
+import {
+  createToolTurnCoordinator,
+  type ToolTurnCoordinator,
+  type ToolTurnOutcome,
+} from './tool-turn-coordinator';
 
 interface ActiveToolTurn {
   readonly toolCalls: Chat.Internal.ToolCall[];
-  readonly controllers: Map<string, AbortController>;
+  readonly coordinator: ToolTurnCoordinator;
   readonly threadId: string | undefined;
   settled: boolean;
 }
 
-function createCancellationError(): Error {
-  const error = new Error('Tool execution cancelled');
-  error.name = 'AbortError';
-  return error;
-}
-
-function cancellationResults(
-  toolCalls: Chat.Internal.ToolCall[],
-): PromiseSettledResult<unknown>[] {
-  return toolCalls.map(() => ({
-    status: 'rejected',
-    reason: createCancellationError(),
-  }));
-}
-
 function toToolMessages(
   toolCalls: Chat.Internal.ToolCall[],
-  results: PromiseSettledResult<unknown>[],
+  results: readonly PromiseSettledResult<unknown>[],
 ): Chat.Api.ToolMessage[] {
   return toolCalls.map((toolCall, index) => ({
     role: 'tool',
@@ -46,11 +35,7 @@ function toToolMessages(
 export const runTools = createEffect((store) => {
   let activeTurn: ActiveToolTurn | undefined;
 
-  const settleTurn = (
-    turn: ActiveToolTurn,
-    results: PromiseSettledResult<unknown>[],
-    continuation: 'continue' | 'stop',
-  ) => {
+  const settleTurn = (turn: ActiveToolTurn, outcome: ToolTurnOutcome) => {
     if (turn.settled) {
       return;
     }
@@ -62,8 +47,8 @@ export const runTools = createEffect((store) => {
     store.dispatch(
       internalActions.toolTurnSettled({
         toolCalls: turn.toolCalls,
-        toolMessages: toToolMessages(turn.toolCalls, results),
-        continuation,
+        toolMessages: toToolMessages(turn.toolCalls, outcome.results),
+        continuation: outcome.continuation,
       }),
     );
   };
@@ -74,8 +59,10 @@ export const runTools = createEffect((store) => {
       return;
     }
 
-    turn.controllers.forEach((controller) => controller.abort());
-    settleTurn(turn, cancellationResults(turn.toolCalls), 'stop');
+    const outcome = turn.coordinator.cancel();
+    if (outcome) {
+      settleTurn(turn, outcome);
+    }
   };
 
   store.when(apiActions.assistantTurnFinalized, async (action) => {
@@ -99,44 +86,28 @@ export const runTools = createEffect((store) => {
       return;
     }
 
-    if (action.payload.continuation === 'stop') {
-      settleTurn(
-        {
-          toolCalls,
-          controllers: new Map(),
-          threadId: store.read(selectThreadId),
-          settled: false,
-        },
-        cancellationResults(toolCalls),
-        'stop',
-      );
-      return;
-    }
-
-    const executions = toolCalls.map((toolCall) => ({
-      toolCall,
-      controller: new AbortController(),
-    }));
-    const controllers = new Map(
-      executions.map(({ toolCall, controller }) => [toolCall.id, controller]),
-    );
+    const coordinator = createToolTurnCoordinator({
+      toolCalls,
+      toolsByName: toolEntities,
+    });
     const turn: ActiveToolTurn = {
       toolCalls,
-      controllers,
+      coordinator,
       threadId: store.read(selectThreadId),
       settled: false,
     };
     activeTurn = turn;
 
-    const toolCallExecutions: ToolCallExecution[] = executions.map(
-      ({ toolCall, controller }) => ({
-        toolCall,
-        tool: toolEntities[toolCall.name],
-        signal: controller.signal,
-      }),
-    );
-    const results = await executeToolTurn(toolCallExecutions);
-    settleTurn(turn, results, 'continue');
+    if (action.payload.continuation === 'stop') {
+      const outcome = coordinator.cancel();
+      if (outcome) {
+        settleTurn(turn, outcome);
+      }
+      return;
+    }
+
+    const outcome = await coordinator.completion;
+    settleTurn(turn, outcome);
   });
 
   store.when(
