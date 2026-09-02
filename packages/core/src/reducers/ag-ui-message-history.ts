@@ -96,11 +96,11 @@ export function lowerViewMessagesToAgUi(
 export function ownAgUiMessages(
   messages: readonly Message[],
 ): readonly Readonly<Message>[] {
-  return Object.freeze(
-    messages.map((message) =>
-      cloneAgUiValue(message, '$', new Set<object>()),
-    ) as readonly Readonly<Message>[],
-  );
+  return cloneAgUiValue(
+    messages,
+    '$',
+    new Set<object>(),
+  ) as readonly Readonly<Message>[];
 }
 
 /** Creates or updates the app-owned system overlay without changing its ID. @internal */
@@ -135,16 +135,23 @@ export function applySystemMessageOverlay(
     return cleared.length === messages.length ? messages : cleared;
   }
 
-  const index = messages.findIndex(
-    (message) => message.id === systemMessage.id,
-  );
-  if (index === -1) {
+  if (!messages.some((message) => message.id === systemMessage.id)) {
     return [systemMessage, ...messages];
   }
 
-  return messages.map((message, currentIndex) =>
-    currentIndex === index ? systemMessage : message,
-  );
+  let inserted = false;
+  return messages.flatMap((message) => {
+    if (message.id !== systemMessage.id) {
+      return [message];
+    }
+
+    if (inserted) {
+      return [];
+    }
+
+    inserted = true;
+    return [systemMessage];
+  });
 }
 
 /** The Hashbrown compatibility projection of canonical AG-UI history. @internal */
@@ -265,7 +272,9 @@ function projectToolCall(
   result: Extract<Message, { role: 'tool' }> | undefined,
   toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
 ): Chat.Internal.ToolCall {
-  const tool = toolsByName[toolCall.function.name];
+  const tool = Object.hasOwn(toolsByName, toolCall.function.name)
+    ? toolsByName[toolCall.function.name]
+    : undefined;
   const metadata = mergeMetadata(toolCall.metadata, result?.metadata);
   const encryptedValue = toolCall.encryptedValue ?? result?.encryptedValue;
   const argumentsResolved =
@@ -354,17 +363,34 @@ function cloneAgUiValue(
   ancestors.add(value);
   try {
     if (Array.isArray(value)) {
+      for (const key of Object.keys(value)) {
+        if (!isArrayIndex(key, value.length)) {
+          throw invalidAgUiValue(
+            `${path}.${key}`,
+            'non-index properties are not supported',
+          );
+        }
+      }
+
       const clone: unknown[] = [];
       for (let index = 0; index < value.length; index += 1) {
-        if (!Object.hasOwn(value, index)) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, index);
+        if (!descriptor) {
           throw invalidAgUiValue(
             `${path}[${index}]`,
             'sparse arrays are not JSON-compatible',
           );
         }
 
+        if (!('value' in descriptor)) {
+          throw invalidAgUiValue(
+            `${path}[${index}]`,
+            'accessors are not supported',
+          );
+        }
+
         clone.push(
-          cloneAgUiValue(value[index], `${path}[${index}]`, ancestors),
+          cloneAgUiValue(descriptor.value, `${path}[${index}]`, ancestors),
         );
       }
 
@@ -395,6 +421,16 @@ function cloneAgUiValue(
   } finally {
     ancestors.delete(value);
   }
+}
+
+function isArrayIndex(key: string, length: number): boolean {
+  const index = Number(key);
+  return (
+    Number.isInteger(index) &&
+    index >= 0 &&
+    index < length &&
+    String(index) === key
+  );
 }
 
 function invalidAgUiValue(path: string, detail: string): TypeError {

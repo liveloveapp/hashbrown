@@ -203,6 +203,7 @@ test('owns and freezes every canonical field without retaining untrusted prototy
     },
   ]);
   expect(Object.getPrototypeOf(owned[0])).toBeNull();
+  expect(Object.isFrozen(owned)).toBe(true);
   expect(Object.isFrozen(owned[0])).toBe(true);
   expect(
     Object.isFrozen((owned[0] as unknown as { future: object }).future),
@@ -247,6 +248,72 @@ test('rejects undefined canonical fields below the message root', () => {
   // Assert
   expect(ownTopLevel).toThrow('undefined is not JSON-compatible');
   expect(ownNested).toThrow('undefined is not JSON-compatible');
+});
+
+test('rejects sparse and extra-property canonical history arrays', () => {
+  // Arrange
+  const sparseHistory = new Array<Message>(1);
+  const extraHistory = [
+    { id: 'user-1', role: 'user' as const, content: 'Hello' },
+  ];
+  Object.defineProperty(extraHistory, 'future', {
+    enumerable: true,
+    value: 'unsupported',
+  });
+  const nestedSparse = {
+    id: 'user-2',
+    role: 'user' as const,
+    content: 'Hello',
+    future: new Array(1),
+  } as Message;
+
+  // Act
+  const ownSparseHistory = () => ownAgUiMessages(sparseHistory);
+  const ownExtraHistory = () => ownAgUiMessages(extraHistory);
+  const ownNestedSparse = () => ownAgUiMessages([nestedSparse]);
+
+  // Assert
+  expect(ownSparseHistory).toThrow('sparse arrays are not JSON-compatible');
+  expect(ownExtraHistory).toThrow('non-index properties are not supported');
+  expect(ownNestedSparse).toThrow('sparse arrays are not JSON-compatible');
+});
+
+test('rejects array accessors without invoking untrusted getters', () => {
+  // Arrange
+  let outerGetterReads = 0;
+  const accessorHistory: Message[] = [];
+  Object.defineProperty(accessorHistory, '0', {
+    enumerable: true,
+    get: () => {
+      outerGetterReads += 1;
+      return { id: 'user-1', role: 'user', content: 'Hello' };
+    },
+  });
+  let nestedGetterReads = 0;
+  const accessorValues: unknown[] = [];
+  Object.defineProperty(accessorValues, '0', {
+    enumerable: true,
+    get: () => {
+      nestedGetterReads += 1;
+      return 'value';
+    },
+  });
+  const nestedAccessor = {
+    id: 'user-2',
+    role: 'user' as const,
+    content: 'Hello',
+    future: accessorValues,
+  } as Message;
+
+  // Act
+  const ownAccessorHistory = () => ownAgUiMessages(accessorHistory);
+  const ownNestedAccessor = () => ownAgUiMessages([nestedAccessor]);
+
+  // Assert
+  expect(ownAccessorHistory).toThrow('accessors are not supported');
+  expect(ownNestedAccessor).toThrow('accessors are not supported');
+  expect(outerGetterReads).toBe(0);
+  expect(nestedGetterReads).toBe(0);
 });
 
 test('inserts an owned system overlay without disturbing protocol order', () => {
@@ -305,6 +372,49 @@ test('replaces an echoed system overlay in place and clears it by stable ID', ()
     { id: 'other-system', role: 'system', content: 'Retained policy.' },
     previous,
     { id: 'developer-1', role: 'developer', content: 'Retained developer.' },
+  ]);
+});
+
+test('deduplicates echoed nonempty system overlays at their first position', () => {
+  // Arrange
+  const overlay = createSystemMessage('local-system', 'Updated prompt.');
+  const firstEcho = createSystemMessage('local-system', 'First stale prompt.');
+  const duplicateEcho = createSystemMessage(
+    'local-system',
+    'Duplicate stale prompt.',
+  );
+  const otherSystem = createSystemMessage('other-system', 'Retained policy.');
+  const developer: Message = {
+    id: 'developer-1',
+    role: 'developer',
+    content: 'Retained developer.',
+  };
+  const user: Message = { id: 'user-1', role: 'user', content: 'Hello' };
+  const messages: readonly Message[] = [
+    otherSystem,
+    firstEcho,
+    developer,
+    user,
+    duplicateEcho,
+  ];
+
+  // Act
+  const overlaid = applySystemMessageOverlay(messages, overlay);
+
+  // Assert
+  expect(overlaid).toEqual([otherSystem, overlay, developer, user]);
+  expect(overlaid.filter((message) => message.id === overlay.id)).toHaveLength(
+    1,
+  );
+  expect(overlaid[0]).toBe(otherSystem);
+  expect(overlaid[2]).toBe(developer);
+  expect(overlaid[3]).toBe(user);
+  expect(messages).toEqual([
+    otherSystem,
+    firstEcho,
+    developer,
+    user,
+    duplicateEcho,
   ]);
 });
 
@@ -430,6 +540,48 @@ test('projects canonical messages into typed messages and stitched tool calls', 
       result: { status: 'rejected', reason: 'denied' },
     },
   ]);
+});
+
+test('treats inherited registry names as unregistered tools', () => {
+  // Arrange
+  const messages: readonly Message[] = [
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'Calling inherited names.',
+      toolCalls: ['toString', 'constructor', '__proto__'].map(
+        (name, index) => ({
+          id: `call-${index + 1}`,
+          type: 'function' as const,
+          function: { name, arguments: '{}' },
+        }),
+      ),
+    },
+  ];
+  const toolsByName: Record<string, Chat.Internal.Tool> = {};
+
+  // Act
+  const project = () => projectAgUiMessages(messages, toolsByName);
+
+  // Assert
+  expect(project).not.toThrow();
+  expect(project()).toMatchObject({
+    toolCalls: [
+      { id: 'call-1', name: 'toString', arguments: '{}', status: 'pending' },
+      {
+        id: 'call-2',
+        name: 'constructor',
+        arguments: '{}',
+        status: 'pending',
+      },
+      {
+        id: 'call-3',
+        name: '__proto__',
+        arguments: '{}',
+        status: 'pending',
+      },
+    ],
+  });
 });
 
 test('folds only contiguous reasoning into the next assistant projection', () => {
