@@ -61,6 +61,28 @@ test('useMagicTextParser preserves resolved node identity across prefix updates'
   expect(firstParagraphAfter).toBe(firstParagraphBefore);
 });
 
+test('useMagicTextParser recognizes autolinks across prefix updates', () => {
+  const { result, rerender } = renderHook(
+    ({ text }) => useMagicTextParser(text),
+    {
+      initialProps: {
+        text: 'https',
+      },
+    },
+  );
+
+  rerender({
+    text: 'https://example.com',
+  });
+
+  const autolink = findByType(result.current.rootNode, 'autolink')[0] as
+    | Extract<MarkdownNode, { type: 'autolink' }>
+    | undefined;
+
+  expect(autolink?.text).toBe('https://example.com');
+  expect(autolink?.url).toBe('https://example.com');
+});
+
 test('useMagicTextParser does not mutate committed nodes during a suspended render', () => {
   const pending = new Promise<never>(() => undefined);
   let committedRoot: MarkdownNode | null = null;

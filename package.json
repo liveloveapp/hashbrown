@@ -50,7 +50,7 @@
     "@angular/router": "22.1.1",
     "@cacheplane/json-stream": "0.1.0",
     "@cacheplane/partial-json": "0.3.0",
-    "@cacheplane/partial-markdown": "0.5.10",
+    "@cacheplane/partial-markdown": "0.5.11",
     "@jitl/quickjs-singlefile-browser-debug-asyncify": "0.31.0",
     "@ngrx/effects": "22.0.0-rc.0",
     "@ngrx/entity": "22.0.0-rc.0",
