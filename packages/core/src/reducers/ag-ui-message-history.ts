@@ -1,0 +1,386 @@
+import type { Message, SystemMessage, ToolMessage } from '@ag-ui/core';
+import { Chat } from '../models';
+import { s } from '../schema';
+import { resolveWithSchema } from '../utils';
+
+/** Options used to create stable local canonical message IDs. @internal */
+export interface LowerCanonicalMessagesOptions {
+  readonly createId: () => string;
+}
+
+/** Lowers Hashbrown view messages once at the runtime boundary. @internal */
+export function lowerViewMessagesToAgUi(
+  messages: readonly Chat.AnyMessage[],
+  options: LowerCanonicalMessagesOptions,
+): readonly Message[] {
+  const lowered = messages.flatMap((message): readonly Message[] => {
+    if (message.role === 'error') {
+      return [];
+    }
+
+    if (message.role === 'user') {
+      return [
+        {
+          id: options.createId(),
+          role: 'user',
+          content: serializeContent(message.content),
+        },
+      ];
+    }
+
+    const id = options.createId();
+    const reasoning =
+      message.reasoningDetails ??
+      (message.reasoning === undefined
+        ? []
+        : [
+            {
+              id: `${id}:reasoning`,
+              role: 'reasoning' as const,
+              content: message.reasoning,
+            },
+          ]);
+    const toolCalls = message.toolCalls.map((toolCall) => ({
+      id: toolCall.toolCallId,
+      type: 'function' as const,
+      function: {
+        name: toolCall.name,
+        arguments: serializeContent(toolCall.args),
+      },
+      ...(toolCall.encryptedValue !== undefined
+        ? { encryptedValue: toolCall.encryptedValue }
+        : {}),
+      ...(toolCall.metadata !== undefined
+        ? { metadata: toolCall.metadata }
+        : {}),
+    }));
+    const assistant: Message = {
+      id,
+      role: 'assistant',
+      ...(message.content !== undefined
+        ? { content: serializeContent(message.content) }
+        : {}),
+      ...(toolCalls.length > 0 ? { toolCalls } : {}),
+      ...(message.encryptedValue !== undefined
+        ? { encryptedValue: message.encryptedValue }
+        : {}),
+      ...(message.metadata !== undefined ? { metadata: message.metadata } : {}),
+    };
+    const results = message.toolCalls.flatMap((toolCall): ToolMessage[] => {
+      if (toolCall.status !== 'done') {
+        return [];
+      }
+
+      const content =
+        toolCall.result.status === 'rejected'
+          ? serializeResult(toolCall.result.reason)
+          : serializeResult(toolCall.result.value);
+      return [
+        {
+          id: `${id}:tool:${toolCall.toolCallId}`,
+          role: 'tool',
+          toolCallId: toolCall.toolCallId,
+          content,
+          ...(toolCall.result.status === 'rejected' ? { error: content } : {}),
+        },
+      ];
+    });
+
+    return [...reasoning, assistant, ...results];
+  });
+
+  return ownAgUiMessages(lowered) as readonly Message[];
+}
+
+/** Clones and freezes untrusted canonical history. @internal */
+export function ownAgUiMessages(
+  messages: readonly Message[],
+): readonly Readonly<Message>[] {
+  return Object.freeze(
+    messages.map((message) =>
+      cloneAgUiValue(message, '$', new Set<object>()),
+    ) as readonly Readonly<Message>[],
+  );
+}
+
+/** Creates or updates the app-owned system overlay without changing its ID. @internal */
+export function createSystemMessage(
+  id: string,
+  content: string,
+): Readonly<SystemMessage> {
+  return ownAgUiMessages([
+    { id, role: 'system', content },
+  ])[0] as Readonly<SystemMessage>;
+}
+
+/** Applies one system overlay to synchronized history without duplication. @internal */
+export function applySystemMessageOverlay(
+  messages: readonly Readonly<Message>[],
+  systemMessage: Readonly<SystemMessage> | undefined,
+): readonly Readonly<Message>[] {
+  if (!systemMessage) {
+    return messages;
+  }
+
+  const index = messages.findIndex(
+    (message) => message.id === systemMessage.id,
+  );
+  if (index === -1) {
+    return [systemMessage, ...messages];
+  }
+
+  return messages.map((message, currentIndex) =>
+    currentIndex === index ? systemMessage : message,
+  );
+}
+
+/** The Hashbrown compatibility projection of canonical AG-UI history. @internal */
+export interface AgUiMessageProjection {
+  readonly messages: readonly Chat.Internal.Message[];
+  readonly toolCalls: readonly Chat.Internal.ToolCall[];
+}
+
+/** Projects canonical history into Hashbrown's existing message model. @internal */
+export function projectAgUiMessages(
+  messages: readonly Readonly<Message>[],
+  toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
+  responseSchema?: s.HashbrownType,
+): AgUiMessageProjection {
+  const resultsByToolCallId = new Map(
+    messages.flatMap((message) =>
+      message.role === 'tool' ? [[message.toolCallId, message] as const] : [],
+    ),
+  );
+  const projectedMessages: Chat.Internal.Message[] = [];
+  const projectedToolCalls: Chat.Internal.ToolCall[] = [];
+  let pendingReasoning: readonly Readonly<
+    Extract<Message, { role: 'reasoning' }>
+  >[] = [];
+
+  for (const message of messages) {
+    if (message.role === 'reasoning') {
+      pendingReasoning = [...pendingReasoning, message];
+      continue;
+    }
+
+    if (message.role === 'assistant') {
+      const toolCalls = message.toolCalls ?? [];
+      projectedMessages.push(
+        Chat.helpers.ɵwithInternalMessageId(
+          {
+            role: 'assistant',
+            ...(message.content !== undefined
+              ? { content: message.content }
+              : {}),
+            ...(responseSchema && message.content !== undefined
+              ? {
+                  contentResolved: resolveWithSchema(
+                    responseSchema,
+                    message.content,
+                  ),
+                }
+              : {}),
+            toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+            ...(message.encryptedValue !== undefined
+              ? { encryptedValue: message.encryptedValue }
+              : {}),
+            ...(message.metadata !== undefined
+              ? { metadata: structuredClone(message.metadata) }
+              : {}),
+            ...(pendingReasoning.length > 0
+              ? {
+                  reasoning: {
+                    kind: 'details' as const,
+                    details: pendingReasoning.map(cloneReasoningMessage),
+                  },
+                }
+              : {}),
+          },
+          message.id,
+        ),
+      );
+      projectedToolCalls.push(
+        ...toolCalls.map((toolCall) =>
+          projectToolCall(
+            toolCall,
+            resultsByToolCallId.get(toolCall.id),
+            toolsByName,
+          ),
+        ),
+      );
+      pendingReasoning = [];
+      continue;
+    }
+
+    pendingReasoning = [];
+    if (message.role === 'user') {
+      projectedMessages.push(
+        Chat.helpers.ɵwithInternalMessageId(
+          {
+            role: 'user',
+            content: structuredClone(
+              message.content,
+            ) as Chat.Internal.UserMessage['content'],
+          },
+          message.id,
+        ),
+      );
+    }
+  }
+
+  return {
+    messages: projectedMessages,
+    toolCalls: projectedToolCalls,
+  };
+}
+
+function cloneReasoningMessage(
+  message: Extract<Message, { role: 'reasoning' }>,
+): Extract<Message, { role: 'reasoning' }> {
+  return {
+    ...message,
+    ...(message.metadata !== undefined
+      ? { metadata: structuredClone(message.metadata) }
+      : {}),
+  };
+}
+
+function projectToolCall(
+  toolCall: NonNullable<
+    Extract<Message, { role: 'assistant' }>['toolCalls']
+  >[number],
+  result: Extract<Message, { role: 'tool' }> | undefined,
+  toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
+): Chat.Internal.ToolCall {
+  const tool = toolsByName[toolCall.function.name];
+  const metadata = mergeMetadata(toolCall.metadata, result?.metadata);
+  const encryptedValue = toolCall.encryptedValue ?? result?.encryptedValue;
+  const argumentsResolved =
+    tool && s.isHashbrownType(tool.schema)
+      ? resolveWithSchema(tool.schema, toolCall.function.arguments)
+      : undefined;
+
+  return {
+    id: toolCall.id,
+    name: toolCall.function.name,
+    arguments: toolCall.function.arguments,
+    ...(argumentsResolved !== undefined ? { argumentsResolved } : {}),
+    ...(encryptedValue !== undefined ? { encryptedValue } : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+    status: result ? 'done' : 'pending',
+    ...(result
+      ? {
+          result:
+            result.error === undefined
+              ? { status: 'fulfilled' as const, value: result.content }
+              : { status: 'rejected' as const, reason: result.error },
+        }
+      : {}),
+  };
+}
+
+function mergeMetadata(
+  first: Record<string, unknown> | undefined,
+  second: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (first === undefined && second === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(first === undefined ? {} : structuredClone(first)),
+    ...(second === undefined ? {} : structuredClone(second)),
+  };
+}
+
+function serializeContent(value: unknown): string {
+  return typeof value === 'string' ? value : (JSON.stringify(value) ?? 'null');
+}
+
+function serializeResult(value: unknown): string {
+  if (value instanceof Error) {
+    return value.message;
+  }
+
+  return serializeContent(value);
+}
+
+function cloneAgUiValue(
+  value: unknown,
+  path: string,
+  ancestors: Set<object>,
+): unknown {
+  if (
+    value === undefined ||
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw invalidAgUiValue(path, 'numbers must be finite');
+    }
+
+    return value;
+  }
+
+  if (typeof value !== 'object') {
+    throw invalidAgUiValue(path, `${typeof value} is not JSON-compatible`);
+  }
+
+  if (ancestors.has(value)) {
+    throw invalidAgUiValue(path, 'cyclic values are not JSON-compatible');
+  }
+
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      const clone: unknown[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        if (!Object.hasOwn(value, index)) {
+          throw invalidAgUiValue(
+            `${path}[${index}]`,
+            'sparse arrays are not JSON-compatible',
+          );
+        }
+
+        clone.push(
+          cloneAgUiValue(value[index], `${path}[${index}]`, ancestors),
+        );
+      }
+
+      return Object.freeze(clone);
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw invalidAgUiValue(path, 'only plain objects are JSON-compatible');
+    }
+
+    const clone = Object.create(null) as Record<string, unknown>;
+    for (const key of Object.keys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !('value' in descriptor)) {
+        throw invalidAgUiValue(`${path}.${key}`, 'accessors are not supported');
+      }
+
+      Object.defineProperty(clone, key, {
+        configurable: false,
+        enumerable: true,
+        value: cloneAgUiValue(descriptor.value, `${path}.${key}`, ancestors),
+        writable: false,
+      });
+    }
+
+    return Object.freeze(clone);
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+function invalidAgUiValue(path: string, detail: string): TypeError {
+  return new TypeError(`Invalid AG-UI message value at ${path}: ${detail}.`);
+}

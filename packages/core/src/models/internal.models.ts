@@ -54,6 +54,8 @@ export interface ToolCall {
  * @public
  */
 export interface AssistantMessage {
+  /** Opaque canonical AG-UI identifier used for projection reconciliation. */
+  readonly id?: string;
   role: 'assistant';
   content?: string;
   contentResolved?: JsonValue;
@@ -75,6 +77,8 @@ export interface AssistantMessage {
  * @public
  */
 export interface UserMessage {
+  /** Opaque canonical AG-UI identifier used for projection reconciliation. */
+  readonly id?: string;
   role: 'user';
   content: JsonValue;
 }
@@ -83,6 +87,8 @@ export interface UserMessage {
  * @public
  */
 export interface ErrorMessage {
+  /** Opaque canonical AG-UI identifier used for projection reconciliation. */
+  readonly id?: string;
   role: 'error';
   content: string;
 }
