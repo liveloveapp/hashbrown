@@ -764,3 +764,55 @@ test('devtools state includes only the current thread identity', () => {
     }
   }
 });
+
+test('runtime reuses one configured-system ID through update and empty clearing', () => {
+  const send = jest.fn();
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      __REDUX_DEVTOOLS_EXTENSION__: {
+        connect: () => ({
+          error: jest.fn(),
+          init: jest.fn(),
+          send,
+          unsubscribe: jest.fn(),
+        }),
+      },
+    },
+  });
+
+  try {
+    const runtime = createChatRuntime({
+      debugName: 'stable-system-id-test',
+      system: 'initial',
+    });
+    const initial = send.mock.calls.at(-1)?.[1].ɵɵinternal.agUiMessages;
+    runtime.updateOptions({ system: 'updated' });
+    const updated = send.mock.calls.at(-1)?.[1].ɵɵinternal.agUiMessages;
+    runtime.updateOptions({ system: '' });
+    const cleared = send.mock.calls.at(-1)?.[1].ɵɵinternal.agUiMessages;
+
+    expect(initial.systemMessage).toMatchObject({
+      role: 'system',
+      content: 'initial',
+    });
+    expect(updated.systemMessage).toEqual({
+      id: initial.systemMessage.id,
+      role: 'system',
+      content: 'updated',
+    });
+    expect(cleared.systemMessage).toEqual({
+      id: initial.systemMessage.id,
+      role: 'system',
+      content: '',
+    });
+    expect(cleared.committed).not.toContainEqual(cleared.systemMessage);
+  } finally {
+    if (previousWindow) {
+      Object.defineProperty(globalThis, 'window', previousWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, 'window');
+    }
+  }
+});
