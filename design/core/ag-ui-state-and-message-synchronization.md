@@ -99,17 +99,18 @@ chat.setState({ selectedAccountId: 'account-456' });
 `setState()` replaces the complete shared value. It does not start a run.
 
 Application code may not call `setState()` after generation has been scheduled
-and before the active transport run reaches a terminal outcome. The method
-throws a clear error during that interval because agent deltas are based on the
-state captured for the run. The lock ends at the run terminal event. Local tool
-execution is outside the lock, allowing application or tool-side state changes
-to be included in a continuation run.
+and before the logical generation settles. The method throws a clear error
+during that interval because agent deltas are based on the state captured for
+the run. Local tool execution is outside the lock, allowing application or
+tool-side state changes to be included in a continuation run.
 
 The lock begins synchronously when an action schedules generation, before
-debounce or transport resolution. It stays active across transport retries and
-retry backoff. A logical run terminal action, cancellation, or retirement
-releases it before local tool execution begins. A continuation locks state again
-when it schedules its next run.
+debounce or transport resolution. It stays active across transport attempts,
+synthetic attempt errors, retries, and retry backoff. An attempt ending does not
+release it when orchestration will retry. A successful `RUN_FINISHED`, terminal
+server `RUN_ERROR`, exhausted/non-retryable failure, cancellation, or retirement
+settles the logical generation and releases the lock before local tool execution
+begins. A continuation locks state again when it schedules its next run.
 
 ### Receive synchronized state
 
@@ -235,13 +236,25 @@ runtime, not reconstructed for each request. Locally created messages receive a
 stable opaque ID at insertion time. Canonical message IDs received from an agent
 are preserved.
 
-The configured Hashbrown `system` option is lowered once into a stable canonical
-system message. `updateOptions({ system })` updates that message by its stable
-local ID. A `MESSAGES_SNAPSHOT` is a complete protocol replacement and may
-replace or remove it; request construction does not separately prepend another
-system message. A later explicit system option update upserts the configured
-system message again. This prevents duplicate system instructions while keeping
-message snapshots authoritative.
+The configured Hashbrown `system` option is represented as a local canonical
+system-message overlay with a stable ID. The synchronized message slice retains
+the complete agent-provided history, while an effective-history selector upserts
+the configured system message by ID. If a snapshot echoes the same ID, the local
+configured value replaces that entry without duplication. Other system or
+developer messages from the snapshot remain in order.
+
+`MESSAGES_SNAPSHOT` completely replaces synchronized history but does not clear
+the local configured-system overlay. Likewise, `setMessages()` replaces the
+publicly controllable history while retaining the overlay, because its public
+input cannot express a system message. This is especially important for
+completion APIs, which use `setMessages()` internally.
+
+`updateOptions({ system })` changes only the local overlay and does not trigger
+or retire a run. During an active logical generation, the in-flight request and
+draft continue using the system value captured at attempt start. The effective
+committed history reflects the new overlay after commit or rollback, so an old
+draft cannot overwrite the update. The next logical run uses the new system
+value.
 
 The canonical reducer processes:
 
@@ -260,6 +273,9 @@ Hashbrown's current streaming accumulator remains responsible for structured
 output parsing and typed tool argument resolution. Its results decorate the
 Hashbrown projection rather than replacing canonical protocol history.
 
+In this document, "canonical history" used for a request means the synchronized
+canonical history after applying the configured-system overlay.
+
 ### Hashbrown message projection
 
 The public projection keeps existing shapes and behavior:
@@ -273,8 +289,9 @@ The public projection keeps existing shapes and behavior:
 - Hashbrown error messages remain local view state and are not invented as
   canonical AG-UI messages.
 
-`setMessages()` lowers and atomically replaces canonical history. It does not
-modify shared agent state.
+`setMessages()` lowers and atomically replaces synchronized canonical history
+while retaining the configured-system overlay. It does not modify shared agent
+state.
 
 Reasoning correlation is positional because AG-UI reasoning messages do not
 carry a general parent-assistant identifier. A contiguous sequence of canonical
@@ -314,9 +331,10 @@ assumption that every successful run must generate an assistant message.
 
 Local actions that supersede an attempt apply to the committed checkpoint, not
 the draft. `sendMessage()` atomically abandons the active draft and appends the
-new user message to committed canonical history. `setMessages()` atomically
-abandons the draft and replaces committed history. `resendMessages()` abandons
-the draft without changing committed history. The same action that performs the
+new user message to committed synchronized history. `setMessages()` atomically
+abandons the draft and replaces committed synchronized history while retaining
+the configured-system overlay. `resendMessages()` abandons the draft without
+changing committed synchronized history. The same action that performs the
 local mutation establishes the next generation lock, so reducer ordering cannot
 lose the new input or retain failed draft output.
 
@@ -326,9 +344,9 @@ Each new logical run snapshots current canonical history and committed state for
 its request. Retries reuse the attempt-start checkpoint rather than rebuilding
 input from live partial state.
 
-Canonical history already contains the configured system message when one is
-active. Request construction sends the canonical list exactly once and never
-prepends the separate `system` option.
+The effective canonical-history selector applies the configured-system overlay
+once. Request construction sends that resulting list and never separately
+prepends another system message.
 
 When the runtime has no initialized state, the in-memory request field is
 `undefined` and the HTTP JSON body omits it rather than inventing `{}`. Custom
@@ -501,10 +519,15 @@ blank lines.
 - Rejection of `setState()` while generation is scheduled or active.
 - State remains locked through debounce, transport resolution, retry, and
   retry backoff.
+- A retryable attempt terminal or synthetic error does not release the state
+  lock; only settlement of the logical generation does.
 - State updates allowed during local tool execution.
 - Canonical lowering with stable IDs.
 - Configured system-message insertion, update, snapshot replacement, and
   duplicate prevention.
+- Completion-driven `setMessages()` retains the configured-system overlay.
+- `updateOptions({ system })` during an active generation affects the next run,
+  survives both commit and rollback, and does not alter the in-flight attempt.
 - Message snapshot preservation for every AG-UI role and metadata field.
 - Projection of assistant, reasoning, tool calls, and tool results.
 - Positional reasoning correlation across histories with multiple reasoning and
