@@ -28,11 +28,13 @@ const initialState: MessagesState = {
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action) => {
-    const messages = projectCanonical(
-      action.payload.canonicalMessages,
-      {},
-      action.payload.responseSchema,
-    );
+    const messages =
+      action.payload.localProjection?.messages ??
+      projectCanonical(
+        action.payload.canonicalMessages,
+        {},
+        action.payload.responseSchema,
+      );
     return {
       ...state,
       messages,
@@ -43,11 +45,13 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.setMessages, (state, action) => {
-    const messages = projectCanonical(
-      action.payload.canonicalMessages,
-      action.payload.toolsByName ?? {},
-      action.payload.responseSchema,
-    );
+    const messages =
+      action.payload.localProjection?.messages ??
+      projectCanonical(
+        action.payload.canonicalMessages,
+        action.payload.toolsByName ?? {},
+        action.payload.responseSchema,
+      );
     return {
       ...state,
       messages,
@@ -58,7 +62,9 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.sendMessage, (state, action) => {
-    const appended = projectCanonical(action.payload.canonicalMessages, {});
+    const appended =
+      action.payload.localProjection?.messages ??
+      projectCanonical(action.payload.canonicalMessages, {});
     const committed = [...state.committed, ...appended];
     return {
       ...state,

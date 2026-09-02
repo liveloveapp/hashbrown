@@ -29,6 +29,7 @@ import { createHttpTransport, TransportOrFactory } from './transport';
 import {
   createSystemMessage,
   lowerViewMessagesToAgUi,
+  ɵpairViewMessagesWithAgUi,
 } from './reducers/ag-ui-message-history';
 
 /**
@@ -156,6 +157,13 @@ export function createChatRuntime(init: {
   const systemMessageId = createCanonicalId();
   const lower = (messages: readonly Chat.AnyMessage[]) =>
     lowerViewMessagesToAgUi(messages, { createId: createCanonicalId });
+  const lowerWithProjection = (messages: readonly Chat.AnyMessage[]) => {
+    const canonicalMessages = lower(messages);
+    return {
+      canonicalMessages,
+      localProjection: ɵpairViewMessagesWithAgUi(messages, canonicalMessages),
+    };
+  };
 
   const state = createStore({
     debugName: init.debugName,
@@ -176,11 +184,13 @@ export function createChatRuntime(init: {
     }),
   });
 
+  const initial = lowerWithProjection(init.messages ?? []);
   state.dispatch(
     devActions.init({
       system: init.system,
       messages: init.messages as Chat.AnyMessage[],
-      canonicalMessages: lower(init.messages ?? []),
+      canonicalMessages: initial.canonicalMessages,
+      localProjection: initial.localProjection,
       systemMessage: createSystemMessage(systemMessageId, init.system),
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
@@ -195,10 +205,12 @@ export function createChatRuntime(init: {
   function setMessages(messages: Chat.Message<any, Chat.AnyTool>[]) {
     const responseSchema = state.read(selectResponseSchema);
     const toolsByName = state.read(selectToolEntities);
+    const lowered = lowerWithProjection(messages as Chat.AnyMessage[]);
     state.dispatch(
       devActions.setMessages({
         messages: messages as Chat.AnyMessage[],
-        canonicalMessages: lower(messages as Chat.AnyMessage[]),
+        canonicalMessages: lowered.canonicalMessages,
+        localProjection: lowered.localProjection,
         responseSchema,
         toolsByName,
       }),
@@ -206,10 +218,12 @@ export function createChatRuntime(init: {
   }
 
   function sendMessage(message: Chat.Message<any, Chat.AnyTool>) {
+    const lowered = lowerWithProjection([message as Chat.AnyMessage]);
     state.dispatch(
       devActions.sendMessage({
         message: message as Chat.AnyMessage,
-        canonicalMessages: lower([message as Chat.AnyMessage]),
+        canonicalMessages: lowered.canonicalMessages,
+        localProjection: lowered.localProjection,
       }),
     );
   }

@@ -10,6 +10,11 @@ export default createActionGroup('dev', {
     system: string;
     /** Runtime-lowered AG-UI history. @internal */
     canonicalMessages: readonly Readonly<Message>[];
+    /** Lossless local projection paired with canonical IDs. @internal */
+    localProjection?: {
+      readonly messages: readonly Chat.Internal.Message[];
+      readonly toolCalls: readonly Chat.Internal.ToolCall[];
+    };
     /** Stable configured-system overlay. @internal */
     systemMessage?: Readonly<SystemMessage>;
     debounce?: number;
@@ -29,6 +34,11 @@ export default createActionGroup('dev', {
     messages: Chat.AnyMessage[];
     /** Runtime-lowered AG-UI replacement history. @internal */
     canonicalMessages: readonly Readonly<Message>[];
+    /** Lossless local projection paired with canonical IDs. @internal */
+    localProjection?: {
+      readonly messages: readonly Chat.Internal.Message[];
+      readonly toolCalls: readonly Chat.Internal.ToolCall[];
+    };
     responseSchema?: s.SchemaOutput;
     toolsByName?: Record<string, Chat.Internal.Tool>;
   }>(),
@@ -36,6 +46,11 @@ export default createActionGroup('dev', {
     message: Chat.AnyMessage;
     /** Runtime-lowered AG-UI message history addition. @internal */
     canonicalMessages: readonly Readonly<Message>[];
+    /** Lossless local projection paired with canonical IDs. @internal */
+    localProjection?: {
+      readonly messages: readonly Chat.Internal.Message[];
+      readonly toolCalls: readonly Chat.Internal.ToolCall[];
+    };
   }>(),
   resendMessages: props<void>,
   updateOptions: props<{

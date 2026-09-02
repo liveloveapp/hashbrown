@@ -28,10 +28,9 @@ const initialState: ToolCallsState = {
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action) => {
-    const toolCalls = projectAgUiMessages(
-      action.payload.canonicalMessages,
-      {},
-    ).toolCalls;
+    const toolCalls =
+      action.payload.localProjection?.toolCalls ??
+      projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls;
     const committed = toEntityState(toolCalls);
     return {
       ...committed,
@@ -173,7 +172,8 @@ export const reducer = createReducer(
   on(devActions.sendMessage, (state, action): ToolCallsState => {
     const committed = addEntities(
       state.committed,
-      projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls,
+      action.payload.localProjection?.toolCalls ??
+        projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls,
     );
     return {
       ...committed,
@@ -186,10 +186,11 @@ export const reducer = createReducer(
   }),
   on(devActions.setMessages, (state, action): ToolCallsState => {
     const committed = toEntityState(
-      projectAgUiMessages(
-        action.payload.canonicalMessages,
-        action.payload.toolsByName ?? {},
-      ).toolCalls,
+      action.payload.localProjection?.toolCalls ??
+        projectAgUiMessages(
+          action.payload.canonicalMessages,
+          action.payload.toolsByName ?? {},
+        ).toolCalls,
     );
     return {
       ...committed,

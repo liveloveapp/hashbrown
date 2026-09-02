@@ -92,6 +92,31 @@ export function lowerViewMessagesToAgUi(
   return ownAgUiMessages(lowered) as readonly Message[];
 }
 
+/** Pairs local view projections with the stable IDs assigned during lowering. @internal */
+export function ɵpairViewMessagesWithAgUi(
+  messages: readonly Chat.AnyMessage[],
+  canonicalMessages: readonly Readonly<Message>[],
+): AgUiMessageProjection {
+  let cursor = 0;
+  const projectedMessages = messages.flatMap((message) => {
+    const internal = Chat.helpers.toInternalMessagesFromView(message);
+    if (internal.length === 0) return internal;
+    const role = message.role;
+    const canonical = canonicalMessages.find(
+      (candidate, index) => index >= cursor && candidate.role === role,
+    );
+    if (!canonical) return internal;
+    cursor = canonicalMessages.indexOf(canonical) + 1;
+    return internal.map((value) =>
+      Chat.helpers.ɵwithInternalMessageId(value, canonical.id),
+    );
+  });
+  return {
+    messages: projectedMessages,
+    toolCalls: Chat.helpers.toInternalToolCallsFromView([...messages]),
+  };
+}
+
 /** Clones and freezes untrusted canonical history. @internal */
 export function ownAgUiMessages(
   messages: readonly Message[],
