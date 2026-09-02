@@ -7,6 +7,7 @@ import {
 import { apiActions, devActions, internalActions } from '../actions';
 import {
   applySystemMessageOverlay,
+  ɵassertAgUiMessageAppendCompatibility,
   ɵownValidatedAgUiMessages,
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
@@ -86,13 +87,17 @@ export const reducer = createReducer(
     try {
       const event = correlateEvent(state, action.payload);
       const draft = applyCanonicalMessageEvent(state.draft, event);
-      return draft === state.draft
+      const lifecycle = nextLifecycle(state, event);
+      const lifecycleChanged = Object.entries(lifecycle).some(
+        ([key, value]) => state[key as keyof AgUiMessagesState] !== value,
+      );
+      return draft === state.draft && !lifecycleChanged
         ? state
         : {
             ...state,
             draft: withoutSystemOverlay(draft, state.systemMessage),
             protocolError: undefined,
-            ...nextLifecycle(state, event),
+            ...lifecycle,
           };
     } catch (error) {
       return {
@@ -129,17 +134,28 @@ export const reducer = createReducer(
     (state): AgUiMessagesState => rollback(state),
   ),
   on(devActions.sendMessage, (state, action): AgUiMessagesState => {
-    const appended = own(action.payload.canonicalMessages);
-    const committed = [...state.committed, ...appended];
-    return {
-      ...state,
-      committed: withoutSystemOverlay(committed, state.systemMessage),
-      draft: Object.freeze([]),
-      attemptActive: false,
-      protocolError: undefined,
-      attemptStartToolCallIds: Object.freeze([]),
-      ...inactiveLifecycle(),
-    };
+    try {
+      const appended = own(action.payload.canonicalMessages);
+      ɵassertAgUiMessageAppendCompatibility(state.committed, appended);
+      const committed = [...state.committed, ...appended];
+      return {
+        ...state,
+        committed: withoutSystemOverlay(committed, state.systemMessage),
+        draft: Object.freeze([]),
+        attemptActive: false,
+        protocolError: undefined,
+        attemptStartToolCallIds: Object.freeze([]),
+        ...inactiveLifecycle(),
+      };
+    } catch (error) {
+      return {
+        ...state,
+        protocolError:
+          error instanceof Error
+            ? error
+            : new Error('Invalid canonical message fragment'),
+      };
+    }
   }),
   on(devActions.setMessages, (state, action): AgUiMessagesState => {
     const committed = own(action.payload.canonicalMessages);
@@ -218,7 +234,9 @@ export function applyCanonicalMessageEvent(
         true,
       );
     case EventType.TEXT_MESSAGE_END:
-      return upsertText(messages, event.messageId, undefined, '', event, false);
+      return messages.some((message) => message.id === event.messageId)
+        ? upsertText(messages, event.messageId, undefined, '', event, false)
+        : messages;
     case EventType.TEXT_MESSAGE_CHUNK:
       return event.messageId
         ? upsertText(
@@ -252,14 +270,16 @@ export function applyCanonicalMessageEvent(
       );
     case EventType.REASONING_MESSAGE_END:
     case EventType.THINKING_TEXT_MESSAGE_END:
-      return upsertText(
-        messages,
-        event.messageId as string,
-        'reasoning',
-        '',
-        event,
-        false,
-      );
+      return messages.some((message) => message.id === event.messageId)
+        ? upsertText(
+            messages,
+            event.messageId as string,
+            'reasoning',
+            '',
+            event,
+            false,
+          )
+        : messages;
     case EventType.REASONING_MESSAGE_CHUNK:
       return event.messageId
         ? upsertText(

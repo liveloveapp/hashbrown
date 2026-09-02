@@ -183,6 +183,19 @@ export function ɵownValidatedAgUiMessages(
   return owned;
 }
 
+/**
+ * Verifies that an already-owned canonical fragment can be appended to an
+ * already-validated history without reusing a message or tool-call ID.
+ *
+ * @internal
+ */
+export function ɵassertAgUiMessageAppendCompatibility(
+  messages: readonly Readonly<Message>[],
+  appended: readonly Readonly<Message>[],
+): void {
+  ɵappendAgUiCanonicalIds(ɵindexAgUiCanonicalIds(messages), appended);
+}
+
 /** Validates one owned canonical message against the installed AG-UI protocol. @internal */
 function validateAgUiMessage(message: Readonly<Message>, index: number): void {
   const parsed = MessageSchema.safeParse(message);
@@ -276,6 +289,69 @@ export function applySystemMessageOverlay(
 export interface AgUiMessageProjection {
   readonly messages: readonly Chat.Internal.Message[];
   readonly toolCalls: readonly Chat.Internal.ToolCall[];
+}
+
+/** An immutable index of canonical message and nested tool-call IDs. @internal */
+export interface ɵAgUiCanonicalIdIndex {
+  readonly messageIds: readonly string[];
+  readonly toolCallIds: readonly string[];
+}
+
+/** Builds an immutable canonical ID index for projection-boundary validation. @internal */
+export function ɵindexAgUiCanonicalIds(
+  messages: readonly Readonly<Message>[],
+): ɵAgUiCanonicalIdIndex {
+  return Object.freeze({
+    messageIds: Object.freeze(messages.map((message) => message.id)),
+    toolCallIds: Object.freeze(
+      messages.flatMap((message) =>
+        message.role === 'assistant'
+          ? (message.toolCalls ?? []).map((toolCall) => toolCall.id)
+          : [],
+      ),
+    ),
+  });
+}
+
+/**
+ * Validates an appended canonical fragment against a previously indexed
+ * committed history and returns the index for the resulting history.
+ *
+ * @internal
+ */
+export function ɵappendAgUiCanonicalIds(
+  index: ɵAgUiCanonicalIdIndex,
+  appended: readonly Readonly<Message>[],
+): ɵAgUiCanonicalIdIndex {
+  const messageIds = new Set(index.messageIds);
+  const toolCallIds = new Set(index.toolCallIds);
+  for (const message of appended) {
+    if (toolCallIds.has(message.id)) {
+      throw new Error(
+        `AG-UI message ID ${message.id} conflicts with a tool call ID`,
+      );
+    }
+    if (messageIds.has(message.id)) {
+      throw new Error(`AG-UI message ID ${message.id} is duplicated`);
+    }
+    messageIds.add(message.id);
+    if (message.role !== 'assistant') continue;
+    for (const toolCall of message.toolCalls ?? []) {
+      if (messageIds.has(toolCall.id)) {
+        throw new Error(
+          `AG-UI tool call ID ${toolCall.id} conflicts with a message ID`,
+        );
+      }
+      if (toolCallIds.has(toolCall.id)) {
+        throw new Error(`AG-UI tool call ID ${toolCall.id} is duplicated`);
+      }
+      toolCallIds.add(toolCall.id);
+    }
+  }
+  return Object.freeze({
+    messageIds: Object.freeze([...messageIds]),
+    toolCallIds: Object.freeze([...toolCallIds]),
+  });
 }
 
 /** Projects canonical history into Hashbrown's existing message model. @internal */

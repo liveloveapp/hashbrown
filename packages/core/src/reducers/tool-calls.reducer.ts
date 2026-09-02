@@ -4,6 +4,9 @@ import { Chat } from '../models';
 import { createReducer, EntityState, on, select } from '../utils/micro-ngrx';
 import {
   projectAgUiMessages,
+  type ɵAgUiCanonicalIdIndex,
+  ɵappendAgUiCanonicalIds,
+  ɵindexAgUiCanonicalIds,
   ɵownValidatedAgUiMessages,
 } from './ag-ui-message-history';
 
@@ -13,6 +16,7 @@ export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly attemptActive: boolean;
   readonly activeToolCallId: string | undefined;
   readonly activeToolCallName: string | undefined;
+  readonly canonicalIds: ɵAgUiCanonicalIdIndex;
 }
 
 const empty: EntityState<Chat.Internal.ToolCall> = { ids: [], entities: {} };
@@ -23,6 +27,7 @@ const initialState: ToolCallsState = {
   attemptActive: false,
   activeToolCallId: undefined,
   activeToolCallName: undefined,
+  canonicalIds: ɵindexAgUiCanonicalIds([]),
 };
 
 export const reducer = createReducer(
@@ -39,6 +44,7 @@ export const reducer = createReducer(
       attemptActive: false,
       activeToolCallId: undefined,
       activeToolCallName: undefined,
+      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
     };
   }),
   on(internalActions.generationAttemptStarted, (state): ToolCallsState => ({
@@ -48,6 +54,7 @@ export const reducer = createReducer(
     attemptActive: true,
     activeToolCallId: undefined,
     activeToolCallName: undefined,
+    canonicalIds: state.canonicalIds,
   })),
   on(apiActions.generateMessageEvent, (state, action): ToolCallsState => {
     if (!state.attemptActive) return state;
@@ -61,6 +68,7 @@ export const reducer = createReducer(
         attemptActive: true,
         activeToolCallId: undefined,
         activeToolCallName: undefined,
+        canonicalIds: state.canonicalIds,
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_START) {
@@ -79,6 +87,7 @@ export const reducer = createReducer(
         attemptActive: true,
         activeToolCallId: action.payload.toolCallId,
         activeToolCallName: action.payload.toolCallName,
+        canonicalIds: state.canonicalIds,
       };
     }
     if (
@@ -111,6 +120,7 @@ export const reducer = createReducer(
         attemptActive: true,
         activeToolCallId: ending ? undefined : id,
         activeToolCallName: ending ? undefined : toolCallName,
+        canonicalIds: state.canonicalIds,
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_RESULT) {
@@ -134,20 +144,27 @@ export const reducer = createReducer(
         attemptActive: true,
         activeToolCallId: state.activeToolCallId,
         activeToolCallName: state.activeToolCallName,
+        canonicalIds: state.canonicalIds,
       };
     }
     return state;
   }),
   on(apiActions.generateMessageSuccess, (state, action): ToolCallsState => {
-    if (state.attemptActive)
+    if (state.attemptActive) {
+      const committed = mergeSuccessToolCalls(
+        state.draft,
+        action.payload.toolCalls,
+      );
       return {
-        ...state.draft,
-        committed: state.draft,
+        ...committed,
+        committed,
         draft: empty,
         attemptActive: false,
         activeToolCallId: undefined,
         activeToolCallName: undefined,
+        canonicalIds: state.canonicalIds,
       };
+    }
     const committed = addEntities(state.committed, action.payload.toolCalls);
     return {
       ...committed,
@@ -156,6 +173,7 @@ export const reducer = createReducer(
       attemptActive: false,
       activeToolCallId: undefined,
       activeToolCallName: undefined,
+      canonicalIds: state.canonicalIds,
     };
   }),
   on(internalActions.generationAttemptRolledBack, (state): ToolCallsState =>
@@ -170,6 +188,16 @@ export const reducer = createReducer(
     (state): ToolCallsState => rollback(state),
   ),
   on(devActions.sendMessage, (state, action): ToolCallsState => {
+    if (action.payload.canonicalAppendCompatible === false) return state;
+    let canonicalIds: ɵAgUiCanonicalIdIndex;
+    try {
+      canonicalIds = ɵappendAgUiCanonicalIds(
+        state.canonicalIds,
+        ɵownValidatedAgUiMessages(action.payload.canonicalMessages),
+      );
+    } catch {
+      return state;
+    }
     const committed = addEntities(
       state.committed,
       action.payload.localProjection?.toolCalls ??
@@ -182,6 +210,7 @@ export const reducer = createReducer(
       attemptActive: false,
       activeToolCallId: undefined,
       activeToolCallName: undefined,
+      canonicalIds,
     };
   }),
   on(devActions.setMessages, (state, action): ToolCallsState => {
@@ -199,6 +228,7 @@ export const reducer = createReducer(
       attemptActive: false,
       activeToolCallId: undefined,
       activeToolCallName: undefined,
+      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
     };
   }),
   on(internalActions.toolTurnSettled, (state, action): ToolCallsState => {
@@ -225,6 +255,7 @@ export const reducer = createReducer(
           attemptActive: true,
           activeToolCallId: state.activeToolCallId,
           activeToolCallName: state.activeToolCallName,
+          canonicalIds: state.canonicalIds,
         }
       : {
           ...updates,
@@ -233,6 +264,7 @@ export const reducer = createReducer(
           attemptActive: false,
           activeToolCallId: undefined,
           activeToolCallName: undefined,
+          canonicalIds: state.canonicalIds,
         };
   }),
 );
@@ -257,6 +289,7 @@ function rollback(state: ToolCallsState): ToolCallsState {
         attemptActive: false,
         activeToolCallId: undefined,
         activeToolCallName: undefined,
+        canonicalIds: state.canonicalIds,
       }
     : state;
 }
@@ -318,4 +351,27 @@ function updateEntity(
         entities: { ...state.entities, [id]: { ...existing, ...updates } },
       }
     : state;
+}
+
+function mergeSuccessToolCalls(
+  draft: EntityState<Chat.Internal.ToolCall>,
+  toolCalls: readonly Chat.Internal.ToolCall[],
+): EntityState<Chat.Internal.ToolCall> {
+  return toolCalls.reduce((current, toolCall) => {
+    const existing = current.entities[toolCall.id];
+    if (!existing) {
+      return current;
+    }
+
+    const merged: Chat.Internal.ToolCall = {
+      ...existing,
+      ...toolCall,
+      status: existing.status,
+      ...(existing.result === undefined ? {} : { result: existing.result }),
+    };
+    return {
+      ...current,
+      entities: { ...current.entities, [toolCall.id]: merged },
+    };
+  }, draft);
 }

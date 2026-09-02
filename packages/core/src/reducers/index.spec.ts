@@ -1427,6 +1427,122 @@ test('runtime reuses one configured-system ID through update and empty clearing'
   }
 });
 
+test('runtime falls back when Web Crypto is unavailable or lacks randomUUID', () => {
+  const previousCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+  const send = jest.fn();
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      __REDUX_DEVTOOLS_EXTENSION__: {
+        connect: () => ({
+          error: jest.fn(),
+          init: jest.fn(),
+          send,
+          unsubscribe: jest.fn(),
+        }),
+      },
+    },
+  });
+
+  try {
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: undefined,
+    });
+    const absent = createChatRuntime({
+      debugName: 'missing-crypto',
+      system: 'first',
+    });
+    const absentInitial = send.mock.calls.at(-1)?.[1].ɵɵinternal.agUiMessages;
+    absent.updateOptions({ system: 'second' });
+    const absentUpdated = send.mock.calls.at(-1)?.[1].ɵɵinternal.agUiMessages;
+
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: {},
+    });
+    const partial = createChatRuntime({
+      debugName: 'partial-crypto',
+      system: 'third',
+    });
+    const partialInitial = send.mock.calls.at(-1)?.[1].ɵɵinternal.agUiMessages;
+    partial.updateOptions({ system: '' });
+    const partialCleared = send.mock.calls.at(-1)?.[1].ɵɵinternal.agUiMessages;
+
+    expect(absentInitial.systemMessage.id).toEqual(expect.any(String));
+    expect(absentUpdated.systemMessage).toEqual({
+      id: absentInitial.systemMessage.id,
+      role: 'system',
+      content: 'second',
+    });
+    expect(partialInitial.systemMessage.id).toEqual(expect.any(String));
+    expect(partialCleared.systemMessage).toEqual({
+      id: partialInitial.systemMessage.id,
+      role: 'system',
+      content: '',
+    });
+  } finally {
+    if (previousCrypto) {
+      Object.defineProperty(globalThis, 'crypto', previousCrypto);
+    } else {
+      Reflect.deleteProperty(globalThis, 'crypto');
+    }
+    if (previousWindow) {
+      Object.defineProperty(globalThis, 'window', previousWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, 'window');
+    }
+  }
+});
+
+test('rejects a colliding canonical send without changing any projection cache', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const streaming = reduceAll(
+    initialized,
+    apiActions.generateMessageStart({ toolsByName: {} }),
+  );
+  const active = reduceAll(
+    streaming,
+    internalActions.generationAttemptStarted(),
+  );
+
+  const rejected = reduceAll(
+    active,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'next' },
+      canonicalMessages: [{ id: 'tool-1', role: 'user', content: 'next' }],
+      canonicalAppendCompatible: false,
+    }),
+  );
+
+  expect(rejected.agUiMessages.committed).toBe(active.agUiMessages.committed);
+  expect(rejected.agUiMessages.draft).toBe(active.agUiMessages.draft);
+  expect(rejected.agUiMessages.protocolError).toBeInstanceOf(Error);
+  expect(rejected.messages).toBe(active.messages);
+  expect(rejected.toolCalls).toBe(active.toolCalls);
+  expect(rejected.streamingMessage).toBe(active.streamingMessage);
+});
+
 test('runtime keeps local tool-call values lossless through initialization and replacement', () => {
   // Arrange
   const send = jest.fn();

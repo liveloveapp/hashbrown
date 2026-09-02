@@ -22,6 +22,7 @@ import {
   selectToolEntities,
   selectUnifiedError,
   selectViewMessages,
+  ɵselectCommittedAgUiMessages,
 } from './reducers';
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
@@ -29,6 +30,7 @@ import { createHttpTransport, TransportOrFactory } from './transport';
 import {
   createSystemMessage,
   lowerViewMessagesToAgUi,
+  ɵassertAgUiMessageAppendCompatibility,
   ɵpairViewMessagesWithAgUi,
 } from './reducers/ag-ui-message-history';
 
@@ -151,7 +153,7 @@ export function createChatRuntime(init: {
   const initialThreadId = init.threadId;
   const transport = init.transport ?? (() => createHttpTransport({}));
   const createCanonicalId = () =>
-    typeof crypto.randomUUID === 'function'
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `hashbrown-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const systemMessageId = createCanonicalId();
@@ -219,11 +221,23 @@ export function createChatRuntime(init: {
 
   function sendMessage(message: Chat.Message<any, Chat.AnyTool>) {
     const lowered = lowerWithProjection([message as Chat.AnyMessage]);
+    const canonicalAppendCompatible = (() => {
+      try {
+        ɵassertAgUiMessageAppendCompatibility(
+          state.read(ɵselectCommittedAgUiMessages),
+          lowered.canonicalMessages,
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    })();
     state.dispatch(
       devActions.sendMessage({
         message: message as Chat.AnyMessage,
         canonicalMessages: lowered.canonicalMessages,
         localProjection: lowered.localProjection,
+        canonicalAppendCompatible,
       }),
     );
   }

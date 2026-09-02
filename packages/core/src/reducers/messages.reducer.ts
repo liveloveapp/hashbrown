@@ -6,6 +6,9 @@ import { s } from '../schema';
 import { createReducer, on } from '../utils/micro-ngrx';
 import {
   projectAgUiMessages,
+  type ɵAgUiCanonicalIdIndex,
+  ɵappendAgUiCanonicalIds,
+  ɵindexAgUiCanonicalIds,
   ɵownValidatedAgUiMessages,
 } from './ag-ui-message-history';
 
@@ -15,6 +18,7 @@ export interface MessagesState {
   readonly draft: readonly Chat.Internal.Message[];
   readonly attemptActive: boolean;
   readonly activeAssistantMessageId: string | undefined;
+  readonly canonicalIds: ɵAgUiCanonicalIdIndex;
 }
 
 const initialState: MessagesState = {
@@ -23,6 +27,7 @@ const initialState: MessagesState = {
   draft: [],
   attemptActive: false,
   activeAssistantMessageId: undefined,
+  canonicalIds: ɵindexAgUiCanonicalIds([]),
 };
 
 export const reducer = createReducer(
@@ -42,6 +47,7 @@ export const reducer = createReducer(
       draft: [],
       attemptActive: false,
       activeAssistantMessageId: undefined,
+      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
     };
   }),
   on(devActions.setMessages, (state, action) => {
@@ -59,9 +65,20 @@ export const reducer = createReducer(
       draft: [],
       attemptActive: false,
       activeAssistantMessageId: undefined,
+      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
     };
   }),
   on(devActions.sendMessage, (state, action) => {
+    if (action.payload.canonicalAppendCompatible === false) return state;
+    let canonicalIds: ɵAgUiCanonicalIdIndex;
+    try {
+      canonicalIds = ɵappendAgUiCanonicalIds(
+        state.canonicalIds,
+        ɵownValidatedAgUiMessages(action.payload.canonicalMessages),
+      );
+    } catch {
+      return state;
+    }
     const appended =
       action.payload.localProjection?.messages ??
       projectCanonical(action.payload.canonicalMessages, {});
@@ -73,6 +90,7 @@ export const reducer = createReducer(
       draft: [],
       attemptActive: false,
       activeAssistantMessageId: undefined,
+      canonicalIds,
     };
   }),
   on(internalActions.generationAttemptStarted, (state): MessagesState => ({

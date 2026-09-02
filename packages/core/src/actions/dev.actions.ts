@@ -51,6 +51,8 @@ export default createActionGroup('dev', {
       readonly messages: readonly Chat.Internal.Message[];
       readonly toolCalls: readonly Chat.Internal.ToolCall[];
     };
+    /** Runtime preflight result used to keep projection caches atomic. @internal */
+    canonicalAppendCompatible?: boolean;
   }>(),
   resendMessages: props<void>,
   updateOptions: props<{

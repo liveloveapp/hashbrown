@@ -37,6 +37,211 @@ test('keeps a stable configured system overlay outside canonical history', () =>
   ]);
 });
 
+test('continues an idempotently started tool call with an ID-less chunk', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    }),
+  );
+
+  const continued = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      delta: '{"city":"Paris"}',
+    }),
+  );
+
+  expect(continued.draft).toEqual([
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{"city":"Paris"}' },
+        },
+      ],
+    },
+  ]);
+  expect(continued.activeToolCallId).toBe('tool-1');
+});
+
+test('ignores unknown end events without synthesizing canonical messages', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const textEnded = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'missing-text',
+    }),
+  );
+  const reasoningEnded = reducer(
+    textEnded,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'missing-reasoning',
+    }),
+  );
+
+  const toolEnded = reducer(
+    reasoningEnded,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'missing-tool',
+    }),
+  );
+
+  expect(textEnded.draft).toBe(active.draft);
+  expect(reasoningEnded.draft).toBe(active.draft);
+  expect(toolEnded.draft).toBe(active.draft);
+  expect(toolEnded.protocolError).toBeUndefined();
+});
+
+test('ignores late unknown end events after a snapshot resets lifecycle correlation', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+
+  const ended = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'late-tool',
+    }),
+  );
+
+  expect(ended.draft).toBe(snapshotted.draft);
+  expect(ended.activeToolCallId).toBeUndefined();
+  expect(ended.protocolError).toBeUndefined();
+});
+
+test('rejects a send fragment that collides with committed canonical IDs', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
+  const rejected = reducer(
+    initialized,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'next' },
+      canonicalMessages: [{ id: 'tool-1', role: 'user', content: 'next' }],
+    }),
+  );
+
+  expect(rejected.committed).toBe(initialized.committed);
+  expect(rejected.draft).toBe(initialized.draft);
+  expect(rejected.protocolError).toBeInstanceOf(Error);
+});
+
+test('rejects appended tool and message IDs that collide with committed history', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const toolCollision = reducer(
+    initialized,
+    devActions.sendMessage({
+      message: { role: 'assistant', content: '', toolCalls: [] },
+      canonicalMessages: [
+        {
+          id: 'assistant-2',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'user-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const duplicateMessage = reducer(
+    initialized,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'again' },
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'again' }],
+    }),
+  );
+
+  expect(toolCollision.committed).toBe(initialized.committed);
+  expect(toolCollision.protocolError).toBeInstanceOf(Error);
+  expect(duplicateMessage.committed).toBe(initialized.committed);
+  expect(duplicateMessage.protocolError).toBeInstanceOf(Error);
+});
+
 test('commits an atomically replaced snapshot only on successful generation', () => {
   const initialized = reducer(
     initialAgUiMessagesState,

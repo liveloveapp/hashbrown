@@ -98,10 +98,12 @@ export const reducer = createReducer(
     internalActions.generationSilentlyRetired,
     internalActions.logicalGenerationSettled,
     devActions.stopMessageGeneration,
-    devActions.sendMessage,
     devActions.setMessages,
     devActions.resendMessages,
     () => initialState,
+  ),
+  on(devActions.sendMessage, (state, action): StreamingMessageState =>
+    action.payload.canonicalAppendCompatible === false ? state : initialState,
   ),
 );
 

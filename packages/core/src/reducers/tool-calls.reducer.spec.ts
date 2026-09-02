@@ -166,6 +166,124 @@ test('keeps lifecycle tool calls in the draft, commits them, and replaces snapsh
   expect(snapshotted.entities['tool-1']).toBeUndefined();
 });
 
+test('merges success tool decorations without replacing a canonical settled result', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    }),
+  );
+  const settled = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'tool-1',
+      content: 'canonical result',
+    }),
+  );
+  const successTool: Chat.Internal.ToolCall = {
+    id: 'tool-1',
+    name: 'lookup',
+    arguments: '{"city":"Paris"}',
+    argumentsResolved: { city: 'Paris' },
+    encryptedValue: 'continuation',
+    metadata: { source: 'accumulator' },
+    status: 'pending',
+  };
+
+  const committed = reducer(
+    settled,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: ['tool-1'] },
+      toolCalls: [successTool],
+    }),
+  );
+
+  expect(committed.entities['tool-1']).toEqual({
+    ...successTool,
+    status: 'done',
+    result: { status: 'fulfilled', value: 'canonical result' },
+  });
+});
+
+test('keeps an idempotently started tool call active for an ID-less chunk', () => {
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'tool-1',
+    name: 'lookup',
+    arguments: '',
+    status: 'pending',
+  };
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: toolCall.id,
+              type: 'function',
+              function: { name: toolCall.name, arguments: toolCall.arguments },
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            content: '',
+            toolCallIds: ['tool-1'],
+          },
+        ],
+        toolCalls: [toolCall],
+      },
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: toolCall.id,
+      toolCallName: toolCall.name,
+    }),
+  );
+
+  const continued = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      delta: '{"city":"Paris"}',
+    }),
+  );
+
+  expect(continued.ids).toEqual(['tool-1']);
+  expect(continued.entities['tool-1']).toMatchObject({
+    arguments: '{"city":"Paris"}',
+    status: 'pending',
+  });
+  expect(continued.activeToolCallId).toBe('tool-1');
+});
+
 test('settles canonical tool results in a draft and rollback restores committed status', () => {
   const canonical = [
     {
