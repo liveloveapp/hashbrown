@@ -18,6 +18,7 @@ import {
   selectTools,
   selectTransport,
   selectUiRequested,
+  selectUnifiedError,
 } from '../reducers';
 import { s } from '../schema';
 import { TransportError, type TransportRequest } from '../transport';
@@ -78,6 +79,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectRawStreamingToolCalls, []],
     [selectPendingToolCalls, []],
     [selectStreamingMessageError, undefined],
+    [selectUnifiedError, undefined],
   ]);
   const values = new Map<SelectorKey, unknown>([
     ...defaults,
@@ -184,6 +186,24 @@ function waitForAbort(signal: AbortSignal) {
   });
 }
 
+function flushTaskBoundary(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function waitForMockCalls(mock: jest.Mock, count: number): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (mock.mock.calls.length >= count) {
+      return;
+    }
+
+    await flushTaskBoundary();
+  }
+
+  throw new Error(
+    `Timed out waiting for ${count} calls; received ${mock.mock.calls.length}`,
+  );
+}
+
 async function waitForDispatchedEvent(
   actions: ActionLike[],
   eventType: EventType,
@@ -211,6 +231,34 @@ async function waitForRuntimeIdle(runtime: { isLoading: () => boolean }) {
   }
 
   throw new Error('Timed out waiting for the chat runtime to become idle');
+}
+
+async function waitForRuntimeIdleAcrossTasks(runtime: {
+  isLoading: () => boolean;
+  isGenerating?: () => boolean;
+  isReceiving?: () => boolean;
+  isRunningToolCalls?: () => boolean;
+  isSending?: () => boolean;
+  error?: () => Error | undefined;
+}) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (!runtime.isLoading()) {
+      return;
+    }
+
+    await flushTaskBoundary();
+  }
+
+  throw new Error(
+    `Timed out waiting for the chat runtime to become idle: ${JSON.stringify({
+      isGenerating: runtime.isGenerating?.(),
+      error: runtime.error?.()?.message,
+      isLoading: runtime.isLoading(),
+      isReceiving: runtime.isReceiving?.(),
+      isRunningToolCalls: runtime.isRunningToolCalls?.(),
+      isSending: runtime.isSending?.(),
+    })}`,
+  );
 }
 
 function observeSkippedToolCalls() {
@@ -292,6 +340,40 @@ function createToolRoundEvents(
       type: EventType.TOOL_CALL_END,
       toolCallId: round.callId,
     },
+  ]);
+}
+
+function createToolBatchEvents(
+  request: TransportRequest,
+  calls: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly arguments: string;
+  }[],
+): AsyncIterable<AGUIEvent> {
+  const messageId = `assistant-${calls.map((call) => call.id).join('-')}`;
+
+  return successfulEvents(request, [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId,
+      role: 'assistant',
+    },
+    { type: EventType.TEXT_MESSAGE_END, messageId },
+    ...calls.flatMap<AGUIEvent>((call) => [
+      {
+        type: EventType.TOOL_CALL_START,
+        toolCallId: call.id,
+        toolCallName: call.name,
+        parentMessageId: messageId,
+      },
+      {
+        type: EventType.TOOL_CALL_ARGS,
+        toolCallId: call.id,
+        delta: call.arguments,
+      },
+      { type: EventType.TOOL_CALL_END, toolCallId: call.id },
+    ]),
   ]);
 }
 
@@ -601,10 +683,6 @@ test('transport factory failure dispatches the initialization error', async () =
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
   ).toEqual([apiActions.generateMessageError(initializationError)]);
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toHaveLength(0);
-
   teardown?.();
 });
 
@@ -708,10 +786,6 @@ test.each([
     expect(
       getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
     ).toHaveLength(1);
-    expect(
-      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-    ).toHaveLength(1);
-
     teardown?.();
   },
 );
@@ -750,9 +824,6 @@ test.each([
     expect(
       getActionsOfType(store.actions, generationSilentlyRetiredType),
     ).toHaveLength(1);
-    expect(
-      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-    ).toHaveLength(0);
     expect(getDispatchedEvents(store.actions)).toHaveLength(0);
 
     teardown?.();
@@ -871,12 +942,6 @@ test.each([
         apiActions.generateMessageExhaustedRetries.type,
       ),
     ).toHaveLength(0);
-    expect(
-      getActionsOfType(
-        actionsAfterRetirement,
-        apiActions.assistantTurnFinalized.type,
-      ),
-    ).toHaveLength(0);
     expect(send).toHaveBeenCalledTimes(2);
     expect(
       getDispatchedEvents(store.actions).filter(
@@ -885,9 +950,6 @@ test.each([
     ).toHaveLength(1);
     expect(
       getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
-    ).toHaveLength(1);
-    expect(
-      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
     ).toHaveLength(1);
     expect(secondRequest?.input?.threadId).toBeDefined();
     if (nextThreadId === undefined) {
@@ -964,10 +1026,6 @@ test.each([
     expect(
       getActionsOfType(store.actions, apiActions.generateMessageSuccess.type),
     ).toHaveLength(1);
-    expect(
-      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-    ).toHaveLength(1);
-
     teardown?.();
   },
 );
@@ -1003,10 +1061,6 @@ test('thread identity synchronization before a run does not retire the next run'
       (event) => event.type === EventType.RUN_FINISHED,
     ),
   ).toHaveLength(1);
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toHaveLength(1);
-
   teardown?.();
 });
 
@@ -1059,41 +1113,6 @@ test('unconfigured run reuses one generated thread ID across retries', async () 
   expect(requests[0]?.input?.runId).not.toBe(requests[1]?.input?.runId);
   expect(firstDispose).toHaveBeenCalledTimes(1);
   expect(secondDispose).toHaveBeenCalledTimes(1);
-
-  teardown?.();
-});
-
-test('validated start then tool continuation reuses the same thread ID', async () => {
-  jest.clearAllMocks();
-  const { send } = makeSelection(async (request) => ({
-    events: successfulEvents(request),
-  }));
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [
-        selectRawStreamingMessage,
-        { role: 'assistant', content: 'Done', toolCallIds: [] },
-      ],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
-  );
-  const acceptedThreadId = send.mock.calls[0]?.[0].input?.threadId;
-  store.setSelector(selectThreadId, acceptedThreadId);
-  await store.trigger(
-    internalActions.toolTurnSettled({
-      toolCalls: [],
-      toolMessages: [],
-      continuation: 'continue',
-    }),
-  );
-  await store.trigger(internalActions.start());
-
-  expect(send).toHaveBeenCalledTimes(2);
-  expect(send.mock.calls[1]?.[0].input?.threadId).toBe(acceptedThreadId);
 
   teardown?.();
 });
@@ -1589,19 +1608,12 @@ test('resets retry attempts for each logical tool continuation run', async () =>
 
 test('stopping during a later tool handler prevents another run', async () => {
   jest.clearAllMocks();
-  const startActionType = internalActions.start.type;
-  const startActions = jest.spyOn(internalActions, 'start');
-  Object.assign(startActions, { type: startActionType });
   const skippedToolCalls = observeSkippedToolCalls();
   const laterHandlerStarted = createDeferred<void>();
   const releaseLaterHandler = createDeferred<void>();
   const handlerFinished = createDeferred<void>();
   const probeRequestStarted = createDeferred<void>();
   const probePrompt = 'Confirm cancellation completion.';
-  const startupStartActionCount = 1;
-  const toolContinuationStartActionCount = 1;
-  const expectedStartActionCount =
-    startupStartActionCount + toolContinuationStartActionCount;
   const scriptedToolRounds: readonly ScriptedToolRound[] = [
     { callId: 'call-before-stop', value: 1 },
     { callId: 'call-at-stop', value: 2 },
@@ -1695,7 +1707,6 @@ test('stopping during a later tool handler prevents another run', async () => {
     await waitForRuntimeIdle(runtime);
 
     expect(toolHandler).toHaveBeenCalledTimes(2);
-    expect(startActions).toHaveBeenCalledTimes(expectedStartActionCount);
     expect(transportCountAtStop).toBe(2);
     expect(send).toHaveBeenCalledTimes(transportCountAtStop + 1);
     expect(requests).toHaveLength(3);
@@ -1707,7 +1718,6 @@ test('stopping during a later tool handler prevents another run', async () => {
   } finally {
     releaseLaterHandler.resolve();
     skippedToolCalls.restore();
-    startActions.mockRestore();
     teardown();
   }
 });
@@ -1779,6 +1789,1149 @@ test('handles 25 sequential tool rounds before a final response', async () => {
     expect(toolHandler).toHaveBeenCalledTimes(25);
   } finally {
     skippedToolCalls.restore();
+    teardown();
+  }
+});
+
+test('teardown settles active tools and retires persistent generation state', async () => {
+  jest.clearAllMocks();
+  const handlerStarted = createDeferred<void>();
+  const lateResult = createDeferred<{ recorded: number }>();
+  const retiredActions = jest.spyOn(
+    internalActions,
+    'generationSilentlyRetired',
+  );
+  let toolSignal: AbortSignal | undefined;
+  const { send } = makeSelection(async (request) => ({
+    events: createToolRoundEvents(request, {
+      callId: 'call-teardown',
+      value: 7,
+    }),
+  }));
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: (_input, signal) => {
+          toolSignal = signal;
+          handlerStarted.resolve();
+          return lateResult.promise;
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+    await handlerStarted.promise;
+    teardown();
+    const settledToolCall = runtime
+      .messages()
+      .find((message) => message.role === 'assistant')?.toolCalls[0];
+    lateResult.resolve({ recorded: 7 });
+    await Promise.resolve();
+
+    expect(toolSignal?.aborted).toBe(true);
+    expect(settledToolCall).toMatchObject({
+      status: 'done',
+      result: { status: 'rejected' },
+      toolCallId: 'call-teardown',
+    });
+    expect(retiredActions).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(1);
+  } finally {
+    retiredActions.mockRestore();
+  }
+});
+
+test('teardown blocks reentrant generation from settlement subscribers', async () => {
+  jest.clearAllMocks();
+  const handlerStarted = createDeferred<void>();
+  let toolSignal: AbortSignal | undefined;
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: 'call-teardown-reentrancy',
+          value: 8,
+        }),
+      };
+    }
+
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-after-teardown',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-after-teardown',
+        },
+      ]),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: async (_input, signal) => {
+          toolSignal = signal;
+          handlerStarted.resolve();
+          return new Promise(() => undefined);
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+  await Promise.resolve();
+  let teardownStarted = false;
+  let reentrantSendCount = 0;
+  const unsubscribe = runtime.messages.subscribe((messages) => {
+    const hasSettledTool = messages.some(
+      (message) =>
+        message.role === 'assistant' &&
+        message.toolCalls.some((toolCall) => toolCall.status === 'done'),
+    );
+    if (teardownStarted && hasSettledTool && reentrantSendCount === 0) {
+      reentrantSendCount++;
+      runtime.sendMessage({
+        role: 'user',
+        content: 'Do not run this after teardown.',
+      });
+    }
+  });
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+    await handlerStarted.promise;
+    teardownStarted = true;
+    teardown();
+    const messagesAfterTeardown = runtime.messages();
+    await flushTaskBoundary();
+    await flushTaskBoundary();
+    await flushTaskBoundary();
+
+    expect(reentrantSendCount).toBe(1);
+    expect(toolSignal?.aborted).toBe(true);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(runtime.messages()).toEqual(messagesAfterTeardown);
+    expect(runtime.isLoading()).toBe(false);
+  } finally {
+    unsubscribe();
+    teardown();
+  }
+});
+
+test('a synchronous messages subscriber can stop a newly published tool turn', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(async () => 'unused');
+  const { send } = makeSelection(async (request) => ({
+    events: createToolRoundEvents(request, {
+      callId: 'call-synchronous-stop',
+      value: 1,
+    }),
+  }));
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+  await Promise.resolve();
+  const stopObserved = createDeferred<void>();
+  let stopped = false;
+  const unsubscribe = runtime.messages.subscribe((messages) => {
+    const hasPendingTool = messages.some(
+      (message) =>
+        message.role === 'assistant' &&
+        message.toolCalls.some((toolCall) => toolCall.status === 'pending'),
+    );
+    if (hasPendingTool && !runtime.isGenerating() && !stopped) {
+      stopped = true;
+      runtime.stop();
+      stopObserved.resolve();
+    }
+  });
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+    await stopObserved.promise;
+    await flushTaskBoundary();
+    const toolCall = runtime
+      .messages()
+      .find((message) => message.role === 'assistant')?.toolCalls[0];
+
+    expect(stopped).toBe(true);
+    expect(toolCall).toMatchObject({
+      status: 'done',
+      result: { status: 'rejected' },
+    });
+    expect(runtime.isLoading()).toBe(false);
+    expect(handler).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledTimes(1);
+  } finally {
+    unsubscribe();
+    teardown();
+  }
+});
+
+test('a synchronous messages subscriber settles tools before superseding', async () => {
+  jest.clearAllMocks();
+  const replacementRequest = createDeferred<TransportRequest>();
+  const handler = jest.fn(async () => 'stale result');
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: 'call-synchronous-supersession',
+          value: 2,
+        }),
+      };
+    }
+
+    replacementRequest.resolve(request);
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: `assistant-synchronous-${requestCount}`,
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: `assistant-synchronous-${requestCount}`,
+        },
+      ]),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+  await Promise.resolve();
+  const supersessionObserved = createDeferred<void>();
+  let superseded = false;
+  const unsubscribe = runtime.messages.subscribe((messages) => {
+    const hasPendingTool = messages.some(
+      (message) =>
+        message.role === 'assistant' &&
+        message.toolCalls.some((toolCall) => toolCall.status === 'pending'),
+    );
+    if (hasPendingTool && !runtime.isGenerating() && !superseded) {
+      superseded = true;
+      runtime.sendMessage({ role: 'user', content: 'Replace that request.' });
+      supersessionObserved.resolve();
+    }
+  });
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+    await supersessionObserved.promise;
+    const request = await replacementRequest.promise;
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(request.input.messages.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'tool',
+      'user',
+    ]);
+    expect(handler).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledTimes(2);
+  } finally {
+    unsubscribe();
+    teardown();
+  }
+});
+
+test.each(['thread replacement', 'teardown'] as const)(
+  'a synchronous messages subscriber settles tools during %s retirement',
+  async (retirement) => {
+    jest.clearAllMocks();
+    const handler = jest.fn(async () => 'unused');
+    const { send } = makeSelection(async (request) => ({
+      events: createToolRoundEvents(request, {
+        callId: `call-synchronous-${retirement}`,
+        value: 3,
+      }),
+    }));
+    const runtime = createChatRuntime({
+      debounce: 0,
+      system: 'You are a test bot',
+      threadId: 'thread-a',
+      transport: configuredTransport,
+      tools: [
+        {
+          name: 'recordValue',
+          description: 'Record a numeric value.',
+          schema: s.object('Value to record', {
+            value: s.number('Numeric value'),
+          }),
+          handler,
+        },
+      ],
+    });
+    const teardown = runtime.start();
+    await Promise.resolve();
+    const retirementObserved = createDeferred<void>();
+    let retired = false;
+    const unsubscribe = runtime.messages.subscribe((messages) => {
+      const hasPendingTool = messages.some(
+        (message) =>
+          message.role === 'assistant' &&
+          message.toolCalls.some((toolCall) => toolCall.status === 'pending'),
+      );
+      if (hasPendingTool && !runtime.isGenerating() && !retired) {
+        retired = true;
+        if (retirement === 'thread replacement') {
+          runtime.updateOptions({ threadId: 'thread-b' });
+        } else {
+          teardown();
+        }
+        retirementObserved.resolve();
+      }
+    });
+
+    try {
+      runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+      await retirementObserved.promise;
+      await flushTaskBoundary();
+      const toolCall = runtime
+        .messages()
+        .find((message) => message.role === 'assistant')?.toolCalls[0];
+
+      expect(retired).toBe(true);
+      expect(toolCall).toMatchObject({
+        status: 'done',
+        result: { status: 'rejected' },
+      });
+      expect(handler).not.toHaveBeenCalled();
+      expect(send).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribe();
+      teardown();
+    }
+  },
+);
+
+test('superseding input snapshots settled tools before the replacement user', async () => {
+  jest.clearAllMocks();
+  const handlerStarted = createDeferred<void>();
+  const lateResult = createDeferred<{ recorded: number }>();
+  const secondRequestCaptured = createDeferred<TransportRequest>();
+  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+  let toolSignal: AbortSignal | undefined;
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: 'call-superseded',
+          value: 3,
+        }),
+      };
+    }
+
+    secondRequestCaptured.resolve(request);
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-superseding',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-superseding',
+        },
+      ]),
+    };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: (_input, signal) => {
+          toolSignal = signal;
+          handlerStarted.resolve();
+          return lateResult.promise;
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record the first value.' });
+    await handlerStarted.promise;
+    runtime.sendMessage({ role: 'user', content: 'Replace that request.' });
+    const secondRequest = await secondRequestCaptured.promise;
+
+    expect(secondRequest.input.messages.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'tool',
+      'user',
+    ]);
+    const settledToolMessage = secondRequest.input.messages[3];
+    expect(settledToolMessage).toMatchObject({
+      role: 'tool',
+      toolCallId: 'call-superseded',
+      content: 'Tool execution cancelled',
+      error: 'Tool execution cancelled',
+    });
+    expect(toolSignal?.aborted).toBe(true);
+    expect(settlements).toHaveBeenCalledTimes(1);
+
+    lateResult.resolve({ recorded: 3 });
+    await waitForRuntimeIdle(runtime);
+
+    expect(requestCount).toBe(2);
+    expect(settlements).toHaveBeenCalledTimes(1);
+  } finally {
+    settlements.mockRestore();
+    teardown();
+  }
+});
+
+test('restarting one runtime installs exactly one generation listener', async () => {
+  jest.clearAllMocks();
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1 || requestCount === 3) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: `call-restart-${requestCount}`,
+          value: requestCount,
+        }),
+      };
+    }
+
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: `assistant-restart-${requestCount}`,
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: `assistant-restart-${requestCount}`,
+        },
+      ]),
+    };
+  });
+  const handler = jest.fn(async ({ value }: { value: number }) => ({
+    recorded: value,
+  }));
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler,
+      },
+    ],
+  });
+  let teardown: (() => void) | undefined = runtime.start();
+
+  try {
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'First run.' });
+    await waitForMockCalls(send, 2);
+    await waitForRuntimeIdleAcrossTasks(runtime);
+    teardown();
+    teardown = runtime.start();
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'Second run.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(handler).toHaveBeenCalledTimes(2);
+  } finally {
+    teardown?.();
+  }
+});
+
+test('concurrent tool results settle once in call order', async () => {
+  jest.clearAllMocks();
+  const firstResult = createDeferred<string>();
+  const secondResult = createDeferred<string>();
+  const secondRequestCaptured = createDeferred<TransportRequest>();
+  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolBatchEvents(request, [
+          { id: 'call-first', name: 'first', arguments: '{}' },
+          { id: 'call-second', name: 'second', arguments: '{}' },
+        ]),
+      };
+    }
+
+    secondRequestCaptured.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'first',
+        description: 'First tool.',
+        schema: s.object('First input', {}),
+        handler: () => firstResult.promise,
+      },
+      {
+        name: 'second',
+        description: 'Second tool.',
+        schema: s.object('Second input', {}),
+        handler: () => secondResult.promise,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Run both.' });
+    await Promise.resolve();
+    secondResult.resolve('second result');
+    firstResult.resolve('first result');
+    const secondRequest = await secondRequestCaptured.promise;
+    await waitForRuntimeIdle(runtime);
+    const toolMessages = secondRequest.input.messages.filter(
+      (message) => message.role === 'tool',
+    );
+
+    expect(toolMessages).toEqual([
+      expect.objectContaining({
+        toolCallId: 'call-first',
+        content: 'first result',
+      }),
+      expect.objectContaining({
+        toolCallId: 'call-second',
+        content: 'second result',
+      }),
+    ]);
+    expect(settlements).toHaveBeenCalledTimes(1);
+  } finally {
+    settlements.mockRestore();
+    teardown();
+  }
+});
+
+test('reused tool call IDs execute once in each model round', async () => {
+  jest.clearAllMocks();
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount <= 2) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: 'reused-call-id',
+          value: requestCount,
+        }),
+      };
+    }
+
+    return {
+      events: successfulEvents(request, [
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-after-reused-calls',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-after-reused-calls',
+        },
+      ]),
+    };
+  });
+  const handledValues: number[] = [];
+  const handler = jest.fn(async ({ value }: { value: number }) => {
+    handledValues.push(value);
+    return { recorded: value };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'Record two values.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(handledValues).toEqual([1, 2]);
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(send).toHaveBeenCalledTimes(3);
+  } finally {
+    teardown();
+  }
+});
+
+test('stop cancels every partially completed batch call once', async () => {
+  jest.clearAllMocks();
+  const firstResult = createDeferred<string>();
+  const bothStarted = createDeferred<void>();
+  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+  let startedCount = 0;
+  const markStarted = () => {
+    startedCount++;
+    if (startedCount === 2) {
+      bothStarted.resolve();
+    }
+  };
+  const { send } = makeSelection(async (request) => ({
+    events: createToolBatchEvents(request, [
+      { id: 'call-complete', name: 'complete', arguments: '{}' },
+      { id: 'call-pending', name: 'pending', arguments: '{}' },
+    ]),
+  }));
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'complete',
+        description: 'Completes first.',
+        schema: s.object('Complete input', {}),
+        handler: () => {
+          markStarted();
+          return firstResult.promise;
+        },
+      },
+      {
+        name: 'pending',
+        description: 'Remains pending.',
+        schema: s.object('Pending input', {}),
+        handler: async () => {
+          markStarted();
+          return new Promise(() => undefined);
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Run both.' });
+    await bothStarted.promise;
+    firstResult.resolve('complete result');
+    await flushTaskBoundary();
+    runtime.stop();
+    const toolCalls = runtime
+      .messages()
+      .find((message) => message.role === 'assistant')?.toolCalls;
+
+    expect(toolCalls).toEqual([
+      expect.objectContaining({
+        toolCallId: 'call-complete',
+        status: 'done',
+        result: expect.objectContaining({ status: 'rejected' }),
+      }),
+      expect.objectContaining({
+        toolCallId: 'call-pending',
+        status: 'done',
+        result: expect.objectContaining({ status: 'rejected' }),
+      }),
+    ]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(settlements).toHaveBeenCalledTimes(1);
+  } finally {
+    settlements.mockRestore();
+    teardown();
+  }
+});
+
+test('tool handler failure is serialized before continuation', async () => {
+  jest.clearAllMocks();
+  const secondRequestCaptured = createDeferred<TransportRequest>();
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolBatchEvents(request, [
+          { id: 'call-failure', name: 'fail', arguments: '{}' },
+        ]),
+      };
+    }
+
+    secondRequestCaptured.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'fail',
+        description: 'Fails.',
+        schema: s.object('Failure input', {}),
+        handler: async () => {
+          throw new Error('lookup failed');
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Run failure.' });
+    const secondRequest = await secondRequestCaptured.promise;
+    await waitForRuntimeIdle(runtime);
+
+    expect(secondRequest.input.messages).toContainEqual(
+      expect.objectContaining({
+        role: 'tool',
+        toolCallId: 'call-failure',
+        content: 'lookup failed',
+        error: 'lookup failed',
+      }),
+    );
+    expect(requestCount).toBe(2);
+  } finally {
+    teardown();
+  }
+});
+
+test('malformed tool arguments skip the handler and continue', async () => {
+  jest.clearAllMocks();
+  const secondRequestCaptured = createDeferred<TransportRequest>();
+  const handler = jest.fn(async () => 'unused');
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolBatchEvents(request, [
+          { id: 'call-malformed', name: 'lookup', arguments: '"{invalid"' },
+        ]),
+      };
+    }
+
+    secondRequestCaptured.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'lookup',
+        description: 'Looks up a value.',
+        schema: s.object('Lookup input', {}),
+        handler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Run malformed call.' });
+    const secondRequest = await secondRequestCaptured.promise;
+    await waitForRuntimeIdle(runtime);
+    const toolMessage = secondRequest.input.messages.find(
+      (message) => message.role === 'tool',
+    );
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(toolMessage).toMatchObject({
+      role: 'tool',
+      toolCallId: 'call-malformed',
+    });
+    expect(toolMessage?.role === 'tool' && toolMessage.error).toBeTruthy();
+    expect(requestCount).toBe(2);
+  } finally {
+    teardown();
+  }
+});
+
+test.each([
+  { label: 'replacement', nextThreadId: 'thread-b' },
+  { label: 'empty replacement', nextThreadId: '' },
+  { label: 'explicit clearing', nextThreadId: undefined },
+] as const)(
+  'a $label thread ID settles one active tool turn without continuation',
+  async ({ nextThreadId }) => {
+    jest.clearAllMocks();
+    const handlerStarted = createDeferred<void>();
+    const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+    let toolSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => ({
+      events: createToolRoundEvents(request, {
+        callId: 'call-thread-change',
+        value: 9,
+      }),
+    }));
+    const runtime = createChatRuntime({
+      system: 'You are a test bot',
+      threadId: 'thread-a',
+      transport: configuredTransport,
+      tools: [
+        {
+          name: 'recordValue',
+          description: 'Record a numeric value.',
+          schema: s.object('Value to record', {
+            value: s.number('Numeric value'),
+          }),
+          handler: async (_input, signal) => {
+            toolSignal = signal;
+            handlerStarted.resolve();
+            return new Promise(() => undefined);
+          },
+        },
+      ],
+    });
+    const teardown = runtime.start();
+
+    try {
+      runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+      await handlerStarted.promise;
+      runtime.updateOptions({ threadId: nextThreadId });
+      const toolCall = runtime
+        .messages()
+        .find((message) => message.role === 'assistant')?.toolCalls[0];
+
+      expect(toolSignal?.aborted).toBe(true);
+      expect(toolCall).toMatchObject({
+        status: 'done',
+        result: { status: 'rejected' },
+      });
+      expect(settlements).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenCalledTimes(1);
+    } finally {
+      settlements.mockRestore();
+      teardown();
+    }
+  },
+);
+
+test('the same thread ID preserves active tool execution', async () => {
+  jest.clearAllMocks();
+  const handlerStarted = createDeferred<void>();
+  const result = createDeferred<{ recorded: number }>();
+  const secondRequestCaptured = createDeferred<TransportRequest>();
+  let toolSignal: AbortSignal | undefined;
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: 'call-same-thread',
+          value: 4,
+        }),
+      };
+    }
+
+    secondRequestCaptured.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    threadId: 'thread-a',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: (_input, signal) => {
+          toolSignal = signal;
+          handlerStarted.resolve();
+          return result.promise;
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Record a value.' });
+    await handlerStarted.promise;
+    runtime.updateOptions({ threadId: 'thread-a' });
+    expect(toolSignal?.aborted).toBe(false);
+    result.resolve({ recorded: 4 });
+    await secondRequestCaptured.promise;
+    await waitForRuntimeIdle(runtime);
+
+    expect(requestCount).toBe(2);
+  } finally {
+    teardown();
+  }
+});
+
+test('setMessages cannot settle a same-ID replacement tool call', async () => {
+  jest.clearAllMocks();
+  const handlerStarted = createDeferred<void>();
+  const lateResult = createDeferred<{ recorded: number }>();
+  let toolSignal: AbortSignal | undefined;
+  const { send } = makeSelection(async (request) => ({
+    events: createToolRoundEvents(request, {
+      callId: 'call-replaced',
+      value: 1,
+    }),
+  }));
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: (_input, signal) => {
+          toolSignal = signal;
+          handlerStarted.resolve();
+          return lateResult.promise;
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Start original call.' });
+    await handlerStarted.promise;
+    runtime.setMessages([
+      {
+        role: 'assistant',
+        content: 'Replacement transcript',
+        toolCalls: [
+          {
+            role: 'tool',
+            status: 'pending',
+            name: 'recordValue',
+            args: { value: 2 },
+            toolCallId: 'call-replaced',
+          },
+        ],
+      },
+    ]);
+    const replacement = runtime.messages()[0];
+    lateResult.resolve({ recorded: 1 });
+    await flushTaskBoundary();
+
+    expect(toolSignal?.aborted).toBe(true);
+    expect(replacement).toMatchObject({
+      role: 'assistant',
+      content: 'Replacement transcript',
+      toolCalls: [
+        expect.objectContaining({
+          toolCallId: 'call-replaced',
+          status: 'pending',
+        }),
+      ],
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+  } finally {
+    teardown();
+  }
+});
+
+test('resend settles active tools before starting its replacement run', async () => {
+  jest.clearAllMocks();
+  const handlerStarted = createDeferred<void>();
+  const replacementRequest = createDeferred<TransportRequest>();
+  let toolSignal: AbortSignal | undefined;
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolRoundEvents(request, {
+          callId: 'call-resend',
+          value: 6,
+        }),
+      };
+    }
+
+    replacementRequest.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a numeric value.',
+        schema: s.object('Value to record', {
+          value: s.number('Numeric value'),
+        }),
+        handler: async (_input, signal) => {
+          toolSignal = signal;
+          handlerStarted.resolve();
+          return new Promise(() => undefined);
+        },
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Start a call.' });
+    await handlerStarted.promise;
+    runtime.resendMessages();
+    const request = await replacementRequest.promise;
+    await waitForRuntimeIdle(runtime);
+
+    expect(toolSignal?.aborted).toBe(true);
+    expect(request.input.messages.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'tool',
+    ]);
+    expect(requestCount).toBe(2);
+  } finally {
+    teardown();
+  }
+});
+
+test('generation failure does not execute streamed tool calls', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(async () => 'unused');
+  const { send } = makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-before-error',
+          role: 'assistant',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TOOL_CALL_START,
+          toolCallId: 'call-before-error',
+          toolCallName: 'lookup',
+          parentMessageId: 'assistant-before-error',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TOOL_CALL_ARGS,
+          toolCallId: 'call-before-error',
+          delta: '{}',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TOOL_CALL_END,
+          toolCallId: 'call-before-error',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-before-error',
+        } as AGUIEvent;
+        yield {
+          type: EventType.RUN_ERROR,
+          ...identity,
+          message: 'generation failed',
+        } as AGUIEvent;
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'lookup',
+        description: 'Looks up a value.',
+        schema: s.object('Lookup input', {}),
+        handler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'Fail this run.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(runtime.error()?.message).toBe('generation failed');
+  } finally {
     teardown();
   }
 });
@@ -2038,10 +3191,6 @@ test('non-retryable transport error stops without exhausting retries', async () 
       apiActions.generateMessageExhaustedRetries.type,
     ),
   ).toHaveLength(0);
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toHaveLength(1);
-
   teardown?.();
 });
 
@@ -2075,10 +3224,6 @@ test('positive infinity retries normalize to one attempt without exhaustion', as
       apiActions.generateMessageExhaustedRetries.type,
     ),
   ).toHaveLength(0);
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toHaveLength(1);
-
   teardown?.();
 });
 
@@ -2418,15 +3563,6 @@ test.each(['resolution', 'rejection'] as const)(
       getActionsOfType(store.actions, apiActions.generateMessageError.type),
     ).toHaveLength(0);
     expect(dispose).toHaveBeenCalledTimes(settlement === 'resolution' ? 1 : 0);
-    expect(
-      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-    ).toEqual([
-      apiActions.assistantTurnFinalized({
-        toolCalls: [],
-        continuation: 'stop',
-      }),
-    ]);
-
     teardown?.();
   },
 );
@@ -2481,10 +3617,6 @@ test.each(['resolution', 'rejection'] as const)(
     expect(firstDispose).toHaveBeenCalledTimes(
       settlement === 'resolution' ? 1 : 0,
     );
-    expect(
-      getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-    ).toHaveLength(1);
-
     teardown?.();
   },
 );
@@ -2561,15 +3693,6 @@ test('user stop while starting does not accept RUN_STARTED or add a terminal', a
 
   expect(send).toHaveBeenCalledTimes(1);
   expect(getDispatchedEvents(store.actions)).toHaveLength(0);
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toEqual([
-    apiActions.assistantTurnFinalized({
-      toolCalls: [],
-      continuation: 'stop',
-    }),
-  ]);
-
   teardown?.();
 });
 
@@ -2640,14 +3763,6 @@ test('user stop after start adds no terminal and finalizes once with stop', asyn
   expect(events).not.toContainEqual(
     expect.objectContaining({ name: 'late-event' }),
   );
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toEqual([
-    apiActions.assistantTurnFinalized({
-      toolCalls: [],
-      continuation: 'stop',
-    }),
-  ]);
   expect(iteratorReturn).toHaveBeenCalledTimes(1);
   expect(dispose).toHaveBeenCalledTimes(1);
 
@@ -2741,16 +3856,13 @@ test('superseding input retires the old run and only the new run finishes', asyn
   expect(send).toHaveBeenCalledTimes(2);
   expect(secondDispose).toHaveBeenCalledTimes(1);
   expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toHaveLength(1);
-  expect(
     getDispatchedTerminalEvents(store.actions).map((event) => event.type),
   ).toEqual([EventType.RUN_FINISHED]);
 
   teardown?.();
 });
 
-test('effect teardown retires the run without terminal or finalization', async () => {
+test('effect teardown retires the run without a terminal event', async () => {
   jest.clearAllMocks();
   const started = createDeferred<void>();
   const releaseLateEvent = createDeferred<void>();
@@ -2816,9 +3928,6 @@ test('effect teardown retires the run without terminal or finalization', async (
         event.type === EventType.RUN_FINISHED ||
         event.type === EventType.RUN_ERROR,
     ),
-  ).toHaveLength(0);
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
   ).toHaveLength(0);
 });
 
@@ -3174,52 +4283,6 @@ test('accepted RUN_FINISHED remains successful when its dispatch triggers stop',
       (event) => event.type === EventType.RUN_ERROR,
     ),
   ).toHaveLength(0);
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type),
-  ).toEqual([
-    apiActions.assistantTurnFinalized({
-      toolCalls: [],
-      continuation: 'stop',
-    }),
-  ]);
-
-  teardown?.();
-});
-
-test('finalizes the exact pending tool call snapshot', async () => {
-  jest.clearAllMocks();
-  const pendingToolCall: Chat.Internal.ToolCall = {
-    id: 'tool-call-1',
-    name: 'lookup',
-    arguments: '{}',
-    status: 'pending',
-  };
-  makeSelection(async (request) => ({ events: successfulEvents(request) }));
-  const store = createTestStore(
-    new Map<SelectorKey, unknown>([
-      [
-        selectRawStreamingMessage,
-        {
-          role: 'assistant',
-          content: '',
-          toolCallIds: [pendingToolCall.id],
-        },
-      ],
-      [selectRawStreamingToolCalls, [pendingToolCall]],
-      [selectPendingToolCalls, [pendingToolCall]],
-    ]),
-  );
-  const teardown = generateMessage(store);
-
-  await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Lookup' } }),
-  );
-
-  expect(
-    getActionsOfType(store.actions, apiActions.assistantTurnFinalized.type)[0]
-      ?.payload,
-  ).toEqual({ toolCalls: [pendingToolCall], continuation: 'continue' });
-
   teardown?.();
 });
 

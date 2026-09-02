@@ -15,8 +15,4 @@ export default createActionGroup('api', {
   }>(),
   generateMessageError: props<Error>(),
   generateMessageExhaustedRetries: props<void>(),
-  assistantTurnFinalized: props<{
-    toolCalls: Chat.Internal.ToolCall[];
-    continuation: 'continue' | 'stop';
-  }>(),
 });
