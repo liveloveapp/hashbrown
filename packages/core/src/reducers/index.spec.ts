@@ -1,6 +1,7 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
+import { Chat } from '../models';
 import { s } from '../schema';
 import {
   reducers,
@@ -825,6 +826,302 @@ test('runtime reuses one configured-system ID through update and empty clearing'
       content: '',
     });
     expect(cleared.committed).not.toContainEqual(cleared.systemMessage);
+  } finally {
+    if (previousWindow) {
+      Object.defineProperty(globalThis, 'window', previousWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, 'window');
+    }
+  }
+});
+
+test('runtime keeps local tool-call values lossless through initialization and replacement', () => {
+  // Arrange
+  const send = jest.fn();
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const pendingArgs = { city: 'Paris' };
+  const fulfilledValue = { temp: 20 };
+  const rejectedReason = new Error('boom');
+  const tools: Chat.AnyTool[] = [
+    {
+      name: 'forecast',
+      description: 'Looks up a forecast.',
+      schema: s.object('forecast arguments', { city: s.string('city') }),
+      handler: async () => fulfilledValue,
+    },
+    {
+      name: 'unknown',
+      description: 'Represents an unavailable tool.',
+      schema: s.object('unknown arguments', { city: s.string('city') }),
+      handler: async () => undefined,
+    },
+  ];
+  const initialMessages: Chat.Message<string, Chat.AnyTool>[] = [
+    {
+      role: 'assistant',
+      content: 'initial',
+      toolCalls: [
+        {
+          role: 'tool',
+          status: 'pending',
+          name: 'forecast',
+          toolCallId: 'pending-1',
+          args: pendingArgs,
+        },
+        {
+          role: 'tool',
+          status: 'done',
+          name: 'forecast',
+          toolCallId: 'fulfilled-1',
+          args: { city: 'Paris' },
+          result: { status: 'fulfilled', value: fulfilledValue },
+        },
+        {
+          role: 'tool',
+          status: 'done',
+          name: 'unknown',
+          toolCallId: 'rejected-1',
+          args: { city: 'Paris' },
+          result: { status: 'rejected', reason: rejectedReason },
+        },
+      ],
+    },
+    { role: 'error', content: 'local initialization error' },
+  ];
+  const replacementArgs = { city: 'Rome' };
+  const replacementValue = { temp: 24 };
+  const replacementReason = new Error('replacement failed');
+  const sentArgs = { city: 'Berlin' };
+  const replacementMessages: Chat.Message<string, Chat.AnyTool>[] = [
+    {
+      role: 'assistant',
+      content: 'replacement',
+      toolCalls: [
+        {
+          role: 'tool',
+          status: 'pending',
+          name: 'forecast',
+          toolCallId: 'pending-2',
+          args: replacementArgs,
+        },
+        {
+          role: 'tool',
+          status: 'done',
+          name: 'forecast',
+          toolCallId: 'fulfilled-2',
+          args: replacementArgs,
+          result: { status: 'fulfilled', value: replacementValue },
+        },
+        {
+          role: 'tool',
+          status: 'done',
+          name: 'unknown',
+          toolCallId: 'rejected-2',
+          args: replacementArgs,
+          result: { status: 'rejected', reason: replacementReason },
+        },
+      ],
+    },
+  ];
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      __REDUX_DEVTOOLS_EXTENSION__: {
+        connect: () => ({
+          error: jest.fn(),
+          init: jest.fn(),
+          send,
+          unsubscribe: jest.fn(),
+        }),
+      },
+    },
+  });
+
+  try {
+    // Act
+    const runtime = createChatRuntime({
+      debugName: 'lossless-local-projection-test',
+      system: '',
+      messages: initialMessages,
+      tools,
+    });
+    const initial = send.mock.calls.at(-1)?.[1].ɵɵinternal;
+    const initialView = runtime.messages();
+    runtime.setMessages(replacementMessages);
+    const replaced = send.mock.calls.at(-1)?.[1].ɵɵinternal;
+    runtime.sendMessage({
+      role: 'assistant',
+      content: 'sent',
+      toolCalls: [
+        {
+          role: 'tool',
+          status: 'pending',
+          name: 'forecast',
+          toolCallId: 'pending-3',
+          args: sentArgs,
+        },
+      ],
+    });
+    const sent = send.mock.calls.at(-1)?.[1].ɵɵinternal;
+
+    // Assert
+    expect(initial.messages.committed[0]).toMatchObject({
+      id: initial.agUiMessages.committed[0]?.id,
+      role: 'assistant',
+      content: 'initial',
+    });
+    expect(initial.toolCalls.committed.entities['pending-1']).toMatchObject({
+      name: 'forecast',
+      argumentsResolved: pendingArgs,
+      status: 'pending',
+    });
+    expect(initial.toolCalls.committed.entities['fulfilled-1']?.result).toEqual(
+      { status: 'fulfilled', value: fulfilledValue },
+    );
+    expect(
+      initial.toolCalls.committed.entities['fulfilled-1']?.result?.status ===
+        'fulfilled' &&
+        initial.toolCalls.committed.entities['fulfilled-1']?.result.value,
+    ).toBe(fulfilledValue);
+    expect(initial.toolCalls.committed.entities['rejected-1']?.result).toEqual({
+      status: 'rejected',
+      reason: rejectedReason,
+    });
+    expect(
+      initial.toolCalls.committed.entities['rejected-1']?.result?.status ===
+        'rejected' &&
+        initial.toolCalls.committed.entities['rejected-1']?.result.reason,
+    ).toBe(rejectedReason);
+    expect(initial.agUiMessages.committed).toEqual([
+      expect.objectContaining({ role: 'assistant', content: 'initial' }),
+      expect.objectContaining({ role: 'tool', toolCallId: 'fulfilled-1' }),
+      expect.objectContaining({
+        role: 'tool',
+        toolCallId: 'rejected-1',
+        error: 'boom',
+      }),
+    ]);
+    expect(initial.messages.committed).toContainEqual({
+      role: 'error',
+      content: 'local initialization error',
+    });
+    expect(initialView[0]).toMatchObject({
+      role: 'assistant',
+      content: 'initial',
+      toolCalls: [
+        expect.objectContaining({ args: pendingArgs, status: 'pending' }),
+        expect.objectContaining({
+          result: { status: 'fulfilled', value: fulfilledValue },
+        }),
+        expect.objectContaining({
+          result: { status: 'rejected', reason: rejectedReason },
+        }),
+      ],
+    });
+    const initialAssistant = initialView[0];
+    if (initialAssistant?.role !== 'assistant') {
+      throw new Error('Expected initialized assistant projection.');
+    }
+    const initialFulfilled = initialAssistant.toolCalls[1];
+    const initialRejected = initialAssistant.toolCalls[2];
+    if (
+      initialFulfilled?.status !== 'done' ||
+      initialRejected?.status !== 'done'
+    ) {
+      throw new Error('Expected settled initialized tool calls.');
+    }
+    expect(initialFulfilled.result.status).toBe('fulfilled');
+    if (initialFulfilled.result.status === 'fulfilled') {
+      expect(initialFulfilled.result.value).toBe(fulfilledValue);
+    }
+    expect(initialRejected.result.status).toBe('rejected');
+    if (initialRejected.result.status === 'rejected') {
+      expect(initialRejected.result.reason).toBe(rejectedReason);
+    }
+    expect(
+      initial.agUiMessages.committed.some(
+        (message: { role: string }) => message.role === 'error',
+      ),
+    ).toBe(false);
+    expect(initial.agUiMessages.committed[0]?.role).toBe('assistant');
+    if (initial.agUiMessages.committed[0]?.role === 'assistant') {
+      expect(initial.agUiMessages.committed[0].toolCalls).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'pending-1',
+            function: expect.objectContaining({
+              arguments: '{"city":"Paris"}',
+            }),
+          }),
+        ]),
+      );
+    }
+    expect(replaced.messages.committed[0]).toMatchObject({
+      id: replaced.agUiMessages.committed[0]?.id,
+      role: 'assistant',
+      content: 'replacement',
+    });
+    expect(replaced.toolCalls.committed.entities['pending-2']).toMatchObject({
+      argumentsResolved: replacementArgs,
+      status: 'pending',
+    });
+    expect(
+      replaced.toolCalls.committed.entities['fulfilled-2']?.result?.status ===
+        'fulfilled' &&
+        replaced.toolCalls.committed.entities['fulfilled-2']?.result.value,
+    ).toBe(replacementValue);
+    expect(
+      replaced.toolCalls.committed.entities['rejected-2']?.result?.status ===
+        'rejected' &&
+        replaced.toolCalls.committed.entities['rejected-2']?.result.reason,
+    ).toBe(replacementReason);
+    expect(runtime.messages()[0]).toMatchObject({
+      role: 'assistant',
+      content: 'replacement',
+      toolCalls: [
+        expect.objectContaining({ args: replacementArgs, status: 'pending' }),
+        expect.objectContaining({
+          result: { status: 'fulfilled', value: replacementValue },
+        }),
+        expect.objectContaining({
+          result: { status: 'rejected', reason: replacementReason },
+        }),
+      ],
+    });
+    expect(replaced.agUiMessages.committed).toEqual([
+      expect.objectContaining({ role: 'assistant', content: 'replacement' }),
+      expect.objectContaining({ role: 'tool', toolCallId: 'fulfilled-2' }),
+      expect.objectContaining({
+        role: 'tool',
+        toolCallId: 'rejected-2',
+        error: 'replacement failed',
+      }),
+    ]);
+    expect(
+      replaced.agUiMessages.committed.some(
+        (message: { role: string }) => message.role === 'error',
+      ),
+    ).toBe(false);
+    expect(sent.messages.committed.at(-1)).toMatchObject({
+      id: sent.agUiMessages.committed.at(-1)?.id,
+      role: 'assistant',
+      content: 'sent',
+    });
+    expect(sent.toolCalls.committed.entities['pending-3']).toMatchObject({
+      name: 'forecast',
+      argumentsResolved: sentArgs,
+      status: 'pending',
+    });
+    expect(sent.agUiMessages.committed.at(-1)).toMatchObject({
+      role: 'assistant',
+      content: 'sent',
+      toolCalls: [
+        expect.objectContaining({
+          id: 'pending-3',
+          function: expect.objectContaining({ arguments: '{"city":"Berlin"}' }),
+        }),
+      ],
+    });
   } finally {
     if (previousWindow) {
       Object.defineProperty(globalThis, 'window', previousWindow);

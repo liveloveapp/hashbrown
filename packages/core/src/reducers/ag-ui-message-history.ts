@@ -99,6 +99,9 @@ export function ɵpairViewMessagesWithAgUi(
 ): AgUiMessageProjection {
   let cursor = 0;
   const projectedMessages = messages.flatMap((message) => {
+    if (message.role === 'error') {
+      return [{ role: 'error' as const, content: message.content }];
+    }
     const internal = Chat.helpers.toInternalMessagesFromView(message);
     if (internal.length === 0) return internal;
     const role = message.role;

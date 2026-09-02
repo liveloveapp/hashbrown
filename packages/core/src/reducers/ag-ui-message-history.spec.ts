@@ -7,6 +7,7 @@ import {
   lowerViewMessagesToAgUi,
   ownAgUiMessages,
   projectAgUiMessages,
+  ɵpairViewMessagesWithAgUi,
 } from './ag-ui-message-history';
 
 test('lowers locally created user messages with stable supplied IDs', () => {
@@ -134,6 +135,100 @@ test('lowers assistant turns with tool results and opaque protocol fields', () =
   ]);
   expect(createId).toHaveBeenCalledTimes(4);
   expect(Object.isFrozen(lowered[1]?.metadata)).toBe(true);
+});
+
+test('pairs view messages with canonical IDs without shifting across reasoning or tool results', () => {
+  // Arrange
+  const messages: readonly Chat.AnyMessage[] = [
+    { role: 'user', content: 'question' },
+    {
+      role: 'assistant',
+      content: 'answer',
+      reasoningDetails: [
+        {
+          id: 'reasoning-1',
+          role: 'reasoning',
+          content: 'considered',
+        },
+      ],
+      toolCalls: [
+        {
+          role: 'tool',
+          status: 'done',
+          name: 'first',
+          toolCallId: 'call-1',
+          args: { first: true },
+          result: { status: 'fulfilled', value: { one: 1 } },
+        },
+        {
+          role: 'tool',
+          status: 'done',
+          name: 'second',
+          toolCallId: 'call-2',
+          args: { second: true },
+          result: { status: 'rejected', reason: 'failed' },
+        },
+      ],
+    },
+    { role: 'error', content: 'local-only error' },
+  ];
+  const lowered = lowerViewMessagesToAgUi(messages, {
+    createId: jest
+      .fn()
+      .mockReturnValueOnce('user-1')
+      .mockReturnValueOnce('assistant-1')
+      .mockReturnValueOnce('tool-result-1')
+      .mockReturnValueOnce('tool-result-2'),
+  });
+
+  // Act
+  const paired = ɵpairViewMessagesWithAgUi(messages, lowered);
+
+  // Assert
+  expect(paired.messages).toEqual([
+    expect.objectContaining({
+      id: 'user-1',
+      role: 'user',
+      content: 'question',
+    }),
+    expect.objectContaining({
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'answer',
+      toolCallIds: ['call-1', 'call-2'],
+      reasoning: {
+        kind: 'details',
+        details: [
+          {
+            id: 'reasoning-1',
+            role: 'reasoning',
+            content: 'considered',
+          },
+        ],
+      },
+    }),
+    { role: 'error', content: 'local-only error' },
+  ]);
+  expect(paired.toolCalls).toEqual([
+    expect.objectContaining({
+      id: 'call-1',
+      argumentsResolved: { first: true },
+      result: { status: 'fulfilled', value: { one: 1 } },
+    }),
+    expect.objectContaining({
+      id: 'call-2',
+      argumentsResolved: { second: true },
+      result: { status: 'rejected', reason: 'failed' },
+    }),
+  ]);
+  expect(lowered).not.toContainEqual(
+    expect.objectContaining({ content: 'local-only error' }),
+  );
+  const assistant = messages[1];
+  if (assistant?.role !== 'assistant') {
+    throw new Error('Expected assistant fixture.');
+  }
+  expect(assistant.toolCalls[0]?.args).toEqual({ first: true });
 });
 
 test('preserves detailed reasoning identities without generating extra IDs', () => {
