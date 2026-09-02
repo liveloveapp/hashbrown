@@ -3,6 +3,7 @@ import { Chat } from '../models';
 import { Prettify } from '../utils/types';
 import { select } from '../utils/micro-ngrx';
 import * as fromAgentState from './agent-state.reducer';
+import * as fromAgUiMessages from './ag-ui-messages.reducer';
 import * as fromConfig from './config.reducer';
 import * as fromMessages from './messages.reducer';
 import * as fromStatus from './status.reducer';
@@ -13,6 +14,7 @@ import * as fromThread from './thread.reducer';
 
 export const reducers = {
   agentState: fromAgentState.reducer,
+  agUiMessages: fromAgUiMessages.reducer,
   config: fromConfig.reducer,
   messages: fromMessages.reducer,
   status: fromStatus.reducer,
@@ -70,6 +72,45 @@ export const ɵselectAgentStateProtocolError = select(
 type State = Prettify<{
   [P in keyof typeof reducers]: ReturnType<(typeof reducers)[P]>;
 }>;
+
+/** Selects the canonical AG-UI message state. @internal */
+export const ɵselectAgUiMessagesState = (state: State) => state.agUiMessages;
+
+/** Selects committed canonical AG-UI history. @internal */
+export const ɵselectCommittedAgUiMessages = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectCommittedAgUiMessages,
+);
+
+/** Selects visible draft-or-committed canonical AG-UI history. @internal */
+export const ɵselectVisibleAgUiMessages = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectVisibleAgUiMessages,
+);
+
+/** Selects visible canonical history with the configured system overlay. @internal */
+export const ɵselectEffectiveVisibleAgUiMessages = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectEffectiveVisibleAgUiMessages,
+);
+
+/** Selects committed canonical request history with the configured system overlay. @internal */
+export const ɵselectEffectiveCommittedAgUiMessages = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectEffectiveCommittedAgUiMessages,
+);
+
+/** Selects immutable tool IDs present at the start of the active attempt. @internal */
+export const ɵselectAttemptStartToolCallIds = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectAttemptStartToolCallIds,
+);
+
+/** Selects canonical AG-UI message protocol errors. @internal */
+export const ɵselectAgUiMessagesProtocolError = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectAgUiMessagesProtocolError,
+);
 
 /**
  * Messages
@@ -206,46 +247,59 @@ export const selectUiRequested = select(
 /**
  * Top-level selectors
  */
-const selectNonStreamingViewMessages = select(
+const selectNonStreamingViewMessageEntries = select(
   selectMessages,
   selectToolCallEntities,
   selectTools,
   selectResponseSchema,
   (messages, toolCalls, tools, responseSchema) => {
-    return messages.flatMap((message): Chat.AnyMessage[] =>
-      Chat.helpers.toViewMessagesFromInternal(
+    return messages.map((message) => ({
+      id: 'id' in message ? message.id : undefined,
+      messages: Chat.helpers.toViewMessagesFromInternal(
         message,
         toolCalls,
         tools,
         responseSchema,
       ),
-    );
+    }));
   },
 );
 
-const selectStreamingViewMessages = select(
+const selectStreamingViewMessageEntries = select(
   selectStreamingMessage,
   selectStreamingToolCallEntities,
   selectTools,
   selectResponseSchema,
   (streamingMessage, streamingToolCalls, tools, responseSchema) => {
-    return (streamingMessage ? [streamingMessage] : []).flatMap(
-      (message): Chat.AnyMessage[] =>
-        Chat.helpers.toViewMessagesFromInternal(
-          message,
-          streamingToolCalls,
-          tools,
-          responseSchema,
-        ),
-    );
+    return (streamingMessage ? [streamingMessage] : []).map((message) => ({
+      id: message.id,
+      messages: Chat.helpers.toViewMessagesFromInternal(
+        message,
+        streamingToolCalls,
+        tools,
+        responseSchema,
+      ),
+    }));
   },
 );
 
 export const selectViewMessages = select(
-  selectNonStreamingViewMessages,
-  selectStreamingViewMessages,
-  (nonStreamingMessages, streamingMessages) => {
-    return [...nonStreamingMessages, ...streamingMessages];
+  selectNonStreamingViewMessageEntries,
+  selectStreamingViewMessageEntries,
+  (nonStreamingEntries, streamingEntries) => {
+    const streamingById = new Map(
+      streamingEntries.map((entry) => [entry.id, entry.messages]),
+    );
+    const nonStreamingMessages = nonStreamingEntries.flatMap((entry) =>
+      entry.id && streamingById.has(entry.id)
+        ? (streamingById.get(entry.id) ?? entry.messages)
+        : entry.messages,
+    );
+    const streamedIds = new Set(nonStreamingEntries.map((entry) => entry.id));
+    const appended = streamingEntries.flatMap((entry) =>
+      streamedIds.has(entry.id) ? [] : entry.messages,
+    );
+    return [...nonStreamingMessages, ...appended];
   },
 );
 

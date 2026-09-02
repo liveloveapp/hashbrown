@@ -72,6 +72,9 @@ export const reducer = createReducer(
 export const selectRawStreamingMessage = (state: StreamingMessageState) =>
   state.message;
 
+export const selectStreamingMessageId = (state: StreamingMessageState) =>
+  state.messageId;
+
 export const selectRawStreamingToolCalls = (state: StreamingMessageState) =>
   state.toolCalls;
 
@@ -80,16 +83,20 @@ export const selectStreamingMessageError = (state: StreamingMessageState) =>
 
 export const selectStreamingMessage = select(
   selectRawStreamingMessage,
+  selectStreamingMessageId,
   selectRawStreamingToolCalls,
-  (message, toolCalls): Chat.Internal.AssistantMessage | null => {
-    if (!message) {
+  (message, messageId, toolCalls): Chat.Internal.AssistantMessage | null => {
+    if (!message || !messageId) {
       return null;
     }
 
-    return {
-      ...message,
-      toolCallIds: toolCalls.map((toolCall) => toolCall.id),
-    };
+    return Chat.helpers.ɵwithInternalMessageId(
+      {
+        ...message,
+        toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+      },
+      messageId,
+    );
   },
 );
 

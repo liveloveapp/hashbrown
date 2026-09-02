@@ -26,6 +26,10 @@ import {
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
 import { createHttpTransport, TransportOrFactory } from './transport';
+import {
+  createSystemMessage,
+  lowerViewMessagesToAgUi,
+} from './reducers/ag-ui-message-history';
 
 /**
  * A stateful client runtime for sending messages, processing AG-UI events,
@@ -145,6 +149,13 @@ export function createChatRuntime(init: {
 }): ChatRuntime<any, Chat.AnyTool> {
   const initialThreadId = init.threadId;
   const transport = init.transport ?? (() => createHttpTransport({}));
+  const createCanonicalId = () =>
+    typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `hashbrown-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const systemMessageId = createCanonicalId();
+  const lower = (messages: readonly Chat.AnyMessage[]) =>
+    lowerViewMessagesToAgUi(messages, { createId: createCanonicalId });
 
   const state = createStore({
     debugName: init.debugName,
@@ -169,6 +180,8 @@ export function createChatRuntime(init: {
     devActions.init({
       system: init.system,
       messages: init.messages as Chat.AnyMessage[],
+      canonicalMessages: lower(init.messages ?? []),
+      systemMessage: createSystemMessage(systemMessageId, init.system),
       tools: init.tools as Chat.AnyTool[],
       responseSchema: init.responseSchema,
       debounce: init.debounce,
@@ -185,6 +198,7 @@ export function createChatRuntime(init: {
     state.dispatch(
       devActions.setMessages({
         messages: messages as Chat.AnyMessage[],
+        canonicalMessages: lower(messages as Chat.AnyMessage[]),
         responseSchema,
         toolsByName,
       }),
@@ -193,7 +207,10 @@ export function createChatRuntime(init: {
 
   function sendMessage(message: Chat.Message<any, Chat.AnyTool>) {
     state.dispatch(
-      devActions.sendMessage({ message: message as Chat.AnyMessage }),
+      devActions.sendMessage({
+        message: message as Chat.AnyMessage,
+        canonicalMessages: lower([message as Chat.AnyMessage]),
+      }),
     );
   }
 
@@ -214,7 +231,19 @@ export function createChatRuntime(init: {
       threadId?: string | undefined;
     }>,
   ) {
-    state.dispatch(devActions.updateOptions(options));
+    state.dispatch(
+      devActions.updateOptions({
+        ...options,
+        ...(Object.hasOwn(options, 'system')
+          ? {
+              systemMessage: createSystemMessage(
+                systemMessageId,
+                options.system ?? '',
+              ),
+            }
+          : {}),
+      }),
+    );
   }
 
   function start() {

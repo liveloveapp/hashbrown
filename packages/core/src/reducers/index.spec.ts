@@ -18,6 +18,7 @@ function createState() {
   return {
     config: reducers.config(undefined, initAction),
     agentState: reducers.agentState(undefined, initAction),
+    agUiMessages: reducers.agUiMessages(undefined, initAction),
     messages: reducers.messages(undefined, initAction),
     status: reducers.status(undefined, initAction),
     streamingMessage: reducers.streamingMessage(undefined, initAction),
@@ -34,6 +35,7 @@ function reduceAll(
   return {
     config: reducers.config(state.config, action),
     agentState: reducers.agentState(state.agentState, action),
+    agUiMessages: reducers.agUiMessages(state.agUiMessages, action),
     messages: reducers.messages(state.messages, action),
     status: reducers.status(state.status, action),
     streamingMessage: reducers.streamingMessage(state.streamingMessage, action),

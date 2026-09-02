@@ -161,6 +161,7 @@ test('projects raw and composed selector values without changing identities', ()
   expect(rawToolCalls).toBe(state.toolCalls);
   expect(selectStreamingMessageError(state)).toBeUndefined();
   expect(message).toEqual({
+    id: 'message-1',
     role: 'assistant',
     content: '',
     toolCallIds: ['call-1'],
