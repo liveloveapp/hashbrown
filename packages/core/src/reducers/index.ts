@@ -26,18 +26,42 @@ export const reducers = {
  * Shared agent state
  */
 export const ɵselectAgentStateState = (state: State) => state.agentState;
+
+/**
+ * Selects the last state committed by the agent.
+ *
+ * @internal
+ */
 export const ɵselectCommittedAgentState = select(
   ɵselectAgentStateState,
   fromAgentState.ɵselectCommittedAgentState,
 );
+
+/**
+ * Selects speculative state while an agent attempt is active.
+ *
+ * @internal
+ */
 export const ɵselectVisibleAgentState = select(
   ɵselectAgentStateState,
   fromAgentState.ɵselectVisibleAgentState,
 );
+
+/**
+ * Selects whether local state writes are currently locked.
+ *
+ * @internal
+ */
 export const ɵselectStateWriteLocked = select(
   ɵselectAgentStateState,
   fromAgentState.ɵselectStateWriteLocked,
 );
+
+/**
+ * Selects the most recent AG-UI state protocol error.
+ *
+ * @internal
+ */
 export const ɵselectAgentStateProtocolError = select(
   ɵselectAgentStateState,
   fromAgentState.ɵselectProtocolError,
