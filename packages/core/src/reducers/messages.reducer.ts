@@ -26,13 +26,11 @@ const initialState: MessagesState = {
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action) => {
-    const messages = action.payload.canonicalMessages
-      ? projectCanonical(
-          action.payload.canonicalMessages,
-          {},
-          action.payload.responseSchema,
-        )
-      : projectView(action.payload.messages, action.payload.responseSchema);
+    const messages = projectCanonical(
+      action.payload.canonicalMessages,
+      {},
+      action.payload.responseSchema,
+    );
     return {
       ...state,
       messages,
@@ -43,13 +41,11 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.setMessages, (state, action) => {
-    const messages = action.payload.canonicalMessages
-      ? projectCanonical(
-          action.payload.canonicalMessages,
-          action.payload.toolsByName ?? {},
-          action.payload.responseSchema,
-        )
-      : projectView(action.payload.messages, action.payload.responseSchema);
+    const messages = projectCanonical(
+      action.payload.canonicalMessages,
+      action.payload.toolsByName ?? {},
+      action.payload.responseSchema,
+    );
     return {
       ...state,
       messages,
@@ -60,9 +56,7 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.sendMessage, (state, action) => {
-    const appended = action.payload.canonicalMessages
-      ? projectCanonical(action.payload.canonicalMessages, {})
-      : Chat.helpers.toInternalMessagesFromView(action.payload.message);
+    const appended = projectCanonical(action.payload.canonicalMessages, {});
     const committed = [...state.committed, ...appended];
     return {
       ...state,
@@ -217,22 +211,6 @@ function projectCanonical(
     toolsByName,
     responseSchema ? s.normalizeSchemaOutput(responseSchema) : undefined,
   ).messages;
-}
-
-function projectView(
-  messages: readonly Chat.AnyMessage[] | undefined,
-  responseSchema?: s.SchemaOutput,
-): readonly Chat.Internal.Message[] {
-  if (!messages) return [];
-  const schema = responseSchema
-    ? s.normalizeSchemaOutput(responseSchema)
-    : undefined;
-  return messages.flatMap((message) =>
-    hydrateResolvedContent(
-      Chat.helpers.toInternalMessagesFromView(message),
-      schema,
-    ),
-  );
 }
 
 function hydrateResolvedContent(

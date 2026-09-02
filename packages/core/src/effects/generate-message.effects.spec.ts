@@ -587,7 +587,10 @@ test('transport factory failure dispatches the initialization error', async () =
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(
@@ -612,7 +615,10 @@ test('missing transport reports configuration error without issuing HTTP', async
 
   try {
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
 
     const errors = getActionsOfType(
@@ -649,7 +655,10 @@ test('first user message uses the configured thread ID', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send.mock.calls[0]?.[0].input?.threadId).toBe('configured-thread');
@@ -687,7 +696,10 @@ test.each([
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     store.setSelector(selectThreadId, updateThreadId);
     await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
@@ -732,7 +744,10 @@ test.each([
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     store.setSelector(selectThreadId, updateThreadId);
     await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
@@ -821,7 +836,10 @@ test.each([
     const teardown = generateMessage(store);
 
     const firstGeneration = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'First' },
+      }),
     );
     await firstIterationStarted.promise;
     store.setSelector(selectThreadId, nextThreadId);
@@ -832,7 +850,10 @@ test.each([
     await firstGeneration;
     const actionsAfterRetirement = [...store.actions];
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Second' },
+      }),
     );
 
     const secondRequest = send.mock.calls[1]?.[0] as
@@ -927,7 +948,10 @@ test.each([
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     await iterationBlocked.promise;
     const effectiveThreadId = request?.input?.threadId;
@@ -982,7 +1006,10 @@ test('thread identity synchronization before a run does not retire the next run'
   await store.trigger(devActions.updateOptions({ threadId: undefined }));
   await store.trigger(devActions.updateOptions({ threadId: undefined }));
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -1041,7 +1068,10 @@ test('unconfigured run reuses one generated thread ID across retries', async () 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   const requests = send.mock.calls.map(([request]) => request);
@@ -1070,7 +1100,10 @@ test('validated start then tool continuation reuses the same thread ID', async (
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   const acceptedThreadId = send.mock.calls[0]?.[0].input?.threadId;
   store.setSelector(selectThreadId, acceptedThreadId);
@@ -1813,6 +1846,7 @@ test('sends one RunAgentInput with tools, structured output, and UI metadata', a
 
   await store.trigger(
     devActions.sendMessage({
+      canonicalMessages: [],
       message: { role: 'user', content: 'Follow-up question' },
     }),
   );
@@ -1861,7 +1895,10 @@ test('generic send rejection retries with exact attempt progression', async () =
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(3);
@@ -1947,7 +1984,10 @@ test('retry uses a fresh attempt after cleanup completes', async () => {
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Retry' },
+    }),
   );
   await returnStarted.promise;
   expect(send).toHaveBeenCalledTimes(1);
@@ -1980,7 +2020,10 @@ test('exhausted generic send retries dispatches the exhausted action', async () 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -2016,7 +2059,10 @@ test('non-retryable transport error stops without exhausting retries', async () 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -2050,7 +2096,10 @@ test('positive infinity retries normalize to one attempt without exhaustion', as
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -2128,7 +2177,10 @@ test.each([
     const teardown = generateMessage(store);
 
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Retry' },
+      }),
     );
 
     const errors = getActionsOfType(
@@ -2162,7 +2214,10 @@ test('rejects duplicate RUN_STARTED and synthesizes one terminal error', async (
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   const events = getDispatchedEvents(store.actions);
@@ -2212,7 +2267,10 @@ test('rejects a mismatched RUN_STARTED without accepting the run', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Retry' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -2247,7 +2305,10 @@ test('rejects a mismatched RUN_FINISHED and synthesizes one terminal error', asy
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -2304,7 +2365,10 @@ test.each([
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Retry' },
+    }),
   );
 
   const errors = getActionsOfType(
@@ -2342,7 +2406,10 @@ test('iterable failure after an accepted start synthesizes exactly one RUN_ERROR
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(
@@ -2381,7 +2448,10 @@ test('server RUN_ERROR after start dispatches once without synthesis or retry', 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   const events = getDispatchedEvents(store.actions);
@@ -2413,7 +2483,10 @@ test.each(['resolution', 'rejection'] as const)(
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     await sendStarted.promise;
     const request = send.mock.calls[0]?.[0] as TransportRequest;
@@ -2471,12 +2544,18 @@ test.each(['resolution', 'rejection'] as const)(
     const teardown = generateMessage(store);
 
     const firstGeneration = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'First' },
+      }),
     );
     await firstSendStarted.promise;
     const firstRequest = send.mock.calls[0]?.[0] as TransportRequest;
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Second' },
+      }),
     );
     const actionsBeforeSettlement = [...store.actions];
     if (settlement === 'resolution') {
@@ -2536,7 +2615,10 @@ test('user stop before start has no terminal, no retry, and discards late events
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await waiting.promise;
   await store.trigger(devActions.stopMessageGeneration(true));
@@ -2568,7 +2650,10 @@ test('user stop while starting does not accept RUN_STARTED or add a terminal', a
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -2639,7 +2724,10 @@ test('user stop after start synthesizes one cancellation and finalizes once with
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await started.promise;
   await waitForDispatchedEvent(store.actions, EventType.RUN_STARTED);
@@ -2735,11 +2823,17 @@ test('superseding input retires the old run and only the new run finishes', asyn
   const teardown = generateMessage(store);
 
   const firstGeneration = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'First' },
+    }),
   );
   await firstStarted.promise;
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Second' },
+    }),
   );
   await Promise.resolve();
 
@@ -2816,7 +2910,10 @@ test('effect teardown retires the run without terminal or finalization', async (
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await started.promise;
   teardown?.();
@@ -2884,7 +2981,10 @@ test.each(['iterator return', 'response disposal'] as const)(
     const teardown = generateMessage(store);
 
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: [],
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
 
     expect(send).toHaveBeenCalledTimes(1);
@@ -2937,7 +3037,10 @@ test('cleanup rejections do not replace a protocol failure', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(
@@ -3003,7 +3106,10 @@ test('cleanup rejections do not replace user cancellation', async () => {
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await started.promise;
   await waitForDispatchedEvent(store.actions, EventType.RUN_STARTED);
@@ -3055,7 +3161,10 @@ test('missing events is retryable and disposes each response exactly once', asyn
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -3108,7 +3217,10 @@ test('non-async-iterable events are a retryable protocol error', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -3143,7 +3255,10 @@ test('finish-time parser errors do not retry an accepted success terminal', asyn
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -3182,7 +3297,10 @@ test('accepted RUN_FINISHED remains successful when its dispatch triggers stop',
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -3232,7 +3350,10 @@ test('finalizes the exact pending tool call snapshot', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Lookup' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Lookup' },
+    }),
   );
 
   expect(

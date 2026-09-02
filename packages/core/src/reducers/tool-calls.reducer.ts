@@ -1,7 +1,6 @@
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
-import { toInternalToolCallsFromView } from '../models/internal_helpers';
 import { createReducer, EntityState, on, select } from '../utils/micro-ngrx';
 import { projectAgUiMessages } from './ag-ui-message-history';
 
@@ -28,12 +27,10 @@ export const reducer = createReducer(
   on(devActions.init, devActions.setMessages, (state, action) => {
     const toolsByName =
       'toolsByName' in action.payload ? action.payload.toolsByName : undefined;
-    const toolCalls = action.payload.canonicalMessages
-      ? projectAgUiMessages(action.payload.canonicalMessages, toolsByName ?? {})
-          .toolCalls
-      : action.payload.messages
-        ? toInternalToolCallsFromView(action.payload.messages)
-        : [];
+    const toolCalls = projectAgUiMessages(
+      action.payload.canonicalMessages,
+      toolsByName ?? {},
+    ).toolCalls;
     const committed = toEntityState(toolCalls);
     return {
       ...committed,
@@ -170,9 +167,6 @@ export const reducer = createReducer(
     devActions.sendMessage,
     devActions.setMessages,
     (state, action): ToolCallsState => {
-      if (!action.payload.canonicalMessages) {
-        return rollback(state);
-      }
       const committed = toEntityState(
         projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls,
       );

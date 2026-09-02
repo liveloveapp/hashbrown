@@ -28,7 +28,7 @@ test('initializes committed state without cloning its already-owned value', () =
 
   const result = reducer(
     initialAgentState,
-    devActions.init({ system: 'test', state }),
+    devActions.init({ canonicalMessages: [], system: 'test', state }),
   );
 
   expect(result).toEqual({
@@ -46,6 +46,7 @@ test('locks initial state writes when initialization ends with a user message', 
   const result = reducer(
     initialAgentState,
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       messages: [{ role: 'user', content: 'Start' }],
     }),
@@ -59,7 +60,7 @@ test('updates only committed state for an unlocked local write', () => {
   const next = Object.freeze({ count: 2 });
   const state = reducer(
     initialAgentState,
-    devActions.init({ system: 'test', state: previous }),
+    devActions.init({ canonicalMessages: [], system: 'test', state: previous }),
   );
 
   const result = reducer(state, devActions.setState({ state: next }));
@@ -75,6 +76,7 @@ test('ignores a local write that reaches the reducer while writes are locked', (
   const state = reducer(
     initialAgentState,
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       state: committed,
       messages: [{ role: 'user', content: 'Start' }],
@@ -90,7 +92,11 @@ test('copies committed state into an active attempt draft', () => {
   const committed = Object.freeze({ count: 1 });
   const state = reducer(
     initialAgentState,
-    devActions.init({ system: 'test', state: committed }),
+    devActions.init({
+      canonicalMessages: [],
+      system: 'test',
+      state: committed,
+    }),
   );
 
   const result = beginAttempt(state);
@@ -242,11 +248,17 @@ test('retains the previous draft when a state delta is malformed', () => {
 test.each([
   [
     'sendMessage',
-    devActions.sendMessage({ message: { role: 'user', content: 'Next' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Next' },
+    }),
   ],
   [
     'setMessages',
-    devActions.setMessages({ messages: [{ role: 'user', content: 'Next' }] }),
+    devActions.setMessages({
+      canonicalMessages: [],
+      messages: [{ role: 'user', content: 'Next' }],
+    }),
   ],
   ['resendMessages', devActions.resendMessages()],
 ])(
@@ -329,6 +341,7 @@ test('a stale stopped tool settlement preserves a superseding generation lock', 
   const supersedingGeneration = reducer(
     initialAgentState,
     devActions.sendMessage({
+      canonicalMessages: [],
       message: { role: 'user', content: 'Start a replacement generation' },
     }),
   );

@@ -9,7 +9,7 @@ export default createActionGroup('dev', {
   init: props<{
     system: string;
     /** Runtime-lowered AG-UI history. @internal */
-    canonicalMessages?: readonly Readonly<Message>[];
+    canonicalMessages: readonly Readonly<Message>[];
     /** Stable configured-system overlay. @internal */
     systemMessage?: Readonly<SystemMessage>;
     debounce?: number;
@@ -28,14 +28,14 @@ export default createActionGroup('dev', {
   setMessages: props<{
     messages: Chat.AnyMessage[];
     /** Runtime-lowered AG-UI replacement history. @internal */
-    canonicalMessages?: readonly Readonly<Message>[];
+    canonicalMessages: readonly Readonly<Message>[];
     responseSchema?: s.SchemaOutput;
     toolsByName?: Record<string, Chat.Internal.Tool>;
   }>(),
   sendMessage: props<{
     message: Chat.AnyMessage;
     /** Runtime-lowered AG-UI message history addition. @internal */
-    canonicalMessages?: readonly Readonly<Message>[];
+    canonicalMessages: readonly Readonly<Message>[];
   }>(),
   resendMessages: props<void>,
   updateOptions: props<{

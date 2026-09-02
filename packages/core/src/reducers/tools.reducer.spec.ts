@@ -24,6 +24,7 @@ test('normalizes Standard JSON Schema tool inputs into Hashbrown schemas', () =>
   const state = reducer(
     undefined,
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       tools: [
         {

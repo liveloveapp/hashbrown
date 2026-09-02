@@ -46,7 +46,7 @@ export const reducer = createReducer(
   initialAgUiMessagesState,
   on(devActions.init, (_state, action): AgUiMessagesState => {
     const systemMessage = action.payload.systemMessage;
-    const committed = own(action.payload.canonicalMessages ?? []);
+    const committed = own(action.payload.canonicalMessages);
 
     return {
       committed: withoutSystemOverlay(committed, systemMessage),
@@ -129,7 +129,7 @@ export const reducer = createReducer(
     (state): AgUiMessagesState => rollback(state),
   ),
   on(devActions.sendMessage, (state, action): AgUiMessagesState => {
-    const appended = own(action.payload.canonicalMessages ?? []);
+    const appended = own(action.payload.canonicalMessages);
     const committed = [...state.committed, ...appended];
     return {
       ...state,
@@ -142,7 +142,7 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.setMessages, (state, action): AgUiMessagesState => {
-    const committed = own(action.payload.canonicalMessages ?? []);
+    const committed = own(action.payload.canonicalMessages);
     return {
       ...state,
       committed: withoutSystemOverlay(committed, state.systemMessage),

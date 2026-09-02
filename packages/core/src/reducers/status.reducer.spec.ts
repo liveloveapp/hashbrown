@@ -211,7 +211,10 @@ test('preserves a superseding user turn sending state', () => {
 test('silent retirement returns a pending generation to idle', () => {
   const store = createRootStore();
   store.dispatch(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   const status = store.read(selectStatusState);
   const wasLoading = store.read(selectIsLoading);
@@ -236,7 +239,10 @@ test('silent retirement returns a pending generation to idle', () => {
 test('silent retirement clears active streaming state without changing committed state', () => {
   const store = createRootStore();
   store.dispatch(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   store.dispatch(
     apiActions.generateMessageStart({
@@ -301,7 +307,10 @@ test('clears prestart errors when a retry starts and succeeds', () => {
   const prestartError = new Error('request failed before start');
   let state = reducer(
     initialStatusState,
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   state = reducer(state, apiActions.generateMessageError(prestartError));
 
@@ -338,7 +347,10 @@ test('clears an active-run server error when a retry starts', () => {
   const serverError = new Error('server failed');
   let state = reducer(
     initialStatusState,
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   state = reducer(
     state,
@@ -379,7 +391,10 @@ test('retry success clears unified error and enables pending tool calls', () => 
   let state = createRootState();
   state = reduceRoot(
     state,
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   state = reduceRoot(
     state,

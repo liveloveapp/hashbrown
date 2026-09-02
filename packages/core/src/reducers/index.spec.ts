@@ -48,7 +48,11 @@ function reduceAll(
 test('combined state exposes the transactional agent state selectors', () => {
   const initialized = reduceAll(
     createState(),
-    devActions.init({ system: 'test', state: Object.freeze({ count: 1 }) }),
+    devActions.init({
+      canonicalMessages: [],
+      system: 'test',
+      state: Object.freeze({ count: 1 }),
+    }),
   );
   const active = reduceAll(
     initialized,
@@ -114,6 +118,7 @@ test('init and an explicit options update set the current thread identity', () =
   const initializedState = reduceAll(
     state,
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       threadId: 'initial-thread',
     }),
@@ -132,6 +137,7 @@ test('an options update without a threadId preserves the current identity', () =
   const state = reduceAll(
     createState(),
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -149,6 +155,7 @@ test('an explicit undefined threadId clears the current identity', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -166,6 +173,7 @@ test('an explicit empty threadId sets the current identity', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -183,6 +191,7 @@ test('unrelated events preserve the current thread identity', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
+      canonicalMessages: [],
       system: 'test',
       threadId: 'current-thread',
     }),
@@ -296,6 +305,7 @@ test('undefined non-clearable options preserve current config values', () => {
   const state = reduceAll(
     createState(),
     devActions.init({
+      canonicalMessages: [],
       system: 'initial-system',
       debounce: 250,
       retries: 3,
@@ -330,10 +340,7 @@ test('an undefined transport option preserves the current transport', () => {
   };
   const state = reduceAll(
     createState(),
-    devActions.init({
-      system: 'test',
-      transport,
-    }),
+    devActions.init({ canonicalMessages: [], system: 'test', transport }),
   );
 
   const nextState = reduceAll(

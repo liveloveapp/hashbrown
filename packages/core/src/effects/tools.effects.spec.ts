@@ -371,7 +371,10 @@ test('a superseding user turn cancels active tool execution', async () => {
   const finalization = store.trigger(store.finalize());
   await handlerStarted.promise;
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'New turn' } }),
+    devActions.sendMessage({
+      canonicalMessages: [],
+      message: { role: 'user', content: 'New turn' },
+    }),
   );
   const completion = await Promise.race([
     finalization.then(() => 'finished'),
@@ -722,6 +725,7 @@ test('setMessages cannot settle a same-id replacement call', async () => {
   });
   store.dispatch(
     devActions.init({
+      canonicalMessages: [],
       system: 'Test system',
       tools: [tool],
     }),
@@ -747,6 +751,21 @@ test('setMessages cannot settle a same-id replacement call', async () => {
 
   store.dispatch(
     devActions.setMessages({
+      canonicalMessages: [
+        {
+          id: 'replacement-assistant',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: original.id,
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"turn":"replacement"}' },
+            },
+          ],
+        },
+      ],
+      toolsByName: { lookup: tool },
       messages: [
         {
           role: 'assistant',
@@ -771,7 +790,6 @@ test('setMessages cannot settle a same-id replacement call', async () => {
   expect(pending[0]).toMatchObject({
     id: original.id,
     status: 'pending',
-    argumentsResolved: { turn: 'replacement' },
   });
 
   store.dispatch(
