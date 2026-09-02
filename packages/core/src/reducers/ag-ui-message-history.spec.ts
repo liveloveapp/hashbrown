@@ -210,6 +210,24 @@ test('owns and freezes every canonical field without retaining untrusted prototy
   ).toBe(true);
 });
 
+test('rejects non-array canonical history roots', () => {
+  // Arrange
+  const roots: readonly unknown[] = [
+    null,
+    'not a message history',
+    { id: 'user-1', role: 'user', content: 'Hello' },
+  ];
+
+  // Act
+  const own = (root: unknown) => () =>
+    ownAgUiMessages(root as readonly Message[]);
+
+  // Assert
+  for (const root of roots) {
+    expect(own(root)).toThrow('canonical message history must be an array');
+  }
+});
+
 test('rejects canonical fields with exotic prototypes', () => {
   // Arrange
   const message = {

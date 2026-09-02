@@ -96,6 +96,10 @@ export function lowerViewMessagesToAgUi(
 export function ownAgUiMessages(
   messages: readonly Message[],
 ): readonly Readonly<Message>[] {
+  if (!Array.isArray(messages)) {
+    throw new TypeError('canonical message history must be an array');
+  }
+
   return cloneAgUiValue(
     messages,
     '$',
