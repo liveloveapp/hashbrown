@@ -396,8 +396,9 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
 function own(
   messages: readonly Readonly<Message>[],
 ): readonly Readonly<Message>[] {
+  const owned = ownAgUiMessages(messages as readonly Message[]);
   const ids = new Set<string>();
-  for (const message of messages) {
+  for (const message of owned) {
     if (ids.has(message.id)) {
       throw new Error(`AG-UI message ID ${message.id} is duplicated`);
     }
@@ -412,7 +413,7 @@ function own(
       ids.add(toolCall.id);
     }
   }
-  return ownAgUiMessages(messages as readonly Message[]);
+  return owned;
 }
 
 function withoutSystemOverlay(

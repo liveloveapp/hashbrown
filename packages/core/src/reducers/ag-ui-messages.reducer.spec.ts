@@ -826,3 +826,105 @@ test('keeps activity deltas as reference-preserving no-ops and exposes canonical
     content: 'system',
   });
 });
+
+test('rejects malformed snapshot roots and arrays without reading untrusted accessors', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const sparse = new Array(1) as unknown as readonly never[];
+  const accessor = new Array(1) as unknown as readonly never[];
+  let accesses = 0;
+  Object.defineProperty(accessor, 0, {
+    configurable: true,
+    enumerable: true,
+    get: () => {
+      accesses += 1;
+      return { id: 'unsafe', role: 'user', content: 'unsafe' };
+    },
+  });
+  const malformedRoot = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: {} as unknown as readonly never[],
+    } as unknown as AGUIEvent),
+  );
+  const sparseResult = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: sparse,
+    } as unknown as AGUIEvent),
+  );
+  const accessorResult = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: accessor,
+    } as unknown as AGUIEvent),
+  );
+
+  expect(malformedRoot.draft).toBe(active.draft);
+  expect(sparseResult.draft).toBe(active.draft);
+  expect(accessorResult.draft).toBe(active.draft);
+  expect(malformedRoot.committed).toBe(initialized.committed);
+  expect([malformedRoot, sparseResult, accessorResult]).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ protocolError: expect.any(Error) }),
+    ]),
+  );
+  expect(accesses).toBe(0);
+});
+
+test('logical settlement rolls an active draft back and cannot undo supersession', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'first' }],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const drafted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'draft',
+    }),
+  );
+  const settled = reducer(drafted, internalActions.logicalGenerationSettled());
+  const superseded = reducer(
+    drafted,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'second' },
+      canonicalMessages: [{ id: 'user-2', role: 'user', content: 'second' }],
+    }),
+  );
+  const staleSettlement = reducer(
+    superseded,
+    internalActions.logicalGenerationSettled(),
+  );
+
+  expect(settled.committed).toBe(initialized.committed);
+  expect(settled.draft).toBe(initialized.committed);
+  expect(settled.attemptActive).toBe(false);
+  expect(settled.protocolError).toBeUndefined();
+  expect(staleSettlement).toBe(superseded);
+  expect(staleSettlement.committed.map((message) => message.id)).toEqual([
+    'user-1',
+    'user-2',
+  ]);
+});
