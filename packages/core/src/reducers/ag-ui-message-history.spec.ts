@@ -1,4 +1,4 @@
-import type { Message } from '@ag-ui/core';
+import { EventType, type Message } from '@ag-ui/core';
 import { Chat } from '../models';
 import { s } from '../schema';
 import {
@@ -9,7 +9,53 @@ import {
   projectAgUiMessages,
   ɵownValidatedAgUiMessages,
   ɵpairViewMessagesWithAgUi,
+  ɵprepareAgUiMessageEvent,
+  ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
+
+test('normalizes one snapshot into an owned immutable history for every reducer consumer', () => {
+  const raw = [
+    { id: 'user-1', role: 'user' as const, content: 'hello' },
+    { id: 'assistant-1', role: 'assistant' as const, content: 'hi' },
+  ];
+
+  const prepared = ɵprepareAgUiMessageEvent({
+    type: EventType.MESSAGES_SNAPSHOT,
+    messages: raw,
+  });
+  const snapshot = ɵreadAgUiMessageSnapshot(
+    prepared as Extract<
+      import('@ag-ui/core').AGUIEvent,
+      { type: EventType.MESSAGES_SNAPSHOT }
+    >,
+  );
+  const first = raw[0];
+  if (first) first.content = 'mutated';
+
+  expect(ɵreadAgUiMessageSnapshot(prepared as never)).toBe(snapshot);
+  expect(snapshot).toEqual([
+    { id: 'user-1', role: 'user', content: 'hello' },
+    { id: 'assistant-1', role: 'assistant', content: 'hi' },
+  ]);
+  expect(Object.isFrozen(snapshot)).toBe(true);
+  expect(Object.isFrozen(snapshot[0])).toBe(true);
+});
+
+test('preserves existing message references when applying a system overlay', () => {
+  const messages = ownAgUiMessages([
+    { id: 'user-1', role: 'user', content: 'hello' },
+    { id: 'assistant-1', role: 'assistant', content: 'hi' },
+  ]);
+
+  const effective = applySystemMessageOverlay(
+    messages,
+    createSystemMessage('system-1', 'system'),
+  );
+
+  expect(effective[1]).toBe(messages[0]);
+  expect(effective[2]).toBe(messages[1]);
+  expect(Object.isFrozen(effective)).toBe(true);
+});
 
 test('lowers locally created user messages with stable supplied IDs', () => {
   // Arrange

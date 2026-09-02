@@ -1,6 +1,7 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import {
+  applyCanonicalMessageEvent,
   initialAgUiMessagesState,
   reducer,
   ɵselectAgUiMessagesProtocolError,
@@ -10,6 +11,133 @@ import {
   ɵselectEffectiveVisibleAgUiMessages,
   ɵselectVisibleAgUiMessages,
 } from './ag-ui-messages.reducer';
+
+test('shares unrelated canonical messages when a text delta changes one message', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        { id: 'user-1', role: 'user', content: 'hello' },
+        { id: 'assistant-1', role: 'assistant', content: 'before' },
+        { id: 'developer-1', role: 'developer', content: 'policy' },
+      ],
+    }),
+  );
+
+  const next = applyCanonicalMessageEvent(initialized.committed, {
+    type: EventType.TEXT_MESSAGE_CONTENT,
+    messageId: 'assistant-1',
+    delta: ' after',
+  });
+
+  expect(next).not.toBe(initialized.committed);
+  expect(next[0]).toBe(initialized.committed[0]);
+  expect(next[1]).not.toBe(initialized.committed[1]);
+  expect(next[2]).toBe(initialized.committed[2]);
+  expect(next[1]).toMatchObject({ content: 'before after' });
+  expect(Object.isFrozen(next)).toBe(true);
+  expect(Object.isFrozen(next[1])).toBe(true);
+});
+
+test('shares unchanged tool-call paths when a tool args delta changes one call', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'first', arguments: '' },
+            },
+            {
+              id: 'tool-2',
+              type: 'function',
+              function: { name: 'second', arguments: '' },
+            },
+          ],
+        },
+        { id: 'assistant-2', role: 'assistant', content: 'other' },
+      ],
+    }),
+  );
+  const firstAssistant = initialized.committed[0] as Extract<
+    (typeof initialized.committed)[number],
+    { role: 'assistant' }
+  >;
+
+  const next = applyCanonicalMessageEvent(initialized.committed, {
+    type: EventType.TOOL_CALL_ARGS,
+    toolCallId: 'tool-1',
+    delta: '{"city":"Paris"}',
+  });
+  const nextAssistant = next[0] as Extract<
+    (typeof next)[number],
+    { role: 'assistant' }
+  >;
+
+  expect(next[0]).not.toBe(firstAssistant);
+  expect(nextAssistant.toolCalls?.[0]).not.toBe(firstAssistant.toolCalls?.[0]);
+  expect(nextAssistant.toolCalls?.[0]?.function).not.toBe(
+    firstAssistant.toolCalls?.[0]?.function,
+  );
+  expect(nextAssistant.toolCalls?.[1]).toBe(firstAssistant.toolCalls?.[1]);
+  expect(next[1]).toBe(initialized.committed[1]);
+  expect(nextAssistant.toolCalls?.[0]?.function.arguments).toBe(
+    '{"city":"Paris"}',
+  );
+  expect(Object.isFrozen(nextAssistant.toolCalls)).toBe(true);
+});
+
+test('shares unrelated messages for encrypted and tool-result updates', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        { id: 'reasoning-1', role: 'reasoning', content: 'think' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const encrypted = applyCanonicalMessageEvent(initialized.committed, {
+    type: EventType.REASONING_ENCRYPTED_VALUE,
+    subtype: 'message',
+    entityId: 'reasoning-1',
+    encryptedValue: 'opaque',
+  });
+
+  const result = applyCanonicalMessageEvent(encrypted, {
+    type: EventType.TOOL_CALL_RESULT,
+    messageId: 'tool-result-1',
+    toolCallId: 'tool-1',
+    content: 'done',
+  });
+
+  expect(encrypted[0]).not.toBe(initialized.committed[0]);
+  expect(encrypted[1]).toBe(initialized.committed[1]);
+  expect(result[0]).toBe(encrypted[0]);
+  expect(result[1]).toBe(encrypted[1]);
+  expect(result[2]).toMatchObject({ id: 'tool-result-1', content: 'done' });
+  expect(Object.isFrozen(result[2])).toBe(true);
+});
 
 test('keeps a stable configured system overlay outside canonical history', () => {
   const initialized = reducer(

@@ -10,6 +10,7 @@ import {
   ɵappendAgUiCanonicalIds,
   ɵindexAgUiCanonicalIds,
   ɵownValidatedAgUiMessages,
+  ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
 
 export interface MessagesState {
@@ -103,7 +104,7 @@ export const reducer = createReducer(
   on(apiActions.generateMessageEvent, (state, action): MessagesState => {
     if (!state.attemptActive) return state;
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
-      const draft = projectRemoteSnapshot(action.payload.messages);
+      const draft = projectRemoteSnapshot(action.payload);
       if (!draft) return state;
       return {
         ...state,
@@ -209,13 +210,13 @@ function rollback(state: MessagesState): MessagesState {
 }
 
 function projectRemoteSnapshot(
-  messages: readonly Readonly<Message>[],
+  event: Extract<
+    import('@ag-ui/core').AGUIEvent,
+    { type: EventType.MESSAGES_SNAPSHOT }
+  >,
 ): readonly Chat.Internal.Message[] | undefined {
   try {
-    return projectCanonical(
-      ɵownValidatedAgUiMessages(messages as readonly Message[]),
-      {},
-    );
+    return projectCanonical(ɵreadAgUiMessageSnapshot(event), {});
   } catch {
     return undefined;
   }

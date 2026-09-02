@@ -8,6 +8,7 @@ import {
   ɵappendAgUiCanonicalIds,
   ɵindexAgUiCanonicalIds,
   ɵownValidatedAgUiMessages,
+  ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
 
 export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
@@ -59,7 +60,7 @@ export const reducer = createReducer(
   on(apiActions.generateMessageEvent, (state, action): ToolCallsState => {
     if (!state.attemptActive) return state;
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
-      const draft = projectRemoteSnapshot(action.payload.messages);
+      const draft = projectRemoteSnapshot(action.payload);
       if (!draft) return state;
       return {
         ...draft,
@@ -307,16 +308,14 @@ function toEntityState(
 }
 
 function projectRemoteSnapshot(
-  messages: readonly Readonly<import('@ag-ui/core').Message>[],
+  event: Extract<
+    import('@ag-ui/core').AGUIEvent,
+    { type: EventType.MESSAGES_SNAPSHOT }
+  >,
 ): EntityState<Chat.Internal.ToolCall> | undefined {
   try {
     return toEntityState(
-      projectAgUiMessages(
-        ɵownValidatedAgUiMessages(
-          messages as readonly import('@ag-ui/core').Message[],
-        ),
-        {},
-      ).toolCalls,
+      projectAgUiMessages(ɵreadAgUiMessageSnapshot(event), {}).toolCalls,
     );
   } catch {
     return undefined;

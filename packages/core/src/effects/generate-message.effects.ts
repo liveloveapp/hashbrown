@@ -1,6 +1,7 @@
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { ɵprepareAgUiMessageEvent } from '../reducers/ag-ui-message-history';
 import {
   selectApiMessages,
   selectDebounce,
@@ -246,7 +247,11 @@ export const generateMessage = createEffect((store) => {
                   runTerminal = true;
                 }
 
-                store.dispatch(apiActions.generateMessageEvent(event));
+                store.dispatch(
+                  apiActions.generateMessageEvent(
+                    ɵprepareAgUiMessageEvent(event),
+                  ),
+                );
               },
             });
           } catch (error) {

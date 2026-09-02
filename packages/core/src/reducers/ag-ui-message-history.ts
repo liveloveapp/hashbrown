@@ -1,4 +1,6 @@
 import {
+  type AGUIEvent,
+  EventType,
   type Message,
   MessageSchema,
   type SystemMessage,
@@ -140,6 +142,53 @@ export function ownAgUiMessages(
   ) as readonly Readonly<Message>[];
 }
 
+/** Clones and freezes a JSON-compatible AG-UI extension value. @internal */
+export function ɵownAgUiJsonValue(value: unknown): unknown {
+  return cloneAgUiValue(value, '$', new Set<object>());
+}
+
+/**
+ * Owns one remote AG-UI snapshot before it fan-outs through the reducer tree.
+ * Invalid snapshots retain their validation error so every slice can reject
+ * the same transport input without repeating ownership work.
+ *
+ * @internal
+ */
+export function ɵprepareAgUiMessageEvent(event: AGUIEvent): AGUIEvent {
+  if (event.type !== EventType.MESSAGES_SNAPSHOT) {
+    return event;
+  }
+
+  try {
+    return Object.freeze({
+      ...event,
+      ɵnormalizedMessages: ɵownValidatedAgUiMessages(event.messages),
+    }) as AGUIEvent;
+  } catch (error) {
+    return Object.freeze({
+      ...event,
+      ɵsnapshotError:
+        error instanceof Error ? error : new Error('Invalid AG-UI snapshot'),
+    }) as AGUIEvent;
+  }
+}
+
+/** Reads an owned snapshot or applies the direct-reducer safety fallback. @internal */
+export function ɵreadAgUiMessageSnapshot(
+  event: Extract<AGUIEvent, { type: EventType.MESSAGES_SNAPSHOT }>,
+): readonly Readonly<Message>[] {
+  const prepared = event as typeof event & {
+    readonly ɵnormalizedMessages?: readonly Readonly<Message>[];
+    readonly ɵsnapshotError?: Error;
+  };
+  if (prepared.ɵsnapshotError) {
+    throw prepared.ɵsnapshotError;
+  }
+  return (
+    prepared.ɵnormalizedMessages ?? ɵownValidatedAgUiMessages(event.messages)
+  );
+}
+
 /** Owns canonical history and rejects duplicate global message and tool-call IDs. @internal */
 export function ɵownValidatedAgUiMessages(
   messages: readonly Message[],
@@ -263,26 +312,30 @@ export function applySystemMessageOverlay(
     const cleared = messages.filter(
       (message) => message.id !== systemMessage.id,
     );
-    return cleared.length === messages.length ? messages : cleared;
+    return cleared.length === messages.length
+      ? messages
+      : Object.freeze(cleared);
   }
 
   if (!messages.some((message) => message.id === systemMessage.id)) {
-    return [systemMessage, ...messages];
+    return Object.freeze([systemMessage, ...messages]);
   }
 
   let inserted = false;
-  return messages.flatMap((message) => {
-    if (message.id !== systemMessage.id) {
-      return [message];
-    }
+  return Object.freeze(
+    messages.flatMap((message) => {
+      if (message.id !== systemMessage.id) {
+        return [message];
+      }
 
-    if (inserted) {
-      return [];
-    }
+      if (inserted) {
+        return [];
+      }
 
-    inserted = true;
-    return [systemMessage];
-  });
+      inserted = true;
+      return [systemMessage];
+    }),
+  );
 }
 
 /** The Hashbrown compatibility projection of canonical AG-UI history. @internal */

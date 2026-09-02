@@ -10,7 +10,7 @@ import {
   createAgUiMessageAccumulator,
   initialAgUiMessageAccumulatorState,
 } from './ag-ui-message-accumulator';
-import { ɵownValidatedAgUiMessages } from './ag-ui-message-history';
+import { ɵreadAgUiMessageSnapshot } from './ag-ui-message-history';
 
 export type StreamingMessageState = AgUiMessageAccumulatorState & {
   readonly attemptActive: boolean;
@@ -77,7 +77,7 @@ export const reducer = createReducer(
 
       if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
         try {
-          ɵownValidatedAgUiMessages(action.payload.messages);
+          ɵreadAgUiMessageSnapshot(action.payload);
         } catch {
           return state;
         }

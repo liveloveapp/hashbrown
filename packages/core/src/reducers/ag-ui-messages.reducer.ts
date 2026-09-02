@@ -8,7 +8,9 @@ import { apiActions, devActions, internalActions } from '../actions';
 import {
   applySystemMessageOverlay,
   ɵassertAgUiMessageAppendCompatibility,
+  ɵownAgUiJsonValue,
   ɵownValidatedAgUiMessages,
+  ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
 
@@ -211,7 +213,7 @@ export function applyCanonicalMessageEvent(
 ): readonly Readonly<Message>[] {
   switch (event.type) {
     case EventType.MESSAGES_SNAPSHOT:
-      return own(event.messages);
+      return ɵreadAgUiMessageSnapshot(event);
     case EventType.ACTIVITY_SNAPSHOT:
     case EventType.ACTIVITY_DELTA:
       return messages;
@@ -463,7 +465,9 @@ function withoutSystemOverlay(
   const filtered = messages.filter(
     (message) => message.id !== systemMessage.id,
   );
-  return filtered.length === messages.length ? messages : own(filtered);
+  return filtered.length === messages.length
+    ? messages
+    : Object.freeze(filtered);
 }
 
 function freezeStrings(values: readonly string[]): readonly string[] {
@@ -492,7 +496,7 @@ function upsertText(
   const index = messages.findIndex((message) => message.id === id);
   if (index === -1) {
     const nextRole = role ?? 'assistant';
-    return own([...messages, makeTextMessage(id, nextRole, delta, event)]);
+    return appendOwned(messages, makeTextMessage(id, nextRole, delta, event));
   }
 
   const current = messages[index];
@@ -515,12 +519,10 @@ function upsertText(
   const content = append
     ? (textMessage.content ?? '') + delta
     : (textMessage.content ?? delta);
-  return own(
-    replaceAt(
-      messages,
-      index,
-      mergeEventFields({ ...textMessage, content }, event) as Message,
-    ),
+  return replaceAt(
+    messages,
+    index,
+    mergeEventFields({ ...textMessage, content }, event) as Message,
   );
 }
 
@@ -582,25 +584,25 @@ function startToolCall(
       `AG-UI tool call ${toolCallId} parent must be an assistant message`,
     );
   }
-  const tool = mergeEventFields(
-    {
-      id: toolCallId,
-      type: 'function' as const,
-      function: { name: toolCallName, arguments: '' },
-    },
-    event,
-  ) as NonNullable<
-    Extract<Message, { role: 'assistant' }>['toolCalls']
-  >[number];
-  const nextAssistant: Message = {
-    ...assistant,
-    toolCalls: [...(assistant.toolCalls ?? []), tool],
-  };
-  return own(
-    index === -1
-      ? [...messages, nextAssistant]
-      : replaceAt(messages, index, nextAssistant),
+  const tool = freezeToolCall(
+    mergeEventFields(
+      {
+        id: toolCallId,
+        type: 'function' as const,
+        function: { name: toolCallName, arguments: '' },
+      },
+      event,
+    ) as NonNullable<
+      Extract<Message, { role: 'assistant' }>['toolCalls']
+    >[number],
   );
+  const nextAssistant = freezeMessage({
+    ...assistant,
+    toolCalls: Object.freeze([...(assistant.toolCalls ?? []), tool]),
+  } as Message);
+  return index === -1
+    ? appendOwned(messages, nextAssistant)
+    : replaceAt(messages, index, nextAssistant);
 }
 
 function appendOrStartToolCall(
@@ -636,23 +638,29 @@ function appendToolCallArguments(
   if (!found) {
     return messages;
   }
-  const tool = mergeEventFields(
-    {
-      ...found.tool,
-      function: {
-        ...found.tool.function,
-        arguments: found.tool.function.arguments + delta,
+  const tool = freezeToolCall(
+    mergeEventFields(
+      {
+        ...found.tool,
+        function: {
+          ...found.tool.function,
+          arguments: found.tool.function.arguments + delta,
+        },
       },
-    },
-    event,
+      event,
+    ) as NonNullable<
+      Extract<Message, { role: 'assistant' }>['toolCalls']
+    >[number],
   );
-  const nextAssistant: Message = {
+  const nextAssistant = freezeMessage({
     ...found.message,
-    toolCalls: found.message.toolCalls?.map((current) =>
-      current.id === toolCallId ? tool : current,
+    toolCalls: Object.freeze(
+      (found.message.toolCalls ?? []).map((current) =>
+        current.id === toolCallId ? tool : current,
+      ),
     ),
-  };
-  return own(replaceAt(messages, found.messageIndex, nextAssistant));
+  } as Message);
+  return replaceAt(messages, found.messageIndex, nextAssistant);
 }
 
 function upsertToolResult(
@@ -683,19 +691,21 @@ function upsertToolResult(
     );
   }
   const input = event as AGUIEvent & { readonly error?: string };
-  const message = mergeEventFields(
-    {
-      id: event.messageId,
-      role: 'tool' as const,
-      toolCallId: event.toolCallId,
-      content: event.content,
-      ...(input.error === undefined ? {} : { error: input.error }),
-    } as Message,
-    event,
+  const message = freezeMessage(
+    mergeEventFields(
+      {
+        id: event.messageId,
+        role: 'tool' as const,
+        toolCallId: event.toolCallId,
+        content: event.content,
+        ...(input.error === undefined ? {} : { error: input.error }),
+      } as Message,
+      event,
+    ),
   );
-  return own(
-    index === -1 ? [...messages, message] : replaceAt(messages, index, message),
-  );
+  return index === -1
+    ? appendOwned(messages, message)
+    : replaceAt(messages, index, message);
 }
 
 function applyEncryptedValue(
@@ -708,8 +718,10 @@ function applyEncryptedValue(
     );
     return index === -1
       ? messages
-      : own(
-          replaceAt(messages, index, {
+      : replaceAt(
+          messages,
+          index,
+          freezeMessage({
             ...(messages[index] as Message),
             encryptedValue: event.encryptedValue,
           } as Message),
@@ -719,15 +731,17 @@ function applyEncryptedValue(
   if (!found) {
     return messages;
   }
-  const next: Message = {
+  const next = freezeMessage({
     ...found.message,
-    toolCalls: found.message.toolCalls?.map((tool) =>
-      tool.id === event.entityId
-        ? { ...tool, encryptedValue: event.encryptedValue }
-        : tool,
+    toolCalls: Object.freeze(
+      (found.message.toolCalls ?? []).map((tool) =>
+        tool.id === event.entityId
+          ? freezeToolCall({ ...tool, encryptedValue: event.encryptedValue })
+          : tool,
+      ),
     ),
-  };
-  return own(replaceAt(messages, found.messageIndex, next));
+  } as Message);
+  return replaceAt(messages, found.messageIndex, next);
 }
 
 function findToolCall(messages: readonly Readonly<Message>[], id: string) {
@@ -749,33 +763,58 @@ function replaceAt<T>(
   index: number,
   value: T,
 ): readonly T[] {
-  return values.map((current, currentIndex) =>
-    currentIndex === index ? value : current,
+  return Object.freeze(
+    values.map((current, currentIndex) =>
+      currentIndex === index ? value : current,
+    ),
   );
+}
+
+function appendOwned<T>(values: readonly T[], value: T): readonly T[] {
+  return Object.freeze([...values, value]);
+}
+
+function freezeMessage<T extends Message>(message: T): Readonly<T> {
+  return Object.freeze(message);
+}
+
+function freezeToolCall(
+  toolCall: NonNullable<
+    Extract<Message, { role: 'assistant' }>['toolCalls']
+  >[number],
+): Readonly<
+  NonNullable<Extract<Message, { role: 'assistant' }>['toolCalls']>[number]
+> {
+  return Object.freeze({
+    ...toolCall,
+    function: Object.freeze({ ...toolCall.function }),
+  });
 }
 
 function mergeEventFields<T extends Record<string, unknown>>(
   message: T,
   event: AGUIEvent,
 ): T {
-  const candidate = event as AGUIEvent & {
-    readonly metadata?: Record<string, unknown>;
-    readonly name?: string;
-    readonly subagentRunId?: string;
-  };
-  return {
+  const candidate = event as unknown as object;
+  const metadata = ownEventField(candidate, 'metadata');
+  const name = ownEventField(candidate, 'name');
+  const subagentRunId = ownEventField(candidate, 'subagentRunId');
+  return Object.freeze({
     ...message,
-    ...(candidate.metadata === undefined
+    ...(metadata === undefined
       ? {}
       : {
-          metadata: {
+          metadata: Object.freeze({
             ...(message['metadata'] as Record<string, unknown> | undefined),
-            ...candidate.metadata,
-          },
+            ...(ɵownAgUiJsonValue(metadata) as Record<string, unknown>),
+          }),
         }),
-    ...(candidate.name === undefined ? {} : { name: candidate.name }),
-    ...(candidate.subagentRunId === undefined
-      ? {}
-      : { subagentRunId: candidate.subagentRunId }),
-  };
+    ...(typeof name === 'string' ? { name } : {}),
+    ...(typeof subagentRunId === 'string' ? { subagentRunId } : {}),
+  }) as T;
+}
+
+function ownEventField(event: object, field: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(event, field);
+  return descriptor && 'value' in descriptor ? descriptor.value : undefined;
 }
