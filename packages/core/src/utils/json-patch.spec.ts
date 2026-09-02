@@ -25,6 +25,12 @@ test('handles empty root paths and absent documents', () => {
   ).toThrow();
 });
 
+test('treats positive and negative zero as equal JSON numbers in test operations', () => {
+  const result = applyJsonPatch(0, [{ op: 'test', path: '', value: -0 }]);
+
+  expect(result).toBe(0);
+});
+
 test('decodes JSON pointer escapes for object keys', () => {
   const document = { 'a/b': { '~key': 1 } };
 

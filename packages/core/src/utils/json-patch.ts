@@ -1,6 +1,5 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 
-import { deepEqual } from './deep-equal';
 import { cloneAndFreezeOptionalJsonValue } from './json-value';
 import type { JsonValue } from './types';
 
@@ -74,7 +73,7 @@ function applyOperation(
     }
     case 'test': {
       const value = getValue(document, path, index);
-      if (!deepEqual(value, patchValue(record, index))) {
+      if (!jsonValuesEqual(value, patchValue(record, index))) {
         throw patchError(index, 'test operation failed');
       }
 
@@ -414,6 +413,44 @@ function isDescendantPath(
   return (
     path.length > ancestor.length &&
     ancestor.every((token, index) => token === path[index])
+  );
+}
+
+function jsonValuesEqual(left: JsonValue, right: JsonValue): boolean {
+  if (left === right) {
+    return true;
+  }
+
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object'
+  ) {
+    return false;
+  }
+
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (
+      !Array.isArray(left) ||
+      !Array.isArray(right) ||
+      left.length !== right.length
+    ) {
+      return false;
+    }
+
+    return left.every((value, index) => jsonValuesEqual(value, right[index]));
+  }
+
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every(
+    (key) =>
+      Object.hasOwn(right, key) && jsonValuesEqual(left[key], right[key]),
   );
 }
 
