@@ -105,6 +105,12 @@ state captured for the run. The lock ends at the run terminal event. Local tool
 execution is outside the lock, allowing application or tool-side state changes
 to be included in a continuation run.
 
+The lock begins synchronously when an action schedules generation, before
+debounce or transport resolution. It stays active across transport retries and
+retry backoff. A logical run terminal action, cancellation, or retirement
+releases it before local tool execution begins. A continuation locks state again
+when it schedules its next run.
+
 ### Receive synchronized state
 
 As an agent emits state snapshots and deltas, the public state value updates
@@ -146,6 +152,12 @@ through the `unknown` default when it is absent.
 State is not part of `updateOptions()`. It is owned mutable data rather than
 runtime configuration.
 
+Initial state and `setState()` values must be JSON-compatible because they cross
+the AG-UI JSON transport boundary. This is protocol-shape validation, not an
+application schema. Invalid initial state makes runtime creation fail without
+starting effects. Invalid `setState()` input throws synchronously and preserves
+the prior value.
+
 ### React
 
 All runtime-backed chat and completion options accept `state?: State`. Their
@@ -185,6 +197,7 @@ interface AgentStateState<State = unknown> {
   readonly committed: State | undefined;
   readonly draft: State | undefined;
   readonly attemptActive: boolean;
+  readonly stateWriteLocked: boolean;
   readonly protocolError: Error | undefined;
 }
 ```
@@ -196,6 +209,13 @@ The runtime takes ownership of state values by cloning and recursively freezing
 JSON container values. Callers and custom transport events cannot mutate stored
 state by retaining a reference. Tracked changes must go through `setState()` or
 AG-UI synchronization events.
+
+JSON-compatible state consists of `null`, strings, booleans, finite numbers,
+arrays of JSON-compatible values, and plain objects whose enumerable own values
+are JSON-compatible. Root `undefined` represents absent state. Nested
+`undefined`, sparse arrays, cycles, functions, symbols, bigints, non-finite
+numbers, and non-plain object instances are rejected instead of being silently
+changed by `JSON.stringify`.
 
 ### Canonical AG-UI messages
 
@@ -214,6 +234,14 @@ Hashbrown messages are lowered into canonical AG-UI messages when they enter the
 runtime, not reconstructed for each request. Locally created messages receive a
 stable opaque ID at insertion time. Canonical message IDs received from an agent
 are preserved.
+
+The configured Hashbrown `system` option is lowered once into a stable canonical
+system message. `updateOptions({ system })` updates that message by its stable
+local ID. A `MESSAGES_SNAPSHOT` is a complete protocol replacement and may
+replace or remove it; request construction does not separately prepend another
+system message. A later explicit system option update upserts the configured
+system message again. This prevents duplicate system instructions while keeping
+message snapshots authoritative.
 
 The canonical reducer processes:
 
@@ -248,6 +276,15 @@ The public projection keeps existing shapes and behavior:
 `setMessages()` lowers and atomically replaces canonical history. It does not
 modify shared agent state.
 
+Reasoning correlation is positional because AG-UI reasoning messages do not
+carry a general parent-assistant identifier. A contiguous sequence of canonical
+reasoning messages is folded into the next assistant message. Any user, tool,
+activity, system, developer, or assistant message closes the sequence. Trailing
+reasoning with no following assistant remains canonical but is omitted from the
+settled Hashbrown history. During streaming, the existing accumulator may expose
+that sequence through its provisional assistant view; the settled projection
+uses the same contiguous-order rule.
+
 ## Core Logic / Algorithms
 
 ### Attempt transaction lifecycle
@@ -268,11 +305,30 @@ State and message synchronization are transactional per transport attempt.
 PR 2 will treat an interrupt outcome on `RUN_FINISHED` as a valid commit
 boundary.
 
+A plain `RUN_FINISHED` is successful even when the run emits only state or
+message synchronization events, or no assistant message at all. Such a run
+commits its drafts, settles generation status, and appends neither an assistant
+message nor a local error message. Finalization and tool execution operate only
+on tool calls newly produced by the completed run. This replaces the current
+assumption that every successful run must generate an assistant message.
+
+Local actions that supersede an attempt apply to the committed checkpoint, not
+the draft. `sendMessage()` atomically abandons the active draft and appends the
+new user message to committed canonical history. `setMessages()` atomically
+abandons the draft and replaces committed history. `resendMessages()` abandons
+the draft without changing committed history. The same action that performs the
+local mutation establishes the next generation lock, so reducer ordering cannot
+lose the new input or retain failed draft output.
+
 ### Request construction
 
 Each new logical run snapshots current canonical history and committed state for
 its request. Retries reuse the attempt-start checkpoint rather than rebuilding
 input from live partial state.
+
+Canonical history already contains the configured system message when one is
+active. Request construction sends the canonical list exactly once and never
+prepends the separate `system` option.
 
 When the runtime has no initialized state, the in-memory request field is
 `undefined` and the HTTP JSON body omits it rather than inventing `{}`. Custom
@@ -300,6 +356,13 @@ The internal patch function accepts the current draft and an ordered patch,
 clones the document, applies every operation to the working clone, and returns a
 new immutable result. If any operation fails, the function discards the working
 clone and returns an error without modifying the prior draft.
+
+Absent state has explicit root semantics. If the draft is `undefined`, the first
+successful operation must be `add` at the empty root pointer, which initializes
+the document. Any other operation against absent state fails. Removing the root
+of an existing document produces absent (`undefined`) state. Replacing or
+testing the root requires an existing document. Later operations in the same
+patch observe the result of earlier root operations.
 
 JSON Pointer handling includes:
 
@@ -353,6 +416,10 @@ the same rollback behavior. Provider `RUN_ERROR`, user cancellation, thread
 retirement, and retryable transport failures also roll back, but retain their
 existing error/status semantics.
 
+Invalid locally supplied initial state or `setState()` input is an application
+API error rather than an agent protocol error. It throws synchronously, does not
+start or stop a run, and leaves committed state unchanged.
+
 ## Telemetry / Observability
 
 No new external telemetry is required.
@@ -378,6 +445,8 @@ remains the default diagnostic view.
 - Direct provider adapters continue to derive model requests from supported
   message and tool content. They do not implicitly serialize shared state into
   prompts.
+- A valid `RUN_FINISHED` with no assistant output changes from a local
+  "No message was generated" error into a successful no-output completion.
 - No migration or feature flag is required.
 
 ## Permissions / Security
@@ -405,8 +474,11 @@ This design is delivered as the first PR in the long-arc sequence.
 7. Add core public state APIs.
 8. Propagate state generics and APIs through React and Angular chat/completion
    surfaces.
-9. Update API reports and user documentation.
-10. Run full affected-package verification before merge.
+9. Add TSDoc to every new public or reusable API. Any internal functionality
+   shared from core to a framework package uses a `ɵ`-prefixed core export and
+   is not exposed through framework public type signatures.
+10. Update API reports and user documentation.
+11. Run full affected-package verification before merge.
 
 The interrupt PR begins only after this PR is merged or its contract is stable.
 The activity PR follows interrupt support. Discoveries may refine later specs,
@@ -425,17 +497,29 @@ blank lines.
 - Atomic rollback when any patch operation fails.
 - Snapshot replacement and defensive ownership.
 - Generic state initialization and manual replacement.
+- Rejection of invalid initial and manually supplied non-JSON state.
 - Rejection of `setState()` while generation is scheduled or active.
+- State remains locked through debounce, transport resolution, retry, and
+  retry backoff.
 - State updates allowed during local tool execution.
 - Canonical lowering with stable IDs.
+- Configured system-message insertion, update, snapshot replacement, and
+  duplicate prevention.
 - Message snapshot preservation for every AG-UI role and metadata field.
 - Projection of assistant, reasoning, tool calls, and tool results.
+- Positional reasoning correlation across histories with multiple reasoning and
+  assistant sequences.
 - Retention without public projection of activity messages.
 - Compatible lifecycle updates by stable message ID.
 - Protocol failure for incompatible role/ID updates.
+- Root initialization and root removal when state starts or becomes absent.
 - Live draft publication and successful commit.
 - Rollback after cancellation, retirement, `RUN_ERROR`, protocol failure, and
   retryable transport failure.
+- `sendMessage()`, `setMessages()`, and `resendMessages()` abandon an active
+  draft before applying their committed-history behavior.
+- A synchronization-only and a no-output `RUN_FINISHED` commit successfully
+  without appending an assistant or error message.
 - Retry input uses the committed checkpoint rather than failed draft state.
 - Outbound requests contain canonical messages and current committed state.
 - Inputs, events, prior reducer state, and patch values are not mutated.
