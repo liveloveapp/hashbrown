@@ -1,4 +1,4 @@
-import { EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
 import { s } from '../schema';
@@ -319,6 +319,67 @@ test('root keeps local generation errors in the view projection only', () => {
   ]);
   expect(ɵselectEffectiveCommittedAgUiMessages(failed)).toEqual([
     { id: 'user-1', role: 'user', content: 'first' },
+  ]);
+});
+
+test('root isolates malformed remote snapshots without reading accessors', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({ toolsByName: {} }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const sparse = new Array(1);
+  const accessor = new Array(1);
+  let accesses = 0;
+  Object.defineProperty(accessor, 0, {
+    enumerable: true,
+    get: () => {
+      accesses += 1;
+      return { id: 'unsafe', role: 'user', content: 'unsafe' };
+    },
+  });
+  const malformed = [
+    { type: EventType.MESSAGES_SNAPSHOT, messages: {} },
+    { type: EventType.MESSAGES_SNAPSHOT, messages: sparse },
+    { type: EventType.MESSAGES_SNAPSHOT, messages: accessor },
+  ];
+  const results = malformed.map((event) =>
+    reduceAll(
+      active,
+      apiActions.generateMessageEvent(event as unknown as AGUIEvent),
+    ),
+  );
+  const accessorResult = results[2];
+  if (!accessorResult) {
+    throw new Error('Expected accessor snapshot result');
+  }
+  const valid = reduceAll(
+    accessorResult,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'user-2', role: 'user', content: 'valid' }],
+    }),
+  );
+
+  for (const result of results) {
+    expect(result.agUiMessages.protocolError).toBeInstanceOf(Error);
+    expect(result.agUiMessages.draft).toBe(active.agUiMessages.draft);
+    expect(result.messages).toBe(active.messages);
+    expect(result.toolCalls).toBe(active.toolCalls);
+  }
+  expect(accesses).toBe(0);
+  expect(valid.agUiMessages.protocolError).toBeUndefined();
+  expect(valid.messages.messages).toEqual([
+    { id: 'user-2', role: 'user', content: 'valid' },
   ]);
 });
 

@@ -2,7 +2,7 @@ import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { createReducer, EntityState, on, select } from '../utils/micro-ngrx';
-import { projectAgUiMessages } from './ag-ui-message-history';
+import { ownAgUiMessages, projectAgUiMessages } from './ag-ui-message-history';
 
 export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly committed: EntityState<Chat.Internal.ToolCall>;
@@ -24,12 +24,10 @@ const initialState: ToolCallsState = {
 
 export const reducer = createReducer(
   initialState,
-  on(devActions.init, devActions.setMessages, (state, action) => {
-    const toolsByName =
-      'toolsByName' in action.payload ? action.payload.toolsByName : undefined;
+  on(devActions.init, (state, action) => {
     const toolCalls = projectAgUiMessages(
       action.payload.canonicalMessages,
-      toolsByName ?? {},
+      {},
     ).toolCalls;
     const committed = toEntityState(toolCalls);
     return {
@@ -52,9 +50,8 @@ export const reducer = createReducer(
   on(apiActions.generateMessageEvent, (state, action): ToolCallsState => {
     if (!state.attemptActive) return state;
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
-      const draft = toEntityState(
-        projectAgUiMessages(action.payload.messages, {}).toolCalls,
-      );
+      const draft = projectRemoteSnapshot(action.payload.messages);
+      if (!draft) return state;
       return {
         ...draft,
         committed: state.committed,
@@ -163,23 +160,36 @@ export const reducer = createReducer(
     devActions.resendMessages,
     (state): ToolCallsState => rollback(state),
   ),
-  on(
-    devActions.sendMessage,
-    devActions.setMessages,
-    (state, action): ToolCallsState => {
-      const committed = toEntityState(
-        projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls,
-      );
-      return {
-        ...committed,
-        committed,
-        draft: empty,
-        attemptActive: false,
-        activeToolCallId: undefined,
-        activeToolCallName: undefined,
-      };
-    },
-  ),
+  on(devActions.sendMessage, (state, action): ToolCallsState => {
+    const committed = addEntities(
+      state.committed,
+      projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls,
+    );
+    return {
+      ...committed,
+      committed,
+      draft: empty,
+      attemptActive: false,
+      activeToolCallId: undefined,
+      activeToolCallName: undefined,
+    };
+  }),
+  on(devActions.setMessages, (state, action): ToolCallsState => {
+    const committed = toEntityState(
+      projectAgUiMessages(
+        action.payload.canonicalMessages,
+        action.payload.toolsByName ?? {},
+      ).toolCalls,
+    );
+    return {
+      ...committed,
+      committed,
+      draft: empty,
+      attemptActive: false,
+      activeToolCallId: undefined,
+      activeToolCallName: undefined,
+    };
+  }),
   on(internalActions.toolTurnSettled, (state, action): ToolCallsState => {
     const expected = new Map(
       action.payload.toolCalls.map((toolCall) => [toolCall.id, toolCall]),
@@ -250,6 +260,21 @@ function toEntityState(
     }),
     empty,
   );
+}
+
+function projectRemoteSnapshot(
+  messages: readonly Readonly<import('@ag-ui/core').Message>[],
+): EntityState<Chat.Internal.ToolCall> | undefined {
+  try {
+    return toEntityState(
+      projectAgUiMessages(
+        ownAgUiMessages(messages as readonly import('@ag-ui/core').Message[]),
+        {},
+      ).toolCalls,
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 function addEntities(

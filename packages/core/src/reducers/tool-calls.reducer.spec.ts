@@ -1,6 +1,7 @@
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { s } from '../schema';
 import { reducer, selectPendingToolCalls } from './tool-calls.reducer';
 
 test('includes a developer tool named output in pending tool calls', () => {
@@ -319,4 +320,84 @@ test('preserves fulfilled and rejected local tool settlement values outside an a
     (settled.committed.entities[rejected.id]?.result as PromiseRejectedResult)
       .reason,
   ).toBe(reason);
+});
+
+test('separates send set and resend tool-cache supersession semantics', () => {
+  const knownTool: Chat.Internal.Tool = {
+    name: 'lookup',
+    description: '',
+    schema: s.object('arguments', { city: s.string('city') }),
+    handler: async () => undefined,
+  };
+  const committedHistory = [
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'tool-old',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{"city":"Paris"}' },
+        },
+      ],
+    },
+  ];
+  const initialized = reducer(
+    undefined,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: committedHistory,
+      toolsByName: { lookup: knownTool },
+    }),
+  );
+  const stale = reducer(
+    reducer(initialized, internalActions.generationAttemptStarted()),
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-stale',
+      toolCallName: 'lookup',
+    }),
+  );
+  const sent = reducer(
+    stale,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'next' },
+      canonicalMessages: [],
+    }),
+  );
+  const replaced = reducer(
+    stale,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: [
+        {
+          id: 'assistant-2',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-new',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"city":"Rome"}' },
+            },
+          ],
+        },
+      ],
+      toolsByName: { lookup: knownTool },
+    }),
+  );
+  const resent = reducer(stale, devActions.resendMessages());
+
+  expect(sent.ids).toEqual(['tool-old']);
+  expect(sent.entities['tool-old']?.argumentsResolved).toEqual({
+    city: 'Paris',
+  });
+  expect(sent.entities['tool-stale']).toBeUndefined();
+  expect(replaced.ids).toEqual(['tool-new']);
+  expect(replaced.entities['tool-new']?.argumentsResolved).toEqual({
+    city: 'Rome',
+  });
+  expect(replaced.entities['tool-old']).toBeUndefined();
+  expect(resent.entities).toBe(initialized.committed.entities);
 });

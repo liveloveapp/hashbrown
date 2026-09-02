@@ -4,7 +4,7 @@ import { Chat } from '../models';
 import { ErrorMessage } from '../models/view.models';
 import { s } from '../schema';
 import { createReducer, on } from '../utils/micro-ngrx';
-import { projectAgUiMessages } from './ag-ui-message-history';
+import { ownAgUiMessages, projectAgUiMessages } from './ag-ui-message-history';
 
 export interface MessagesState {
   readonly messages: readonly Chat.Internal.Message[];
@@ -76,7 +76,8 @@ export const reducer = createReducer(
   on(apiActions.generateMessageEvent, (state, action): MessagesState => {
     if (!state.attemptActive) return state;
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
-      const draft = projectCanonical(action.payload.messages, {});
+      const draft = projectRemoteSnapshot(action.payload.messages);
+      if (!draft) return state;
       return {
         ...state,
         draft,
@@ -178,6 +179,19 @@ function rollback(state: MessagesState): MessagesState {
         activeAssistantMessageId: undefined,
       }
     : state;
+}
+
+function projectRemoteSnapshot(
+  messages: readonly Readonly<Message>[],
+): readonly Chat.Internal.Message[] | undefined {
+  try {
+    return projectCanonical(
+      ownAgUiMessages(messages as readonly Message[]),
+      {},
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 function isAssistantOutput(message: Chat.Internal.AssistantMessage): boolean {
