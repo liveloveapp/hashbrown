@@ -1,5 +1,5 @@
 import { EventType } from '@ag-ui/core';
-import { apiActions, devActions } from '../actions';
+import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
 import { s } from '../schema';
 import {
@@ -8,6 +8,8 @@ import {
   selectIsRunningToolCalls,
   selectThreadId,
   selectUnifiedError,
+  ɵselectCommittedAgentState,
+  ɵselectVisibleAgentState,
 } from './index';
 
 const initAction = { type: '@@init' } as const;
@@ -15,6 +17,7 @@ const initAction = { type: '@@init' } as const;
 function createState() {
   return {
     config: reducers.config(undefined, initAction),
+    agentState: reducers.agentState(undefined, initAction),
     messages: reducers.messages(undefined, initAction),
     status: reducers.status(undefined, initAction),
     streamingMessage: reducers.streamingMessage(undefined, initAction),
@@ -30,6 +33,7 @@ function reduceAll(
 ) {
   return {
     config: reducers.config(state.config, action),
+    agentState: reducers.agentState(state.agentState, action),
     messages: reducers.messages(state.messages, action),
     status: reducers.status(state.status, action),
     streamingMessage: reducers.streamingMessage(state.streamingMessage, action),
@@ -38,6 +42,27 @@ function reduceAll(
     thread: reducers.thread(state.thread, action),
   };
 }
+
+test('combined state exposes the transactional agent state selectors', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({ system: 'test', state: Object.freeze({ count: 1 }) }),
+  );
+  const active = reduceAll(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const nextState = reduceAll(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.STATE_SNAPSHOT,
+      snapshot: { count: 2 },
+    }),
+  );
+
+  expect(ɵselectCommittedAgentState(nextState)).toEqual({ count: 1 });
+  expect(ɵselectVisibleAgentState(nextState)).toEqual({ count: 2 });
+});
 
 test('createChatRuntime accepts a developer tool named output', () => {
   const createRuntime = () =>

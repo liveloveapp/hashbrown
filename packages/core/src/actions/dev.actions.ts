@@ -1,6 +1,7 @@
 import { Chat } from '../models';
 import { s } from '../schema';
 import { TransportOrFactory } from '../transport';
+import { JsonValue } from '../utils';
 import { createActionGroup, props } from '../utils/micro-ngrx';
 
 export default createActionGroup('dev', {
@@ -14,6 +15,10 @@ export default createActionGroup('dev', {
     transport?: TransportOrFactory;
     ui?: boolean;
     threadId?: string | undefined;
+    state?: JsonValue;
+  }>(),
+  setState: props<{
+    state: JsonValue | undefined;
   }>(),
   setMessages: props<{
     messages: Chat.AnyMessage[];

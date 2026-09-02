@@ -21,6 +21,7 @@ const generationSilentlyRetiredAction =
 
 function createRootState() {
   return {
+    agentState: rootReducers.agentState(undefined, initAction),
     config: rootReducers.config(undefined, initAction),
     messages: rootReducers.messages(undefined, initAction),
     status: rootReducers.status(undefined, initAction),
@@ -40,6 +41,7 @@ function reduceRoot(
   action: { type: string },
 ) {
   return {
+    agentState: rootReducers.agentState(state.agentState, action),
     config: rootReducers.config(state.config, action),
     messages: rootReducers.messages(state.messages, action),
     status: rootReducers.status(state.status, action),

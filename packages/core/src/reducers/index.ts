@@ -2,6 +2,7 @@
 import { Chat } from '../models';
 import { Prettify } from '../utils/types';
 import { select } from '../utils/micro-ngrx';
+import * as fromAgentState from './agent-state.reducer';
 import * as fromConfig from './config.reducer';
 import * as fromMessages from './messages.reducer';
 import * as fromStatus from './status.reducer';
@@ -11,6 +12,7 @@ import * as fromTools from './tools.reducer';
 import * as fromThread from './thread.reducer';
 
 export const reducers = {
+  agentState: fromAgentState.reducer,
   config: fromConfig.reducer,
   messages: fromMessages.reducer,
   status: fromStatus.reducer,
@@ -19,6 +21,27 @@ export const reducers = {
   tools: fromTools.reducer,
   thread: fromThread.reducer,
 };
+
+/**
+ * Shared agent state
+ */
+export const ɵselectAgentStateState = (state: State) => state.agentState;
+export const ɵselectCommittedAgentState = select(
+  ɵselectAgentStateState,
+  fromAgentState.ɵselectCommittedAgentState,
+);
+export const ɵselectVisibleAgentState = select(
+  ɵselectAgentStateState,
+  fromAgentState.ɵselectVisibleAgentState,
+);
+export const ɵselectStateWriteLocked = select(
+  ɵselectAgentStateState,
+  fromAgentState.ɵselectStateWriteLocked,
+);
+export const ɵselectAgentStateProtocolError = select(
+  ɵselectAgentStateState,
+  fromAgentState.ɵselectProtocolError,
+);
 
 type State = Prettify<{
   [P in keyof typeof reducers]: ReturnType<(typeof reducers)[P]>;
