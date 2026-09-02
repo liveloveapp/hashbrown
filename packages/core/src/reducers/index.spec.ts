@@ -383,6 +383,54 @@ test('root isolates malformed remote snapshots without reading accessors', () =>
   ]);
 });
 
+test('root state-only success preserves canonical messages and committed tool baseline', () => {
+  const canonical = [
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+  ];
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({ system: '', canonicalMessages: canonical }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({ toolsByName: {} }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const completed = reduceAll(
+    active,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: [] },
+      toolCalls: [],
+    }),
+  );
+
+  expect(completed.agUiMessages.committed).toEqual(canonical);
+  expect(completed.messages.messages).toBe(initialized.messages.committed);
+  expect(completed.toolCalls.entities['tool-1']).toBe(
+    initialized.toolCalls.committed.entities['tool-1'],
+  );
+  expect(completed.streamingMessage).toMatchObject({
+    message: null,
+    attemptActive: false,
+  });
+  expect(completed.agUiMessages.attemptActive).toBe(false);
+  expect(completed.messages.attemptActive).toBe(false);
+  expect(completed.toolCalls.attemptActive).toBe(false);
+});
+
 test('createChatRuntime accepts a developer tool named output', () => {
   const createRuntime = () =>
     createChatRuntime({

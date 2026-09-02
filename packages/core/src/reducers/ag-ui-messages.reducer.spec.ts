@@ -1105,3 +1105,242 @@ test('clears compact lifecycle correlation after a snapshot replacement', () => 
     { id: 'assistant-new', role: 'assistant', content: 'snapshot fresh' },
   ]);
 });
+
+test('preserves text content through end and ignores later idless chunks', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'content',
+    }),
+  );
+  const ended = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'assistant-1',
+    }),
+  );
+  const late = reducer(
+    ended,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      delta: ' late',
+    }),
+  );
+
+  expect(ended.draft).toEqual([
+    { id: 'assistant-1', role: 'assistant', content: 'content' },
+  ]);
+  expect(ended.activeTextMessageId).toBeUndefined();
+  expect(late.draft).toBe(ended.draft);
+});
+
+test('preserves reasoning content and tool args through their end events', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: 'think',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-1',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'tool-1',
+      delta: '{}',
+    }),
+  );
+  const ended = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'tool-1',
+    }),
+  );
+  const late = reducer(
+    ended,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      delta: ' late',
+    }),
+  );
+
+  expect(ended.draft).toMatchObject([
+    { id: 'reasoning-1', content: 'think' },
+    {
+      id: 'assistant-1',
+      toolCalls: [
+        { id: 'tool-1', function: { name: 'lookup', arguments: '{}' } },
+      ],
+    },
+  ]);
+  expect(ended.activeReasoningMessageId).toBeUndefined();
+  expect(ended.activeToolCallId).toBeUndefined();
+  expect(late.draft).toBe(ended.draft);
+});
+
+test('clears configured echoes with the empty system sentinel', () => {
+  const stableId = 'system-stable';
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: 'configured',
+      systemMessage: { id: stableId, role: 'system', content: 'configured' },
+      canonicalMessages: [
+        { id: stableId, role: 'system', content: 'echoed' },
+        { id: 'system-other', role: 'system', content: 'other' },
+        { id: 'developer-1', role: 'developer', content: 'developer' },
+      ],
+    }),
+  );
+  const cleared = reducer(
+    initialized,
+    devActions.updateOptions({
+      system: '',
+      systemMessage: { id: stableId, role: 'system', content: '' },
+    }),
+  );
+
+  expect(cleared.committed).toEqual([
+    { id: 'system-other', role: 'system', content: 'other' },
+    { id: 'developer-1', role: 'developer', content: 'developer' },
+  ]);
+  expect(ɵselectEffectiveVisibleAgUiMessages(cleared)).toEqual(
+    cleared.committed,
+  );
+});
+
+test('user stop rolls an active canonical draft back to committed authority', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: 'system',
+      systemMessage: { id: 'system-1', role: 'system', content: 'system' },
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const drafted = reducer(
+    reducer(initialized, internalActions.generationAttemptStarted()),
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'draft',
+    }),
+  );
+  const stopped = reducer(drafted, devActions.stopMessageGeneration(true));
+
+  expect(stopped).toMatchObject({
+    attemptActive: false,
+    committed: initialized.committed,
+    draft: initialized.committed,
+    protocolError: undefined,
+    activeTextMessageId: undefined,
+    systemMessage: initialized.systemMessage,
+  });
+});
+
+test('silent retirement rolls an active canonical draft back to committed authority', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const drafted = reducer(
+    reducer(initialized, internalActions.generationAttemptStarted()),
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'draft',
+    }),
+  );
+  const retired = reducer(drafted, internalActions.generationSilentlyRetired());
+
+  expect(retired).toMatchObject({
+    attemptActive: false,
+    committed: initialized.committed,
+    draft: initialized.committed,
+    protocolError: undefined,
+    activeTextMessageId: undefined,
+  });
+});
+
+test('terminal generation error rolls an active canonical draft back to committed authority', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const drafted = reducer(
+    reducer(initialized, internalActions.generationAttemptStarted()),
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'draft',
+    }),
+  );
+  const failed = reducer(
+    drafted,
+    apiActions.generateMessageError(new Error('failed')),
+  );
+
+  expect(failed).toMatchObject({
+    attemptActive: false,
+    committed: initialized.committed,
+    draft: initialized.committed,
+    protocolError: undefined,
+    activeTextMessageId: undefined,
+  });
+});
