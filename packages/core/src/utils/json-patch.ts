@@ -41,7 +41,7 @@ function applyOperation(
 
   switch (op) {
     case 'add':
-      return addValue(document, path, patchValue(record, index));
+      return addValue(document, path, patchValue(record, index), index);
     case 'remove':
       return removeValue(document, path, index).document;
     case 'replace':
@@ -60,7 +60,7 @@ function applyOperation(
       }
 
       const removed = removeValue(document, from, index);
-      return addValue(removed.document, path, removed.value);
+      return addValue(removed.document, path, removed.value, index);
     }
     case 'copy': {
       const from = parsePointer(
@@ -69,7 +69,12 @@ function applyOperation(
         'from',
       );
       const value = getValue(document, from, index);
-      return addValue(document, path, toMutableJsonValue(value) as JsonValue);
+      return addValue(
+        document,
+        path,
+        toMutableJsonValue(value) as JsonValue,
+        index,
+      );
     }
     case 'test': {
       const value = getValue(document, path, index);
@@ -88,19 +93,20 @@ function addValue(
   document: JsonValue | undefined,
   path: readonly string[],
   value: JsonValue,
+  operationIndex: number,
 ): JsonValue {
   if (path.length === 0) {
     return value;
   }
 
-  const { parent, token } = resolveParent(document, path);
+  const { parent, token } = resolveParent(document, path, operationIndex);
   if (Array.isArray(parent)) {
     if (token === '-') {
       parent.push(value);
       return document as JsonValue;
     }
 
-    const arrayIndex = arrayIndexForAdd(token, parent.length);
+    const arrayIndex = arrayIndexForAdd(token, parent.length, operationIndex);
     parent.splice(arrayIndex, 0, value);
     return document as JsonValue;
   }
@@ -223,7 +229,7 @@ function getValue(
 function resolveParent(
   document: JsonValue | undefined,
   path: readonly string[],
-  operationIndex = -1,
+  operationIndex: number,
 ): { parent: MutableContainer; token: string } {
   if (document === undefined) {
     throw patchError(
@@ -341,11 +347,16 @@ function parsePointer(
     });
 }
 
-function arrayIndexForAdd(token: string, length: number): number {
+function arrayIndexForAdd(
+  token: string,
+  length: number,
+  operationIndex: number,
+): number {
   const index = parseArrayIndex(token);
   if (index === undefined || index > length) {
-    throw new TypeError(
-      `Invalid array insertion index: ${JSON.stringify(token)}.`,
+    throw patchError(
+      operationIndex,
+      `invalid array insertion index: ${JSON.stringify(token)}`,
     );
   }
   return index;
@@ -455,7 +466,9 @@ function jsonValuesEqual(left: JsonValue, right: JsonValue): boolean {
 }
 
 function pointerText(path: readonly string[]): string {
-  return `/${path.join('/')}`;
+  return `/${path
+    .map((token) => token.replace(/~/g, '~0').replace(/\//g, '~1'))
+    .join('/')}`;
 }
 
 function patchError(index: number, detail: string): TypeError {

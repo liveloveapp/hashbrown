@@ -60,6 +60,17 @@ test('adds at array indexes and appends only with add', () => {
   ).toThrow();
 });
 
+test('removes and replaces values at array indexes', () => {
+  const document = { values: ['first', 'second', 'third'] };
+
+  const result = applyJsonPatch(document, [
+    { op: 'remove', path: '/values/1' },
+    { op: 'replace', path: '/values/1', value: 'last' },
+  ]);
+
+  expect(result).toEqual({ values: ['first', 'last'] });
+});
+
 test('moves values after removing the source and rejects descendants', () => {
   const document = {
     values: ['first', 'second', 'third'],
@@ -100,6 +111,22 @@ test('copies deeply owned values and verifies test operations with deep JSON equ
   ).toThrow();
 });
 
+test('supports move, copy, and test operations at the document root', () => {
+  const moved = applyJsonPatch({ value: 1 }, [
+    { op: 'move', from: '/value', path: '' },
+  ]);
+  const copied = applyJsonPatch({ value: 1 }, [
+    { op: 'copy', from: '', path: '/copy' },
+  ]);
+  const tested = applyJsonPatch({ value: 1 }, [
+    { op: 'test', path: '', value: { value: 1 } },
+  ]);
+
+  expect(moved).toBe(1);
+  expect(copied).toEqual({ value: 1, copy: { value: 1 } });
+  expect(tested).toEqual({ value: 1 });
+});
+
 test('rejects missing members and invalid array indexes', () => {
   const document = { values: ['one'], nested: {} };
 
@@ -122,6 +149,52 @@ test('rejects missing members and invalid array indexes', () => {
   ];
 
   subjects.forEach((subject) => expect(subject).toThrow());
+});
+
+test('reports the operation index for invalid destination paths and indexes', () => {
+  const document = { values: ['one'] };
+
+  expect(() =>
+    applyJsonPatch(document, [
+      { op: 'add', path: '/added', value: true },
+      { op: 'add', path: '/values/2', value: 'two' },
+    ]),
+  ).toThrow('operation 1');
+});
+
+test('rejects malformed pointers and operations with the correct operation index', () => {
+  const patches: Array<Parameters<typeof applyJsonPatch>[1]> = [
+    [
+      { op: 'add', path: '/valid', value: true },
+      { op: 'add', path: 'missing-slash', value: 1 },
+    ],
+    [
+      { op: 'add', path: '/valid', value: true },
+      { op: 'add', path: '/bad~', value: 1 },
+    ],
+    [
+      { op: 'add', path: '/valid', value: true },
+      { op: 'add', path: '/bad~2', value: 1 },
+    ],
+    [{ op: 'unsupported', path: '' }],
+    [{ op: 'copy', path: '/copy' }],
+    [{ op: 1, path: '' }] as unknown as Parameters<typeof applyJsonPatch>[1],
+  ];
+
+  const subjects = patches.map((patch) => () => applyJsonPatch({}, patch));
+
+  expect(subjects[0]).toThrow('operation 1');
+  expect(subjects[1]).toThrow('operation 1');
+  expect(subjects[2]).toThrow('operation 1');
+  expect(subjects[3]).toThrow('operation 0');
+  expect(subjects[4]).toThrow('operation 0');
+  expect(subjects[5]).toThrow('operation 0');
+});
+
+test('re-escapes pointer tokens in missing-path diagnostics', () => {
+  expect(() =>
+    applyJsonPatch({ 'a/b': {} }, [{ op: 'remove', path: '/a~1b/missing' }]),
+  ).toThrow('/a~1b/missing');
 });
 
 test('rejects inherited properties while supporting an own __proto__ key', () => {
