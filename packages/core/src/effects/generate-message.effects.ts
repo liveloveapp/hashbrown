@@ -1,4 +1,3 @@
-import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import {
@@ -20,19 +19,11 @@ import {
 } from '../reducers';
 import { s } from '../schema';
 import { resolveTransport, TransportError } from '../transport';
-import {
-  type AgUiRunAttemptOutcome,
-  runAgUiAttempt,
-} from '../transport/ag-ui-run-driver';
 import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
 import { sleep, switchAsync } from '../utils/async';
 import { updateAssistantMessage } from '../utils/assistant-message';
 import { createEffect } from '../utils/micro-ngrx';
-import {
-  createLogicalRunRetryState,
-  decideLogicalRunFailure,
-  startLogicalRunAttempt,
-} from './logical-run-retry-policy';
+import { executeLogicalRun } from './logical-run-coordinator';
 
 type ActiveGeneration = {
   threadId: string | undefined;
@@ -167,134 +158,60 @@ export const generateMessage = createEffect((store) => {
         );
       };
 
-      let retryState = createLogicalRunRetryState(retries);
       let exhaustedRetries = false;
 
       try {
-        while (true) {
-          if (retiredSignal.aborted || runCancelSignal.aborted) {
-            return;
-          }
+        const outcome = await executeLogicalRun({
+          transport,
+          retries,
+          cancelSignal: runCancelSignal,
+          retiredSignal,
+          createRequest: ({ attempt, maxAttempts, signal }) => {
+            const requestId = _createRequestId();
 
-          const startedAttempt = startLogicalRunAttempt(retryState);
-          retryState = startedAttempt.state;
-          const { attempt, maxAttempts } = startedAttempt.context;
-
-          const requestId = _createRequestId();
-          const eventRequest = {
-            input: createHashbrownRunAgentInput({
-              threadId,
-              runId: requestId,
-              system,
-              messages,
-              tools,
-              responseSchema: responseJsonSchema,
-              ui: uiRequested,
-            }),
-            signal: AbortSignal.any([retiredSignal, runCancelSignal]),
-            attempt,
-            maxAttempts,
-            requestId,
-          };
-          let runStarted = false;
-          let runTerminal = false;
-
-          const synthesizeRunError = (
-            message: string,
-            allowCancelled = false,
-          ) => {
-            if (!runStarted || runTerminal || retiredSignal.aborted) {
-              return;
-            }
-            if (runCancelSignal.aborted && !allowCancelled) {
-              return;
-            }
-
-            runTerminal = true;
+            return {
+              input: createHashbrownRunAgentInput({
+                threadId,
+                runId: requestId,
+                system,
+                messages,
+                tools,
+                responseSchema: responseJsonSchema,
+                ui: uiRequested,
+              }),
+              signal,
+              attempt,
+              maxAttempts,
+              requestId,
+            };
+          },
+          onStarted: () => {
             store.dispatch(
-              apiActions.generateMessageEvent({
-                type: EventType.RUN_ERROR,
-                message,
+              apiActions.generateMessageStart({
+                responseSchema,
+                toolsByName,
               }),
             );
-          };
+          },
+          onEvent: (event) => {
+            store.dispatch(apiActions.generateMessageEvent(event));
+          },
+          onAttemptError: (error) => {
+            store.dispatch(apiActions.generateMessageError(error));
+          },
+        });
 
-          let outcome: AgUiRunAttemptOutcome | undefined;
-          let primaryError: Error | undefined;
-          try {
-            outcome = await runAgUiAttempt({
-              transport,
-              request: eventRequest,
-              cancelSignal: runCancelSignal,
-              retiredSignal,
-              onStarted: () => {
-                store.dispatch(
-                  apiActions.generateMessageStart({
-                    responseSchema,
-                    toolsByName,
-                  }),
-                );
-              },
-              onEvent: (event) => {
-                if (event.type === EventType.RUN_STARTED) {
-                  runStarted = true;
-                }
-                if (
-                  event.type === EventType.RUN_FINISHED ||
-                  event.type === EventType.RUN_ERROR
-                ) {
-                  runTerminal = true;
-                }
-
-                store.dispatch(apiActions.generateMessageEvent(event));
-              },
-            });
-          } catch (error) {
-            primaryError =
-              error instanceof Error
-                ? error
-                : new Error('Unknown transport error');
-          }
-
-          if (retiredSignal.aborted || outcome?.kind === 'retired') {
-            return;
-          }
-
-          if (outcome?.kind === 'finished') {
-            releaseGeneration();
-            finalizeGeneration();
-            break;
-          }
-
-          if (outcome?.kind === 'server-error') {
-            releaseGeneration();
-            store.dispatch(apiActions.generateMessageError(outcome.error));
-            break;
-          }
-
-          if (runCancelSignal.aborted || outcome?.kind === 'cancelled') {
-            synthesizeRunError('Generation cancelled', true);
-            return;
-          }
-
-          if (!primaryError) {
-            primaryError = new TransportError(
-              'Generation ended without a terminal outcome',
-              { retryable: true, code: 'PROTOCOL_ERROR' },
-            );
-          }
-
-          synthesizeRunError(primaryError.message);
-          store.dispatch(apiActions.generateMessageError(primaryError));
-
-          const failureDecision = decideLogicalRunFailure(
-            retryState,
-            primaryError,
-          );
-          if (failureDecision.kind === 'stop') {
-            exhaustedRetries = failureDecision.exhaustedRetries;
-            break;
-          }
+        if (outcome.kind === 'retired' || outcome.kind === 'cancelled') {
+          return;
+        }
+        if (outcome.kind === 'finished') {
+          releaseGeneration();
+          finalizeGeneration();
+        } else if (outcome.kind === 'server-error') {
+          releaseGeneration();
+          store.dispatch(apiActions.generateMessageError(outcome.error));
+        } else {
+          exhaustedRetries = outcome.exhaustedRetries;
         }
       } finally {
         releaseGeneration();
