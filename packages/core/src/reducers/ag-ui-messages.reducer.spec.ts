@@ -1,8 +1,12 @@
-import { EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import {
   initialAgUiMessagesState,
   reducer,
+  ɵselectAgUiMessagesProtocolError,
+  ɵselectAttemptStartToolCallIds,
+  ɵselectCommittedAgUiMessages,
+  ɵselectEffectiveCommittedAgUiMessages,
   ɵselectEffectiveVisibleAgUiMessages,
   ɵselectVisibleAgUiMessages,
 } from './ag-ui-messages.reducer';
@@ -140,6 +144,49 @@ test('correlates text reasoning and tool chunks without optional IDs', () => {
   ]);
 });
 
+test('continues an active tool call when a chunk only supplies its ID', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    }),
+  );
+
+  const next = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      delta: '{"query":"tea"}',
+    }),
+  );
+
+  expect(next.draft[0]).toMatchObject({
+    id: 'assistant-1',
+    toolCalls: [
+      {
+        id: 'tool-1',
+        function: { name: 'lookup', arguments: '{"query":"tea"}' },
+      },
+    ],
+  });
+});
+
 test('retains a draft reference and records a protocol error on message and tool ID collisions', () => {
   let state = reducer(
     initialAgUiMessagesState,
@@ -203,5 +250,579 @@ test('keeps snapshot activity and unknown metadata frozen outside the configured
     id: 'system-1',
     role: 'system',
     content: 'local',
+  });
+});
+
+test('updates and clears only the configured system overlay in place', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: 'first',
+      systemMessage: { id: 'configured', role: 'system', content: 'first' },
+      canonicalMessages: [
+        { id: 'configured', role: 'system', content: 'echoed first' },
+        { id: 'remote-system', role: 'system', content: 'remote' },
+        { id: 'developer-1', role: 'developer', content: 'rules' },
+      ],
+    }),
+  );
+  const updated = reducer(
+    initialized,
+    devActions.updateOptions({
+      system: 'second',
+      systemMessage: { id: 'configured', role: 'system', content: 'second' },
+    }),
+  );
+  const cleared = reducer(
+    updated,
+    devActions.updateOptions({ system: '', systemMessage: undefined }),
+  );
+
+  expect(ɵselectEffectiveVisibleAgUiMessages(updated)).toEqual([
+    { id: 'configured', role: 'system', content: 'second' },
+    { id: 'remote-system', role: 'system', content: 'remote' },
+    { id: 'developer-1', role: 'developer', content: 'rules' },
+  ]);
+  expect(cleared.committed).toEqual([
+    { id: 'remote-system', role: 'system', content: 'remote' },
+    { id: 'developer-1', role: 'developer', content: 'rules' },
+  ]);
+});
+
+test('keeps the configured overlay outside set histories and active transactions', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: 'one',
+      systemMessage: { id: 'configured', role: 'system', content: 'one' },
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'first' }],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const updated = reducer(
+    active,
+    devActions.updateOptions({
+      system: 'two',
+      systemMessage: { id: 'configured', role: 'system', content: 'two' },
+    }),
+  );
+  const replaced = reducer(
+    updated,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: [{ id: 'user-2', role: 'user', content: 'next' }],
+    }),
+  );
+  const repeated = reducer(
+    replaced,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: replaced.committed,
+    }),
+  );
+
+  expect(ɵselectEffectiveVisibleAgUiMessages(repeated)).toEqual([
+    { id: 'configured', role: 'system', content: 'two' },
+    { id: 'user-2', role: 'user', content: 'next' },
+  ]);
+  expect(
+    reducer(updated, internalActions.generationAttemptRolledBack())
+      .systemMessage,
+  ).toEqual({ id: 'configured', role: 'system', content: 'two' });
+  expect(
+    repeated.committed.filter((message) => message.id === 'configured'),
+  ).toHaveLength(0);
+});
+
+test('commits, rolls back, retries, and terminates canonical transactions', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hi' }],
+    }),
+  );
+  const errored = { ...initialized, protocolError: new Error('old') };
+  const begun = reducer(errored, internalActions.generationAttemptStarted());
+  const draft = reducer(
+    begun,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      delta: 'hello',
+    }),
+  );
+  const rolledBack = reducer(
+    draft,
+    internalActions.generationAttemptRolledBack(),
+  );
+  const retried = reducer(
+    rolledBack,
+    internalActions.generationAttemptStarted(),
+  );
+  const stopped = reducer(retried, devActions.stopMessageGeneration(true));
+  const retired = reducer(
+    reducer(retried, internalActions.generationAttemptStarted()),
+    internalActions.generationSilentlyRetired(),
+  );
+  const failed = reducer(
+    reducer(retried, internalActions.generationAttemptStarted()),
+    apiActions.generateMessageError(new Error('failed')),
+  );
+
+  expect(begun.draft).toBe(begun.committed);
+  expect(ɵselectVisibleAgUiMessages(draft)).toHaveLength(2);
+  expect(begun.protocolError).toBeUndefined();
+  expect(rolledBack).toMatchObject({
+    committed: initialized.committed,
+    attemptActive: false,
+  });
+  expect(retried.draft).toBe(retried.committed);
+  expect([stopped, retired, failed]).toEqual(
+    expect.arrayContaining([expect.objectContaining({ attemptActive: false })]),
+  );
+});
+
+test('superseding local canonical actions abandon a draft and reject late transport events', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'first' }],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const drafted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-old',
+      role: 'assistant',
+      delta: 'old',
+    }),
+  );
+  const sent = reducer(
+    drafted,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'second' },
+      canonicalMessages: [{ id: 'user-2', role: 'user', content: 'second' }],
+    }),
+  );
+  const late = reducer(
+    reducer(sent, internalActions.generationAttemptRolledBack()),
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-old',
+      role: 'assistant',
+      delta: ' late',
+    }),
+  );
+  const set = reducer(
+    drafted,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: [{ id: 'user-3', role: 'user', content: 'replaced' }],
+    }),
+  );
+  const resent = reducer(drafted, devActions.resendMessages());
+
+  expect(sent.committed.map((message) => message.id)).toEqual([
+    'user-1',
+    'user-2',
+  ]);
+  expect(late).toBe(sent);
+  expect(set.committed).toEqual([
+    { id: 'user-3', role: 'user', content: 'replaced' },
+  ]);
+  expect(resent.committed).toBe(initialized.committed);
+  expect(resent.attemptActive).toBe(false);
+});
+
+test('owns a complete snapshot without mutating input and retains every canonical role', () => {
+  const activityMetadata = { nested: { stable: true } };
+  const snapshot = [
+    { id: 'user-1', role: 'user' as const, content: 'user' },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'assistant',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{"q":1}' },
+        },
+      ],
+    },
+    { id: 'system-remote', role: 'system' as const, content: 'system' },
+    { id: 'developer-1', role: 'developer' as const, content: 'developer' },
+    {
+      id: 'tool-result-1',
+      role: 'tool' as const,
+      toolCallId: 'tool-1',
+      content: 'result',
+    },
+    {
+      id: 'reasoning-1',
+      role: 'reasoning' as const,
+      content: 'reasoning',
+      encryptedValue: 'secret',
+    },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { count: 1 },
+      metadata: activityMetadata,
+      custom: 'value',
+    },
+  ];
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: 'configured',
+      systemMessage: {
+        id: 'configured',
+        role: 'system',
+        content: 'configured',
+      },
+      canonicalMessages: [],
+    }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  const next = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: snapshot,
+    }),
+  );
+  activityMetadata.nested.stable = false;
+
+  expect(next.draft).toHaveLength(7);
+  expect(next.draft.map((message) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'system',
+    'developer',
+    'tool',
+    'reasoning',
+    'activity',
+  ]);
+  expect(next.draft[6]?.metadata?.['nested']).toEqual({ stable: true });
+  expect(Object.isFrozen(next.draft[6])).toBe(true);
+  expect(ɵselectEffectiveVisibleAgUiMessages(next)[0]).toEqual({
+    id: 'configured',
+    role: 'system',
+    content: 'configured',
+  });
+});
+
+test('captures immutable committed tool IDs and recalculates them on a retry', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-a',
+              type: 'function',
+              function: { name: 'a', arguments: '' },
+            },
+            {
+              id: 'tool-b',
+              type: 'function',
+              function: { name: 'b', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const begun = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotted = reducer(
+    begun,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        ...begun.draft,
+        {
+          id: 'assistant-2',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-c',
+              type: 'function',
+              function: { name: 'c', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const retried = reducer(
+    reducer(
+      snapshotted,
+      apiActions.generateMessageSuccess({
+        message: { role: 'assistant', content: '', toolCallIds: [] },
+        toolCalls: [],
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+
+  expect(ɵselectAttemptStartToolCallIds(begun)).toEqual(['tool-a', 'tool-b']);
+  expect(Object.isFrozen(ɵselectAttemptStartToolCallIds(begun))).toBe(true);
+  expect(ɵselectAttemptStartToolCallIds(snapshotted)).toEqual([
+    'tool-a',
+    'tool-b',
+  ]);
+  expect(ɵselectAttemptStartToolCallIds(retried)).toEqual([
+    'tool-a',
+    'tool-b',
+    'tool-c',
+  ]);
+});
+
+test('merges text and reasoning lifecycle fields without mutating the event or prior state', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  const textStart = {
+    type: EventType.TEXT_MESSAGE_START,
+    messageId: 'assistant-1',
+    role: 'assistant' as const,
+    metadata: { source: 'wire' },
+  } satisfies AGUIEvent;
+  const started = reducer(state, apiActions.generateMessageEvent(textStart));
+  const content = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'hello',
+    }),
+  );
+  const reasoning = reducer(
+    content,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning',
+    }),
+  );
+  const encrypted = reducer(
+    reasoning,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'message',
+      entityId: 'reasoning-1',
+      encryptedValue: 'ciphertext',
+    }),
+  );
+  const finished = reducer(
+    encrypted,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-1',
+    }),
+  );
+
+  expect(textStart.metadata).toEqual({ source: 'wire' });
+  expect(started.draft).not.toBe(state.draft);
+  expect(content.draft[0]).toMatchObject({
+    id: 'assistant-1',
+    content: 'hello',
+    metadata: { source: 'wire' },
+  });
+  expect(finished.draft[1]).toMatchObject({
+    id: 'reasoning-1',
+    role: 'reasoning',
+    encryptedValue: 'ciphertext',
+  });
+  expect(finished.activeReasoningMessageId).toBeUndefined();
+});
+
+test('attaches parentless tool calls to an active assistant and stores matching results', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'tool-1',
+      delta: '{"q":1}',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'tool-result-1',
+      toolCallId: 'tool-1',
+      content: 'found',
+    }),
+  );
+
+  expect(state.draft).toHaveLength(2);
+  expect(state.draft[0]).toMatchObject({
+    id: 'assistant-1',
+    toolCalls: [
+      { id: 'tool-1', function: { name: 'lookup', arguments: '{"q":1}' } },
+    ],
+  });
+  expect(state.draft[1]).toEqual({
+    id: 'tool-result-1',
+    role: 'tool',
+    toolCallId: 'tool-1',
+    content: 'found',
+  });
+});
+
+test('records compatibility errors while preserving the exact valid draft', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  const before = state.draft;
+  const messageToolCollision = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'tool-1',
+      role: 'assistant',
+      delta: 'bad',
+    }),
+  );
+  const incompatibleRole = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'user',
+    }),
+  );
+  const resultRetarget = reducer(
+    reducer(
+      state,
+      apiActions.generateMessageEvent({
+        type: EventType.TOOL_CALL_RESULT,
+        messageId: 'result-1',
+        toolCallId: 'tool-1',
+        content: 'ok',
+      }),
+    ),
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'different',
+      content: 'bad',
+    }),
+  );
+
+  expect(messageToolCollision.draft).toBe(before);
+  expect(incompatibleRole.draft).toBe(before);
+  expect(resultRetarget.protocolError).toBeInstanceOf(Error);
+  expect(ɵselectAgUiMessagesProtocolError(messageToolCollision)).toBeInstanceOf(
+    Error,
+  );
+});
+
+test('keeps activity deltas as reference-preserving no-ops and exposes canonical selectors', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: 'system',
+      systemMessage: { id: 'system-1', role: 'system', content: 'system' },
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotNoop = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'progress',
+      content: {},
+      replace: true,
+    }),
+  );
+  const deltaNoop = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_DELTA,
+      messageId: 'activity-1',
+      activityType: 'progress',
+      patch: [],
+    }),
+  );
+
+  expect(snapshotNoop).toBe(active);
+  expect(deltaNoop).toBe(active);
+  expect(ɵselectCommittedAgUiMessages(active)).toEqual([
+    { id: 'user-1', role: 'user', content: 'hello' },
+  ]);
+  expect(ɵselectEffectiveCommittedAgUiMessages(active)[0]).toEqual({
+    id: 'system-1',
+    role: 'system',
+    content: 'system',
   });
 });

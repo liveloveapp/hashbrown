@@ -8,8 +8,14 @@ import {
   selectIsRunningToolCalls,
   selectThreadId,
   selectUnifiedError,
+  ɵselectAgUiMessagesProtocolError,
+  ɵselectAttemptStartToolCallIds,
   ɵselectCommittedAgentState,
+  ɵselectCommittedAgUiMessages,
+  ɵselectEffectiveCommittedAgUiMessages,
+  ɵselectEffectiveVisibleAgUiMessages,
   ɵselectVisibleAgentState,
+  ɵselectVisibleAgUiMessages,
 } from './index';
 
 const initAction = { type: '@@init' } as const;
@@ -68,6 +74,45 @@ test('combined state exposes the transactional agent state selectors', () => {
 
   expect(ɵselectCommittedAgentState(nextState)).toEqual({ count: 1 });
   expect(ɵselectVisibleAgentState(nextState)).toEqual({ count: 2 });
+});
+
+test('combined state exposes transactional canonical message selectors', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: 'configured',
+      systemMessage: { id: 'system-1', role: 'system', content: 'configured' },
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const active = reduceAll(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  expect(ɵselectCommittedAgUiMessages(active)).toHaveLength(1);
+  expect(ɵselectVisibleAgUiMessages(active)).toBe(active.agUiMessages.draft);
+  expect(ɵselectEffectiveVisibleAgUiMessages(active)[0]).toMatchObject({
+    id: 'system-1',
+  });
+  expect(ɵselectEffectiveCommittedAgUiMessages(active)[0]).toMatchObject({
+    id: 'system-1',
+  });
+  expect(ɵselectAttemptStartToolCallIds(active)).toEqual(['tool-1']);
+  expect(ɵselectAgUiMessagesProtocolError(active)).toBeUndefined();
 });
 
 test('createChatRuntime accepts a developer tool named output', () => {

@@ -337,7 +337,12 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
         ? event
         : { ...event, messageId: state.activeReasoningMessageId };
     case EventType.TOOL_CALL_CHUNK:
-      return event.toolCallId || !state.activeToolCallId
+      if (event.toolCallId) {
+        return event.toolCallName || event.toolCallId !== state.activeToolCallId
+          ? event
+          : { ...event, toolCallName: state.activeToolCallName };
+      }
+      return !state.activeToolCallId
         ? event
         : {
             ...event,
@@ -617,9 +622,6 @@ function upsertToolResult(
   messages: readonly Readonly<Message>[],
   event: Extract<AGUIEvent, { type: EventType.TOOL_CALL_RESULT }>,
 ): readonly Readonly<Message>[] {
-  if (!findToolCall(messages, event.toolCallId)) {
-    return messages;
-  }
   const index = messages.findIndex((message) => message.id === event.messageId);
   if (index !== -1 && messages[index]?.role !== 'tool') {
     throw new Error(
@@ -634,6 +636,9 @@ function upsertToolResult(
     throw new Error(
       `AG-UI tool result ${event.messageId} cannot change tool call`,
     );
+  }
+  if (!findToolCall(messages, event.toolCallId)) {
+    return messages;
   }
   if (findToolCall(messages, event.messageId)) {
     throw new Error(
