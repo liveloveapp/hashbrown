@@ -1,5 +1,6 @@
 import { EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
+import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
 import {
   initialAgentState,
   reducer,
@@ -8,6 +9,11 @@ import {
   ɵselectStateWriteLocked,
   ɵselectVisibleAgentState,
 } from './agent-state.reducer';
+
+const canonicalUser = (content: string) =>
+  lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => `user-${content}`,
+  });
 
 function beginAttempt(state = initialAgentState) {
   return reducer(state, internalActions.generationAttemptStarted());
@@ -249,7 +255,7 @@ test.each([
   [
     'sendMessage',
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Next'),
       message: { role: 'user', content: 'Next' },
     }),
   ],
@@ -341,7 +347,7 @@ test('a stale stopped tool settlement preserves a superseding generation lock', 
   const supersedingGeneration = reducer(
     initialAgentState,
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Start a replacement generation'),
       message: { role: 'user', content: 'Start a replacement generation' },
     }),
   );

@@ -1,5 +1,6 @@
 import { apiActions, devActions } from '../actions';
 import { Chat } from '../models';
+import { lowerViewMessagesToAgUi } from '../reducers/ag-ui-message-history';
 import {
   reducers as rootReducers,
   selectPendingToolCalls,
@@ -9,6 +10,11 @@ import {
 } from '../reducers';
 import { createStore } from '../utils/micro-ngrx';
 import { runTools } from './tools.effects';
+
+const canonicalUser = (content: string) =>
+  lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => `user-${content}`,
+  });
 
 type SelectorKey = (state: never) => unknown;
 type ActionLike = { type: string; payload?: unknown };
@@ -372,7 +378,7 @@ test('a superseding user turn cancels active tool execution', async () => {
   await handlerStarted.promise;
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('New turn'),
       message: { role: 'user', content: 'New turn' },
     }),
   );

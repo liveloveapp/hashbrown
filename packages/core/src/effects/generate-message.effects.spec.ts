@@ -2,6 +2,7 @@ import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
+import { lowerViewMessagesToAgUi } from '../reducers/ag-ui-message-history';
 import {
   selectApiMessages,
   selectDebounce,
@@ -33,6 +34,12 @@ type TestHandler = {
   handler: (action: ActionLike) => unknown | Promise<unknown>;
 };
 type SelectorMap = Map<SelectorKey, unknown>;
+
+function canonicalUser(content: string) {
+  return lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => `user-${content}`,
+  });
+}
 type MockTransportResponse = {
   events?: AsyncIterable<AGUIEvent>;
   dispose?: jest.Mock;
@@ -588,7 +595,7 @@ test('transport factory failure dispatches the initialization error', async () =
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -616,7 +623,7 @@ test('missing transport reports configuration error without issuing HTTP', async
   try {
     await store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Hi'),
         message: { role: 'user', content: 'Hi' },
       }),
     );
@@ -656,7 +663,7 @@ test('first user message uses the configured thread ID', async () => {
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -697,7 +704,7 @@ test.each([
 
     const generation = store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Hi'),
         message: { role: 'user', content: 'Hi' },
       }),
     );
@@ -745,7 +752,7 @@ test.each([
 
     const generation = store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Hi'),
         message: { role: 'user', content: 'Hi' },
       }),
     );
@@ -837,7 +844,7 @@ test.each([
 
     const firstGeneration = store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('First'),
         message: { role: 'user', content: 'First' },
       }),
     );
@@ -851,7 +858,7 @@ test.each([
     const actionsAfterRetirement = [...store.actions];
     await store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Second'),
         message: { role: 'user', content: 'Second' },
       }),
     );
@@ -949,7 +956,7 @@ test.each([
 
     const generation = store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Hi'),
         message: { role: 'user', content: 'Hi' },
       }),
     );
@@ -1007,7 +1014,7 @@ test('thread identity synchronization before a run does not retire the next run'
   await store.trigger(devActions.updateOptions({ threadId: undefined }));
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -1069,7 +1076,7 @@ test('unconfigured run reuses one generated thread ID across retries', async () 
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -1101,7 +1108,7 @@ test('validated start then tool continuation reuses the same thread ID', async (
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -1846,7 +1853,7 @@ test('sends one RunAgentInput with tools, structured output, and UI metadata', a
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Follow-up question'),
       message: { role: 'user', content: 'Follow-up question' },
     }),
   );
@@ -1896,7 +1903,7 @@ test('generic send rejection retries with exact attempt progression', async () =
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -1985,7 +1992,7 @@ test('retry uses a fresh attempt after cleanup completes', async () => {
 
   const generation = store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Retry'),
       message: { role: 'user', content: 'Retry' },
     }),
   );
@@ -2021,7 +2028,7 @@ test('exhausted generic send retries dispatches the exhausted action', async () 
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2060,7 +2067,7 @@ test('non-retryable transport error stops without exhausting retries', async () 
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2097,7 +2104,7 @@ test('positive infinity retries normalize to one attempt without exhaustion', as
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2178,7 +2185,7 @@ test.each([
 
     await store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Retry'),
         message: { role: 'user', content: 'Retry' },
       }),
     );
@@ -2215,7 +2222,7 @@ test('rejects duplicate RUN_STARTED and synthesizes one terminal error', async (
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2268,7 +2275,7 @@ test('rejects a mismatched RUN_STARTED without accepting the run', async () => {
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Retry'),
       message: { role: 'user', content: 'Retry' },
     }),
   );
@@ -2306,7 +2313,7 @@ test('rejects a mismatched RUN_FINISHED and synthesizes one terminal error', asy
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2366,7 +2373,7 @@ test.each([
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Retry'),
       message: { role: 'user', content: 'Retry' },
     }),
   );
@@ -2407,7 +2414,7 @@ test('iterable failure after an accepted start synthesizes exactly one RUN_ERROR
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2449,7 +2456,7 @@ test('server RUN_ERROR after start dispatches once without synthesis or retry', 
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2484,7 +2491,7 @@ test.each(['resolution', 'rejection'] as const)(
 
     const generation = store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Hi'),
         message: { role: 'user', content: 'Hi' },
       }),
     );
@@ -2545,7 +2552,7 @@ test.each(['resolution', 'rejection'] as const)(
 
     const firstGeneration = store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('First'),
         message: { role: 'user', content: 'First' },
       }),
     );
@@ -2553,7 +2560,7 @@ test.each(['resolution', 'rejection'] as const)(
     const firstRequest = send.mock.calls[0]?.[0] as TransportRequest;
     await store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Second'),
         message: { role: 'user', content: 'Second' },
       }),
     );
@@ -2616,7 +2623,7 @@ test('user stop before start has no terminal, no retry, and discards late events
 
   const generation = store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2651,7 +2658,7 @@ test('user stop while starting does not accept RUN_STARTED or add a terminal', a
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2725,7 +2732,7 @@ test('user stop after start synthesizes one cancellation and finalizes once with
 
   const generation = store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2824,14 +2831,14 @@ test('superseding input retires the old run and only the new run finishes', asyn
 
   const firstGeneration = store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('First'),
       message: { role: 'user', content: 'First' },
     }),
   );
   await firstStarted.promise;
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Second'),
       message: { role: 'user', content: 'Second' },
     }),
   );
@@ -2911,7 +2918,7 @@ test('effect teardown retires the run without terminal or finalization', async (
 
   const generation = store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -2982,7 +2989,7 @@ test.each(['iterator return', 'response disposal'] as const)(
 
     await store.trigger(
       devActions.sendMessage({
-        canonicalMessages: [],
+        canonicalMessages: canonicalUser('Hi'),
         message: { role: 'user', content: 'Hi' },
       }),
     );
@@ -3038,7 +3045,7 @@ test('cleanup rejections do not replace a protocol failure', async () => {
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -3107,7 +3114,7 @@ test('cleanup rejections do not replace user cancellation', async () => {
 
   const generation = store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -3162,7 +3169,7 @@ test('missing events is retryable and disposes each response exactly once', asyn
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -3218,7 +3225,7 @@ test('non-async-iterable events are a retryable protocol error', async () => {
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -3256,7 +3263,7 @@ test('finish-time parser errors do not retry an accepted success terminal', asyn
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -3298,7 +3305,7 @@ test('accepted RUN_FINISHED remains successful when its dispatch triggers stop',
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -3351,7 +3358,7 @@ test('finalizes the exact pending tool call snapshot', async () => {
 
   await store.trigger(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Lookup'),
       message: { role: 'user', content: 'Lookup' },
     }),
   );

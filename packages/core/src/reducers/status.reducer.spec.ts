@@ -1,6 +1,7 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
 import { createStore } from '../utils/micro-ngrx';
 import {
   reducers as rootReducers,
@@ -18,6 +19,10 @@ import { initialStatusState, reducer } from './status.reducer';
 const initAction = { type: '@@init' } as const;
 const generationSilentlyRetiredAction =
   internalActions.generationSilentlyRetired();
+const canonicalUser = (content: string) =>
+  lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => `user-${content}`,
+  });
 
 function createRootState() {
   return {
@@ -212,7 +217,7 @@ test('silent retirement returns a pending generation to idle', () => {
   const store = createRootStore();
   store.dispatch(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -240,7 +245,7 @@ test('silent retirement clears active streaming state without changing committed
   const store = createRootStore();
   store.dispatch(
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -308,7 +313,7 @@ test('clears prestart errors when a retry starts and succeeds', () => {
   let state = reducer(
     initialStatusState,
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -348,7 +353,7 @@ test('clears an active-run server error when a retry starts', () => {
   let state = reducer(
     initialStatusState,
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
@@ -392,7 +397,7 @@ test('retry success clears unified error and enables pending tool calls', () => 
   state = reduceRoot(
     state,
     devActions.sendMessage({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Hi'),
       message: { role: 'user', content: 'Hi' },
     }),
   );
