@@ -223,6 +223,22 @@ test('retains the previous draft when a state delta is invalid', () => {
   expect(result.protocolError).toBeInstanceOf(Error);
 });
 
+test('retains the previous draft when a state delta is malformed', () => {
+  const validDraft = snapshot(beginAttempt(), { count: 1 });
+  const malformedEvent = {
+    type: EventType.STATE_DELTA,
+    delta: {},
+  } as never;
+
+  const result = reducer(
+    validDraft,
+    apiActions.generateMessageEvent(malformedEvent),
+  );
+
+  expect(result.draft).toBe(validDraft.draft);
+  expect(result.protocolError).toBeInstanceOf(Error);
+});
+
 test.each([
   [
     'sendMessage',
@@ -287,7 +303,7 @@ test.each([
   expect(result.committed).toBeUndefined();
 });
 
-test('tool continuation locks state writes while a stopped tool turn leaves them released', () => {
+test('tool continuation locks state writes while a normal stopped tool turn leaves them released', () => {
   const continued = reducer(
     initialAgentState,
     internalActions.toolTurnSettled({
@@ -297,7 +313,7 @@ test('tool continuation locks state writes while a stopped tool turn leaves them
     }),
   );
   const stopped = reducer(
-    continued,
+    initialAgentState,
     internalActions.toolTurnSettled({
       continuation: 'stop',
       toolCalls: [],
@@ -307,6 +323,26 @@ test('tool continuation locks state writes while a stopped tool turn leaves them
 
   expect(continued.stateWriteLocked).toBe(true);
   expect(stopped.stateWriteLocked).toBe(false);
+});
+
+test('a stale stopped tool settlement preserves a superseding generation lock', () => {
+  const supersedingGeneration = reducer(
+    initialAgentState,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'Start a replacement generation' },
+    }),
+  );
+
+  const result = reducer(
+    supersedingGeneration,
+    internalActions.toolTurnSettled({
+      continuation: 'stop',
+      toolCalls: [],
+      toolMessages: [],
+    }),
+  );
+
+  expect(result.stateWriteLocked).toBe(true);
 });
 
 test('exposes committed, visible, lock, and protocol-error selectors', () => {

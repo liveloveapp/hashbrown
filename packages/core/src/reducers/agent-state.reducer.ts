@@ -116,7 +116,7 @@ export const reducer = createReducer(
       return startLogicalGeneration(state);
     }
 
-    return settleLogicalGeneration(state);
+    return state;
   }),
   on(
     apiActions.generateMessageError,
@@ -162,12 +162,19 @@ function replaceDraftWithSnapshot(
 
 function replaceDraftWithDelta(
   state: AgentStateState,
-  delta: Parameters<typeof applyJsonPatch>[1],
+  delta: unknown,
 ): AgentStateState {
+  if (!Array.isArray(delta)) {
+    return withProtocolError(state, new Error('Invalid AG-UI state delta'));
+  }
+
   try {
     return {
       ...state,
-      draft: applyJsonPatch(state.draft, delta),
+      draft: applyJsonPatch(
+        state.draft,
+        delta as Parameters<typeof applyJsonPatch>[1],
+      ),
       protocolError: undefined,
     };
   } catch (error) {
