@@ -208,3 +208,115 @@ test('settles canonical tool results in a draft and rollback restores committed 
   });
   expect(rolledBack.entities['tool-1']).toMatchObject({ status: 'pending' });
 });
+
+test('stores rejected canonical tool results and commits the settled draft on success', () => {
+  const canonical = [
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+  ];
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: canonical }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const rejected = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'tool-1',
+      content: 'failed',
+      error: 'failed',
+    } as unknown as Parameters<typeof apiActions.generateMessageEvent>[0]),
+  );
+  const committed = reducer(
+    rejected,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: ['tool-1'] },
+      toolCalls: [],
+    }),
+  );
+
+  expect(rejected.entities['tool-1']).toMatchObject({
+    status: 'done',
+    result: { status: 'rejected', reason: 'failed' },
+  });
+  expect(committed.entities['tool-1']).toMatchObject({
+    status: 'done',
+    result: { status: 'rejected', reason: 'failed' },
+  });
+});
+
+test('preserves fulfilled and rejected local tool settlement values outside an attempt', () => {
+  const fulfilled: Chat.Internal.ToolCall = {
+    id: 'fulfilled',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const rejected: Chat.Internal.ToolCall = {
+    id: 'rejected',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const initial = reducer(
+    undefined,
+    apiActions.generateMessageSuccess({
+      message: {
+        role: 'assistant',
+        content: '',
+        toolCallIds: [fulfilled.id, rejected.id],
+      },
+      toolCalls: [fulfilled, rejected],
+    }),
+  );
+  const reason = new Error('nope');
+  const settled = reducer(
+    initial,
+    internalActions.toolTurnSettled({
+      continuation: 'stop',
+      toolCalls: [fulfilled, rejected],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          toolName: fulfilled.name,
+          content: { status: 'fulfilled', value: { answer: 1 } },
+        },
+        {
+          role: 'tool',
+          toolCallId: rejected.id,
+          toolName: rejected.name,
+          content: { status: 'rejected', reason },
+        },
+      ],
+    }),
+  );
+
+  expect(settled.committed.entities[fulfilled.id]?.result).toEqual({
+    status: 'fulfilled',
+    value: { answer: 1 },
+  });
+  expect(settled.committed.entities[rejected.id]?.result).toEqual({
+    status: 'rejected',
+    reason,
+  });
+  expect(
+    (settled.committed.entities[rejected.id]?.result as PromiseRejectedResult)
+      .reason,
+  ).toBe(reason);
+});

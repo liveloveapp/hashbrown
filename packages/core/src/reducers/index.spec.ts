@@ -162,6 +162,166 @@ test('combined view replaces a snapshotted assistant with matching streaming ID'
   ).toHaveLength(1);
 });
 
+test('root supersession actions atomically discard stale canonical projection drafts', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'first' }],
+    }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({ toolsByName: {} }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const staleAssistant = reduceAll(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-old',
+      role: 'assistant',
+    }),
+  );
+  const stale = reduceAll(
+    staleAssistant,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-old',
+      toolCallName: 'lookup',
+    }),
+  );
+  const sent = reduceAll(
+    stale,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'next' },
+      canonicalMessages: [{ id: 'user-2', role: 'user', content: 'next' }],
+    }),
+  );
+  const set = reduceAll(
+    stale,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: [{ id: 'user-3', role: 'user', content: 'set' }],
+    }),
+  );
+  const resent = reduceAll(stale, devActions.resendMessages());
+  const late = reduceAll(
+    reduceAll(sent, internalActions.generationAttemptRolledBack()),
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-old',
+      role: 'assistant',
+      delta: 'late',
+    }),
+  );
+
+  expect(sent.agUiMessages.committed.map((message) => message.id)).toEqual([
+    'user-1',
+    'user-2',
+  ]);
+  expect(
+    sent.messages.messages.map((message) =>
+      'id' in message ? message.id : undefined,
+    ),
+  ).toEqual(['user-1', 'user-2']);
+  expect(sent.toolCalls.ids).toEqual([]);
+  expect(sent.streamingMessage).toBeDefined();
+  expect(
+    selectViewMessages(sent).some((message) => message.role === 'assistant'),
+  ).toBe(false);
+  expect(set.agUiMessages.committed.map((message) => message.id)).toEqual([
+    'user-3',
+  ]);
+  expect(set.messages.messages).toEqual([
+    { id: 'user-3', role: 'user', content: 'set' },
+  ]);
+  expect(resent.agUiMessages.committed).toBe(
+    initialized.agUiMessages.committed,
+  );
+  expect(resent.messages.messages).toBe(initialized.messages.committed);
+  expect(resent.toolCalls.ids).toEqual([]);
+  expect(late.agUiMessages.committed.map((message) => message.id)).toEqual([
+    'user-1',
+    'user-2',
+  ]);
+  expect(
+    late.messages.messages.some(
+      (message) => 'id' in message && message.id === 'assistant-old',
+    ),
+  ).toBe(false);
+});
+
+test('root commits snapshot-only success without appending a synthetic assistant or stale tools', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'first' }],
+    }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({ toolsByName: {} }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotted = reduceAll(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'user-2', role: 'user', content: 'replacement' }],
+    }),
+  );
+  const completed = reduceAll(
+    snapshotted,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: [] },
+      toolCalls: [],
+    }),
+  );
+
+  expect(completed.agUiMessages.committed).toEqual([
+    { id: 'user-2', role: 'user', content: 'replacement' },
+  ]);
+  expect(completed.messages.messages).toEqual([
+    { id: 'user-2', role: 'user', content: 'replacement' },
+  ]);
+  expect(completed.toolCalls.ids).toEqual([]);
+  expect(completed.streamingMessage).toMatchObject({
+    message: null,
+    attemptActive: false,
+  });
+});
+
+test('root keeps local generation errors in the view projection only', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'first' }],
+    }),
+  );
+  const failed = reduceAll(
+    reduceAll(initialized, internalActions.generationAttemptStarted()),
+    apiActions.generateMessageError(new Error('transport failed')),
+  );
+
+  expect(failed.messages.messages.at(-1)).toEqual({
+    role: 'error',
+    content: 'transport failed',
+  });
+  expect(failed.agUiMessages.committed).toEqual([
+    { id: 'user-1', role: 'user', content: 'first' },
+  ]);
+  expect(ɵselectEffectiveCommittedAgUiMessages(failed)).toEqual([
+    { id: 'user-1', role: 'user', content: 'first' },
+  ]);
+});
+
 test('createChatRuntime accepts a developer tool named output', () => {
   const createRuntime = () =>
     createChatRuntime({
