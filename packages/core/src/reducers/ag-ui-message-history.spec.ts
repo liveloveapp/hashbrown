@@ -7,6 +7,7 @@ import {
   lowerViewMessagesToAgUi,
   ownAgUiMessages,
   projectAgUiMessages,
+  ɵownValidatedAgUiMessages,
   ɵpairViewMessagesWithAgUi,
 } from './ag-ui-message-history';
 
@@ -321,6 +322,111 @@ test('rejects non-array canonical history roots', () => {
   for (const root of roots) {
     expect(own(root)).toThrow('canonical message history must be an array');
   }
+});
+
+test('rejects missing IDs and unknown roles with structural diagnostics', () => {
+  // Arrange
+  const missingId = [{ role: 'user', content: 'Hello' }];
+  const unknownRole = [{ id: 'unknown-1', role: 'future', content: 'Hello' }];
+
+  // Act
+  const validateMissingId = () =>
+    ɵownValidatedAgUiMessages(missingId as unknown as readonly Message[]);
+  const validateUnknownRole = () =>
+    ɵownValidatedAgUiMessages(unknownRole as unknown as readonly Message[]);
+
+  // Assert
+  expect(validateMissingId).toThrow(/message\[0\].*id/i);
+  expect(validateUnknownRole).toThrow(/message\[0\].*role/i);
+});
+
+test('rejects malformed assistant tool calls with indexed diagnostics', () => {
+  // Arrange
+  const malformed = [
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function',
+          function: { name: '', arguments: 1 },
+        },
+      ],
+    },
+  ];
+
+  // Act
+  const validate = () =>
+    ɵownValidatedAgUiMessages(malformed as unknown as readonly Message[]);
+
+  // Assert
+  expect(validate).toThrow(/message\[0\].*toolCalls/i);
+});
+
+test('accepts every installed AG-UI message role and preserves unknown JSON fields', () => {
+  // Arrange
+  const messages = [
+    {
+      id: 'tool-result-1',
+      role: 'tool' as const,
+      toolCallId: 'tool-1',
+      content: 'result',
+    },
+    { id: 'developer-1', role: 'developer' as const, content: 'developer' },
+    { id: 'system-1', role: 'system' as const, content: 'system' },
+    { id: 'user-1', role: 'user' as const, content: 'user' },
+    {
+      id: 'reasoning-1',
+      role: 'reasoning' as const,
+      content: 'reasoning',
+      encryptedValue: 'opaque',
+    },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+      future: { nested: ['initial'] },
+    },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { complete: false },
+    },
+  ];
+
+  // Act
+  const validated = ɵownValidatedAgUiMessages(messages);
+  const sourceAssistant = messages[5];
+  if (sourceAssistant?.role !== 'assistant') {
+    throw new Error('Expected assistant fixture.');
+  }
+  sourceAssistant.future.nested[0] = 'mutated';
+
+  // Assert
+  expect(validated.map((message) => message.role)).toEqual([
+    'tool',
+    'developer',
+    'system',
+    'user',
+    'reasoning',
+    'assistant',
+    'activity',
+  ]);
+  expect(validated[5]).toMatchObject({ future: { nested: ['initial'] } });
+  expect(Object.isFrozen(validated[5])).toBe(true);
+  const future = Object.getOwnPropertyDescriptor(
+    validated[5] ?? {},
+    'future',
+  )?.value;
+  expect(Object.isFrozen(future as object)).toBe(true);
 });
 
 test('rejects canonical fields with exotic prototypes', () => {

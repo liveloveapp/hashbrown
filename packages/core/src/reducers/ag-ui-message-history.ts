@@ -1,4 +1,9 @@
-import type { Message, SystemMessage, ToolMessage } from '@ag-ui/core';
+import {
+  type Message,
+  MessageSchema,
+  type SystemMessage,
+  type ToolMessage,
+} from '@ag-ui/core';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { resolveWithSchema } from '../utils';
@@ -141,22 +146,79 @@ export function ɵownValidatedAgUiMessages(
 ): readonly Readonly<Message>[] {
   const owned = ownAgUiMessages(messages);
   const ids = new Set<string>();
-  for (const message of owned) {
+  const toolCalls = new Set<string>();
+  const toolResults: readonly Extract<Message, { role: 'tool' }>[] =
+    owned.filter(
+      (message): message is Extract<Message, { role: 'tool' }> =>
+        message.role === 'tool',
+    );
+  for (const [index, message] of owned.entries()) {
+    validateAgUiMessage(message, index);
     if (ids.has(message.id)) {
       throw new Error(`AG-UI message ID ${message.id} is duplicated`);
     }
     ids.add(message.id);
     if (message.role !== 'assistant') continue;
-    for (const toolCall of message.toolCalls ?? []) {
+    for (const [toolIndex, toolCall] of (message.toolCalls ?? []).entries()) {
       if (ids.has(toolCall.id)) {
         throw new Error(
           `AG-UI tool call ID ${toolCall.id} conflicts with a message ID`,
         );
       }
+      if (toolCalls.has(toolCall.id)) {
+        throw new Error(`AG-UI tool call ID ${toolCall.id} is duplicated`);
+      }
       ids.add(toolCall.id);
+      toolCalls.add(toolCall.id);
+      validateToolCall(toolCall, index, toolIndex);
+    }
+  }
+  for (const result of toolResults) {
+    if (!toolCalls.has(result.toolCallId)) {
+      throw new Error(
+        `AG-UI tool result ${result.id} references unknown tool call ${result.toolCallId}`,
+      );
     }
   }
   return owned;
+}
+
+/** Validates one owned canonical message against the installed AG-UI protocol. @internal */
+function validateAgUiMessage(message: Readonly<Message>, index: number): void {
+  const parsed = MessageSchema.safeParse(message);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const path = issue?.path.length ? `.${issue.path.join('.')}` : '';
+    throw new TypeError(
+      `Invalid AG-UI message[${index}]${path}: ${issue?.message ?? 'invalid structure'}`,
+    );
+  }
+  if (!isNonemptyString(message.id)) {
+    throw new TypeError(
+      `Invalid AG-UI message[${index}].id: expected nonempty string`,
+    );
+  }
+}
+
+/** Validates the stricter identity fields of an owned assistant tool call. @internal */
+function validateToolCall(
+  toolCall: NonNullable<
+    Extract<Message, { role: 'assistant' }>['toolCalls']
+  >[number],
+  messageIndex: number,
+  toolIndex: number,
+): void {
+  const prefix = `AG-UI message[${messageIndex}].toolCalls[${toolIndex}]`;
+  if (!isNonemptyString(toolCall.id)) {
+    throw new TypeError(`${prefix}.id must be a nonempty string`);
+  }
+  if (!isNonemptyString(toolCall.function.name)) {
+    throw new TypeError(`${prefix}.function.name must be a nonempty string`);
+  }
+}
+
+function isNonemptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
 }
 
 /** Creates or updates the app-owned system overlay without changing its ID. @internal */

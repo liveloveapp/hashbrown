@@ -53,6 +53,598 @@ function reduceAll(
   };
 }
 
+type InvalidSnapshot = {
+  readonly name: string;
+  readonly create: () => {
+    readonly messages: unknown;
+    readonly accesses?: () => number;
+  };
+};
+
+function createActiveSnapshotState() {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const started = reduceAll(
+    initialized,
+    apiActions.generateMessageStart({ toolsByName: {} }),
+  );
+  const attempted = reduceAll(
+    started,
+    internalActions.generationAttemptStarted(),
+  );
+  const text = reduceAll(
+    attempted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-draft',
+      role: 'assistant',
+      delta: 'draft',
+    }),
+  );
+
+  return reduceAll(
+    text,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      parentMessageId: 'assistant-draft',
+      toolCallId: 'tool-draft',
+      toolCallName: 'lookup',
+      delta: '{',
+    }),
+  );
+}
+
+function createValidStructuralSnapshot() {
+  return [
+    {
+      id: 'tool-result-1',
+      role: 'tool' as const,
+      toolCallId: 'tool-1',
+      content: '{"temp":20}',
+      metadata: { source: { name: 'weather' } },
+      future: { retained: ['tool'] },
+    },
+    {
+      id: 'developer-1',
+      role: 'developer' as const,
+      content: 'Use metric units.',
+      name: 'policy',
+    },
+    {
+      id: 'system-1',
+      role: 'system' as const,
+      content: 'Be concise.',
+      encryptedValue: 'system-secret',
+    },
+    { id: 'user-2', role: 'user' as const, content: 'Forecast Paris.' },
+    {
+      id: 'reasoning-1',
+      role: 'reasoning' as const,
+      content: 'Need a weather lookup.',
+      encryptedValue: 'reasoning-secret',
+    },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'Checking.',
+      name: 'assistant',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{"city":"Paris"}' },
+          metadata: { origin: 'model' },
+          future: { retained: true },
+        },
+      ],
+      future: { nested: { retained: true } },
+    },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { completed: 1 },
+      future: { retained: ['activity'] },
+    },
+  ];
+}
+
+const invalidSnapshots: readonly InvalidSnapshot[] = [
+  {
+    name: 'a non-array snapshot root',
+    create: () => ({ messages: {} }),
+  },
+  {
+    name: 'a sparse snapshot root',
+    create: () => ({ messages: new Array(1) }),
+  },
+  {
+    name: 'an accessor-backed snapshot root',
+    create: () => {
+      let accesses = 0;
+      const messages = new Array(1);
+      Object.defineProperty(messages, 0, {
+        enumerable: true,
+        get: () => {
+          accesses += 1;
+          return { id: 'unsafe', role: 'user', content: 'unsafe' };
+        },
+      });
+      return { messages, accesses: () => accesses };
+    },
+  },
+  {
+    name: 'a missing message ID',
+    create: () => ({ messages: [{ role: 'user', content: 'missing' }] }),
+  },
+  {
+    name: 'an empty message ID',
+    create: () => ({ messages: [{ id: '', role: 'user', content: 'empty' }] }),
+  },
+  {
+    name: 'a non-string message ID',
+    create: () => ({ messages: [{ id: 1, role: 'user', content: 'number' }] }),
+  },
+  {
+    name: 'a missing role',
+    create: () => ({ messages: [{ id: 'missing-role', content: 'missing' }] }),
+  },
+  {
+    name: 'an unknown role',
+    create: () => ({
+      messages: [{ id: 'unknown-role', role: 'future', content: 'future' }],
+    }),
+  },
+  {
+    name: 'a non-string role',
+    create: () => ({
+      messages: [{ id: 'role-number', role: 1, content: 'bad' }],
+    }),
+  },
+  {
+    name: 'invalid user content',
+    create: () => ({
+      messages: [{ id: 'user-invalid', role: 'user', content: 1 }],
+    }),
+  },
+  {
+    name: 'missing user content',
+    create: () => ({ messages: [{ id: 'user-missing', role: 'user' }] }),
+  },
+  {
+    name: 'invalid system content',
+    create: () => ({
+      messages: [{ id: 'system-invalid', role: 'system', content: 1 }],
+    }),
+  },
+  {
+    name: 'missing developer content and invalid name',
+    create: () => ({
+      messages: [{ id: 'developer-invalid', role: 'developer', name: 1 }],
+    }),
+  },
+  {
+    name: 'invalid assistant content',
+    create: () => ({
+      messages: [{ id: 'assistant-content', role: 'assistant', content: 1 }],
+    }),
+  },
+  {
+    name: 'an invalid assistant toolCalls container',
+    create: () => ({
+      messages: [{ id: 'assistant-calls', role: 'assistant', toolCalls: 'x' }],
+    }),
+  },
+  {
+    name: 'a sparse assistant toolCalls array',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-sparse-calls',
+          role: 'assistant',
+          toolCalls: new Array(1),
+        },
+      ],
+    }),
+  },
+  {
+    name: 'an accessor-backed assistant tool call',
+    create: () => {
+      let accesses = 0;
+      const toolCalls = new Array(1);
+      Object.defineProperty(toolCalls, 0, {
+        enumerable: true,
+        get: () => {
+          accesses += 1;
+          return {};
+        },
+      });
+      return {
+        messages: [{ id: 'assistant-accessor', role: 'assistant', toolCalls }],
+        accesses: () => accesses,
+      };
+    },
+  },
+  {
+    name: 'a tool call without a nonempty ID',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-empty-call',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: '',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool call missing its ID and function',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-missing-call-fields',
+          role: 'assistant',
+          toolCalls: [{ type: 'function' }],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool call with a non-object function',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-nonobject-function',
+          role: 'assistant',
+          toolCalls: [{ id: 'call-1', type: 'function', function: null }],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool call with an invalid discriminator',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-invalid-call',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'call-1',
+              type: 'tool',
+              function: { name: 'lookup', arguments: '{}' },
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool call with an empty function name',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-invalid-call-name',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'call-empty-name',
+              type: 'function',
+              function: { name: '', arguments: '{}' },
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool call with a non-string function name',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-number-call-name',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'call-number-name',
+              type: 'function',
+              function: { name: 1, arguments: '{}' },
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool call with non-string arguments',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-invalid-call-arguments',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'call-invalid-arguments',
+              type: 'function',
+              function: { name: 'lookup', arguments: 1 },
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'an invalid tool result core field',
+    create: () => ({
+      messages: [
+        {
+          id: 'tool-invalid',
+          role: 'tool',
+          toolCallId: '',
+          content: 1,
+          error: 1,
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool result with a non-string error',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-tool-result-error',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'tool-result-error',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+        {
+          id: 'tool-error',
+          role: 'tool',
+          toolCallId: 'tool-result-error',
+          content: 'failed',
+          error: 1,
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a tool result missing its toolCallId',
+    create: () => ({
+      messages: [{ id: 'tool-missing-call', role: 'tool', content: 'missing' }],
+    }),
+  },
+  {
+    name: 'a tool result with an unknown tool-call reference',
+    create: () => ({
+      messages: [
+        {
+          id: 'tool-unmatched',
+          role: 'tool',
+          toolCallId: 'missing-call',
+          content: 'missing',
+        },
+      ],
+    }),
+  },
+  {
+    name: 'invalid reasoning content and encrypted value',
+    create: () => ({
+      messages: [
+        {
+          id: 'reasoning-invalid',
+          role: 'reasoning',
+          content: 1,
+          encryptedValue: 1,
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a reasoning message with non-string encrypted value',
+    create: () => ({
+      messages: [
+        {
+          id: 'reasoning-encrypted-invalid',
+          role: 'reasoning',
+          content: 'valid',
+          encryptedValue: 1,
+        },
+      ],
+    }),
+  },
+  {
+    name: 'invalid activity core fields',
+    create: () => ({
+      messages: [
+        {
+          id: 'activity-invalid',
+          role: 'activity',
+          activityType: 1,
+          content: 'bad',
+        },
+      ],
+    }),
+  },
+  {
+    name: 'an activity message with non-record content',
+    create: () => ({
+      messages: [
+        {
+          id: 'activity-content-invalid',
+          role: 'activity',
+          activityType: 'progress',
+          content: 'bad',
+        },
+      ],
+    }),
+  },
+  {
+    name: 'duplicate canonical message IDs',
+    create: () => ({
+      messages: [
+        { id: 'duplicate', role: 'user', content: 'one' },
+        { id: 'duplicate', role: 'assistant', content: 'two' },
+      ],
+    }),
+  },
+  {
+    name: 'duplicate nested tool-call IDs',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-one',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'duplicate-call',
+              type: 'function',
+              function: { name: 'one', arguments: '' },
+            },
+          ],
+        },
+        {
+          id: 'assistant-two',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'duplicate-call',
+              type: 'function',
+              function: { name: 'two', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    name: 'a message ID colliding with a tool-call ID',
+    create: () => ({
+      messages: [
+        {
+          id: 'assistant-collision',
+          role: 'assistant',
+          toolCalls: [
+            {
+              id: 'collision',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+        {
+          id: 'collision',
+          role: 'tool',
+          toolCallId: 'collision',
+          content: 'bad',
+        },
+      ],
+    }),
+  },
+];
+
+for (const invalidSnapshot of invalidSnapshots) {
+  test(`root isolates ${invalidSnapshot.name}`, () => {
+    // Arrange
+    const active = createActiveSnapshotState();
+    const malformed = invalidSnapshot.create();
+
+    // Act
+    const next = reduceAll(
+      active,
+      apiActions.generateMessageEvent({
+        type: EventType.MESSAGES_SNAPSHOT,
+        messages: malformed.messages,
+      } as unknown as AGUIEvent),
+    );
+
+    // Assert
+    expect(next.agUiMessages.protocolError).toBeInstanceOf(Error);
+    expect(next.agUiMessages.draft).toBe(active.agUiMessages.draft);
+    expect(next.agUiMessages.committed).toBe(active.agUiMessages.committed);
+    expect(next.messages).toBe(active.messages);
+    expect(next.toolCalls).toBe(active.toolCalls);
+    expect(next.streamingMessage).toBe(active.streamingMessage);
+    if (malformed.accesses) {
+      expect(malformed.accesses()).toBe(0);
+    }
+  });
+}
+
+test('root accepts and owns a structurally valid snapshot with every AG-UI role', () => {
+  // Arrange
+  const active = createActiveSnapshotState();
+  const invalid = reduceAll(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: '', role: 'user', content: 'invalid' }],
+    } as unknown as AGUIEvent),
+  );
+  const snapshot = createValidStructuralSnapshot();
+
+  // Act
+  const next = reduceAll(
+    invalid,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: snapshot,
+    }),
+  );
+  const sourceAssistant = snapshot[5];
+  if (sourceAssistant?.role !== 'assistant') {
+    throw new Error('Expected assistant snapshot fixture.');
+  }
+  sourceAssistant.future.nested.retained = false;
+
+  // Assert
+  expect(next.agUiMessages.protocolError).toBeUndefined();
+  expect(next.agUiMessages.draft.map((message) => message.role)).toEqual([
+    'tool',
+    'developer',
+    'system',
+    'user',
+    'reasoning',
+    'assistant',
+    'activity',
+  ]);
+  expect(next.agUiMessages.draft[5]).toMatchObject({
+    id: 'assistant-1',
+    future: { nested: { retained: true } },
+  });
+  expect(Object.isFrozen(next.agUiMessages.draft)).toBe(true);
+  expect(Object.isFrozen(next.agUiMessages.draft[5] ?? {})).toBe(true);
+  const future = Object.getOwnPropertyDescriptor(
+    next.agUiMessages.draft[5] ?? {},
+    'future',
+  )?.value;
+  expect(Object.isFrozen(future as object)).toBe(true);
+  expect(next.messages).not.toBe(invalid.messages);
+  expect(next.toolCalls).not.toBe(invalid.toolCalls);
+  expect(next.streamingMessage).not.toBe(invalid.streamingMessage);
+  expect(next.toolCalls.entities['tool-1']).toMatchObject({
+    name: 'lookup',
+    arguments: '{"city":"Paris"}',
+    status: 'done',
+    result: { status: 'fulfilled', value: '{"temp":20}' },
+  });
+});
+
 test('combined state exposes the transactional agent state selectors', () => {
   const initialized = reduceAll(
     createState(),
