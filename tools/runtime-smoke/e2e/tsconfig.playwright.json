@@ -8,6 +8,11 @@
     "types": ["node"],
     "ignoreDeprecations": "6.0"
   },
-  "include": ["playwright.config.ts", "harness/**/*.ts", "specs/**/*.ts"],
+  "include": [
+    "*playwright.config.ts",
+    "harness/**/*.ts",
+    "specs/**/*.ts",
+    "example-specs/**/*.ts"
+  ],
   "exclude": ["harness/**/*.spec.ts"]
 }
