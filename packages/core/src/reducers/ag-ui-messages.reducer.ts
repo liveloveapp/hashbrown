@@ -646,7 +646,23 @@ function startToolCall(
     ) {
       throw new Error(`AG-UI tool call ${toolCallId} cannot change parent`);
     }
-    return messages;
+    if (event.metadata === undefined) {
+      return messages;
+    }
+    const tool = freezeToolCall(
+      mergeEventFields({ ...existing.tool }, event) as NonNullable<
+        Extract<Message, { role: 'assistant' }>['toolCalls']
+      >[number],
+    );
+    const assistant = freezeMessage({
+      ...existing.message,
+      toolCalls: Object.freeze(
+        (existing.message.toolCalls ?? []).map((current) =>
+          current.id === toolCallId ? tool : current,
+        ),
+      ),
+    } as Message);
+    return replaceAt(messages, existing.messageIndex, assistant);
   }
   const parentId = parentMessageId ?? `assistant-${toolCallId}`;
   const index = messages.findIndex((message) => message.id === parentId);
@@ -718,9 +734,14 @@ function appendOrStartToolCall(
         event.parentMessageId,
         event,
       );
-  return event.delta === undefined
+  return event.delta === undefined && event.metadata === undefined
     ? started
-    : appendToolCallArguments(started, event.toolCallId, event.delta, event);
+    : appendToolCallArguments(
+        started,
+        event.toolCallId,
+        event.delta ?? '',
+        event,
+      );
 }
 
 function appendToolCallArguments(

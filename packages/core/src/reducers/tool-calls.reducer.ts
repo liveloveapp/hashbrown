@@ -91,16 +91,24 @@ export const reducer = createReducer(
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_START) {
-      const metadata = mergeMetadata(undefined, action.payload.metadata);
-      const draft = addEntities(state.draft, [
-        {
-          id: action.payload.toolCallId,
-          name: action.payload.toolCallName,
-          arguments: '',
-          status: 'pending',
-          ...(metadata === undefined ? {} : { metadata }),
-        },
-      ]);
+      const existing = state.draft.entities[action.payload.toolCallId];
+      const metadata = mergeMetadata(
+        existing?.metadata,
+        action.payload.metadata,
+      );
+      const draft = existing
+        ? metadata === existing.metadata
+          ? state.draft
+          : updateEntity(state.draft, action.payload.toolCallId, { metadata })
+        : addEntities(state.draft, [
+            {
+              id: action.payload.toolCallId,
+              name: action.payload.toolCallName,
+              arguments: '',
+              status: 'pending',
+              ...(metadata === undefined ? {} : { metadata }),
+            },
+          ]);
       return {
         ...draft,
         committed: state.committed,

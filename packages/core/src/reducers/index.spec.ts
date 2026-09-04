@@ -954,8 +954,26 @@ test('retains streamed tool lifecycle and result decorations through settlement'
       metadata: { call: 'fulfilled' },
     }),
   );
-  const withRejectedCall = reduceAll(
+  const retried = reduceAll(
     started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'fulfilled-call',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { retry: 'fulfilled' },
+    }),
+  );
+  const withArguments = reduceAll(
+    retried,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'fulfilled-call',
+      delta: '{}',
+    }),
+  );
+  const withRejectedCall = reduceAll(
+    withArguments,
     apiActions.generateMessageEvent({
       type: EventType.TOOL_CALL_START,
       toolCallId: 'rejected-call',
@@ -973,8 +991,18 @@ test('retains streamed tool lifecycle and result decorations through settlement'
       encryptedValue: 'fulfilled-opaque',
     }),
   );
-  const fulfilled = reduceAll(
+  const decorated = reduceAll(
     encrypted,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'fulfilled-call',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { chunk: 'fulfilled' },
+    }),
+  );
+  const fulfilled = reduceAll(
+    decorated,
     apiActions.generateMessageEvent({
       type: EventType.TOOL_CALL_RESULT,
       messageId: 'fulfilled-result',
@@ -997,14 +1025,37 @@ test('retains streamed tool lifecycle and result decorations through settlement'
   const fulfilledResult = settled.toolCalls.entities['fulfilled-call']?.result;
   const rejectedResult = settled.toolCalls.entities['rejected-call']?.result;
 
+  const canonicalAssistant = settled.agUiMessages.draft.find(
+    (message) => message.id === 'assistant-1',
+  ) as Extract<
+    (typeof settled.agUiMessages.draft)[number],
+    { role: 'assistant' }
+  >;
+
   expect(settled.streamingMessage.toolCalls).toEqual([]);
+  expect(canonicalAssistant.toolCalls).toHaveLength(2);
+  expect(canonicalAssistant.toolCalls?.[0]).toMatchObject({
+    id: 'fulfilled-call',
+    function: { name: 'lookup', arguments: '{}' },
+    encryptedValue: 'fulfilled-opaque',
+    metadata: {
+      call: 'fulfilled',
+      retry: 'fulfilled',
+      chunk: 'fulfilled',
+    },
+  });
   expect(selectViewMessages(settled)[0]).toMatchObject({
     role: 'assistant',
     toolCalls: [
       {
         status: 'done',
         encryptedValue: 'fulfilled-opaque',
-        metadata: { call: 'fulfilled', result: 'fulfilled' },
+        metadata: {
+          call: 'fulfilled',
+          retry: 'fulfilled',
+          chunk: 'fulfilled',
+          result: 'fulfilled',
+        },
         result: { status: 'fulfilled', value: 'found' },
       },
       {
@@ -1049,7 +1100,12 @@ test('retains streamed tool lifecycle and result decorations through settlement'
       {
         status: 'done',
         encryptedValue: 'fulfilled-opaque',
-        metadata: { call: 'fulfilled', result: 'fulfilled' },
+        metadata: {
+          call: 'fulfilled',
+          retry: 'fulfilled',
+          chunk: 'fulfilled',
+          result: 'fulfilled',
+        },
         result: { status: 'fulfilled', value: 'found' },
       },
       {

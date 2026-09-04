@@ -225,6 +225,79 @@ test('continues an idempotently started tool call with an ID-less chunk', () => 
   expect(continued.activeToolCallId).toBe('tool-1');
 });
 
+test('merges metadata from an idempotent tool start and compact chunk', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+              encryptedValue: 'opaque',
+              metadata: { initial: true },
+            },
+          ],
+        },
+        {
+          id: 'tool-result-1',
+          role: 'tool',
+          toolCallId: 'tool-1',
+          content: 'found',
+        },
+      ],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const retried = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { retry: true },
+    }),
+  );
+  const decorated = reducer(
+    retried,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { chunk: true },
+    }),
+  );
+
+  const assistant = decorated.draft[0] as Extract<
+    (typeof decorated.draft)[number],
+    { role: 'assistant' }
+  >;
+
+  expect(retried.draft).not.toBe(active.draft);
+  expect(retried.draft[1]).toBe(active.draft[1]);
+  expect(decorated.draft).not.toBe(retried.draft);
+  expect(decorated.draft[1]).toBe(retried.draft[1]);
+  expect(assistant.toolCalls).toHaveLength(1);
+  expect(assistant.toolCalls?.[0]).toMatchObject({
+    id: 'tool-1',
+    function: { name: 'lookup', arguments: '{}' },
+    encryptedValue: 'opaque',
+    metadata: { initial: true, retry: true, chunk: true },
+  });
+  expect(decorated.protocolError).toBeUndefined();
+});
+
 test('ignores unknown end events without synthesizing canonical messages', () => {
   const initialized = reducer(
     initialAgUiMessagesState,
