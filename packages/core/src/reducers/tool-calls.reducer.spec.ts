@@ -571,3 +571,44 @@ test('creates and commits a pending tool projection from compact chunks alone', 
     continued.draft.entities['tool-1'],
   );
 });
+
+test('ignores unknown tool args and end events without changing an active tool correlation', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-active',
+      toolCallName: 'lookup',
+    }),
+  );
+
+  const unknownArgs = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'tool-unknown',
+      delta: '{',
+    }),
+  );
+  const unknownEnd = reducer(
+    unknownArgs,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'tool-unknown',
+    }),
+  );
+
+  expect(unknownArgs).toBe(started);
+  expect(unknownEnd).toBe(started);
+  expect(unknownEnd.entities['tool-unknown']).toBeUndefined();
+  expect(unknownEnd.activeToolCallId).toBe('tool-active');
+  expect(unknownEnd.activeToolCallName).toBe('lookup');
+});

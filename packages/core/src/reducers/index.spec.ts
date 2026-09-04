@@ -709,7 +709,7 @@ test('combined state exposes transactional canonical message selectors', () => {
   expect(ɵselectAgUiMessagesProtocolError(active)).toBeUndefined();
 });
 
-test('combined view replaces a snapshotted assistant with matching streaming ID', () => {
+test('combined root preserves snapshot assistant and tool-call baselines through matching stream deltas and success', () => {
   const initialized = reduceAll(
     createState(),
     devActions.init({
@@ -730,7 +730,18 @@ test('combined view replaces a snapshotted assistant with matching streaming ID'
       type: EventType.MESSAGES_SNAPSHOT,
       messages: [
         { id: 'user-1', role: 'user', content: 'hello' },
-        { id: 'assistant-1', role: 'assistant', content: 'snapshot' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: 'snapshot',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"query":"tea"' },
+            },
+          ],
+        },
       ],
     }),
   );
@@ -743,16 +754,44 @@ test('combined view replaces a snapshotted assistant with matching streaming ID'
       delta: ' stream',
     }),
   );
+  const withToolDelta = reduceAll(
+    streamed,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      delta: '}',
+    }),
+  );
+  const succeeded = reduceAll(
+    withToolDelta,
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: ' stream', toolCallIds: ['tool-1'] },
+        'assistant-1',
+      ),
+      toolCalls: [
+        { id: 'tool-1', name: 'lookup', arguments: '}', status: 'pending' },
+      ],
+    }),
+  );
 
-  expect(selectViewMessages(streamed)).toEqual([
+  expect(selectViewMessages(succeeded)).toEqual([
     { role: 'user', content: 'hello' },
-    { role: 'assistant', content: ' stream', toolCalls: [] },
+    {
+      role: 'assistant',
+      content: 'snapshot stream',
+      toolCalls: [],
+    },
   ]);
   expect(
-    selectViewMessages(streamed).filter(
+    selectViewMessages(succeeded).filter(
       (message) => message.role === 'assistant',
     ),
   ).toHaveLength(1);
+  expect(succeeded.toolCalls.entities['tool-1']).toMatchObject({
+    arguments: '{"query":"tea"}',
+  });
 });
 
 test('root supersession actions atomically discard stale canonical projection drafts', () => {
@@ -1496,7 +1535,7 @@ test('runtime falls back when Web Crypto is unavailable or lacks randomUUID', ()
   }
 });
 
-test('rejects a colliding canonical send without changing any projection cache', () => {
+test('treats a rejected canonical send preflight as an exact combined-root no-op', () => {
   const initialized = reduceAll(
     createState(),
     devActions.init({
@@ -1537,10 +1576,12 @@ test('rejects a colliding canonical send without changing any projection cache',
 
   expect(rejected.agUiMessages.committed).toBe(active.agUiMessages.committed);
   expect(rejected.agUiMessages.draft).toBe(active.agUiMessages.draft);
-  expect(rejected.agUiMessages.protocolError).toBeInstanceOf(Error);
+  expect(rejected.agUiMessages).toBe(active.agUiMessages);
+  expect(rejected.agentState).toBe(active.agentState);
   expect(rejected.messages).toBe(active.messages);
   expect(rejected.toolCalls).toBe(active.toolCalls);
   expect(rejected.streamingMessage).toBe(active.streamingMessage);
+  expect(rejected.status).toBe(active.status);
 });
 
 test('runtime keeps local tool-call values lossless through initialization and replacement', () => {

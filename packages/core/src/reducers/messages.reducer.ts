@@ -157,7 +157,7 @@ export const reducer = createReducer(
   on(apiActions.generateMessageSuccess, (state, action) => {
     if (state.attemptActive) {
       const draft = isAssistantOutput(action.payload.message)
-        ? reconcileAssistant(state.draft, action.payload.message)
+        ? reconcileSuccessfulAssistant(state.draft, action.payload.message)
         : state.draft;
       return {
         ...state,
@@ -240,6 +240,28 @@ function reconcileAssistant(
     : messages.map((message, current) =>
         current === index ? assistant : message,
       );
+}
+
+function reconcileSuccessfulAssistant(
+  messages: readonly Chat.Internal.Message[],
+  assistant: Chat.Internal.AssistantMessage,
+): readonly Chat.Internal.Message[] {
+  const id = 'id' in assistant ? assistant.id : undefined;
+  const existing = messages.find(
+    (message) => 'id' in message && message.id === id,
+  );
+  if (existing?.role !== 'assistant') {
+    return reconcileAssistant(messages, assistant);
+  }
+
+  return reconcileAssistant(messages, {
+    ...assistant,
+    content: existing.content,
+    toolCallIds:
+      existing.toolCallIds.length > 0
+        ? existing.toolCallIds
+        : assistant.toolCallIds,
+  });
 }
 
 function projectCanonical(

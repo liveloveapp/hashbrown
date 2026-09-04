@@ -97,7 +97,7 @@ export const reducer = createReducer(
         ? state
         : {
             ...state,
-            draft: withoutSystemOverlay(draft, state.systemMessage),
+            draft,
             protocolError: undefined,
             ...lifecycle,
           };
@@ -136,13 +136,16 @@ export const reducer = createReducer(
     (state): AgUiMessagesState => rollback(state),
   ),
   on(devActions.sendMessage, (state, action): AgUiMessagesState => {
+    if (action.payload.canonicalAppendCompatible === false) {
+      return state;
+    }
     try {
       const appended = own(action.payload.canonicalMessages);
       ɵassertAgUiMessageAppendCompatibility(state.committed, appended);
       const committed = [...state.committed, ...appended];
       return {
         ...state,
-        committed: withoutSystemOverlay(committed, state.systemMessage),
+        committed,
         draft: Object.freeze([]),
         attemptActive: false,
         protocolError: undefined,
@@ -570,6 +573,11 @@ function startToolCall(
   }
   const parentId = parentMessageId ?? `assistant-${toolCallId}`;
   const index = messages.findIndex((message) => message.id === parentId);
+  if (index === -1 && findToolCall(messages, parentId)) {
+    throw new Error(
+      `AG-UI assistant parent ID ${parentId} conflicts with a tool call ID`,
+    );
+  }
   const assistant =
     index === -1
       ? ({

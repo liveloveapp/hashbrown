@@ -107,7 +107,13 @@ export const reducer = createReducer(
     devActions.sendMessage,
     devActions.setMessages,
     devActions.resendMessages,
-    (state): AgentStateState => {
+    (state, action): AgentStateState => {
+      if (
+        action.type === devActions.sendMessage.type &&
+        action.payload.canonicalAppendCompatible === false
+      ) {
+        return state;
+      }
       return startLogicalGeneration(state);
     },
   ),

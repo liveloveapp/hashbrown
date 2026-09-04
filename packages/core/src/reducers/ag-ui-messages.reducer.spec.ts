@@ -544,11 +544,52 @@ test('retains a draft reference and records a protocol error on message and tool
   expect(state.protocolError).toBeInstanceOf(Error);
 });
 
-test('keeps snapshot activity and unknown metadata frozen outside the configured system overlay', () => {
+test('rejects synthesized assistant parents that collide with an existing tool-call ID', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-existing',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'assistant-tool-new',
+              type: 'function',
+              function: { name: 'existing', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  const collided = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-new',
+      toolCallName: 'lookup',
+    }),
+  );
+
+  expect(collided.draft).toBe(active.draft);
+  expect(collided.protocolError).toBeInstanceOf(Error);
+});
+
+test('retains synchronized system echoes and replaces them in place in the effective history', () => {
   const event = {
     type: EventType.MESSAGES_SNAPSHOT,
     messages: [
+      { id: 'user-1', role: 'user', content: 'hello' },
       { id: 'system-1', role: 'system', content: 'remote' },
+      { id: 'developer-1', role: 'developer', content: 'rules' },
       {
         id: 'activity-1',
         role: 'activity',
@@ -568,8 +609,25 @@ test('keeps snapshot activity and unknown metadata frozen outside the configured
   );
   state = reducer(state, internalActions.generationAttemptStarted());
   state = reducer(state, apiActions.generateMessageEvent(event as never));
+  const committed = reducer(
+    state,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: [] },
+      toolCalls: [],
+    }),
+  );
+  const appended = reducer(
+    committed,
+    devActions.sendMessage({
+      message: { role: 'user', content: 'next' },
+      canonicalMessages: [{ id: 'user-2', role: 'user', content: 'next' }],
+    }),
+  );
 
   expect(state.draft).toEqual([
+    { id: 'user-1', role: 'user', content: 'hello' },
+    { id: 'system-1', role: 'system', content: 'remote' },
+    { id: 'developer-1', role: 'developer', content: 'rules' },
     {
       id: 'activity-1',
       role: 'activity',
@@ -578,12 +636,25 @@ test('keeps snapshot activity and unknown metadata frozen outside the configured
       metadata: { arbitrary: { value: true } },
     },
   ]);
-  expect(Object.isFrozen(state.draft[0])).toBe(true);
-  expect(ɵselectEffectiveVisibleAgUiMessages(state)[0]).toEqual({
-    id: 'system-1',
-    role: 'system',
-    content: 'local',
-  });
+  expect(Object.isFrozen(state.draft[3])).toBe(true);
+  expect(ɵselectEffectiveVisibleAgUiMessages(state)).toEqual([
+    { id: 'user-1', role: 'user', content: 'hello' },
+    { id: 'system-1', role: 'system', content: 'local' },
+    { id: 'developer-1', role: 'developer', content: 'rules' },
+    {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'progress',
+      content: { count: 1 },
+      metadata: { arbitrary: { value: true } },
+    },
+  ]);
+  expect(appended.committed).toEqual(
+    expect.arrayContaining([
+      { id: 'system-1', role: 'system', content: 'remote' },
+      { id: 'user-2', role: 'user', content: 'next' },
+    ]),
+  );
 });
 
 test('updates and clears only the configured system overlay in place', () => {

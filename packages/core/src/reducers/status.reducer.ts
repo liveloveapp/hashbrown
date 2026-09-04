@@ -37,18 +37,24 @@ export const reducer = createReducer(
 
     return state;
   }),
-  on(
-    devActions.sendMessage,
-    devActions.setMessages,
-    devActions.resendMessages,
-    (state) => {
-      return {
-        ...state,
-        isSending: true,
-        sendingError: undefined,
-      };
-    },
-  ),
+  on(devActions.sendMessage, (state, action) => {
+    if (action.payload.canonicalAppendCompatible === false) {
+      return state;
+    }
+
+    return {
+      ...state,
+      isSending: true,
+      sendingError: undefined,
+    };
+  }),
+  on(devActions.setMessages, devActions.resendMessages, (state) => {
+    return {
+      ...state,
+      isSending: true,
+      sendingError: undefined,
+    };
+  }),
   on(apiActions.generateMessageEvent, (state, action) => {
     switch (action.payload.type) {
       case EventType.RUN_STARTED:

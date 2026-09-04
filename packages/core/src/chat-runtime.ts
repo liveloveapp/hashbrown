@@ -232,6 +232,9 @@ export function createChatRuntime(init: {
         return false;
       }
     })();
+    if (!canonicalAppendCompatible) {
+      return;
+    }
     state.dispatch(
       devActions.sendMessage({
         message: message as Chat.AnyMessage,
