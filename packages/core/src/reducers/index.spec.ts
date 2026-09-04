@@ -1262,6 +1262,16 @@ test('retains local tool values for idempotent replays until canonical sources c
       metadata: { phase: 'canonical' },
     }),
   );
+  const afterMetadata = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'fulfilled-a',
+      toolCallName: 'lookup',
+      metadata: { phase: 'canonical' },
+    }),
+  );
+  const identicalMetadata = store.read((state) => state);
   store.dispatch(
     apiActions.generateMessageEvent({
       type: EventType.TOOL_CALL_END,
@@ -1342,6 +1352,13 @@ test('retains local tool values for idempotent replays until canonical sources c
   // Assert
   expect(replayed.toolCalls.entities['fulfilled-a']?.result).toBe(
     fulfilledResult,
+  );
+  expect(identicalMetadata.toolCalls).toBe(afterMetadata.toolCalls);
+  expect(identicalMetadata.toolCalls.localProvenance).toBe(
+    afterMetadata.toolCalls.localProvenance,
+  );
+  expect(identicalMetadata.toolCalls.entities['fulfilled-a']).toBe(
+    afterMetadata.toolCalls.entities['fulfilled-a'],
   );
   expect(replayed.toolCalls.entities['fulfilled-a']?.metadata).toEqual({
     phase: 'canonical',

@@ -602,9 +602,12 @@ function reconcilePreparedEntities(
       return toolCall;
     }
 
-    const next = { source };
+    const next =
+      local.source !== undefined && sameToolCallSource(local.source, source)
+        ? local
+        : { source };
     nextProvenance[toolCall.id] = next;
-    if (local.source !== source) provenanceChanged = true;
+    if (local !== next) provenanceChanged = true;
     const metadata = mergeMetadata(existing.metadata, toolCall.metadata);
     return metadata === existing.metadata
       ? existing

@@ -651,11 +651,11 @@ function startToolCall(
     if (event.metadata === undefined) {
       return messages;
     }
-    const tool = freezeToolCall(
-      mergeEventFields({ ...existing.tool }, event) as NonNullable<
-        Extract<Message, { role: 'assistant' }>['toolCalls']
-      >[number],
-    );
+    const merged = mergeEventFields(existing.tool, event) as NonNullable<
+      Extract<Message, { role: 'assistant' }>['toolCalls']
+    >[number];
+    if (merged === existing.tool) return messages;
+    const tool = freezeToolCall(merged);
     const assistant = freezeMessage({
       ...existing.message,
       toolCalls: Object.freeze(
@@ -946,7 +946,7 @@ function mergeEventFields<T extends Record<string, unknown>>(
   const metadata = ownEventField(candidate, 'metadata');
   const name = ownEventField(candidate, 'name');
   const subagentRunId = ownEventField(candidate, 'subagentRunId');
-  return Object.freeze({
+  const next = Object.freeze({
     ...message,
     ...(metadata === undefined
       ? {}
@@ -959,6 +959,10 @@ function mergeEventFields<T extends Record<string, unknown>>(
     ...(typeof name === 'string' ? { name } : {}),
     ...(typeof subagentRunId === 'string' ? { subagentRunId } : {}),
   }) as T;
+  return Object.isFrozen(message) &&
+    JSON.stringify(next) === JSON.stringify(message)
+    ? message
+    : Object.freeze(next);
 }
 
 function ownEventField(event: object, field: string): unknown {
