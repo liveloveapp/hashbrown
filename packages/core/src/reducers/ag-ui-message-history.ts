@@ -453,9 +453,9 @@ export function projectAgUiMessages(
   );
   const projectedMessages: Chat.Internal.Message[] = [];
   const projectedToolCalls: Chat.Internal.ToolCall[] = [];
-  let pendingReasoning: readonly Readonly<
-    Extract<Message, { role: 'reasoning' }>
-  >[] = [];
+  let pendingReasoning: Array<
+    Readonly<Extract<Message, { role: 'reasoning' }>>
+  > = [];
 
   for (const message of messages) {
     if (message.role === 'reasoning') {
@@ -559,13 +559,13 @@ export function ɵreconcileAgUiMessageProjection(
   const projectedMessages: Chat.Internal.Message[] = [];
   const projectedToolCalls: Chat.Internal.ToolCall[] = [];
   const toolCallSources: Record<string, ɵAgUiCanonicalToolCallSource> = {};
-  let pendingReasoning: readonly Readonly<
-    Extract<Message, { role: 'reasoning' }>
-  >[] = [];
+  let pendingReasoning: Array<
+    Readonly<Extract<Message, { role: 'reasoning' }>>
+  > = [];
 
   for (const source of messages) {
     if (source.role === 'reasoning') {
-      pendingReasoning = [...pendingReasoning, source];
+      pendingReasoning.push(source);
       continue;
     }
     if (source.role !== 'assistant' && source.role !== 'user') {
@@ -573,6 +573,7 @@ export function ɵreconcileAgUiMessageProjection(
       continue;
     }
 
+    const reasoning = Object.freeze(pendingReasoning);
     const toolResults =
       source.role === 'assistant'
         ? (source.toolCalls ?? []).map((toolCall) =>
@@ -585,14 +586,14 @@ export function ɵreconcileAgUiMessageProjection(
       previous.responseSchema === responseSchema &&
       previousEntry !== undefined &&
       previousEntry.source === source &&
-      sameReferences(previousEntry.reasoning, pendingReasoning) &&
+      sameReferences(previousEntry.reasoning, reasoning) &&
       sameReferences(previousEntry.toolResults, toolResults);
     const entry =
       reusable && previousEntry
         ? previousEntry
         : createProjectionEntry(
             source,
-            pendingReasoning,
+            reasoning,
             toolResults,
             toolsByName,
             responseSchema,

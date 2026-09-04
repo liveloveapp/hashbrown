@@ -320,6 +320,8 @@ export const reducer = createReducer(
         activeToolCallName: undefined,
         canonicalIds: state.canonicalIds,
         preparedProjection: state.preparedProjection,
+        localProvenance: state.localProvenance,
+        committedLocalProvenance: state.localProvenance,
       };
     }
     const committed = addEntities(state.committed, action.payload.toolCalls);
@@ -331,6 +333,8 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds: state.canonicalIds,
+      localProvenance: state.localProvenance,
+      committedLocalProvenance: state.localProvenance,
     };
   }),
   on(internalActions.generationAttemptRolledBack, (state): ToolCallsState =>
@@ -368,6 +372,10 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds,
+      localProvenance: createLocalProvenance(action.payload.localProjection),
+      committedLocalProvenance: createLocalProvenance(
+        action.payload.localProjection,
+      ),
     };
   }),
   on(devActions.setMessages, (state, action): ToolCallsState => {
@@ -386,6 +394,10 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+      localProvenance: createLocalProvenance(action.payload.localProjection),
+      committedLocalProvenance: createLocalProvenance(
+        action.payload.localProjection,
+      ),
     };
   }),
   on(internalActions.toolTurnSettled, (state, action): ToolCallsState => {
@@ -413,6 +425,8 @@ export const reducer = createReducer(
           activeToolCallId: state.activeToolCallId,
           activeToolCallName: state.activeToolCallName,
           canonicalIds: state.canonicalIds,
+          localProvenance: state.localProvenance,
+          committedLocalProvenance: state.committedLocalProvenance,
         }
       : {
           ...updates,
@@ -422,6 +436,8 @@ export const reducer = createReducer(
           activeToolCallId: undefined,
           activeToolCallName: undefined,
           canonicalIds: state.canonicalIds,
+          localProvenance: state.localProvenance,
+          committedLocalProvenance: state.localProvenance,
         };
   }),
 );
@@ -447,6 +463,8 @@ function rollback(state: ToolCallsState): ToolCallsState {
         activeToolCallId: undefined,
         activeToolCallName: undefined,
         canonicalIds: state.canonicalIds,
+        localProvenance: state.committedLocalProvenance,
+        committedLocalProvenance: state.committedLocalProvenance,
       }
     : state;
 }
