@@ -110,6 +110,10 @@ function hydrateAssistantForEvent(
   event: Parameters<typeof accumulateAgUiMessageEvent>[1],
   decision: ReturnType<typeof ɵreadAgUiMessageEventDecision>,
 ): StreamingMessageState | undefined {
+  if (!decision) {
+    return undefined;
+  }
+
   const messageId =
     event.type === EventType.TEXT_MESSAGE_START && event.role === 'assistant'
       ? event.messageId
@@ -118,9 +122,24 @@ function hydrateAssistantForEvent(
             (event.role === undefined || event.role === 'assistant'))
         ? event.messageId
         : undefined;
-  if (!decision || !messageId || messageId === state.messageId) {
-    return undefined;
-  }
+  const parentMessageId =
+    event.type === EventType.TOOL_CALL_START ||
+    event.type === EventType.TOOL_CALL_CHUNK
+      ? event.parentMessageId
+      : undefined;
+  const toolCallId =
+    event.type === EventType.TOOL_CALL_START ||
+    event.type === EventType.TOOL_CALL_ARGS ||
+    event.type === EventType.TOOL_CALL_END ||
+    event.type === EventType.TOOL_CALL_CHUNK
+      ? event.toolCallId
+      : undefined;
+  const reasoningMessageId =
+    event.type === EventType.REASONING_MESSAGE_START ||
+    event.type === EventType.REASONING_MESSAGE_CONTENT ||
+    event.type === EventType.REASONING_MESSAGE_END
+      ? event.messageId
+      : undefined;
 
   try {
     const projection = projectAgUiMessages(
@@ -129,9 +148,25 @@ function hydrateAssistantForEvent(
       state.configSnapshot?.responseSchema,
     );
     const message = projection.messages.find(
-      (current) => current.role === 'assistant' && current.id === messageId,
+      (current) =>
+        current.role === 'assistant' &&
+        (current.id === messageId ||
+          current.id === parentMessageId ||
+          (toolCallId !== undefined &&
+            current.toolCallIds.includes(toolCallId)) ||
+          (reasoningMessageId !== undefined &&
+            current.reasoning?.kind === 'details' &&
+            current.reasoning.details.some(
+              (detail) => detail.id === reasoningMessageId,
+            ))),
     );
     if (!message || message.role !== 'assistant') {
+      return undefined;
+    }
+    const fieldBearingReasoningStart =
+      event.type === EventType.REASONING_MESSAGE_START &&
+      (event.metadata !== undefined || event.subagentRunId !== undefined);
+    if (message.id === state.messageId && !fieldBearingReasoningStart) {
       return undefined;
     }
     const toolCalls = projection.toolCalls.filter((toolCall) =>
@@ -214,7 +249,10 @@ export const reducer = createReducer(
         decision &&
         action.payload.type === EventType.REASONING_MESSAGE_START &&
         state.snapshotReasoningMessageIds?.includes(action.payload.messageId) &&
-        state.reasoningMessageStatusById[action.payload.messageId] === 'active'
+        state.reasoningMessageStatusById[action.payload.messageId] ===
+          'active' &&
+        action.payload.metadata === undefined &&
+        action.payload.subagentRunId === undefined
       ) {
         return state;
       }

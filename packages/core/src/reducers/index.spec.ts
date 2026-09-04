@@ -155,6 +155,220 @@ test('reconciles an earlier snapshot assistant before switching the live stream'
   expect(state.streamingMessage.messageId).toBe('assistant-c');
 });
 
+test('reconciles a tool stream to an earlier snapshotted assistant', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {
+            city: s.streaming.string('city'),
+          }),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const initialized = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: initialized.tools.entities,
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-a',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-a',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-a',
+      delta: '{"city":"Paris"}',
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    toolCalls: [
+      { status: 'pending', toolCallId: 'tool-a', args: { city: 'Paris' } },
+    ],
+  });
+  expect(store.read((state) => state).streamingMessage.messageId).toBe(
+    'assistant-a',
+  );
+
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-a',
+      toolCallId: 'tool-a',
+      content: 'found',
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))).toEqual([
+    {
+      role: 'assistant',
+      content: 'first',
+      toolCalls: [
+        {
+          role: 'tool',
+          status: 'done',
+          name: 'lookup',
+          toolCallId: 'tool-a',
+          args: null,
+          result: { status: 'fulfilled', value: 'found' },
+        },
+      ],
+    },
+    { role: 'assistant', content: 'second', toolCalls: [] },
+  ]);
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: '', toolCallIds: ['tool-a'] },
+        'assistant-a',
+      ),
+      toolCalls: [
+        {
+          id: 'tool-a',
+          name: 'lookup',
+          arguments: '{"city":"Paris"}',
+          argumentsResolved: { city: 'Paris' },
+          status: 'pending',
+        },
+      ],
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    toolCalls: [
+      {
+        status: 'done',
+        toolCallId: 'tool-a',
+        args: { city: 'Paris' },
+        result: { status: 'fulfilled', value: 'found' },
+      },
+    ],
+  });
+});
+
+test('reconciles a tool stream to a new declared assistant parent', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {}),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const initialized = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: initialized.tools.entities,
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-c',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-c',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-c',
+      delta: '{}',
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))).toEqual([
+    { role: 'assistant', content: 'first', toolCalls: [] },
+    { role: 'assistant', content: 'second', toolCalls: [] },
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          role: 'tool',
+          status: 'pending',
+          name: 'lookup',
+          toolCallId: 'tool-c',
+          args: {},
+          progress: undefined,
+        },
+      ],
+    },
+  ]);
+  expect(store.read((state) => state).streamingMessage.messageId).toBe(
+    'assistant-c',
+  );
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: '', toolCallIds: ['tool-c'] },
+        'assistant-c',
+      ),
+      toolCalls: [
+        { id: 'tool-c', name: 'lookup', arguments: '{}', status: 'pending' },
+      ],
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[2]).toMatchObject({
+    role: 'assistant',
+    toolCalls: [{ status: 'pending', toolCallId: 'tool-c', args: {} }],
+  });
+});
+
 test('restores committed message IDs after a snapshot rollback', () => {
   const store = createStore({
     reducers,
@@ -251,16 +465,37 @@ test('accepts a compatible snapshotted reasoning start without resetting it', ()
     apiActions.generateMessageEvent({
       type: EventType.MESSAGES_SNAPSHOT,
       messages: [
-        { id: 'reasoning-1', role: 'reasoning', content: 'Plan' },
+        {
+          id: 'reasoning-1',
+          role: 'reasoning',
+          content: 'Plan',
+          encryptedValue: 'opaque',
+          metadata: { initial: true },
+        },
         { id: 'assistant-1', role: 'assistant', content: '' },
       ],
     }),
   );
+  const snapshotted = store.read((state) => state);
   store.dispatch(
     apiActions.generateMessageEvent({
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'reasoning-1',
       role: 'reasoning',
+    }),
+  );
+
+  expect(store.read((state) => state).streamingMessage).toBe(
+    snapshotted.streamingMessage,
+  );
+
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning',
+      metadata: { retry: true },
+      subagentRunId: 'subagent-1',
     }),
   );
   store.dispatch(
@@ -282,7 +517,16 @@ test('accepts a compatible snapshotted reasoning start without resetting it', ()
   expect(state.streamingMessage.error).toBeUndefined();
   expect(state.streamingMessage.message?.reasoning).toEqual({
     kind: 'details',
-    details: [{ id: 'reasoning-1', role: 'reasoning', content: 'Plan more' }],
+    details: [
+      {
+        id: 'reasoning-1',
+        role: 'reasoning',
+        content: 'Plan more',
+        encryptedValue: 'opaque',
+        metadata: { initial: true, retry: true },
+        subagentRunId: 'subagent-1',
+      },
+    ],
   });
   expect(state.streamingMessage.reasoningMessageStatusById).toEqual({
     'reasoning-1': 'complete',
@@ -290,6 +534,9 @@ test('accepts a compatible snapshotted reasoning start without resetting it', ()
   expect(state.agUiMessages.draft[0]).toMatchObject({
     id: 'reasoning-1',
     content: 'Plan more',
+    encryptedValue: 'opaque',
+    metadata: { initial: true, retry: true },
+    subagentRunId: 'subagent-1',
   });
 });
 
