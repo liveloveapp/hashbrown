@@ -1156,6 +1156,217 @@ test('keeps newly settled local tool results through unrelated prepared events',
   ).toBe(rejectedReason);
 });
 
+test('retains local tool values for idempotent replays until canonical sources change', () => {
+  // Arrange
+  const fulfilledResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: { temperature: 20 },
+  };
+  const rejectedReason = new Error('local rejection');
+  const rejectedResult: PromiseSettledResult<unknown> = {
+    status: 'rejected',
+    reason: rejectedReason,
+  };
+  const typedArguments = { city: 'Paris' };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'fulfilled-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+            {
+              id: 'rejected-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+            {
+              id: 'typed-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+        {
+          id: 'fulfilled-result-a',
+          role: 'tool',
+          toolCallId: 'fulfilled-a',
+          content: 'remote fulfilled',
+        },
+        {
+          id: 'rejected-result-a',
+          role: 'tool',
+          toolCallId: 'rejected-a',
+          content: 'remote rejected',
+          error: 'remote rejected',
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-a',
+            role: 'assistant',
+            content: '',
+            toolCallIds: ['fulfilled-a', 'rejected-a', 'typed-a'],
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'fulfilled-a',
+            name: 'lookup',
+            arguments: '',
+            status: 'done',
+            result: fulfilledResult,
+          },
+          {
+            id: 'rejected-a',
+            name: 'lookup',
+            arguments: '',
+            status: 'done',
+            result: rejectedResult,
+          },
+          {
+            id: 'typed-a',
+            name: 'lookup',
+            arguments: '',
+            argumentsResolved: typedArguments,
+            status: 'pending',
+          },
+        ],
+      },
+    }),
+  );
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+
+  // Act
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'fulfilled-a',
+      toolCallName: 'lookup',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'rejected-a',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'typed-a',
+      toolCallName: 'lookup',
+      delta: '',
+    }),
+  );
+  const replayed = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'fulfilled-a',
+      delta: '{"city":"Rome"}',
+    }),
+  );
+  const argumentsSuperseded = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'rejected-result-a',
+      toolCallId: 'rejected-a',
+      content: 'updated remote rejection',
+      error: 'updated remote rejection',
+    }),
+  );
+  const resultSuperseded = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'fulfilled-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"city":"Rome"}' },
+            },
+            {
+              id: 'rejected-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+            {
+              id: 'typed-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"city":"Berlin"}' },
+            },
+          ],
+        },
+        {
+          id: 'fulfilled-result-a',
+          role: 'tool',
+          toolCallId: 'fulfilled-a',
+          content: 'remote fulfilled',
+        },
+        {
+          id: 'rejected-result-a',
+          role: 'tool',
+          toolCallId: 'rejected-a',
+          content: 'updated remote rejection',
+          error: 'updated remote rejection',
+        },
+      ],
+    }),
+  );
+  const snapshotSuperseded = store.read((state) => state);
+
+  // Assert
+  expect(replayed.toolCalls.entities['fulfilled-a']?.result).toBe(
+    fulfilledResult,
+  );
+  expect(replayed.toolCalls.entities['rejected-a']?.result).toBe(
+    rejectedResult,
+  );
+  expect(replayed.toolCalls.entities['typed-a']?.argumentsResolved).toBe(
+    typedArguments,
+  );
+  expect(argumentsSuperseded.toolCalls.entities['fulfilled-a']).toMatchObject({
+    arguments: '{"city":"Rome"}',
+    result: { status: 'fulfilled', value: 'remote fulfilled' },
+  });
+  expect(
+    argumentsSuperseded.toolCalls.entities['fulfilled-a']?.result,
+  ).not.toBe(fulfilledResult);
+  expect(resultSuperseded.toolCalls.entities['rejected-a']).toMatchObject({
+    result: { status: 'rejected', reason: 'updated remote rejection' },
+  });
+  expect(resultSuperseded.toolCalls.entities['rejected-a']?.result).not.toBe(
+    rejectedResult,
+  );
+  expect(snapshotSuperseded.toolCalls.entities['typed-a']).toMatchObject({
+    arguments: '{"city":"Berlin"}',
+  });
+  expect(
+    snapshotSuperseded.toolCalls.entities['typed-a']?.argumentsResolved,
+  ).not.toBe(typedArguments);
+});
+
 test('keeps prepared cache slices by reference for empty stable lifecycle replays', () => {
   const store = createStore({
     reducers,
@@ -1948,6 +2159,162 @@ test('restores committed message IDs after a snapshot rollback', () => {
   });
   expect(store.read((state) => state).messages).toBe(beforeRejected);
   expect(store.read(ɵselectAgUiMessagesProtocolError)).toBeInstanceOf(Error);
+});
+
+test('restores committed tool IDs after a snapshot rollback', () => {
+  // Arrange
+  const localToolCall: Chat.Internal.ToolCall = {
+    id: 'tool-reused',
+    name: 'lookup',
+    arguments: '',
+    status: 'pending',
+  };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-snapshot',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: localToolCall.id,
+              type: 'function',
+              function: { name: localToolCall.name, arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptRolledBack());
+
+  // Act
+  store.dispatch(
+    devActions.sendMessage({
+      message: { role: 'user', content: 'next' },
+      canonicalMessages: [
+        {
+          id: 'assistant-local',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: localToolCall.id,
+              type: 'function',
+              function: { name: localToolCall.name, arguments: '' },
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-local',
+            role: 'assistant',
+            content: '',
+            toolCallIds: [localToolCall.id],
+          },
+        ],
+        toolCalls: [localToolCall],
+      },
+    }),
+  );
+  const state = store.read((current) => current);
+
+  // Assert
+  expect(state.toolCalls.canonicalIds.toolCallIds).toEqual([localToolCall.id]);
+  expect(state.toolCalls.entities[localToolCall.id]).toBe(localToolCall);
+});
+
+test('avoids historical projection for a current assistant while hydrating another', () => {
+  // Arrange
+  const originalStructuredClone = globalThis.structuredClone;
+  let historicalClones = 0;
+  const structuredCloneSpy = jest
+    .spyOn(globalThis, 'structuredClone')
+    .mockImplementation((value) => {
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        'historical' in value &&
+        value.historical === true
+      ) {
+        historicalClones += 1;
+      }
+      return originalStructuredClone(value);
+    });
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+
+  try {
+    store.dispatch(
+      devActions.init({
+        system: '',
+        canonicalMessages: [
+          {
+            id: 'assistant-history',
+            role: 'assistant',
+            content: 'history',
+            metadata: { historical: true },
+          },
+          { id: 'assistant-current', role: 'assistant', content: '' },
+        ],
+      }),
+    );
+    store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+    store.dispatch(internalActions.generationAttemptStarted());
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'assistant-current',
+        role: 'assistant',
+      }),
+    );
+    historicalClones = 0;
+
+    // Act
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.TEXT_MESSAGE_CHUNK,
+        messageId: 'assistant-current',
+        role: 'assistant',
+        delta: 'current',
+      }),
+    );
+    const current = store.read((state) => state);
+    const currentHistoricalClones = historicalClones;
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.TEXT_MESSAGE_CHUNK,
+        messageId: 'assistant-next',
+        role: 'assistant',
+        delta: 'next',
+      }),
+    );
+    const next = store.read((state) => state);
+
+    // Assert
+    expect(currentHistoricalClones).toBe(0);
+    expect(current.streamingMessage.messageId).toBe('assistant-current');
+    expect(current.streamingMessage.message?.content).toBe('current');
+    expect(next.streamingMessage.messageId).toBe('assistant-next');
+    expect(next.streamingMessage.message?.content).toBe('next');
+  } finally {
+    structuredCloneSpy.mockRestore();
+  }
 });
 
 test('accepts a compatible snapshotted reasoning start without resetting it', () => {

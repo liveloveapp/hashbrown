@@ -20,6 +20,7 @@ export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly activeToolCallId: string | undefined;
   readonly activeToolCallName: string | undefined;
   readonly canonicalIds: ɵAgUiCanonicalIdIndex;
+  readonly committedCanonicalIds: ɵAgUiCanonicalIdIndex;
   readonly preparedProjection?: boolean;
   readonly localProvenance?: Readonly<Record<string, LocalToolCallProvenance>>;
   readonly committedLocalProvenance?: Readonly<
@@ -40,6 +41,7 @@ const initialState: ToolCallsState = {
   activeToolCallId: undefined,
   activeToolCallName: undefined,
   canonicalIds: ɵindexAgUiCanonicalIds([]),
+  committedCanonicalIds: ɵindexAgUiCanonicalIds([]),
   preparedProjection: false,
   localProvenance: {},
   committedLocalProvenance: {},
@@ -72,6 +74,9 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+      committedCanonicalIds: ɵindexAgUiCanonicalIds(
+        action.payload.canonicalMessages,
+      ),
       preparedProjection: false,
       localProvenance: createLocalProvenance(action.payload.localProjection),
       committedLocalProvenance: createLocalProvenance(
@@ -86,7 +91,8 @@ export const reducer = createReducer(
     attemptActive: true,
     activeToolCallId: undefined,
     activeToolCallName: undefined,
-    canonicalIds: state.canonicalIds,
+    canonicalIds: state.committedCanonicalIds,
+    committedCanonicalIds: state.committedCanonicalIds,
     preparedProjection: false,
     localProvenance: state.committedLocalProvenance,
     committedLocalProvenance: state.committedLocalProvenance,
@@ -126,6 +132,7 @@ export const reducer = createReducer(
         activeToolCallId: decision.state.activeToolCallId,
         activeToolCallName: decision.state.activeToolCallName,
         canonicalIds: preparedProjection.canonicalIds,
+        committedCanonicalIds: state.committedCanonicalIds,
         preparedProjection: true,
         localProvenance: reconciled.localProvenance,
         committedLocalProvenance: state.committedLocalProvenance,
@@ -142,6 +149,7 @@ export const reducer = createReducer(
         activeToolCallId: undefined,
         activeToolCallName: undefined,
         canonicalIds: state.canonicalIds,
+        committedCanonicalIds: state.committedCanonicalIds,
         localProvenance: state.localProvenance,
         committedLocalProvenance: state.committedLocalProvenance,
       };
@@ -181,6 +189,7 @@ export const reducer = createReducer(
         activeToolCallId: action.payload.toolCallId,
         activeToolCallName: action.payload.toolCallName,
         canonicalIds: state.canonicalIds,
+        committedCanonicalIds: state.committedCanonicalIds,
         localProvenance: state.localProvenance,
         committedLocalProvenance: state.committedLocalProvenance,
       };
@@ -249,6 +258,7 @@ export const reducer = createReducer(
         activeToolCallId,
         activeToolCallName,
         canonicalIds: state.canonicalIds,
+        committedCanonicalIds: state.committedCanonicalIds,
       };
     }
     if (
@@ -273,6 +283,7 @@ export const reducer = createReducer(
         activeToolCallId: state.activeToolCallId,
         activeToolCallName: state.activeToolCallName,
         canonicalIds: state.canonicalIds,
+        committedCanonicalIds: state.committedCanonicalIds,
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_RESULT) {
@@ -302,6 +313,7 @@ export const reducer = createReducer(
         activeToolCallId: state.activeToolCallId,
         activeToolCallName: state.activeToolCallName,
         canonicalIds: state.canonicalIds,
+        committedCanonicalIds: state.committedCanonicalIds,
       };
     }
     return state;
@@ -319,6 +331,7 @@ export const reducer = createReducer(
         activeToolCallId: undefined,
         activeToolCallName: undefined,
         canonicalIds: state.canonicalIds,
+        committedCanonicalIds: state.canonicalIds,
         preparedProjection: state.preparedProjection,
         localProvenance: state.localProvenance,
         committedLocalProvenance: state.localProvenance,
@@ -333,6 +346,7 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds: state.canonicalIds,
+      committedCanonicalIds: state.committedCanonicalIds,
       localProvenance: state.localProvenance,
       committedLocalProvenance: state.localProvenance,
     };
@@ -353,7 +367,7 @@ export const reducer = createReducer(
     let canonicalIds: ɵAgUiCanonicalIdIndex;
     try {
       canonicalIds = ɵappendAgUiCanonicalIds(
-        state.canonicalIds,
+        state.attemptActive ? state.committedCanonicalIds : state.canonicalIds,
         ɵownValidatedAgUiMessages(action.payload.canonicalMessages),
       );
     } catch {
@@ -376,6 +390,7 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds,
+      committedCanonicalIds: canonicalIds,
       localProvenance,
       committedLocalProvenance: localProvenance,
     };
@@ -396,6 +411,9 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+      committedCanonicalIds: ɵindexAgUiCanonicalIds(
+        action.payload.canonicalMessages,
+      ),
       localProvenance: createLocalProvenance(action.payload.localProjection),
       committedLocalProvenance: createLocalProvenance(
         action.payload.localProjection,
@@ -438,6 +456,7 @@ export const reducer = createReducer(
           activeToolCallId: state.activeToolCallId,
           activeToolCallName: state.activeToolCallName,
           canonicalIds: state.canonicalIds,
+          committedCanonicalIds: state.committedCanonicalIds,
           localProvenance: settled.localProvenance,
           committedLocalProvenance: state.committedLocalProvenance,
         }
@@ -449,6 +468,7 @@ export const reducer = createReducer(
           activeToolCallId: undefined,
           activeToolCallName: undefined,
           canonicalIds: state.canonicalIds,
+          committedCanonicalIds: state.committedCanonicalIds,
           localProvenance: settled.localProvenance,
           committedLocalProvenance: settled.localProvenance,
         };
@@ -475,7 +495,8 @@ function rollback(state: ToolCallsState): ToolCallsState {
         attemptActive: false,
         activeToolCallId: undefined,
         activeToolCallName: undefined,
-        canonicalIds: state.canonicalIds,
+        canonicalIds: state.committedCanonicalIds,
+        committedCanonicalIds: state.committedCanonicalIds,
         localProvenance: state.committedLocalProvenance,
         committedLocalProvenance: state.committedLocalProvenance,
       }
@@ -596,13 +617,20 @@ function eventSupersedesToolCall(
   if (event.type === EventType.TOOL_CALL_RESULT) {
     return event.toolCallId === toolCallId;
   }
+  if (event.type === EventType.TOOL_CALL_START) {
+    return event.toolCallId === toolCallId && event.metadata !== undefined;
+  }
   if (
-    event.type === EventType.TOOL_CALL_START ||
     event.type === EventType.TOOL_CALL_ARGS ||
     event.type === EventType.TOOL_CALL_END ||
     event.type === EventType.TOOL_CALL_CHUNK
   ) {
-    return event.toolCallId === toolCallId;
+    return (
+      event.toolCallId === toolCallId &&
+      (('delta' in event && typeof event.delta === 'string' ? event.delta : '')
+        .length > 0 ||
+        event.metadata !== undefined)
+    );
   }
   return (
     event.type === EventType.REASONING_ENCRYPTED_VALUE &&

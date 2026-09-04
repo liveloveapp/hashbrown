@@ -167,6 +167,48 @@ function findAssistantForEvent(
   }
 }
 
+function findCanonicalAssistantIdForEvent(
+  messages: readonly Readonly<import('@ag-ui/core').Message>[],
+  event: Parameters<typeof accumulateAgUiMessageEvent>[1],
+): string | undefined {
+  const assistantById = (messageId: string | undefined) =>
+    messages.find(
+      (message) => message.role === 'assistant' && message.id === messageId,
+    )?.id;
+  const assistantByToolCallId = (toolCallId: string | undefined) =>
+    messages.find(
+      (message) =>
+        message.role === 'assistant' &&
+        (message.toolCalls ?? []).some(
+          (toolCall) => toolCall.id === toolCallId,
+        ),
+    )?.id;
+
+  switch (event.type) {
+    case EventType.TEXT_MESSAGE_START:
+    case EventType.TEXT_MESSAGE_CONTENT:
+    case EventType.TEXT_MESSAGE_END:
+    case EventType.TEXT_MESSAGE_CHUNK:
+      return assistantById(event.messageId);
+    case EventType.TOOL_CALL_START:
+    case EventType.TOOL_CALL_CHUNK:
+      return (
+        assistantById(event.parentMessageId) ??
+        assistantByToolCallId(event.toolCallId)
+      );
+    case EventType.TOOL_CALL_ARGS:
+    case EventType.TOOL_CALL_END:
+    case EventType.TOOL_CALL_RESULT:
+      return assistantByToolCallId(event.toolCallId);
+    case EventType.REASONING_ENCRYPTED_VALUE:
+      return event.subtype === 'tool-call'
+        ? assistantByToolCallId(event.entityId)
+        : assistantById(event.entityId);
+    default:
+      return undefined;
+  }
+}
+
 function readPreparedProjection(
   action: unknown,
 ): ɵAgUiMessageProjectionCache | undefined {
@@ -265,6 +307,13 @@ function hydrateAssistantForEvent(
 ): StreamingMessageState | undefined {
   if (!decision || decision.kind !== 'accepted') {
     return undefined;
+  }
+
+  if (
+    findCanonicalAssistantIdForEvent(decision.priorState.draft, event) ===
+    state.messageId
+  ) {
+    return state;
   }
 
   try {
