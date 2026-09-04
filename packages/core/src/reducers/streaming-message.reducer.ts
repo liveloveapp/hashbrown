@@ -516,7 +516,12 @@ export const selectStreamingToolCallEntities = select(
   (toolCalls): Record<string, Chat.Internal.ToolCall> => {
     return toolCalls.reduce(
       (acc, toolCall) => {
-        acc[toolCall.id] = toolCall;
+        Object.defineProperty(acc, toolCall.id, {
+          value: toolCall,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
         return acc;
       },
       {} as Record<string, Chat.Internal.ToolCall>,

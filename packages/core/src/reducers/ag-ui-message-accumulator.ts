@@ -23,6 +23,33 @@ import { JsonValue } from '../utils';
 type ParserMap = Record<string, StreamState>;
 type CacheMap = Record<string, s.FromJsonAstCache>;
 
+function readOwn<T>(record: Readonly<Record<string, T>>, key: string) {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
+function withOwn<T>(
+  record: Readonly<Record<string, T>>,
+  key: string,
+  value: T,
+): Record<string, T> {
+  const next: Record<string, T> = {};
+  for (const [currentKey, currentValue] of Object.entries(record)) {
+    Object.defineProperty(next, currentKey, {
+      value: currentValue,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  Object.defineProperty(next, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+  return next;
+}
+
 /**
  * A recoverable problem observed while accumulating an AG-UI message.
  */
@@ -280,10 +307,11 @@ function startReasoningMessage(
         details: [...details, detail],
       },
     },
-    reasoningMessageStatusById: {
-      ...state.reasoningMessageStatusById,
-      [event.messageId]: 'active',
-    },
+    reasoningMessageStatusById: withOwn<'active' | 'complete'>(
+      state.reasoningMessageStatusById,
+      event.messageId,
+      'active',
+    ),
   };
 }
 
@@ -341,10 +369,11 @@ function endReasoningMessage(
 
   return {
     ...next,
-    reasoningMessageStatusById: {
-      ...next.reasoningMessageStatusById,
-      [event.messageId]: 'complete',
-    },
+    reasoningMessageStatusById: withOwn<'active' | 'complete'>(
+      next.reasoningMessageStatusById,
+      event.messageId,
+      'complete',
+    ),
   };
 }
 
@@ -637,24 +666,22 @@ function appendToolArguments(
 
   if (tool && event.delta.length > 0) {
     const parserState = push(
-      ensureParserState(toolParserStateById[event.toolCallId]),
+      ensureParserState(readOwn(toolParserStateById, event.toolCallId)),
       event.delta,
     );
-    toolParserStateById = {
-      ...toolParserStateById,
-      [event.toolCallId]: parserState,
-    };
+    toolParserStateById = withOwn(
+      toolParserStateById,
+      event.toolCallId,
+      parserState,
+    );
 
     if (s.isHashbrownType(tool.schema)) {
       const resolved = resolveSchemaValue(
         tool.schema,
         parserState,
-        toolCacheById[event.toolCallId],
+        readOwn(toolCacheById, event.toolCallId),
       );
-      toolCacheById = {
-        ...toolCacheById,
-        [event.toolCallId]: resolved.cache,
-      };
+      toolCacheById = withOwn(toolCacheById, event.toolCallId, resolved.cache);
       if (resolved.value !== undefined) {
         argumentsResolved = resolved.value;
       }
@@ -917,38 +944,29 @@ function finalizeToolCalls(
   const toolCalls = state.toolCalls.map((toolCall) => {
     if (
       (toolCallIds && !toolCallIds.has(toolCall.id)) ||
-      finalizedToolCallIds[toolCall.id]
+      readOwn(finalizedToolCallIds, toolCall.id)
     ) {
       return toolCall;
     }
 
-    const parserState = toolParserStateById[toolCall.id];
+    const parserState = readOwn(toolParserStateById, toolCall.id);
     const tool = toolsByName[toolCall.name];
     if (!parserState || !tool) {
       return toolCall;
     }
 
     const finalized = finish(parserState);
-    toolParserStateById = {
-      ...toolParserStateById,
-      [toolCall.id]: finalized,
-    };
-    finalizedToolCallIds = {
-      ...finalizedToolCallIds,
-      [toolCall.id]: true,
-    };
+    toolParserStateById = withOwn(toolParserStateById, toolCall.id, finalized);
+    finalizedToolCallIds = withOwn(finalizedToolCallIds, toolCall.id, true);
     let argumentsResolved = toolCall.argumentsResolved;
 
     if (s.isHashbrownType(tool.schema)) {
       const resolved = resolveSchemaValue(
         tool.schema,
         finalized,
-        toolCacheById[toolCall.id],
+        readOwn(toolCacheById, toolCall.id),
       );
-      toolCacheById = {
-        ...toolCacheById,
-        [toolCall.id]: resolved.cache,
-      };
+      toolCacheById = withOwn(toolCacheById, toolCall.id, resolved.cache);
       if (resolved.value !== undefined) {
         argumentsResolved = resolved.value;
       }

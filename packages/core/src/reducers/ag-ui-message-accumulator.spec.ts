@@ -181,6 +181,55 @@ test('streams tool arguments across arbitrary JSON chunk boundaries', () => {
   expect(next.error).toBeUndefined();
 });
 
+test('parses and finalizes prototype-collision tool call IDs', () => {
+  // Arrange
+  const toolCallIds = ['constructor', 'toString', '__proto__'];
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    lookup: {
+      name: 'lookup',
+      description: '',
+      schema: s.object('arguments', { city: s.string('city') }),
+      handler: async () => undefined,
+    },
+  };
+  const state = createState(undefined, toolsByName);
+
+  // Act
+  const next = toolCallIds.reduce(
+    (current, toolCallId) =>
+      accumulateEvents(current, [
+        toolStart(toolCallId, 'lookup'),
+        toolArgs(toolCallId, '{"city":"Paris"}'),
+        { type: EventType.TOOL_CALL_END, toolCallId },
+      ]),
+    state,
+  );
+
+  // Assert
+  expect(next.error).toBeUndefined();
+  expect(Object.getPrototypeOf(next.toolParserStateById)).toBe(
+    Object.prototype,
+  );
+  expect(Object.getPrototypeOf(next.toolCacheById)).toBe(Object.prototype);
+  expect(Object.getPrototypeOf(next.finalizedToolCallIds)).toBe(
+    Object.prototype,
+  );
+  for (const toolCallId of toolCallIds) {
+    expect(Object.hasOwn(next.toolParserStateById, toolCallId)).toBe(true);
+    expect(Object.hasOwn(next.toolCacheById, toolCallId)).toBe(true);
+    expect(Object.hasOwn(next.finalizedToolCallIds, toolCallId)).toBe(true);
+    expect(next.finalizedToolCallIds[toolCallId]).toBe(true);
+    expect(
+      next.toolCalls.find((toolCall) => toolCall.id === toolCallId),
+    ).toEqual(
+      expect.objectContaining({
+        arguments: '{"city":"Paris"}',
+        argumentsResolved: { city: 'Paris' },
+      }),
+    );
+  }
+});
+
 test('preserves resolved identities across unrelated tool events', () => {
   const responseSchema = s.object('output', {
     answer: s.streaming.string('answer'),

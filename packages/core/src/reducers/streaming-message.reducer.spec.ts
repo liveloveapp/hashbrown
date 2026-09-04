@@ -175,6 +175,26 @@ test('projects raw and composed selector values without changing identities', ()
   expect(entities).toEqual({ 'call-1': state.toolCalls[0] });
 });
 
+test('projects prototype-collision tool call IDs as own selector entries', () => {
+  // Arrange
+  const toolCalls: Chat.Internal.ToolCall[] = [
+    'constructor',
+    'toString',
+    '__proto__',
+  ].map((id) => ({ id, name: 'lookup', arguments: '', status: 'pending' }));
+  const state = { ...startState(), toolCalls };
+
+  // Act
+  const entities = selectStreamingToolCallEntities(state);
+
+  // Assert
+  expect(Object.getPrototypeOf(entities)).toBe(Object.prototype);
+  for (const toolCall of toolCalls) {
+    expect(Object.hasOwn(entities, toolCall.id)).toBe(true);
+    expect(entities[toolCall.id]).toBe(toolCall);
+  }
+});
+
 test('preserves selector projections for errors and an empty message', () => {
   const state = reducer(
     startState(),
