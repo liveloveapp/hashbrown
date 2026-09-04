@@ -364,6 +364,10 @@ export const reducer = createReducer(
       action.payload.localProjection?.toolCalls ??
         projectAgUiMessages(action.payload.canonicalMessages, {}).toolCalls,
     );
+    const localProvenance = {
+      ...(state.committedLocalProvenance ?? {}),
+      ...createLocalProvenance(action.payload.localProjection),
+    };
     return {
       ...committed,
       committed,
@@ -372,10 +376,8 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds,
-      localProvenance: createLocalProvenance(action.payload.localProjection),
-      committedLocalProvenance: createLocalProvenance(
-        action.payload.localProjection,
-      ),
+      localProvenance,
+      committedLocalProvenance: localProvenance,
     };
   }),
   on(devActions.setMessages, (state, action): ToolCallsState => {

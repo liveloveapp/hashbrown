@@ -661,6 +661,387 @@ test('keeps local tool-call decorations through unrelated prepared canonical eve
   );
 });
 
+test('keeps existing local tool provenance when sendMessage appends canonical history', () => {
+  // Arrange
+  const localResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: { temperature: 20 },
+  };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'lookup-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+        {
+          id: 'result-a',
+          role: 'tool',
+          toolCallId: 'lookup-a',
+          content: 'remote result',
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-a',
+            role: 'assistant',
+            content: '',
+            toolCallIds: ['lookup-a'],
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'lookup-a',
+            name: 'lookup',
+            arguments: '',
+            status: 'done',
+            result: localResult,
+          },
+        ],
+      },
+    }),
+  );
+
+  // Act
+  store.dispatch(
+    devActions.sendMessage({
+      message: { role: 'user', content: 'next' },
+      canonicalMessages: [{ id: 'user-b', role: 'user', content: 'next' }],
+      localProjection: {
+        messages: [{ id: 'user-b', role: 'user', content: 'next' }],
+        toolCalls: [],
+      },
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { unrelated: true },
+    }),
+  );
+  const state = store.read((current) => current);
+
+  // Assert
+  expect(state.toolCalls.entities['lookup-a']?.result).toBe(localResult);
+});
+
+test('resets local tool provenance when setMessages replaces canonical history', () => {
+  // Arrange
+  const localResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: { temperature: 20 },
+  };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'lookup-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-a',
+            role: 'assistant',
+            content: '',
+            toolCallIds: ['lookup-a'],
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'lookup-a',
+            name: 'lookup',
+            arguments: '',
+            status: 'done',
+            result: localResult,
+          },
+        ],
+      },
+    }),
+  );
+
+  // Act
+  store.dispatch(
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: [
+        {
+          id: 'assistant-b',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'lookup-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+        {
+          id: 'result-b',
+          role: 'tool',
+          toolCallId: 'lookup-a',
+          content: 'replacement remote result',
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-b',
+            role: 'assistant',
+            content: '',
+            toolCallIds: ['lookup-a'],
+          },
+        ],
+        toolCalls: [
+          {
+            id: 'lookup-a',
+            name: 'lookup',
+            arguments: '',
+            status: 'pending',
+          },
+        ],
+      },
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-b',
+      role: 'assistant',
+      metadata: { unrelated: true },
+    }),
+  );
+  const state = store.read((current) => current);
+
+  // Assert
+  expect(state.toolCalls.entities['lookup-a']?.result).toEqual({
+    status: 'fulfilled',
+    value: 'replacement remote result',
+  });
+  expect(state.toolCalls.entities['lookup-a']?.result).not.toBe(localResult);
+});
+
+test('preserves locally settled tool values until remote associations supersede them', () => {
+  // Arrange
+  const fulfilled: Chat.Internal.ToolCall = {
+    id: 'fulfilled-a',
+    name: 'lookup',
+    arguments: '',
+    argumentsResolved: { city: 'Paris' },
+    status: 'pending',
+  };
+  const rejected: Chat.Internal.ToolCall = {
+    id: 'rejected-a',
+    name: 'lookup',
+    arguments: '',
+    argumentsResolved: { city: 'Rome' },
+    status: 'pending',
+  };
+  const fulfilledResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: { temperature: 20 },
+  };
+  const rejectedReason = new Error('lookup unavailable');
+  const rejectedResult: PromiseSettledResult<unknown> = {
+    status: 'rejected',
+    reason: rejectedReason,
+  };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: fulfilled.id,
+              type: 'function',
+              function: {
+                name: fulfilled.name,
+                arguments: fulfilled.arguments,
+              },
+            },
+            {
+              id: rejected.id,
+              type: 'function',
+              function: { name: rejected.name, arguments: rejected.arguments },
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-a',
+            role: 'assistant',
+            content: '',
+            toolCallIds: [fulfilled.id, rejected.id],
+          },
+        ],
+        toolCalls: [fulfilled, rejected],
+      },
+    }),
+  );
+
+  // Act
+  store.dispatch(
+    internalActions.toolTurnSettled({
+      continuation: 'stop',
+      toolCalls: [fulfilled, rejected],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          toolName: fulfilled.name,
+          content: fulfilledResult,
+        },
+        {
+          role: 'tool',
+          toolCallId: rejected.id,
+          toolName: rejected.name,
+          content: rejectedResult,
+        },
+      ],
+    }),
+  );
+  const settled = store.read((current) => current);
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { unrelated: true },
+    }),
+  );
+  const preserved = store.read((current) => current);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'fulfilled-result-a',
+      toolCallId: fulfilled.id,
+      content: 'remote fulfilled result',
+    }),
+  );
+  const fulfilledSuperseded = store.read((current) => current);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: fulfilled.id,
+              type: 'function',
+              function: {
+                name: fulfilled.name,
+                arguments: fulfilled.arguments,
+              },
+            },
+            {
+              id: rejected.id,
+              type: 'function',
+              function: { name: rejected.name, arguments: rejected.arguments },
+            },
+          ],
+        },
+        {
+          id: 'fulfilled-result-a',
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          content: 'remote fulfilled result',
+        },
+        {
+          id: 'rejected-result-a',
+          role: 'tool',
+          toolCallId: rejected.id,
+          content: 'remote rejected result',
+          error: 'remote rejected result',
+        },
+      ],
+    }),
+  );
+  const snapshotSuperseded = store.read((current) => current);
+
+  // Assert
+  expect(settled.toolCalls.entities[fulfilled.id]?.result).toBe(
+    fulfilledResult,
+  );
+  expect(settled.toolCalls.entities[rejected.id]?.result).toBe(rejectedResult);
+  expect(
+    (settled.toolCalls.entities[rejected.id]?.result as PromiseRejectedResult)
+      .reason,
+  ).toBe(rejectedReason);
+  expect(preserved.toolCalls.entities[fulfilled.id]?.result).toBe(
+    fulfilledResult,
+  );
+  expect(preserved.toolCalls.entities[rejected.id]?.result).toBe(
+    rejectedResult,
+  );
+  expect(fulfilledSuperseded.toolCalls.entities[fulfilled.id]?.result).toEqual({
+    status: 'fulfilled',
+    value: 'remote fulfilled result',
+  });
+  expect(fulfilledSuperseded.toolCalls.entities[fulfilled.id]?.result).not.toBe(
+    fulfilledResult,
+  );
+  expect(fulfilledSuperseded.toolCalls.entities[rejected.id]?.result).toBe(
+    rejectedResult,
+  );
+  expect(snapshotSuperseded.toolCalls.entities[rejected.id]?.result).toEqual({
+    status: 'rejected',
+    reason: 'remote rejected result',
+  });
+  expect(snapshotSuperseded.toolCalls.entities[rejected.id]?.result).not.toBe(
+    rejectedResult,
+  );
+});
+
 test('keeps prepared cache slices by reference for empty stable lifecycle replays', () => {
   const store = createStore({
     reducers,
