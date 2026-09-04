@@ -18,12 +18,54 @@ import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export type StreamingMessageState = AgUiMessageAccumulatorState & {
   readonly attemptActive: boolean;
+  readonly snapshotReasoningMessageIds?: readonly string[];
 };
 
 export const initialState: StreamingMessageState = {
   ...initialAgUiMessageAccumulatorState,
   attemptActive: false,
+  snapshotReasoningMessageIds: [],
 };
+
+function completeSnapshotReasoningMessages(
+  state: StreamingMessageState,
+): StreamingMessageState {
+  const snapshotReasoningMessageIds = state.snapshotReasoningMessageIds ?? [];
+  if (snapshotReasoningMessageIds.length === 0) return state;
+
+  return {
+    ...state,
+    reasoningMessageStatusById: snapshotReasoningMessageIds.reduce(
+      (statuses, messageId) =>
+        statuses[messageId] === 'active'
+          ? { ...statuses, [messageId]: 'complete' }
+          : statuses,
+      state.reasoningMessageStatusById,
+    ),
+    snapshotReasoningMessageIds: [],
+  };
+}
+
+function retireSnapshotReasoningMessage(
+  state: StreamingMessageState,
+  event: Parameters<typeof accumulateAgUiMessageEvent>[1],
+): StreamingMessageState {
+  const snapshotReasoningMessageIds = state.snapshotReasoningMessageIds ?? [];
+  if (
+    (event.type !== EventType.REASONING_MESSAGE_CONTENT &&
+      event.type !== EventType.REASONING_MESSAGE_END) ||
+    !snapshotReasoningMessageIds.includes(event.messageId)
+  ) {
+    return state;
+  }
+
+  return {
+    ...state,
+    snapshotReasoningMessageIds: snapshotReasoningMessageIds.filter(
+      (messageId) => messageId !== event.messageId,
+    ),
+  };
+}
 
 function warnRecoveredTrailingContent(
   parsedData: JsonValue,
@@ -70,6 +112,7 @@ export const reducer = createReducer(
     (_state, action): StreamingMessageState => ({
       ...createAgUiMessageAccumulator(action.payload),
       attemptActive: true,
+      snapshotReasoningMessageIds: [],
     }),
   ),
   on(
@@ -123,7 +166,14 @@ export const reducer = createReducer(
         };
       }
 
-      return { ...accumulateEvent(state, action.payload), attemptActive: true };
+      const current =
+        action.payload.type === EventType.RUN_FINISHED
+          ? completeSnapshotReasoningMessages(state)
+          : retireSnapshotReasoningMessage(state, action.payload);
+      return {
+        ...accumulateEvent(current, action.payload),
+        attemptActive: true,
+      };
     },
   ),
   on(
@@ -303,5 +353,6 @@ function hydrateSnapshot(
     }),
     activeToolCallId: toolCalls.at(-1)?.id,
     attemptActive: true,
+    snapshotReasoningMessageIds: reasoningDetails.map((detail) => detail.id),
   };
 }

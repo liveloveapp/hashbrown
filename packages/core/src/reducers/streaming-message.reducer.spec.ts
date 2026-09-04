@@ -426,3 +426,31 @@ test('continues and ends a snapshotted reasoning message by stable ID', () => {
     'reasoning-1': 'complete',
   });
 });
+
+test('treats snapshotted reasoning as complete when the run finishes', () => {
+  const started = startState();
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'reasoning-1', role: 'reasoning', content: 'Plan' },
+        { id: 'assistant-1', role: 'assistant', content: '' },
+      ],
+    }),
+  );
+
+  const finished = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+
+  expect(finished.error).toBeUndefined();
+  expect(finished.reasoningMessageStatusById).toEqual({
+    'reasoning-1': 'complete',
+  });
+});

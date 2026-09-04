@@ -912,6 +912,63 @@ test('settles fulfilled and rejected streamed tool results without a pending ove
   });
 });
 
+test('retains partial streamed tool arguments in the live projection', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {
+            city: s.streaming.string('city'),
+          }),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({
+        toolsByName: initialized.tools.entities,
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const streamed = reduceAll(
+    reduceAll(
+      active,
+      apiActions.generateMessageEvent({
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'assistant-1',
+        role: 'assistant',
+      }),
+    ),
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      delta: '{"city":"Par',
+    }),
+  );
+
+  const view = selectViewMessages(streamed);
+
+  expect(streamed.toolCalls.entities['tool-1']).toMatchObject({
+    status: 'pending',
+    arguments: '{"city":"Par',
+  });
+  expect(view[0]).toMatchObject({
+    role: 'assistant',
+    toolCalls: [{ status: 'pending', args: { city: 'Par' } }],
+  });
+});
+
 test('reconciles snapshotted reasoning through matching live content and end events', () => {
   const initialized = reduceAll(
     createState(),

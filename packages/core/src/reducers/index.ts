@@ -289,6 +289,33 @@ const selectNonStreamingViewMessageEntries = select(
   },
 );
 
+function mergeStreamingToolCallEntities(
+  streamingToolCalls: Record<string, Chat.Internal.ToolCall>,
+  canonicalToolCalls: Record<string, Chat.Internal.ToolCall>,
+): Record<string, Chat.Internal.ToolCall> {
+  return Object.entries(canonicalToolCalls).reduce(
+    (merged, [toolCallId, canonicalToolCall]) => {
+      const streamingToolCall = streamingToolCalls[toolCallId];
+      const argumentsResolved =
+        canonicalToolCall.status === 'pending' &&
+        streamingToolCall?.status === 'pending' &&
+        streamingToolCall.name === canonicalToolCall.name &&
+        streamingToolCall.arguments === canonicalToolCall.arguments
+          ? streamingToolCall.argumentsResolved
+          : undefined;
+
+      return {
+        ...merged,
+        [toolCallId]:
+          argumentsResolved === undefined
+            ? canonicalToolCall
+            : { ...canonicalToolCall, argumentsResolved },
+      };
+    },
+    streamingToolCalls,
+  );
+}
+
 const selectStreamingViewMessageEntries = select(
   selectStreamingMessage,
   selectStreamingToolCallEntities,
@@ -306,7 +333,7 @@ const selectStreamingViewMessageEntries = select(
       id: message.id,
       messages: Chat.helpers.toViewMessagesFromInternal(
         message,
-        { ...streamingToolCalls, ...canonicalToolCalls },
+        mergeStreamingToolCallEntities(streamingToolCalls, canonicalToolCalls),
         tools,
         responseSchema,
       ),
