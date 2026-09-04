@@ -1042,6 +1042,120 @@ test('preserves locally settled tool values until remote associations supersede 
   );
 });
 
+test('keeps newly settled local tool results through unrelated prepared events', () => {
+  // Arrange
+  const fulfilled: Chat.Internal.ToolCall = {
+    id: 'fulfilled-a',
+    name: 'lookup',
+    arguments: '',
+    status: 'pending',
+  };
+  const rejected: Chat.Internal.ToolCall = {
+    id: 'rejected-a',
+    name: 'unknown',
+    arguments: '',
+    status: 'pending',
+  };
+  const fulfilledResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: { temperature: 20 },
+  };
+  const rejectedReason = new Error('unknown tool');
+  const rejectedResult: PromiseSettledResult<unknown> = {
+    status: 'rejected',
+    reason: rejectedReason,
+  };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: fulfilled.id,
+              type: 'function',
+              function: {
+                name: fulfilled.name,
+                arguments: fulfilled.arguments,
+              },
+            },
+            {
+              id: rejected.id,
+              type: 'function',
+              function: { name: rejected.name, arguments: rejected.arguments },
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-a',
+            role: 'assistant',
+            content: '',
+            toolCallIds: [fulfilled.id, rejected.id],
+          },
+        ],
+        toolCalls: [fulfilled, rejected],
+      },
+    }),
+  );
+
+  // Act
+  store.dispatch(
+    internalActions.toolTurnSettled({
+      continuation: 'stop',
+      toolCalls: [fulfilled, rejected],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          toolName: fulfilled.name,
+          content: fulfilledResult,
+        },
+        {
+          role: 'tool',
+          toolCallId: rejected.id,
+          toolName: rejected.name,
+          content: rejectedResult,
+        },
+      ],
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { unrelated: true },
+    }),
+  );
+  const state = store.read((current) => current);
+
+  // Assert
+  expect(state.toolCalls.entities[fulfilled.id]).toMatchObject({
+    status: 'done',
+  });
+  expect(state.toolCalls.entities[fulfilled.id]?.result).toBe(fulfilledResult);
+  expect(state.toolCalls.entities[rejected.id]).toMatchObject({
+    status: 'done',
+  });
+  expect(state.toolCalls.entities[rejected.id]?.result).toBe(rejectedResult);
+  expect(
+    (state.toolCalls.entities[rejected.id]?.result as PromiseRejectedResult)
+      .reason,
+  ).toBe(rejectedReason);
+});
+
 test('keeps prepared cache slices by reference for empty stable lifecycle replays', () => {
   const store = createStore({
     reducers,

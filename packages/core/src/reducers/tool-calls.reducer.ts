@@ -406,40 +406,51 @@ export const reducer = createReducer(
     const expected = new Map(
       action.payload.toolCalls.map((toolCall) => [toolCall.id, toolCall]),
     );
-    const updates = action.payload.toolMessages.reduce(
+    const settled = action.payload.toolMessages.reduce(
       (current, toolMessage) => {
-        const existing = current.entities[toolMessage.toolCallId];
+        const existing = current.entities.entities[toolMessage.toolCallId];
         return existing === expected.get(toolMessage.toolCallId)
-          ? updateEntity(current, toolMessage.toolCallId, {
-              status: 'done',
-              result: toolMessage.content,
-            })
+          ? {
+              entities: updateEntity(current.entities, toolMessage.toolCallId, {
+                status: 'done',
+                result: toolMessage.content,
+              }),
+              localProvenance: {
+                ...current.localProvenance,
+                [toolMessage.toolCallId]: {},
+              },
+            }
           : current;
       },
-      state.attemptActive ? state.draft : state.committed,
+      {
+        entities: state.attemptActive ? state.draft : state.committed,
+        localProvenance: state.attemptActive
+          ? (state.localProvenance ?? {})
+          : (state.committedLocalProvenance ?? {}),
+      },
     );
     return state.attemptActive
       ? {
-          ...updates,
+          ...settled.entities,
           committed: state.committed,
-          draft: updates,
+          draft: settled.entities,
           attemptActive: true,
           activeToolCallId: state.activeToolCallId,
           activeToolCallName: state.activeToolCallName,
           canonicalIds: state.canonicalIds,
-          localProvenance: state.localProvenance,
+          localProvenance: settled.localProvenance,
           committedLocalProvenance: state.committedLocalProvenance,
         }
       : {
-          ...updates,
-          committed: updates,
+          ...settled.entities,
+          committed: settled.entities,
           draft: state.draft,
           attemptActive: false,
           activeToolCallId: undefined,
           activeToolCallName: undefined,
           canonicalIds: state.canonicalIds,
-          localProvenance: state.localProvenance,
-          committedLocalProvenance: state.localProvenance,
+          localProvenance: settled.localProvenance,
+          committedLocalProvenance: settled.localProvenance,
         };
   }),
 );
