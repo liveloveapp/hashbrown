@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@cacheplane/partial-json": "0.3.0",
-    "@cacheplane/partial-markdown": "0.5.10"
+    "@cacheplane/partial-markdown": "0.5.12"
   },
   "sideEffects": false,
   "publishConfig": {

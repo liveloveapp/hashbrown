@@ -41,7 +41,9 @@ test('injectMagicTextParser refreshes derived maps when prefix growth adds nodes
   expect(secondParagraph?.type).toBe('paragraph');
   expect(secondParagraph).toBeDefined();
   expect(nodeIdsBefore.has(secondParagraph?.id ?? -1)).toBe(false);
-  expect(parser.nodeById().get(secondParagraph?.id ?? -1)).toBe(secondParagraph);
+  expect(parser.nodeById().get(secondParagraph?.id ?? -1)).toBe(
+    secondParagraph,
+  );
   expect(parser.openNode()?.id).toBe(secondParagraph?.children[0]?.id);
 });
 
@@ -56,6 +58,18 @@ test('injectMagicTextParser preserves resolved node identity across prefix updat
 
   expect(firstParagraphBefore).toBeDefined();
   expect(firstParagraphAfter).toBe(firstParagraphBefore);
+});
+
+test('injectMagicTextParser preserves sibling citation numbers', () => {
+  const text = signal('alpha [^first] beta [^second]');
+  const parser = injectMagicTextParser(text);
+
+  const citations = findByType(
+    parser.nodeById().values(),
+    'citation-reference',
+  ) as Array<Extract<MarkdownNode, { type: 'citation-reference' }>>;
+
+  expect(citations.map((citation) => citation.index)).toEqual([1, 2]);
 });
 
 test('injectMagicTextParser resets when markdown updates are not prefix-compatible', () => {

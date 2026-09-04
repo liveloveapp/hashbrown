@@ -58,6 +58,9 @@ jobs:
       - name: Validate smart-home React tooling
         run: npx nx run-many -t eslint:lint,build-storybook -p smart-home-react --parallel=2
 
+      - name: Verify affected real examples
+        run: npx nx affected -t example-e2e --parallel=1
+
       - name: Upload runtime smoke diagnostics
         if: failure()
         uses: actions/upload-artifact@v6
@@ -66,6 +69,8 @@ jobs:
           path: |
             test-results/runtime-smoke
             playwright-report/runtime-smoke
+            test-results/examples
+            playwright-report/examples
           retention-days: 7
           if-no-files-found: ignore
 

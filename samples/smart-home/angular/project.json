@@ -25,6 +25,11 @@
         "styles": ["samples/smart-home/angular/src/styles.scss"]
       },
       "configurations": {
+        "example": {
+          "outputPath": "dist/samples/smart-home/angular-example",
+          "optimization": { "scripts": true, "styles": true, "fonts": false },
+          "outputHashing": "all"
+        },
         "production": {
           "budgets": [
             {
