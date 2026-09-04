@@ -756,6 +756,9 @@ function appendToolCallArguments(
   if (!found) {
     return messages;
   }
+  if (delta.length === 0 && event.metadata === undefined) {
+    return messages;
+  }
   const tool = freezeToolCall(
     mergeEventFields(
       {

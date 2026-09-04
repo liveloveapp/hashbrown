@@ -130,6 +130,17 @@ export const reducer = createReducer(
     if (!state.attemptActive) return state;
     if (decision && preparedProjection) {
       const draft = preparedProjection.projection.messages;
+      if (
+        draft === state.draft &&
+        state.activeAssistantMessageId ===
+          decision.state.activeAssistantMessageId &&
+        state.activeIgnoredTextMessageId === undefined &&
+        state.canonicalIds === preparedProjection.canonicalIds &&
+        state.preparedProjection?.canonicalMessages ===
+          preparedProjection.canonicalMessages
+      ) {
+        return state;
+      }
       return {
         ...state,
         draft,

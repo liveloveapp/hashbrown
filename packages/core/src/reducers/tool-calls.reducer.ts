@@ -21,6 +21,14 @@ export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly activeToolCallName: string | undefined;
   readonly canonicalIds: ɵAgUiCanonicalIdIndex;
   readonly preparedProjection?: boolean;
+  readonly localProvenance?: Readonly<Record<string, LocalToolCallProvenance>>;
+  readonly committedLocalProvenance?: Readonly<
+    Record<string, LocalToolCallProvenance>
+  >;
+}
+
+interface LocalToolCallProvenance {
+  readonly source?: ɵAgUiMessageProjectionCache['toolCallSources'][string];
 }
 
 const empty: EntityState<Chat.Internal.ToolCall> = { ids: [], entities: {} };
@@ -33,6 +41,8 @@ const initialState: ToolCallsState = {
   activeToolCallName: undefined,
   canonicalIds: ɵindexAgUiCanonicalIds([]),
   preparedProjection: false,
+  localProvenance: {},
+  committedLocalProvenance: {},
 };
 
 function mergeMetadata(
@@ -63,6 +73,10 @@ export const reducer = createReducer(
       activeToolCallName: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
       preparedProjection: false,
+      localProvenance: createLocalProvenance(action.payload.localProjection),
+      committedLocalProvenance: createLocalProvenance(
+        action.payload.localProjection,
+      ),
     };
   }),
   on(internalActions.generationAttemptStarted, (state): ToolCallsState => ({
@@ -74,6 +88,8 @@ export const reducer = createReducer(
     activeToolCallName: undefined,
     canonicalIds: state.canonicalIds,
     preparedProjection: false,
+    localProvenance: state.committedLocalProvenance,
+    committedLocalProvenance: state.committedLocalProvenance,
   })),
   on(apiActions.generateMessageEvent, (state, action): ToolCallsState => {
     const decision = ɵreadAgUiMessageEventDecision(action);
@@ -84,10 +100,24 @@ export const reducer = createReducer(
       : action;
     if (!state.attemptActive) return state;
     if (decision && preparedProjection) {
-      const draft = reconcileEntities(
+      const reconciled = reconcilePreparedEntities(
         state.draft,
         preparedProjection.projection.toolCalls,
+        preparedProjection.toolCallSources,
+        state.localProvenance ?? {},
+        action.payload,
       );
+      const draft = reconciled.draft;
+      if (
+        draft === state.draft &&
+        reconciled.localProvenance === state.localProvenance &&
+        state.activeToolCallId === decision.state.activeToolCallId &&
+        state.activeToolCallName === decision.state.activeToolCallName &&
+        state.canonicalIds === preparedProjection.canonicalIds &&
+        state.preparedProjection
+      ) {
+        return state;
+      }
       return {
         ...draft,
         committed: state.committed,
@@ -97,6 +127,8 @@ export const reducer = createReducer(
         activeToolCallName: decision.state.activeToolCallName,
         canonicalIds: preparedProjection.canonicalIds,
         preparedProjection: true,
+        localProvenance: reconciled.localProvenance,
+        committedLocalProvenance: state.committedLocalProvenance,
       };
     }
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
@@ -110,6 +142,8 @@ export const reducer = createReducer(
         activeToolCallId: undefined,
         activeToolCallName: undefined,
         canonicalIds: state.canonicalIds,
+        localProvenance: state.localProvenance,
+        committedLocalProvenance: state.committedLocalProvenance,
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_START) {
@@ -147,6 +181,8 @@ export const reducer = createReducer(
         activeToolCallId: action.payload.toolCallId,
         activeToolCallName: action.payload.toolCallName,
         canonicalIds: state.canonicalIds,
+        localProvenance: state.localProvenance,
+        committedLocalProvenance: state.committedLocalProvenance,
       };
     }
     if (
@@ -447,6 +483,101 @@ function reconcileEntities(
       toolCalls.map((toolCall) => [toolCall.id, toolCall]),
     ),
   };
+}
+
+function createLocalProvenance(
+  localProjection:
+    | {
+        readonly toolCalls: readonly Chat.Internal.ToolCall[];
+      }
+    | undefined,
+): Readonly<Record<string, LocalToolCallProvenance>> {
+  if (!localProjection) return {};
+
+  return localProjection.toolCalls.reduce<
+    Record<string, LocalToolCallProvenance>
+  >((provenance, toolCall) => {
+    if (
+      toolCall.argumentsResolved === undefined &&
+      toolCall.result === undefined
+    ) {
+      return provenance;
+    }
+    return { ...provenance, [toolCall.id]: {} };
+  }, {});
+}
+
+function reconcilePreparedEntities(
+  previous: EntityState<Chat.Internal.ToolCall>,
+  toolCalls: readonly Chat.Internal.ToolCall[],
+  sources: ɵAgUiMessageProjectionCache['toolCallSources'],
+  provenance: Readonly<Record<string, LocalToolCallProvenance>>,
+  event: import('@ag-ui/core').AGUIEvent,
+): {
+  readonly draft: EntityState<Chat.Internal.ToolCall>;
+  readonly localProvenance: Readonly<Record<string, LocalToolCallProvenance>>;
+} {
+  let provenanceChanged = false;
+  const nextProvenance: Record<string, LocalToolCallProvenance> = {};
+  const reconciled = toolCalls.map((toolCall) => {
+    const local = provenance[toolCall.id];
+    const source = sources[toolCall.id];
+    const existing = previous.entities[toolCall.id];
+    const valid =
+      local !== undefined &&
+      existing !== undefined &&
+      !eventSupersedesToolCall(event, toolCall.id) &&
+      (local.source === undefined || sameToolCallSource(local.source, source));
+    if (!valid) {
+      if (local !== undefined) provenanceChanged = true;
+      return toolCall;
+    }
+
+    const next = { source };
+    nextProvenance[toolCall.id] = next;
+    if (local.source !== source) provenanceChanged = true;
+    return existing;
+  });
+  if (Object.keys(provenance).length !== Object.keys(nextProvenance).length) {
+    provenanceChanged = true;
+  }
+
+  return {
+    draft: reconcileEntities(previous, reconciled),
+    localProvenance: provenanceChanged ? nextProvenance : provenance,
+  };
+}
+
+function sameToolCallSource(
+  first: LocalToolCallProvenance['source'],
+  second: LocalToolCallProvenance['source'],
+): boolean {
+  return (
+    first?.toolCall === second?.toolCall && first?.result === second?.result
+  );
+}
+
+function eventSupersedesToolCall(
+  event: import('@ag-ui/core').AGUIEvent,
+  toolCallId: string,
+): boolean {
+  if (event.type === EventType.MESSAGES_SNAPSHOT) return true;
+  if (event.type === EventType.TOOL_CALL_RESULT) {
+    return event.toolCallId === toolCallId;
+  }
+  if (
+    event.type === EventType.TOOL_CALL_START ||
+    event.type === EventType.TOOL_CALL_ARGS ||
+    event.type === EventType.TOOL_CALL_END ||
+    event.type === EventType.TOOL_CALL_CHUNK
+  ) {
+    return event.toolCallId === toolCallId;
+  }
+  return (
+    event.type === EventType.REASONING_ENCRYPTED_VALUE &&
+    event.subtype === 'tool-call' &&
+    event.entityId === toolCallId
+  );
 }
 
 function readPreparedProjection(

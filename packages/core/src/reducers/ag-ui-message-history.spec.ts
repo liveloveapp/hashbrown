@@ -11,7 +11,30 @@ import {
   ɵpairViewMessagesWithAgUi,
   ɵprepareAgUiMessageEvent,
   ɵreadAgUiMessageSnapshot,
+  ɵreconcileAgUiMessageProjection,
 } from './ag-ui-message-history';
+
+test('reconciles a large unchanged history without searching prior entries per source', () => {
+  const messages = Array.from({ length: 256 }, (_, index) => ({
+    id: `assistant-${index}`,
+    role: 'assistant' as const,
+    content: `answer ${index}`,
+  }));
+  const tools = {};
+  const first = ɵreconcileAgUiMessageProjection(undefined, messages, tools);
+  const find = jest.spyOn(Array.prototype, 'find');
+
+  try {
+    const second = ɵreconcileAgUiMessageProjection(first, messages, tools);
+
+    expect(second.projection.messages).toBe(first.projection.messages);
+    expect(second.projection.toolCalls).toBe(first.projection.toolCalls);
+    expect(second.entries).toEqual(first.entries);
+    expect(find).not.toHaveBeenCalled();
+  } finally {
+    find.mockRestore();
+  }
+});
 
 test('normalizes one snapshot into an owned immutable history for every reducer consumer', () => {
   const raw = [

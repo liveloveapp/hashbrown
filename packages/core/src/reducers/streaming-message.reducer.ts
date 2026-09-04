@@ -196,10 +196,15 @@ function reconcilePreparedStreaming(
         ? { ...toolCall, argumentsResolved: streamed.argumentsResolved }
         : toolCall;
     });
-  const streamedMessage = state.message;
+  const baseline = needsPreparedStructuralHydration(state, message)
+    ? hydrateSnapshot(state, message, toolCalls)
+    : state;
+  const streamedMessage = baseline.message;
   const contentResolved =
     streamedMessage !== null &&
+    baseline.messageId === message.id &&
     streamedMessage.content === message.content &&
+    baseline.configSnapshot?.responseSchema === projection.responseSchema &&
     streamedMessage.contentResolved !== undefined
       ? streamedMessage.contentResolved
       : undefined;
@@ -207,20 +212,33 @@ function reconcilePreparedStreaming(
     contentResolved === undefined ? message : { ...message, contentResolved };
 
   if (
-    structuralMessage === state.message &&
-    message.id === state.messageId &&
-    state.toolCalls.length === toolCalls.length &&
-    state.toolCalls.every((toolCall, index) => toolCall === toolCalls[index])
+    structuralMessage === baseline.message &&
+    message.id === baseline.messageId &&
+    baseline.toolCalls.length === toolCalls.length &&
+    baseline.toolCalls.every((toolCall, index) => toolCall === toolCalls[index])
   ) {
-    return state;
+    return baseline;
   }
 
   return {
-    ...state,
+    ...baseline,
     message: structuralMessage,
     messageId: message.id,
     toolCalls,
   };
+}
+
+function needsPreparedStructuralHydration(
+  state: StreamingMessageState,
+  message: Chat.Internal.AssistantMessage,
+): boolean {
+  if (state.messageId !== message.id) return true;
+
+  const reasoningDetails =
+    message.reasoning?.kind === 'details' ? message.reasoning.details : [];
+  return reasoningDetails.some(
+    (detail) => !Object.hasOwn(state.reasoningMessageStatusById, detail.id),
+  );
 }
 
 function requiresFreshAssistantBaseline(
@@ -319,19 +337,25 @@ export const reducer = createReducer(
       }
 
       if (action.payload.type === EventType.TOOL_CALL_RESULT) {
-        const toolCalls = state.toolCalls.filter(
+        const hydrated = hydrateAssistantForEvent(
+          state,
+          action.payload,
+          decision,
+        );
+        const current = hydrated ?? state;
+        const toolCalls = current.toolCalls.filter(
           (toolCall) => toolCall.id !== action.payload.toolCallId,
         );
         const next =
-          toolCalls.length === state.toolCalls.length
-            ? state
+          toolCalls.length === current.toolCalls.length
+            ? current
             : {
-                ...state,
+                ...current,
                 toolCalls,
                 activeToolCallId:
-                  state.activeToolCallId === action.payload.toolCallId
+                  current.activeToolCallId === action.payload.toolCallId
                     ? undefined
-                    : state.activeToolCallId,
+                    : current.activeToolCallId,
               };
         return preparedProjection
           ? reconcilePreparedStreaming(next, action.payload, preparedProjection)

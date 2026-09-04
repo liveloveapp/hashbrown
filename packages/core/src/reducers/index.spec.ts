@@ -199,6 +199,24 @@ test('projects trailing reasoning onto the next prepared assistant boundary', ()
     reasoningDetails: [{ id: 'reasoning-b', content: 'Plan' }],
   });
   store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-b',
+      delta: ' next',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-b',
+    }),
+  );
+
+  expect(store.read((state) => state).streamingMessage.error).toBeUndefined();
+  expect(selectViewMessages(store.read((state) => state))[1]).toMatchObject({
+    reasoningDetails: [{ id: 'reasoning-b', content: 'Plan next' }],
+  });
+  store.dispatch(
     apiActions.generateMessageSuccess({
       message: Chat.helpers.ɵwithInternalMessageId(
         { role: 'assistant', content: '', toolCallIds: [] },
@@ -209,7 +227,7 @@ test('projects trailing reasoning onto the next prepared assistant boundary', ()
   );
   expect(selectViewMessages(store.read((state) => state))[1]).toMatchObject({
     role: 'assistant',
-    reasoningDetails: [{ id: 'reasoning-b', content: 'Plan' }],
+    reasoningDetails: [{ id: 'reasoning-b', content: 'Plan next' }],
   });
 });
 
@@ -326,6 +344,393 @@ test('retains prepared assistant metadata after switching away from its stream',
     content: 'first',
     metadata: { source: 'a' },
   });
+});
+
+test('does not reuse a structured output identity across equal-content assistants', () => {
+  const responseSchema = s.object('output', {
+    answer: s.streaming.string('answer'),
+  });
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      responseSchema,
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {}),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const initialized = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageStart({
+      responseSchema,
+      toolsByName: initialized.tools.entities,
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '{"answer":"same"}',
+        },
+        {
+          id: 'assistant-b',
+          role: 'assistant',
+          content: '{"answer":"same"}',
+          toolCalls: [
+            {
+              id: 'tool-b',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-a',
+      role: 'assistant',
+    }),
+  );
+  const aContentResolved = store.read(
+    (state) => state.streamingMessage.message?.contentResolved,
+  );
+
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-b',
+      toolCallId: 'tool-b',
+      content: 'done',
+    }),
+  );
+
+  const state = store.read((current) => current);
+
+  expect(state.streamingMessage.messageId).toBe('assistant-b');
+  expect(state.streamingMessage.message?.contentResolved).not.toBe(
+    aContentResolved,
+  );
+  expect(state.streamingMessage.message?.contentResolved).toEqual({
+    answer: 'same',
+  });
+});
+
+test('keeps local tool-call decorations through unrelated prepared canonical events', () => {
+  const pendingArguments = { city: 'Paris' };
+  const fulfilledValue = { temperature: 20 };
+  const rejectedReason = new Error('unavailable');
+  const fulfilledResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: fulfilledValue,
+  };
+  const rejectedResult: PromiseSettledResult<unknown> = {
+    status: 'rejected',
+    reason: rejectedReason,
+  };
+  const canonicalMessages = [
+    {
+      id: 'assistant-a',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'pending-a',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '' },
+        },
+        {
+          id: 'fulfilled-a',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '' },
+        },
+        {
+          id: 'rejected-a',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '' },
+        },
+      ],
+    },
+    {
+      id: 'fulfilled-result-a',
+      role: 'tool' as const,
+      toolCallId: 'fulfilled-a',
+      content: 'remote fulfilled',
+    },
+    {
+      id: 'rejected-result-a',
+      role: 'tool' as const,
+      toolCallId: 'rejected-a',
+      content: 'remote rejected',
+      error: 'remote rejected',
+    },
+  ];
+  const localToolCalls: Chat.Internal.ToolCall[] = [
+    {
+      id: 'pending-a',
+      name: 'lookup',
+      arguments: '',
+      argumentsResolved: pendingArguments,
+      status: 'pending',
+    },
+    {
+      id: 'fulfilled-a',
+      name: 'lookup',
+      arguments: '',
+      status: 'done',
+      result: fulfilledResult,
+    },
+    {
+      id: 'rejected-a',
+      name: 'lookup',
+      arguments: '',
+      status: 'done',
+      result: rejectedResult,
+    },
+  ];
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages,
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-a',
+            role: 'assistant',
+            content: '',
+            toolCallIds: localToolCalls.map((toolCall) => toolCall.id),
+          },
+        ],
+        toolCalls: localToolCalls,
+      },
+    }),
+  );
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { unrelated: true },
+    }),
+  );
+  const duringAttempt = store.read((state) => state);
+
+  expect(duringAttempt.toolCalls.entities['pending-a']?.argumentsResolved).toBe(
+    pendingArguments,
+  );
+  expect(duringAttempt.toolCalls.entities['fulfilled-a']?.result).toBe(
+    fulfilledResult,
+  );
+  expect(duringAttempt.toolCalls.entities['rejected-a']?.result).toBe(
+    rejectedResult,
+  );
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: '', toolCallIds: [] },
+        'assistant-a',
+      ),
+      toolCalls: [],
+    }),
+  );
+  const committed = store.read((state) => state);
+
+  expect(committed.toolCalls.entities['pending-a']?.argumentsResolved).toBe(
+    pendingArguments,
+  );
+  expect(committed.toolCalls.entities['fulfilled-a']?.result).toBe(
+    fulfilledResult,
+  );
+  expect(committed.toolCalls.entities['rejected-a']?.result).toBe(
+    rejectedResult,
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'pending-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"city":"Rome"}' },
+            },
+            {
+              id: 'fulfilled-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+            {
+              id: 'rejected-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+        {
+          id: 'fulfilled-result-a',
+          role: 'tool',
+          toolCallId: 'fulfilled-a',
+          content: 'remote replacement',
+        },
+        {
+          id: 'rejected-result-a',
+          role: 'tool',
+          toolCallId: 'rejected-a',
+          content: 'remote replacement error',
+          error: 'remote replacement error',
+        },
+      ],
+    }),
+  );
+  const replaced = store.read((state) => state);
+
+  expect(
+    replaced.toolCalls.entities['pending-a']?.argumentsResolved,
+  ).toBeUndefined();
+  expect(replaced.toolCalls.entities['fulfilled-a']?.result).not.toBe(
+    fulfilledResult,
+  );
+  expect(replaced.toolCalls.entities['rejected-a']?.result).not.toBe(
+    rejectedResult,
+  );
+  store.dispatch(internalActions.generationAttemptRolledBack());
+  const rolledBack = store.read((state) => state);
+
+  expect(rolledBack.toolCalls.entities['pending-a']?.argumentsResolved).toBe(
+    pendingArguments,
+  );
+  expect(rolledBack.toolCalls.entities['fulfilled-a']?.result).toBe(
+    fulfilledResult,
+  );
+  expect(rolledBack.toolCalls.entities['rejected-a']?.result).toBe(
+    rejectedResult,
+  );
+});
+
+test('keeps prepared cache slices by reference for empty stable lifecycle replays', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {}),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const initialized = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: initialized.tools.entities,
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-a',
+      role: 'assistant',
+    }),
+  );
+  const afterTextStart = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-a',
+      role: 'assistant',
+    }),
+  );
+  const replayedTextStart = store.read((state) => state);
+
+  expect(replayedTextStart.messages).toBe(afterTextStart.messages);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-a',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-a',
+    }),
+  );
+  const afterToolStart = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-a',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-a',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-a',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-a',
+      delta: '',
+    }),
+  );
+  const replayedToolCalls = store.read((state) => state);
+
+  expect(replayedToolCalls.messages).toBe(afterToolStart.messages);
+  expect(replayedToolCalls.toolCalls).toBe(afterToolStart.toolCalls);
 });
 
 test('reconciles metadata-only prepared compact text and reasoning chunks', () => {

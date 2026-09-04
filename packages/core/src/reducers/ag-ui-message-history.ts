@@ -352,6 +352,17 @@ export interface ɵAgUiMessageProjectionCache {
   readonly responseSchema: s.HashbrownType | undefined;
   readonly projection: AgUiMessageProjection;
   readonly entries: readonly ɵAgUiMessageProjectionEntry[];
+  readonly toolCallSources: Readonly<
+    Record<string, ɵAgUiCanonicalToolCallSource>
+  >;
+}
+
+/** Canonical source references used to retain local tool-call decorations. @internal */
+export interface ɵAgUiCanonicalToolCallSource {
+  readonly toolCall: NonNullable<
+    Extract<Message, { role: 'assistant' }>['toolCalls']
+  >[number];
+  readonly result: Readonly<Extract<Message, { role: 'tool' }>> | undefined;
 }
 
 interface ɵAgUiMessageProjectionEntry {
@@ -541,9 +552,13 @@ export function ɵreconcileAgUiMessageProjection(
     ),
   );
   const previousEntries = previous?.entries ?? [];
+  const previousEntriesBySourceId = new Map(
+    previousEntries.map((entry) => [entry.source.id, entry]),
+  );
   const entries: ɵAgUiMessageProjectionEntry[] = [];
   const projectedMessages: Chat.Internal.Message[] = [];
   const projectedToolCalls: Chat.Internal.ToolCall[] = [];
+  const toolCallSources: Record<string, ɵAgUiCanonicalToolCallSource> = {};
   let pendingReasoning: readonly Readonly<
     Extract<Message, { role: 'reasoning' }>
   >[] = [];
@@ -564,9 +579,7 @@ export function ɵreconcileAgUiMessageProjection(
             resultSources.get(toolCall.id),
           )
         : [];
-    const previousEntry = previousEntries.find(
-      (entry) => entry.source.id === source.id,
-    );
+    const previousEntry = previousEntriesBySourceId.get(source.id);
     const reusable =
       previous?.toolsByName === toolsByName &&
       previous.responseSchema === responseSchema &&
@@ -587,6 +600,14 @@ export function ɵreconcileAgUiMessageProjection(
     entries.push(entry);
     projectedMessages.push(entry.message);
     projectedToolCalls.push(...entry.toolCalls);
+    if (source.role === 'assistant') {
+      for (const [index, toolCall] of (source.toolCalls ?? []).entries()) {
+        toolCallSources[toolCall.id] = {
+          toolCall,
+          result: toolResults[index],
+        };
+      }
+    }
     pendingReasoning = [];
   }
 
@@ -604,11 +625,15 @@ export function ɵreconcileAgUiMessageProjection(
   };
   return {
     canonicalMessages: messages,
-    canonicalIds: ɵindexAgUiCanonicalIds(messages),
+    canonicalIds:
+      previous?.canonicalMessages === messages
+        ? previous.canonicalIds
+        : ɵindexAgUiCanonicalIds(messages),
     toolsByName,
     responseSchema,
     projection,
     entries,
+    toolCallSources,
   };
 }
 
