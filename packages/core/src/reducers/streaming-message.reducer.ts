@@ -175,6 +175,20 @@ function findCanonicalAssistantIdForEvent(
     messages.find(
       (message) => message.role === 'assistant' && message.id === messageId,
     )?.id;
+  const assistantByReasoningMessageId = (messageId: string | undefined) => {
+    const pending = new Set<string>();
+    for (const message of messages) {
+      if (message.role === 'reasoning') {
+        pending.add(message.id);
+        continue;
+      }
+      if (message.role === 'assistant' && messageId && pending.has(messageId)) {
+        return message.id;
+      }
+      pending.clear();
+    }
+    return undefined;
+  };
   const assistantByToolCallId = (toolCallId: string | undefined) =>
     messages.find(
       (message) =>
@@ -203,7 +217,13 @@ function findCanonicalAssistantIdForEvent(
     case EventType.REASONING_ENCRYPTED_VALUE:
       return event.subtype === 'tool-call'
         ? assistantByToolCallId(event.entityId)
-        : assistantById(event.entityId);
+        : (assistantById(event.entityId) ??
+            assistantByReasoningMessageId(event.entityId));
+    case EventType.REASONING_MESSAGE_START:
+    case EventType.REASONING_MESSAGE_CONTENT:
+    case EventType.REASONING_MESSAGE_END:
+    case EventType.REASONING_MESSAGE_CHUNK:
+      return assistantByReasoningMessageId(event.messageId);
     default:
       return undefined;
   }

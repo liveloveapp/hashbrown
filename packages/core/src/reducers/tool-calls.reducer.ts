@@ -609,9 +609,15 @@ function reconcilePreparedEntities(
     nextProvenance[toolCall.id] = next;
     if (local !== next) provenanceChanged = true;
     const metadata = mergeMetadata(existing.metadata, toolCall.metadata);
-    return metadata === existing.metadata
+    const encryptedValue = toolCall.encryptedValue;
+    return metadata === existing.metadata &&
+      encryptedValue === existing.encryptedValue
       ? existing
-      : { ...existing, metadata };
+      : {
+          ...existing,
+          ...(metadata === existing.metadata ? {} : { metadata }),
+          ...(encryptedValue === undefined ? {} : { encryptedValue }),
+        };
   });
   if (Object.keys(provenance).length !== Object.keys(nextProvenance).length) {
     provenanceChanged = true;
@@ -658,11 +664,7 @@ function eventSupersedesToolCall(
         .length > 0
     );
   }
-  return (
-    event.type === EventType.REASONING_ENCRYPTED_VALUE &&
-    event.subtype === 'tool-call' &&
-    event.entityId === toolCallId
-  );
+  return false;
 }
 
 function readPreparedProjection(
