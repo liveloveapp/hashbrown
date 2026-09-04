@@ -344,6 +344,28 @@ export interface AgUiMessageProjection {
   readonly toolCalls: readonly Chat.Internal.ToolCall[];
 }
 
+/** A structural-sharing cache for one canonical AG-UI history projection. @internal */
+export interface ɵAgUiMessageProjectionCache {
+  readonly canonicalMessages: readonly Readonly<Message>[];
+  readonly canonicalIds: ɵAgUiCanonicalIdIndex;
+  readonly toolsByName: Readonly<Record<string, Chat.Internal.Tool>>;
+  readonly responseSchema: s.HashbrownType | undefined;
+  readonly projection: AgUiMessageProjection;
+  readonly entries: readonly ɵAgUiMessageProjectionEntry[];
+}
+
+interface ɵAgUiMessageProjectionEntry {
+  readonly source: Readonly<Message>;
+  readonly reasoning: readonly Readonly<
+    Extract<Message, { role: 'reasoning' }>
+  >[];
+  readonly toolResults: readonly (
+    Readonly<Extract<Message, { role: 'tool' }>> | undefined
+  )[];
+  readonly message: Chat.Internal.Message;
+  readonly toolCalls: readonly Chat.Internal.ToolCall[];
+}
+
 /** An immutable index of canonical message and nested tool-call IDs. @internal */
 export interface ɵAgUiCanonicalIdIndex {
   readonly messageIds: readonly string[];
@@ -499,6 +521,172 @@ export function projectAgUiMessages(
     messages: projectedMessages,
     toolCalls: projectedToolCalls,
   };
+}
+
+/**
+ * Projects canonical history while reusing unchanged projected assistant and
+ * user entries from the previous immutable projection cache.
+ *
+ * @internal
+ */
+export function ɵreconcileAgUiMessageProjection(
+  previous: ɵAgUiMessageProjectionCache | undefined,
+  messages: readonly Readonly<Message>[],
+  toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
+  responseSchema?: s.HashbrownType,
+): ɵAgUiMessageProjectionCache {
+  const resultSources = new Map(
+    messages.flatMap((message) =>
+      message.role === 'tool' ? [[message.toolCallId, message] as const] : [],
+    ),
+  );
+  const previousEntries = previous?.entries ?? [];
+  const entries: ɵAgUiMessageProjectionEntry[] = [];
+  const projectedMessages: Chat.Internal.Message[] = [];
+  const projectedToolCalls: Chat.Internal.ToolCall[] = [];
+  let pendingReasoning: readonly Readonly<
+    Extract<Message, { role: 'reasoning' }>
+  >[] = [];
+
+  for (const source of messages) {
+    if (source.role === 'reasoning') {
+      pendingReasoning = [...pendingReasoning, source];
+      continue;
+    }
+    if (source.role !== 'assistant' && source.role !== 'user') {
+      pendingReasoning = [];
+      continue;
+    }
+
+    const toolResults =
+      source.role === 'assistant'
+        ? (source.toolCalls ?? []).map((toolCall) =>
+            resultSources.get(toolCall.id),
+          )
+        : [];
+    const previousEntry = previousEntries.find(
+      (entry) => entry.source.id === source.id,
+    );
+    const reusable =
+      previous?.toolsByName === toolsByName &&
+      previous.responseSchema === responseSchema &&
+      previousEntry !== undefined &&
+      previousEntry.source === source &&
+      sameReferences(previousEntry.reasoning, pendingReasoning) &&
+      sameReferences(previousEntry.toolResults, toolResults);
+    const entry =
+      reusable && previousEntry
+        ? previousEntry
+        : createProjectionEntry(
+            source,
+            pendingReasoning,
+            toolResults,
+            toolsByName,
+            responseSchema,
+          );
+    entries.push(entry);
+    projectedMessages.push(entry.message);
+    projectedToolCalls.push(...entry.toolCalls);
+    pendingReasoning = [];
+  }
+
+  const projection: AgUiMessageProjection = {
+    messages:
+      previous &&
+      sameReferences(previous.projection.messages, projectedMessages)
+        ? previous.projection.messages
+        : projectedMessages,
+    toolCalls:
+      previous &&
+      sameReferences(previous.projection.toolCalls, projectedToolCalls)
+        ? previous.projection.toolCalls
+        : projectedToolCalls,
+  };
+  return {
+    canonicalMessages: messages,
+    canonicalIds: ɵindexAgUiCanonicalIds(messages),
+    toolsByName,
+    responseSchema,
+    projection,
+    entries,
+  };
+}
+
+function createProjectionEntry(
+  source: Readonly<Extract<Message, { role: 'assistant' | 'user' }>>,
+  reasoning: readonly Readonly<Extract<Message, { role: 'reasoning' }>>[],
+  toolResults: readonly (
+    Readonly<Extract<Message, { role: 'tool' }>> | undefined
+  )[],
+  toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
+  responseSchema: s.HashbrownType | undefined,
+): ɵAgUiMessageProjectionEntry {
+  if (source.role === 'user') {
+    return {
+      source,
+      reasoning,
+      toolResults,
+      message: Chat.helpers.ɵwithInternalMessageId(
+        {
+          role: 'user',
+          content: structuredClone(
+            source.content,
+          ) as Chat.Internal.UserMessage['content'],
+        },
+        source.id,
+      ),
+      toolCalls: [],
+    };
+  }
+  const sourceToolCalls = source.toolCalls ?? [];
+  return {
+    source,
+    reasoning,
+    toolResults,
+    message: Chat.helpers.ɵwithInternalMessageId(
+      {
+        role: 'assistant',
+        ...(source.content !== undefined ? { content: source.content } : {}),
+        ...(responseSchema && source.content !== undefined
+          ? {
+              contentResolved: resolveWithSchema(
+                responseSchema,
+                source.content,
+              ),
+            }
+          : {}),
+        toolCallIds: sourceToolCalls.map((toolCall) => toolCall.id),
+        ...(source.encryptedValue !== undefined
+          ? { encryptedValue: source.encryptedValue }
+          : {}),
+        ...(source.metadata !== undefined
+          ? { metadata: structuredClone(source.metadata) }
+          : {}),
+        ...(reasoning.length > 0
+          ? {
+              reasoning: {
+                kind: 'details' as const,
+                details: reasoning.map(cloneReasoningMessage),
+              },
+            }
+          : {}),
+      },
+      source.id,
+    ),
+    toolCalls: sourceToolCalls.map((toolCall, index) =>
+      projectToolCall(toolCall, toolResults[index], toolsByName),
+    ),
+  };
+}
+
+function sameReferences<T>(
+  previous: readonly T[],
+  next: readonly T[],
+): boolean {
+  return (
+    previous.length === next.length &&
+    previous.every((value, index) => value === next[index])
+  );
 }
 
 function cloneReasoningMessage(

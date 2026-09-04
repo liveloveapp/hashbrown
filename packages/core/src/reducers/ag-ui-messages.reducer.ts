@@ -881,10 +881,36 @@ function replaceAt<T>(
   index: number,
   value: T,
 ): readonly T[] {
+  const current = values[index];
+  if (current === value || sameOwnFields(current, value)) {
+    return values;
+  }
   return Object.freeze(
     values.map((current, currentIndex) =>
       currentIndex === index ? value : current,
     ),
+  );
+}
+
+function sameOwnFields(left: unknown, right: unknown): boolean {
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object'
+  ) {
+    return false;
+  }
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord);
+  const rightKeys = Object.keys(rightRecord);
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every(
+      (key) =>
+        Object.hasOwn(rightRecord, key) && leftRecord[key] === rightRecord[key],
+    )
   );
 }
 

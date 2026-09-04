@@ -5,6 +5,7 @@ import { createReducer, EntityState, on, select } from '../utils/micro-ngrx';
 import {
   projectAgUiMessages,
   type ɵAgUiCanonicalIdIndex,
+  type ɵAgUiMessageProjectionCache,
   ɵappendAgUiCanonicalIds,
   ɵindexAgUiCanonicalIds,
   ɵownValidatedAgUiMessages,
@@ -19,6 +20,7 @@ export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly activeToolCallId: string | undefined;
   readonly activeToolCallName: string | undefined;
   readonly canonicalIds: ɵAgUiCanonicalIdIndex;
+  readonly preparedProjection?: boolean;
 }
 
 const empty: EntityState<Chat.Internal.ToolCall> = { ids: [], entities: {} };
@@ -30,6 +32,7 @@ const initialState: ToolCallsState = {
   activeToolCallId: undefined,
   activeToolCallName: undefined,
   canonicalIds: ɵindexAgUiCanonicalIds([]),
+  preparedProjection: false,
 };
 
 function mergeMetadata(
@@ -59,6 +62,7 @@ export const reducer = createReducer(
       activeToolCallId: undefined,
       activeToolCallName: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+      preparedProjection: false,
     };
   }),
   on(internalActions.generationAttemptStarted, (state): ToolCallsState => ({
@@ -69,14 +73,32 @@ export const reducer = createReducer(
     activeToolCallId: undefined,
     activeToolCallName: undefined,
     canonicalIds: state.canonicalIds,
+    preparedProjection: false,
   })),
   on(apiActions.generateMessageEvent, (state, action): ToolCallsState => {
     const decision = ɵreadAgUiMessageEventDecision(action);
     if (decision && decision.kind !== 'accepted') return state;
+    const preparedProjection = readPreparedProjection(action);
     action = decision
       ? ({ ...action, payload: decision.event } as typeof action)
       : action;
     if (!state.attemptActive) return state;
+    if (decision && preparedProjection) {
+      const draft = reconcileEntities(
+        state.draft,
+        preparedProjection.projection.toolCalls,
+      );
+      return {
+        ...draft,
+        committed: state.committed,
+        draft,
+        attemptActive: true,
+        activeToolCallId: decision.state.activeToolCallId,
+        activeToolCallName: decision.state.activeToolCallName,
+        canonicalIds: preparedProjection.canonicalIds,
+        preparedProjection: true,
+      };
+    }
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
       const draft = projectRemoteSnapshot(action.payload);
       if (!draft) return state;
@@ -250,10 +272,9 @@ export const reducer = createReducer(
   }),
   on(apiActions.generateMessageSuccess, (state, action): ToolCallsState => {
     if (state.attemptActive) {
-      const committed = mergeSuccessToolCalls(
-        state.draft,
-        action.payload.toolCalls,
-      );
+      const committed = state.preparedProjection
+        ? state.draft
+        : mergeSuccessToolCalls(state.draft, action.payload.toolCalls);
       return {
         ...committed,
         committed,
@@ -262,6 +283,7 @@ export const reducer = createReducer(
         activeToolCallId: undefined,
         activeToolCallName: undefined,
         canonicalIds: state.canonicalIds,
+        preparedProjection: state.preparedProjection,
       };
     }
     const committed = addEntities(state.committed, action.payload.toolCalls);
@@ -403,6 +425,36 @@ function toEntityState(
     }),
     empty,
   );
+}
+
+function reconcileEntities(
+  previous: EntityState<Chat.Internal.ToolCall>,
+  toolCalls: readonly Chat.Internal.ToolCall[],
+): EntityState<Chat.Internal.ToolCall> {
+  const ids = toolCalls.map((toolCall) => toolCall.id);
+  const unchanged =
+    ids.length === previous.ids.length &&
+    ids.every(
+      (id, index) =>
+        id === previous.ids[index] &&
+        previous.entities[id] === toolCalls[index],
+    );
+  if (unchanged) return previous;
+
+  return {
+    ids,
+    entities: Object.fromEntries(
+      toolCalls.map((toolCall) => [toolCall.id, toolCall]),
+    ),
+  };
+}
+
+function readPreparedProjection(
+  action: unknown,
+): ɵAgUiMessageProjectionCache | undefined {
+  return (
+    action as { readonly ɵagUiMessageProjection?: ɵAgUiMessageProjectionCache }
+  ).ɵagUiMessageProjection;
 }
 
 function projectRemoteSnapshot(

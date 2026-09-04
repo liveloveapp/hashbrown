@@ -12,6 +12,7 @@ import * as fromStreamingMessage from './streaming-message.reducer';
 import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
 import * as fromThread from './thread.reducer';
+import { ɵreconcileAgUiMessageProjection } from './ag-ui-message-history';
 
 export const reducers = {
   agentState: fromAgentState.reducer,
@@ -94,7 +95,25 @@ export function ɵprepareRootAction(
       typeof fromAgUiMessages.ɵdecideAgUiMessageEvent
     >[1],
   );
-  return { ...action, ɵagUiMessageEventDecision: decision };
+  if (decision.kind !== 'accepted') {
+    return { ...action, ɵagUiMessageEventDecision: decision };
+  }
+  const previousProjection =
+    state.messages.preparedProjection?.canonicalMessages ===
+    decision.priorState.draft
+      ? state.messages.preparedProjection
+      : undefined;
+  const projection = ɵreconcileAgUiMessageProjection(
+    previousProjection,
+    decision.state.draft,
+    state.tools.entities,
+    state.config.responseSchema,
+  );
+  return {
+    ...action,
+    ɵagUiMessageEventDecision: decision,
+    ɵagUiMessageProjection: projection,
+  };
 }
 
 /** Selects the canonical AG-UI message state. @internal */

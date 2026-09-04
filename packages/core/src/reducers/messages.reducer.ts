@@ -7,6 +7,7 @@ import { createReducer, on } from '../utils/micro-ngrx';
 import {
   projectAgUiMessages,
   type ɵAgUiCanonicalIdIndex,
+  type ɵAgUiMessageProjectionCache,
   ɵappendAgUiCanonicalIds,
   ɵindexAgUiCanonicalIds,
   ɵownValidatedAgUiMessages,
@@ -23,6 +24,7 @@ export interface MessagesState {
   readonly activeIgnoredTextMessageId: string | undefined;
   readonly canonicalIds: ɵAgUiCanonicalIdIndex;
   readonly committedCanonicalIds: ɵAgUiCanonicalIdIndex;
+  readonly preparedProjection: ɵAgUiMessageProjectionCache | undefined;
 }
 
 const initialState: MessagesState = {
@@ -34,6 +36,7 @@ const initialState: MessagesState = {
   activeIgnoredTextMessageId: undefined,
   canonicalIds: ɵindexAgUiCanonicalIds([]),
   committedCanonicalIds: ɵindexAgUiCanonicalIds([]),
+  preparedProjection: undefined,
 };
 
 export const reducer = createReducer(
@@ -120,10 +123,23 @@ export const reducer = createReducer(
   on(apiActions.generateMessageEvent, (state, action): MessagesState => {
     const decision = ɵreadAgUiMessageEventDecision(action);
     if (decision && decision.kind !== 'accepted') return state;
+    const preparedProjection = readPreparedProjection(action);
     action = decision
       ? ({ ...action, payload: decision.event } as typeof action)
       : action;
     if (!state.attemptActive) return state;
+    if (decision && preparedProjection) {
+      const draft = preparedProjection.projection.messages;
+      return {
+        ...state,
+        draft,
+        messages: draft,
+        activeAssistantMessageId: decision.state.activeAssistantMessageId,
+        activeIgnoredTextMessageId: undefined,
+        canonicalIds: preparedProjection.canonicalIds,
+        preparedProjection,
+      };
+    }
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
       const draft = projectRemoteSnapshot(action.payload);
       if (!draft) return state;
@@ -272,9 +288,11 @@ export const reducer = createReducer(
   }),
   on(apiActions.generateMessageSuccess, (state, action) => {
     if (state.attemptActive) {
-      const draft = isAssistantOutput(action.payload.message)
-        ? reconcileSuccessfulAssistant(state.draft, action.payload.message)
-        : state.draft;
+      const draft = state.preparedProjection
+        ? state.draft
+        : isAssistantOutput(action.payload.message)
+          ? reconcileSuccessfulAssistant(state.draft, action.payload.message)
+          : state.draft;
       return {
         ...state,
         committed: draft,
@@ -283,6 +301,7 @@ export const reducer = createReducer(
         activeAssistantMessageId: undefined,
         activeIgnoredTextMessageId: undefined,
         committedCanonicalIds: state.canonicalIds,
+        preparedProjection: state.preparedProjection,
       };
     }
     const messages = [...state.messages, action.payload.message];
@@ -326,8 +345,17 @@ function rollback(state: MessagesState): MessagesState {
         activeAssistantMessageId: undefined,
         activeIgnoredTextMessageId: undefined,
         canonicalIds: state.committedCanonicalIds,
+        preparedProjection: undefined,
       }
     : state;
+}
+
+function readPreparedProjection(
+  action: unknown,
+): ɵAgUiMessageProjectionCache | undefined {
+  return (
+    action as { readonly ɵagUiMessageProjection?: ɵAgUiMessageProjectionCache }
+  ).ɵagUiMessageProjection;
 }
 
 function projectRemoteSnapshot(

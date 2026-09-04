@@ -4,6 +4,7 @@ import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { createStore } from '../utils/micro-ngrx';
+import { projectAgUiMessages } from './ag-ui-message-history';
 import {
   reducers,
   selectIsLoading,
@@ -155,6 +156,381 @@ test('reconciles an earlier snapshot assistant before switching the live stream'
   expect(state.streamingMessage.messageId).toBe('assistant-c');
 });
 
+test('projects trailing reasoning onto the next prepared assistant boundary', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'assistant-a', role: 'assistant', content: 'first' }],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-b',
+      role: 'reasoning',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-b',
+      delta: 'Plan',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-b',
+      role: 'assistant',
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[1]).toMatchObject({
+    role: 'assistant',
+    content: '',
+    reasoningDetails: [{ id: 'reasoning-b', content: 'Plan' }],
+  });
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: '', toolCallIds: [] },
+        'assistant-b',
+      ),
+      toolCalls: [],
+    }),
+  );
+  expect(selectViewMessages(store.read((state) => state))[1]).toMatchObject({
+    role: 'assistant',
+    reasoningDetails: [{ id: 'reasoning-b', content: 'Plan' }],
+  });
+});
+
+test('retains prepared tool ownership and settlement after switching assistants', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {}),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const initialized = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: initialized.tools.entities,
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-a',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-a',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-a',
+      toolCallId: 'tool-a',
+      content: 'found',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-b',
+      role: 'assistant',
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    toolCalls: [
+      {
+        toolCallId: 'tool-a',
+        name: 'lookup',
+        status: 'done',
+        result: { status: 'fulfilled', value: 'found' },
+      },
+    ],
+  });
+});
+
+test('retains prepared assistant metadata after switching away from its stream', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { source: 'a' },
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-b',
+      role: 'assistant',
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    metadata: { source: 'a' },
+  });
+});
+
+test('reconciles metadata-only prepared compact text and reasoning chunks', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'reasoning-a', role: 'reasoning', content: 'Plan' },
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { text: true },
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CHUNK,
+      messageId: 'reasoning-a',
+      metadata: { reasoning: true },
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    metadata: { text: true },
+    reasoningDetails: [
+      { id: 'reasoning-a', content: 'Plan', metadata: { reasoning: true } },
+    ],
+  });
+});
+
+test('keeps prepared structural caches equal to the canonical projection across event families', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {}),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const initialized = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: initialized.tools.entities,
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'assistant-a', role: 'assistant', content: '' }],
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { start: true },
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-a',
+      delta: 'Answer',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'assistant-a',
+      metadata: { end: true },
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { chunk: true },
+    },
+    {
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-b',
+      role: 'reasoning',
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-b',
+      delta: 'Plan',
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CHUNK,
+      messageId: 'reasoning-b',
+      metadata: { chunk: true },
+    },
+    {
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'message',
+      entityId: 'reasoning-b',
+      encryptedValue: 'opaque-reasoning',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-b',
+      role: 'assistant',
+    },
+    {
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-b',
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-b',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-b',
+    },
+    {
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'tool-b',
+      delta: '{}',
+    },
+    {
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-b',
+      toolCallName: 'lookup',
+      metadata: { chunk: true },
+    },
+    {
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'tool-call',
+      entityId: 'tool-b',
+      encryptedValue: 'opaque-tool',
+    },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'tool-b' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-b',
+      toolCallId: 'tool-b',
+      content: 'found',
+    },
+  ];
+
+  for (const event of events) {
+    store.dispatch(apiActions.generateMessageEvent(event));
+    const state = store.read((current) => current);
+    const canonical = projectAgUiMessages(
+      state.agUiMessages.draft,
+      state.tools.entities,
+      state.config.responseSchema,
+    );
+
+    expect(state.messages.draft).toEqual(canonical.messages);
+    expect(state.toolCalls.ids).toEqual(
+      canonical.toolCalls.map((tool) => tool.id),
+    );
+    expect(state.toolCalls.entities).toEqual(
+      Object.fromEntries(canonical.toolCalls.map((tool) => [tool.id, tool])),
+    );
+  }
+
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: '', toolCallIds: ['tool-b'] },
+        'assistant-b',
+      ),
+      toolCalls: [
+        { id: 'tool-b', name: 'lookup', arguments: '{}', status: 'pending' },
+      ],
+    }),
+  );
+  const committed = store.read((state) => state);
+  const canonical = projectAgUiMessages(
+    committed.agUiMessages.committed,
+    committed.tools.entities,
+    committed.config.responseSchema,
+  );
+
+  expect(committed.messages.committed).toEqual(canonical.messages);
+  expect(committed.toolCalls.entities).toEqual(
+    Object.fromEntries(canonical.toolCalls.map((tool) => [tool.id, tool])),
+  );
+});
+
 test('reconciles a tool stream to an earlier snapshotted assistant', () => {
   const store = createStore({
     reducers,
@@ -239,7 +615,7 @@ test('reconciles a tool stream to an earlier snapshotted assistant', () => {
           status: 'done',
           name: 'lookup',
           toolCallId: 'tool-a',
-          args: null,
+          args: { city: 'Paris' },
           result: { status: 'fulfilled', value: 'found' },
         },
       ],

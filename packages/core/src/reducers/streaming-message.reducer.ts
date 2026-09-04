@@ -12,6 +12,7 @@ import {
 } from './ag-ui-message-accumulator';
 import {
   projectAgUiMessages,
+  type ɵAgUiMessageProjectionCache,
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
 import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
@@ -154,6 +155,8 @@ function findAssistantForEvent(
     case EventType.TOOL_CALL_ARGS:
     case EventType.TOOL_CALL_END:
       return assistantByToolCallId(event.toolCallId);
+    case EventType.TOOL_CALL_RESULT:
+      return assistantByToolCallId(event.toolCallId);
     case EventType.REASONING_ENCRYPTED_VALUE:
       return event.subtype === 'tool-call'
         ? assistantByToolCallId(event.entityId)
@@ -162,6 +165,62 @@ function findAssistantForEvent(
     default:
       return undefined;
   }
+}
+
+function readPreparedProjection(
+  action: unknown,
+): ɵAgUiMessageProjectionCache | undefined {
+  return (
+    action as { readonly ɵagUiMessageProjection?: ɵAgUiMessageProjectionCache }
+  ).ɵagUiMessageProjection;
+}
+
+function reconcilePreparedStreaming(
+  state: StreamingMessageState,
+  event: Parameters<typeof accumulateAgUiMessageEvent>[1],
+  projection: ɵAgUiMessageProjectionCache,
+): StreamingMessageState {
+  const message = findAssistantForEvent(projection.projection.messages, event);
+  if (!message) return state;
+  const toolCalls = projection.projection.toolCalls
+    .filter((toolCall) => message.toolCallIds.includes(toolCall.id))
+    .map((toolCall) => {
+      const streamed = state.toolCalls.find(
+        (current) => current.id === toolCall.id,
+      );
+      return streamed?.status === 'pending' &&
+        toolCall.status === 'pending' &&
+        streamed.name === toolCall.name &&
+        streamed.arguments === toolCall.arguments &&
+        streamed.argumentsResolved !== undefined
+        ? { ...toolCall, argumentsResolved: streamed.argumentsResolved }
+        : toolCall;
+    });
+  const streamedMessage = state.message;
+  const contentResolved =
+    streamedMessage !== null &&
+    streamedMessage.content === message.content &&
+    streamedMessage.contentResolved !== undefined
+      ? streamedMessage.contentResolved
+      : undefined;
+  const structuralMessage =
+    contentResolved === undefined ? message : { ...message, contentResolved };
+
+  if (
+    structuralMessage === state.message &&
+    message.id === state.messageId &&
+    state.toolCalls.length === toolCalls.length &&
+    state.toolCalls.every((toolCall, index) => toolCall === toolCalls[index])
+  ) {
+    return state;
+  }
+
+  return {
+    ...state,
+    message: structuralMessage,
+    messageId: message.id,
+    toolCalls,
+  };
 }
 
 function requiresFreshAssistantBaseline(
@@ -227,6 +286,7 @@ export const reducer = createReducer(
     (state, action): StreamingMessageState => {
       const decision = ɵreadAgUiMessageEventDecision(action);
       if (decision && decision.kind !== 'accepted') return state;
+      const preparedProjection = readPreparedProjection(action);
       action = decision
         ? ({ ...action, payload: decision.event } as typeof action)
         : action;
@@ -262,15 +322,20 @@ export const reducer = createReducer(
         const toolCalls = state.toolCalls.filter(
           (toolCall) => toolCall.id !== action.payload.toolCallId,
         );
-        if (toolCalls.length === state.toolCalls.length) return state;
-        return {
-          ...state,
-          toolCalls,
-          activeToolCallId:
-            state.activeToolCallId === action.payload.toolCallId
-              ? undefined
-              : state.activeToolCallId,
-        };
+        const next =
+          toolCalls.length === state.toolCalls.length
+            ? state
+            : {
+                ...state,
+                toolCalls,
+                activeToolCallId:
+                  state.activeToolCallId === action.payload.toolCallId
+                    ? undefined
+                    : state.activeToolCallId,
+              };
+        return preparedProjection
+          ? reconcilePreparedStreaming(next, action.payload, preparedProjection)
+          : next;
       }
 
       const hydrated = hydrateAssistantForEvent(
@@ -283,7 +348,24 @@ export const reducer = createReducer(
           ? completeSnapshotReasoningMessages(hydrated ?? state)
           : retireSnapshotReasoningMessage(hydrated ?? state, action.payload);
       const next = accumulateEvent(current, action.payload);
-      return next === current ? current : { ...next, attemptActive: true };
+      const accumulated =
+        next === current ? current : { ...next, attemptActive: true };
+      if (
+        preparedProjection &&
+        accumulated === state &&
+        action.payload.type === EventType.REASONING_MESSAGE_START &&
+        action.payload.metadata === undefined &&
+        action.payload.subagentRunId === undefined
+      ) {
+        return state;
+      }
+      return preparedProjection
+        ? reconcilePreparedStreaming(
+            accumulated,
+            action.payload,
+            preparedProjection,
+          )
+        : accumulated;
     },
   ),
   on(
