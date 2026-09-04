@@ -19,6 +19,7 @@ export interface MessagesState {
   readonly draft: readonly Chat.Internal.Message[];
   readonly attemptActive: boolean;
   readonly activeAssistantMessageId: string | undefined;
+  readonly activeIgnoredTextMessageId: string | undefined;
   readonly canonicalIds: ɵAgUiCanonicalIdIndex;
 }
 
@@ -28,6 +29,7 @@ const initialState: MessagesState = {
   draft: [],
   attemptActive: false,
   activeAssistantMessageId: undefined,
+  activeIgnoredTextMessageId: undefined,
   canonicalIds: ɵindexAgUiCanonicalIds([]),
 };
 
@@ -48,6 +50,7 @@ export const reducer = createReducer(
       draft: [],
       attemptActive: false,
       activeAssistantMessageId: undefined,
+      activeIgnoredTextMessageId: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
     };
   }),
@@ -66,6 +69,7 @@ export const reducer = createReducer(
       draft: [],
       attemptActive: false,
       activeAssistantMessageId: undefined,
+      activeIgnoredTextMessageId: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
     };
   }),
@@ -91,6 +95,7 @@ export const reducer = createReducer(
       draft: [],
       attemptActive: false,
       activeAssistantMessageId: undefined,
+      activeIgnoredTextMessageId: undefined,
       canonicalIds,
     };
   }),
@@ -100,6 +105,7 @@ export const reducer = createReducer(
     messages: state.committed,
     attemptActive: true,
     activeAssistantMessageId: undefined,
+    activeIgnoredTextMessageId: undefined,
   })),
   on(apiActions.generateMessageEvent, (state, action): MessagesState => {
     if (!state.attemptActive) return state;
@@ -111,12 +117,28 @@ export const reducer = createReducer(
         draft,
         messages: draft,
         activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
+        canonicalIds: ɵindexAgUiCanonicalIds(
+          ɵreadAgUiMessageSnapshot(action.payload),
+        ),
       };
     }
     if (
       action.payload.type === EventType.TEXT_MESSAGE_START &&
       action.payload.role === 'assistant'
     ) {
+      const existing = state.draft.find(
+        (message) => 'id' in message && message.id === action.payload.messageId,
+      );
+      if (existing) {
+        return existing.role !== 'assistant' ||
+          state.activeAssistantMessageId === action.payload.messageId
+          ? state
+          : { ...state, activeAssistantMessageId: action.payload.messageId };
+      }
+      if (state.canonicalIds.messageIds.includes(action.payload.messageId)) {
+        return state;
+      }
       const message = Chat.helpers.ɵwithInternalMessageId(
         { role: 'assistant' as const, content: '', toolCallIds: [] },
         action.payload.messageId,
@@ -127,20 +149,78 @@ export const reducer = createReducer(
         draft,
         messages: draft,
         activeAssistantMessageId: action.payload.messageId,
+        activeIgnoredTextMessageId: undefined,
       };
     }
     if (
-      (action.payload.type === EventType.TEXT_MESSAGE_CONTENT ||
-        action.payload.type === EventType.TEXT_MESSAGE_CHUNK) &&
-      (action.payload.type !== EventType.TEXT_MESSAGE_CHUNK ||
-        action.payload.role === 'assistant' ||
-        action.payload.messageId === state.activeAssistantMessageId)
+      action.payload.type === EventType.TEXT_MESSAGE_START &&
+      action.payload.role === 'user'
     ) {
+      const existing = state.draft.find(
+        (message) => 'id' in message && message.id === action.payload.messageId,
+      );
+      if (existing) {
+        return state;
+      }
+      const message = Chat.helpers.ɵwithInternalMessageId(
+        { role: 'user' as const, content: '' },
+        action.payload.messageId,
+      );
+      const draft = [...state.draft, message];
+      return {
+        ...state,
+        draft,
+        messages: draft,
+        activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
+      };
+    }
+    if (action.payload.type === EventType.TEXT_MESSAGE_START) {
+      return {
+        ...state,
+        activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: action.payload.messageId,
+      };
+    }
+    if (
+      action.payload.type === EventType.TEXT_MESSAGE_CONTENT ||
+      action.payload.type === EventType.TEXT_MESSAGE_CHUNK
+    ) {
+      if (
+        action.payload.type === EventType.TEXT_MESSAGE_CHUNK &&
+        action.payload.role !== undefined &&
+        action.payload.role !== 'assistant' &&
+        action.payload.role !== 'user'
+      ) {
+        return state;
+      }
       const id = action.payload.messageId ?? state.activeAssistantMessageId;
       if (!id) return state;
       const current = state.draft.find(
         (message) => 'id' in message && message.id === id,
       );
+      if (
+        state.activeIgnoredTextMessageId === id ||
+        (state.canonicalIds.messageIds.includes(id) && !current)
+      ) {
+        return state;
+      }
+      if (current?.role === 'user') {
+        const message = Chat.helpers.ɵwithInternalMessageId(
+          {
+            role: 'user' as const,
+            content: `${current.content}${action.payload.delta ?? ''}`,
+          },
+          id,
+        );
+        const draft = state.draft.map((existing) =>
+          existing === current ? message : existing,
+        );
+        return { ...state, draft, messages: draft };
+      }
+      if (current && current.role !== 'assistant') {
+        return state;
+      }
       const message = Chat.helpers.ɵwithInternalMessageId(
         {
           role: 'assistant' as const,
@@ -150,7 +230,13 @@ export const reducer = createReducer(
         id,
       );
       const draft = reconcileAssistant(state.draft, message);
-      return { ...state, draft, messages: draft, activeAssistantMessageId: id };
+      return {
+        ...state,
+        draft,
+        messages: draft,
+        activeAssistantMessageId: id,
+        activeIgnoredTextMessageId: undefined,
+      };
     }
     return state;
   }),
@@ -165,6 +251,7 @@ export const reducer = createReducer(
         messages: draft,
         attemptActive: false,
         activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
       };
     }
     const messages = [...state.messages, action.payload.message];
@@ -173,6 +260,7 @@ export const reducer = createReducer(
       messages,
       committed: messages,
       activeAssistantMessageId: undefined,
+      activeIgnoredTextMessageId: undefined,
     };
   }),
   on(internalActions.generationAttemptRolledBack, (state): MessagesState =>
@@ -205,6 +293,7 @@ function rollback(state: MessagesState): MessagesState {
         draft: state.committed,
         attemptActive: false,
         activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
       }
     : state;
 }

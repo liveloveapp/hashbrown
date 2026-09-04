@@ -612,3 +612,84 @@ test('ignores unknown tool args and end events without changing an active tool c
   expect(unknownEnd.activeToolCallId).toBe('tool-active');
   expect(unknownEnd.activeToolCallName).toBe('lookup');
 });
+
+test('ignores an unknown compact tool chunk without borrowing another active name', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-active',
+      toolCallName: 'lookup',
+    }),
+  );
+
+  const unknown = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-unknown',
+      delta: '{',
+    }),
+  );
+
+  expect(unknown).toBe(started);
+  expect(unknown.entities['tool-unknown']).toBeUndefined();
+  expect(unknown.activeToolCallId).toBe('tool-active');
+  expect(unknown.activeToolCallName).toBe('lookup');
+});
+
+test('keeps projection tool names canonical when compact chunks or success decorations conflict', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const conflicted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'different',
+      delta: '}',
+    }),
+  );
+  const succeeded = reducer(
+    active,
+    apiActions.generateMessageSuccess({
+      message: { role: 'assistant', content: '', toolCallIds: ['tool-1'] },
+      toolCalls: [
+        { id: 'tool-1', name: 'different', arguments: '{}', status: 'pending' },
+      ],
+    }),
+  );
+
+  expect(conflicted).toBe(active);
+  expect(succeeded.entities['tool-1']?.name).toBe('lookup');
+});

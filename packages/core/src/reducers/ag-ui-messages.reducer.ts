@@ -622,6 +622,9 @@ function appendOrStartToolCall(
   }
 
   const found = findToolCall(messages, event.toolCallId);
+  if (found && found.tool.function.name !== event.toolCallName) {
+    throw new Error(`AG-UI tool call ${event.toolCallId} cannot change name`);
+  }
   const started = found
     ? messages
     : startToolCall(

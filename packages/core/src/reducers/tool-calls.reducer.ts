@@ -100,7 +100,18 @@ export const reducer = createReducer(
       const id = event.toolCallId ?? state.activeToolCallId;
       if (!id) return state;
       const existing = state.draft.entities[id];
-      if (!existing && event.type !== EventType.TOOL_CALL_CHUNK) {
+      if (
+        !existing &&
+        (event.type !== EventType.TOOL_CALL_CHUNK || !event.toolCallName)
+      ) {
+        return state;
+      }
+      if (
+        existing &&
+        event.type === EventType.TOOL_CALL_CHUNK &&
+        event.toolCallName !== undefined &&
+        event.toolCallName !== existing.name
+      ) {
         return state;
       }
       const delta = 'delta' in event ? ((event.delta ?? '') as string) : '';
@@ -368,6 +379,7 @@ function mergeSuccessToolCalls(
     const merged: Chat.Internal.ToolCall = {
       ...existing,
       ...toolCall,
+      name: existing.name,
       arguments:
         existing.arguments.length > 0 ? existing.arguments : toolCall.arguments,
       status: existing.status,

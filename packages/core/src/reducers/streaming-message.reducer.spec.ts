@@ -290,10 +290,13 @@ test('clears a pre-snapshot accumulator and rebuilds only the replacement assist
   );
 
   expect(selectStreamingMessage(first)).toMatchObject({ id: 'assistant-a' });
-  expect(selectStreamingMessage(snapshotted)).toBeNull();
+  expect(selectStreamingMessage(snapshotted)).toMatchObject({
+    id: 'assistant-b',
+    content: 'snapshot',
+  });
   expect(selectStreamingMessage(rebuilt)).toMatchObject({
     id: 'assistant-b',
-    content: ' stream',
+    content: 'snapshot stream',
   });
   expect(late).toBe(initialState);
 });

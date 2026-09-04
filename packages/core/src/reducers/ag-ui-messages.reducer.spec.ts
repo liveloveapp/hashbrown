@@ -520,6 +520,46 @@ test('continues an active tool call when a chunk only supplies its ID', () => {
   });
 });
 
+test('rejects a compact tool chunk that changes an existing tool name', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  const conflicted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'different',
+      delta: '}',
+    }),
+  );
+
+  expect(conflicted.draft).toBe(active.draft);
+  expect(conflicted.protocolError).toBeInstanceOf(Error);
+});
+
 test('retains a draft reference and records a protocol error on message and tool ID collisions', () => {
   let state = reducer(
     initialAgUiMessagesState,

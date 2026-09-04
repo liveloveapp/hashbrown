@@ -10,7 +10,10 @@ import {
   createAgUiMessageAccumulator,
   initialAgUiMessageAccumulatorState,
 } from './ag-ui-message-accumulator';
-import { ɵreadAgUiMessageSnapshot } from './ag-ui-message-history';
+import {
+  projectAgUiMessages,
+  ɵreadAgUiMessageSnapshot,
+} from './ag-ui-message-history';
 
 export type StreamingMessageState = AgUiMessageAccumulatorState & {
   readonly attemptActive: boolean;
@@ -76,14 +79,29 @@ export const reducer = createReducer(
       }
 
       if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
+        let message: Chat.Internal.AssistantMessage | null = null;
+        let toolCalls: Chat.Internal.ToolCall[] = [];
         try {
-          ɵreadAgUiMessageSnapshot(action.payload);
+          const messages = ɵreadAgUiMessageSnapshot(action.payload);
+          const projection = projectAgUiMessages(
+            messages,
+            state.configSnapshot?.toolsByName ?? {},
+            state.configSnapshot?.responseSchema,
+          );
+          message =
+            projection.messages.findLast(
+              (current) => current.role === 'assistant',
+            ) ?? null;
+          toolCalls = [...projection.toolCalls];
         } catch {
           return state;
         }
         return {
           ...initialState,
           configSnapshot: state.configSnapshot,
+          message,
+          messageId: message?.id,
+          toolCalls,
           attemptActive: true,
         };
       }

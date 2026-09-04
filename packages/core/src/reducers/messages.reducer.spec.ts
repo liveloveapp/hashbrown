@@ -87,6 +87,143 @@ test('reconciles a streamed snapshot assistant by canonical ID and rolls draft o
   expect(rolledBack.messages).toBe(initialized.committed);
 });
 
+test('keeps a snapshotted assistant baseline when its lifecycle start is replayed', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'hello' },
+        { id: 'assistant-1', role: 'assistant', content: 'snapshot' },
+      ],
+    }),
+  );
+  const restarted = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+  const streamed = reducer(
+    restarted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: ' stream',
+    }),
+  );
+  const committed = reducer(
+    streamed,
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: ' stream', toolCallIds: [] },
+        'assistant-1',
+      ),
+      toolCalls: [],
+    }),
+  );
+
+  expect(restarted.messages).toEqual(snapshotted.messages);
+  expect(streamed.messages[1]).toMatchObject({ content: 'snapshot stream' });
+  expect(committed.committed[1]).toMatchObject({
+    content: 'snapshot stream',
+  });
+});
+
+test('projects lifecycle text by role and ignores assistant starts rejected by canonical history', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const userStarted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'user-1',
+      role: 'user',
+    }),
+  );
+  const userContent = reducer(
+    userStarted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'user-1',
+      delta: 'hello',
+    }),
+  );
+  const systemStarted = reducer(
+    userContent,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'system-1',
+      role: 'system',
+    }),
+  );
+  const systemContent = reducer(
+    systemStarted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'system-1',
+      delta: 'hidden',
+    }),
+  );
+  const developerStarted = reducer(
+    systemContent,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'developer-1',
+      role: 'developer',
+    }),
+  );
+  const developerContent = reducer(
+    developerStarted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'developer-1',
+      delta: 'hidden',
+    }),
+  );
+  const snapshotted = reducer(
+    developerContent,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'system-2', role: 'system', content: 'hidden' }],
+    }),
+  );
+  const incompatibleAssistant = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'system-2',
+      role: 'assistant',
+    }),
+  );
+
+  expect(userContent.messages).toEqual([
+    { id: 'user-1', role: 'user', content: 'hello' },
+  ]);
+  expect(systemContent.messages).toBe(userContent.messages);
+  expect(developerContent.messages).toBe(userContent.messages);
+  expect(incompatibleAssistant).toBe(snapshotted);
+});
+
 test('commits an identified success assistant once and ignores output-free success', () => {
   const initialized = reducer(
     undefined,

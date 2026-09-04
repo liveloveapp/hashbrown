@@ -763,6 +763,15 @@ test('combined root preserves snapshot assistant and tool-call baselines through
       delta: '}',
     }),
   );
+
+  expect(selectViewMessages(withToolDelta)).toEqual([
+    { role: 'user', content: 'hello' },
+    { role: 'assistant', content: 'snapshot stream', toolCalls: [] },
+  ]);
+  expect(withToolDelta.toolCalls.entities['tool-1']).toMatchObject({
+    arguments: '{"query":"tea"}',
+  });
+
   const succeeded = reduceAll(
     withToolDelta,
     apiActions.generateMessageSuccess({
