@@ -572,6 +572,30 @@ test('keeps local tool-call decorations through unrelated prepared canonical eve
   store.dispatch(internalActions.generationAttemptStarted());
   store.dispatch(
     apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'assistant-a',
+      role: 'assistant',
+      metadata: { retry: true },
+    }),
+  );
+  const retried = store.read((state) => state);
+
+  expect(retried.toolCalls.entities['pending-a']?.argumentsResolved).toBe(
+    pendingArguments,
+  );
+  expect(retried.toolCalls.entities['fulfilled-a']?.result).toBe(
+    fulfilledResult,
+  );
+  expect(retried.toolCalls.entities['rejected-a']?.result).toBe(rejectedResult);
+  store.dispatch(internalActions.generationAttemptRolledBack());
+  const retryRolledBack = store.read((state) => state);
+
+  expect(
+    retryRolledBack.toolCalls.entities['pending-a']?.argumentsResolved,
+  ).toBe(pendingArguments);
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
       type: EventType.MESSAGES_SNAPSHOT,
       messages: [
         {
