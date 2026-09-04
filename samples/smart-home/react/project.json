@@ -6,9 +6,10 @@
   "tags": [],
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/vite:build",
       "options": {
-        "command": "echo 'Skipping build for client-react'"
+        "configFile": "samples/smart-home/react/vite.config.ts",
+        "outputPath": "dist/samples/smart-home/client-react"
       }
     }
   }

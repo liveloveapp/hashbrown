@@ -8,9 +8,56 @@
     "react",
     "testing",
     "runtime-smoke-angular",
-    "runtime-smoke-react"
+    "runtime-smoke-react",
+    "smart-home-angular",
+    "smart-home-react",
+    "smart-home-server",
+    "openai"
   ],
   "targets": {
+    "example-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["smart-home-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "parallel": false,
+        "commands": [
+          {
+            "command": "npx nx build smart-home-angular --configuration=example",
+            "forwardAllArgs": false
+          },
+          {
+            "command": "npx playwright test --config tools/runtime-smoke/e2e/examples.playwright.config.ts",
+            "forwardAllArgs": true
+          }
+        ]
+      }
+    },
+    "serve-example-angular": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "staticFilePath": "dist/samples/smart-home/angular-example/browser",
+        "watch": false,
+        "host": "127.0.0.1",
+        "port": 4321,
+        "spa": true
+      }
+    },
+    "serve-example-react": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "staticFilePath": "dist/samples/smart-home/client-react",
+        "watch": false,
+        "host": "127.0.0.1",
+        "port": 4322,
+        "spa": true
+      }
+    },
     "lint": {
       "executor": "nx:run-commands",
       "options": {
