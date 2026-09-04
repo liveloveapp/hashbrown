@@ -88,6 +88,211 @@ test('gates rejected canonical events from every derived reducer', () => {
   expect(rejected.status).toBe(before.status);
 });
 
+test('reconciles an earlier snapshot assistant before switching the live stream', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-a',
+      role: 'assistant',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-a',
+      delta: '!',
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))).toEqual([
+    { role: 'assistant', content: 'first!', toolCalls: [] },
+    { role: 'assistant', content: 'second', toolCalls: [] },
+  ]);
+
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-c',
+      role: 'assistant',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-c',
+      delta: 'new',
+    }),
+  );
+
+  const state = store.read((current) => current);
+
+  expect(selectViewMessages(state)).toEqual([
+    { role: 'assistant', content: 'first!', toolCalls: [] },
+    { role: 'assistant', content: 'second', toolCalls: [] },
+    { role: 'assistant', content: 'new', toolCalls: [] },
+  ]);
+  expect(state.streamingMessage.message).toMatchObject({
+    role: 'assistant',
+    content: 'new',
+  });
+  expect(state.streamingMessage.messageId).toBe('assistant-c');
+});
+
+test('restores committed message IDs after a snapshot rollback', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        { id: 'committed-user', role: 'user', content: 'committed' },
+      ],
+    }),
+  );
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-reused',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-reused',
+              type: 'function',
+              function: { name: 'lookup', arguments: '' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptRolledBack());
+
+  const rolledBack = store.read((state) => state);
+  const committedMessages = rolledBack.messages.committed;
+
+  expect(rolledBack.messages.messages).toBe(committedMessages);
+  expect(rolledBack.messages.canonicalIds.messageIds).toEqual([
+    'committed-user',
+  ]);
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-reused',
+      role: 'assistant',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-reused',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-reused',
+    }),
+  );
+
+  const reused = store.read((state) => state);
+  const beforeRejected = reused.messages;
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'committed-user',
+      role: 'assistant',
+    }),
+  );
+
+  expect(reused.messages.messages).toContainEqual(
+    expect.objectContaining({ id: 'assistant-reused', role: 'assistant' }),
+  );
+  expect(reused.toolCalls.entities['tool-reused']).toMatchObject({
+    name: 'lookup',
+    status: 'pending',
+  });
+  expect(store.read((state) => state).messages).toBe(beforeRejected);
+  expect(store.read(ɵselectAgUiMessagesProtocolError)).toBeInstanceOf(Error);
+});
+
+test('accepts a compatible snapshotted reasoning start without resetting it', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'reasoning-1', role: 'reasoning', content: 'Plan' },
+        { id: 'assistant-1', role: 'assistant', content: '' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: ' more',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-1',
+    }),
+  );
+
+  const state = store.read((current) => current);
+
+  expect(state.streamingMessage.error).toBeUndefined();
+  expect(state.streamingMessage.message?.reasoning).toEqual({
+    kind: 'details',
+    details: [{ id: 'reasoning-1', role: 'reasoning', content: 'Plan more' }],
+  });
+  expect(state.streamingMessage.reasoningMessageStatusById).toEqual({
+    'reasoning-1': 'complete',
+  });
+  expect(state.agUiMessages.draft[0]).toMatchObject({
+    id: 'reasoning-1',
+    content: 'Plan more',
+  });
+});
+
 type InvalidSnapshot = {
   readonly name: string;
   readonly create: () => {

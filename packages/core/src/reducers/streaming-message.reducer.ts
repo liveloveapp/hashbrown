@@ -105,6 +105,44 @@ function accumulateEvent(
   return next;
 }
 
+function hydrateAssistantForEvent(
+  state: StreamingMessageState,
+  event: Parameters<typeof accumulateAgUiMessageEvent>[1],
+  decision: ReturnType<typeof ɵreadAgUiMessageEventDecision>,
+): StreamingMessageState | undefined {
+  const messageId =
+    event.type === EventType.TEXT_MESSAGE_START && event.role === 'assistant'
+      ? event.messageId
+      : event.type === EventType.TEXT_MESSAGE_CONTENT ||
+          (event.type === EventType.TEXT_MESSAGE_CHUNK &&
+            (event.role === undefined || event.role === 'assistant'))
+        ? event.messageId
+        : undefined;
+  if (!decision || !messageId || messageId === state.messageId) {
+    return undefined;
+  }
+
+  try {
+    const projection = projectAgUiMessages(
+      decision.state.draft,
+      state.configSnapshot?.toolsByName ?? {},
+      state.configSnapshot?.responseSchema,
+    );
+    const message = projection.messages.find(
+      (current) => current.role === 'assistant' && current.id === messageId,
+    );
+    if (!message || message.role !== 'assistant') {
+      return undefined;
+    }
+    const toolCalls = projection.toolCalls.filter((toolCall) =>
+      message.toolCallIds.includes(toolCall.id),
+    );
+    return hydrateSnapshot(state, message, toolCalls);
+  } catch {
+    return undefined;
+  }
+}
+
 export const reducer = createReducer(
   initialState,
   on(
@@ -164,6 +202,21 @@ export const reducer = createReducer(
               ? undefined
               : state.activeToolCallId,
         };
+      }
+
+      const hydrated = hydrateAssistantForEvent(
+        state,
+        action.payload,
+        decision,
+      );
+      if (hydrated) return hydrated;
+      if (
+        decision &&
+        action.payload.type === EventType.REASONING_MESSAGE_START &&
+        state.snapshotReasoningMessageIds?.includes(action.payload.messageId) &&
+        state.reasoningMessageStatusById[action.payload.messageId] === 'active'
+      ) {
+        return state;
       }
 
       const current =

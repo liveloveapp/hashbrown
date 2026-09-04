@@ -22,6 +22,7 @@ export interface MessagesState {
   readonly activeAssistantMessageId: string | undefined;
   readonly activeIgnoredTextMessageId: string | undefined;
   readonly canonicalIds: ɵAgUiCanonicalIdIndex;
+  readonly committedCanonicalIds: ɵAgUiCanonicalIdIndex;
 }
 
 const initialState: MessagesState = {
@@ -32,6 +33,7 @@ const initialState: MessagesState = {
   activeAssistantMessageId: undefined,
   activeIgnoredTextMessageId: undefined,
   canonicalIds: ɵindexAgUiCanonicalIds([]),
+  committedCanonicalIds: ɵindexAgUiCanonicalIds([]),
 };
 
 export const reducer = createReducer(
@@ -53,6 +55,9 @@ export const reducer = createReducer(
       activeAssistantMessageId: undefined,
       activeIgnoredTextMessageId: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+      committedCanonicalIds: ɵindexAgUiCanonicalIds(
+        action.payload.canonicalMessages,
+      ),
     };
   }),
   on(devActions.setMessages, (state, action) => {
@@ -72,6 +77,9 @@ export const reducer = createReducer(
       activeAssistantMessageId: undefined,
       activeIgnoredTextMessageId: undefined,
       canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+      committedCanonicalIds: ɵindexAgUiCanonicalIds(
+        action.payload.canonicalMessages,
+      ),
     };
   }),
   on(devActions.sendMessage, (state, action) => {
@@ -79,7 +87,7 @@ export const reducer = createReducer(
     let canonicalIds: ɵAgUiCanonicalIdIndex;
     try {
       canonicalIds = ɵappendAgUiCanonicalIds(
-        state.canonicalIds,
+        state.attemptActive ? state.committedCanonicalIds : state.canonicalIds,
         ɵownValidatedAgUiMessages(action.payload.canonicalMessages),
       );
     } catch {
@@ -98,6 +106,7 @@ export const reducer = createReducer(
       activeAssistantMessageId: undefined,
       activeIgnoredTextMessageId: undefined,
       canonicalIds,
+      committedCanonicalIds: canonicalIds,
     };
   }),
   on(internalActions.generationAttemptStarted, (state): MessagesState => ({
@@ -265,6 +274,7 @@ export const reducer = createReducer(
         attemptActive: false,
         activeAssistantMessageId: undefined,
         activeIgnoredTextMessageId: undefined,
+        committedCanonicalIds: state.canonicalIds,
       };
     }
     const messages = [...state.messages, action.payload.message];
@@ -307,6 +317,7 @@ function rollback(state: MessagesState): MessagesState {
         attemptActive: false,
         activeAssistantMessageId: undefined,
         activeIgnoredTextMessageId: undefined,
+        canonicalIds: state.committedCanonicalIds,
       }
     : state;
 }
