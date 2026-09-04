@@ -1,0 +1,30 @@
+## Build outputs
+[Bb]in/
+[Oo]bj/
+
+## NuGet packages
+*.nupkg
+*.snupkg
+.nuget/
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+
+## Rider
+.idea/
+
+## Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+## Publish
+[Pp]ublish/
+
+## Coverage
+*.coverage
+*.coveragexml
+coverage.json
+coverage.opencover.xml
