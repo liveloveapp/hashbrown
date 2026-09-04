@@ -36,6 +36,48 @@ test('reconciles a large unchanged history without searching prior entries per s
   }
 });
 
+test('owns one contiguous reasoning run before projecting its assistant', () => {
+  const reasoning = Array.from({ length: 128 }, (_, index) => ({
+    id: `reasoning-${index}`,
+    role: 'reasoning' as const,
+    content: `step ${index}`,
+    metadata: { index },
+  }));
+  const messages = [
+    ...reasoning,
+    { id: 'assistant-1', role: 'assistant' as const, content: 'answer' },
+  ];
+
+  const projection = ɵreconcileAgUiMessageProjection(undefined, messages, {});
+  const entry = projection.entries[0];
+
+  expect(entry?.reasoning).toHaveLength(128);
+  expect(Object.isFrozen(entry?.reasoning)).toBe(true);
+  expect(entry?.reasoning[0]).toBe(reasoning[0]);
+  expect(entry?.message).toMatchObject({
+    role: 'assistant',
+    reasoning: {
+      kind: 'details',
+      details: expect.any(Array),
+    },
+  });
+  const details =
+    entry?.message.role === 'assistant' &&
+    entry.message.reasoning?.kind === 'details'
+      ? entry.message.reasoning.details
+      : [];
+  expect(details[0]).toMatchObject({
+    id: 'reasoning-0',
+    content: 'step 0',
+    metadata: { index: 0 },
+  });
+  expect(details[127]).toMatchObject({
+    id: 'reasoning-127',
+    content: 'step 127',
+    metadata: { index: 127 },
+  });
+});
+
 test('normalizes one snapshot into an owned immutable history for every reducer consumer', () => {
   const raw = [
     { id: 'user-1', role: 'user' as const, content: 'hello' },
