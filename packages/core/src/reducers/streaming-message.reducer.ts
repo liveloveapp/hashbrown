@@ -105,70 +105,104 @@ function accumulateEvent(
   return next;
 }
 
+function findAssistantForEvent(
+  messages: readonly Chat.Internal.Message[],
+  event: Parameters<typeof accumulateAgUiMessageEvent>[1],
+): Chat.Internal.AssistantMessage | undefined {
+  const assistantById = (messageId: string | undefined) =>
+    messageId === undefined
+      ? undefined
+      : messages.find(
+          (message): message is Chat.Internal.AssistantMessage =>
+            message.role === 'assistant' && message.id === messageId,
+        );
+  const assistantByToolCallId = (toolCallId: string | undefined) =>
+    toolCallId === undefined
+      ? undefined
+      : messages.find(
+          (message): message is Chat.Internal.AssistantMessage =>
+            message.role === 'assistant' &&
+            message.toolCallIds.includes(toolCallId),
+        );
+  const assistantByReasoningMessageId = (messageId: string | undefined) =>
+    messageId === undefined
+      ? undefined
+      : messages.find(
+          (message): message is Chat.Internal.AssistantMessage =>
+            message.role === 'assistant' &&
+            message.reasoning?.kind === 'details' &&
+            message.reasoning.details.some((detail) => detail.id === messageId),
+        );
+
+  switch (event.type) {
+    case EventType.TEXT_MESSAGE_START:
+    case EventType.TEXT_MESSAGE_CONTENT:
+    case EventType.TEXT_MESSAGE_END:
+    case EventType.TEXT_MESSAGE_CHUNK:
+      return assistantById(event.messageId);
+    case EventType.REASONING_MESSAGE_START:
+    case EventType.REASONING_MESSAGE_CONTENT:
+    case EventType.REASONING_MESSAGE_END:
+    case EventType.REASONING_MESSAGE_CHUNK:
+      return assistantByReasoningMessageId(event.messageId);
+    case EventType.TOOL_CALL_START:
+    case EventType.TOOL_CALL_CHUNK:
+      return (
+        assistantById(event.parentMessageId) ??
+        assistantByToolCallId(event.toolCallId)
+      );
+    case EventType.TOOL_CALL_ARGS:
+    case EventType.TOOL_CALL_END:
+      return assistantByToolCallId(event.toolCallId);
+    case EventType.REASONING_ENCRYPTED_VALUE:
+      return event.subtype === 'tool-call'
+        ? assistantByToolCallId(event.entityId)
+        : (assistantById(event.entityId) ??
+            assistantByReasoningMessageId(event.entityId));
+    default:
+      return undefined;
+  }
+}
+
+function requiresFreshAssistantBaseline(
+  event: Parameters<typeof accumulateAgUiMessageEvent>[1],
+): boolean {
+  switch (event.type) {
+    case EventType.TEXT_MESSAGE_START:
+    case EventType.TEXT_MESSAGE_CONTENT:
+      return event.role === undefined || event.role === 'assistant';
+    case EventType.TEXT_MESSAGE_CHUNK:
+      return event.role === undefined || event.role === 'assistant';
+    case EventType.TOOL_CALL_START:
+    case EventType.TOOL_CALL_CHUNK:
+      return true;
+    default:
+      return false;
+  }
+}
+
 function hydrateAssistantForEvent(
   state: StreamingMessageState,
   event: Parameters<typeof accumulateAgUiMessageEvent>[1],
   decision: ReturnType<typeof ɵreadAgUiMessageEventDecision>,
 ): StreamingMessageState | undefined {
-  if (!decision) {
+  if (!decision || decision.kind !== 'accepted') {
     return undefined;
   }
 
-  const messageId =
-    event.type === EventType.TEXT_MESSAGE_START && event.role === 'assistant'
-      ? event.messageId
-      : event.type === EventType.TEXT_MESSAGE_CONTENT ||
-          (event.type === EventType.TEXT_MESSAGE_CHUNK &&
-            (event.role === undefined || event.role === 'assistant'))
-        ? event.messageId
-        : undefined;
-  const parentMessageId =
-    event.type === EventType.TOOL_CALL_START ||
-    event.type === EventType.TOOL_CALL_CHUNK
-      ? event.parentMessageId
-      : undefined;
-  const toolCallId =
-    event.type === EventType.TOOL_CALL_START ||
-    event.type === EventType.TOOL_CALL_ARGS ||
-    event.type === EventType.TOOL_CALL_END ||
-    event.type === EventType.TOOL_CALL_CHUNK
-      ? event.toolCallId
-      : undefined;
-  const reasoningMessageId =
-    event.type === EventType.REASONING_MESSAGE_START ||
-    event.type === EventType.REASONING_MESSAGE_CONTENT ||
-    event.type === EventType.REASONING_MESSAGE_END
-      ? event.messageId
-      : undefined;
-
   try {
     const projection = projectAgUiMessages(
-      decision.state.draft,
+      decision.priorState.draft,
       state.configSnapshot?.toolsByName ?? {},
       state.configSnapshot?.responseSchema,
     );
-    const message = projection.messages.find(
-      (current) =>
-        current.role === 'assistant' &&
-        (current.id === messageId ||
-          current.id === parentMessageId ||
-          (toolCallId !== undefined &&
-            current.toolCallIds.includes(toolCallId)) ||
-          (reasoningMessageId !== undefined &&
-            current.reasoning?.kind === 'details' &&
-            current.reasoning.details.some(
-              (detail) => detail.id === reasoningMessageId,
-            ))),
-    );
-    if (!message || message.role !== 'assistant') {
-      return undefined;
+    const message = findAssistantForEvent(projection.messages, event);
+    if (!message) {
+      return requiresFreshAssistantBaseline(event)
+        ? hydrateSnapshot(state, null, [])
+        : undefined;
     }
-    const fieldBearingReasoningStart =
-      event.type === EventType.REASONING_MESSAGE_START &&
-      (event.metadata !== undefined || event.subagentRunId !== undefined);
-    if (message.id === state.messageId && !fieldBearingReasoningStart) {
-      return undefined;
-    }
+    if (message.id === state.messageId) return state;
     const toolCalls = projection.toolCalls.filter((toolCall) =>
       message.toolCallIds.includes(toolCall.id),
     );
@@ -244,27 +278,12 @@ export const reducer = createReducer(
         action.payload,
         decision,
       );
-      if (hydrated) return hydrated;
-      if (
-        decision &&
-        action.payload.type === EventType.REASONING_MESSAGE_START &&
-        state.snapshotReasoningMessageIds?.includes(action.payload.messageId) &&
-        state.reasoningMessageStatusById[action.payload.messageId] ===
-          'active' &&
-        action.payload.metadata === undefined &&
-        action.payload.subagentRunId === undefined
-      ) {
-        return state;
-      }
-
       const current =
         action.payload.type === EventType.RUN_FINISHED
-          ? completeSnapshotReasoningMessages(state)
-          : retireSnapshotReasoningMessage(state, action.payload);
-      return {
-        ...accumulateEvent(current, action.payload),
-        attemptActive: true,
-      };
+          ? completeSnapshotReasoningMessages(hydrated ?? state)
+          : retireSnapshotReasoningMessage(hydrated ?? state, action.payload);
+      const next = accumulateEvent(current, action.payload);
+      return next === current ? current : { ...next, attemptActive: true };
     },
   ),
   on(

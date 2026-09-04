@@ -138,6 +138,14 @@ export const reducer = createReducer(
         ),
       };
     }
+    if (decision && requiresCanonicalProjection(action.payload)) {
+      const draft = projectCanonical(decision.state.draft, {});
+      return {
+        ...state,
+        draft,
+        messages: draft,
+      };
+    }
     if (
       action.payload.type === EventType.TEXT_MESSAGE_START &&
       action.payload.role === 'assistant'
@@ -368,6 +376,7 @@ function reconcileSuccessfulAssistant(
   }
 
   return reconcileAssistant(messages, {
+    ...existing,
     ...assistant,
     content: existing.content,
     toolCallIds:
@@ -387,4 +396,21 @@ function projectCanonical(
     toolsByName,
     responseSchema ? s.normalizeSchemaOutput(responseSchema) : undefined,
   ).messages;
+}
+
+function requiresCanonicalProjection(
+  event: Parameters<typeof apiActions.generateMessageEvent>[0],
+): boolean {
+  switch (event.type) {
+    case EventType.TEXT_MESSAGE_END:
+      return event.metadata !== undefined;
+    case EventType.REASONING_MESSAGE_START:
+    case EventType.REASONING_MESSAGE_CONTENT:
+    case EventType.REASONING_MESSAGE_END:
+    case EventType.REASONING_MESSAGE_CHUNK:
+    case EventType.REASONING_ENCRYPTED_VALUE:
+      return true;
+    default:
+      return false;
+  }
 }

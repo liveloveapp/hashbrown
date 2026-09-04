@@ -233,6 +233,21 @@ function startReasoningMessage(
   event: ReasoningMessageStartEvent,
 ): AgUiMessageAccumulatorState {
   if (Object.hasOwn(state.reasoningMessageStatusById, event.messageId)) {
+    if (state.reasoningMessageStatusById[event.messageId] !== 'active') {
+      return withStreamError(
+        state,
+        `Reasoning message ${event.messageId} has already started`,
+      );
+    }
+    if (event.metadata === undefined && event.subagentRunId === undefined) {
+      return state;
+    }
+    const next = updateReasoningDetail(state, event.messageId, (detail) =>
+      mergeReasoningEventFields(detail, event),
+    );
+    if (next) {
+      return next;
+    }
     return withStreamError(
       state,
       `Reasoning message ${event.messageId} has already started`,
@@ -331,6 +346,33 @@ function endReasoningMessage(
       [event.messageId]: 'complete',
     },
   };
+}
+
+function applyReasoningMessageChunk(
+  state: AgUiMessageAccumulatorState,
+  event: Extract<AGUIEvent, { type: EventType.REASONING_MESSAGE_CHUNK }>,
+): AgUiMessageAccumulatorState {
+  const messageId = event.messageId;
+  if (!messageId) {
+    return state;
+  }
+  const started = Object.hasOwn(state.reasoningMessageStatusById, messageId)
+    ? state
+    : startReasoningMessage(state, {
+        ...event,
+        type: EventType.REASONING_MESSAGE_START,
+        role: 'reasoning',
+        messageId,
+      });
+  if (started.error || event.delta === undefined) {
+    return started;
+  }
+  return appendReasoningContent(started, {
+    ...event,
+    type: EventType.REASONING_MESSAGE_CONTENT,
+    messageId,
+    delta: event.delta,
+  });
 }
 
 function applyReasoningEncryptedValue(
@@ -999,6 +1041,8 @@ export function accumulateAgUiMessageEvent(
       return applyReasoningEncryptedValue(state, event);
     case EventType.REASONING_MESSAGE_END:
       return endReasoningMessage(state, event);
+    case EventType.REASONING_MESSAGE_CHUNK:
+      return applyReasoningMessageChunk(state, event);
     case EventType.TEXT_MESSAGE_START:
       return startTextMessage(state, event);
     case EventType.TEXT_MESSAGE_CONTENT:

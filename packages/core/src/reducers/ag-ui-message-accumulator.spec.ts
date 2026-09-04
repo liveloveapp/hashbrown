@@ -764,6 +764,56 @@ test('merges cloned reasoning lifecycle metadata and keeps the latest subagent r
   ]);
 });
 
+test('replays an active reasoning start without resetting its accumulated detail', () => {
+  const started = accumulateEvents(createState(), [
+    {
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning',
+      metadata: { initial: true },
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: 'Plan',
+    },
+    {
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'message',
+      entityId: 'reasoning-1',
+      encryptedValue: 'opaque',
+    },
+  ]);
+  const emptyReplay = accumulateAgUiMessageEvent(started, {
+    type: EventType.REASONING_MESSAGE_START,
+    messageId: 'reasoning-1',
+    role: 'reasoning',
+  });
+  const replayed = accumulateAgUiMessageEvent(emptyReplay, {
+    type: EventType.REASONING_MESSAGE_START,
+    messageId: 'reasoning-1',
+    role: 'reasoning',
+    metadata: { replay: true },
+    subagentRunId: 'subagent-1',
+  });
+
+  expect(emptyReplay).toBe(started);
+  expect(replayed.error).toBeUndefined();
+  expect(replayed.reasoningMessageStatusById).toEqual({
+    'reasoning-1': 'active',
+  });
+  expect(reasoningDetails(replayed)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: 'Plan',
+      encryptedValue: 'opaque',
+      metadata: { initial: true, replay: true },
+      subagentRunId: 'subagent-1',
+    },
+  ]);
+});
+
 test('merges cloned assistant and tool metadata across lifecycle events', () => {
   const textStartMetadata = {
     stable: 'text-start',
@@ -1086,14 +1136,23 @@ test('reports malformed reasoning ordering without discarding prior details', ()
     createState(),
     reasoningContent('unknown', 'Missing'),
   );
+  const completed = accumulateAgUiMessageEvent(
+    active,
+    reasoningEnd('constructor'),
+  );
+  const restarted = accumulateAgUiMessageEvent(
+    completed,
+    reasoningStart('constructor'),
+  );
   const unfinished = accumulateAgUiMessageEvent(active, runFinished());
 
-  expect(duplicateStart.error?.message).toBe(
-    'Reasoning message constructor has already started',
-  );
+  expect(duplicateStart).toBe(active);
   expect(reasoningDetails(duplicateStart)[0]?.content).toBe('Analysis');
   expect(unknownContent.error?.message).toBe(
     'Reasoning message unknown is not active',
+  );
+  expect(restarted.error?.message).toBe(
+    'Reasoning message constructor has already started',
   );
   expect(unfinished.error?.message).toBe(
     'Reasoning message constructor is still active',
@@ -1122,16 +1181,11 @@ test('treats incomplete text and tool sequences according to current behavior', 
   expect(nonAssistantStart).toBe(state);
 });
 
-test('keeps unsupported, custom, and reasoning chunk events as immutable no-ops', () => {
+test('keeps unsupported and custom events as immutable no-ops', () => {
   const state = createState();
   const events: AGUIEvent[] = [
     { type: EventType.STATE_SNAPSHOT, snapshot: { ignored: true } },
     { type: EventType.CUSTOM, name: 'ignored', value: { ignored: true } },
-    {
-      type: EventType.REASONING_MESSAGE_CHUNK,
-      messageId: 'reasoning-1',
-      delta: 'ignored',
-    },
     { type: EventType.REASONING_START, messageId: 'group-1' },
     { type: EventType.REASONING_END, messageId: 'group-1' },
   ];
@@ -1141,6 +1195,30 @@ test('keeps unsupported, custom, and reasoning chunk events as immutable no-ops'
   );
 
   expect(results.every((result) => result === state)).toBe(true);
+});
+
+test('accumulates reasoning chunk content and lifecycle fields', () => {
+  const next = accumulateAgUiMessageEvent(createState(), {
+    type: EventType.REASONING_MESSAGE_CHUNK,
+    messageId: 'reasoning-1',
+    delta: 'Plan',
+    metadata: { chunk: true },
+    subagentRunId: 'subagent-1',
+  });
+
+  expect(next.error).toBeUndefined();
+  expect(next.reasoningMessageStatusById).toEqual({
+    'reasoning-1': 'active',
+  });
+  expect(reasoningDetails(next)).toEqual([
+    {
+      id: 'reasoning-1',
+      role: 'reasoning',
+      content: 'Plan',
+      metadata: { chunk: true },
+      subagentRunId: 'subagent-1',
+    },
+  ]);
 });
 
 test('does not mutate event inputs, prior state, parser state, cache, or schemas', () => {

@@ -369,6 +369,204 @@ test('reconciles a tool stream to a new declared assistant parent', () => {
   });
 });
 
+test('finalizes earlier snapshotted tool and reasoning lifecycles on their end events', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', { city: s.streaming.string('city') }),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const initialized = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: initialized.tools.entities,
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'reasoning-a', role: 'reasoning', content: 'Plan' },
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-a',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"city":"Paris"}' },
+            },
+          ],
+        },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'tool-a',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-a',
+    }),
+  );
+
+  const ended = store.read((state) => state.streamingMessage);
+
+  expect(ended.messageId).toBe('assistant-a');
+  expect(ended.finalizedToolCallIds['tool-a']).toBe(true);
+  expect(ended.reasoningMessageStatusById['reasoning-a']).toBe('complete');
+  expect(ended.snapshotReasoningMessageIds).toEqual([]);
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  expect(store.read((state) => state).streamingMessage.error).toBeUndefined();
+});
+
+test('reconciles text end metadata and encrypted values to an earlier snapshotted assistant', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'assistant-a',
+      metadata: { ended: true },
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'message',
+      entityId: 'assistant-a',
+      encryptedValue: 'opaque-a',
+    }),
+  );
+
+  const live = store.read((state) => state);
+
+  expect(live.streamingMessage.messageId).toBe('assistant-a');
+  expect(live.streamingMessage.message).toMatchObject({
+    content: 'first',
+    metadata: { ended: true },
+    encryptedValue: 'opaque-a',
+  });
+  expect(selectViewMessages(live)[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    metadata: { ended: true },
+    encryptedValue: 'opaque-a',
+  });
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: 'first', toolCallIds: [] },
+        'assistant-a',
+      ),
+      toolCalls: [],
+    }),
+  );
+  expect(selectViewMessages(store.read((state) => state))[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    metadata: { ended: true },
+    encryptedValue: 'opaque-a',
+  });
+});
+
+test('commits an earlier snapshotted reasoning chunk after its assistant switches live', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'reasoning-a', role: 'reasoning', content: 'Plan' },
+        { id: 'assistant-a', role: 'assistant', content: 'first' },
+        { id: 'assistant-b', role: 'assistant', content: 'second' },
+      ],
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CHUNK,
+      messageId: 'reasoning-a',
+      delta: ' more',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-a',
+    }),
+  );
+
+  expect(store.read((state) => state).streamingMessage.message).toMatchObject({
+    reasoning: {
+      kind: 'details',
+      details: [{ id: 'reasoning-a', content: 'Plan more' }],
+    },
+  });
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: 'first', toolCallIds: [] },
+        'assistant-a',
+      ),
+      toolCalls: [],
+    }),
+  );
+
+  expect(selectViewMessages(store.read((state) => state))[0]).toMatchObject({
+    role: 'assistant',
+    content: 'first',
+    reasoningDetails: [{ id: 'reasoning-a', content: 'Plan more' }],
+  });
+});
+
 test('restores committed message IDs after a snapshot rollback', () => {
   const store = createStore({
     reducers,

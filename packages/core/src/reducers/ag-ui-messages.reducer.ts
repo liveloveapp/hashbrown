@@ -34,6 +34,7 @@ export type ɵAgUiMessageEventDecision =
   | {
       readonly kind: 'accepted';
       readonly event: AGUIEvent;
+      readonly priorState: AgUiMessagesState;
       readonly state: AgUiMessagesState;
     }
   | { readonly kind: 'ignored'; readonly state: AgUiMessagesState }
@@ -218,6 +219,7 @@ export function ɵdecideAgUiMessageEvent(
     return {
       kind: 'accepted',
       event,
+      priorState: state,
       state:
         draft === state.draft && !lifecycleChanged && !state.protocolError
           ? state
