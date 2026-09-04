@@ -912,6 +912,161 @@ test('settles fulfilled and rejected streamed tool results without a pending ove
   });
 });
 
+test('retains streamed tool lifecycle and result decorations through settlement', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {}),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({
+        toolsByName: initialized.tools.entities,
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reduceAll(
+    reduceAll(
+      active,
+      apiActions.generateMessageEvent({
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'assistant-1',
+        role: 'assistant',
+      }),
+    ),
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'fulfilled-call',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { call: 'fulfilled' },
+    }),
+  );
+  const withRejectedCall = reduceAll(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'rejected-call',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { call: 'rejected' },
+    }),
+  );
+  const encrypted = reduceAll(
+    withRejectedCall,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'tool-call',
+      entityId: 'fulfilled-call',
+      encryptedValue: 'fulfilled-opaque',
+    }),
+  );
+  const fulfilled = reduceAll(
+    encrypted,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'fulfilled-result',
+      toolCallId: 'fulfilled-call',
+      content: 'found',
+      metadata: { result: 'fulfilled' },
+    }),
+  );
+  const settled = reduceAll(
+    fulfilled,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'rejected-result',
+      toolCallId: 'rejected-call',
+      content: 'unavailable',
+      error: 'denied',
+      metadata: { result: 'rejected' },
+    } as unknown as Parameters<typeof apiActions.generateMessageEvent>[0]),
+  );
+  const fulfilledResult = settled.toolCalls.entities['fulfilled-call']?.result;
+  const rejectedResult = settled.toolCalls.entities['rejected-call']?.result;
+
+  expect(settled.streamingMessage.toolCalls).toEqual([]);
+  expect(selectViewMessages(settled)[0]).toMatchObject({
+    role: 'assistant',
+    toolCalls: [
+      {
+        status: 'done',
+        encryptedValue: 'fulfilled-opaque',
+        metadata: { call: 'fulfilled', result: 'fulfilled' },
+        result: { status: 'fulfilled', value: 'found' },
+      },
+      {
+        status: 'done',
+        metadata: { call: 'rejected', result: 'rejected' },
+        result: { status: 'rejected', reason: 'denied' },
+      },
+    ],
+  });
+
+  const committed = reduceAll(
+    settled,
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        {
+          role: 'assistant',
+          content: '',
+          toolCallIds: ['fulfilled-call', 'rejected-call'],
+        },
+        'assistant-1',
+      ),
+      toolCalls: [
+        {
+          id: 'fulfilled-call',
+          name: 'lookup',
+          arguments: '{}',
+          status: 'pending',
+        },
+        {
+          id: 'rejected-call',
+          name: 'lookup',
+          arguments: '{}',
+          status: 'pending',
+        },
+      ],
+    }),
+  );
+
+  expect(selectViewMessages(committed)[0]).toMatchObject({
+    role: 'assistant',
+    toolCalls: [
+      {
+        status: 'done',
+        encryptedValue: 'fulfilled-opaque',
+        metadata: { call: 'fulfilled', result: 'fulfilled' },
+        result: { status: 'fulfilled', value: 'found' },
+      },
+      {
+        status: 'done',
+        metadata: { call: 'rejected', result: 'rejected' },
+        result: { status: 'rejected', reason: 'denied' },
+      },
+    ],
+  });
+  expect(committed.toolCalls.entities['fulfilled-call']?.result).toBe(
+    fulfilledResult,
+  );
+  expect(committed.toolCalls.entities['rejected-call']?.result).toBe(
+    rejectedResult,
+  );
+});
+
 test('retains partial streamed tool arguments in the live projection', () => {
   const initialized = reduceAll(
     createState(),

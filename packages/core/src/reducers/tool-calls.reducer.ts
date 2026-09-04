@@ -32,6 +32,18 @@ const initialState: ToolCallsState = {
   canonicalIds: ɵindexAgUiCanonicalIds([]),
 };
 
+function mergeMetadata(
+  first: Chat.Internal.ToolCall['metadata'],
+  second: Record<string, unknown> | undefined,
+): Chat.Internal.ToolCall['metadata'] | undefined {
+  if (second === undefined) return first;
+
+  return {
+    ...(first === undefined ? {} : structuredClone(first)),
+    ...structuredClone(second),
+  };
+}
+
 export const reducer = createReducer(
   initialState,
   on(devActions.init, (state, action) => {
@@ -79,12 +91,14 @@ export const reducer = createReducer(
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_START) {
+      const metadata = mergeMetadata(undefined, action.payload.metadata);
       const draft = addEntities(state.draft, [
         {
           id: action.payload.toolCallId,
           name: action.payload.toolCallName,
           arguments: '',
           status: 'pending',
+          ...(metadata === undefined ? {} : { metadata }),
         },
       ]);
       return {
@@ -124,13 +138,21 @@ export const reducer = createReducer(
       const toolCallName =
         (event as { readonly toolCallName?: string }).toolCallName ??
         state.activeToolCallName;
+      const metadata = mergeMetadata(existing?.metadata, event.metadata);
       const draft = existing
         ? updateEntity(state.draft, id, {
             arguments: `${existing.arguments}${delta}`,
+            ...(metadata === undefined ? {} : { metadata }),
           })
         : toolCallName
           ? addEntities(state.draft, [
-              { id, name: toolCallName, arguments: delta, status: 'pending' },
+              {
+                id,
+                name: toolCallName,
+                arguments: delta,
+                status: 'pending',
+                ...(metadata === undefined ? {} : { metadata }),
+              },
             ])
           : state.draft;
       const ending = event.type === EventType.TOOL_CALL_END;
@@ -144,6 +166,30 @@ export const reducer = createReducer(
         canonicalIds: state.canonicalIds,
       };
     }
+    if (
+      action.payload.type === EventType.REASONING_ENCRYPTED_VALUE &&
+      action.payload.subtype === 'tool-call'
+    ) {
+      const existing = state.draft.entities[action.payload.entityId];
+      if (
+        !existing ||
+        existing.encryptedValue === action.payload.encryptedValue
+      ) {
+        return state;
+      }
+      const draft = updateEntity(state.draft, action.payload.entityId, {
+        encryptedValue: action.payload.encryptedValue,
+      });
+      return {
+        ...draft,
+        committed: state.committed,
+        draft,
+        attemptActive: true,
+        activeToolCallId: state.activeToolCallId,
+        activeToolCallName: state.activeToolCallName,
+        canonicalIds: state.canonicalIds,
+      };
+    }
     if (action.payload.type === EventType.TOOL_CALL_RESULT) {
       const existing = state.entities[action.payload.toolCallId];
       if (!existing) return state;
@@ -154,9 +200,14 @@ export const reducer = createReducer(
         error === undefined
           ? { status: 'fulfilled', value: action.payload.content }
           : { status: 'rejected', reason: error };
+      const metadata = mergeMetadata(
+        existing.metadata,
+        action.payload.metadata,
+      );
       const draft = updateEntity(state.draft, action.payload.toolCallId, {
         status: 'done',
         result,
+        ...(metadata === undefined ? {} : { metadata }),
       });
       return {
         ...draft,
