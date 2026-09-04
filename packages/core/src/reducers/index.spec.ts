@@ -838,6 +838,129 @@ test('combined root preserves snapshot assistant and tool-call baselines through
   });
 });
 
+test('settles fulfilled and rejected streamed tool results without a pending overlay', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      tools: [
+        {
+          name: 'lookup',
+          description: '',
+          schema: s.object('lookup', {}),
+          handler: async () => undefined,
+        },
+      ],
+    }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({
+        toolsByName: initialized.tools.entities,
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reduceAll(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    }),
+  );
+  const fulfilled = reduceAll(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'tool-result-1',
+      toolCallId: 'tool-1',
+      content: 'found',
+    }),
+  );
+  const rejected = reduceAll(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'tool-result-1',
+      toolCallId: 'tool-1',
+      content: 'failed',
+      error: 'unavailable',
+    }),
+  );
+
+  expect(fulfilled.toolCalls.entities['tool-1']).toMatchObject({
+    status: 'done',
+    result: { status: 'fulfilled', value: 'found' },
+  });
+  expect(rejected.toolCalls.entities['tool-1']).toMatchObject({
+    status: 'done',
+    result: { status: 'rejected', reason: 'unavailable' },
+  });
+  expect(fulfilled.streamingMessage.toolCalls).toEqual([]);
+  expect(rejected.streamingMessage.toolCalls).toEqual([]);
+  expect(selectViewMessages(fulfilled)[0]).toMatchObject({
+    role: 'assistant',
+    toolCalls: [{ status: 'done', result: { status: 'fulfilled' } }],
+  });
+  expect(selectViewMessages(rejected)[0]).toMatchObject({
+    role: 'assistant',
+    toolCalls: [{ status: 'done', result: { status: 'rejected' } }],
+  });
+});
+
+test('reconciles snapshotted reasoning through matching live content and end events', () => {
+  const initialized = reduceAll(
+    createState(),
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reduceAll(
+    reduceAll(
+      initialized,
+      apiActions.generateMessageStart({ toolsByName: {} }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotted = reduceAll(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'reasoning-1', role: 'reasoning', content: 'Plan' },
+        { id: 'assistant-1', role: 'assistant', content: '' },
+      ],
+    }),
+  );
+  const continued = reduceAll(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: ' more',
+    }),
+  );
+  const ended = reduceAll(
+    continued,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-1',
+    }),
+  );
+
+  expect(ended.agUiMessages.draft[0]).toMatchObject({
+    id: 'reasoning-1',
+    content: 'Plan more',
+  });
+  expect(ended.streamingMessage.error).toBeUndefined();
+  expect(ended.streamingMessage.message?.reasoning).toEqual({
+    kind: 'details',
+    details: [{ id: 'reasoning-1', role: 'reasoning', content: 'Plan more' }],
+  });
+});
+
 test('root supersession actions atomically discard stale canonical projection drafts', () => {
   const initialized = reduceAll(
     createState(),

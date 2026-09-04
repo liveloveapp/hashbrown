@@ -388,3 +388,41 @@ test('keeps only the selected assistant tool calls after a multi-assistant snaps
     selectRawStreamingToolCalls(snapshotted).map((tool) => tool.id),
   ).toEqual(['tool-2']);
 });
+
+test('continues and ends a snapshotted reasoning message by stable ID', () => {
+  const started = startState();
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'reasoning-1', role: 'reasoning', content: 'Plan' },
+        { id: 'assistant-1', role: 'assistant', content: '' },
+      ],
+    }),
+  );
+  const continued = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: ' more',
+    }),
+  );
+  const ended = reducer(
+    continued,
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_MESSAGE_END,
+      messageId: 'reasoning-1',
+    }),
+  );
+
+  expect(ended.error).toBeUndefined();
+  expect(ended.message?.reasoning).toEqual({
+    kind: 'details',
+    details: [{ id: 'reasoning-1', role: 'reasoning', content: 'Plan more' }],
+  });
+  expect(ended.reasoningMessageStatusById).toEqual({
+    'reasoning-1': 'complete',
+  });
+});

@@ -292,14 +292,21 @@ const selectNonStreamingViewMessageEntries = select(
 const selectStreamingViewMessageEntries = select(
   selectStreamingMessage,
   selectStreamingToolCallEntities,
+  selectToolCallEntities,
   selectTools,
   selectResponseSchema,
-  (streamingMessage, streamingToolCalls, tools, responseSchema) => {
+  (
+    streamingMessage,
+    streamingToolCalls,
+    canonicalToolCalls,
+    tools,
+    responseSchema,
+  ) => {
     return (streamingMessage ? [streamingMessage] : []).map((message) => ({
       id: message.id,
       messages: Chat.helpers.toViewMessagesFromInternal(
         message,
-        streamingToolCalls,
+        { ...streamingToolCalls, ...canonicalToolCalls },
         tools,
         responseSchema,
       ),

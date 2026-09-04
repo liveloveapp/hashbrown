@@ -108,6 +108,21 @@ export const reducer = createReducer(
         return hydrateSnapshot(state, message, toolCalls);
       }
 
+      if (action.payload.type === EventType.TOOL_CALL_RESULT) {
+        const toolCalls = state.toolCalls.filter(
+          (toolCall) => toolCall.id !== action.payload.toolCallId,
+        );
+        if (toolCalls.length === state.toolCalls.length) return state;
+        return {
+          ...state,
+          toolCalls,
+          activeToolCallId:
+            state.activeToolCallId === action.payload.toolCallId
+              ? undefined
+              : state.activeToolCallId,
+        };
+      }
+
       return { ...accumulateEvent(state, action.payload), attemptActive: true };
     },
   ),
@@ -146,8 +161,7 @@ export const selectStreamingMessageError = (state: StreamingMessageState) =>
 export const selectStreamingMessage = select(
   selectRawStreamingMessage,
   selectStreamingMessageId,
-  selectRawStreamingToolCalls,
-  (message, messageId, toolCalls): Chat.Internal.AssistantMessage | null => {
+  (message, messageId): Chat.Internal.AssistantMessage | null => {
     if (!message || !messageId) {
       return null;
     }
@@ -155,7 +169,7 @@ export const selectStreamingMessage = select(
     return Chat.helpers.ɵwithInternalMessageId(
       {
         ...message,
-        toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+        toolCallIds: message.toolCallIds,
       },
       messageId,
     );
@@ -211,6 +225,43 @@ function hydrateSnapshot(
       attemptActive: true,
     };
   }
+  const reasoningDetails =
+    message.reasoning?.kind === 'details' ? message.reasoning.details : [];
+  for (const detail of reasoningDetails) {
+    hydrated = {
+      ...accumulateAgUiMessageEvent(hydrated, {
+        type: EventType.REASONING_MESSAGE_START,
+        messageId: detail.id,
+        role: 'reasoning',
+        ...(detail.metadata === undefined ? {} : { metadata: detail.metadata }),
+        ...(detail.subagentRunId === undefined
+          ? {}
+          : { subagentRunId: detail.subagentRunId }),
+      }),
+      attemptActive: true,
+    };
+    if (detail.content) {
+      hydrated = {
+        ...accumulateAgUiMessageEvent(hydrated, {
+          type: EventType.REASONING_MESSAGE_CONTENT,
+          messageId: detail.id,
+          delta: detail.content,
+        }),
+        attemptActive: true,
+      };
+    }
+    if (detail.encryptedValue !== undefined) {
+      hydrated = {
+        ...accumulateAgUiMessageEvent(hydrated, {
+          type: EventType.REASONING_ENCRYPTED_VALUE,
+          subtype: 'message',
+          entityId: detail.id,
+          encryptedValue: detail.encryptedValue,
+        }),
+        attemptActive: true,
+      };
+    }
+  }
   for (const toolCall of toolCalls) {
     hydrated = {
       ...accumulateAgUiMessageEvent(hydrated, {
@@ -235,7 +286,12 @@ function hydrateSnapshot(
 
   return {
     ...hydrated,
-    message,
+    message: {
+      ...message,
+      ...(hydrated.message?.reasoning === undefined
+        ? {}
+        : { reasoning: hydrated.message.reasoning }),
+    },
     messageId: message.id,
     toolCalls: toolCalls.map((toolCall) => {
       const parsed = hydrated.toolCalls.find(
