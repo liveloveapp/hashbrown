@@ -709,6 +709,7 @@ test('keeps existing local tool provenance when sendMessage appends canonical hi
             id: 'lookup-a',
             name: 'lookup',
             arguments: '',
+            metadata: { phase: 'local', local: true },
             status: 'done',
             result: localResult,
           },
@@ -1227,6 +1228,7 @@ test('retains local tool values for idempotent replays until canonical sources c
             id: 'fulfilled-a',
             name: 'lookup',
             arguments: '',
+            metadata: { phase: 'local', local: true },
             status: 'done',
             result: fulfilledResult,
           },
@@ -1257,7 +1259,7 @@ test('retains local tool values for idempotent replays until canonical sources c
       type: EventType.TOOL_CALL_START,
       toolCallId: 'fulfilled-a',
       toolCallName: 'lookup',
-      metadata: { replay: 'start' },
+      metadata: { phase: 'canonical' },
     }),
   );
   store.dispatch(
@@ -1342,7 +1344,8 @@ test('retains local tool values for idempotent replays until canonical sources c
     fulfilledResult,
   );
   expect(replayed.toolCalls.entities['fulfilled-a']?.metadata).toEqual({
-    replay: 'start',
+    phase: 'canonical',
+    local: true,
   });
   expect(replayed.toolCalls.entities['rejected-a']?.result).toBe(
     rejectedResult,

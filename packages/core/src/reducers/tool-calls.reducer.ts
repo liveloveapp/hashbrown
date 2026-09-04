@@ -52,11 +52,28 @@ function mergeMetadata(
   second: Record<string, unknown> | undefined,
 ): Chat.Internal.ToolCall['metadata'] | undefined {
   if (second === undefined) return first;
-
-  return {
+  const merged = {
     ...(first === undefined ? {} : structuredClone(first)),
     ...structuredClone(second),
   };
+  return sameMetadata(first, merged) ? first : merged;
+}
+
+function sameMetadata(
+  first: Record<string, unknown> | undefined,
+  second: Record<string, unknown>,
+): boolean {
+  if (first === undefined) return false;
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  return (
+    firstKeys.length === secondKeys.length &&
+    firstKeys.every(
+      (key) =>
+        Object.hasOwn(second, key) &&
+        JSON.stringify(first[key]) === JSON.stringify(second[key]),
+    )
+  );
 }
 
 export const reducer = createReducer(
@@ -588,7 +605,7 @@ function reconcilePreparedEntities(
     const next = { source };
     nextProvenance[toolCall.id] = next;
     if (local.source !== source) provenanceChanged = true;
-    const metadata = mergeMetadata(toolCall.metadata, existing.metadata);
+    const metadata = mergeMetadata(existing.metadata, toolCall.metadata);
     return metadata === existing.metadata
       ? existing
       : { ...existing, metadata };
