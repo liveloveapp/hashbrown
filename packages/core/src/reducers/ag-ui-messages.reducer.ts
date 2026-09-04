@@ -29,6 +29,16 @@ export interface AgUiMessagesState {
   readonly activeAssistantMessageId: string | undefined;
 }
 
+/** The canonical outcome of one AG-UI message event. @internal */
+export type ɵAgUiMessageEventDecision =
+  | {
+      readonly kind: 'accepted';
+      readonly event: AGUIEvent;
+      readonly state: AgUiMessagesState;
+    }
+  | { readonly kind: 'ignored'; readonly state: AgUiMessagesState }
+  | { readonly kind: 'rejected'; readonly state: AgUiMessagesState };
+
 /** Initial canonical AG-UI message state. @internal */
 export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
   committed: Object.freeze([]),
@@ -82,34 +92,10 @@ export const reducer = createReducer(
     };
   }),
   on(apiActions.generateMessageEvent, (state, action): AgUiMessagesState => {
-    if (!state.attemptActive) {
-      return state;
-    }
-
-    try {
-      const event = correlateEvent(state, action.payload);
-      const draft = applyCanonicalMessageEvent(state.draft, event);
-      const lifecycle = nextLifecycle(state, event);
-      const lifecycleChanged = Object.entries(lifecycle).some(
-        ([key, value]) => state[key as keyof AgUiMessagesState] !== value,
-      );
-      return draft === state.draft && !lifecycleChanged
-        ? state
-        : {
-            ...state,
-            draft,
-            protocolError: undefined,
-            ...lifecycle,
-          };
-    } catch (error) {
-      return {
-        ...state,
-        protocolError:
-          error instanceof Error
-            ? error
-            : new Error('Invalid AG-UI message event'),
-      };
-    }
+    return (
+      ɵreadAgUiMessageEventDecision(action) ??
+      ɵdecideAgUiMessageEvent(state, action.payload)
+    ).state;
   }),
   on(apiActions.generateMessageSuccess, (state): AgUiMessagesState => {
     if (!state.attemptActive) {
@@ -204,6 +190,67 @@ export const ɵselectAttemptStartToolCallIds = (state: AgUiMessagesState) =>
 /** Selects the most recent canonical message protocol error. @internal */
 export const ɵselectAgUiMessagesProtocolError = (state: AgUiMessagesState) =>
   state.protocolError;
+
+/**
+ * Validates and normalizes one AG-UI event before it is applied to derived
+ * message projections.
+ *
+ * @internal
+ */
+export function ɵdecideAgUiMessageEvent(
+  state: AgUiMessagesState,
+  input: AGUIEvent,
+): ɵAgUiMessageEventDecision {
+  if (!state.attemptActive) {
+    return { kind: 'ignored', state };
+  }
+
+  try {
+    const event = correlateEvent(state, input);
+    const draft = applyCanonicalMessageEvent(state.draft, event);
+    const lifecycle = nextLifecycle(state, event, draft);
+    const lifecycleChanged = Object.entries(lifecycle).some(
+      ([key, value]) => state[key as keyof AgUiMessagesState] !== value,
+    );
+    if (isIgnoredEvent(event, draft)) {
+      return { kind: 'ignored', state };
+    }
+    return {
+      kind: 'accepted',
+      event,
+      state:
+        draft === state.draft && !lifecycleChanged && !state.protocolError
+          ? state
+          : {
+              ...state,
+              draft,
+              protocolError: undefined,
+              ...lifecycle,
+            },
+    };
+  } catch (error) {
+    return {
+      kind: 'rejected',
+      state: {
+        ...state,
+        protocolError:
+          error instanceof Error
+            ? error
+            : new Error('Invalid AG-UI message event'),
+      },
+    };
+  }
+}
+
+/** Reads a root-prepared canonical event decision from one reducer action. @internal */
+export function ɵreadAgUiMessageEventDecision(
+  action: unknown,
+): ɵAgUiMessageEventDecision | undefined {
+  const candidate = action as {
+    readonly ɵagUiMessageEventDecision?: ɵAgUiMessageEventDecision;
+  };
+  return candidate.ɵagUiMessageEventDecision;
+}
 
 /**
  * Applies a single AG-UI event to canonical history.
@@ -367,7 +414,8 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
         return {
           ...event,
           parentMessageId:
-            event.parentMessageId ?? state.activeAssistantMessageId,
+            event.parentMessageId ??
+            (existing ? undefined : state.activeAssistantMessageId),
           toolCallName:
             event.toolCallName ??
             (event.toolCallId === state.activeToolCallId
@@ -385,7 +433,9 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
               event.parentMessageId ?? state.activeAssistantMessageId,
           };
     case EventType.TOOL_CALL_START:
-      return event.parentMessageId || !state.activeAssistantMessageId
+      return event.parentMessageId ||
+        !state.activeAssistantMessageId ||
+        findToolCall(state.draft, event.toolCallId)
         ? event
         : { ...event, parentMessageId: state.activeAssistantMessageId };
     default:
@@ -393,7 +443,11 @@ function correlateEvent(state: AgUiMessagesState, event: AGUIEvent): AGUIEvent {
   }
 }
 
-function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
+function nextLifecycle(
+  state: AgUiMessagesState,
+  event: AGUIEvent,
+  draft: readonly Readonly<Message>[],
+) {
   switch (event.type) {
     case EventType.MESSAGES_SNAPSHOT:
       return inactiveLifecycle();
@@ -440,7 +494,7 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
         ? { activeToolCallId: undefined, activeToolCallName: undefined }
         : {};
     case EventType.TOOL_CALL_CHUNK:
-      return event.toolCallId
+      return event.toolCallId && findToolCall(draft, event.toolCallId)
         ? {
             activeToolCallId: event.toolCallId,
             activeToolCallName: event.toolCallName,
@@ -449,6 +503,20 @@ function nextLifecycle(state: AgUiMessagesState, event: AGUIEvent) {
     default:
       return {};
   }
+}
+
+function isIgnoredEvent(
+  event: AGUIEvent,
+  draft: readonly Readonly<Message>[],
+): boolean {
+  if (
+    event.type !== EventType.TOOL_CALL_ARGS &&
+    event.type !== EventType.TOOL_CALL_END &&
+    event.type !== EventType.TOOL_CALL_CHUNK
+  ) {
+    return false;
+  }
+  return !event.toolCallId || !findToolCall(draft, event.toolCallId);
 }
 
 function own(
@@ -559,6 +627,9 @@ function startToolCall(
   parentMessageId: string | undefined,
   event: AGUIEvent,
 ): readonly Readonly<Message>[] {
+  if (parentMessageId === toolCallId) {
+    throw new Error(`AG-UI tool call ${toolCallId} cannot parent itself`);
+  }
   if (messages.some((message) => message.id === toolCallId)) {
     throw new Error(
       `AG-UI tool call ID ${toolCallId} conflicts with a message ID`,
@@ -568,6 +639,12 @@ function startToolCall(
   if (existing) {
     if (existing.tool.function.name !== toolCallName) {
       throw new Error(`AG-UI tool call ${toolCallId} cannot change name`);
+    }
+    if (
+      parentMessageId !== undefined &&
+      parentMessageId !== existing.message.id
+    ) {
+      throw new Error(`AG-UI tool call ${toolCallId} cannot change parent`);
     }
     return messages;
   }
@@ -624,6 +701,13 @@ function appendOrStartToolCall(
   const found = findToolCall(messages, event.toolCallId);
   if (found && found.tool.function.name !== event.toolCallName) {
     throw new Error(`AG-UI tool call ${event.toolCallId} cannot change name`);
+  }
+  if (
+    found &&
+    event.parentMessageId !== undefined &&
+    event.parentMessageId !== found.message.id
+  ) {
+    throw new Error(`AG-UI tool call ${event.toolCallId} cannot change parent`);
   }
   const started = found
     ? messages

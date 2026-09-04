@@ -6,6 +6,7 @@ import {
   JsonValue,
 } from '../utils';
 import { createReducer, on } from '../utils/micro-ngrx';
+import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 /**
  * State synchronized between the application and its AG-UI agent.
@@ -61,6 +62,11 @@ export const reducer = createReducer(
     };
   }),
   on(apiActions.generateMessageEvent, (state, action): AgentStateState => {
+    const decision = ɵreadAgUiMessageEventDecision(action);
+    if (decision && decision.kind !== 'accepted') return state;
+    action = decision
+      ? ({ ...action, payload: decision.event } as typeof action)
+      : action;
     if (!state.attemptActive) {
       return state;
     }

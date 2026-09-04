@@ -1,6 +1,7 @@
 import { EventType } from '@ag-ui/core';
 import { createReducer, on } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
+import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export interface StatusState {
   isReceiving: boolean;
@@ -56,6 +57,11 @@ export const reducer = createReducer(
     };
   }),
   on(apiActions.generateMessageEvent, (state, action) => {
+    const decision = ɵreadAgUiMessageEventDecision(action);
+    if (decision && decision.kind !== 'accepted') return state;
+    action = decision
+      ? ({ ...action, payload: decision.event } as typeof action)
+      : action;
     switch (action.payload.type) {
       case EventType.RUN_STARTED:
         return {

@@ -10,6 +10,7 @@ import {
   ɵownValidatedAgUiMessages,
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
+import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly committed: EntityState<Chat.Internal.ToolCall>;
@@ -58,6 +59,11 @@ export const reducer = createReducer(
     canonicalIds: state.canonicalIds,
   })),
   on(apiActions.generateMessageEvent, (state, action): ToolCallsState => {
+    const decision = ɵreadAgUiMessageEventDecision(action);
+    if (decision && decision.kind !== 'accepted') return state;
+    action = decision
+      ? ({ ...action, payload: decision.event } as typeof action)
+      : action;
     if (!state.attemptActive) return state;
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
       const draft = projectRemoteSnapshot(action.payload);

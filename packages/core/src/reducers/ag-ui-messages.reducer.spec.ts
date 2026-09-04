@@ -520,6 +520,98 @@ test('continues an active tool call when a chunk only supplies its ID', () => {
   });
 });
 
+test('ignores an unknown explicit nameless tool chunk without changing correlation', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-active',
+      toolCallName: 'lookup',
+    }),
+  );
+
+  const ignored = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-unknown',
+      delta: '{',
+    }),
+  );
+
+  expect(ignored).toBe(state);
+});
+
+test('rejects a tool call whose explicit parent is its own ID', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  const rejected = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'tool-1',
+    }),
+  );
+
+  expect(rejected.draft).toBe(active.draft);
+  expect(rejected.protocolError).toBeInstanceOf(Error);
+});
+
+test('rejects a tool call replay with a different explicit parent', () => {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    }),
+  );
+
+  const rejected = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-2',
+    }),
+  );
+
+  expect(rejected.draft).toBe(started.draft);
+  expect(rejected.protocolError).toBeInstanceOf(Error);
+});
+
 test('rejects a compact tool chunk that changes an existing tool name', () => {
   const initialized = reducer(
     initialAgUiMessagesState,

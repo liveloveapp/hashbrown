@@ -3,6 +3,7 @@ import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
 import { s } from '../schema';
+import { createStore } from '../utils/micro-ngrx';
 import {
   reducers,
   selectIsLoading,
@@ -10,6 +11,7 @@ import {
   selectThreadId,
   selectUnifiedError,
   selectViewMessages,
+  ɵprepareRootAction,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptStartToolCallIds,
   ɵselectCommittedAgentState,
@@ -52,6 +54,39 @@ function reduceAll(
     thread: reducers.thread(state.thread, action),
   };
 }
+
+test('gates rejected canonical events from every derived reducer', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  const before = store.read((state) => state);
+
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'user-1',
+      role: 'assistant',
+    }),
+  );
+  const rejected = store.read((state) => state);
+
+  expect(rejected.agUiMessages.protocolError).toBeInstanceOf(Error);
+  expect(rejected.messages).toBe(before.messages);
+  expect(rejected.toolCalls).toBe(before.toolCalls);
+  expect(rejected.streamingMessage).toBe(before.streamingMessage);
+  expect(rejected.status).toBe(before.status);
+});
 
 type InvalidSnapshot = {
   readonly name: string;

@@ -466,6 +466,7 @@ export function createStore<
   reducers: Reducers;
   effects: EffectFn[];
   projectStateForDevtools?: (state: State) => object;
+  prepareAction?: (state: State, action: AnyAction) => AnyAction;
 }): Store<State> {
   const scheduler = new TrampolineScheduler();
   const devtools = config.debugName
@@ -490,7 +491,8 @@ export function createStore<
 
   function dispatch(action: AnyAction) {
     scheduler.scheduleTask(() => {
-      state = reducerFn(state, action);
+      const preparedAction = config.prepareAction?.(state, action) ?? action;
+      state = reducerFn(state, preparedAction);
 
       const whenCallbackFns = whenCallbackFnMap.get(action.type) ?? [];
       whenCallbackFns.forEach((callback) => callback(action));
@@ -756,8 +758,7 @@ export function connectToChromeExtension(options: {
   }
 
   const extension = (window as any).__REDUX_DEVTOOLS_EXTENSION__ as
-    | DevtoolsChromeExtension
-    | undefined;
+    DevtoolsChromeExtension | undefined;
 
   if (!extension) {
     return;

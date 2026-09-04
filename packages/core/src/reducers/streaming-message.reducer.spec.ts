@@ -300,3 +300,91 @@ test('clears a pre-snapshot accumulator and rebuilds only the replacement assist
   });
   expect(late).toBe(initialState);
 });
+
+test('continues parsing partial snapshot tool arguments with later chunks', () => {
+  const toolsByName: Record<string, Chat.Internal.Tool> = {
+    weather: {
+      name: 'weather',
+      description: '',
+      schema: s.object('arguments', {
+        city: s.streaming.string('city'),
+      }),
+      handler: async () => undefined,
+    },
+  };
+  const started = startState(undefined, toolsByName);
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'weather', arguments: '{"city":' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
+  const continued = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      delta: '"Paris"}',
+    }),
+  );
+
+  expect(continued.error).toBeUndefined();
+  expect(continued.toolCalls[0]?.argumentsResolved).toEqual({ city: 'Paris' });
+});
+
+test('keeps only the selected assistant tool calls after a multi-assistant snapshot', () => {
+  const started = startState();
+
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: 'first',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'first', arguments: '{}' },
+            },
+          ],
+        },
+        {
+          id: 'assistant-2',
+          role: 'assistant',
+          content: 'last',
+          toolCalls: [
+            {
+              id: 'tool-2',
+              type: 'function',
+              function: { name: 'last', arguments: '{}' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
+  expect(selectStreamingMessage(snapshotted)?.toolCallIds).toEqual(['tool-2']);
+  expect(
+    selectRawStreamingToolCalls(snapshotted).map((tool) => tool.id),
+  ).toEqual(['tool-2']);
+});

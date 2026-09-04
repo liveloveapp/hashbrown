@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat } from '../models';
+import { apiActions } from '../actions';
 import { Prettify } from '../utils/types';
 import { select } from '../utils/micro-ngrx';
 import * as fromAgentState from './agent-state.reducer';
@@ -69,9 +70,32 @@ export const ɵselectAgentStateProtocolError = select(
   fromAgentState.ɵselectProtocolError,
 );
 
-type State = Prettify<{
+/** The complete internal root reducer state. @internal */
+export type State = Prettify<{
   [P in keyof typeof reducers]: ReturnType<(typeof reducers)[P]>;
 }>;
+
+/**
+ * Computes canonical AG-UI acceptance before a transport event fans out to
+ * derived reducer slices.
+ *
+ * @internal
+ */
+export function ɵprepareRootAction(
+  state: State,
+  action: { readonly type: string; readonly payload?: unknown },
+) {
+  if (action.type !== apiActions.generateMessageEvent.type) {
+    return action;
+  }
+  const decision = fromAgUiMessages.ɵdecideAgUiMessageEvent(
+    state.agUiMessages,
+    action.payload as Parameters<
+      typeof fromAgUiMessages.ɵdecideAgUiMessageEvent
+    >[1],
+  );
+  return { ...action, ɵagUiMessageEventDecision: decision };
+}
 
 /** Selects the canonical AG-UI message state. @internal */
 export const ɵselectAgUiMessagesState = (state: State) => state.agUiMessages;

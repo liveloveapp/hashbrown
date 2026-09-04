@@ -224,6 +224,31 @@ test('projects lifecycle text by role and ignores assistant starts rejected by c
   expect(incompatibleAssistant).toBe(snapshotted);
 });
 
+test('projects an explicit compact user chunk as a user message', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  const projected = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'user-1',
+      role: 'user',
+      delta: 'hello',
+    }),
+  );
+
+  expect(projected.messages).toEqual([
+    { id: 'user-1', role: 'user', content: 'hello' },
+  ]);
+});
+
 test('commits an identified success assistant once and ignores output-free success', () => {
   const initialized = reducer(
     undefined,

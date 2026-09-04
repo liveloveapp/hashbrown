@@ -12,6 +12,7 @@ import {
   ɵownValidatedAgUiMessages,
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
+import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export interface MessagesState {
   readonly messages: readonly Chat.Internal.Message[];
@@ -108,6 +109,11 @@ export const reducer = createReducer(
     activeIgnoredTextMessageId: undefined,
   })),
   on(apiActions.generateMessageEvent, (state, action): MessagesState => {
+    const decision = ɵreadAgUiMessageEventDecision(action);
+    if (decision && decision.kind !== 'accepted') return state;
+    action = decision
+      ? ({ ...action, payload: decision.event } as typeof action)
+      : action;
     if (!state.attemptActive) return state;
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
       const draft = projectRemoteSnapshot(action.payload);
@@ -205,17 +211,24 @@ export const reducer = createReducer(
       ) {
         return state;
       }
-      if (current?.role === 'user') {
+      if (
+        current?.role === 'user' ||
+        (current === undefined &&
+          action.payload.type === EventType.TEXT_MESSAGE_CHUNK &&
+          action.payload.role === 'user')
+      ) {
         const message = Chat.helpers.ɵwithInternalMessageId(
           {
             role: 'user' as const,
-            content: `${current.content}${action.payload.delta ?? ''}`,
+            content: `${current?.role === 'user' ? current.content : ''}${action.payload.delta ?? ''}`,
           },
           id,
         );
-        const draft = state.draft.map((existing) =>
-          existing === current ? message : existing,
-        );
+        const draft = current
+          ? state.draft.map((existing) =>
+              existing === current ? message : existing,
+            )
+          : [...state.draft, message];
         return { ...state, draft, messages: draft };
       }
       if (current && current.role !== 'assistant') {

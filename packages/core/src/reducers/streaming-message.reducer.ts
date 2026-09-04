@@ -14,6 +14,7 @@ import {
   projectAgUiMessages,
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
+import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export type StreamingMessageState = AgUiMessageAccumulatorState & {
   readonly attemptActive: boolean;
@@ -74,6 +75,11 @@ export const reducer = createReducer(
   on(
     apiActions.generateMessageEvent,
     (state, action): StreamingMessageState => {
+      const decision = ɵreadAgUiMessageEventDecision(action);
+      if (decision && decision.kind !== 'accepted') return state;
+      action = decision
+        ? ({ ...action, payload: decision.event } as typeof action)
+        : action;
       if (!state.attemptActive) {
         return state;
       }
@@ -92,18 +98,14 @@ export const reducer = createReducer(
             projection.messages.findLast(
               (current) => current.role === 'assistant',
             ) ?? null;
-          toolCalls = [...projection.toolCalls];
+          const messageToolCallIds = message?.toolCallIds ?? [];
+          toolCalls = projection.toolCalls.filter((toolCall) =>
+            messageToolCallIds.includes(toolCall.id),
+          );
         } catch {
           return state;
         }
-        return {
-          ...initialState,
-          configSnapshot: state.configSnapshot,
-          message,
-          messageId: message?.id,
-          toolCalls,
-          attemptActive: true,
-        };
+        return hydrateSnapshot(state, message, toolCalls);
       }
 
       return { ...accumulateEvent(state, action.payload), attemptActive: true };
@@ -172,3 +174,78 @@ export const selectStreamingToolCallEntities = select(
     );
   },
 );
+
+function hydrateSnapshot(
+  state: StreamingMessageState,
+  message: Chat.Internal.AssistantMessage | null,
+  toolCalls: readonly Chat.Internal.ToolCall[],
+): StreamingMessageState {
+  if (!message || !message.id) {
+    return {
+      ...initialState,
+      configSnapshot: state.configSnapshot,
+      attemptActive: true,
+    };
+  }
+
+  let hydrated: StreamingMessageState = {
+    ...initialState,
+    configSnapshot: state.configSnapshot,
+    attemptActive: true,
+  };
+  hydrated = {
+    ...accumulateAgUiMessageEvent(hydrated, {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: message.id,
+      role: 'assistant',
+    }),
+    attemptActive: true,
+  };
+  if (message.content) {
+    hydrated = {
+      ...accumulateAgUiMessageEvent(hydrated, {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: message.id,
+        delta: message.content,
+      }),
+      attemptActive: true,
+    };
+  }
+  for (const toolCall of toolCalls) {
+    hydrated = {
+      ...accumulateAgUiMessageEvent(hydrated, {
+        type: EventType.TOOL_CALL_START,
+        toolCallId: toolCall.id,
+        toolCallName: toolCall.name,
+        parentMessageId: message.id,
+      }),
+      attemptActive: true,
+    };
+    if (toolCall.arguments) {
+      hydrated = {
+        ...accumulateAgUiMessageEvent(hydrated, {
+          type: EventType.TOOL_CALL_ARGS,
+          toolCallId: toolCall.id,
+          delta: toolCall.arguments,
+        }),
+        attemptActive: true,
+      };
+    }
+  }
+
+  return {
+    ...hydrated,
+    message,
+    messageId: message.id,
+    toolCalls: toolCalls.map((toolCall) => {
+      const parsed = hydrated.toolCalls.find(
+        (candidate) => candidate.id === toolCall.id,
+      );
+      return parsed?.argumentsResolved === undefined
+        ? toolCall
+        : { ...toolCall, argumentsResolved: parsed.argumentsResolved };
+    }),
+    activeToolCallId: toolCalls.at(-1)?.id,
+    attemptActive: true,
+  };
+}
