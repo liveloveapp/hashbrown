@@ -284,6 +284,63 @@ test('keeps an idempotently started tool call active for an ID-less chunk', () =
   expect(continued.activeToolCallId).toBe('tool-1');
 });
 
+test('preserves references for metadata-free stable tool-call replays', () => {
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'tool-1',
+    name: 'lookup',
+    arguments: '',
+    status: 'pending',
+  };
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      localProjection: { messages: [], toolCalls: [toolCall] },
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: toolCall.id,
+      toolCallName: toolCall.name,
+    }),
+  );
+  const replayedStart = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: toolCall.id,
+      toolCallName: toolCall.name,
+    }),
+  );
+  const replayedChunk = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: toolCall.id,
+      toolCallName: toolCall.name,
+      delta: '',
+    }),
+  );
+
+  expect(replayedStart).toBe(started);
+  expect(replayedStart.draft).toBe(started.draft);
+  expect(replayedStart.entities['tool-1']).toBe(started.entities['tool-1']);
+  expect(replayedStart.activeToolCallId).toBe('tool-1');
+  expect(replayedStart.activeToolCallName).toBe('lookup');
+  expect(replayedChunk).toBe(started);
+  expect(replayedChunk.draft).toBe(started.draft);
+  expect(replayedChunk.entities['tool-1']).toBe(started.entities['tool-1']);
+  expect(replayedChunk.activeToolCallId).toBe('tool-1');
+  expect(replayedChunk.activeToolCallName).toBe('lookup');
+});
+
 test('settles canonical tool results in a draft and rollback restores committed status', () => {
   const canonical = [
     {

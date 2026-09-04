@@ -96,6 +96,14 @@ export const reducer = createReducer(
         existing?.metadata,
         action.payload.metadata,
       );
+      if (
+        existing &&
+        metadata === existing.metadata &&
+        state.activeToolCallId === action.payload.toolCallId &&
+        state.activeToolCallName === action.payload.toolCallName
+      ) {
+        return state;
+      }
       const draft = existing
         ? metadata === existing.metadata
           ? state.draft
@@ -147,6 +155,18 @@ export const reducer = createReducer(
         (event as { readonly toolCallName?: string }).toolCallName ??
         state.activeToolCallName;
       const metadata = mergeMetadata(existing?.metadata, event.metadata);
+      const ending = event.type === EventType.TOOL_CALL_END;
+      const activeToolCallId = ending ? undefined : id;
+      const activeToolCallName = ending ? undefined : toolCallName;
+      if (
+        existing &&
+        delta.length === 0 &&
+        metadata === existing.metadata &&
+        state.activeToolCallId === activeToolCallId &&
+        state.activeToolCallName === activeToolCallName
+      ) {
+        return state;
+      }
       const draft = existing
         ? updateEntity(state.draft, id, {
             arguments: `${existing.arguments}${delta}`,
@@ -163,14 +183,13 @@ export const reducer = createReducer(
               },
             ])
           : state.draft;
-      const ending = event.type === EventType.TOOL_CALL_END;
       return {
         ...draft,
         committed: state.committed,
         draft,
         attemptActive: true,
-        activeToolCallId: ending ? undefined : id,
-        activeToolCallName: ending ? undefined : toolCallName,
+        activeToolCallId,
+        activeToolCallName,
         canonicalIds: state.canonicalIds,
       };
     }
