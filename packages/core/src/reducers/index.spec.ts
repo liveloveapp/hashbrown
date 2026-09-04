@@ -1257,6 +1257,7 @@ test('retains local tool values for idempotent replays until canonical sources c
       type: EventType.TOOL_CALL_START,
       toolCallId: 'fulfilled-a',
       toolCallName: 'lookup',
+      metadata: { replay: 'start' },
     }),
   );
   store.dispatch(
@@ -1340,6 +1341,9 @@ test('retains local tool values for idempotent replays until canonical sources c
   expect(replayed.toolCalls.entities['fulfilled-a']?.result).toBe(
     fulfilledResult,
   );
+  expect(replayed.toolCalls.entities['fulfilled-a']?.metadata).toEqual({
+    replay: 'start',
+  });
   expect(replayed.toolCalls.entities['rejected-a']?.result).toBe(
     rejectedResult,
   );

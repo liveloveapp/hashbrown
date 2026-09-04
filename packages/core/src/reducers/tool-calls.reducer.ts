@@ -588,7 +588,10 @@ function reconcilePreparedEntities(
     const next = { source };
     nextProvenance[toolCall.id] = next;
     if (local.source !== source) provenanceChanged = true;
-    return existing;
+    const metadata = mergeMetadata(toolCall.metadata, existing.metadata);
+    return metadata === existing.metadata
+      ? existing
+      : { ...existing, metadata };
   });
   if (Object.keys(provenance).length !== Object.keys(nextProvenance).length) {
     provenanceChanged = true;
@@ -605,7 +608,11 @@ function sameToolCallSource(
   second: LocalToolCallProvenance['source'],
 ): boolean {
   return (
-    first?.toolCall === second?.toolCall && first?.result === second?.result
+    first?.toolCall.id === second?.toolCall.id &&
+    first?.toolCall.function.name === second?.toolCall.function.name &&
+    first?.toolCall.function.arguments ===
+      second?.toolCall.function.arguments &&
+    first?.result === second?.result
   );
 }
 
@@ -618,7 +625,7 @@ function eventSupersedesToolCall(
     return event.toolCallId === toolCallId;
   }
   if (event.type === EventType.TOOL_CALL_START) {
-    return event.toolCallId === toolCallId && event.metadata !== undefined;
+    return false;
   }
   if (
     event.type === EventType.TOOL_CALL_ARGS ||
@@ -627,9 +634,8 @@ function eventSupersedesToolCall(
   ) {
     return (
       event.toolCallId === toolCallId &&
-      (('delta' in event && typeof event.delta === 'string' ? event.delta : '')
-        .length > 0 ||
-        event.metadata !== undefined)
+      ('delta' in event && typeof event.delta === 'string' ? event.delta : '')
+        .length > 0
     );
   }
   return (
