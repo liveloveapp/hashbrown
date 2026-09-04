@@ -1187,6 +1187,96 @@ test('keeps local tool values through encryption before actual remote supersessi
   });
 });
 
+test('keeps prototype-collision tool IDs as own prepared entries', () => {
+  // Arrange
+  const toolCallIds = ['constructor', 'toString', '__proto__'];
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-collision',
+      role: 'assistant',
+    }),
+  );
+
+  // Act
+  for (const toolCallId of toolCallIds) {
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.TOOL_CALL_START,
+        toolCallId,
+        toolCallName: 'lookup',
+        parentMessageId: 'assistant-collision',
+      }),
+    );
+  }
+  const live = store.read((state) => state);
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: {
+        role: 'assistant',
+        content: '',
+        toolCallIds,
+      },
+      toolCalls: [],
+    }),
+  );
+  const committed = store.read((state) => state);
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'tool-call',
+      entityId: 'constructor',
+      encryptedValue: 'opaque-constructor',
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptRolledBack());
+  const rolledBack = store.read((state) => state);
+
+  // Assert
+  expect(live.agUiMessages.draft[0]).toMatchObject({
+    id: 'assistant-collision',
+    toolCalls: toolCallIds.map((id) => expect.objectContaining({ id })),
+  });
+  const toolCallSources = live.messages.preparedProjection?.toolCallSources;
+  expect(Object.getPrototypeOf(toolCallSources ?? {})).toBe(Object.prototype);
+  expect(live.toolCalls.ids).toEqual(toolCallIds);
+  expect(Object.getPrototypeOf(live.toolCalls.entities)).toBe(Object.prototype);
+  expect(Object.getPrototypeOf(live.toolCalls.localProvenance)).toBe(
+    Object.prototype,
+  );
+  for (const toolCallId of toolCallIds) {
+    expect(Object.hasOwn(toolCallSources ?? {}, toolCallId)).toBe(true);
+    expect(toolCallSources?.[toolCallId]?.toolCall.id).toBe(toolCallId);
+    expect(Object.hasOwn(live.toolCalls.entities, toolCallId)).toBe(true);
+    expect(live.toolCalls.entities[toolCallId]).toEqual({
+      id: toolCallId,
+      name: 'lookup',
+      arguments: '',
+      status: 'pending',
+    });
+    expect(
+      Object.hasOwn(live.toolCalls.localProvenance ?? {}, toolCallId),
+    ).toBe(false);
+  }
+  expect(committed.toolCalls.ids).toEqual(toolCallIds);
+  expect(committed.toolCalls.committed.entities).toBe(
+    committed.toolCalls.entities,
+  );
+  expect(rolledBack.toolCalls.entities).toBe(committed.toolCalls.entities);
+  expect(
+    rolledBack.toolCalls.entities['constructor']?.encryptedValue,
+  ).toBeUndefined();
+});
+
 test('keeps newly settled local tool results through unrelated prepared events', () => {
   // Arrange
   const fulfilled: Chat.Internal.ToolCall = {

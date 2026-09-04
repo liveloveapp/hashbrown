@@ -603,10 +603,12 @@ export function ɵreconcileAgUiMessageProjection(
     projectedToolCalls.push(...entry.toolCalls);
     if (source.role === 'assistant') {
       for (const [index, toolCall] of (source.toolCalls ?? []).entries()) {
-        toolCallSources[toolCall.id] = {
-          toolCall,
-          result: toolResults[index],
-        };
+        Object.defineProperty(toolCallSources, toolCall.id, {
+          value: { toolCall, result: toolResults[index] },
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
       }
     }
     pendingReasoning = [];

@@ -47,6 +47,19 @@ const initialState: ToolCallsState = {
   committedLocalProvenance: {},
 };
 
+function readOwn<T>(record: Readonly<Record<string, T>>, key: string) {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
+function writeOwn<T>(record: Record<string, T>, key: string, value: T) {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
 function mergeMetadata(
   first: Chat.Internal.ToolCall['metadata'],
   second: Record<string, unknown> | undefined,
@@ -172,7 +185,7 @@ export const reducer = createReducer(
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_START) {
-      const existing = state.draft.entities[action.payload.toolCallId];
+      const existing = readOwn(state.draft.entities, action.payload.toolCallId);
       const metadata = mergeMetadata(
         existing?.metadata,
         action.payload.metadata,
@@ -219,7 +232,7 @@ export const reducer = createReducer(
       const event = action.payload;
       const id = event.toolCallId ?? state.activeToolCallId;
       if (!id) return state;
-      const existing = state.draft.entities[id];
+      const existing = readOwn(state.draft.entities, id);
       if (
         !existing &&
         (event.type !== EventType.TOOL_CALL_CHUNK || !event.toolCallName)
@@ -282,7 +295,7 @@ export const reducer = createReducer(
       action.payload.type === EventType.REASONING_ENCRYPTED_VALUE &&
       action.payload.subtype === 'tool-call'
     ) {
-      const existing = state.draft.entities[action.payload.entityId];
+      const existing = readOwn(state.draft.entities, action.payload.entityId);
       if (
         !existing ||
         existing.encryptedValue === action.payload.encryptedValue
@@ -304,7 +317,7 @@ export const reducer = createReducer(
       };
     }
     if (action.payload.type === EventType.TOOL_CALL_RESULT) {
-      const existing = state.entities[action.payload.toolCallId];
+      const existing = readOwn(state.entities, action.payload.toolCallId);
       if (!existing) return state;
       const error = (
         action.payload as typeof action.payload & { readonly error?: string }
@@ -443,7 +456,10 @@ export const reducer = createReducer(
     );
     const settled = action.payload.toolMessages.reduce(
       (current, toolMessage) => {
-        const existing = current.entities.entities[toolMessage.toolCallId];
+        const existing = readOwn(
+          current.entities.entities,
+          toolMessage.toolCallId,
+        );
         return existing === expected.get(toolMessage.toolCallId)
           ? {
               entities: updateEntity(current.entities, toolMessage.toolCallId, {
@@ -452,7 +468,7 @@ export const reducer = createReducer(
               }),
               localProvenance: {
                 ...current.localProvenance,
-                [toolMessage.toolCallId]: {},
+                ...Object.fromEntries([[toolMessage.toolCallId, {}]]),
               },
             }
           : current;
@@ -497,7 +513,11 @@ export const selectToolCallEntities = (state: ToolCallsState) => state.entities;
 export const selectToolCalls = select(
   selectToolCallIds,
   selectToolCallEntities,
-  (ids, entities) => ids.map((id) => entities[id]),
+  (ids, entities) =>
+    ids.flatMap((id) => {
+      const toolCall = readOwn(entities, id);
+      return toolCall === undefined ? [] : [toolCall];
+    }),
 );
 export const selectPendingToolCalls = select(selectToolCalls, (toolCalls) =>
   toolCalls.filter((toolCall) => toolCall.status === 'pending'),
@@ -542,7 +562,7 @@ function reconcileEntities(
     ids.every(
       (id, index) =>
         id === previous.ids[index] &&
-        previous.entities[id] === toolCalls[index],
+        readOwn(previous.entities, id) === toolCalls[index],
     );
   if (unchanged) return previous;
 
@@ -589,9 +609,9 @@ function reconcilePreparedEntities(
   let provenanceChanged = false;
   const nextProvenance: Record<string, LocalToolCallProvenance> = {};
   const reconciled = toolCalls.map((toolCall) => {
-    const local = provenance[toolCall.id];
-    const source = sources[toolCall.id];
-    const existing = previous.entities[toolCall.id];
+    const local = readOwn(provenance, toolCall.id);
+    const source = readOwn(sources, toolCall.id);
+    const existing = readOwn(previous.entities, toolCall.id);
     const valid =
       local !== undefined &&
       existing !== undefined &&
@@ -606,7 +626,7 @@ function reconcilePreparedEntities(
       local.source !== undefined && sameToolCallSource(local.source, source)
         ? local
         : { source };
-    nextProvenance[toolCall.id] = next;
+    writeOwn(nextProvenance, toolCall.id, next);
     if (local !== next) provenanceChanged = true;
     const metadata = mergeMetadata(existing.metadata, toolCall.metadata);
     const encryptedValue = toolCall.encryptedValue;
@@ -696,7 +716,7 @@ function addEntities(
 ): EntityState<Chat.Internal.ToolCall> {
   return toolCalls.reduce(
     (current, toolCall) =>
-      current.entities[toolCall.id]
+      readOwn(current.entities, toolCall.id)
         ? current
         : {
             ids: [...current.ids, toolCall.id],
@@ -711,7 +731,7 @@ function updateEntity(
   id: string,
   updates: Partial<Chat.Internal.ToolCall>,
 ): EntityState<Chat.Internal.ToolCall> {
-  const existing = state.entities[id];
+  const existing = readOwn(state.entities, id);
   return existing
     ? {
         ...state,
@@ -725,7 +745,7 @@ function mergeSuccessToolCalls(
   toolCalls: readonly Chat.Internal.ToolCall[],
 ): EntityState<Chat.Internal.ToolCall> {
   return toolCalls.reduce((current, toolCall) => {
-    const existing = current.entities[toolCall.id];
+    const existing = readOwn(current.entities, toolCall.id);
     if (!existing) {
       return current;
     }
