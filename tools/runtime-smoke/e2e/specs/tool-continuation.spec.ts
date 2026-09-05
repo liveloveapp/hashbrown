@@ -200,7 +200,11 @@ function safeTranscript(messages: HashbrownRunInput['messages']) {
 function safeTranscriptWithoutMessageIds(
   messages: HashbrownRunInput['messages'],
 ) {
-  return safeTranscript(messages).map(({ id: _id, ...message }) => message);
+  return safeTranscript(messages).map((message) =>
+    Object.fromEntries(
+      Object.entries(message).filter(([property]) => property !== 'id'),
+    ),
+  );
 }
 
 /** Returns whether all canonical message and tool-call IDs are nonempty and unique. */
@@ -428,16 +432,11 @@ test('executes three sequential tools once each before the terminal response', a
   expect(captured.every((input) => hasOpaqueCanonicalIds(input.messages))).toBe(
     true,
   );
-  for (
-    let requestIndex = 1;
-    requestIndex < captured.length;
-    requestIndex += 1
-  ) {
+  for (const [requestIndex, input] of captured.entries()) {
+    if (requestIndex === 0) continue;
+
     expect(
-      hasStableMessagePrefix(
-        captured[requestIndex]!.messages,
-        captured[requestIndex - 1],
-      ),
+      hasStableMessagePrefix(input.messages, captured[requestIndex - 1]),
     ).toBe(true);
   }
   expect(fourthInput.messages.map(({ role }) => role)).toEqual([
