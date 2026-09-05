@@ -134,3 +134,30 @@ test('useUiChat compiles system prompts with normalized components', () => {
   expect(systemPrompt.compile).toHaveBeenCalledTimes(1);
   expect(hasUIKit).toBe(false);
 });
+
+test('useUiChat forwards and returns shared agent state unchanged', () => {
+  // Arrange
+  const state = { screen: 'checkout' };
+  const setState = vi.fn();
+  useStructuredChatMock.mockReturnValue({
+    messages: [],
+    state,
+    setState,
+  } as ReturnType<typeof useStructuredChat>);
+
+  // Act
+  const { result } = renderHook(() =>
+    useUiChat({
+      system: 'system prompt',
+      components: [],
+      state,
+    }),
+  );
+
+  // Assert
+  expect(useStructuredChatMock).toHaveBeenCalledWith(
+    expect.objectContaining({ state }),
+  );
+  expect(result.current.state).toBe(state);
+  expect(result.current.setState).toBe(setState);
+});

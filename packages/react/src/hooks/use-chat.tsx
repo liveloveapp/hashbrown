@@ -1,7 +1,7 @@
 import {
   type Chat,
-  createChatRuntime,
   type ChatRuntime,
+  createChatRuntime,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
@@ -13,8 +13,9 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
  *
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UseChatOptions<Tools extends Chat.AnyTool> {
+export interface UseChatOptions<Tools extends Chat.AnyTool, State = unknown> {
   /**
    * The system message to use for the chat.
    */
@@ -25,6 +26,11 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
    * default: 1.0
    */
   messages?: Chat.Message<string, Tools>[];
+
+  /**
+   * The initial shared agent state.
+   */
+  state?: State;
   /**
    * The tools to make available use for the chat.
    * default: []
@@ -64,8 +70,20 @@ export interface UseChatOptions<Tools extends Chat.AnyTool> {
  *
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UseChatResult<Tools extends Chat.AnyTool> {
+export interface UseChatResult<Tools extends Chat.AnyTool, State = unknown> {
+  /**
+   * The currently visible shared agent state.
+   */
+  readonly state: State | undefined;
+
+  /**
+   * Replaces the shared agent state without starting a generation.
+   * @param state - The next shared agent state.
+   */
+  setState(state: State): void;
+
   /**
    * An array of chat messages.
    */
@@ -153,6 +171,7 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * @public
  * @returns An object containing chat state and functions to interact with the chat.
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  * @example
  * This example demonstrates how to use the `useChat` hook to create a simple chat component.
  *
@@ -181,12 +200,12 @@ export interface UseChatResult<Tools extends Chat.AnyTool> {
  * };
  * ```
  */
-export function useChat<Tools extends Chat.AnyTool>(
+export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   /**
    * The options for the chat.
    */
-  options: UseChatOptions<Tools>,
-): UseChatResult<Tools> {
+  options: UseChatOptions<Tools, State>,
+): UseChatResult<Tools, State> {
   const tools: Tools[] = useMemo(
     () => options.tools ?? [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,13 +218,14 @@ export function useChat<Tools extends Chat.AnyTool>(
   }
 
   const hasThreadId = Object.hasOwn(options, 'threadId');
-  const runtimeRef = useRef<ChatRuntime<string, Tools> | null>(null);
+  const runtimeRef = useRef<ChatRuntime<string, Tools, State> | null>(null);
 
   if (!runtimeRef.current) {
-    runtimeRef.current = createChatRuntime<Tools>({
+    runtimeRef.current = createChatRuntime<Tools, State>({
       debugName: options.debugName,
       system: options.system,
       messages: [...(options.messages ?? [])],
+      state: options.state,
       tools,
       debounce: options.debounceTime,
       retries: options.retries,
@@ -255,6 +275,7 @@ export function useChat<Tools extends Chat.AnyTool>(
   const internalMessages = useHashbrownSignal<Chat.Message<string, Tools>[]>(
     getRuntime().messages,
   );
+  const state = useHashbrownSignal<State | undefined>(getRuntime().state);
   const isReceiving = useHashbrownSignal<boolean>(getRuntime().isReceiving);
   const isSending = useHashbrownSignal<boolean>(getRuntime().isSending);
   const isGenerating = useHashbrownSignal<boolean>(getRuntime().isGenerating);
@@ -283,6 +304,10 @@ export function useChat<Tools extends Chat.AnyTool>(
     getRuntime().setMessages(messages);
   }, []);
 
+  const setState = useCallback((state: State) => {
+    getRuntime().setState(state);
+  }, []);
+
   const reload = useCallback(() => {
     const lastMessage = internalMessages[internalMessages.length - 1];
 
@@ -300,6 +325,8 @@ export function useChat<Tools extends Chat.AnyTool>(
   }, []);
 
   return {
+    state,
+    setState,
     messages: internalMessages,
     sendMessage,
     setMessages,
