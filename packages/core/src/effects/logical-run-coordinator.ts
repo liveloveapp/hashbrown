@@ -40,11 +40,13 @@ export interface ExecuteLogicalRunOptions {
     context: LogicalRunRequestContext,
   ) => TransportRequest;
   readonly onAttemptStarted?: (context: LogicalRunAttemptContext) => void;
-  readonly onStarted: (context: LogicalRunAttemptContext) => void;
+  readonly onStarted: (
+    context: LogicalRunAttemptContext,
+  ) => void | Promise<void>;
   readonly onEvent: (
     event: AGUIEvent,
     context: LogicalRunAttemptContext,
-  ) => void;
+  ) => void | Promise<void>;
   readonly onAttemptRolledBack?: (
     context: LogicalRunAttemptContext,
     error: Error | undefined,

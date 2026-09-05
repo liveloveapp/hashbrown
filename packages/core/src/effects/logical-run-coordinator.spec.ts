@@ -74,8 +74,11 @@ function execute({
   retries?: number;
   cancelSignal?: AbortSignal;
   retiredSignal?: AbortSignal;
-  onStarted?: (context: LogicalRunAttemptContext) => void;
-  onEvent?: (event: AGUIEvent, context: LogicalRunAttemptContext) => void;
+  onStarted?: (context: LogicalRunAttemptContext) => void | Promise<void>;
+  onEvent?: (
+    event: AGUIEvent,
+    context: LogicalRunAttemptContext,
+  ) => void | Promise<void>;
   onAttemptStarted?: (context: LogicalRunAttemptContext) => void;
   onAttemptRolledBack?: (
     context: LogicalRunAttemptContext,
@@ -509,3 +512,67 @@ test('retirement takes precedence without synthesizing a terminal or reporting a
     EventType.RUN_STARTED,
   ]);
 });
+
+test.each(['throws', 'rejects'] as const)(
+  'stops without retrying when an event callback %s',
+  async (failure) => {
+    const callbackError = new Error('event callback failed');
+    const cleanupOrder: string[] = [];
+    const transport = createTransport(async (request) => {
+      const events = [createStarted(request), createFinished(request)];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: () => {
+          cleanupOrder.push('response:dispose');
+        },
+      };
+    });
+    const onEvent = jest.fn(() => {
+      if (failure === 'rejects') {
+        return Promise.reject(callbackError);
+      }
+
+      throw callbackError;
+    });
+    const onAttemptRolledBack = jest.fn(() => {
+      cleanupOrder.push('attempt:rollback');
+    });
+
+    const outcome = await execute({
+      transport,
+      retries: 2,
+      onEvent,
+      onAttemptRolledBack,
+    });
+
+    expect(outcome).toMatchObject({
+      kind: 'failed',
+      error: {
+        name: 'TransportError',
+        message: callbackError.message,
+        retryable: false,
+        code: 'PROTOCOL_ERROR',
+      },
+      exhaustedRetries: false,
+    });
+    expect(transport.send).toHaveBeenCalledTimes(1);
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(cleanupOrder).toEqual([
+      'iterator:return',
+      'response:dispose',
+      'attempt:rollback',
+    ]);
+  },
+);

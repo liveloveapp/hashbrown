@@ -7,6 +7,7 @@ import {
   reducers,
   selectApiMessages,
   selectDebounce,
+  selectGeneratingError,
   selectIsLoading,
   selectMessages,
   selectPendingToolCalls,
@@ -14,6 +15,7 @@ import {
   selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
+  selectSendingError,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
   selectSystem,
@@ -23,12 +25,15 @@ import {
   selectTransport,
   selectUiRequested,
   selectUnifiedError,
+  ɵselectAgentStateProtocolError,
+  ɵselectAgUiMessagesProtocolError,
   ɵselectCommittedAgentState,
   ɵselectCommittedAgUiMessages,
   ɵselectGenerationAttemptId,
   ɵselectGenerationId,
   ɵselectStateWriteLocked,
   ɵselectVisibleAgentState,
+  ɵselectVisibleAgUiMessages,
 } from '../reducers';
 import { s } from '../schema';
 import { TransportError, type TransportRequest } from '../transport';
@@ -99,6 +104,8 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectUnifiedError, undefined],
     [ɵselectGenerationId, undefined],
     [ɵselectGenerationAttemptId, undefined],
+    [ɵselectAgentStateProtocolError, undefined],
+    [ɵselectAgUiMessagesProtocolError, undefined],
   ]);
   const values = new Map<SelectorKey, unknown>([
     ...defaults,
@@ -153,6 +160,23 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
           values.set(ɵselectGenerationAttemptId, undefined);
         }
       }
+    },
+    dispatchAndWait: async (
+      action: ActionLike,
+      onComplete?: (followUps: {
+        dispatch: (action: ActionLike) => void;
+        onCommit: (callback: () => void) => void;
+      }) => void,
+    ) => {
+      store.dispatch(action);
+      const actions: ActionLike[] = [];
+      const onCommitCallbacks: Array<() => void> = [];
+      onComplete?.({
+        dispatch: (followUpAction) => actions.push(followUpAction),
+        onCommit: (callback) => onCommitCallbacks.push(callback),
+      });
+      actions.forEach(store.dispatch);
+      onCommitCallbacks.forEach((callback) => callback());
     },
     read: <T = unknown>(selector: SelectorKey): T => {
       if (!values.has(selector)) {
@@ -874,6 +898,876 @@ test.each([
     teardown?.();
   },
 );
+
+test.each([
+  'RUN_STARTED',
+  'event',
+  'success reducer',
+  'release reducer',
+] as const)(
+  'observes a real-store %s failure and rolls back the attempt',
+  async (failureTarget) => {
+    jest.clearAllMocks();
+    const dispatchError = new Error(`${failureTarget} failed`);
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Store dispatch failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-store-draft',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-store-draft',
+          delta: 'Draft',
+        },
+        {
+          type: EventType.CUSTOM,
+          name: 'fail-action-preparation',
+          value: null,
+        },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+        { type: EventType.RUN_FINISHED, ...identity },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    let releaseReducerFailed = false;
+    const configuredReducers = {
+      ...reducers,
+      generationOwnership: (
+        state: Parameters<typeof reducers.generationOwnership>[0],
+        action: Parameters<typeof reducers.generationOwnership>[1],
+      ) => {
+        if (
+          failureTarget === 'release reducer' &&
+          action.type === internalActions.generationAttemptReleased.type &&
+          !releaseReducerFailed
+        ) {
+          releaseReducerFailed = true;
+          throw dispatchError;
+        }
+
+        return reducers.generationOwnership(state, action);
+      },
+      status: (
+        state: Parameters<typeof reducers.status>[0],
+        action: Parameters<typeof reducers.status>[1],
+      ) => {
+        if (
+          failureTarget === 'success reducer' &&
+          action.type === apiActions.generateMessageSuccess.type
+        ) {
+          throw dispatchError;
+        }
+
+        return reducers.status(state, action);
+      },
+    };
+    const store = createStore({
+      reducers: configuredReducers,
+      effects: [generateMessage],
+      prepareAction: (_state, action) => {
+        const failsStartedAction =
+          failureTarget === 'RUN_STARTED' &&
+          action.type === apiActions.generateMessageStart.type;
+        const failsEventAction =
+          failureTarget === 'event' &&
+          action.type === apiActions.generateMessageEvent.type &&
+          'payload' in action &&
+          (action.payload as AGUIEvent).type === EventType.CUSTOM;
+        if (failsStartedAction || failsEventAction) {
+          throw dispatchError;
+        }
+
+        return action;
+      },
+    });
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Store dispatch failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const errors: Error[] = [];
+    let successCount = 0;
+    let releaseCount = 0;
+    let ownedAtRollback = false;
+    let exhaustedRetries = 0;
+    const unsubscribeRollback = store.when(
+      internalActions.generationAttemptRolledBack,
+      () => {
+        cleanupOrder.push('attempt:rollback');
+        if (failureTarget === 'release reducer') {
+          ownedAtRollback =
+            store.read(ɵselectGenerationAttemptId) !== undefined;
+        }
+      },
+    );
+    const unsubscribeRelease = store.when(
+      internalActions.generationAttemptReleased,
+      () => {
+        if (failureTarget === 'release reducer') {
+          releaseCount++;
+          cleanupOrder.push('attempt:release');
+        }
+      },
+    );
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(successCount).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      message: dispatchError.message,
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual(
+      failureTarget === 'release reducer'
+        ? [
+            'iterator:return',
+            'response:dispose',
+            'attempt:rollback',
+            'attempt:release',
+            'terminal:error',
+          ]
+        : [
+            'iterator:return',
+            'response:dispose',
+            'attempt:rollback',
+            'terminal:error',
+          ],
+    );
+    if (failureTarget === 'release reducer') {
+      expect(ownedAtRollback).toBe(true);
+      expect(releaseCount).toBe(1);
+    }
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeRollback();
+    unsubscribeRelease();
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeExhausted();
+    teardown();
+  },
+);
+
+test.each(['listener', 'selector'] as const)(
+  'rolls back when a post-effect terminal %s fails before completion',
+  async (failurePoint) => {
+    jest.clearAllMocks();
+    const dispatchError = new Error(`terminal ${failurePoint} failed`);
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Terminal dispatch failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-terminal-dispatch',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-terminal-dispatch',
+          delta: 'Draft',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-terminal-dispatch',
+        },
+        { type: EventType.RUN_FINISHED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Terminal dispatch failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    let atTerminalBoundary = false;
+    let selectorFailed = false;
+    const unsubscribeBoundary = store.when(
+      apiActions.generateMessageEvent,
+      (action) => {
+        if (action.payload.type !== EventType.RUN_FINISHED) {
+          return;
+        }
+
+        atTerminalBoundary = true;
+        if (failurePoint === 'listener') {
+          throw dispatchError;
+        }
+      },
+    );
+    const unsubscribeSelector = store.select(
+      (state) => {
+        if (
+          atTerminalBoundary &&
+          failurePoint === 'selector' &&
+          !selectorFailed
+        ) {
+          selectorFailed = true;
+          throw dispatchError;
+        }
+
+        return state.status.isGenerating;
+      },
+      () => undefined,
+    );
+    const errors: Error[] = [];
+    let successCount = 0;
+    let exhaustedRetries = 0;
+    const unsubscribeRollback = store.when(
+      internalActions.generationAttemptRolledBack,
+      () => cleanupOrder.push('attempt:rollback'),
+    );
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(successCount).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      message: dispatchError.message,
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual([
+      'iterator:return',
+      'response:dispose',
+      'attempt:rollback',
+      'terminal:error',
+    ]);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeBoundary();
+    unsubscribeSelector();
+    unsubscribeRollback();
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeExhausted();
+    teardown();
+  },
+);
+
+test.each(['listener', 'selector'] as const)(
+  'commits terminal state when a success follow-up %s fails',
+  async (failurePoint) => {
+    jest.clearAllMocks();
+    const observerError = new Error(`success ${failurePoint} failed`);
+    const surfacedErrors: unknown[] = [];
+    const initialCanonical = canonicalUser('Success observer failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+
+      return {
+        events: successfulEvents(request, [
+          { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+          {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'assistant-success-observer',
+            role: 'assistant',
+          },
+          {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'assistant-success-observer',
+            delta: 'Done',
+          },
+          {
+            type: EventType.TEXT_MESSAGE_END,
+            messageId: 'assistant-success-observer',
+          },
+        ]),
+      };
+    });
+    const store = createStore({
+      reducers,
+      effects: [generateMessage],
+      surfaceError: (error) => surfacedErrors.push(error),
+    });
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Success observer failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const errors: Error[] = [];
+    let successCount = 0;
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => errors.push(action.payload),
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    let atSuccessBoundary = false;
+    const unsubscribeBoundary = store.when(
+      apiActions.generateMessageSuccess,
+      () => {
+        atSuccessBoundary = true;
+        if (failurePoint === 'listener') {
+          throw observerError;
+        }
+      },
+    );
+    let selectorFailed = false;
+    const unsubscribeSelector = store.select(
+      (state) => {
+        if (
+          atSuccessBoundary &&
+          failurePoint === 'selector' &&
+          !selectorFailed
+        ) {
+          selectorFailed = true;
+          throw observerError;
+        }
+
+        return state.status.isGenerating;
+      },
+      () => undefined,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(successCount).toBe(1);
+    expect(surfacedErrors).toEqual([observerError]);
+    expect(errors).toEqual([]);
+    expect(store.read(selectUnifiedError)).toBeUndefined();
+    expect(store.read(selectGeneratingError)).toBeUndefined();
+    expect(store.read(selectSendingError)).toBeUndefined();
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 1 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 1 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'assistant-success-observer',
+          role: 'assistant',
+          content: 'Done',
+        }),
+      ]),
+    );
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(
+      store.read(ɵselectCommittedAgUiMessages),
+    );
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeBoundary();
+    unsubscribeSelector();
+    teardown();
+  },
+);
+
+test.each([
+  { label: 'reported', failureMode: 'reported', stopOnTerminal: false },
+  { label: 'thrown', failureMode: 'thrown', stopOnTerminal: false },
+  {
+    label: 'reported while stop dispatches synchronously',
+    failureMode: 'reported',
+    stopOnTerminal: true,
+  },
+] as const)(
+  'rejects a terminal event when a synchronization protocol error is $label',
+  async ({ failureMode, stopOnTerminal }) => {
+    jest.clearAllMocks();
+    const selectorError = new Error(`terminal selector ${failureMode}`);
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Terminal protocol failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-terminal-draft',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-terminal-draft',
+          delta: 'Draft',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-terminal-draft',
+        },
+        { type: EventType.RUN_FINISHED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    let atTerminalBoundary = false;
+    const store = createStore({
+      reducers,
+      effects: [generateMessage],
+      prepareAction: (_state, action) => {
+        if (
+          action.type === apiActions.generateMessageEvent.type &&
+          'payload' in action &&
+          (action.payload as AGUIEvent).type === EventType.RUN_FINISHED
+        ) {
+          atTerminalBoundary = true;
+        }
+
+        return action;
+      },
+    });
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Terminal protocol failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const read = store.read;
+    const protocolSelectorReads: SelectorKey[] = [];
+    store.read = ((selector: SelectorKey) => {
+      if (
+        atTerminalBoundary &&
+        (selector === ɵselectAgentStateProtocolError ||
+          selector === ɵselectAgUiMessagesProtocolError)
+      ) {
+        protocolSelectorReads.push(selector);
+      }
+      if (
+        atTerminalBoundary &&
+        failureMode === 'reported' &&
+        selector === ɵselectAgentStateProtocolError
+      ) {
+        return selectorError;
+      }
+      if (
+        atTerminalBoundary &&
+        failureMode === 'thrown' &&
+        selector === ɵselectAgUiMessagesProtocolError
+      ) {
+        throw selectorError;
+      }
+
+      return read(selector as never);
+    }) as typeof store.read;
+    const errors: Error[] = [];
+    let successCount = 0;
+    let exhaustedRetries = 0;
+    const unsubscribeRollback = store.when(
+      internalActions.generationAttemptRolledBack,
+      () => cleanupOrder.push('attempt:rollback'),
+    );
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+    const unsubscribeStop = store.when(
+      apiActions.generateMessageEvent,
+      (action) => {
+        if (stopOnTerminal && action.payload.type === EventType.RUN_FINISHED) {
+          store.dispatch(devActions.stopMessageGeneration(true));
+        }
+      },
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(protocolSelectorReads).toEqual([
+      ɵselectAgentStateProtocolError,
+      ɵselectAgUiMessagesProtocolError,
+    ]);
+    expect(successCount).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      message: selectorError.message,
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    if (stopOnTerminal) {
+      expect(store.read(selectUnifiedError)).toBe(errors[0]);
+      expect(store.read(selectGeneratingError)).toBe(errors[0]);
+      expect(store.read(selectSendingError)).toBeUndefined();
+    }
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual([
+      'iterator:return',
+      'response:dispose',
+      'attempt:rollback',
+      'terminal:error',
+    ]);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeRollback();
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeExhausted();
+    unsubscribeStop();
+    teardown();
+  },
+);
+
+test.each([
+  {
+    name: 'event preparation',
+    error: new Error('event preparation failed'),
+    configure: (_store: ReturnType<typeof createTestStore>, error: Error) => {
+      const event = { type: EventType.MESSAGES_SNAPSHOT } as Record<
+        string,
+        unknown
+      >;
+      Object.defineProperty(event, 'messages', {
+        enumerable: true,
+        get: () => {
+          throw error;
+        },
+      });
+
+      return event as AGUIEvent;
+    },
+  },
+  {
+    name: 'event dispatch',
+    error: new Error('event dispatch failed'),
+    configure: (store: ReturnType<typeof createTestStore>, error: Error) => {
+      const dispatch = store.dispatch;
+      store.dispatch = (action) => {
+        if (
+          action.type === apiActions.generateMessageEvent.type &&
+          'payload' in action &&
+          (action.payload as AGUIEvent).type === EventType.CUSTOM
+        ) {
+          throw error;
+        }
+        dispatch(action);
+      };
+
+      return {
+        type: EventType.CUSTOM,
+        name: 'dispatch-failure',
+        value: null,
+      } as AGUIEvent;
+    },
+  },
+  {
+    name: 'protocol selector read',
+    error: new Error('protocol selector read failed'),
+    configure: (store: ReturnType<typeof createTestStore>, error: Error) => {
+      const read = store.read;
+      store.read = <T = unknown>(selector: SelectorKey): T => {
+        if (selector === ɵselectAgentStateProtocolError) {
+          throw error;
+        }
+
+        return read<T>(selector);
+      };
+
+      return {
+        type: EventType.CUSTOM,
+        name: 'selector-failure',
+        value: null,
+      } as AGUIEvent;
+    },
+  },
+])(
+  'classifies an $name exception as a terminal protocol error',
+  async ({ error, configure }) => {
+    jest.clearAllMocks();
+    let requestSignal: AbortSignal | undefined;
+    const dispose = jest.fn();
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+
+      return {
+        events: successfulEvents(request, [event]),
+        dispose,
+      };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectRetries, 2],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Ignored', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const event = configure(store, error);
+    const teardown = generateMessage(store);
+
+    await store.trigger(
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Protocol callback'),
+        message: { role: 'user', content: 'Protocol callback' },
+      }),
+    );
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageError.type),
+    ).toEqual([
+      apiActions.generateMessageError(
+        expect.objectContaining({
+          name: 'TransportError',
+          message: error.message,
+          retryable: false,
+          code: 'PROTOCOL_ERROR',
+        }) as Error,
+      ),
+    ]);
+    expect(
+      getActionsOfType(
+        store.actions,
+        apiActions.generateMessageExhaustedRetries.type,
+      ),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        store.actions,
+        internalActions.generationAttemptRolledBack.type,
+      ),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(
+        store.actions,
+        internalActions.generationAttemptReleased.type,
+      ),
+    ).toHaveLength(1);
+    expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
+
+    teardown?.();
+  },
+);
+
+test('reads both synchronization protocol selectors before terminating an event', async () => {
+  jest.clearAllMocks();
+  const protocolError = new Error('invalid synchronized state');
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 2],
+      [ɵselectAgentStateProtocolError, protocolError],
+    ]),
+  );
+  const read = store.read;
+  const protocolSelectorReads: SelectorKey[] = [];
+  store.read = <T = unknown>(selector: SelectorKey): T => {
+    if (
+      selector === ɵselectAgentStateProtocolError ||
+      selector === ɵselectAgUiMessagesProtocolError
+    ) {
+      protocolSelectorReads.push(selector);
+    }
+
+    return read<T>(selector);
+  };
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Selector error'),
+      message: { role: 'user', content: 'Selector error' },
+    }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(protocolSelectorReads).toEqual([
+    ɵselectAgentStateProtocolError,
+    ɵselectAgUiMessagesProtocolError,
+  ]);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(
+      expect.objectContaining({
+        name: 'TransportError',
+        message: protocolError.message,
+        retryable: false,
+        code: 'PROTOCOL_ERROR',
+      }) as Error,
+    ),
+  ]);
+
+  teardown?.();
+});
 
 test.each([
   {
@@ -5399,3 +6293,169 @@ test('does not generate after a non-continuing tool settlement', async () => {
 
   teardown?.();
 });
+
+test.each([
+  {
+    name: 'an invalid state delta',
+    invalidEvent: {
+      type: EventType.STATE_DELTA,
+      delta: 'not-a-json-patch',
+    } as unknown as AGUIEvent,
+  },
+  {
+    name: 'an invalid state snapshot',
+    invalidEvent: {
+      type: EventType.STATE_SNAPSHOT,
+      snapshot: BigInt(1),
+    } as unknown as AGUIEvent,
+  },
+  {
+    name: 'an incompatible message event',
+    invalidEvent: {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'user-Protocol failure.',
+      role: 'assistant',
+    } as AGUIEvent,
+  },
+  {
+    name: 'an invalid message snapshot',
+    invalidEvent: {
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: {},
+    } as unknown as AGUIEvent,
+  },
+])(
+  'terminates $name without retrying and rolls back every synchronization draft',
+  async ({ invalidEvent }) => {
+    jest.clearAllMocks();
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Protocol failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-draft',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-draft',
+          delta: 'Draft',
+        },
+        invalidEvent,
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-draft',
+          delta: ' ignored later',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-draft',
+        },
+        { type: EventType.RUN_FINISHED, ...identity },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Protocol failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const errors: Error[] = [];
+    const observedEvents: AGUIEvent[] = [];
+    let exhaustedRetries = 0;
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeEvent = store.when(
+      apiActions.generateMessageEvent,
+      (action) => observedEvents.push(action.payload),
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual([
+      'iterator:return',
+      'response:dispose',
+      'terminal:error',
+    ]);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(observedEvents).not.toContainEqual(
+      expect.objectContaining({
+        type: EventType.STATE_SNAPSHOT,
+        snapshot: { count: 9 },
+      }),
+    );
+    expect(observedEvents).not.toContainEqual(
+      expect.objectContaining({
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        delta: ' ignored later',
+      }),
+    );
+    expect(observedEvents).not.toContainEqual(
+      expect.objectContaining({ type: EventType.RUN_FINISHED }),
+    );
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeError();
+    unsubscribeEvent();
+    unsubscribeExhausted();
+    teardown();
+  },
+);

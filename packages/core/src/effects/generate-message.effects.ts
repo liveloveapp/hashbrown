@@ -17,6 +17,8 @@ import {
   selectTools,
   selectTransport,
   selectUiRequested,
+  ɵselectAgentStateProtocolError,
+  ɵselectAgUiMessagesProtocolError,
   ɵselectGenerationAttemptId,
   ɵselectGenerationId,
 } from '../reducers';
@@ -66,10 +68,26 @@ export const generateMessage = createEffect((store) => {
     store.read(ɵselectGenerationAttemptId) ===
       generation.activeAttempt.attemptId;
 
+  const readSynchronizationProtocolError = () => {
+    const stateProtocolError = store.read(ɵselectAgentStateProtocolError);
+    const messagesProtocolError = store.read(ɵselectAgUiMessagesProtocolError);
+
+    return stateProtocolError ?? messagesProtocolError;
+  };
+
+  const assertSynchronizationProtocolIsValid = () => {
+    const protocolError = readSynchronizationProtocolError();
+    if (protocolError) {
+      throw synchronizationProtocolError(protocolError);
+    }
+  };
+
   const releaseAttempt = (
     generation: ActiveGeneration,
     context: object,
     rollback: boolean,
+    dispatch: typeof store.dispatch = store.dispatch,
+    onCommit?: (callback: () => void) => void,
   ) => {
     if (!ownsAttempt(generation, context)) {
       return false;
@@ -80,19 +98,26 @@ export const generateMessage = createEffect((store) => {
       return false;
     }
     if (rollback) {
-      store.dispatch(internalActions.generationAttemptRolledBack());
+      dispatch(internalActions.generationAttemptRolledBack());
     }
     if (!ownsAttempt(generation, context)) {
       return false;
     }
-    store.dispatch(
+    dispatch(
       internalActions.generationAttemptReleased({
         generationId: generation.generationId,
         attemptId,
       }),
     );
-    if (generation.activeAttempt?.attemptId === attemptId) {
-      generation.activeAttempt = undefined;
+    const clearActiveAttempt = () => {
+      if (generation.activeAttempt?.attemptId === attemptId) {
+        generation.activeAttempt = undefined;
+      }
+    };
+    if (onCommit) {
+      onCommit(clearActiveAttempt);
+    } else {
+      clearActiveAttempt();
     }
 
     return true;
@@ -124,32 +149,45 @@ export const generateMessage = createEffect((store) => {
     return true;
   };
 
-  const finishAttempt = (generation: ActiveGeneration, context: object) => {
+  const finishAttempt = (
+    generation: ActiveGeneration,
+    context: object,
+    dispatch: typeof store.dispatch = store.dispatch,
+    onCommit?: (callback: () => void) => void,
+  ) => {
     if (!ownsAttempt(generation, context)) {
       return false;
     }
 
     const streamingError = store.read(selectStreamingMessageError);
     if (streamingError) {
-      store.dispatch(apiActions.generateMessageError(streamingError));
+      dispatch(apiActions.generateMessageError(streamingError));
     } else {
       const streamingMessage = store.read(selectRawStreamingMessage);
       const streamingToolCalls = store.read(selectRawStreamingToolCalls);
 
       if (streamingMessage) {
         const finalizedToolCalls = dedupeToolCalls(streamingToolCalls);
-        generation.unclaimedToolSnapshot = {
-          toolCalls: finalizedToolCalls,
-          toolsByName: generation.activeAttempt?.toolsByName ?? {},
+        const toolsByName = generation.activeAttempt?.toolsByName ?? {};
+        const publishToolSnapshot = () => {
+          generation.unclaimedToolSnapshot = {
+            toolCalls: finalizedToolCalls,
+            toolsByName,
+          };
         };
-        store.dispatch(
+        if (onCommit) {
+          onCommit(publishToolSnapshot);
+        } else {
+          publishToolSnapshot();
+        }
+        dispatch(
           apiActions.generateMessageSuccess({
             message: streamingMessage,
             toolCalls: finalizedToolCalls,
           }),
         );
       } else {
-        store.dispatch(
+        dispatch(
           apiActions.generateMessageError(
             new Error('No message was generated'),
           ),
@@ -157,7 +195,7 @@ export const generateMessage = createEffect((store) => {
       }
     }
 
-    return releaseAttempt(generation, context, false);
+    return releaseAttempt(generation, context, false, dispatch, onCommit);
   };
 
   const settleUnclaimedToolSnapshot = (generation: ActiveGeneration) => {
@@ -182,14 +220,17 @@ export const generateMessage = createEffect((store) => {
     interruption: 'cancel' | 'retire',
     deferStoreCleanup = false,
   ) => {
+    if (
+      interruption === 'cancel' &&
+      generation.activeAttempt?.terminalAccepted
+    ) {
+      return;
+    }
+
     generation.coordinator[interruption]();
 
     const cleanUpStore = () => {
-      if (
-        (interruption === 'cancel' &&
-          generation.activeAttempt?.terminalAccepted) ||
-        !ownsGeneration(generation)
-      ) {
+      if (!ownsGeneration(generation)) {
         return;
       }
 
@@ -363,34 +404,71 @@ export const generateMessage = createEffect((store) => {
                 releaseAttempt(generation, context, true);
               }
             },
-            onStarted: (context) => {
+            onStarted: async (context) => {
               const generation = generationRef.current;
               if (!generation || !ownsAttempt(generation, context)) {
                 return;
               }
 
-              store.dispatch(
+              await store.dispatchAndWait(
                 apiActions.generateMessageStart({
                   responseSchema,
                   toolsByName,
                 }),
               );
             },
-            onEvent: (event, context) => {
+            onEvent: async (event, context) => {
               const generation = generationRef.current;
               if (!generation || !ownsAttempt(generation, context)) {
                 return;
               }
-              const preparedEvent = ɵprepareAgUiMessageEvent(event);
-              if (event.type === EventType.RUN_FINISHED) {
-                const attempt = generation.activeAttempt;
-                if (attempt) {
-                  attempt.terminalAccepted = true;
-                  attempt.terminalEvent = preparedEvent;
-                }
-              }
 
-              store.dispatch(apiActions.generateMessageEvent(preparedEvent));
+              let preparedEvent: AGUIEvent | undefined;
+              try {
+                preparedEvent = ɵprepareAgUiMessageEvent(event);
+                if (event.type === EventType.RUN_FINISHED) {
+                  const attempt = generation.activeAttempt;
+                  if (attempt) {
+                    attempt.terminalAccepted = true;
+                    attempt.terminalEvent = preparedEvent;
+                  }
+                }
+
+                await store.dispatchAndWait(
+                  apiActions.generateMessageEvent(preparedEvent),
+                  event.type === EventType.RUN_FINISHED
+                    ? (followUps) => {
+                        if (!ownsAttempt(generation, context)) {
+                          return;
+                        }
+
+                        assertSynchronizationProtocolIsValid();
+                        finishAttempt(
+                          generation,
+                          context,
+                          followUps.dispatch,
+                          followUps.onCommit,
+                        );
+                      }
+                    : undefined,
+                );
+                if (event.type === EventType.RUN_FINISHED) {
+                  return;
+                }
+                if (!ownsAttempt(generation, context)) {
+                  return;
+                }
+
+                assertSynchronizationProtocolIsValid();
+              } catch (error) {
+                const attempt = generation.activeAttempt;
+                if (attempt && attempt.terminalEvent === preparedEvent) {
+                  attempt.terminalAccepted = false;
+                  attempt.terminalEvent = undefined;
+                }
+
+                throw synchronizationProtocolError(error);
+              }
             },
           });
 
@@ -475,23 +553,6 @@ export const generateMessage = createEffect((store) => {
     }
   });
 
-  const finishAttemptCleanup = store.when(
-    apiActions.generateMessageEvent,
-    (action) => {
-      if (action.payload.type !== EventType.RUN_FINISHED) {
-        return;
-      }
-
-      const generation = activeGeneration;
-      const attempt = generation?.activeAttempt;
-      if (!generation || !attempt || attempt.terminalEvent !== action.payload) {
-        return;
-      }
-
-      finishAttempt(generation, attempt.context);
-    },
-  );
-
   const updateOptionsCleanup = store.when(
     devActions.updateOptions,
     (action) => {
@@ -526,7 +587,6 @@ export const generateMessage = createEffect((store) => {
 
     startGenerationCleanup();
     stopCleanup();
-    finishAttemptCleanup();
     updateOptionsCleanup();
   };
 });
@@ -561,6 +621,24 @@ function createStoppedToolTurnOutcome(
       reason: createToolCancellationError(),
     })),
   };
+}
+
+function synchronizationProtocolError(error: unknown): TransportError {
+  if (
+    error instanceof TransportError &&
+    error.code === 'PROTOCOL_ERROR' &&
+    !error.retryable
+  ) {
+    return error;
+  }
+
+  return new TransportError(
+    error instanceof Error ? error.message : 'Invalid AG-UI event',
+    {
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    },
+  );
 }
 
 function createToolCancellationError(): Error {

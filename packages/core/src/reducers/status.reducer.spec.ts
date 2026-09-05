@@ -95,6 +95,52 @@ test('marks generation active from an AG-UI run start event', () => {
   });
 });
 
+test('preserves the generation phase when stop is queued from an accepted terminal event', () => {
+  const protocolError = new Error('terminal protocol failed');
+  let state = reducer(
+    initialStatusState,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+
+  const stopped = reducer(state, devActions.stopMessageGeneration(true));
+  const rolledBack = reducer(
+    stopped,
+    internalActions.generationAttemptRolledBack(),
+  );
+  const failed = reducer(
+    rolledBack,
+    apiActions.generateMessageError(protocolError),
+  );
+
+  expect(stopped).toMatchObject({
+    isReceiving: true,
+    isGenerating: true,
+    acceptedTerminalEvent: true,
+  });
+  expect(rolledBack).toMatchObject({
+    isReceiving: true,
+    isGenerating: true,
+    acceptedTerminalEvent: false,
+  });
+  expect(failed).toMatchObject({
+    error: protocolError,
+    sendingError: undefined,
+    generatingError: protocolError,
+  });
+});
+
 test('clears status only for the matching logical generation settlement', () => {
   let state = reducer(
     initialStatusState,

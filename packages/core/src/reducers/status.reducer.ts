@@ -5,6 +5,7 @@ import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export interface StatusState {
   readonly activeGenerationId: string | undefined;
+  readonly acceptedTerminalEvent: boolean;
   isReceiving: boolean;
   isSending: boolean;
   isGenerating: boolean;
@@ -16,6 +17,7 @@ export interface StatusState {
 
 export const initialStatusState: StatusState = {
   activeGenerationId: undefined,
+  acceptedTerminalEvent: false,
   isReceiving: false,
   isSending: false,
   isGenerating: false,
@@ -61,6 +63,7 @@ export const reducer = createReducer(
   on(internalActions.logicalGenerationStarted, (state, action) => ({
     ...state,
     activeGenerationId: action.payload.generationId,
+    acceptedTerminalEvent: false,
   })),
   on(internalActions.logicalGenerationSettled, (state, action) => {
     if (state.activeGenerationId !== action.payload.generationId) {
@@ -70,6 +73,7 @@ export const reducer = createReducer(
     return {
       ...state,
       activeGenerationId: undefined,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isSending: false,
       isGenerating: false,
@@ -85,12 +89,18 @@ export const reducer = createReducer(
       case EventType.RUN_STARTED:
         return {
           ...state,
+          acceptedTerminalEvent: false,
           isSending: false,
           isReceiving: true,
           isGenerating: true,
           sendingError: undefined,
           generatingError: undefined,
           error: undefined,
+        };
+      case EventType.RUN_FINISHED:
+        return {
+          ...state,
+          acceptedTerminalEvent: true,
         };
       case EventType.TEXT_MESSAGE_START:
       case EventType.TEXT_MESSAGE_CONTENT:
@@ -116,6 +126,7 @@ export const reducer = createReducer(
   on(apiActions.generateMessageSuccess, (state) => {
     return {
       ...state,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isGenerating: false,
       sendingError: undefined,
@@ -129,6 +140,7 @@ export const reducer = createReducer(
 
     return {
       ...state,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isSending: false,
       isGenerating: false,
@@ -143,6 +155,7 @@ export const reducer = createReducer(
     return {
       ...state,
       activeGenerationId: undefined,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isSending: false,
       isGenerating: false,
@@ -167,10 +180,19 @@ export const reducer = createReducer(
       exhaustedRetries: true,
     };
   }),
+  on(internalActions.generationAttemptRolledBack, (state) => ({
+    ...state,
+    acceptedTerminalEvent: false,
+  })),
   on(devActions.stopMessageGeneration, (state) => {
+    if (state.acceptedTerminalEvent) {
+      return state;
+    }
+
     return {
       ...state,
       activeGenerationId: undefined,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isGenerating: false,
       isSending: false,
