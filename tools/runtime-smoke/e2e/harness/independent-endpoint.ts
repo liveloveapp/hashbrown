@@ -1,6 +1,7 @@
 import {
   type AGUIEvent,
   EventSchemas,
+  EventType,
   type RunAgentInput,
   RunAgentInputSchema,
 } from '@ag-ui/core';
@@ -29,9 +30,12 @@ export async function startIndependentEndpoint(options: {
 }): Promise<{
   url: string;
   inputs: readonly EndpointInput[];
+  /** Consumes one matching RUN_FINISHED written to the response. */
+  consumeTerminalRun: (runId: string) => boolean;
   stop: () => Promise<void>;
 }> {
   const inputs: EndpointInput[] = [];
+  const terminalRuns = new Set<string>();
   const encoder = new EventEncoder();
   const server = createServer(async (request, response) => {
     response.setHeader('Access-Control-Allow-Origin', '*');
@@ -66,15 +70,24 @@ export async function startIndependentEndpoint(options: {
 
     try {
       inputs.push(input);
-      const body = options
+      const events = options
         .events(input)
-        .map((event) => encoder.encode(EventSchemas.parse(event)))
-        .join('');
+        .map((event) => EventSchemas.parse(event));
+      const body = events.map((event) => encoder.encode(event)).join('');
       response.writeHead(200, {
         'Content-Type': encoder.getContentType(),
         'Cache-Control': 'no-cache',
       });
       response.end(body);
+      for (const event of events) {
+        if (
+          event.type === EventType.RUN_FINISHED &&
+          event.runId === input.runId &&
+          event.threadId === input.threadId
+        ) {
+          terminalRuns.add(input.runId);
+        }
+      }
     } catch {
       response.writeHead(500, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ error: 'Invalid fixture events' }));
@@ -88,6 +101,7 @@ export async function startIndependentEndpoint(options: {
   return {
     url: `http://127.0.0.1:${port}/run`,
     inputs,
+    consumeTerminalRun: (runId) => terminalRuns.delete(runId),
     stop: () =>
       (stopping ??= new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));

@@ -70,7 +70,19 @@ for (const scenario of ['plain', 'tool', 'structured', 'ui'] as const) {
         );
       },
     });
-    const hygiene = installBrowserHygiene(page);
+    const hygiene = installBrowserHygiene(page, {}, (request) => {
+      if (
+        request.method() !== 'POST' ||
+        request.url() !== endpoint.url ||
+        request.failure()?.errorText !== 'net::ERR_ABORTED'
+      )
+        return false;
+      const input = request.postDataJSON() as { runId?: unknown };
+      return (
+        typeof input.runId === 'string' &&
+        endpoint.consumeTerminalRun(input.runId)
+      );
+    });
     const driver = createAppDriver(page);
 
     try {

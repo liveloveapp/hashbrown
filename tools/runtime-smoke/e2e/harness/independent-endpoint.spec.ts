@@ -11,6 +11,31 @@ const input = {
   forwardedProps: {},
 };
 
+for (const terminal of [
+  undefined,
+  { threadId: 'wrong-thread', runId: input.runId },
+  { threadId: input.threadId, runId: 'wrong-run' },
+]) {
+  test(`does not record absent or mismatched terminal ${JSON.stringify(terminal)}`, async () => {
+    const endpoint = await startIndependentEndpoint({
+      events: () =>
+        terminal ? [{ type: EventType.RUN_FINISHED, ...terminal }] : [],
+    });
+
+    try {
+      const response = await fetch(endpoint.url, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      });
+      await response.text();
+
+      expect(endpoint.consumeTerminalRun(input.runId)).toBe(false);
+    } finally {
+      await endpoint.stop();
+    }
+  });
+}
+
 test('standard endpoint parses canonical input without depending on vendor fields', async () => {
   const endpoint = await startIndependentEndpoint({
     events: (request) => [
@@ -43,6 +68,9 @@ test('standard endpoint parses canonical input without depending on vendor field
       .map((line) => EventSchemas.parse(JSON.parse(line.slice(5))));
 
     expect(response.status).toBe(200);
+    expect(endpoint.consumeTerminalRun('different-run')).toBe(false);
+    expect(endpoint.consumeTerminalRun(input.runId)).toBe(true);
+    expect(endpoint.consumeTerminalRun(input.runId)).toBe(false);
     expect(response.headers.get('content-type')).toContain('text/event-stream');
     expect(endpoint.inputs).toEqual([input]);
     expect(events.map((event) => event.type)).toEqual([
