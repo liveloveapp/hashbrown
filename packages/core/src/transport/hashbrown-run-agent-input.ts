@@ -6,6 +6,11 @@ import type {
   Tool,
 } from '@ag-ui/core';
 import { Chat } from '../models';
+import type { JsonValue } from '../utils';
+import {
+  normalizeToolRejection,
+  normalizeToolResult,
+} from './normalize-tool-result';
 
 /**
  * AG-UI run input with Hashbrown framework semantics.
@@ -34,40 +39,19 @@ export interface CreateHashbrownRunAgentInputOptions {
   ui?: boolean;
 }
 
-function normalizeValue(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (value === null || value === undefined) {
-    return '';
-  }
-
-  try {
-    const serialized = JSON.stringify(value);
-    if (typeof serialized === 'string') {
-      return serialized;
-    }
-  } catch {
-    // Fall through to string coercion.
-  }
-
-  try {
-    return String(value);
-  } catch {
-    return '';
-  }
-}
-
-function normalizeRejection(reason: unknown): string {
-  try {
-    if (reason instanceof Error) {
-      return normalizeValue(reason.message);
-    }
-  } catch {
-    // Fall through to total value normalization.
-  }
-
-  return normalizeValue(reason);
+/**
+ * Inputs used to create an AG-UI run request from an owned canonical checkpoint.
+ *
+ * @internal
+ */
+export interface CreateCanonicalRunAgentInputOptions {
+  readonly threadId: string;
+  readonly runId: string;
+  readonly messages: readonly Readonly<Message>[];
+  readonly state: JsonValue | undefined;
+  readonly tools: readonly Chat.Api.Tool[];
+  readonly responseSchema?: object;
+  readonly ui?: boolean;
 }
 
 function cloneMetadata(metadata: Metadata | undefined): Metadata | undefined {
@@ -153,12 +137,12 @@ function mapMessage(
             id: message.toolCallId,
             role: 'tool',
             toolCallId: message.toolCallId,
-            content: normalizeValue(message.content.value),
+            content: normalizeToolResult(message.content.value),
           },
         ];
       }
 
-      const error = normalizeRejection(message.content.reason);
+      const error = normalizeToolRejection(message.content.reason);
       return [
         {
           id: message.toolCallId,
@@ -182,6 +166,46 @@ function mapTool(tool: Chat.Api.Tool): Tool {
   };
 }
 
+function createHashbrownExtension(
+  responseSchema: object | undefined,
+  ui: boolean | undefined,
+): HashbrownRunAgentInput['hashbrown'] {
+  return responseSchema !== undefined || ui === true
+    ? {
+        ...(responseSchema !== undefined ? { responseSchema } : {}),
+        ...(ui === true ? { ui: true } : {}),
+      }
+    : undefined;
+}
+
+/**
+ * Creates an AG-UI run input from an already-owned canonical checkpoint.
+ *
+ * @internal
+ */
+export function createCanonicalRunAgentInput({
+  threadId,
+  runId,
+  messages,
+  state,
+  tools,
+  responseSchema,
+  ui,
+}: CreateCanonicalRunAgentInputOptions): HashbrownRunAgentInput {
+  const hashbrown = createHashbrownExtension(responseSchema, ui);
+
+  return {
+    threadId,
+    runId,
+    messages: messages as Message[],
+    tools: tools.map(mapTool),
+    context: [],
+    state,
+    forwardedProps: {},
+    ...(hashbrown ? { hashbrown } : {}),
+  };
+}
+
 /**
  * Maps Hashbrown chat state to the AG-UI run input sent over modern transports.
  *
@@ -199,13 +223,7 @@ export function createHashbrownRunAgentInput({
   const history = messages.flatMap((message, index) =>
     mapMessage(message, threadId, index),
   );
-  const hashbrown =
-    responseSchema !== undefined || ui === true
-      ? {
-          ...(responseSchema !== undefined ? { responseSchema } : {}),
-          ...(ui === true ? { ui: true } : {}),
-        }
-      : undefined;
+  const hashbrown = createHashbrownExtension(responseSchema, ui);
 
   return {
     threadId,
