@@ -70,8 +70,9 @@ export type UiChatMessage<Tools extends Chat.AnyTool> =
  *
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UiChatOptions<Tools extends Chat.AnyTool> {
+export interface UiChatOptions<Tools extends Chat.AnyTool, State = unknown> {
   /**
    * The system message to use for the chat.
    */
@@ -91,6 +92,11 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
    * default: []
    */
   messages?: Chat.Message<UiChatSchema, Tools>[];
+
+  /**
+   * The initial shared agent state.
+   */
+  state?: State;
 
   /**
    * The tools to make available for the chat.
@@ -126,6 +132,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
  *
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  * @remarks
  * The `useUiChat` hook provides functionality for generating UI components through chat. This is particularly useful for:
  * - Dynamic UI generation
@@ -153,8 +160,8 @@ export interface UiChatOptions<Tools extends Chat.AnyTool> {
  * });
  * ```
  */
-export const useUiChat = <Tools extends Chat.AnyTool>(
-  options: UiChatOptions<Tools>,
+export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
+  options: UiChatOptions<Tools, State>,
 ) => {
   const { components: initialComponents, examples, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
@@ -172,7 +179,7 @@ export const useUiChat = <Tools extends Chat.AnyTool>(
     }
     return output;
   }, [chatOptions.system, ui, uiKit.components]);
-  const chat = useStructuredChat({
+  const chat = useStructuredChat<typeof ui, Tools, UiChatSchema, State>({
     ...chatOptions,
     schema: ui as any,
     system: systemAsString,

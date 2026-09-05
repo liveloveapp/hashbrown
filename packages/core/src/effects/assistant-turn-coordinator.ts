@@ -23,6 +23,7 @@ export interface AssistantTurnModelRunContext {
  * @internal
  */
 export interface AssistantTurnToolSnapshot {
+  readonly toolTurnId?: string;
   readonly toolCalls: readonly Chat.Internal.ToolCall[];
   readonly toolsByName: Readonly<
     Record<string, Chat.Internal.Tool | undefined>
@@ -39,9 +40,11 @@ export interface CreateAssistantTurnCoordinatorOptions {
     context: AssistantTurnModelRunContext,
   ) => Promise<LogicalRunOutcome>;
   readonly readToolSnapshot: () => AssistantTurnToolSnapshot;
+  readonly toolTurnStarted?: (snapshot: AssistantTurnToolSnapshot) => void;
   readonly settleToolTurn: (
     toolCalls: readonly Chat.Internal.ToolCall[],
     outcome: ToolTurnOutcome,
+    toolTurnId?: string,
   ) => void;
   readonly reportNoTools: () => void;
 }
@@ -59,6 +62,7 @@ export interface AssistantTurnCoordinator {
 
 interface ActiveToolTurn {
   readonly coordinator: ToolTurnCoordinator;
+  readonly snapshot: AssistantTurnToolSnapshot;
   readonly toolCalls: readonly Chat.Internal.ToolCall[];
   settled: boolean;
 }
@@ -71,12 +75,25 @@ interface ActiveToolTurn {
 export function createAssistantTurnCoordinator({
   executeModelRun,
   readToolSnapshot,
+  toolTurnStarted,
   settleToolTurn,
   reportNoTools,
 }: CreateAssistantTurnCoordinatorOptions): AssistantTurnCoordinator {
   const cancelController = new AbortController();
   const retiredController = new AbortController();
   let activeToolTurn: ActiveToolTurn | undefined;
+
+  const settleSnapshot = (
+    snapshot: AssistantTurnToolSnapshot,
+    toolCalls: readonly Chat.Internal.ToolCall[],
+    outcome: ToolTurnOutcome,
+  ) => {
+    if (snapshot.toolTurnId === undefined) {
+      settleToolTurn(toolCalls, outcome);
+    } else {
+      settleToolTurn(toolCalls, outcome, snapshot.toolTurnId);
+    }
+  };
 
   const settleActiveToolTurn = (
     turn: ActiveToolTurn,
@@ -90,7 +107,7 @@ export function createAssistantTurnCoordinator({
     if (activeToolTurn === turn) {
       activeToolTurn = undefined;
     }
-    settleToolTurn(turn.toolCalls, outcome);
+    settleSnapshot(turn.snapshot, turn.toolCalls, outcome);
   };
 
   const interruptActiveToolTurn = () => {
@@ -107,6 +124,9 @@ export function createAssistantTurnCoordinator({
   const completion = executeAssistantTurn({
     executeModelRun,
     readToolSnapshot,
+    toolTurnStarted,
+    settleClaimedToolSnapshot: (snapshot, outcome) =>
+      settleSnapshot(snapshot, snapshot.toolCalls, outcome),
     settleActiveToolTurn,
     reportNoTools,
     cancelSignal: cancelController.signal,
@@ -134,6 +154,11 @@ interface ExecuteAssistantTurnOptions {
     context: AssistantTurnModelRunContext,
   ) => Promise<LogicalRunOutcome>;
   readonly readToolSnapshot: () => AssistantTurnToolSnapshot;
+  readonly toolTurnStarted?: (snapshot: AssistantTurnToolSnapshot) => void;
+  readonly settleClaimedToolSnapshot: (
+    snapshot: AssistantTurnToolSnapshot,
+    outcome: ToolTurnOutcome,
+  ) => void;
   readonly settleActiveToolTurn: (
     turn: ActiveToolTurn,
     outcome: ToolTurnOutcome,
@@ -147,6 +172,8 @@ interface ExecuteAssistantTurnOptions {
 async function executeAssistantTurn({
   executeModelRun,
   readToolSnapshot,
+  toolTurnStarted,
+  settleClaimedToolSnapshot,
   settleActiveToolTurn,
   reportNoTools,
   cancelSignal,
@@ -185,12 +212,23 @@ async function executeAssistantTurn({
       return getInterruption(retiredSignal, cancelSignal) ?? modelOutcome;
     }
 
+    toolTurnStarted?.(snapshot);
+    const interruptionAfterClaim = getInterruption(retiredSignal, cancelSignal);
+    if (interruptionAfterClaim) {
+      settleClaimedToolSnapshot(
+        snapshot,
+        createStoppedToolTurnOutcome(toolCalls),
+      );
+      return interruptionAfterClaim;
+    }
+
     const toolCoordinator = createToolTurnCoordinator({
       toolCalls,
       toolsByName: snapshot.toolsByName,
     });
     const turn: ActiveToolTurn = {
       coordinator: toolCoordinator,
+      snapshot,
       toolCalls,
       settled: false,
     };

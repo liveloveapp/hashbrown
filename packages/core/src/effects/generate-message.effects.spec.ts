@@ -2,26 +2,45 @@ import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
+import { lowerViewMessagesToAgUi } from '../reducers/ag-ui-message-history';
 import {
-  selectApiMessages,
+  reducers,
   selectDebounce,
+  selectGeneratingError,
+  selectIsLoading,
+  selectMessages,
   selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
+  selectSendingError,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
-  selectSystem,
   selectThreadId,
+  selectToolCalls,
   selectToolEntities,
   selectTools,
   selectTransport,
   selectUiRequested,
   selectUnifiedError,
+  ɵprepareRootAction,
+  ɵselectAgentStateProtocolError,
+  ɵselectAgUiMessagesProtocolError,
+  ɵselectAttemptOwnedPendingToolCalls,
+  ɵselectCommittedAgentState,
+  ɵselectCommittedAgUiMessages,
+  ɵselectEffectiveCommittedAgUiMessages,
+  ɵselectGenerationAttemptId,
+  ɵselectGenerationId,
+  ɵselectStateWriteLocked,
+  ɵselectToolTurnOwnership,
+  ɵselectVisibleAgentState,
+  ɵselectVisibleAgUiMessages,
 } from '../reducers';
 import { s } from '../schema';
 import { TransportError, type TransportRequest } from '../transport';
+import { createStore } from '../utils/micro-ngrx';
 import {
   _updateMessagesWithDelta,
   generateMessage,
@@ -34,6 +53,12 @@ type TestHandler = {
   handler: (action: ActionLike) => unknown | Promise<unknown>;
 };
 type SelectorMap = Map<SelectorKey, unknown>;
+
+function canonicalUser(content: string) {
+  return lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => `user-${content}`,
+  });
+}
 type MockTransportResponse = {
   events?: AsyncIterable<AGUIEvent>;
   dispose?: jest.Mock;
@@ -63,15 +88,22 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
     [selectResponseSchema, undefined],
     [
-      selectApiMessages,
-      [{ role: 'user', content: 'Hi!' }] as Chat.Api.Message[],
+      ɵselectEffectiveCommittedAgUiMessages,
+      [
+        {
+          id: 'system-default',
+          role: 'system',
+          content: 'You are a test bot',
+        },
+        { id: 'user-default', role: 'user', content: 'Hi!' },
+      ],
     ],
+    [ɵselectCommittedAgentState, undefined],
     [selectShouldGenerateMessage, true],
     [selectDebounce, 0],
     [selectRetries, 0],
     [selectToolEntities, {}],
     [selectTools, []],
-    [selectSystem, 'You are a test bot'],
     [selectThreadId, undefined],
     [selectTransport, configuredTransport],
     [selectUiRequested, false],
@@ -80,6 +112,10 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     [selectPendingToolCalls, []],
     [selectStreamingMessageError, undefined],
     [selectUnifiedError, undefined],
+    [ɵselectGenerationId, undefined],
+    [ɵselectGenerationAttemptId, undefined],
+    [ɵselectAgentStateProtocolError, undefined],
+    [ɵselectAgUiMessagesProtocolError, undefined],
   ]);
   const values = new Map<SelectorKey, unknown>([
     ...defaults,
@@ -98,8 +134,67 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
     },
     dispatch: (action: ActionLike) => {
       actions.push(action);
+      if (action.type === internalActions.logicalGenerationStarted.type) {
+        const payload = action.payload as { generationId: string };
+        values.set(ɵselectGenerationId, payload.generationId);
+        values.set(ɵselectGenerationAttemptId, undefined);
+      } else if (
+        action.type === internalActions.generationAttemptClaimed.type
+      ) {
+        const payload = action.payload as {
+          generationId: string;
+          attemptId: string;
+        };
+        if (values.get(ɵselectGenerationId) === payload.generationId) {
+          values.set(ɵselectGenerationAttemptId, payload.attemptId);
+        }
+      } else if (
+        action.type === internalActions.generationAttemptReleased.type
+      ) {
+        const payload = action.payload as {
+          generationId: string;
+          attemptId: string;
+        };
+        if (
+          values.get(ɵselectGenerationId) === payload.generationId &&
+          values.get(ɵselectGenerationAttemptId) === payload.attemptId
+        ) {
+          values.set(ɵselectGenerationAttemptId, undefined);
+        }
+      } else if (
+        action.type === internalActions.logicalGenerationSettled.type
+      ) {
+        const payload = action.payload as { generationId: string };
+        if (values.get(ɵselectGenerationId) === payload.generationId) {
+          values.set(ɵselectGenerationId, undefined);
+          values.set(ɵselectGenerationAttemptId, undefined);
+        }
+      }
+    },
+    dispatchAndWait: async (
+      action: ActionLike,
+      onComplete?: (followUps: {
+        dispatch: (action: ActionLike) => void;
+        onCommit: (callback: () => void) => void;
+      }) => void,
+    ) => {
+      store.dispatch(action);
+      const actions: ActionLike[] = [];
+      const onCommitCallbacks: Array<() => void> = [];
+      onComplete?.({
+        dispatch: (followUpAction) => actions.push(followUpAction),
+        onCommit: (callback) => onCommitCallbacks.push(callback),
+      });
+      actions.forEach(store.dispatch);
+      onCommitCallbacks.forEach((callback) => callback());
     },
     read: <T = unknown>(selector: SelectorKey): T => {
+      if (
+        selector === ɵselectAttemptOwnedPendingToolCalls &&
+        !values.has(selector)
+      ) {
+        return values.get(selectRawStreamingToolCalls) as T;
+      }
       if (!values.has(selector)) {
         throw new Error('No value for selector');
       }
@@ -188,6 +283,36 @@ function waitForAbort(signal: AbortSignal) {
 
 function flushTaskBoundary(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function waitForStoreGenerationToSettle(
+  store: ReturnType<typeof createRealEffectStore>,
+): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (store.read(ɵselectGenerationId) === undefined) {
+      return;
+    }
+
+    await flushTaskBoundary();
+  }
+
+  throw new Error('Timed out waiting for generation ownership to settle');
+}
+
+function createRealEffectStore(
+  inspectPreparation?: (
+    state: Parameters<typeof ɵprepareRootAction>[0],
+    action: { readonly type: string; readonly payload?: unknown },
+  ) => void,
+) {
+  return createStore({
+    reducers,
+    effects: [generateMessage],
+    prepareAction: (state, action) => {
+      inspectPreparation?.(state, action);
+      return ɵprepareRootAction(state, action);
+    },
+  });
 }
 
 async function waitForMockCalls(mock: jest.Mock, count: number): Promise<void> {
@@ -647,7 +772,7 @@ test('configured thread with no messages sends no request', async () => {
   }));
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
-      [selectApiMessages, []],
+      [ɵselectEffectiveCommittedAgUiMessages, []],
       [selectShouldGenerateMessage, false],
       [selectThreadId, 'configured-thread'],
     ]),
@@ -677,7 +802,10 @@ test('transport factory failure dispatches the initialization error', async () =
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(
@@ -698,7 +826,10 @@ test('missing transport reports configuration error without issuing HTTP', async
 
   try {
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Hi'),
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
 
     const errors = getActionsOfType(
@@ -735,7 +866,10 @@ test('first user message uses the configured thread ID', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send.mock.calls[0]?.[0].input?.threadId).toBe('configured-thread');
@@ -773,7 +907,10 @@ test.each([
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Hi'),
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     store.setSelector(selectThreadId, updateThreadId);
     await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
@@ -789,6 +926,1277 @@ test.each([
     teardown?.();
   },
 );
+
+test.each([
+  {
+    name: 'state-only',
+    middle: [{ type: EventType.STATE_SNAPSHOT, snapshot: { count: 7 } }],
+    expectedState: { count: 7 },
+    expectedMessages: canonicalUser('No output.'),
+  },
+  {
+    name: 'messages-snapshot-only',
+    middle: [
+      {
+        type: EventType.MESSAGES_SNAPSHOT,
+        messages: [{ id: 'user-replaced', role: 'user', content: 'Replaced.' }],
+      },
+    ],
+    expectedState: { count: 0 },
+    expectedMessages: [
+      { id: 'user-replaced', role: 'user', content: 'Replaced.' },
+    ],
+  },
+  {
+    name: 'empty',
+    middle: [],
+    expectedState: { count: 0 },
+    expectedMessages: canonicalUser('No output.'),
+  },
+] as const)(
+  'real store commits a $name successful run without an assistant message',
+  async ({ middle, expectedState, expectedMessages }) => {
+    jest.clearAllMocks();
+    const { send } = makeSelection(async (request) => ({
+      events: successfulEvents(request, [...middle] as AGUIEvent[]),
+    }));
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        canonicalMessages: canonicalUser('No output.'),
+        state: { count: 0 },
+        retries: 0,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const successes: ReturnType<typeof apiActions.generateMessageSuccess>[] =
+      [];
+    const unsubscribe = store.when(
+      apiActions.generateMessageSuccess,
+      (action) => successes.push(action),
+    );
+    const teardown = store.runEffects();
+
+    store.dispatch(internalActions.start());
+    await waitForMockCalls(send, 1);
+    await waitForStoreGenerationToSettle(store);
+
+    expect(successes).toEqual([
+      apiActions.generateMessageSuccess({ toolCalls: [] }),
+    ]);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual(expectedState);
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(expectedMessages);
+    expect(store.read(selectUnifiedError)).toBeUndefined();
+    expect(store.read(selectIsLoading)).toBe(false);
+
+    unsubscribe();
+    teardown();
+  },
+);
+
+test('does not execute a fresh call already settled by the agent', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(async () => 'local result');
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request, [
+      {
+        type: EventType.MESSAGES_SNAPSHOT,
+        messages: [
+          { id: 'user-agent-result', role: 'user', content: 'Lookup.' },
+          {
+            id: 'assistant-agent-result',
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              {
+                id: 'call-agent-result',
+                type: 'function',
+                function: { name: 'lookup', arguments: '{}' },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: EventType.TOOL_CALL_RESULT,
+        messageId: 'result-agent',
+        toolCallId: 'call-agent-result',
+        content: 'remote result',
+      },
+    ]),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('Lookup.'),
+      tools: [
+        {
+          name: 'lookup',
+          description: 'Look up a value.',
+          schema: s.object('Lookup input', {}),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(store.read(selectIsLoading)).toBe(false);
+
+  teardown();
+});
+
+test('does not execute pending calls from the attempt-start checkpoint', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(async () => 'local result');
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: [
+        {
+          id: 'assistant-baseline',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'call-baseline',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+            },
+          ],
+        },
+        { id: 'user-after-baseline', role: 'user', content: 'Continue.' },
+      ],
+      tools: [
+        {
+          name: 'lookup',
+          description: 'Look up a value.',
+          schema: s.object('Lookup input', {}),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(store.read(selectIsLoading)).toBe(false);
+
+  teardown();
+});
+
+test('reentrant stop settles an unclaimed reserved snapshot exactly once', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(() => new Promise(() => undefined));
+  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+  const { send } = makeSelection(async (request) => ({
+    events: createToolRoundEvents(request, {
+      callId: 'call-stop-before-claim',
+      value: 1,
+    }),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('Stop before tools.'),
+      tools: [
+        {
+          name: 'recordValue',
+          description: 'Record a value.',
+          schema: s.object('Value', { value: s.number('Value') }),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const identityEvidence: boolean[] = [];
+  const unsubscribe = store.when(apiActions.generateMessageSuccess, () => {
+    const reservation = store.read(ɵselectToolTurnOwnership);
+    const entity = store.read(
+      (state) => state.toolCalls.entities['call-stop-before-claim'],
+    );
+    identityEvidence.push(reservation?.toolCalls[0] === entity);
+    store.dispatch(devActions.stopMessageGeneration(true));
+  });
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(settlements).toHaveBeenCalledTimes(1);
+  expect(identityEvidence).toEqual([true]);
+  expect(store.read(ɵselectToolTurnOwnership)).toBeUndefined();
+  expect(store.read(selectIsLoading)).toBe(false);
+  expect(
+    store.read((state) => state.toolCalls.entities['call-stop-before-claim']),
+  ).toMatchObject({
+    status: 'done',
+    result: { status: 'rejected' },
+  });
+
+  unsubscribe();
+  settlements.mockRestore();
+  teardown();
+});
+
+test('executes a pending call newly introduced by a messages snapshot once', async () => {
+  jest.clearAllMocks();
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    return {
+      events:
+        requestCount === 1
+          ? successfulEvents(request, [
+              {
+                type: EventType.MESSAGES_SNAPSHOT,
+                messages: [
+                  {
+                    id: 'assistant-snapshot-call',
+                    role: 'assistant',
+                    content: '',
+                    toolCalls: [
+                      {
+                        id: 'call-from-snapshot',
+                        type: 'function',
+                        function: {
+                          name: 'recordValue',
+                          arguments: '{"value":4}',
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ])
+          : successfulEvents(request),
+    };
+  });
+  const handler = jest.fn(async ({ value }: { value: number }) => value);
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a value.',
+        schema: s.object('Value', { value: s.number('Value') }),
+        handler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Use the snapshot.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith({ value: 4 }, expect.any(AbortSignal));
+    expect(send).toHaveBeenCalledTimes(2);
+  } finally {
+    teardown();
+  }
+});
+
+test('supersession invalidates an unclaimed reservation before cancellation settles', async () => {
+  jest.clearAllMocks();
+  let requestCount = 0;
+  const handler = jest.fn(async () => 'result');
+  const settlementType = internalActions.toolTurnSettled.type;
+  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+  const starts = jest.spyOn(internalActions, 'toolTurnStarted');
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    return {
+      events:
+        requestCount === 1
+          ? createToolRoundEvents(request, {
+              callId: 'call-stale-reservation',
+              value: 1,
+            })
+          : successfulEvents(request),
+    };
+  });
+  const preparationEvidence: Array<{
+    readonly actionGenerationId: string | undefined;
+    readonly storeGenerationId: string | undefined;
+    readonly actionToolTurnId: string | undefined;
+    readonly storeToolTurnId: string | undefined;
+  }> = [];
+  const store = createRealEffectStore((state, action) => {
+    if (action.type !== settlementType) return;
+    const payload = action.payload as ReturnType<
+      typeof internalActions.toolTurnSettled
+    >['payload'];
+    preparationEvidence.push({
+      actionGenerationId: payload.generationId,
+      storeGenerationId: state.generationOwnership.generationId,
+      actionToolTurnId: payload.toolTurnId,
+      storeToolTurnId: state.generationOwnership.toolTurn?.toolTurnId,
+    });
+  });
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('First.'),
+      tools: [
+        {
+          name: 'recordValue',
+          description: 'Record a value.',
+          schema: s.object('Value', { value: s.number('Value') }),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  let replaced = false;
+  const unsubscribe = store.when(apiActions.generateMessageSuccess, () => {
+    if (replaced) return;
+    replaced = true;
+    store.dispatch(
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Replacement.'),
+        message: { role: 'user', content: 'Replacement.' },
+      }),
+    );
+  });
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 2);
+  await waitForStoreGenerationToSettle(store);
+  await flushTaskBoundary();
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(starts).toHaveBeenCalledTimes(0);
+  expect(settlements).toHaveBeenCalledTimes(1);
+  expect(preparationEvidence).toEqual([
+    {
+      actionGenerationId: expect.any(String),
+      storeGenerationId: expect.any(String),
+      actionToolTurnId: expect.any(String),
+      storeToolTurnId: undefined,
+    },
+  ]);
+  expect(preparationEvidence[0]?.storeGenerationId).not.toBe(
+    preparationEvidence[0]?.actionGenerationId,
+  );
+  expect(
+    store.read((state) => state.toolCalls.entities['call-stale-reservation']),
+  ).toMatchObject({ status: 'pending' });
+  expect(store.read(ɵselectToolTurnOwnership)).toBeUndefined();
+  expect(store.read(selectIsLoading)).toBe(false);
+
+  unsubscribe();
+  settlements.mockRestore();
+  starts.mockRestore();
+  teardown();
+});
+
+test.each([
+  'RUN_STARTED',
+  'event',
+  'success reducer',
+  'release reducer',
+] as const)(
+  'observes a real-store %s failure and rolls back the attempt',
+  async (failureTarget) => {
+    jest.clearAllMocks();
+    const dispatchError = new Error(`${failureTarget} failed`);
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Store dispatch failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-store-draft',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-store-draft',
+          delta: 'Draft',
+        },
+        {
+          type: EventType.CUSTOM,
+          name: 'fail-action-preparation',
+          value: null,
+        },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+        { type: EventType.RUN_FINISHED, ...identity },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    let releaseReducerFailed = false;
+    const configuredReducers = {
+      ...reducers,
+      generationOwnership: (
+        state: Parameters<typeof reducers.generationOwnership>[0],
+        action: Parameters<typeof reducers.generationOwnership>[1],
+      ) => {
+        if (
+          failureTarget === 'release reducer' &&
+          action.type === internalActions.generationAttemptReleased.type &&
+          !releaseReducerFailed
+        ) {
+          releaseReducerFailed = true;
+          throw dispatchError;
+        }
+
+        return reducers.generationOwnership(state, action);
+      },
+      status: (
+        state: Parameters<typeof reducers.status>[0],
+        action: Parameters<typeof reducers.status>[1],
+      ) => {
+        if (
+          failureTarget === 'success reducer' &&
+          action.type === apiActions.generateMessageSuccess.type
+        ) {
+          throw dispatchError;
+        }
+
+        return reducers.status(state, action);
+      },
+    };
+    const store = createStore({
+      reducers: configuredReducers,
+      effects: [generateMessage],
+      prepareAction: (_state, action) => {
+        const failsStartedAction =
+          failureTarget === 'RUN_STARTED' &&
+          action.type === apiActions.generateMessageStart.type;
+        const failsEventAction =
+          failureTarget === 'event' &&
+          action.type === apiActions.generateMessageEvent.type &&
+          'payload' in action &&
+          (action.payload as AGUIEvent).type === EventType.CUSTOM;
+        if (failsStartedAction || failsEventAction) {
+          throw dispatchError;
+        }
+
+        return action;
+      },
+    });
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Store dispatch failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const errors: Error[] = [];
+    let successCount = 0;
+    let releaseCount = 0;
+    let ownedAtRollback = false;
+    let exhaustedRetries = 0;
+    const unsubscribeRollback = store.when(
+      internalActions.generationAttemptRolledBack,
+      () => {
+        cleanupOrder.push('attempt:rollback');
+        if (failureTarget === 'release reducer') {
+          ownedAtRollback =
+            store.read(ɵselectGenerationAttemptId) !== undefined;
+        }
+      },
+    );
+    const unsubscribeRelease = store.when(
+      internalActions.generationAttemptReleased,
+      () => {
+        if (failureTarget === 'release reducer') {
+          releaseCount++;
+          cleanupOrder.push('attempt:release');
+        }
+      },
+    );
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(successCount).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      message: dispatchError.message,
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual(
+      failureTarget === 'release reducer'
+        ? [
+            'iterator:return',
+            'response:dispose',
+            'attempt:rollback',
+            'attempt:release',
+            'terminal:error',
+          ]
+        : [
+            'iterator:return',
+            'response:dispose',
+            'attempt:rollback',
+            'terminal:error',
+          ],
+    );
+    if (failureTarget === 'release reducer') {
+      expect(ownedAtRollback).toBe(true);
+      expect(releaseCount).toBe(1);
+    }
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeRollback();
+    unsubscribeRelease();
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeExhausted();
+    teardown();
+  },
+);
+
+test.each(['listener', 'selector'] as const)(
+  'rolls back when a post-effect terminal %s fails before completion',
+  async (failurePoint) => {
+    jest.clearAllMocks();
+    const dispatchError = new Error(`terminal ${failurePoint} failed`);
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Terminal dispatch failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-terminal-dispatch',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-terminal-dispatch',
+          delta: 'Draft',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-terminal-dispatch',
+        },
+        { type: EventType.RUN_FINISHED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Terminal dispatch failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    let atTerminalBoundary = false;
+    let selectorFailed = false;
+    const unsubscribeBoundary = store.when(
+      apiActions.generateMessageEvent,
+      (action) => {
+        if (action.payload.type !== EventType.RUN_FINISHED) {
+          return;
+        }
+
+        atTerminalBoundary = true;
+        if (failurePoint === 'listener') {
+          throw dispatchError;
+        }
+      },
+    );
+    const unsubscribeSelector = store.select(
+      (state) => {
+        if (
+          atTerminalBoundary &&
+          failurePoint === 'selector' &&
+          !selectorFailed
+        ) {
+          selectorFailed = true;
+          throw dispatchError;
+        }
+
+        return state.status.isGenerating;
+      },
+      () => undefined,
+    );
+    const errors: Error[] = [];
+    let successCount = 0;
+    let exhaustedRetries = 0;
+    const unsubscribeRollback = store.when(
+      internalActions.generationAttemptRolledBack,
+      () => cleanupOrder.push('attempt:rollback'),
+    );
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(successCount).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      message: dispatchError.message,
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual([
+      'iterator:return',
+      'response:dispose',
+      'attempt:rollback',
+      'terminal:error',
+    ]);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeBoundary();
+    unsubscribeSelector();
+    unsubscribeRollback();
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeExhausted();
+    teardown();
+  },
+);
+
+test.each(['listener', 'selector'] as const)(
+  'commits terminal state when a success follow-up %s fails',
+  async (failurePoint) => {
+    jest.clearAllMocks();
+    const observerError = new Error(`success ${failurePoint} failed`);
+    const surfacedErrors: unknown[] = [];
+    const initialCanonical = canonicalUser('Success observer failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+
+      return {
+        events: successfulEvents(request, [
+          { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+          {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'assistant-success-observer',
+            role: 'assistant',
+          },
+          {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'assistant-success-observer',
+            delta: 'Done',
+          },
+          {
+            type: EventType.TEXT_MESSAGE_END,
+            messageId: 'assistant-success-observer',
+          },
+        ]),
+      };
+    });
+    const store = createStore({
+      reducers,
+      effects: [generateMessage],
+      surfaceError: (error) => surfacedErrors.push(error),
+    });
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Success observer failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const errors: Error[] = [];
+    let successCount = 0;
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => errors.push(action.payload),
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    let atSuccessBoundary = false;
+    const unsubscribeBoundary = store.when(
+      apiActions.generateMessageSuccess,
+      () => {
+        atSuccessBoundary = true;
+        if (failurePoint === 'listener') {
+          throw observerError;
+        }
+      },
+    );
+    let selectorFailed = false;
+    const unsubscribeSelector = store.select(
+      (state) => {
+        if (
+          atSuccessBoundary &&
+          failurePoint === 'selector' &&
+          !selectorFailed
+        ) {
+          selectorFailed = true;
+          throw observerError;
+        }
+
+        return state.status.isGenerating;
+      },
+      () => undefined,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(successCount).toBe(1);
+    expect(surfacedErrors).toEqual([observerError]);
+    expect(errors).toEqual([]);
+    expect(store.read(selectUnifiedError)).toBeUndefined();
+    expect(store.read(selectGeneratingError)).toBeUndefined();
+    expect(store.read(selectSendingError)).toBeUndefined();
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 1 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 1 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'assistant-success-observer',
+          role: 'assistant',
+          content: 'Done',
+        }),
+      ]),
+    );
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(
+      store.read(ɵselectCommittedAgUiMessages),
+    );
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeBoundary();
+    unsubscribeSelector();
+    teardown();
+  },
+);
+
+test.each([
+  { label: 'reported', failureMode: 'reported', stopOnTerminal: false },
+  { label: 'thrown', failureMode: 'thrown', stopOnTerminal: false },
+  {
+    label: 'reported while stop dispatches synchronously',
+    failureMode: 'reported',
+    stopOnTerminal: true,
+  },
+] as const)(
+  'rejects a terminal event when a synchronization protocol error is $label',
+  async ({ failureMode, stopOnTerminal }) => {
+    jest.clearAllMocks();
+    const selectorError = new Error(`terminal selector ${failureMode}`);
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Terminal protocol failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-terminal-draft',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-terminal-draft',
+          delta: 'Draft',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-terminal-draft',
+        },
+        { type: EventType.RUN_FINISHED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    let atTerminalBoundary = false;
+    const store = createStore({
+      reducers,
+      effects: [generateMessage],
+      prepareAction: (_state, action) => {
+        if (
+          action.type === apiActions.generateMessageEvent.type &&
+          'payload' in action &&
+          (action.payload as AGUIEvent).type === EventType.RUN_FINISHED
+        ) {
+          atTerminalBoundary = true;
+        }
+
+        return action;
+      },
+    });
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Terminal protocol failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const read = store.read;
+    const protocolSelectorReads: SelectorKey[] = [];
+    store.read = ((selector: SelectorKey) => {
+      if (
+        atTerminalBoundary &&
+        (selector === ɵselectAgentStateProtocolError ||
+          selector === ɵselectAgUiMessagesProtocolError)
+      ) {
+        protocolSelectorReads.push(selector);
+      }
+      if (
+        atTerminalBoundary &&
+        failureMode === 'reported' &&
+        selector === ɵselectAgentStateProtocolError
+      ) {
+        return selectorError;
+      }
+      if (
+        atTerminalBoundary &&
+        failureMode === 'thrown' &&
+        selector === ɵselectAgUiMessagesProtocolError
+      ) {
+        throw selectorError;
+      }
+
+      return read(selector as never);
+    }) as typeof store.read;
+    const errors: Error[] = [];
+    let successCount = 0;
+    let exhaustedRetries = 0;
+    const unsubscribeRollback = store.when(
+      internalActions.generationAttemptRolledBack,
+      () => cleanupOrder.push('attempt:rollback'),
+    );
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+    const unsubscribeStop = store.when(
+      apiActions.generateMessageEvent,
+      (action) => {
+        if (stopOnTerminal && action.payload.type === EventType.RUN_FINISHED) {
+          store.dispatch(devActions.stopMessageGeneration(true));
+        }
+      },
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(protocolSelectorReads).toEqual([
+      ɵselectAgentStateProtocolError,
+      ɵselectAgUiMessagesProtocolError,
+    ]);
+    expect(successCount).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      message: selectorError.message,
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    if (stopOnTerminal) {
+      expect(store.read(selectUnifiedError)).toBe(errors[0]);
+      expect(store.read(selectGeneratingError)).toBe(errors[0]);
+      expect(store.read(selectSendingError)).toBeUndefined();
+    }
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual([
+      'iterator:return',
+      'response:dispose',
+      'attempt:rollback',
+      'terminal:error',
+    ]);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeRollback();
+    unsubscribeError();
+    unsubscribeSuccess();
+    unsubscribeExhausted();
+    unsubscribeStop();
+    teardown();
+  },
+);
+
+test.each([
+  {
+    name: 'event preparation',
+    error: new Error('event preparation failed'),
+    configure: (_store: ReturnType<typeof createTestStore>, error: Error) => {
+      const event = { type: EventType.MESSAGES_SNAPSHOT } as Record<
+        string,
+        unknown
+      >;
+      Object.defineProperty(event, 'messages', {
+        enumerable: true,
+        get: () => {
+          throw error;
+        },
+      });
+
+      return event as AGUIEvent;
+    },
+  },
+  {
+    name: 'event dispatch',
+    error: new Error('event dispatch failed'),
+    configure: (store: ReturnType<typeof createTestStore>, error: Error) => {
+      const dispatch = store.dispatch;
+      store.dispatch = (action) => {
+        if (
+          action.type === apiActions.generateMessageEvent.type &&
+          'payload' in action &&
+          (action.payload as AGUIEvent).type === EventType.CUSTOM
+        ) {
+          throw error;
+        }
+        dispatch(action);
+      };
+
+      return {
+        type: EventType.CUSTOM,
+        name: 'dispatch-failure',
+        value: null,
+      } as AGUIEvent;
+    },
+  },
+  {
+    name: 'protocol selector read',
+    error: new Error('protocol selector read failed'),
+    configure: (store: ReturnType<typeof createTestStore>, error: Error) => {
+      const read = store.read;
+      store.read = <T = unknown>(selector: SelectorKey): T => {
+        if (selector === ɵselectAgentStateProtocolError) {
+          throw error;
+        }
+
+        return read<T>(selector);
+      };
+
+      return {
+        type: EventType.CUSTOM,
+        name: 'selector-failure',
+        value: null,
+      } as AGUIEvent;
+    },
+  },
+])(
+  'classifies an $name exception as a terminal protocol error',
+  async ({ error, configure }) => {
+    jest.clearAllMocks();
+    let requestSignal: AbortSignal | undefined;
+    const dispose = jest.fn();
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+
+      return {
+        events: successfulEvents(request, [event]),
+        dispose,
+      };
+    });
+    const store = createTestStore(
+      new Map<SelectorKey, unknown>([
+        [selectRetries, 2],
+        [
+          selectRawStreamingMessage,
+          { role: 'assistant', content: 'Ignored', toolCallIds: [] },
+        ],
+      ]),
+    );
+    const event = configure(store, error);
+    const teardown = generateMessage(store);
+
+    await store.trigger(
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Protocol callback'),
+        message: { role: 'user', content: 'Protocol callback' },
+      }),
+    );
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageError.type),
+    ).toEqual([
+      apiActions.generateMessageError(
+        expect.objectContaining({
+          name: 'TransportError',
+          message: error.message,
+          retryable: false,
+          code: 'PROTOCOL_ERROR',
+        }) as Error,
+      ),
+    ]);
+    expect(
+      getActionsOfType(
+        store.actions,
+        apiActions.generateMessageExhaustedRetries.type,
+      ),
+    ).toHaveLength(0);
+    expect(
+      getActionsOfType(
+        store.actions,
+        internalActions.generationAttemptRolledBack.type,
+      ),
+    ).toHaveLength(1);
+    expect(
+      getActionsOfType(
+        store.actions,
+        internalActions.generationAttemptReleased.type,
+      ),
+    ).toHaveLength(1);
+    expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
+
+    teardown?.();
+  },
+);
+
+test('reads both synchronization protocol selectors before terminating an event', async () => {
+  jest.clearAllMocks();
+  const protocolError = new Error('invalid synchronized state');
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createTestStore(
+    new Map<SelectorKey, unknown>([
+      [selectRetries, 2],
+      [ɵselectAgentStateProtocolError, protocolError],
+    ]),
+  );
+  const read = store.read;
+  const protocolSelectorReads: SelectorKey[] = [];
+  store.read = <T = unknown>(selector: SelectorKey): T => {
+    if (
+      selector === ɵselectAgentStateProtocolError ||
+      selector === ɵselectAgUiMessagesProtocolError
+    ) {
+      protocolSelectorReads.push(selector);
+    }
+
+    return read<T>(selector);
+  };
+  const teardown = generateMessage(store);
+
+  await store.trigger(
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Selector error'),
+      message: { role: 'user', content: 'Selector error' },
+    }),
+  );
+
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(protocolSelectorReads).toEqual([
+    ɵselectAgentStateProtocolError,
+    ɵselectAgUiMessagesProtocolError,
+  ]);
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toEqual([
+    apiActions.generateMessageError(
+      expect.objectContaining({
+        name: 'TransportError',
+        message: protocolError.message,
+        retryable: false,
+        code: 'PROTOCOL_ERROR',
+      }) as Error,
+    ),
+  ]);
+
+  teardown?.();
+});
 
 test.each([
   {
@@ -814,7 +2222,10 @@ test.each([
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Hi'),
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     store.setSelector(selectThreadId, updateThreadId);
     await store.trigger(devActions.updateOptions({ threadId: updateThreadId }));
@@ -901,7 +2312,10 @@ test.each([
     const teardown = generateMessage(store);
 
     const firstGeneration = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('First'),
+        message: { role: 'user', content: 'First' },
+      }),
     );
     await firstIterationStarted.promise;
     store.setSelector(selectThreadId, nextThreadId);
@@ -912,7 +2326,10 @@ test.each([
     await firstGeneration;
     const actionsAfterRetirement = [...store.actions];
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Second'),
+        message: { role: 'user', content: 'Second' },
+      }),
     );
 
     const secondRequest = send.mock.calls[1]?.[0] as
@@ -998,12 +2415,14 @@ test.each([
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Hi'),
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     await iterationBlocked.promise;
     const effectiveThreadId = request?.input?.threadId;
     store.setSelector(selectThreadId, effectiveThreadId);
-    store.setSelector(selectSystem, 'Updated system prompt');
     await store.trigger(
       devActions.updateOptions({
         threadId: effectiveThreadId,
@@ -1049,7 +2468,10 @@ test('thread identity synchronization before a run does not retire the next run'
   await store.trigger(devActions.updateOptions({ threadId: undefined }));
   await store.trigger(devActions.updateOptions({ threadId: undefined }));
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -1104,13 +2526,18 @@ test('unconfigured run reuses one generated thread ID across retries', async () 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   const requests = send.mock.calls.map(([request]) => request);
   expect(requests).toHaveLength(2);
   expect(requests[0]?.input?.threadId).toBe(requests[1]?.input?.threadId);
   expect(requests[0]?.input?.runId).not.toBe(requests[1]?.input?.runId);
+  expect(requests[0]?.input.messages).toBe(requests[1]?.input.messages);
+  expect(requests[0]?.input.state).toBe(requests[1]?.input.state);
   expect(firstDispose).toHaveBeenCalledTimes(1);
   expect(secondDispose).toHaveBeenCalledTimes(1);
 
@@ -1328,7 +2755,7 @@ test('continues client tools with isolated reasoning details in transcript order
       ],
     },
     {
-      id: 'call-weather',
+      id: expect.any(String),
       role: 'tool',
       toolCallId: 'call-weather',
       content: '{"city":"Paris","condition":"sunny"}',
@@ -1413,12 +2840,12 @@ test('continues client tools with isolated reasoning details in transcript order
     originalAssistantEncryptedValue,
   );
   expect(committedToolCall.encryptedValue).toBe(originalToolEncryptedValue);
-  capturedAssistant.encryptedValue = 'mutated-captured-assistant';
-  capturedToolCall.encryptedValue = 'mutated-captured-tool-call';
-  capturedReasoning.encryptedValue = 'mutated-captured-value';
-  capturedMetadata.provider.trace[0] = 'mutated-captured-metadata';
-  capturedAssistantStep.index = 99;
-  capturedToolStep.index = 100;
+  expect(Object.isFrozen(capturedAssistant)).toBe(true);
+  expect(Object.isFrozen(capturedToolCall)).toBe(true);
+  expect(Object.isFrozen(capturedReasoning)).toBe(true);
+  expect(Object.isFrozen(capturedMetadata.provider.trace)).toBe(true);
+  expect(Object.isFrozen(capturedAssistantStep)).toBe(true);
+  expect(Object.isFrozen(capturedToolStep)).toBe(true);
 
   expect(committedAssistant.encryptedValue).toBe(
     originalAssistantEncryptedValue,
@@ -1453,9 +2880,12 @@ test('continues three sequential tool rounds before the terminal response', asyn
   ];
   const capturedRequests: TransportRequest[] = [];
   const terminalRequestStarted = createDeferred<void>();
-  const toolHandler = jest.fn(async ({ value }: { value: number }) => ({
+  const localResults = scriptedToolRounds.map(({ value }) => ({
     recorded: value,
   }));
+  const toolHandler = jest.fn(
+    async ({ value }: { value: number }) => localResults[value - 1],
+  );
   const { send } = makeSelection(async (request) => {
     capturedRequests.push(request);
     const toolRound = scriptedToolRounds[capturedRequests.length - 1];
@@ -1522,6 +2952,20 @@ test('continues three sequential tool rounds before the terminal response', asyn
       { value: 2 },
       { value: 3 },
     ]);
+    const settledValues = runtime
+      .messages()
+      .flatMap((message) =>
+        message.role === 'assistant' ? message.toolCalls : [],
+      )
+      .flatMap((toolCall) =>
+        toolCall.status === 'done' && toolCall.result.status === 'fulfilled'
+          ? [toolCall.result.value]
+          : [],
+      );
+    expect(settledValues).toHaveLength(3);
+    settledValues.forEach((value, index) => {
+      expect(value).toBe(localResults[index]);
+    });
     expect(send).toHaveBeenCalledTimes(4);
   } finally {
     skippedToolCalls.restore();
@@ -2076,7 +3520,6 @@ test('a synchronous messages subscriber settles tools before superseding', async
       'system',
       'user',
       'assistant',
-      'tool',
       'user',
     ]);
     expect(handler).not.toHaveBeenCalled();
@@ -2217,13 +3660,9 @@ test('superseding input snapshots settled tools before the replacement user', as
     runtime.sendMessage({ role: 'user', content: 'Replace that request.' });
     const secondRequest = await secondRequestCaptured.promise;
 
-    expect(secondRequest.input.messages.map((message) => message.role)).toEqual([
-      'system',
-      'user',
-      'assistant',
-      'tool',
-      'user',
-    ]);
+    expect(secondRequest.input.messages.map((message) => message.role)).toEqual(
+      ['system', 'user', 'assistant', 'tool', 'user'],
+    );
     const settledToolMessage = secondRequest.input.messages[3];
     expect(settledToolMessage).toMatchObject({
       role: 'tool',
@@ -2380,12 +3819,142 @@ test('concurrent tool results settle once in call order', async () => {
   }
 });
 
-test('reused tool call IDs execute once in each model round', async () => {
+test('local tool results remain lossless while continuation receives total canonical normalization and fresh state', async () => {
+  jest.clearAllMocks();
+  const cyclic: Record<string, unknown> = {};
+  cyclic['self'] = cyclic;
+  const hostile = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error('cannot read');
+      },
+    },
+  );
+  const rejection = new Error('tool rejected');
+  const secondRequestCaptured = createDeferred<TransportRequest>();
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolBatchEvents(request, [
+          { id: 'call-undefined', name: 'undefinedValue', arguments: '{}' },
+          { id: 'call-bigint', name: 'bigintValue', arguments: '{}' },
+          { id: 'call-cycle', name: 'cyclicValue', arguments: '{}' },
+          { id: 'call-hostile', name: 'hostileValue', arguments: '{}' },
+          { id: 'call-rejected', name: 'rejectedValue', arguments: '{}' },
+        ]),
+      };
+    }
+
+    secondRequestCaptured.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const store = createRealEffectStore();
+  const tools: Chat.Internal.Tool[] = [
+    {
+      name: 'undefinedValue',
+      description: 'Return undefined.',
+      schema: s.object('Empty input', {}),
+      handler: async () => {
+        store.dispatch(devActions.setState({ state: { count: 7 } }));
+        return undefined;
+      },
+    },
+    {
+      name: 'bigintValue',
+      description: 'Return bigint.',
+      schema: s.object('Empty input', {}),
+      handler: async () => BigInt(42),
+    },
+    {
+      name: 'cyclicValue',
+      description: 'Return a cycle.',
+      schema: s.object('Empty input', {}),
+      handler: async () => cyclic,
+    },
+    {
+      name: 'hostileValue',
+      description: 'Return a hostile proxy.',
+      schema: s.object('Empty input', {}),
+      handler: async () => hostile,
+    },
+    {
+      name: 'rejectedValue',
+      description: 'Reject.',
+      schema: s.object('Empty input', {}),
+      handler: async () => {
+        throw rejection;
+      },
+    },
+  ];
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'Run every tool.' }],
+      canonicalMessages: canonicalUser('Run every tool.'),
+      state: { count: 0 },
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+      tools,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  const secondRequest = await secondRequestCaptured.promise;
+  await waitForStoreGenerationToSettle(store);
+  const canonicalResults = secondRequest.input.messages.filter(
+    (message) => message.role === 'tool',
+  );
+  const localResults = new Map(
+    store
+      .read(selectToolCalls)
+      .map((toolCall) => [toolCall.id, toolCall.result]),
+  );
+
+  expect(canonicalResults.map((message) => message.content)).toEqual([
+    '',
+    '42',
+    '[object Object]',
+    'cannot read',
+    'tool rejected',
+  ]);
+  expect(canonicalResults.map((message) => message.id)).toEqual(
+    canonicalResults.map(() => expect.any(String)),
+  );
+  expect(
+    canonicalResults.every((message) => message.id !== message.toolCallId),
+  ).toBe(true);
+  expect(secondRequest.input.state).toEqual({ count: 7 });
+  expect(
+    (localResults.get('call-undefined') as PromiseFulfilledResult<unknown>)
+      .value,
+  ).toBeUndefined();
+  expect(
+    (localResults.get('call-bigint') as PromiseFulfilledResult<unknown>).value,
+  ).toBe(BigInt(42));
+  expect(
+    (localResults.get('call-cycle') as PromiseFulfilledResult<unknown>).value,
+  ).toBe(cyclic);
+  expect(
+    (localResults.get('call-hostile') as PromiseRejectedResult).reason,
+  ).toEqual(expect.objectContaining({ message: 'cannot read' }));
+  expect(
+    (localResults.get('call-rejected') as PromiseRejectedResult).reason,
+  ).toBe(rejection);
+
+  teardown();
+});
+
+test('a compatible checkpoint tool-call replay is not executed again', async () => {
   jest.clearAllMocks();
   let requestCount = 0;
   const { send } = makeSelection(async (request) => {
     requestCount++;
-    if (requestCount <= 2) {
+    if (requestCount === 1) {
       return {
         events: createToolRoundEvents(request, {
           callId: 'reused-call-id',
@@ -2397,13 +3966,14 @@ test('reused tool call IDs execute once in each model round', async () => {
     return {
       events: successfulEvents(request, [
         {
-          type: EventType.TEXT_MESSAGE_START,
-          messageId: 'assistant-after-reused-calls',
-          role: 'assistant',
+          type: EventType.TOOL_CALL_START,
+          toolCallId: 'reused-call-id',
+          toolCallName: 'recordValue',
+          parentMessageId: 'assistant-reused-call-id',
         },
         {
-          type: EventType.TEXT_MESSAGE_END,
-          messageId: 'assistant-after-reused-calls',
+          type: EventType.TOOL_CALL_END,
+          toolCallId: 'reused-call-id',
         },
       ]),
     };
@@ -2435,9 +4005,9 @@ test('reused tool call IDs execute once in each model round', async () => {
     runtime.sendMessage({ role: 'user', content: 'Record two values.' });
     await waitForRuntimeIdleAcrossTasks(runtime);
 
-    expect(handledValues).toEqual([1, 2]);
-    expect(handler).toHaveBeenCalledTimes(2);
-    expect(send).toHaveBeenCalledTimes(3);
+    expect(handledValues).toEqual([1]);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(2);
   } finally {
     teardown();
   }
@@ -2952,14 +4522,15 @@ test('sends one RunAgentInput with tools, structured output, and UI metadata', a
     events: successfulEvents(request),
     dispose,
   }));
-  const messages: Chat.Api.Message[] = [
-    { role: 'user', content: 'First question' },
-    { role: 'assistant', content: 'First answer' },
-    { role: 'user', content: 'Follow-up question' },
+  const messages: import('@ag-ui/core').Message[] = [
+    { id: 'system-1', role: 'system', content: 'You are a test bot' },
+    { id: 'user-1', role: 'user', content: 'First question' },
+    { id: 'assistant-1', role: 'assistant', content: 'First answer' },
+    { id: 'user-2', role: 'user', content: 'Follow-up question' },
   ];
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
-      [selectApiMessages, messages],
+      [ɵselectEffectiveCommittedAgUiMessages, messages],
       [selectTools, [tool]],
       [selectToolEntities, { search: tool }],
       [selectResponseSchema, responseSchema],
@@ -2975,6 +4546,7 @@ test('sends one RunAgentInput with tools, structured output, and UI metadata', a
 
   await store.trigger(
     devActions.sendMessage({
+      canonicalMessages: canonicalUser('Follow-up question'),
       message: { role: 'user', content: 'Follow-up question' },
     }),
   );
@@ -3023,7 +4595,10 @@ test('generic send rejection retries with exact attempt progression', async () =
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(3);
@@ -3031,7 +4606,7 @@ test('generic send rejection retries with exact attempt progression', async () =
   expect(requests.map((request) => request.maxAttempts)).toEqual([3, 3, 3]);
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
-  ).toHaveLength(2);
+  ).toHaveLength(0);
   expect(
     getActionsOfType(
       store.actions,
@@ -3040,6 +4615,647 @@ test('generic send rejection retries with exact attempt progression', async () =
   ).toHaveLength(0);
 
   teardown?.();
+});
+
+test('real store rolls back retry drafts, preserves the logical lock, and commits the successful attempt', async () => {
+  jest.clearAllMocks();
+  const firstError = new Error('temporary stream failure');
+  const store = createRealEffectStore();
+  let sendCount = 0;
+  let stateAtRetry:
+    | {
+        committed: unknown;
+        visible: unknown;
+        locked: boolean;
+        generationId: string | undefined;
+        attemptId: string | undefined;
+      }
+    | undefined;
+  const { send } = makeSelection(async (request) => {
+    sendCount++;
+    if (sendCount === 1) {
+      const identity = getInputIdentity(request);
+      return {
+        events: (async function* () {
+          yield { type: EventType.RUN_STARTED, ...identity };
+          yield { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } };
+          throw firstError;
+        })(),
+      };
+    }
+
+    stateAtRetry = {
+      committed: store.read(ɵselectCommittedAgentState),
+      visible: store.read(ɵselectVisibleAgentState),
+      locked: store.read(ɵselectStateWriteLocked),
+      generationId: store.read(ɵselectGenerationId),
+      attemptId: store.read(ɵselectGenerationAttemptId),
+    };
+    return {
+      events: successfulEvents(request, [
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 2 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-recovered',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-recovered',
+          delta: 'Recovered',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-recovered',
+        },
+      ]),
+    };
+  });
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'Retry state.' }],
+      canonicalMessages: canonicalUser('Retry state.'),
+      state: { count: 0 },
+      retries: 1,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 2);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(stateAtRetry).toMatchObject({
+    committed: { count: 0 },
+    visible: { count: 0 },
+    locked: true,
+    generationId: expect.any(String),
+    attemptId: expect.any(String),
+  });
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 2 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 2 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+  teardown();
+});
+
+test('real store protects one empty-system message checkpoint across retries', async () => {
+  jest.clearAllMocks();
+  const requests: TransportRequest[] = [];
+  const mutationErrors: unknown[] = [];
+  const { send } = makeSelection(async (request) => {
+    requests.push(request);
+    const messages = request.input?.messages;
+    if (!messages) throw new Error('Expected canonical input messages.');
+    try {
+      messages.splice(0, 1);
+    } catch (error) {
+      mutationErrors.push(error);
+    }
+    if (requests.length === 1) {
+      throw new Error('retry after attempted mutation');
+    }
+
+    return { events: successfulEvents(request) };
+  });
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: '',
+      systemMessage: Object.freeze({
+        id: 'system-empty',
+        role: 'system',
+        content: '',
+      }),
+      canonicalMessages: [],
+      messages: [],
+      retries: 1,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+  store.dispatch(
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Keep this checkpoint'),
+      message: { role: 'user', content: 'Keep this checkpoint' },
+    }),
+  );
+  const checkpoint = store.read(ɵselectCommittedAgUiMessages);
+  const checkpointMessage = checkpoint[0];
+
+  await waitForMockCalls(send, 2);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(Object.isFrozen(checkpoint)).toBe(true);
+  expect(requests[0]?.input?.messages).toBe(checkpoint);
+  expect(requests[1]?.input?.messages).toBe(checkpoint);
+  expect(requests[0]?.input?.messages).toEqual([
+    expect.objectContaining({
+      id: 'user-Keep this checkpoint',
+      content: 'Keep this checkpoint',
+    }),
+  ]);
+  expect(mutationErrors).toHaveLength(2);
+  expect(mutationErrors.every((error) => error instanceof TypeError)).toBe(
+    true,
+  );
+  expect(store.read(ɵselectCommittedAgUiMessages)).toBe(checkpoint);
+  expect(store.read(ɵselectCommittedAgUiMessages)[0]).toBe(checkpointMessage);
+
+  teardown();
+});
+
+test('real store owns debounce without opening an attempt and cancellation releases the lock', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'Wait.' }],
+      canonicalMessages: canonicalUser('Wait.'),
+      state: { count: 0 },
+      retries: 0,
+      debounce: 60_000,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+  let errorCount = 0;
+  const unsubscribeError = store.when(
+    apiActions.generateMessageError,
+    () => errorCount++,
+  );
+
+  store.dispatch(internalActions.start());
+  await Promise.resolve();
+
+  expect(store.read(ɵselectGenerationId)).toEqual(expect.any(String));
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(true);
+  expect(send).not.toHaveBeenCalled();
+
+  store.dispatch(devActions.stopMessageGeneration(true));
+  await waitForStoreGenerationToSettle(store);
+
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+  expect(send).not.toHaveBeenCalled();
+  expect(errorCount).toBe(0);
+
+  unsubscribeError();
+  teardown();
+});
+
+test('real store settles transport initialization failure once without claiming an attempt', async () => {
+  jest.clearAllMocks();
+  const initializationError = new Error('transport initialization failed');
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'Initialize.' }],
+      canonicalMessages: canonicalUser('Initialize.'),
+      state: { count: 0 },
+      retries: 2,
+      debounce: 0,
+      transport: () => {
+        throw initializationError;
+      },
+    }),
+  );
+  const teardown = store.runEffects();
+  const errors: Error[] = [];
+  let claimedAttempts = 0;
+  const unsubscribeError = store.when(
+    apiActions.generateMessageError,
+    (action) => errors.push(action.payload),
+  );
+  const unsubscribeClaim = store.when(
+    internalActions.generationAttemptClaimed,
+    () => claimedAttempts++,
+  );
+
+  store.dispatch(internalActions.start());
+  await waitForStoreGenerationToSettle(store);
+
+  expect(errors).toEqual([initializationError]);
+  expect(claimedAttempts).toBe(0);
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+
+  unsubscribeError();
+  unsubscribeClaim();
+  teardown();
+});
+
+test('real store settles scheduling with no eligible work without opening a transaction', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [],
+      canonicalMessages: [],
+      state: { count: 0 },
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+  let claimedAttempts = 0;
+  let successCount = 0;
+  let errorCount = 0;
+  const unsubscribeClaim = store.when(
+    internalActions.generationAttemptClaimed,
+    () => claimedAttempts++,
+  );
+  const unsubscribeSuccess = store.when(
+    apiActions.generateMessageSuccess,
+    () => successCount++,
+  );
+  const unsubscribeError = store.when(
+    apiActions.generateMessageError,
+    () => errorCount++,
+  );
+
+  store.dispatch(
+    devActions.setMessages({
+      messages: [
+        { role: 'assistant', content: 'Already complete', toolCalls: [] },
+      ],
+      canonicalMessages: [
+        {
+          id: 'assistant-no-work',
+          role: 'assistant',
+          content: 'Already complete',
+        },
+      ],
+    }),
+  );
+  await waitForStoreGenerationToSettle(store);
+
+  expect(send).not.toHaveBeenCalled();
+  expect(claimedAttempts).toBe(0);
+  expect(successCount).toBe(0);
+  expect(errorCount).toBe(0);
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+
+  unsubscribeClaim();
+  unsubscribeSuccess();
+  unsubscribeError();
+  teardown();
+});
+
+test('real store publishes one terminal error after retry rollback and releases ownership', async () => {
+  jest.clearAllMocks();
+  const terminalError = new Error('transport failed');
+  const { send } = makeSelection(async () => {
+    throw terminalError;
+  });
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'Fail.' }],
+      canonicalMessages: canonicalUser('Fail.'),
+      state: { count: 0 },
+      retries: 1,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+  const errors: Error[] = [];
+  const attemptIds: string[] = [];
+  const unsubscribeError = store.when(
+    apiActions.generateMessageError,
+    (action) => errors.push(action.payload),
+  );
+  const unsubscribeClaim = store.when(
+    internalActions.generationAttemptClaimed,
+    (action) => attemptIds.push(action.payload.attemptId),
+  );
+
+  store.dispatch(internalActions.start());
+  await waitForStoreGenerationToSettle(store);
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(errors).toEqual([terminalError]);
+  expect(attemptIds).toHaveLength(2);
+  expect(new Set(attemptIds)).toHaveProperty('size', 2);
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+
+  unsubscribeError();
+  unsubscribeClaim();
+  teardown();
+});
+
+test.each([
+  {
+    name: 'cancellation',
+    interrupt: (store: ReturnType<typeof createRealEffectStore>) =>
+      store.dispatch(devActions.stopMessageGeneration(true)),
+  },
+  {
+    name: 'thread retirement',
+    interrupt: (store: ReturnType<typeof createRealEffectStore>) =>
+      store.dispatch(devActions.updateOptions({ threadId: 'thread-b' })),
+  },
+])(
+  'real store rolls back an active attempt on $name and clears matching ownership',
+  async ({ interrupt }) => {
+    jest.clearAllMocks();
+    const attemptReady = createDeferred<void>();
+    const { send } = makeSelection(async (request) => ({
+      events: (async function* () {
+        yield {
+          type: EventType.RUN_STARTED,
+          ...getInputIdentity(request),
+        } as AGUIEvent;
+        yield {
+          type: EventType.STATE_SNAPSHOT,
+          snapshot: { count: 1 },
+        } as AGUIEvent;
+        attemptReady.resolve();
+        await waitForAbort(request.signal);
+      })(),
+    }));
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Interrupt.' }],
+        canonicalMessages: canonicalUser('Interrupt.'),
+        state: { count: 0 },
+        retries: 0,
+        debounce: 0,
+        transport: configuredTransport,
+        threadId: 'thread-a',
+      }),
+    );
+    const teardown = store.runEffects();
+    let errorCount = 0;
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      () => errorCount++,
+    );
+
+    store.dispatch(internalActions.start());
+    await attemptReady.promise;
+    const generationId = store.read(ɵselectGenerationId);
+    const attemptId = store.read(ɵselectGenerationAttemptId);
+
+    expect(generationId).toEqual(expect.any(String));
+    expect(attemptId).toEqual(expect.any(String));
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 1 });
+    expect(store.read(ɵselectStateWriteLocked)).toBe(true);
+
+    interrupt(store);
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(errorCount).toBe(0);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+
+    unsubscribeError();
+    teardown();
+  },
+);
+
+test('real store preserves an active attempt through an options-only system update', async () => {
+  jest.clearAllMocks();
+  const attemptReady = createDeferred<void>();
+  const finishAttempt = createDeferred<void>();
+  makeSelection(async (request) => ({
+    events: (async function* () {
+      const identity = getInputIdentity(request);
+      yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+      yield {
+        type: EventType.STATE_SNAPSHOT,
+        snapshot: { count: 1 },
+      } as AGUIEvent;
+      yield {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'assistant-system-update',
+        role: 'assistant',
+      } as AGUIEvent;
+      yield {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: 'assistant-system-update',
+        delta: 'Complete',
+      } as AGUIEvent;
+      yield {
+        type: EventType.TEXT_MESSAGE_END,
+        messageId: 'assistant-system-update',
+      } as AGUIEvent;
+      attemptReady.resolve();
+      await finishAttempt.promise;
+      yield { type: EventType.RUN_FINISHED, ...identity } as AGUIEvent;
+    })(),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'Initial system',
+      messages: [{ role: 'user', content: 'Update options.' }],
+      canonicalMessages: canonicalUser('Update options.'),
+      state: { count: 0 },
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await attemptReady.promise;
+  const generationId = store.read(ɵselectGenerationId);
+  const attemptId = store.read(ɵselectGenerationAttemptId);
+
+  store.dispatch(devActions.updateOptions({ system: 'Updated system' }));
+
+  expect(store.read(ɵselectGenerationId)).toBe(generationId);
+  expect(store.read(ɵselectGenerationAttemptId)).toBe(attemptId);
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 1 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(true);
+
+  finishAttempt.resolve();
+  await waitForStoreGenerationToSettle(store);
+
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 1 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 1 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+
+  teardown();
+});
+
+test('real store keeps a debounced replacement owned and stoppable after subscriber-queued retirement', async () => {
+  jest.clearAllMocks();
+  const replacementQueued = createDeferred<void>();
+  const oldIteratorReturned = createDeferred<void>();
+  let oldRequestSignal: AbortSignal | undefined;
+  let sendCount = 0;
+  const { send } = makeSelection(async (request) => {
+    sendCount++;
+    if (sendCount !== 1) {
+      return { events: successfulEvents(request) };
+    }
+    oldRequestSignal = request.signal;
+    const identity = getInputIdentity(request);
+    let index = 0;
+    return {
+      events: {
+        [Symbol.asyncIterator]() {
+          return {
+            async next(): Promise<IteratorResult<AGUIEvent>> {
+              index++;
+              if (index === 1) {
+                return {
+                  done: false,
+                  value: { type: EventType.RUN_STARTED, ...identity },
+                };
+              }
+              if (index === 2) {
+                return {
+                  done: false,
+                  value: {
+                    type: EventType.STATE_SNAPSHOT,
+                    snapshot: { count: 1 },
+                  },
+                };
+              }
+
+              return new Promise(() => undefined);
+            },
+            async return() {
+              oldIteratorReturned.resolve();
+              return { done: true as const, value: undefined };
+            },
+          };
+        },
+      },
+    };
+  });
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'First.' }],
+      canonicalMessages: canonicalUser('First.'),
+      state: { count: 0 },
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+      threadId: 'thread-a',
+    }),
+  );
+  const teardown = store.runEffects();
+  let oldGenerationId: string | undefined;
+  let oldAttemptId: string | undefined;
+  let replacementDispatched = false;
+  const unsubscribeState = store.select(ɵselectVisibleAgentState, (state) => {
+    if (
+      replacementDispatched ||
+      (state as { count?: number } | undefined)?.count !== 1
+    ) {
+      return;
+    }
+    replacementDispatched = true;
+    oldGenerationId = store.read(ɵselectGenerationId);
+    oldAttemptId = store.read(ɵselectGenerationAttemptId);
+    store.dispatch(
+      devActions.updateOptions({
+        debounce: 60_000,
+        threadId: 'thread-b',
+      }),
+    );
+    store.dispatch(
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Second.'),
+        message: { role: 'user', content: 'Second.' },
+      }),
+    );
+    replacementQueued.resolve();
+  });
+  let rollbackCount = 0;
+  let silentRetirementCount = 0;
+  const unsubscribeRollback = store.when(
+    internalActions.generationAttemptRolledBack,
+    () => rollbackCount++,
+  );
+  const unsubscribeRetirement = store.when(
+    internalActions.generationSilentlyRetired,
+    () => silentRetirementCount++,
+  );
+
+  store.dispatch(internalActions.start());
+  await replacementQueued.promise;
+  await oldIteratorReturned.promise;
+  await flushTaskBoundary();
+  const replacementGenerationId = store.read(ɵselectGenerationId);
+
+  expect(oldGenerationId).toEqual(expect.any(String));
+  expect(oldAttemptId).toEqual(expect.any(String));
+  expect(oldRequestSignal?.aborted).toBe(true);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(replacementGenerationId).toEqual(expect.any(String));
+  expect(replacementGenerationId).not.toBe(oldGenerationId);
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectStateWriteLocked)).toBe(true);
+  expect(store.read(selectIsLoading)).toBe(true);
+  expect(rollbackCount).toBe(0);
+  expect(silentRetirementCount).toBe(0);
+
+  store.dispatch(devActions.stopMessageGeneration(true));
+  await waitForStoreGenerationToSettle(store);
+
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+  expect(store.read(selectIsLoading)).toBe(false);
+  expect(send).toHaveBeenCalledTimes(1);
+
+  unsubscribeState();
+  unsubscribeRollback();
+  unsubscribeRetirement();
+  teardown();
 });
 
 test('retry uses a fresh attempt after cleanup completes', async () => {
@@ -3109,7 +5325,10 @@ test('retry uses a fresh attempt after cleanup completes', async () => {
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Retry'),
+      message: { role: 'user', content: 'Retry' },
+    }),
   );
   await returnStarted.promise;
   expect(send).toHaveBeenCalledTimes(1);
@@ -3142,7 +5361,10 @@ test('exhausted generic send retries dispatches the exhausted action', async () 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -3152,10 +5374,7 @@ test('exhausted generic send retries dispatches the exhausted action', async () 
   ]);
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
-  ).toEqual([
-    apiActions.generateMessageError(error),
-    apiActions.generateMessageError(error),
-  ]);
+  ).toEqual([apiActions.generateMessageError(error)]);
   expect(
     getActionsOfType(
       store.actions,
@@ -3178,7 +5397,10 @@ test('non-retryable transport error stops without exhausting retries', async () 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -3208,7 +5430,10 @@ test('positive infinity retries normalize to one attempt without exhaustion', as
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -3282,23 +5507,20 @@ test.each([
     const teardown = generateMessage(store);
 
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Retry'),
+        message: { role: 'user', content: 'Retry' },
+      }),
     );
 
-    const errors = getActionsOfType(
-      store.actions,
-      apiActions.generateMessageError.type,
-    );
     expect(send).toHaveBeenCalledTimes(2);
     expect(getDispatchedEvents(store.actions)).not.toContain(earlyEvent);
     expect(
       getDispatchedTerminalEvents(store.actions).map((event) => event.type),
     ).toEqual([EventType.RUN_FINISHED]);
-    expect(errors[0]?.payload).toMatchObject({
-      name: 'TransportError',
-      code: 'PROTOCOL_ERROR',
-      retryable: true,
-    });
+    expect(
+      getActionsOfType(store.actions, apiActions.generateMessageError.type),
+    ).toHaveLength(0);
 
     teardown?.();
   },
@@ -3319,7 +5541,10 @@ test('rejects duplicate RUN_STARTED without synthesizing a terminal event', asyn
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   const events = getDispatchedEvents(store.actions);
@@ -3364,7 +5589,10 @@ test('rejects a mismatched RUN_STARTED without accepting the run', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Retry'),
+      message: { role: 'user', content: 'Retry' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -3397,7 +5625,10 @@ test('rejects a mismatched RUN_FINISHED without synthesizing a terminal event', 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -3445,15 +5676,16 @@ test.each([
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Retry' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Retry'),
+      message: { role: 'user', content: 'Retry' },
+    }),
   );
 
-  const errors = getActionsOfType(
-    store.actions,
-    apiActions.generateMessageError.type,
-  );
   expect(send).toHaveBeenCalledTimes(2);
-  expect(errors[0]?.payload).toMatchObject({ retryable: true });
+  expect(
+    getActionsOfType(store.actions, apiActions.generateMessageError.type),
+  ).toHaveLength(0);
   expect(firstDispose).toHaveBeenCalledTimes(1);
   expect(secondDispose).toHaveBeenCalledTimes(1);
   expect(
@@ -3481,7 +5713,10 @@ test('iterable failure after an accepted start does not synthesize a terminal ev
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(getDispatchedTerminalEvents(store.actions)).toHaveLength(0);
@@ -3516,7 +5751,10 @@ test('server RUN_ERROR after start dispatches once without synthesis or retry', 
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   const events = getDispatchedEvents(store.actions);
@@ -3546,7 +5784,10 @@ test.each(['resolution', 'rejection'] as const)(
     const teardown = generateMessage(store);
 
     const generation = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Hi'),
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
     await sendStarted.promise;
     const request = send.mock.calls[0]?.[0] as TransportRequest;
@@ -3595,12 +5836,18 @@ test.each(['resolution', 'rejection'] as const)(
     const teardown = generateMessage(store);
 
     const firstGeneration = store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('First'),
+        message: { role: 'user', content: 'First' },
+      }),
     );
     await firstSendStarted.promise;
     const firstRequest = send.mock.calls[0]?.[0] as TransportRequest;
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Second'),
+        message: { role: 'user', content: 'Second' },
+      }),
     );
     const actionsBeforeSettlement = [...store.actions];
     if (settlement === 'resolution') {
@@ -3656,7 +5903,10 @@ test('user stop before start has no terminal, no retry, and discards late events
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await waiting.promise;
   await store.trigger(devActions.stopMessageGeneration(true));
@@ -3688,7 +5938,10 @@ test('user stop while starting does not accept RUN_STARTED or add a terminal', a
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -3750,7 +6003,10 @@ test('user stop after start adds no terminal and finalizes once with stop', asyn
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await started.promise;
   await waitForDispatchedEvent(store.actions, EventType.RUN_STARTED);
@@ -3836,11 +6092,17 @@ test('superseding input retires the old run and only the new run finishes', asyn
   const teardown = generateMessage(store);
 
   const firstGeneration = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'First' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('First'),
+      message: { role: 'user', content: 'First' },
+    }),
   );
   await firstStarted.promise;
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Second' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Second'),
+      message: { role: 'user', content: 'Second' },
+    }),
   );
   await Promise.resolve();
 
@@ -3912,7 +6174,10 @@ test('effect teardown retires the run without a terminal event', async () => {
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await started.promise;
   teardown?.();
@@ -3977,7 +6242,10 @@ test.each(['iterator return', 'response disposal'] as const)(
     const teardown = generateMessage(store);
 
     await store.trigger(
-      devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Hi'),
+        message: { role: 'user', content: 'Hi' },
+      }),
     );
 
     expect(send).toHaveBeenCalledTimes(1);
@@ -4030,7 +6298,10 @@ test('cleanup rejections do not replace a protocol failure', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(
@@ -4090,7 +6361,10 @@ test('cleanup rejections do not replace user cancellation', async () => {
   const teardown = generateMessage(store);
 
   const generation = store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   await started.promise;
   await waitForDispatchedEvent(store.actions, EventType.RUN_STARTED);
@@ -4138,7 +6412,10 @@ test('missing events is retryable and disposes each response exactly once', asyn
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -4147,14 +6424,7 @@ test('missing events is retryable and disposes each response exactly once', asyn
   expect(removedFramesIterator).not.toHaveBeenCalled();
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
-  ).toEqual([
-    apiActions.generateMessageError(
-      new TransportError('Transport response did not provide an event stream', {
-        retryable: true,
-        code: 'PROTOCOL_ERROR',
-      }),
-    ),
-  ]);
+  ).toHaveLength(0);
   expect(
     getDispatchedTerminalEvents(store.actions).map((event) => event.type),
   ).toEqual([EventType.RUN_FINISHED]);
@@ -4194,7 +6464,10 @@ test('non-async-iterable events are a retryable protocol error', async () => {
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(2);
@@ -4202,14 +6475,7 @@ test('non-async-iterable events are a retryable protocol error', async () => {
   expect(secondDispose).toHaveBeenCalledTimes(1);
   expect(
     getActionsOfType(store.actions, apiActions.generateMessageError.type),
-  ).toEqual([
-    apiActions.generateMessageError(
-      new TransportError('Transport response did not provide an event stream', {
-        retryable: true,
-        code: 'PROTOCOL_ERROR',
-      }),
-    ),
-  ]);
+  ).toHaveLength(0);
   expect(
     getDispatchedTerminalEvents(store.actions).map((event) => event.type),
   ).toEqual([EventType.RUN_FINISHED]);
@@ -4232,7 +6498,10 @@ test('finish-time parser errors do not retry an accepted success terminal', asyn
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -4271,7 +6540,10 @@ test('accepted RUN_FINISHED remains successful when its dispatch triggers stop',
   const teardown = generateMessage(store);
 
   await store.trigger(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
 
   expect(send).toHaveBeenCalledTimes(1);
@@ -4286,6 +6558,365 @@ test('accepted RUN_FINISHED remains successful when its dispatch triggers stop',
   teardown?.();
 });
 
+test('real store commits terminal state when RUN_FINISHED dispatch reentrantly stops', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request, [
+      { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+      {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'assistant-terminal-stop',
+        role: 'assistant',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: 'assistant-terminal-stop',
+        delta: 'Done',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_END,
+        messageId: 'assistant-terminal-stop',
+      },
+    ]),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'Stop at terminal.' }],
+      canonicalMessages: canonicalUser('Stop at terminal.'),
+      state: { count: 0 },
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+  const unsubscribe = store.when(apiActions.generateMessageEvent, (action) => {
+    if (action.payload.type === EventType.RUN_FINISHED) {
+      store.dispatch(devActions.stopMessageGeneration(true));
+    }
+  });
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 9 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 9 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+
+  unsubscribe();
+  teardown();
+});
+
+test.each([
+  {
+    name: 'sendMessage',
+    startsReplacementAttempt: true,
+    trigger: (store: ReturnType<typeof createRealEffectStore>) =>
+      store.dispatch(
+        devActions.sendMessage({
+          canonicalMessages: canonicalUser('Second.'),
+          message: { role: 'user', content: 'Second.' },
+        }),
+      ),
+  },
+  {
+    name: 'setMessages',
+    startsReplacementAttempt: true,
+    trigger: (store: ReturnType<typeof createRealEffectStore>) =>
+      store.dispatch(
+        devActions.setMessages({
+          canonicalMessages: canonicalUser('Replacement.'),
+          messages: [{ role: 'user', content: 'Replacement.' }],
+        }),
+      ),
+  },
+  {
+    name: 'resendMessages',
+    startsReplacementAttempt: false,
+    trigger: (store: ReturnType<typeof createRealEffectStore>) =>
+      store.dispatch(devActions.resendMessages()),
+  },
+])(
+  'real store commits accepted terminal drafts before reentrant $name owns the store',
+  async ({ startsReplacementAttempt, trigger }) => {
+    jest.clearAllMocks();
+    const firstAttemptReady = createDeferred<void>();
+    const finishFirstAttempt = createDeferred<void>();
+    const replacementStarted = createDeferred<void>();
+    let sendCount = 0;
+    makeSelection(async (request) => {
+      sendCount++;
+      if (sendCount === 1) {
+        return {
+          events: (async function* () {
+            const identity = getInputIdentity(request);
+            yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+            yield {
+              type: EventType.STATE_SNAPSHOT,
+              snapshot: { count: 9 },
+            } as AGUIEvent;
+            yield {
+              type: EventType.TEXT_MESSAGE_START,
+              messageId: 'assistant-before-replacement',
+              role: 'assistant',
+            } as AGUIEvent;
+            yield {
+              type: EventType.TEXT_MESSAGE_CONTENT,
+              messageId: 'assistant-before-replacement',
+              delta: 'Complete',
+            } as AGUIEvent;
+            yield {
+              type: EventType.TEXT_MESSAGE_END,
+              messageId: 'assistant-before-replacement',
+            } as AGUIEvent;
+            firstAttemptReady.resolve();
+            await finishFirstAttempt.promise;
+            yield { type: EventType.RUN_FINISHED, ...identity } as AGUIEvent;
+          })(),
+        };
+      }
+
+      return {
+        events: (async function* () {
+          yield {
+            type: EventType.RUN_STARTED,
+            ...getInputIdentity(request),
+          } as AGUIEvent;
+          replacementStarted.resolve();
+          await waitForAbort(request.signal);
+        })(),
+      };
+    });
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'First.' }],
+        canonicalMessages: canonicalUser('First.'),
+        state: { count: 0 },
+        retries: 0,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const committedHistorySnapshots: (readonly Readonly<
+      import('@ag-ui/core').Message
+    >[])[] = [];
+    const projectedMessageSnapshots: (readonly Chat.Internal.Message[])[] = [];
+    const unsubscribeHistory = store.select(
+      ɵselectCommittedAgUiMessages,
+      (messages) => committedHistorySnapshots.push(messages),
+    );
+    const unsubscribeMessages = store.select(selectMessages, (messages) =>
+      projectedMessageSnapshots.push(messages),
+    );
+    const teardown = store.runEffects();
+    let successCount = 0;
+    const unsubscribeSuccess = store.when(
+      apiActions.generateMessageSuccess,
+      () => successCount++,
+    );
+    let superseded = false;
+    const unsubscribeTerminal = store.when(
+      apiActions.generateMessageEvent,
+      (action) => {
+        if (!superseded && action.payload.type === EventType.RUN_FINISHED) {
+          superseded = true;
+          trigger(store);
+        }
+      },
+    );
+    store.dispatch(internalActions.start());
+    await firstAttemptReady.promise;
+    const firstGenerationId = store.read(ɵselectGenerationId);
+    const firstAttemptId = store.read(ɵselectGenerationAttemptId);
+    finishFirstAttempt.resolve();
+    if (startsReplacementAttempt) {
+      await replacementStarted.promise;
+    } else {
+      await waitForStoreGenerationToSettle(store);
+    }
+
+    expect(successCount).toBe(1);
+    expect(firstGenerationId).toEqual(expect.any(String));
+    expect(firstAttemptId).toEqual(expect.any(String));
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 9 });
+    expect(
+      committedHistorySnapshots.some((messages) =>
+        messages.some(
+          (message) =>
+            message.role === 'assistant' && message.content === 'Complete',
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      projectedMessageSnapshots.some((messages) =>
+        messages.some(
+          (message) =>
+            message.role === 'assistant' && message.content === 'Complete',
+        ),
+      ),
+    ).toBe(true);
+    if (startsReplacementAttempt) {
+      expect(store.read(ɵselectGenerationId)).toEqual(expect.any(String));
+      expect(store.read(ɵselectGenerationId)).not.toBe(firstGenerationId);
+      expect(store.read(ɵselectGenerationAttemptId)).toEqual(
+        expect.any(String),
+      );
+      expect(store.read(ɵselectGenerationAttemptId)).not.toBe(firstAttemptId);
+      expect(store.read(ɵselectStateWriteLocked)).toBe(true);
+    } else {
+      expect(store.read(ɵselectGenerationId)).toBeUndefined();
+      expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+      expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    }
+
+    unsubscribeHistory();
+    unsubscribeMessages();
+    unsubscribeSuccess();
+    unsubscribeTerminal();
+    teardown();
+  },
+);
+
+test('real store ignores delayed cleanup from a superseded attempt', async () => {
+  jest.clearAllMocks();
+  const firstStarted = createDeferred<void>();
+  const oldCleanupStarted = createDeferred<void>();
+  const releaseOldCleanup = createDeferred<void>();
+  const oldCleanupFinished = createDeferred<void>();
+  const secondDraftReady = createDeferred<void>();
+  const finishSecond = createDeferred<void>();
+  let sendCount = 0;
+  makeSelection(async (request) => {
+    sendCount++;
+    const identity = getInputIdentity(request);
+    if (sendCount === 1) {
+      let index = 0;
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              async next(): Promise<IteratorResult<AGUIEvent>> {
+                index++;
+                if (index === 1) {
+                  firstStarted.resolve();
+                  return {
+                    done: false,
+                    value: { type: EventType.RUN_STARTED, ...identity },
+                  };
+                }
+                if (index === 2) {
+                  return {
+                    done: false,
+                    value: {
+                      type: EventType.STATE_SNAPSHOT,
+                      snapshot: { count: 1 },
+                    },
+                  };
+                }
+
+                return new Promise(() => undefined);
+              },
+              async return() {
+                oldCleanupStarted.resolve();
+                await releaseOldCleanup.promise;
+                oldCleanupFinished.resolve();
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+      };
+    }
+
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield {
+          type: EventType.STATE_SNAPSHOT,
+          snapshot: { count: 2 },
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-replacement',
+          role: 'assistant',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-replacement',
+          delta: 'Replacement',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-replacement',
+        } as AGUIEvent;
+        secondDraftReady.resolve();
+        await finishSecond.promise;
+        yield { type: EventType.RUN_FINISHED, ...identity } as AGUIEvent;
+      })(),
+    };
+  });
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'First.' }],
+      canonicalMessages: canonicalUser('First.'),
+      state: { count: 0 },
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await firstStarted.promise;
+  await flushTaskBoundary();
+  const firstGenerationId = store.read(ɵselectGenerationId);
+  const firstAttemptId = store.read(ɵselectGenerationAttemptId);
+  store.dispatch(
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Second.'),
+      message: { role: 'user', content: 'Second.' },
+    }),
+  );
+  await oldCleanupStarted.promise;
+  await secondDraftReady.promise;
+  const replacementGenerationId = store.read(ɵselectGenerationId);
+  const replacementAttemptId = store.read(ɵselectGenerationAttemptId);
+
+  releaseOldCleanup.resolve();
+  await oldCleanupFinished.promise;
+  await flushTaskBoundary();
+
+  expect(firstGenerationId).toEqual(expect.any(String));
+  expect(firstAttemptId).toEqual(expect.any(String));
+  expect(replacementGenerationId).toEqual(expect.any(String));
+  expect(replacementGenerationId).not.toBe(firstGenerationId);
+  expect(replacementAttemptId).toEqual(expect.any(String));
+  expect(store.read(ɵselectGenerationId)).toBe(replacementGenerationId);
+  expect(store.read(ɵselectGenerationAttemptId)).toBe(replacementAttemptId);
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 2 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(true);
+
+  finishSecond.resolve();
+  await waitForStoreGenerationToSettle(store);
+
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 2 });
+  expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 2 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+  expect(store.read(ɵselectGenerationId)).toBeUndefined();
+  expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+  teardown();
+});
+
 test('does not generate after a non-continuing tool settlement', async () => {
   jest.clearAllMocks();
   const { send } = makeSelection(async (request) => ({
@@ -4296,8 +6927,11 @@ test('does not generate after a non-continuing tool settlement', async () => {
 
   await store.trigger(
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'stop',
     }),
   );
@@ -4307,3 +6941,169 @@ test('does not generate after a non-continuing tool settlement', async () => {
 
   teardown?.();
 });
+
+test.each([
+  {
+    name: 'an invalid state delta',
+    invalidEvent: {
+      type: EventType.STATE_DELTA,
+      delta: 'not-a-json-patch',
+    } as unknown as AGUIEvent,
+  },
+  {
+    name: 'an invalid state snapshot',
+    invalidEvent: {
+      type: EventType.STATE_SNAPSHOT,
+      snapshot: BigInt(1),
+    } as unknown as AGUIEvent,
+  },
+  {
+    name: 'an incompatible message event',
+    invalidEvent: {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'user-Protocol failure.',
+      role: 'assistant',
+    } as AGUIEvent,
+  },
+  {
+    name: 'an invalid message snapshot',
+    invalidEvent: {
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: {},
+    } as unknown as AGUIEvent,
+  },
+])(
+  'terminates $name without retrying and rolls back every synchronization draft',
+  async ({ invalidEvent }) => {
+    jest.clearAllMocks();
+    const cleanupOrder: string[] = [];
+    const initialCanonical = canonicalUser('Protocol failure.');
+    let requestSignal: AbortSignal | undefined;
+    const { send } = makeSelection(async (request) => {
+      requestSignal = request.signal;
+      const identity = getInputIdentity(request);
+      const events: AGUIEvent[] = [
+        { type: EventType.RUN_STARTED, ...identity },
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 1 } },
+        {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-draft',
+          role: 'assistant',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-draft',
+          delta: 'Draft',
+        },
+        invalidEvent,
+        { type: EventType.STATE_SNAPSHOT, snapshot: { count: 9 } },
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-draft',
+          delta: ' ignored later',
+        },
+        {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-draft',
+        },
+        { type: EventType.RUN_FINISHED, ...identity },
+      ];
+      const values = events[Symbol.iterator]();
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => values.next(),
+              return: async () => {
+                cleanupOrder.push('iterator:return');
+                return { done: true as const, value: undefined };
+              },
+            };
+          },
+        },
+        dispose: jest.fn(() => {
+          cleanupOrder.push('response:dispose');
+        }),
+      };
+    });
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        messages: [{ role: 'user', content: 'Protocol failure.' }],
+        canonicalMessages: initialCanonical,
+        state: { count: 0 },
+        retries: 2,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const teardown = store.runEffects();
+    const errors: Error[] = [];
+    const observedEvents: AGUIEvent[] = [];
+    let exhaustedRetries = 0;
+    const unsubscribeError = store.when(
+      apiActions.generateMessageError,
+      (action) => {
+        cleanupOrder.push('terminal:error');
+        errors.push(action.payload);
+      },
+    );
+    const unsubscribeEvent = store.when(
+      apiActions.generateMessageEvent,
+      (action) => observedEvents.push(action.payload),
+    );
+    const unsubscribeExhausted = store.when(
+      apiActions.generateMessageExhaustedRetries,
+      () => exhaustedRetries++,
+    );
+
+    store.dispatch(internalActions.start());
+    await waitForStoreGenerationToSettle(store);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      name: 'TransportError',
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    expect(exhaustedRetries).toBe(0);
+    expect(cleanupOrder).toEqual([
+      'iterator:return',
+      'response:dispose',
+      'terminal:error',
+    ]);
+    expect(requestSignal?.aborted).toBe(false);
+    expect(observedEvents).not.toContainEqual(
+      expect.objectContaining({
+        type: EventType.STATE_SNAPSHOT,
+        snapshot: { count: 9 },
+      }),
+    );
+    expect(observedEvents).not.toContainEqual(
+      expect.objectContaining({
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        delta: ' ignored later',
+      }),
+    );
+    expect(observedEvents).not.toContainEqual(
+      expect.objectContaining({ type: EventType.RUN_FINISHED }),
+    );
+    expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectVisibleAgentState)).toEqual({ count: 0 });
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(ɵselectVisibleAgUiMessages)).toEqual(initialCanonical);
+    expect(store.read(selectRawStreamingMessage)).toBeNull();
+    expect(store.read(selectRawStreamingToolCalls)).toEqual([]);
+    expect(store.read(ɵselectStateWriteLocked)).toBe(false);
+    expect(store.read(ɵselectGenerationId)).toBeUndefined();
+    expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+    unsubscribeError();
+    unsubscribeEvent();
+    unsubscribeExhausted();
+    teardown();
+  },
+);

@@ -20,10 +20,14 @@ import {
  * Options for the `useUiCompletion` hook.
  *
  * @public
+ * @typeParam Input - The type of the input to predict from.
+ * @typeParam Tools - The set of tool definitions available to the completion.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
 export interface UiCompletionOptions<
   Input,
   Tools extends Chat.AnyTool = Chat.AnyTool,
+  State = unknown,
 > {
   /**
    * The input for the completion.
@@ -39,6 +43,11 @@ export interface UiCompletionOptions<
    * The components that can be rendered by the completion.
    */
   components: UiKitInput<ExposedComponent<any>>[];
+
+  /**
+   * The initial shared agent state.
+   */
+  state?: State;
   /**
    * Optional prompt-based UI examples to include in the wrapper schema description.
    */
@@ -79,11 +88,13 @@ export interface UiCompletionOptions<
  * The result of the `useUiCompletion` hook.
  *
  * @public
+ * @typeParam Tools - The set of tool definitions available to the completion.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UseUiCompletionResult<Tools extends Chat.AnyTool> extends Omit<
-  UseStructuredCompletionResult<UiChatSchema>,
-  'output'
-> {
+export interface UseUiCompletionResult<
+  Tools extends Chat.AnyTool,
+  State = unknown,
+> extends Omit<UseStructuredCompletionResult<UiChatSchema, State>, 'output'> {
   /**
    * The assistant message that contains the rendered UI elements.
    */
@@ -106,13 +117,17 @@ export interface UseUiCompletionResult<Tools extends Chat.AnyTool> extends Omit<
  * A React hook that generates UI completions using the provided component set.
  *
  * @public
+ * @typeParam Input - The type of the input to predict from.
+ * @typeParam Tools - The set of tool definitions available to the completion.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
 export const useUiCompletion = <
   Input,
   Tools extends Chat.AnyTool = Chat.AnyTool,
+  State = unknown,
 >(
-  options: UiCompletionOptions<Input, Tools>,
-): UseUiCompletionResult<Tools> => {
+  options: UiCompletionOptions<Input, Tools, State>,
+): UseUiCompletionResult<Tools, State> => {
   const {
     components: initialComponents,
     examples,
@@ -141,7 +156,7 @@ export const useUiCompletion = <
     return compiled;
   }, [system, uiSchema, uiKit.components]);
 
-  const structured = useStructuredCompletion<Input, typeof uiSchema>({
+  const structured = useStructuredCompletion<Input, typeof uiSchema, State>({
     ...completionOptions,
     schema: uiSchema as any,
     system: systemAsString,

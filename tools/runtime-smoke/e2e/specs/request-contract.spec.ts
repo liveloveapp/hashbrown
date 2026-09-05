@@ -96,6 +96,21 @@ function observePostRequests(page: Page): ObservedPostRequest[] {
   return requests;
 }
 
+/** Asserts that canonical message and tool-call identities are opaque and unique. */
+function expectOpaqueCanonicalIds(
+  messages: HashbrownRunInput['messages'],
+): void {
+  const ids = messages.flatMap((message) => [
+    message.id,
+    ...(message.role === 'assistant'
+      ? (message.toolCalls ?? []).map((toolCall) => toolCall.id)
+      : []),
+  ]);
+
+  expect(ids.every((id) => id.length > 0)).toBe(true);
+  expect(new Set(ids).size).toBe(ids.length);
+}
+
 test('sends the exact plain AG-UI request contract across explicit sends', async ({
   page,
   aimock,
@@ -160,57 +175,59 @@ test('sends the exact plain AG-UI request contract across explicit sends', async
   if (!firstInput || !secondInput) {
     throw new Error('Expected two captured plain run inputs.');
   }
+  const [systemMessage, firstUserMessage] = firstInput.messages;
+  const secondUserMessage = secondInput.messages[3];
+  if (
+    systemMessage?.role !== 'system' ||
+    firstUserMessage?.role !== 'user' ||
+    secondUserMessage?.role !== 'user'
+  ) {
+    throw new Error('Expected local system and user messages.');
+  }
   expect(secondInput.threadId).toBe(firstInput.threadId);
   expect(secondInput.runId).not.toBe(firstInput.runId);
+  expectOpaqueCanonicalIds(firstInput.messages);
+  expectOpaqueCanonicalIds(secondInput.messages);
+  expect(secondInput.messages.slice(0, firstInput.messages.length)).toEqual(
+    firstInput.messages,
+  );
   expect(firstInput).toEqual({
     threadId: firstInput.threadId,
     runId: firstInput.runId,
     messages: [
       {
-        id: `${firstInput.threadId}:system`,
+        id: systemMessage.id,
         role: 'system',
         content: 'Runtime smoke system prompt.',
       },
       {
-        id: `${firstInput.threadId}:message:0`,
+        id: firstUserMessage.id,
         role: 'user',
         content: 'First contract prompt',
       },
     ],
     tools: [],
     context: [],
-    state: {},
     forwardedProps: {},
   });
   expect(secondInput).toEqual({
     threadId: firstInput.threadId,
     runId: secondInput.runId,
     messages: [
+      ...firstInput.messages,
       {
-        id: `${firstInput.threadId}:system`,
-        role: 'system',
-        content: 'Runtime smoke system prompt.',
-      },
-      {
-        id: `${firstInput.threadId}:message:0`,
-        role: 'user',
-        content: 'First contract prompt',
-      },
-      {
-        id: `${firstInput.threadId}:message:1`,
+        id: 'plain-request-contract-0',
         role: 'assistant',
         content: 'First deterministic response.',
-        toolCalls: [],
       },
       {
-        id: `${firstInput.threadId}:message:2`,
+        id: secondUserMessage.id,
         role: 'user',
         content: 'Second contract prompt',
       },
     ],
     tools: [],
     context: [],
-    state: {},
     forwardedProps: {},
   });
   await hygiene.assertClean();
@@ -265,24 +282,28 @@ test('sends the exact structured AG-UI request contract', async ({
   if (!input) {
     throw new Error('Expected one captured structured run input.');
   }
+  const [systemMessage, userMessage] = input.messages;
+  if (systemMessage?.role !== 'system' || userMessage?.role !== 'user') {
+    throw new Error('Expected local system and user messages.');
+  }
+  expectOpaqueCanonicalIds(input.messages);
   expect(input).toEqual({
     threadId: input.threadId,
     runId: input.runId,
     messages: [
       {
-        id: `${input.threadId}:system`,
+        id: systemMessage.id,
         role: 'system',
         content: 'Runtime smoke system prompt.',
       },
       {
-        id: `${input.threadId}:message:0`,
+        id: userMessage.id,
         role: 'user',
         content: 'Return structured contract',
       },
     ],
     tools: [],
     context: [],
-    state: {},
     forwardedProps: {},
     hashbrown: { responseSchema: expectedStructuredJsonSchema },
   });
@@ -337,24 +358,28 @@ test('sends the exact generative UI AG-UI request contract', async ({
   if (!input) {
     throw new Error('Expected one captured generative UI run input.');
   }
+  const [systemMessage, userMessage] = input.messages;
+  if (systemMessage?.role !== 'system' || userMessage?.role !== 'user') {
+    throw new Error('Expected local system and user messages.');
+  }
+  expectOpaqueCanonicalIds(input.messages);
   expect(input).toEqual({
     threadId: input.threadId,
     runId: input.runId,
     messages: [
       {
-        id: `${input.threadId}:system`,
+        id: systemMessage.id,
         role: 'system',
         content: 'Runtime smoke system prompt.',
       },
       {
-        id: `${input.threadId}:message:0`,
+        id: userMessage.id,
         role: 'user',
         content: 'Render contract status',
       },
     ],
     tools: [],
     context: [],
-    state: {},
     forwardedProps: {},
     hashbrown: { ui: true, responseSchema: expectedUiSchema },
   });

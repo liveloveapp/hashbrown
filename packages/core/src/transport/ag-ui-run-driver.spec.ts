@@ -5,7 +5,7 @@ import type {
   TransportResponse,
 } from './transport';
 import { TransportError } from './transport-error';
-import { createHashbrownRunAgentInput } from './hashbrown-run-agent-input';
+import { createCanonicalRunAgentInput } from './hashbrown-run-agent-input';
 import { runAgUiAttempt } from './ag-ui-run-driver';
 
 function createDeferred<T>() {
@@ -24,10 +24,11 @@ function createRequest(): TransportRequest {
   const runId = 'run-id';
 
   return {
-    input: createHashbrownRunAgentInput({
+    input: createCanonicalRunAgentInput({
       threadId,
       runId,
       messages: [],
+      state: undefined,
       tools: [],
     }),
     signal: new AbortController().signal,
@@ -80,8 +81,8 @@ function runAttempt({
   request?: TransportRequest;
   cancelSignal?: AbortSignal;
   retiredSignal?: AbortSignal;
-  onStarted?: () => void;
-  onEvent?: (event: AGUIEvent) => void;
+  onStarted?: () => void | Promise<void>;
+  onEvent?: (event: AGUIEvent) => void | Promise<void>;
 }) {
   return runAgUiAttempt({
     transport,
@@ -700,3 +701,75 @@ test('cleans up a terminal response exactly once', async () => {
   expect(iteratorReturn).toHaveBeenCalledTimes(1);
   expect(dispose).toHaveBeenCalledTimes(1);
 });
+
+test.each([
+  { callback: 'onStarted', failure: 'throws' },
+  { callback: 'onStarted', failure: 'rejects' },
+  { callback: 'onEvent', failure: 'throws' },
+  { callback: 'onEvent', failure: 'rejects' },
+] as const)(
+  'classifies an $callback callback that $failure as a non-retryable protocol error after cleanup',
+  async ({ callback, failure }) => {
+    const request = createRequest();
+    const callbackError = new Error(`${callback} failed`);
+    const events = [createStarted(request), createFinished(request)];
+    const values = events[Symbol.iterator]();
+    const order: string[] = [];
+    const iteratorReturn = jest.fn(async () => {
+      order.push('iterator:return');
+      return { done: true as const, value: undefined };
+    });
+    const dispose = jest.fn(() => {
+      order.push('response:dispose');
+    });
+    const transport = createTransport(async () => ({
+      events: {
+        [Symbol.asyncIterator]() {
+          return {
+            next: async () => values.next(),
+            return: iteratorReturn,
+          };
+        },
+      },
+      dispose,
+    }));
+    const onStarted = jest.fn(() => {
+      if (callback === 'onStarted') {
+        if (failure === 'rejects') {
+          return Promise.reject(callbackError);
+        }
+        throw callbackError;
+      }
+
+      return undefined;
+    });
+    const onEvent = jest.fn(() => {
+      if (callback === 'onEvent') {
+        if (failure === 'rejects') {
+          return Promise.reject(callbackError);
+        }
+        throw callbackError;
+      }
+
+      return undefined;
+    });
+
+    const attempt = runAttempt({
+      transport,
+      request,
+      onStarted,
+      onEvent,
+    });
+
+    await expect(attempt).rejects.toMatchObject({
+      name: 'TransportError',
+      message: callbackError.message,
+      retryable: false,
+      code: 'PROTOCOL_ERROR',
+    });
+    expect(order).toEqual(['iterator:return', 'response:dispose']);
+    expect(iteratorReturn).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(request.signal.aborted).toBe(false);
+  },
+);

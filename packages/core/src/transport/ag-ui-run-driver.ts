@@ -27,8 +27,8 @@ export interface RunAgUiAttemptOptions {
   request: TransportRequest;
   cancelSignal: AbortSignal;
   retiredSignal: AbortSignal;
-  onStarted: () => void;
-  onEvent: (event: AGUIEvent) => void;
+  onStarted: () => void | Promise<void>;
+  onEvent: (event: AGUIEvent) => void | Promise<void>;
 }
 
 type InterruptionOutcome = Extract<
@@ -215,7 +215,7 @@ async function consumeResponse({
           );
         }
 
-        onStarted();
+        await invokeCallback(onStarted);
         const interruptionAfterStarted = getInterruption(
           retiredSignal,
           cancelSignal,
@@ -225,7 +225,7 @@ async function consumeResponse({
         }
 
         started = true;
-        onEvent(event);
+        await invokeCallback(() => onEvent(event));
         continue;
       }
 
@@ -243,16 +243,16 @@ async function consumeResponse({
           );
         }
 
-        onEvent(event);
+        await invokeCallback(() => onEvent(event));
         return { kind: 'finished' };
       }
 
       if (event.type === EventType.RUN_ERROR) {
-        onEvent(event);
+        await invokeCallback(() => onEvent(event));
         return { kind: 'server-error', error: new Error(event.message) };
       }
 
-      onEvent(event);
+      await invokeCallback(() => onEvent(event));
     }
   } finally {
     await cleanup();
@@ -355,4 +355,28 @@ function protocolError(message: string): TransportError {
     retryable: true,
     code: 'PROTOCOL_ERROR',
   });
+}
+
+async function invokeCallback(
+  callback: () => void | Promise<void>,
+): Promise<void> {
+  try {
+    await callback();
+  } catch (error) {
+    if (
+      error instanceof TransportError &&
+      error.code === 'PROTOCOL_ERROR' &&
+      !error.retryable
+    ) {
+      throw error;
+    }
+
+    throw new TransportError(
+      error instanceof Error ? error.message : 'AG-UI callback failed',
+      {
+        retryable: false,
+        code: 'PROTOCOL_ERROR',
+      },
+    );
+  }
 }

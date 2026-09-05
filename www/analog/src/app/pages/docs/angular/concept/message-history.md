@@ -20,6 +20,16 @@ Use message history when you want to:
 
 ---
 
+## Public History and AG-UI Checkpoints
+
+`chat.value()` remains Hashbrown's opinionated public view of the conversation. When an AG-UI agent sends a message checkpoint, Hashbrown retains the complete canonical AG-UI history internally and uses it for subsequent requests. Stable message IDs, metadata, and roles that do not have a Hashbrown public representation remain in that internal checkpoint.
+
+The public view continues to use Hashbrown's existing message shapes: user and assistant messages remain familiar, reasoning is correlated with assistant messages, and tool results settle their corresponding tool calls. Canonical system, developer, and activity messages are not added to `chat.value()`. The internal canonical history is not exposed as a separate public API.
+
+Shared state is synchronized independently from message history. See [Shared Agent State](/docs/angular/concept/shared-agent-state) when your application and agent need to exchange structured state snapshots and deltas.
+
+---
+
 ## Initialize with Stored Messages
 
 Pass `messages` when you create the resource. Hashbrown uses this array as the initial chat history.
@@ -184,6 +194,15 @@ Use [Threads](/docs/angular/recipes/threads) when you want the server to own per
     <div>
       <h4>System Instructions</h4>
       <p>Keep durable behavior and constraints outside message history.</p>
+    </div>
+  </hb-next-step>
+  <hb-next-step link="concept/shared-agent-state">
+    <div>
+      <hb-database-cog />
+    </div>
+    <div>
+      <h4>Shared Agent State</h4>
+      <p>Synchronize structured application state with an AG-UI agent.</p>
     </div>
   </hb-next-step>
 </hb-next-steps>

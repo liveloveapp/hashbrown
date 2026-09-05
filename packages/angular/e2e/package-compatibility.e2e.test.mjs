@@ -130,12 +130,23 @@ test(
         join(sandboxPath, 'consumer.ts'),
         `
           import type {
+            ChatResourceOptions,
             ProvideHashbrownOptions,
             StructuredChatResourceOptions,
             StructuredCompletionResourceOptions,
             UiChatResourceOptions,
             UiCompletionResourceOptions,
           } from '@hashbrownai/angular';
+          import {
+            chatResource,
+            completionResource,
+            structuredChatResource,
+            structuredCompletionResource,
+            uiChatResource,
+            uiCompletionResource,
+          } from '@hashbrownai/angular';
+          import { signal } from '@angular/core';
+          import { s } from '@hashbrownai/core';
 
           declare const providerOptions: ProvideHashbrownOptions;
           declare const structuredChatOptions: StructuredChatResourceOptions<any, any>;
@@ -153,6 +164,54 @@ test(
           uiChatOptions.structuredOutput;
           // @ts-expect-error Structured-output modes are owned by the server adapter.
           uiCompletionOptions.structuredOutput;
+
+          const state = { accountId: 'account-1' };
+          const schema = s.object('result', {
+            answer: s.string('answer'),
+          });
+          const input = signal<string | null>('question');
+
+          const chat = chatResource({ system: 'system', state });
+          const completion = completionResource({ input, system: 'system', state });
+          const structuredChat = structuredChatResource({
+            schema,
+            system: 'system',
+            state,
+          });
+          const structuredCompletion = structuredCompletionResource({
+            input,
+            schema,
+            system: 'system',
+            state,
+          });
+          const uiChat = uiChatResource({
+            components: [],
+            system: 'system',
+            state,
+          });
+          const uiCompletion = uiCompletionResource({
+            components: [],
+            input,
+            system: 'system',
+            state,
+          });
+
+          chat.state()?.accountId;
+          completion.state()?.accountId;
+          structuredChat.state()?.accountId;
+          structuredCompletion.state()?.accountId;
+          uiChat.state()?.accountId;
+          uiCompletion.state()?.accountId;
+          uiCompletion.setState({ accountId: 'account-2' });
+          // @ts-expect-error Inferred state rejects an incompatible setter value.
+          uiCompletion.setState({ accountId: 2 });
+
+          const invalidReactiveState: ChatResourceOptions<never, typeof state> = {
+            system: 'system',
+            // @ts-expect-error Shared state is a plain initial value, not a reactive option.
+            state: signal(state),
+          };
+          void invalidReactiveState;
         `,
       );
       const compileArgs = [

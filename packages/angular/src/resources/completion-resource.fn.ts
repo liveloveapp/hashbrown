@@ -28,8 +28,15 @@ import {
  * A reference to the completion resource.
  *
  * @public
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
-export interface CompletionResourceRef extends Resource<string | null> {
+export interface CompletionResourceRef<State = unknown> extends Resource<
+  string | null
+> {
+  /** The currently visible shared agent state. */
+  readonly state: Signal<State | undefined>;
+  /** Replace shared agent state without starting a generation. */
+  setState(state: State): void;
   /**
    * Reloads the resource.
    *
@@ -62,8 +69,10 @@ export interface CompletionResourceRef extends Resource<string | null> {
  * Options for the completion resource.
  *
  * @public
+ * @typeParam Input - The type of completion input.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
-export interface CompletionResourceOptions<Input> {
+export interface CompletionResourceOptions<Input, State = unknown> {
   /**
    * The input to the completion.
    */
@@ -73,6 +82,9 @@ export interface CompletionResourceOptions<Input> {
    * The system prompt to use for the completion.
    */
   system: ReactiveOption<string>;
+
+  /** The initial shared agent state. */
+  state?: State;
 
   /**
    * The API URL to use for the completion.
@@ -101,11 +113,12 @@ export interface CompletionResourceOptions<Input> {
  * @public
  * @param options - The options for the completion resource.
  * @typeParam Input - The type of the input to the completion.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  * @returns The completion resource.
  */
-export function completionResource<Input>(
-  options: CompletionResourceOptions<Input>,
-): CompletionResourceRef {
+export function completionResource<Input, State = unknown>(
+  options: CompletionResourceOptions<Input, State>,
+): CompletionResourceRef<State> {
   const { input, system } = options;
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
@@ -126,6 +139,7 @@ export function completionResource<Input>(
   const runtime = createChatRuntime({
     debugName: options.debugName,
     system: readReactiveOption(system),
+    state: options.state,
     messages: [],
     tools: [],
     retries: 3,
@@ -157,6 +171,7 @@ export function completionResource<Input>(
   });
 
   const messages = toNgSignal(runtime.messages);
+  const state = toNgSignal(runtime.state);
   const isReceiving = toNgSignal(runtime.isReceiving);
   const isSending = toNgSignal(runtime.isSending);
   const isGenerating = toNgSignal(runtime.isGenerating);
@@ -264,7 +279,7 @@ export function completionResource<Input>(
     return true;
   };
 
-  function hasValue(this: CompletionResourceRef) {
+  function hasValue(this: CompletionResourceRef<State>) {
     return status() !== 'error' && rawValue() !== null;
   }
 
@@ -273,6 +288,8 @@ export function completionResource<Input>(
   }
 
   return {
+    state,
+    setState: (nextState: State) => runtime.setState(nextState),
     value,
     snapshot,
     status,

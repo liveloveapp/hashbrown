@@ -31,8 +31,12 @@ export type UiChatMessageOutput = s.ObjectType<{
  *
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
-export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
+export interface UiChatResourceOptions<
+  Tools extends Chat.AnyTool,
+  State = unknown,
+> {
   /**
    * The components to use for the UI chat resource.
    */
@@ -53,6 +57,9 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
    * @typeParam Tools - The set of tool definitions available to the chat.
    */
   messages?: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[];
+
+  /** The initial shared agent state. */
+  state?: State;
 
   /**
    * The tools to use for the UI chat resource.
@@ -91,10 +98,17 @@ export interface UiChatResourceOptions<Tools extends Chat.AnyTool> {
  * A reference to the UI chat resource.
  *
  * @public
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
-export interface UiChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
-  UiChatMessage<Tools>[]
-> {
+export interface UiChatResourceRef<
+  Tools extends Chat.AnyTool,
+  State = unknown,
+> extends Resource<UiChatMessage<Tools>[]> {
+  /** The currently visible shared agent state. */
+  readonly state: Signal<State | undefined>;
+  /** Replace shared agent state without starting a generation. */
+  setState(state: State): void;
   /**
    * Send a new user message to the chat.
    *
@@ -126,10 +140,12 @@ export interface UiChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
  * @public
  * @param args - The arguments for the UI chat resource.
  * @returns The UI chat resource.
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
-export function uiChatResource<Tools extends Chat.AnyTool>(
-  args: UiChatResourceOptions<Tools>,
-): UiChatResourceRef<Tools> {
+export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
+  args: UiChatResourceOptions<Tools, State>,
+): UiChatResourceRef<Tools, State> {
   const uiKit = createUiKit<ExposedComponent<any>>({
     components: args.components,
     examples: args.examples,
@@ -153,6 +169,7 @@ export function uiChatResource<Tools extends Chat.AnyTool>(
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
     system: systemAsString,
+    state: args.state,
     messages: [...(args.messages ?? [])],
     debugName: args.debugName,
     debounce: args.debounce,

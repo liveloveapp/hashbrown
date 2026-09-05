@@ -1,7 +1,7 @@
 import {
   Chat,
-  createChatRuntime,
   type ChatRuntime,
+  createChatRuntime,
   s,
   type TransportOrFactory,
 } from '@hashbrownai/core';
@@ -23,11 +23,13 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
  * @typeParam Schema - The schema to use for the chat.
  * @typeParam Tools - The set of tool definitions available to the chat.
  * @typeParam Output - The type of the output from the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
 export interface UseStructuredChatOptions<
   Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
+  State = unknown,
 > {
   /**
    * The system message to use for the chat.
@@ -44,6 +46,11 @@ export interface UseStructuredChatOptions<
    * default: 1.0
    */
   messages?: Chat.Message<Output, Tools>[];
+
+  /**
+   * The initial shared agent state.
+   */
+  state?: State;
   /**
    * The tools to make available use for the chat.
    * default: []
@@ -89,8 +96,24 @@ export interface UseStructuredChatOptions<
  * @public
  * @typeParam Output - The type of the output from the chat.
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UseStructuredChatResult<Output, Tools extends Chat.AnyTool> {
+export interface UseStructuredChatResult<
+  Output,
+  Tools extends Chat.AnyTool,
+  State = unknown,
+> {
+  /**
+   * The currently visible shared agent state.
+   */
+  readonly state: State | undefined;
+
+  /**
+   * Replaces the shared agent state without starting a generation.
+   * @param state - The next shared agent state.
+   */
+  setState(state: State): void;
+
   /**
    * An array of chat messages.
    */
@@ -205,9 +228,10 @@ export function useStructuredChat<
   Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
+  State = unknown,
 >(
-  options: UseStructuredChatOptions<Schema, Tools, Output>,
-): UseStructuredChatResult<Output, Tools> {
+  options: UseStructuredChatOptions<Schema, Tools, Output, State>,
+): UseStructuredChatResult<Output, Tools, State> {
   const config = useContext(HashbrownContext);
 
   if (!config) {
@@ -222,13 +246,14 @@ export function useStructuredChat<
   );
 
   const [schema] = useState<Schema>(options.schema);
-  const runtimeRef = useRef<ChatRuntime<Output, Tools> | null>(null);
+  const runtimeRef = useRef<ChatRuntime<Output, Tools, State> | null>(null);
 
   if (!runtimeRef.current) {
-    runtimeRef.current = createChatRuntime<Schema, Tools, Output>({
+    runtimeRef.current = createChatRuntime<Schema, Tools, Output, State>({
       system: options.system,
       responseSchema: schema,
       messages: [...(options.messages ?? [])],
+      state: options.state,
       tools,
       debugName: options.debugName,
       debounce: options.debounceTime,
@@ -280,6 +305,7 @@ export function useStructuredChat<
   ]);
 
   const internalMessages = useHashbrownSignal(runtimeRef.current.messages);
+  const state = useHashbrownSignal(runtimeRef.current.state);
   const isReceiving = useHashbrownSignal(runtimeRef.current.isReceiving);
   const isSending = useHashbrownSignal(runtimeRef.current.isSending);
   const isGenerating = useHashbrownSignal(runtimeRef.current.isGenerating);
@@ -314,6 +340,10 @@ export function useStructuredChat<
     getRuntime().setMessages(messages);
   }, []);
 
+  const setState = useCallback((state: State) => {
+    getRuntime().setState(state);
+  }, []);
+
   const reload = useCallback(() => {
     const lastMessage = internalMessages[internalMessages.length - 1];
 
@@ -327,6 +357,8 @@ export function useStructuredChat<
   }, [internalMessages]);
 
   return {
+    state,
+    setState,
     messages: internalMessages,
     stop,
     sendMessage,

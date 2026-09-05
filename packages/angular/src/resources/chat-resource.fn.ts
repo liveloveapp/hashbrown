@@ -34,12 +34,18 @@ import {
  *
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  * @param sendMessage - Send a new user message to the chat.
  * @param reload - Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
  */
-export interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
-  Chat.Message<string, Tools>[]
-> {
+export interface ChatResourceRef<
+  Tools extends Chat.AnyTool,
+  State = unknown,
+> extends Resource<Chat.Message<string, Tools>[]> {
+  /** The currently visible shared agent state. */
+  readonly state: Signal<State | undefined>;
+  /** Replace shared agent state without starting a generation. */
+  setState(state: State): void;
   /** Indicates whether the chat is currently receiving tokens. */
   isReceiving: Signal<boolean>;
   /** Indicates whether the chat is currently sending a user message. */
@@ -102,8 +108,13 @@ export interface ChatResourceRef<Tools extends Chat.AnyTool> extends Resource<
  * @param debounce - Optional debounce interval in milliseconds between user inputs.
  * @param debugName - Optional name used for debugging in logs.
  * @param apiUrl - Optional override for the API base URL.
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
-export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
+export interface ChatResourceOptions<
+  Tools extends Chat.AnyTool,
+  State = unknown,
+> {
   /**
    * The system prompt to use for the chat.
    */
@@ -123,6 +134,9 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
    */
   messages?:
     Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>;
+
+  /** The initial shared agent state. */
+  state?: State;
 
   /**
    * The debounce time for the chat.
@@ -161,6 +175,7 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
  * @param options - Configuration for the chat resource.
  * @returns An object with reactive signals and methods for interacting with the chat.
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  * @example
  * This example demonstrates how to use the `chatResource` function to create a simple chat component.
  *
@@ -172,9 +187,9 @@ export interface ChatResourceOptions<Tools extends Chat.AnyTool> {
  * chat.sendMessage(\{ role: 'user', content: 'Write a short story about breakfast.' \});
  * ```
  */
-export function chatResource<Tools extends Chat.AnyTool>(
-  options: ChatResourceOptions<Tools>,
-): ChatResourceRef<Tools> {
+export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
+  options: ChatResourceOptions<Tools, State>,
+): ChatResourceRef<Tools, State> {
   const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
@@ -193,6 +208,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     });
   const runtime = createChatRuntime({
     system: readReactiveOption(options.system),
+    state: options.state,
     messages: options.messages ? [...readSignalLike(options.messages)] : [],
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     debugName: options.debugName,
@@ -227,6 +243,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
   const rawValue = toNgSignal(
     runtime.messages,
     options.debugName && `${options.debugName}.rawValue`,
+  );
+  const state = toNgSignal(
+    runtime.state,
+    options.debugName && `${options.debugName}.state`,
   );
   const isReceiving = toNgSignal(
     runtime.isReceiving,
@@ -327,6 +347,10 @@ export function chatResource<Tools extends Chat.AnyTool>(
     runtime.setMessages(messages);
   }
 
+  function setState(nextState: State) {
+    runtime.setState(nextState);
+  }
+
   function stop(clearStreamingMessage = false) {
     runtime.stop(clearStreamingMessage);
   }
@@ -335,6 +359,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     hasValue: hasValue as any,
     snapshot,
     status,
+    state,
     isReceiving,
     isSending,
     isGenerating,
@@ -345,6 +370,7 @@ export function chatResource<Tools extends Chat.AnyTool>(
     reload,
     sendMessage,
     setMessages,
+    setState,
     stop,
     value,
     error,

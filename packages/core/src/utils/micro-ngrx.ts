@@ -1,10 +1,19 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+/** Collects actions and local commit work for an atomic follow-up batch. */
+export interface DispatchFollowUpBatch {
+  /** Adds one action to the atomic follow-up batch. */
+  dispatch: (action: AnyAction) => void;
+  /** Registers local work that runs after the batch commits, before observers. */
+  onCommit: (callback: () => void) => void;
+}
+
 /**
  * Represents a minimal Redux-like store.
  * @typeParam State - The shape of the store's state.
  * @param dispatch - Dispatches an action to update state.
+ * @param dispatchAndWait - Dispatches an action and observes action-task errors.
  * @param select - Selects a slice of state using a selector function.
  * @param when - Registers a callback for one or more action types.
  * @param whenOnce - Registers a one-time callback for action types.
@@ -12,6 +21,21 @@
  */
 export interface Store<State> {
   dispatch: (action: AnyAction) => void;
+  /**
+   * Dispatches one action through the trampoline and settles after its action
+   * task runs, rejecting with preparation, reducer, or listener failures. An
+   * optional completion callback runs only after the primary action completes
+   * successfully. Follow-up actions are reduced as one atomic batch ahead of
+   * work queued reentrantly by the primary action. Preparation or reducer
+   * failures reject without committing or notifying. After a successful batch
+   * commit, local commit callbacks run before observers. Observer failures
+   * surface like ordinary dispatch errors without rejecting or blocking later
+   * follow-up notifications.
+   */
+  dispatchAndWait: (
+    action: AnyAction,
+    onComplete?: (followUps: DispatchFollowUpBatch) => void,
+  ) => Promise<void>;
   read: <T>(selector: (state: State) => T) => T;
   select: <T>(
     selector: (state: State) => T,
@@ -45,17 +69,41 @@ export interface Scheduler {
   cancelTask(id: number): void;
 }
 
+function surfaceErrorAsynchronously(error: unknown): void {
+  setTimeout(() => {
+    throw error;
+  }, 0);
+}
+
+function safelySurfaceError(
+  surfaceError: (error: unknown) => void,
+  error: unknown,
+): void {
+  try {
+    surfaceError(error);
+  } catch (surfacingError) {
+    surfaceErrorAsynchronously(surfacingError);
+  }
+}
+
 /**
  * Synchronous “trampoline” scheduler.
  *
  * All work executes in the same macrotask, but stack-safe:
  * tasks scheduled from inside other tasks are queued
  * and processed after the current one finishes.
+ * @param surfaceError - Reports task errors without interrupting queue draining.
  */
 export class TrampolineScheduler implements Scheduler {
   private nextId = 0;
   private queue = new Map<number, () => void>();
   private active = false;
+
+  constructor(
+    private readonly surfaceError: (
+      error: unknown,
+    ) => void = surfaceErrorAsynchronously,
+  ) {}
 
   private flush(): void {
     if (this.active) return;
@@ -72,11 +120,7 @@ export class TrampolineScheduler implements Scheduler {
       try {
         task();
       } catch (err) {
-        // Surface errors asynchronously so one failure
-        // doesn’t prevent later tasks from running
-        setTimeout(() => {
-          throw err;
-        }, 0);
+        safelySurfaceError(this.surfaceError, err);
       }
     }
 
@@ -466,8 +510,12 @@ export function createStore<
   reducers: Reducers;
   effects: EffectFn[];
   projectStateForDevtools?: (state: State) => object;
+  prepareAction?: (state: State, action: AnyAction) => AnyAction;
+  /** Overrides asynchronous dispatch error surfacing. */
+  surfaceError?: (error: unknown) => void;
 }): Store<State> {
-  const scheduler = new TrampolineScheduler();
+  const surfaceError = config.surfaceError ?? surfaceErrorAsynchronously;
+  const scheduler = new TrampolineScheduler(surfaceError);
   const devtools = config.debugName
     ? connectToChromeExtension({ name: config.debugName })
     : undefined;
@@ -488,15 +536,76 @@ export function createStore<
 
   let state = reducerFn(undefined, { type: '@@init' });
 
+  function reduceActionFrom(currentState: State, action: AnyAction): State {
+    const preparedAction =
+      config.prepareAction?.(currentState, action) ?? action;
+    return reducerFn(currentState, preparedAction);
+  }
+
+  function reduceAction(action: AnyAction) {
+    state = reduceActionFrom(state, action);
+  }
+
+  function notifyActionObservers(action: AnyAction) {
+    const whenCallbackFns = whenCallbackFnMap.get(action.type) ?? [];
+    whenCallbackFns.forEach((callback) => callback(action));
+    selectCallbackFns.forEach((callback) => callback());
+
+    devtools?.send(action, config.projectStateForDevtools?.(state) ?? state);
+  }
+
+  function runAction(action: AnyAction) {
+    reduceAction(action);
+    notifyActionObservers(action);
+  }
+
   function dispatch(action: AnyAction) {
-    scheduler.scheduleTask(() => {
-      state = reducerFn(state, action);
+    scheduler.scheduleTask(() => runAction(action));
+  }
 
-      const whenCallbackFns = whenCallbackFnMap.get(action.type) ?? [];
-      whenCallbackFns.forEach((callback) => callback(action));
-      selectCallbackFns.forEach((callback) => callback());
+  function dispatchAndWait(
+    action: AnyAction,
+    onComplete?: (followUps: DispatchFollowUpBatch) => void,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      scheduler.scheduleTask(() => {
+        try {
+          runAction(action);
+          if (onComplete) {
+            const actions: AnyAction[] = [];
+            const onCommitCallbacks: Array<() => void> = [];
+            onComplete({
+              dispatch: (followUpAction) => actions.push(followUpAction),
+              onCommit: (callback) => onCommitCallbacks.push(callback),
+            });
 
-      devtools?.send(action, config.projectStateForDevtools?.(state) ?? state);
+            const candidateState = actions.reduce(
+              (candidate, followUpAction) =>
+                reduceActionFrom(candidate, followUpAction),
+              state,
+            );
+            state = candidateState;
+
+            onCommitCallbacks.forEach((callback) => {
+              try {
+                callback();
+              } catch (error) {
+                safelySurfaceError(surfaceError, error);
+              }
+            });
+            actions.forEach((followUpAction) => {
+              try {
+                notifyActionObservers(followUpAction);
+              } catch (error) {
+                safelySurfaceError(surfaceError, error);
+              }
+            });
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
     });
   }
 
@@ -590,6 +699,7 @@ export function createStore<
 
   const store: Store<State> = {
     dispatch,
+    dispatchAndWait,
     read,
     select,
     when: when as Store<State>['when'],
@@ -756,8 +866,7 @@ export function connectToChromeExtension(options: {
   }
 
   const extension = (window as any).__REDUX_DEVTOOLS_EXTENSION__ as
-    | DevtoolsChromeExtension
-    | undefined;
+    DevtoolsChromeExtension | undefined;
 
   if (!extension) {
     return;

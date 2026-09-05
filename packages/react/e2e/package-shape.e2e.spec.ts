@@ -180,6 +180,15 @@ test('packed React and core packages install and load in a clean consumer', () =
           UseStructuredChatOptions,
           UseStructuredCompletionOptions,
         } from '@hashbrownai/react';
+        import {
+          useChat,
+          useCompletion,
+          useStructuredChat,
+          useStructuredCompletion,
+          useUiChat,
+          useUiCompletion,
+        } from '@hashbrownai/react';
+        import { s } from '@hashbrownai/core';
 
         declare const providerOptions: HashbrownProviderOptions;
         declare const structuredChatOptions: UseStructuredChatOptions<any, any>;
@@ -197,6 +206,55 @@ test('packed React and core packages install and load in a clean consumer', () =
         uiChatOptions.structuredOutput;
         // @ts-expect-error Structured-output modes are owned by the server adapter.
         uiCompletionOptions.structuredOutput;
+
+        function verifySharedStateInference() {
+          const schema = s.object('result', {
+            answer: s.string('answer'),
+          });
+          const plainChat = useChat({ system: 'system', state: { count: 1 } });
+          const structuredChat = useStructuredChat({
+            system: 'system',
+            schema,
+            state: { count: 1 },
+          });
+          const completion = useCompletion({
+            input: 'input',
+            system: 'system',
+            state: { count: 1 },
+          });
+          const structuredCompletion = useStructuredCompletion({
+            input: 'input',
+            system: 'system',
+            schema,
+            state: { count: 1 },
+          });
+          const uiChat = useUiChat({
+            system: 'system',
+            components: [],
+            state: { count: 1 },
+          });
+          const uiCompletion = useUiCompletion({
+            input: 'input',
+            system: 'system',
+            components: [],
+            state: { count: 1 },
+          });
+
+          for (const result of [
+            plainChat,
+            structuredChat,
+            completion,
+            structuredCompletion,
+            uiChat,
+            uiCompletion,
+          ]) {
+            result.setState({ count: 2 });
+            // @ts-expect-error Shared state preserves the inferred property type.
+            result.setState({ count: 'invalid' });
+          }
+        }
+
+        void verifySharedStateInference;
       `,
     );
     const compileArgs = [
@@ -270,6 +328,19 @@ test('packed React and core packages install and load in a clean consumer', () =
       compileArgs,
       compileResult,
     );
+    const sharedStateDeclarations = [
+      'use-chat.d.ts',
+      'use-completion.d.ts',
+      'use-structured-chat.d.ts',
+      'use-structured-completion.d.ts',
+      'use-ui-chat.d.ts',
+      'use-ui-completion.d.ts',
+    ]
+      .map((filename) =>
+        readFileSync(join(reactDistPath, 'src/hooks', filename), 'utf8'),
+      )
+      .join('\n');
+    expect(sharedStateDeclarations).not.toContain('ɵ');
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
   } finally {

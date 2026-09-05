@@ -22,10 +22,14 @@ import { createResourceSnapshot } from './create-resource-snapshot.fn';
  * Options for the UI completion resource.
  *
  * @public
+ * @typeParam Input - The type of completion input.
+ * @typeParam Tools - The set of tool definitions available to the completion.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export interface UiCompletionResourceOptions<
   Input,
   Tools extends Chat.AnyTool = Chat.AnyTool,
+  State = unknown,
 > {
   /**
    * The components to use for the UI completion resource.
@@ -45,6 +49,9 @@ export interface UiCompletionResourceOptions<
    * The system prompt to use for the UI completion resource.
    */
   system: ReactiveOption<string | SystemPrompt>;
+
+  /** The initial shared agent state. */
+  state?: State;
 
   /**
    * The tools to use for the UI completion resource.
@@ -86,10 +93,17 @@ export interface UiCompletionResourceOptions<
  * A reference to the UI completion resource.
  *
  * @public
+ * @typeParam Tools - The set of tool definitions available to the completion.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export interface UiCompletionResourceRef<
   Tools extends Chat.AnyTool,
+  State = unknown,
 > extends Resource<UiAssistantMessage<Tools> | null> {
+  /** The currently visible shared agent state. */
+  readonly state: Signal<State | undefined>;
+  /** Replace shared agent state without starting a generation. */
+  setState(state: State): void;
   /**
    * Indicates whether the underlying completion call is currently sending a request.
    */
@@ -118,13 +132,17 @@ export interface UiCompletionResourceRef<
  * @public
  * @param options - The options for the UI completion resource.
  * @returns The UI completion resource.
+ * @typeParam Input - The type of completion input.
+ * @typeParam Tools - The set of tool definitions available to the completion.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export function uiCompletionResource<
   Input,
   Tools extends Chat.AnyTool = Chat.AnyTool,
+  State = unknown,
 >(
-  options: UiCompletionResourceOptions<Input, Tools>,
-): UiCompletionResourceRef<Tools> {
+  options: UiCompletionResourceOptions<Input, Tools, State>,
+): UiCompletionResourceRef<Tools, State> {
   const uiKit = createUiKit<ExposedComponent<any>>({
     components: options.components,
     examples: options.examples,
@@ -151,11 +169,13 @@ export function uiCompletionResource<
   const completion = structuredCompletionResource<
     Input,
     typeof internalSchema,
-    s.Infer<UiChatMessageOutput>
+    s.Infer<UiChatMessageOutput>,
+    State
   >({
     input: options.input,
     schema: internalSchema,
     system: systemAsString,
+    state: options.state,
     tools: options.tools,
     debugName: options.debugName,
     apiUrl: options.apiUrl,
@@ -192,11 +212,13 @@ export function uiCompletionResource<
     options.debugName && `${options.debugName}.snapshot`,
   );
 
-  function hasValue(this: UiCompletionResourceRef<Tools>) {
+  function hasValue(this: UiCompletionResourceRef<Tools, State>) {
     return completion.status() !== 'error' && value() !== null;
   }
 
   return {
+    state: completion.state,
+    setState: completion.setState,
     value,
     snapshot,
     status: completion.status,

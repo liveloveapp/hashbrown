@@ -8,6 +8,18 @@ type ReasoningInput = {
   readonly reasoningDetails?: readonly Readonly<ReasoningMessage>[];
 };
 
+/**
+ * Associates an internal compatibility message with its canonical AG-UI ID.
+ *
+ * @internal
+ */
+export function ɵwithInternalMessageId<Message extends Chat.Internal.Message>(
+  message: Message,
+  id: string,
+): Message & { readonly id: string } {
+  return { ...message, id };
+}
+
 function cloneMetadata(metadata: Metadata | undefined): Metadata | undefined {
   return metadata === undefined ? undefined : structuredClone(metadata);
 }

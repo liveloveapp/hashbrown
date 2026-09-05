@@ -8,10 +8,12 @@ import { useStructuredChat } from './use-structured-chat';
  * @public
  * @typeParam Input - The type of the input to predict from.
  * @typeParam Schema - The schema to use for the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
 export interface UseStructuredCompletionOptions<
   Input,
   Schema extends s.SchemaOutput,
+  State = unknown,
 > {
   /**
    * The input string to predict from.
@@ -27,6 +29,11 @@ export interface UseStructuredCompletionOptions<
    * The schema to use for the chat.
    */
   schema: Schema;
+
+  /**
+   * The initial shared agent state.
+   */
+  state?: State;
 
   /**
    * The tools to make available for the chat.
@@ -72,8 +79,20 @@ export interface UseStructuredCompletionOptions<
  *
  * @public
  * @typeParam Output - The type of the output from the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UseStructuredCompletionResult<Output> {
+export interface UseStructuredCompletionResult<Output, State = unknown> {
+  /**
+   * The currently visible shared agent state.
+   */
+  readonly state: State | undefined;
+
+  /**
+   * Replaces the shared agent state without starting a generation.
+   * @param state - The next shared agent state.
+   */
+  setState(state: State): void;
+
   /**
    * The output of the chat.
    */
@@ -137,6 +156,7 @@ export interface UseStructuredCompletionResult<Output> {
  * @public
  * @typeParam Input - The type of the input to predict from.
  * @typeParam Schema - The schema to use for the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
  * @remarks
  * The `useStructuredCompletion` hook provides functionality for predicting structured data based on input context. This is particularly useful for:
  * - Smart form field suggestions
@@ -162,10 +182,19 @@ export interface UseStructuredCompletionResult<Output> {
  * });
  * ```
  */
-export function useStructuredCompletion<Input, Schema extends s.SchemaOutput>(
-  options: UseStructuredCompletionOptions<Input, Schema>,
-): UseStructuredCompletionResult<s.InferSchemaOutput<Schema>> {
-  const { setMessages, ...chat } = useStructuredChat({
+export function useStructuredCompletion<
+  Input,
+  Schema extends s.SchemaOutput,
+  State = unknown,
+>(
+  options: UseStructuredCompletionOptions<Input, Schema, State>,
+): UseStructuredCompletionResult<s.InferSchemaOutput<Schema>, State> {
+  const { setMessages, ...chat } = useStructuredChat<
+    Schema,
+    Chat.AnyTool,
+    s.InferSchemaOutput<Schema>,
+    State
+  >({
     ...options,
     ui: options.ui ?? false,
   });
@@ -191,6 +220,8 @@ export function useStructuredCompletion<Input, Schema extends s.SchemaOutput>(
   }, [chat.messages]);
 
   return {
+    state: chat.state,
+    setState: chat.setState,
     output,
     reload: chat.reload,
     error: chat.error,

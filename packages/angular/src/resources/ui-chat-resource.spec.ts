@@ -19,6 +19,8 @@ const createChatStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    state: signal<unknown>(undefined),
+    setState: vi.fn(),
     value: valueSignal,
     status,
     error,
@@ -37,6 +39,28 @@ const createChatStub = (
     hasValue: vi.fn(),
   } as unknown as ReturnType<typeof structuredChatResource>;
 };
+
+test('uiChatResource preserves shared state signal and setter identity', () => {
+  structuredChatResourceMock.mockReset();
+  const state = signal<{ theme: string } | undefined>({ theme: 'dark' });
+  const setState = vi.fn();
+  const chat = createChatStub(signal<any[]>([]));
+  Object.assign(chat, { state, setState });
+  structuredChatResourceMock.mockReturnValue(chat);
+  const initialState = { theme: 'dark' };
+
+  const resource = uiChatResource({
+    components: [],
+    system: 'System prompt',
+    state: initialState,
+  });
+
+  expect(structuredChatResourceMock).toHaveBeenCalledWith(
+    expect.objectContaining({ state: initialState }),
+  );
+  expect(resource.state).toBe(state);
+  expect(resource.setState).toBe(setState);
+});
 
 test('uiChatResource accepts UiKit inputs and decorates assistant messages', () => {
   // Arrange

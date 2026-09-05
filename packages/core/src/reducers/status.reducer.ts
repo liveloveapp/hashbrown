@@ -1,8 +1,11 @@
 import { EventType } from '@ag-ui/core';
 import { createReducer, on } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
+import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export interface StatusState {
+  readonly activeGenerationId: string | undefined;
+  readonly acceptedTerminalEvent: boolean;
   isReceiving: boolean;
   isSending: boolean;
   isGenerating: boolean;
@@ -13,6 +16,8 @@ export interface StatusState {
 }
 
 export const initialStatusState: StatusState = {
+  activeGenerationId: undefined,
+  acceptedTerminalEvent: false,
   isReceiving: false,
   isSending: false,
   isGenerating: false,
@@ -37,29 +42,65 @@ export const reducer = createReducer(
 
     return state;
   }),
-  on(
-    devActions.sendMessage,
-    devActions.setMessages,
-    devActions.resendMessages,
-    (state) => {
-      return {
-        ...state,
-        isSending: true,
-        sendingError: undefined,
-      };
-    },
-  ),
+  on(devActions.sendMessage, (state, action) => {
+    if (action.payload.canonicalAppendCompatible === false) {
+      return state;
+    }
+
+    return {
+      ...state,
+      isSending: true,
+      sendingError: undefined,
+    };
+  }),
+  on(devActions.setMessages, devActions.resendMessages, (state) => {
+    return {
+      ...state,
+      isSending: true,
+      sendingError: undefined,
+    };
+  }),
+  on(internalActions.logicalGenerationStarted, (state, action) => ({
+    ...state,
+    activeGenerationId: action.payload.generationId,
+    acceptedTerminalEvent: false,
+  })),
+  on(internalActions.logicalGenerationSettled, (state, action) => {
+    if (state.activeGenerationId !== action.payload.generationId) {
+      return state;
+    }
+
+    return {
+      ...state,
+      activeGenerationId: undefined,
+      acceptedTerminalEvent: false,
+      isReceiving: false,
+      isSending: false,
+      isGenerating: false,
+    };
+  }),
   on(apiActions.generateMessageEvent, (state, action) => {
+    const decision = ɵreadAgUiMessageEventDecision(action);
+    if (decision && decision.kind !== 'accepted') return state;
+    action = decision
+      ? ({ ...action, payload: decision.event } as typeof action)
+      : action;
     switch (action.payload.type) {
       case EventType.RUN_STARTED:
         return {
           ...state,
+          acceptedTerminalEvent: false,
           isSending: false,
           isReceiving: true,
           isGenerating: true,
           sendingError: undefined,
           generatingError: undefined,
           error: undefined,
+        };
+      case EventType.RUN_FINISHED:
+        return {
+          ...state,
+          acceptedTerminalEvent: true,
         };
       case EventType.TEXT_MESSAGE_START:
       case EventType.TEXT_MESSAGE_CONTENT:
@@ -85,6 +126,7 @@ export const reducer = createReducer(
   on(apiActions.generateMessageSuccess, (state) => {
     return {
       ...state,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isGenerating: false,
       sendingError: undefined,
@@ -98,6 +140,7 @@ export const reducer = createReducer(
 
     return {
       ...state,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isSending: false,
       isGenerating: false,
@@ -111,6 +154,8 @@ export const reducer = createReducer(
   on(internalActions.generationSilentlyRetired, (state) => {
     return {
       ...state,
+      activeGenerationId: undefined,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isSending: false,
       isGenerating: false,
@@ -135,9 +180,19 @@ export const reducer = createReducer(
       exhaustedRetries: true,
     };
   }),
+  on(internalActions.generationAttemptRolledBack, (state) => ({
+    ...state,
+    acceptedTerminalEvent: false,
+  })),
   on(devActions.stopMessageGeneration, (state) => {
+    if (state.acceptedTerminalEvent) {
+      return state;
+    }
+
     return {
       ...state,
+      activeGenerationId: undefined,
+      acceptedTerminalEvent: false,
       isReceiving: false,
       isGenerating: false,
       isSending: false,

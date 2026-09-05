@@ -695,3 +695,75 @@ test('copies frozen tool-call inputs without mutating snapshots', async () => {
   expect(settleToolTurn.mock.calls[0]?.[0]).not.toBe(toolCalls);
   expect(snapshot).toEqual({ toolCalls: [toolCall], toolsByName });
 });
+
+test('claims the exact snapshot before starting its tool handlers', async () => {
+  const toolCall = createToolCall();
+  const order: string[] = [];
+  const snapshot = {
+    toolTurnId: 'tool-turn-1',
+    toolCalls: [toolCall],
+    toolsByName: {
+      lookup: createTool('lookup', async () => {
+        order.push('handler');
+        return 'result';
+      }),
+    },
+  };
+  const readToolSnapshot = jest
+    .fn<AssistantTurnToolSnapshot, []>()
+    .mockReturnValueOnce(snapshot)
+    .mockReturnValueOnce(emptyToolSnapshot());
+  const toolTurnStarted = jest.fn((claimed) => {
+    order.push('claim');
+    expect(claimed).toBe(snapshot);
+  });
+
+  const coordinator = createAssistantTurnCoordinator({
+    executeModelRun: async () => ({ kind: 'finished' }),
+    readToolSnapshot,
+    toolTurnStarted,
+    settleToolTurn: jest.fn(),
+    reportNoTools: jest.fn(),
+  });
+  await coordinator.completion;
+
+  expect(toolTurnStarted).toHaveBeenCalledTimes(1);
+  expect(order).toEqual(['claim', 'handler']);
+});
+
+test('cancellation during snapshot claim settles without starting handlers', async () => {
+  const handler = jest.fn(async () => 'result');
+  const toolCall = createToolCall();
+  const settleToolTurn = jest.fn();
+  const coordinatorRef: { current?: AssistantTurnCoordinator } = {};
+  const readToolSnapshot = jest
+    .fn<AssistantTurnToolSnapshot, []>()
+    .mockReturnValueOnce({
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [toolCall],
+      toolsByName: { lookup: createTool('lookup', handler) },
+    });
+  const toolTurnStarted = jest.fn(() => coordinatorRef.current?.cancel());
+  const coordinator = createAssistantTurnCoordinator({
+    executeModelRun: async () => ({ kind: 'finished' }),
+    readToolSnapshot,
+    toolTurnStarted,
+    settleToolTurn,
+    reportNoTools: jest.fn(),
+  });
+  coordinatorRef.current = coordinator;
+
+  const outcome = await coordinator.completion;
+
+  expect(outcome).toEqual({ kind: 'cancelled' });
+  expect(handler).not.toHaveBeenCalled();
+  expect(settleToolTurn).toHaveBeenCalledTimes(1);
+  expect(settleToolTurn).toHaveBeenCalledWith(
+    [toolCall],
+    expect.objectContaining({
+      continuation: 'stop',
+      results: [expect.objectContaining({ status: 'rejected' })],
+    }),
+    'tool-turn-1',
+  );
+});
