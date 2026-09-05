@@ -4,6 +4,7 @@ import { TransportError } from '../transport';
 import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
 import {
   executeLogicalRun,
+  type LogicalRunAttemptContext,
   type LogicalRunRequestContext,
 } from './logical-run-coordinator';
 
@@ -67,14 +68,21 @@ function execute({
   onStarted = jest.fn(),
   onEvent = jest.fn(),
   onAttemptError = jest.fn(),
+  onAttemptStarted,
+  onAttemptRolledBack,
 }: {
   transport: Transport;
   retries?: number;
   cancelSignal?: AbortSignal;
   retiredSignal?: AbortSignal;
-  onStarted?: () => void;
-  onEvent?: (event: AGUIEvent) => void;
+  onStarted?: (context: LogicalRunAttemptContext) => void;
+  onEvent?: (event: AGUIEvent, context: LogicalRunAttemptContext) => void;
   onAttemptError?: (error: Error) => void;
+  onAttemptStarted?: (context: LogicalRunAttemptContext) => void;
+  onAttemptRolledBack?: (
+    context: LogicalRunAttemptContext,
+    error: Error | undefined,
+  ) => void;
 }) {
   return executeLogicalRun({
     transport,
@@ -85,8 +93,226 @@ function execute({
     onStarted,
     onEvent,
     onAttemptError,
+    onAttemptStarted,
+    onAttemptRolledBack,
   });
 }
+
+test('starts an attempt before transport send and shares its context with event callbacks', async () => {
+  const order: string[] = [];
+  const contexts: LogicalRunAttemptContext[] = [];
+  const transport = createTransport(async (request) => {
+    order.push('send');
+
+    return {
+      events: createEvents([createStarted(request), createFinished(request)]),
+    };
+  });
+  const onAttemptStarted = jest.fn((context: LogicalRunAttemptContext) => {
+    order.push('attempt:start');
+    contexts.push(context);
+  });
+  const onStarted = jest.fn((context: LogicalRunAttemptContext) => {
+    order.push('run:start');
+    contexts.push(context);
+  });
+  const onEvent = jest.fn(
+    (_event: AGUIEvent, context: LogicalRunAttemptContext) => {
+      order.push('event');
+      contexts.push(context);
+    },
+  );
+
+  const outcome = await execute({
+    transport,
+    onAttemptStarted,
+    onStarted,
+    onEvent,
+  });
+
+  expect(outcome).toEqual({ kind: 'finished' });
+  expect(order).toEqual([
+    'attempt:start',
+    'send',
+    'run:start',
+    'event',
+    'event',
+  ]);
+  expect(contexts).toHaveLength(4);
+  expect(contexts.every((context) => context === contexts[0])).toBe(true);
+  expect(contexts[0]).toMatchObject({ attempt: 1, maxAttempts: 1 });
+});
+
+test('rolls back after cleanup and before retrying with a fresh context', async () => {
+  const firstError = new Error('temporary failure');
+  const order: string[] = [];
+  const contexts: LogicalRunAttemptContext[] = [];
+  let sendCount = 0;
+  const transport = createTransport(async (request) => {
+    sendCount++;
+    order.push(`send:${sendCount}`);
+    if (sendCount === 1) {
+      const iteratorReturn = jest.fn(async () => {
+        order.push('iterator:return');
+
+        return { done: true as const, value: undefined };
+      });
+      const dispose = jest.fn(async () => {
+        order.push('response:dispose');
+      });
+
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => {
+                throw firstError;
+              },
+              return: iteratorReturn,
+            };
+          },
+        },
+        dispose,
+      };
+    }
+
+    return {
+      events: createEvents([createStarted(request), createFinished(request)]),
+    };
+  });
+  const onAttemptStarted = jest.fn((context: LogicalRunAttemptContext) => {
+    order.push(`attempt:start:${context.attempt}`);
+    contexts.push(context);
+  });
+  const onAttemptRolledBack = jest.fn(
+    (context: LogicalRunAttemptContext, error: Error | undefined) => {
+      order.push(`attempt:rollback:${context.attempt}`);
+      expect(error).toBe(firstError);
+    },
+  );
+
+  const outcome = await execute({
+    transport,
+    retries: 1,
+    onAttemptStarted,
+    onAttemptRolledBack,
+  });
+
+  expect(outcome).toEqual({ kind: 'finished' });
+  expect(order).toEqual([
+    'attempt:start:1',
+    'send:1',
+    'iterator:return',
+    'response:dispose',
+    'attempt:rollback:1',
+    'attempt:start:2',
+    'send:2',
+  ]);
+  expect(contexts).toHaveLength(2);
+  expect(contexts[0]).not.toBe(contexts[1]);
+  expect(contexts.map(({ attempt }) => attempt)).toEqual([1, 2]);
+  expect(onAttemptRolledBack).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  { label: 'cancellation', interruption: 'cancelled' },
+  { label: 'retirement', interruption: 'retired' },
+] as const)(
+  'rolls back the active attempt exactly once on $label',
+  async ({ interruption }) => {
+    const cancelController = new AbortController();
+    const retiredController = new AbortController();
+    const transport = createTransport(async (request) => ({
+      events: createEvents([createStarted(request), createFinished(request)]),
+    }));
+    const onAttemptStarted = jest.fn();
+    const onAttemptRolledBack = jest.fn();
+    const onEvent = jest.fn((event: AGUIEvent) => {
+      if (event.type !== EventType.RUN_STARTED) {
+        return;
+      }
+      if (interruption === 'retired') {
+        retiredController.abort();
+      } else {
+        cancelController.abort();
+      }
+    });
+
+    const outcome = await execute({
+      transport,
+      cancelSignal: cancelController.signal,
+      retiredSignal: retiredController.signal,
+      onAttemptStarted,
+      onAttemptRolledBack,
+      onEvent,
+    });
+
+    expect(outcome).toEqual({ kind: interruption });
+    expect(onAttemptStarted).toHaveBeenCalledTimes(1);
+    expect(onAttemptRolledBack).toHaveBeenCalledTimes(1);
+    expect(onAttemptRolledBack).toHaveBeenCalledWith(
+      onAttemptStarted.mock.calls[0][0],
+      undefined,
+    );
+  },
+);
+
+test('rolls back the active attempt exactly once on a server error', async () => {
+  const runError: AGUIEvent = {
+    type: EventType.RUN_ERROR,
+    message: 'server rejected the run',
+  };
+  const transport = createTransport(async (request) => ({
+    events: createEvents([createStarted(request), runError]),
+  }));
+  const onAttemptStarted = jest.fn();
+  const onAttemptRolledBack = jest.fn();
+
+  const outcome = await execute({
+    transport,
+    onAttemptStarted,
+    onAttemptRolledBack,
+  });
+
+  expect(outcome).toMatchObject({
+    kind: 'server-error',
+    error: { message: runError.message },
+  });
+  expect(onAttemptStarted).toHaveBeenCalledTimes(1);
+  expect(onAttemptRolledBack).toHaveBeenCalledTimes(1);
+  expect(onAttemptRolledBack).toHaveBeenCalledWith(
+    onAttemptStarted.mock.calls[0][0],
+    expect.objectContaining({ message: runError.message }),
+  );
+});
+
+test('rolls back every exhausted attempt exactly once with its failure', async () => {
+  const error = new Error('still unavailable');
+  const transport = createTransport(async () => {
+    throw error;
+  });
+  const onAttemptStarted = jest.fn();
+  const onAttemptRolledBack = jest.fn();
+
+  const outcome = await execute({
+    transport,
+    retries: 1,
+    onAttemptStarted,
+    onAttemptRolledBack,
+  });
+
+  expect(outcome).toEqual({
+    kind: 'failed',
+    error,
+    exhaustedRetries: true,
+  });
+  expect(onAttemptStarted).toHaveBeenCalledTimes(2);
+  expect(onAttemptRolledBack).toHaveBeenCalledTimes(2);
+  expect(onAttemptRolledBack.mock.calls).toEqual([
+    [onAttemptStarted.mock.calls[0][0], error],
+    [onAttemptStarted.mock.calls[1][0], error],
+  ]);
+});
 
 test('retries a failed attempt with fresh metadata and reports eventual success', async () => {
   const firstError = new Error('temporary failure');

@@ -9,15 +9,22 @@ import {
 } from './logical-run-retry-policy';
 
 /**
- * Metadata used to construct one request in a logical run.
+ * Identity and cancellation metadata for one attempt in a logical run.
  *
  * @internal
  */
-export interface LogicalRunRequestContext {
+export interface LogicalRunAttemptContext {
   readonly attempt: number;
   readonly maxAttempts: number;
   readonly signal: AbortSignal;
 }
+
+/**
+ * Metadata used to construct one request in a logical run.
+ *
+ * @internal
+ */
+export type LogicalRunRequestContext = LogicalRunAttemptContext;
 
 /**
  * Inputs for executing and observing one logical AG-UI run.
@@ -32,8 +39,16 @@ export interface ExecuteLogicalRunOptions {
   readonly createRequest: (
     context: LogicalRunRequestContext,
   ) => TransportRequest;
-  readonly onStarted: () => void;
-  readonly onEvent: (event: AGUIEvent) => void;
+  readonly onAttemptStarted?: (context: LogicalRunAttemptContext) => void;
+  readonly onStarted: (context: LogicalRunAttemptContext) => void;
+  readonly onEvent: (
+    event: AGUIEvent,
+    context: LogicalRunAttemptContext,
+  ) => void;
+  readonly onAttemptRolledBack?: (
+    context: LogicalRunAttemptContext,
+    error: Error | undefined,
+  ) => void;
   readonly onAttemptError: (error: Error) => void;
 }
 
@@ -64,8 +79,10 @@ export async function executeLogicalRun({
   cancelSignal,
   retiredSignal,
   createRequest,
+  onAttemptStarted,
   onStarted,
   onEvent,
+  onAttemptRolledBack,
   onAttemptError,
 }: ExecuteLogicalRunOptions): Promise<LogicalRunOutcome> {
   let retryState = createLogicalRunRetryState(retries);
@@ -78,31 +95,36 @@ export async function executeLogicalRun({
 
     const startedAttempt = startLogicalRunAttempt(retryState);
     retryState = startedAttempt.state;
-    const request = createRequest({
+    const context: LogicalRunAttemptContext = {
       ...startedAttempt.context,
       signal: AbortSignal.any([retiredSignal, cancelSignal]),
-    });
+    };
+    const request = createRequest(context);
     let primaryError: Error | undefined;
     try {
+      onAttemptStarted?.(context);
       const outcome = await runAgUiAttempt({
         transport,
         request,
         cancelSignal,
         retiredSignal,
-        onStarted,
-        onEvent,
+        onStarted: () => onStarted(context),
+        onEvent: (event) => onEvent(event, context),
       });
 
       if (retiredSignal.aborted || outcome.kind === 'retired') {
+        onAttemptRolledBack?.(context, undefined);
         return { kind: 'retired' };
       }
       if (outcome.kind === 'finished') {
         return outcome;
       }
       if (outcome.kind === 'server-error') {
+        onAttemptRolledBack?.(context, outcome.error);
         return outcome;
       }
       if (cancelSignal.aborted || outcome.kind === 'cancelled') {
+        onAttemptRolledBack?.(context, undefined);
         return { kind: 'cancelled' };
       }
     } catch (error) {
@@ -115,9 +137,11 @@ export async function executeLogicalRun({
       cancelSignal,
     );
     if (interruptionAfterFailure?.kind === 'retired') {
+      onAttemptRolledBack?.(context, undefined);
       return interruptionAfterFailure;
     }
     if (interruptionAfterFailure?.kind === 'cancelled') {
+      onAttemptRolledBack?.(context, undefined);
       return interruptionAfterFailure;
     }
 
@@ -127,6 +151,7 @@ export async function executeLogicalRun({
         retryable: true,
         code: 'PROTOCOL_ERROR',
       });
+    onAttemptRolledBack?.(context, error);
     onAttemptError(error);
 
     const failureDecision = decideLogicalRunFailure(retryState, error);
