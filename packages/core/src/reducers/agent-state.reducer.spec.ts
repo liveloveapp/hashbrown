@@ -77,6 +77,36 @@ test('locks initial state writes when a local error follows the canonical user m
   expect(result.stateWriteLocked).toBe(true);
 });
 
+test('locks initial state writes when initialization ends with a tool result', () => {
+  const canonicalMessages = [
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'tool-1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+    {
+      id: 'tool-result-1',
+      role: 'tool' as const,
+      toolCallId: 'tool-1',
+      content: 'found',
+    },
+  ];
+
+  const result = reducer(
+    initialAgentState,
+    devActions.init({ canonicalMessages, system: 'test' }),
+  );
+
+  expect(result.stateWriteLocked).toBe(true);
+});
+
 test('updates only committed state for an unlocked local write', () => {
   const previous = Object.freeze({ count: 1 });
   const next = Object.freeze({ count: 2 });
