@@ -14,9 +14,20 @@ export default createActionGroup('internal', {
   }>(),
   generationAttemptStarted: emptyProps(),
   generationAttemptRolledBack: emptyProps(),
+  toolTurnReserved: props<{
+    generationId: string;
+    toolTurnId: string;
+    toolCalls: Chat.Internal.ToolCall[];
+  }>(),
+  toolTurnStarted: props<{
+    generationId: string;
+    toolTurnId: string;
+  }>(),
   logicalGenerationSettled: props<{ generationId: string }>(),
   generationSilentlyRetired: emptyProps(),
   toolTurnSettled: props<{
+    generationId?: string;
+    toolTurnId?: string;
     toolCalls: Chat.Internal.ToolCall[];
     toolMessages: Chat.Api.ToolMessage[];
     continuation: 'continue' | 'stop';

@@ -344,3 +344,34 @@ test('commits the real accumulator success payload without duplicating its canon
     { id: 'assistant-1', role: 'assistant', content: 'done', toolCallIds: [] },
   ]);
 });
+
+test('commits an active canonical draft without an assistant message', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'before' }],
+    }),
+  );
+  const started = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [{ id: 'user-2', role: 'user', content: 'after' }],
+    }),
+  );
+
+  const committed = reducer(
+    snapshotted,
+    apiActions.generateMessageSuccess({ toolCalls: [] }),
+  );
+
+  expect(committed.messages).toEqual([
+    { id: 'user-2', role: 'user', content: 'after' },
+  ]);
+  expect(committed.attemptActive).toBe(false);
+});

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chat } from '../models';
-import { apiActions } from '../actions';
+import { apiActions, internalActions } from '../actions';
 import { Prettify } from '../utils/types';
 import { select } from '../utils/micro-ngrx';
 import * as fromAgentState from './agent-state.reducer';
@@ -14,6 +14,8 @@ import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
 import * as fromThread from './thread.reducer';
 import { ɵreconcileAgUiMessageProjection } from './ag-ui-message-history';
+
+const toolTurnSettledType = internalActions.toolTurnSettled.type;
 
 export const reducers = {
   agentState: fromAgentState.reducer,
@@ -42,6 +44,18 @@ export const ɵselectGenerationId = select(
 export const ɵselectGenerationAttemptId = select(
   ɵselectGenerationOwnershipState,
   fromGenerationOwnership.ɵselectAttemptId,
+);
+
+/** Selects the currently reserved tool turn. @internal */
+export const ɵselectToolTurnOwnership = select(
+  ɵselectGenerationOwnershipState,
+  fromGenerationOwnership.ɵselectToolTurnOwnership,
+);
+
+/** Selects IDs whose local tool handlers have actually started. @internal */
+export const ɵselectRunningToolCallIds = select(
+  ɵselectGenerationOwnershipState,
+  fromGenerationOwnership.ɵselectRunningToolCallIds,
 );
 
 /**
@@ -104,6 +118,27 @@ export function ɵprepareRootAction(
   state: State,
   action: { readonly type: string; readonly payload?: unknown },
 ) {
+  if (action.type === toolTurnSettledType) {
+    const settlement = action as ReturnType<
+      typeof internalActions.toolTurnSettled
+    >;
+    const { generationId, toolTurnId, toolCalls } = settlement.payload;
+    if (generationId !== undefined || toolTurnId !== undefined) {
+      const ownership = state.generationOwnership;
+      const reserved = ownership.toolTurn;
+      const matches =
+        generationId !== undefined &&
+        toolTurnId !== undefined &&
+        ownership.generationId === generationId &&
+        reserved?.toolTurnId === toolTurnId &&
+        reserved.toolCalls.length === toolCalls.length &&
+        reserved.toolCalls.every(
+          (toolCall, index) => toolCall === toolCalls[index],
+        );
+      if (!matches) return { type: '@hashbrown/noop' };
+    }
+    return action;
+  }
   if (action.type !== apiActions.generateMessageEvent.type) {
     return action;
   }
@@ -264,6 +299,50 @@ export const selectToolCallEntities = select(
 export const selectPendingToolCalls = select(
   selectToolCallsState,
   fromToolCalls.selectPendingToolCalls,
+);
+
+/**
+ * Selects pending calls introduced by the active attempt, decorating compatible
+ * parser output without re-owning calls from the attempt checkpoint.
+ *
+ * @internal
+ */
+export const ɵselectAttemptOwnedPendingToolCalls = select(
+  selectPendingToolCalls,
+  ɵselectAttemptStartToolCallIds,
+  selectRawStreamingToolCalls,
+  (pendingToolCalls, attemptStartIds, streamingToolCalls) => {
+    const baseline = new Set(attemptStartIds);
+    const streaming = new Map(
+      streamingToolCalls.map((toolCall) => [toolCall.id, toolCall]),
+    );
+
+    return pendingToolCalls
+      .filter((toolCall) => !baseline.has(toolCall.id))
+      .map((toolCall) => {
+        const parsed = streaming.get(toolCall.id);
+        if (
+          !parsed ||
+          parsed.name !== toolCall.name ||
+          parsed.arguments !== toolCall.arguments
+        ) {
+          return toolCall;
+        }
+
+        return parsed.argumentsResolved === undefined &&
+          parsed.encryptedValue === undefined
+          ? toolCall
+          : {
+              ...toolCall,
+              ...(parsed.argumentsResolved === undefined
+                ? {}
+                : { argumentsResolved: parsed.argumentsResolved }),
+              ...(parsed.encryptedValue === undefined
+                ? {}
+                : { encryptedValue: parsed.encryptedValue }),
+            };
+      });
+  },
 );
 
 /**
@@ -441,11 +520,8 @@ export const selectUnifiedError = select(
 );
 
 export const selectIsRunningToolCalls = select(
-  selectPendingToolCalls,
-  selectIsGenerating,
-  selectUnifiedError,
-  (pendingToolCalls, isGenerating, error) =>
-    pendingToolCalls.length > 0 && !isGenerating && !error,
+  ɵselectRunningToolCallIds,
+  (runningToolCallIds) => runningToolCallIds.length > 0,
 );
 
 export const selectIsLoading = select(

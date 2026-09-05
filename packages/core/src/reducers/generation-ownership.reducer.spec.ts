@@ -108,3 +108,80 @@ test('does not release ownership for public terminal actions', () => {
 
   expect(afterError).toBe(state);
 });
+
+test('reserves exact tool objects before marking them as running', () => {
+  const toolCall = {
+    id: 'call-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending' as const,
+  };
+  let state = reducer(
+    initialGenerationOwnershipState,
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+
+  state = reducer(
+    state,
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [toolCall],
+    }),
+  );
+  const claimed = reducer(
+    state,
+    internalActions.toolTurnStarted({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+    }),
+  );
+
+  expect(state.toolTurn).toEqual({
+    toolTurnId: 'tool-turn-1',
+    toolCalls: [toolCall],
+    runningToolCallIds: [],
+  });
+  expect(state.toolTurn?.toolCalls[0]).toBe(toolCall);
+  expect(claimed.toolTurn?.runningToolCallIds).toEqual(['call-1']);
+});
+
+test('replacement generation invalidates an old reserved tool turn', () => {
+  const toolCall = {
+    id: 'call-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending' as const,
+  };
+  let state = reducer(
+    initialGenerationOwnershipState,
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  state = reducer(
+    state,
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [toolCall],
+    }),
+  );
+
+  const replaced = reducer(
+    state,
+    internalActions.logicalGenerationStarted({ generationId: 'generation-2' }),
+  );
+  const staleClaim = reducer(
+    replaced,
+    internalActions.toolTurnStarted({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+    }),
+  );
+
+  expect(replaced).toEqual({
+    generationId: 'generation-2',
+    attemptId: undefined,
+    toolTurn: undefined,
+  });
+  expect(staleClaim).toBe(replaced);
+});

@@ -351,7 +351,10 @@ export const reducer = createReducer(
   on(apiActions.generateMessageSuccess, (state, action): ToolCallsState => {
     if (state.attemptActive) {
       const committed = state.preparedProjection
-        ? state.draft
+        ? replaceCompatibleExecutionToolCalls(
+            state.draft,
+            action.payload.toolCalls,
+          )
         : mergeSuccessToolCalls(state.draft, action.payload.toolCalls);
       return {
         ...committed,
@@ -571,6 +574,24 @@ function reconcileEntities(
       toolCalls.map((toolCall) => [toolCall.id, toolCall]),
     ),
   };
+}
+
+function replaceCompatibleExecutionToolCalls(
+  current: EntityState<Chat.Internal.ToolCall>,
+  executionToolCalls: readonly Chat.Internal.ToolCall[],
+): EntityState<Chat.Internal.ToolCall> {
+  return executionToolCalls.reduce((entities, execution) => {
+    const existing = readOwn(entities.entities, execution.id);
+    return existing?.status === 'pending' &&
+      execution.status === 'pending' &&
+      existing.name === execution.name &&
+      existing.arguments === execution.arguments
+      ? {
+          ...entities,
+          entities: { ...entities.entities, [execution.id]: execution },
+        }
+      : entities;
+  }, current);
 }
 
 function createLocalProvenance(

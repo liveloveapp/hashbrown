@@ -470,7 +470,7 @@ test('clears an active-run server error when a retry starts', () => {
   });
 });
 
-test('retry success clears unified error and enables pending tool calls', () => {
+test('retry success clears unified error without treating pending calls as running', () => {
   const toolCall: Chat.Internal.ToolCall = {
     id: 'call-1',
     name: 'lookup',
@@ -511,5 +511,5 @@ test('retry success clears unified error and enables pending tool calls', () => 
   );
 
   expect(selectUnifiedError(state)).toBeUndefined();
-  expect(selectIsRunningToolCalls(state)).toBe(true);
+  expect(selectIsRunningToolCalls(state)).toBe(false);
 });

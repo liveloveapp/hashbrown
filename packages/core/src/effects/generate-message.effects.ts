@@ -6,7 +6,6 @@ import {
   selectApiMessages,
   selectDebounce,
   selectRawStreamingMessage,
-  selectRawStreamingToolCalls,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
@@ -19,6 +18,7 @@ import {
   selectUiRequested,
   ɵselectAgentStateProtocolError,
   ɵselectAgUiMessagesProtocolError,
+  ɵselectAttemptOwnedPendingToolCalls,
   ɵselectGenerationAttemptId,
   ɵselectGenerationId,
 } from '../reducers';
@@ -163,14 +163,25 @@ export const generateMessage = createEffect((store) => {
     if (streamingError) {
       dispatch(apiActions.generateMessageError(streamingError));
     } else {
-      const streamingMessage = store.read(selectRawStreamingMessage);
-      const streamingToolCalls = store.read(selectRawStreamingToolCalls);
-
-      if (streamingMessage) {
-        const finalizedToolCalls = dedupeToolCalls(streamingToolCalls);
-        const toolsByName = generation.activeAttempt?.toolsByName ?? {};
+      const streamingMessage =
+        store.read(selectRawStreamingMessage) ?? undefined;
+      const finalizedToolCalls = store.read(
+        ɵselectAttemptOwnedPendingToolCalls,
+      );
+      const toolsByName = generation.activeAttempt?.toolsByName ?? {};
+      const toolTurnId =
+        finalizedToolCalls.length === 0 ? undefined : _createRequestId();
+      if (toolTurnId) {
+        dispatch(
+          internalActions.toolTurnReserved({
+            generationId: generation.generationId,
+            toolTurnId,
+            toolCalls: finalizedToolCalls,
+          }),
+        );
         const publishToolSnapshot = () => {
           generation.unclaimedToolSnapshot = {
+            toolTurnId,
             toolCalls: finalizedToolCalls,
             toolsByName,
           };
@@ -180,25 +191,22 @@ export const generateMessage = createEffect((store) => {
         } else {
           publishToolSnapshot();
         }
-        dispatch(
-          apiActions.generateMessageSuccess({
-            message: streamingMessage,
-            toolCalls: finalizedToolCalls,
-          }),
-        );
-      } else {
-        dispatch(
-          apiActions.generateMessageError(
-            new Error('No message was generated'),
-          ),
-        );
       }
+      dispatch(
+        apiActions.generateMessageSuccess({
+          ...(streamingMessage ? { message: streamingMessage } : {}),
+          toolCalls: finalizedToolCalls,
+        }),
+      );
     }
 
     return releaseAttempt(generation, context, false, dispatch, onCommit);
   };
 
-  const settleUnclaimedToolSnapshot = (generation: ActiveGeneration) => {
+  const settleUnclaimedToolSnapshot = (
+    generation: ActiveGeneration,
+    defer = false,
+  ) => {
     const snapshot = generation.unclaimedToolSnapshot;
     generation.unclaimedToolSnapshot = undefined;
     if (!snapshot || snapshot.toolCalls.length === 0) {
@@ -206,13 +214,21 @@ export const generateMessage = createEffect((store) => {
     }
 
     const outcome = createStoppedToolTurnOutcome(snapshot.toolCalls);
-    store.dispatch(
-      internalActions.toolTurnSettled({
-        toolCalls: [...snapshot.toolCalls],
-        toolMessages: toToolMessages(snapshot.toolCalls, outcome),
-        continuation: outcome.continuation,
-      }),
-    );
+    const settle = () =>
+      store.dispatch(
+        internalActions.toolTurnSettled({
+          generationId: generation.generationId,
+          toolTurnId: snapshot.toolTurnId,
+          toolCalls: [...snapshot.toolCalls],
+          toolMessages: toToolMessages(snapshot.toolCalls, outcome),
+          continuation: outcome.continuation,
+        }),
+      );
+    if (defer) {
+      void Promise.resolve().then(settle);
+    } else {
+      settle();
+    }
   };
 
   const interruptGeneration = (
@@ -271,12 +287,17 @@ export const generateMessage = createEffect((store) => {
       const threadId = configuredThreadId ?? _createRequestId();
       const generationId = _createRequestId();
       const supersededGeneration = activeGeneration;
+      if (supersededGeneration) {
+        // Claimed tools settle synchronously while their exact ownership is
+        // still current. An unclaimed reservation is handled only after the
+        // replacement generation invalidates it below.
+        supersededGeneration.coordinator.retire();
+      }
       store.dispatch(
         internalActions.logicalGenerationStarted({ generationId }),
       );
       if (supersededGeneration) {
-        supersededGeneration.coordinator.retire();
-        settleUnclaimedToolSnapshot(supersededGeneration);
+        settleUnclaimedToolSnapshot(supersededGeneration, true);
         supersededGeneration.settled = true;
       }
       const generationRef: { current: ActiveGeneration | undefined } = {
@@ -488,7 +509,7 @@ export const generateMessage = createEffect((store) => {
         },
         readToolSnapshot: () => {
           const generation = generationRef.current;
-          if (!generation) {
+          if (!generation || !ownsGeneration(generation)) {
             return { toolCalls: [], toolsByName: {} };
           }
 
@@ -497,9 +518,30 @@ export const generateMessage = createEffect((store) => {
 
           return snapshot ?? { toolCalls: [], toolsByName: {} };
         },
-        settleToolTurn: (toolCalls, outcome) => {
+        toolTurnStarted: (snapshot) => {
+          const generation = generationRef.current;
+          if (
+            !generation ||
+            !ownsGeneration(generation) ||
+            !snapshot.toolTurnId
+          ) {
+            return;
+          }
+
+          store.dispatch(
+            internalActions.toolTurnStarted({
+              generationId: generation.generationId,
+              toolTurnId: snapshot.toolTurnId,
+            }),
+          );
+        },
+        settleToolTurn: (toolCalls, outcome, toolTurnId) => {
+          const generation = generationRef.current;
           store.dispatch(
             internalActions.toolTurnSettled({
+              ...(generation && toolTurnId
+                ? { generationId: generation.generationId, toolTurnId }
+                : {}),
               toolCalls: [...toolCalls],
               toolMessages: toToolMessages(toolCalls, outcome),
               continuation: outcome.continuation,
@@ -601,14 +643,6 @@ function toToolMessages(
     toolCallId: toolCall.id,
     toolName: toolCall.name,
   }));
-}
-
-function dedupeToolCalls(
-  toolCalls: readonly Chat.Internal.ToolCall[],
-): Chat.Internal.ToolCall[] {
-  return [
-    ...new Map(toolCalls.map((toolCall) => [toolCall.id, toolCall])).values(),
-  ];
 }
 
 function createStoppedToolTurnOutcome(

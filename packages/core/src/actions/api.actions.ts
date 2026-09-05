@@ -10,7 +10,7 @@ export default createActionGroup('api', {
   }>(),
   generateMessageEvent: props<AGUIEvent>(),
   generateMessageSuccess: props<{
-    message: Chat.Internal.AssistantMessage;
+    message?: Chat.Internal.AssistantMessage;
     toolCalls: Chat.Internal.ToolCall[];
   }>(),
   generateMessageError: props<Error>(),

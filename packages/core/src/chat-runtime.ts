@@ -22,7 +22,9 @@ import {
   selectToolEntities,
   selectUnifiedError,
   selectViewMessages,
+  ɵprepareRootAction,
   ɵselectCommittedAgUiMessages,
+  ɵselectToolTurnOwnership,
 } from './reducers';
 import { s } from './schema';
 import { createStore, StateSignal } from './utils/micro-ngrx';
@@ -171,6 +173,7 @@ export function createChatRuntime(init: {
     debugName: init.debugName,
     reducers,
     effects,
+    prepareAction: ɵprepareRootAction,
     projectStateForDevtools: (state) => ({
       messages: selectViewMessages(state),
       isReceiving: selectIsReceiving(state),
@@ -299,8 +302,10 @@ export function createChatRuntime(init: {
 
   function stop(clearStreamingMessage = false) {
     const isLoading = state.read(selectIsLoading);
+    const hasReservedToolTurn =
+      state.read(ɵselectToolTurnOwnership) !== undefined;
 
-    if (!isLoading) {
+    if (!isLoading && !hasReservedToolTurn) {
       throw new Error('Cannot stop streaming messages when not streaming.');
     }
 

@@ -301,7 +301,7 @@ export const reducer = createReducer(
     if (state.attemptActive) {
       const draft = state.preparedProjection
         ? state.draft
-        : isAssistantOutput(action.payload.message)
+        : action.payload.message && isAssistantOutput(action.payload.message)
           ? reconcileSuccessfulAssistant(state.draft, action.payload.message)
           : state.draft;
       return {
@@ -315,6 +315,7 @@ export const reducer = createReducer(
         preparedProjection: state.preparedProjection,
       };
     }
+    if (!action.payload.message) return state;
     const messages = [...state.messages, action.payload.message];
     return {
       ...state,

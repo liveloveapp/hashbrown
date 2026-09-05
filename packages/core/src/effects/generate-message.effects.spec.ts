@@ -25,13 +25,16 @@ import {
   selectTransport,
   selectUiRequested,
   selectUnifiedError,
+  ɵprepareRootAction,
   ɵselectAgentStateProtocolError,
   ɵselectAgUiMessagesProtocolError,
+  ɵselectAttemptOwnedPendingToolCalls,
   ɵselectCommittedAgentState,
   ɵselectCommittedAgUiMessages,
   ɵselectGenerationAttemptId,
   ɵselectGenerationId,
   ɵselectStateWriteLocked,
+  ɵselectToolTurnOwnership,
   ɵselectVisibleAgentState,
   ɵselectVisibleAgUiMessages,
 } from '../reducers';
@@ -179,6 +182,12 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
       onCommitCallbacks.forEach((callback) => callback());
     },
     read: <T = unknown>(selector: SelectorKey): T => {
+      if (
+        selector === ɵselectAttemptOwnedPendingToolCalls &&
+        !values.has(selector)
+      ) {
+        return values.get(selectRawStreamingToolCalls) as T;
+      }
       if (!values.has(selector)) {
         throw new Error('No value for selector');
       }
@@ -283,8 +292,20 @@ async function waitForStoreGenerationToSettle(
   throw new Error('Timed out waiting for generation ownership to settle');
 }
 
-function createRealEffectStore() {
-  return createStore({ reducers, effects: [generateMessage] });
+function createRealEffectStore(
+  inspectPreparation?: (
+    state: Parameters<typeof ɵprepareRootAction>[0],
+    action: { readonly type: string; readonly payload?: unknown },
+  ) => void,
+) {
+  return createStore({
+    reducers,
+    effects: [generateMessage],
+    prepareAction: (state, action) => {
+      inspectPreparation?.(state, action);
+      return ɵprepareRootAction(state, action);
+    },
+  });
 }
 
 async function waitForMockCalls(mock: jest.Mock, count: number): Promise<void> {
@@ -898,6 +919,407 @@ test.each([
     teardown?.();
   },
 );
+
+test.each([
+  {
+    name: 'state-only',
+    middle: [{ type: EventType.STATE_SNAPSHOT, snapshot: { count: 7 } }],
+    expectedState: { count: 7 },
+    expectedMessages: canonicalUser('No output.'),
+  },
+  {
+    name: 'messages-snapshot-only',
+    middle: [
+      {
+        type: EventType.MESSAGES_SNAPSHOT,
+        messages: [{ id: 'user-replaced', role: 'user', content: 'Replaced.' }],
+      },
+    ],
+    expectedState: { count: 0 },
+    expectedMessages: [
+      { id: 'user-replaced', role: 'user', content: 'Replaced.' },
+    ],
+  },
+  {
+    name: 'empty',
+    middle: [],
+    expectedState: { count: 0 },
+    expectedMessages: canonicalUser('No output.'),
+  },
+] as const)(
+  'real store commits a $name successful run without an assistant message',
+  async ({ middle, expectedState, expectedMessages }) => {
+    jest.clearAllMocks();
+    const { send } = makeSelection(async (request) => ({
+      events: successfulEvents(request, [...middle] as AGUIEvent[]),
+    }));
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: 'You are a test bot',
+        canonicalMessages: canonicalUser('No output.'),
+        state: { count: 0 },
+        retries: 0,
+        debounce: 0,
+        transport: configuredTransport,
+      }),
+    );
+    const successes: ReturnType<typeof apiActions.generateMessageSuccess>[] =
+      [];
+    const unsubscribe = store.when(
+      apiActions.generateMessageSuccess,
+      (action) => successes.push(action),
+    );
+    const teardown = store.runEffects();
+
+    store.dispatch(internalActions.start());
+    await waitForMockCalls(send, 1);
+    await waitForStoreGenerationToSettle(store);
+
+    expect(successes).toEqual([
+      apiActions.generateMessageSuccess({ toolCalls: [] }),
+    ]);
+    expect(store.read(ɵselectCommittedAgentState)).toEqual(expectedState);
+    expect(store.read(ɵselectCommittedAgUiMessages)).toEqual(expectedMessages);
+    expect(store.read(selectUnifiedError)).toBeUndefined();
+    expect(store.read(selectIsLoading)).toBe(false);
+
+    unsubscribe();
+    teardown();
+  },
+);
+
+test('does not execute a fresh call already settled by the agent', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(async () => 'local result');
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request, [
+      {
+        type: EventType.MESSAGES_SNAPSHOT,
+        messages: [
+          { id: 'user-agent-result', role: 'user', content: 'Lookup.' },
+          {
+            id: 'assistant-agent-result',
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              {
+                id: 'call-agent-result',
+                type: 'function',
+                function: { name: 'lookup', arguments: '{}' },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: EventType.TOOL_CALL_RESULT,
+        messageId: 'result-agent',
+        toolCallId: 'call-agent-result',
+        content: 'remote result',
+      },
+    ]),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('Lookup.'),
+      tools: [
+        {
+          name: 'lookup',
+          description: 'Look up a value.',
+          schema: s.object('Lookup input', {}),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(store.read(selectIsLoading)).toBe(false);
+
+  teardown();
+});
+
+test('does not execute pending calls from the attempt-start checkpoint', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(async () => 'local result');
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: [
+        {
+          id: 'assistant-baseline',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'call-baseline',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+            },
+          ],
+        },
+        { id: 'user-after-baseline', role: 'user', content: 'Continue.' },
+      ],
+      tools: [
+        {
+          name: 'lookup',
+          description: 'Look up a value.',
+          schema: s.object('Lookup input', {}),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(store.read(selectIsLoading)).toBe(false);
+
+  teardown();
+});
+
+test('reentrant stop settles an unclaimed reserved snapshot exactly once', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(() => new Promise(() => undefined));
+  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+  const { send } = makeSelection(async (request) => ({
+    events: createToolRoundEvents(request, {
+      callId: 'call-stop-before-claim',
+      value: 1,
+    }),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('Stop before tools.'),
+      tools: [
+        {
+          name: 'recordValue',
+          description: 'Record a value.',
+          schema: s.object('Value', { value: s.number('Value') }),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const identityEvidence: boolean[] = [];
+  const unsubscribe = store.when(apiActions.generateMessageSuccess, () => {
+    const reservation = store.read(ɵselectToolTurnOwnership);
+    const entity = store.read(
+      (state) => state.toolCalls.entities['call-stop-before-claim'],
+    );
+    identityEvidence.push(reservation?.toolCalls[0] === entity);
+    store.dispatch(devActions.stopMessageGeneration(true));
+  });
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(settlements).toHaveBeenCalledTimes(1);
+  expect(identityEvidence).toEqual([true]);
+  expect(store.read(ɵselectToolTurnOwnership)).toBeUndefined();
+  expect(store.read(selectIsLoading)).toBe(false);
+  expect(
+    store.read((state) => state.toolCalls.entities['call-stop-before-claim']),
+  ).toMatchObject({
+    status: 'done',
+    result: { status: 'rejected' },
+  });
+
+  unsubscribe();
+  settlements.mockRestore();
+  teardown();
+});
+
+test('executes a pending call newly introduced by a messages snapshot once', async () => {
+  jest.clearAllMocks();
+  let requestCount = 0;
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    return {
+      events:
+        requestCount === 1
+          ? successfulEvents(request, [
+              {
+                type: EventType.MESSAGES_SNAPSHOT,
+                messages: [
+                  {
+                    id: 'assistant-snapshot-call',
+                    role: 'assistant',
+                    content: '',
+                    toolCalls: [
+                      {
+                        id: 'call-from-snapshot',
+                        type: 'function',
+                        function: {
+                          name: 'recordValue',
+                          arguments: '{"value":4}',
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ])
+          : successfulEvents(request),
+    };
+  });
+  const handler = jest.fn(async ({ value }: { value: number }) => value);
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+    tools: [
+      {
+        name: 'recordValue',
+        description: 'Record a value.',
+        schema: s.object('Value', { value: s.number('Value') }),
+        handler,
+      },
+    ],
+  });
+  const teardown = runtime.start();
+
+  try {
+    runtime.sendMessage({ role: 'user', content: 'Use the snapshot.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith({ value: 4 }, expect.any(AbortSignal));
+    expect(send).toHaveBeenCalledTimes(2);
+  } finally {
+    teardown();
+  }
+});
+
+test('supersession invalidates an unclaimed reservation before cancellation settles', async () => {
+  jest.clearAllMocks();
+  let requestCount = 0;
+  const handler = jest.fn(async () => 'result');
+  const settlementType = internalActions.toolTurnSettled.type;
+  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+  const starts = jest.spyOn(internalActions, 'toolTurnStarted');
+  const { send } = makeSelection(async (request) => {
+    requestCount++;
+    return {
+      events:
+        requestCount === 1
+          ? createToolRoundEvents(request, {
+              callId: 'call-stale-reservation',
+              value: 1,
+            })
+          : successfulEvents(request),
+    };
+  });
+  const preparationEvidence: Array<{
+    readonly actionGenerationId: string | undefined;
+    readonly storeGenerationId: string | undefined;
+    readonly actionToolTurnId: string | undefined;
+    readonly storeToolTurnId: string | undefined;
+  }> = [];
+  const store = createRealEffectStore((state, action) => {
+    if (action.type !== settlementType) return;
+    const payload = action.payload as ReturnType<
+      typeof internalActions.toolTurnSettled
+    >['payload'];
+    preparationEvidence.push({
+      actionGenerationId: payload.generationId,
+      storeGenerationId: state.generationOwnership.generationId,
+      actionToolTurnId: payload.toolTurnId,
+      storeToolTurnId: state.generationOwnership.toolTurn?.toolTurnId,
+    });
+  });
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('First.'),
+      tools: [
+        {
+          name: 'recordValue',
+          description: 'Record a value.',
+          schema: s.object('Value', { value: s.number('Value') }),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  let replaced = false;
+  const unsubscribe = store.when(apiActions.generateMessageSuccess, () => {
+    if (replaced) return;
+    replaced = true;
+    store.dispatch(
+      devActions.sendMessage({
+        canonicalMessages: canonicalUser('Replacement.'),
+        message: { role: 'user', content: 'Replacement.' },
+      }),
+    );
+  });
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 2);
+  await waitForStoreGenerationToSettle(store);
+  await flushTaskBoundary();
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(starts).toHaveBeenCalledTimes(0);
+  expect(settlements).toHaveBeenCalledTimes(1);
+  expect(preparationEvidence).toEqual([
+    {
+      actionGenerationId: expect.any(String),
+      storeGenerationId: expect.any(String),
+      actionToolTurnId: expect.any(String),
+      storeToolTurnId: undefined,
+    },
+  ]);
+  expect(preparationEvidence[0]?.storeGenerationId).not.toBe(
+    preparationEvidence[0]?.actionGenerationId,
+  );
+  expect(
+    store.read((state) => state.toolCalls.entities['call-stale-reservation']),
+  ).toMatchObject({ status: 'pending' });
+  expect(store.read(ɵselectToolTurnOwnership)).toBeUndefined();
+  expect(store.read(selectIsLoading)).toBe(false);
+
+  unsubscribe();
+  settlements.mockRestore();
+  starts.mockRestore();
+  teardown();
+});
 
 test.each([
   'RUN_STARTED',
@@ -3073,7 +3495,6 @@ test('a synchronous messages subscriber settles tools before superseding', async
       'system',
       'user',
       'assistant',
-      'tool',
       'user',
     ]);
     expect(handler).not.toHaveBeenCalled();
@@ -3373,12 +3794,12 @@ test('concurrent tool results settle once in call order', async () => {
   }
 });
 
-test('reused tool call IDs execute once in each model round', async () => {
+test('a compatible checkpoint tool-call replay is not executed again', async () => {
   jest.clearAllMocks();
   let requestCount = 0;
   const { send } = makeSelection(async (request) => {
     requestCount++;
-    if (requestCount <= 2) {
+    if (requestCount === 1) {
       return {
         events: createToolRoundEvents(request, {
           callId: 'reused-call-id',
@@ -3390,13 +3811,14 @@ test('reused tool call IDs execute once in each model round', async () => {
     return {
       events: successfulEvents(request, [
         {
-          type: EventType.TEXT_MESSAGE_START,
-          messageId: 'assistant-after-reused-calls',
-          role: 'assistant',
+          type: EventType.TOOL_CALL_START,
+          toolCallId: 'reused-call-id',
+          toolCallName: 'recordValue',
+          parentMessageId: 'assistant-reused-call-id',
         },
         {
-          type: EventType.TEXT_MESSAGE_END,
-          messageId: 'assistant-after-reused-calls',
+          type: EventType.TOOL_CALL_END,
+          toolCallId: 'reused-call-id',
         },
       ]),
     };
@@ -3428,9 +3850,9 @@ test('reused tool call IDs execute once in each model round', async () => {
     runtime.sendMessage({ role: 'user', content: 'Record two values.' });
     await waitForRuntimeIdleAcrossTasks(runtime);
 
-    expect(handledValues).toEqual([1, 2]);
-    expect(handler).toHaveBeenCalledTimes(2);
-    expect(send).toHaveBeenCalledTimes(3);
+    expect(handledValues).toEqual([1]);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(2);
   } finally {
     teardown();
   }

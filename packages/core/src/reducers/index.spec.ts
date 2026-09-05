@@ -14,6 +14,7 @@ import {
   selectViewMessages,
   ɵprepareRootAction,
   ɵselectAgUiMessagesProtocolError,
+  ɵselectAttemptOwnedPendingToolCalls,
   ɵselectAttemptStartToolCallIds,
   ɵselectCommittedAgentState,
   ɵselectCommittedAgUiMessages,
@@ -4403,7 +4404,132 @@ test('the running tool calls selector ignores thread persistence flags', () => {
     stateWithPersistenceFlags,
   );
 
-  expect(isRunningToolCalls).toBe(true);
+  expect(isRunningToolCalls).toBe(false);
+});
+
+test('the running tool calls selector tracks only a claimed tool turn', () => {
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'call-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  let state = reduceAll(
+    createState(),
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  state = reduceAll(
+    state,
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [toolCall],
+    }),
+  );
+
+  const reserved = selectIsRunningToolCalls(state);
+  state = reduceAll(
+    state,
+    internalActions.toolTurnStarted({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+    }),
+  );
+  const running = selectIsRunningToolCalls(state);
+  state = reduceAll(
+    state,
+    internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [toolCall],
+      toolMessages: [],
+      continuation: 'stop',
+    }),
+  );
+
+  expect(reserved).toBe(false);
+  expect(running).toBe(true);
+  expect(selectIsRunningToolCalls(state)).toBe(false);
+});
+
+test('prepared success commits the exact attempt-owned decorated tool objects', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: {
+        lookup: {
+          name: 'lookup',
+          description: 'Look up a value.',
+          schema: s.object('Lookup input', {
+            value: s.number('Value'),
+          }),
+          handler: async () => 'result',
+        },
+      },
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'call-1',
+      delta: '{"value":1}',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'call-1',
+    }),
+  );
+  const execution = store.read(ɵselectAttemptOwnedPendingToolCalls)[0];
+  if (!execution) throw new Error('Expected an attempt-owned tool call.');
+  store.dispatch(
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [execution],
+    }),
+  );
+
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: {
+        role: 'assistant',
+        content: '',
+        toolCallIds: ['call-1'],
+      },
+      toolCalls: [execution],
+    }),
+  );
+
+  const state = store.read((current) => current);
+  expect(execution.argumentsResolved).toEqual({ value: 1 });
+  expect(state.toolCalls.entities['call-1']).toBe(execution);
+  expect(state.generationOwnership.toolTurn?.toolCalls[0]).toBe(execution);
 });
 
 test('the loading selector ignores thread persistence flags', () => {
