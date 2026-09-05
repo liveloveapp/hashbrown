@@ -217,6 +217,88 @@ test('merges success tool decorations without replacing a canonical settled resu
   });
 });
 
+test('active transaction commits the exact successful tool snapshot for guarded settlement', () => {
+  const argumentsResolved = { city: 'Paris' };
+  const successfulToolCall: Chat.Internal.ToolCall = {
+    id: 'tool-1',
+    name: 'lookup',
+    arguments: '{"city":"Paris"}',
+    argumentsResolved,
+    status: 'pending',
+  };
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: successfulToolCall.id,
+              type: 'function',
+              function: {
+                name: successfulToolCall.name,
+                arguments: successfulToolCall.arguments,
+              },
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            content: '',
+            toolCallIds: [successfulToolCall.id],
+          },
+        ],
+        toolCalls: [{ ...successfulToolCall }],
+      },
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  const committed = reducer(
+    active,
+    apiActions.generateMessageSuccess({
+      message: {
+        role: 'assistant',
+        content: '',
+        toolCallIds: [successfulToolCall.id],
+      },
+      toolCalls: [successfulToolCall],
+    }),
+  );
+  const settled = reducer(
+    committed,
+    internalActions.toolTurnSettled({
+      continuation: 'stop',
+      toolCalls: [successfulToolCall],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: successfulToolCall.id,
+          toolName: successfulToolCall.name,
+          content: { status: 'fulfilled', value: 'sunny' },
+        },
+      ],
+    }),
+  );
+
+  expect(committed.entities[successfulToolCall.id]).toBe(successfulToolCall);
+  expect(settled.entities[successfulToolCall.id]).toMatchObject({
+    status: 'done',
+    result: { status: 'fulfilled', value: 'sunny' },
+  });
+});
+
 test('keeps an idempotently started tool call active for an ID-less chunk', () => {
   const toolCall: Chat.Internal.ToolCall = {
     id: 'tool-1',

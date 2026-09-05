@@ -3,9 +3,18 @@ import { Chat } from '../models';
 
 export default createActionGroup('internal', {
   start: emptyProps(),
+  logicalGenerationStarted: props<{ generationId: string }>(),
+  generationAttemptClaimed: props<{
+    generationId: string;
+    attemptId: string;
+  }>(),
+  generationAttemptReleased: props<{
+    generationId: string;
+    attemptId: string;
+  }>(),
   generationAttemptStarted: emptyProps(),
   generationAttemptRolledBack: emptyProps(),
-  logicalGenerationSettled: emptyProps(),
+  logicalGenerationSettled: props<{ generationId: string }>(),
   generationSilentlyRetired: emptyProps(),
   toolTurnSettled: props<{
     toolCalls: Chat.Internal.ToolCall[];

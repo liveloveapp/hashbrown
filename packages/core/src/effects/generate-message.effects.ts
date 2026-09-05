@@ -1,3 +1,4 @@
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { ɵprepareAgUiMessageEvent } from '../reducers/ag-ui-message-history';
@@ -16,6 +17,8 @@ import {
   selectTools,
   selectTransport,
   selectUiRequested,
+  ɵselectGenerationAttemptId,
+  ɵselectGenerationId,
 } from '../reducers';
 import { s } from '../schema';
 import { resolveTransport, TransportError } from '../transport';
@@ -33,13 +36,129 @@ import type { ToolTurnOutcome } from './tool-turn-coordinator';
 
 type ActiveGeneration = {
   coordinator: AssistantTurnCoordinator;
+  generationId: string;
   threadId: string | undefined;
   unclaimedToolSnapshot: AssistantTurnToolSnapshot | undefined;
+  activeAttempt:
+    | {
+        context: object;
+        attemptId: string;
+        terminalAccepted: boolean;
+        terminalEvent: AGUIEvent | undefined;
+        toolsByName: Record<string, Chat.Internal.Tool>;
+      }
+    | undefined;
+  settled: boolean;
 };
 
 export const generateMessage = createEffect((store) => {
   let activeGeneration: ActiveGeneration | undefined;
   let disposed = false;
+
+  const ownsGeneration = (generation: ActiveGeneration) =>
+    !generation.settled &&
+    activeGeneration === generation &&
+    store.read(ɵselectGenerationId) === generation.generationId;
+
+  const ownsAttempt = (generation: ActiveGeneration, context: object) =>
+    ownsGeneration(generation) &&
+    generation.activeAttempt?.context === context &&
+    store.read(ɵselectGenerationAttemptId) ===
+      generation.activeAttempt.attemptId;
+
+  const releaseAttempt = (
+    generation: ActiveGeneration,
+    context: object,
+    rollback: boolean,
+  ) => {
+    if (!ownsAttempt(generation, context)) {
+      return false;
+    }
+
+    const attemptId = generation.activeAttempt?.attemptId;
+    if (!attemptId) {
+      return false;
+    }
+    if (rollback) {
+      store.dispatch(internalActions.generationAttemptRolledBack());
+    }
+    if (!ownsAttempt(generation, context)) {
+      return false;
+    }
+    store.dispatch(
+      internalActions.generationAttemptReleased({
+        generationId: generation.generationId,
+        attemptId,
+      }),
+    );
+    if (generation.activeAttempt?.attemptId === attemptId) {
+      generation.activeAttempt = undefined;
+    }
+
+    return true;
+  };
+
+  const settleLogicalGeneration = (generation: ActiveGeneration) => {
+    if (!ownsGeneration(generation)) {
+      return false;
+    }
+
+    const attempt = generation.activeAttempt;
+    if (attempt) {
+      releaseAttempt(generation, attempt.context, true);
+    }
+    if (!ownsGeneration(generation)) {
+      return false;
+    }
+
+    store.dispatch(
+      internalActions.logicalGenerationSettled({
+        generationId: generation.generationId,
+      }),
+    );
+    generation.settled = true;
+    if (activeGeneration === generation) {
+      activeGeneration = undefined;
+    }
+
+    return true;
+  };
+
+  const finishAttempt = (generation: ActiveGeneration, context: object) => {
+    if (!ownsAttempt(generation, context)) {
+      return false;
+    }
+
+    const streamingError = store.read(selectStreamingMessageError);
+    if (streamingError) {
+      store.dispatch(apiActions.generateMessageError(streamingError));
+    } else {
+      const streamingMessage = store.read(selectRawStreamingMessage);
+      const streamingToolCalls = store.read(selectRawStreamingToolCalls);
+
+      if (streamingMessage) {
+        const finalizedToolCalls = dedupeToolCalls(streamingToolCalls);
+        generation.unclaimedToolSnapshot = {
+          toolCalls: finalizedToolCalls,
+          toolsByName: generation.activeAttempt?.toolsByName ?? {},
+        };
+        store.dispatch(
+          apiActions.generateMessageSuccess({
+            message: streamingMessage,
+            toolCalls: finalizedToolCalls,
+          }),
+        );
+      } else {
+        store.dispatch(
+          apiActions.generateMessageError(
+            new Error('No message was generated'),
+          ),
+        );
+      }
+    }
+
+    return releaseAttempt(generation, context, false);
+  };
 
   const settleUnclaimedToolSnapshot = (generation: ActiveGeneration) => {
     const snapshot = generation.unclaimedToolSnapshot;
@@ -61,9 +180,40 @@ export const generateMessage = createEffect((store) => {
   const interruptGeneration = (
     generation: ActiveGeneration,
     interruption: 'cancel' | 'retire',
+    deferStoreCleanup = false,
   ) => {
     generation.coordinator[interruption]();
-    settleUnclaimedToolSnapshot(generation);
+
+    const cleanUpStore = () => {
+      if (
+        (interruption === 'cancel' &&
+          generation.activeAttempt?.terminalAccepted) ||
+        !ownsGeneration(generation)
+      ) {
+        return;
+      }
+
+      settleUnclaimedToolSnapshot(generation);
+      if (!ownsGeneration(generation)) {
+        return;
+      }
+      if (interruption === 'retire') {
+        store.dispatch(internalActions.generationSilentlyRetired());
+      }
+      if (!ownsGeneration(generation)) {
+        return;
+      }
+      settleLogicalGeneration(generation);
+    };
+
+    if (deferStoreCleanup) {
+      // Thread changes may be dispatched from a state subscriber together with
+      // replacement input. Let the dispatch queue assign replacement ownership
+      // before an old generation emits un-tokenized retirement cleanup.
+      void Promise.resolve().then(cleanUpStore);
+    } else {
+      cleanUpStore();
+    }
   };
 
   const startGenerationCleanup = store.when(
@@ -76,12 +226,18 @@ export const generateMessage = createEffect((store) => {
         return;
       }
 
-      if (activeGeneration) {
-        interruptGeneration(activeGeneration, 'retire');
-      }
-
       const configuredThreadId = store.read(selectThreadId);
       const threadId = configuredThreadId ?? _createRequestId();
+      const generationId = _createRequestId();
+      const supersededGeneration = activeGeneration;
+      store.dispatch(
+        internalActions.logicalGenerationStarted({ generationId }),
+      );
+      if (supersededGeneration) {
+        supersededGeneration.coordinator.retire();
+        settleUnclaimedToolSnapshot(supersededGeneration);
+        supersededGeneration.settled = true;
+      }
       const generationRef: { current: ActiveGeneration | undefined } = {
         current: undefined,
       };
@@ -176,8 +332,40 @@ export const generateMessage = createEffect((store) => {
                 requestId,
               };
             },
-            onStarted: () => {
-              if (disposed) {
+            onAttemptStarted: (context) => {
+              const generation = generationRef.current;
+              if (!generation || !ownsGeneration(generation)) {
+                return;
+              }
+
+              const attemptId = _createRequestId();
+              generation.activeAttempt = {
+                context,
+                attemptId,
+                terminalAccepted: false,
+                terminalEvent: undefined,
+                toolsByName,
+              };
+              store.dispatch(
+                internalActions.generationAttemptClaimed({
+                  generationId: generation.generationId,
+                  attemptId,
+                }),
+              );
+              if (!ownsAttempt(generation, context)) {
+                return;
+              }
+              store.dispatch(internalActions.generationAttemptStarted());
+            },
+            onAttemptRolledBack: (context) => {
+              const generation = generationRef.current;
+              if (generation) {
+                releaseAttempt(generation, context, true);
+              }
+            },
+            onStarted: (context) => {
+              const generation = generationRef.current;
+              if (!generation || !ownsAttempt(generation, context)) {
                 return;
               }
 
@@ -188,67 +376,33 @@ export const generateMessage = createEffect((store) => {
                 }),
               );
             },
-            onEvent: (event) => {
-              if (disposed) {
+            onEvent: (event, context) => {
+              const generation = generationRef.current;
+              if (!generation || !ownsAttempt(generation, context)) {
                 return;
               }
-
-              store.dispatch(
-                apiActions.generateMessageEvent(
-                  ɵprepareAgUiMessageEvent(event),
-                ),
-              );
-            },
-            onAttemptError: (error) => {
-              if (disposed) {
-                return;
+              const preparedEvent = ɵprepareAgUiMessageEvent(event);
+              if (event.type === EventType.RUN_FINISHED) {
+                const attempt = generation.activeAttempt;
+                if (attempt) {
+                  attempt.terminalAccepted = true;
+                  attempt.terminalEvent = preparedEvent;
+                }
               }
 
-              store.dispatch(apiActions.generateMessageError(error));
+              store.dispatch(apiActions.generateMessageEvent(preparedEvent));
             },
           });
 
-          if (disposed) {
+          const generation = generationRef.current;
+          if (!generation || !ownsGeneration(generation)) {
             return { kind: 'retired' };
           }
 
           if (outcome.kind === 'finished') {
-            const streamingError = store.read(selectStreamingMessageError);
-            if (streamingError) {
-              store.dispatch(apiActions.generateMessageError(streamingError));
-            } else {
-              const streamingMessage = store.read(selectRawStreamingMessage);
-              const streamingToolCalls = store.read(
-                selectRawStreamingToolCalls,
-              );
-
-              if (streamingMessage) {
-                const generation = generationRef.current;
-                if (!generation) {
-                  throw new Error('Generation ownership was not initialized');
-                }
-
-                const finalizedToolCalls = dedupeToolCalls(streamingToolCalls);
-                generation.unclaimedToolSnapshot = {
-                  toolCalls: finalizedToolCalls,
-                  toolsByName,
-                };
-                store.dispatch(
-                  apiActions.generateMessageSuccess({
-                    message: streamingMessage,
-                    toolCalls: finalizedToolCalls,
-                  }),
-                );
-                if (retiredSignal.aborted || cancelSignal.aborted) {
-                  settleUnclaimedToolSnapshot(generation);
-                }
-              } else {
-                store.dispatch(
-                  apiActions.generateMessageError(
-                    new Error('No message was generated'),
-                  ),
-                );
-              }
+            const attempt = generation.activeAttempt;
+            if (attempt) {
+              finishAttempt(generation, attempt.context);
             }
           }
 
@@ -282,26 +436,30 @@ export const generateMessage = createEffect((store) => {
       });
       const generation: ActiveGeneration = {
         coordinator,
+        generationId,
         threadId: configuredThreadId,
         unclaimedToolSnapshot: undefined,
+        activeAttempt: undefined,
+        settled: false,
       };
       generationRef.current = generation;
       activeGeneration = generation;
 
       return coordinator.completion.then((outcome) => {
-        if (disposed) {
+        if (!ownsGeneration(generation)) {
           return;
-        }
-
-        if (activeGeneration === generation) {
-          activeGeneration = undefined;
         }
 
         if (outcome.kind === 'server-error') {
           store.dispatch(apiActions.generateMessageError(outcome.error));
-        } else if (outcome.kind === 'failed' && outcome.exhaustedRetries) {
-          store.dispatch(apiActions.generateMessageExhaustedRetries());
+        } else if (outcome.kind === 'failed') {
+          store.dispatch(apiActions.generateMessageError(outcome.error));
+          if (ownsGeneration(generation) && outcome.exhaustedRetries) {
+            store.dispatch(apiActions.generateMessageExhaustedRetries());
+          }
         }
+
+        settleLogicalGeneration(generation);
       });
     },
   );
@@ -312,11 +470,27 @@ export const generateMessage = createEffect((store) => {
     }
 
     const generation = activeGeneration;
-    activeGeneration = undefined;
     if (generation) {
       interruptGeneration(generation, 'cancel');
     }
   });
+
+  const finishAttemptCleanup = store.when(
+    apiActions.generateMessageEvent,
+    (action) => {
+      if (action.payload.type !== EventType.RUN_FINISHED) {
+        return;
+      }
+
+      const generation = activeGeneration;
+      const attempt = generation?.activeAttempt;
+      if (!generation || !attempt || attempt.terminalEvent !== action.payload) {
+        return;
+      }
+
+      finishAttempt(generation, attempt.context);
+    },
+  );
 
   const updateOptionsCleanup = store.when(
     devActions.updateOptions,
@@ -333,13 +507,8 @@ export const generateMessage = createEffect((store) => {
       }
 
       const generation = activeGeneration;
-      activeGeneration = undefined;
       if (generation) {
-        interruptGeneration(generation, 'retire');
-      }
-
-      if (generation) {
-        store.dispatch(internalActions.generationSilentlyRetired());
+        interruptGeneration(generation, 'retire', true);
       }
     },
   );
@@ -351,16 +520,13 @@ export const generateMessage = createEffect((store) => {
     disposed = true;
 
     const generation = activeGeneration;
-    activeGeneration = undefined;
     if (generation) {
       interruptGeneration(generation, 'retire');
-    }
-    if (generation) {
-      store.dispatch(internalActions.generationSilentlyRetired());
     }
 
     startGenerationCleanup();
     stopCleanup();
+    finishAttemptCleanup();
     updateOptionsCleanup();
   };
 });

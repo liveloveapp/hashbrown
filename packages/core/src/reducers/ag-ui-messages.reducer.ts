@@ -117,7 +117,6 @@ export const reducer = createReducer(
   ),
   on(
     apiActions.generateMessageError,
-    devActions.stopMessageGeneration,
     internalActions.generationSilentlyRetired,
     internalActions.logicalGenerationSettled,
     (state): AgUiMessagesState => rollback(state),

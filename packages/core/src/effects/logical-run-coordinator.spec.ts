@@ -67,7 +67,6 @@ function execute({
   retiredSignal = new AbortController().signal,
   onStarted = jest.fn(),
   onEvent = jest.fn(),
-  onAttemptError = jest.fn(),
   onAttemptStarted,
   onAttemptRolledBack,
 }: {
@@ -77,7 +76,6 @@ function execute({
   retiredSignal?: AbortSignal;
   onStarted?: (context: LogicalRunAttemptContext) => void;
   onEvent?: (event: AGUIEvent, context: LogicalRunAttemptContext) => void;
-  onAttemptError?: (error: Error) => void;
   onAttemptStarted?: (context: LogicalRunAttemptContext) => void;
   onAttemptRolledBack?: (
     context: LogicalRunAttemptContext,
@@ -92,7 +90,6 @@ function execute({
     createRequest,
     onStarted,
     onEvent,
-    onAttemptError,
     onAttemptStarted,
     onAttemptRolledBack,
   });
@@ -328,13 +325,10 @@ test('retries a failed attempt with fresh metadata and reports eventual success'
     };
   });
   const onEvent = jest.fn();
-  const onAttemptError = jest.fn();
-
   const outcome = await execute({
     transport,
     retries: 1,
     onEvent,
-    onAttemptError,
   });
 
   expect(outcome).toEqual({ kind: 'finished' });
@@ -348,8 +342,6 @@ test('retries a failed attempt with fresh metadata and reports eventual success'
     { attempt: 1, maxAttempts: 2, requestId: 'run-1' },
     { attempt: 2, maxAttempts: 2, requestId: 'run-2' },
   ]);
-  expect(onAttemptError).toHaveBeenCalledWith(firstError);
-  expect(onAttemptError).toHaveBeenCalledTimes(1);
   expect(onEvent.mock.calls.map(([event]) => event.type)).toEqual([
     EventType.RUN_STARTED,
     EventType.RUN_FINISHED,
@@ -361,12 +353,9 @@ test('stops a non-retryable failure without reporting retry exhaustion', async (
   const transport = createTransport(async () => {
     throw error;
   });
-  const onAttemptError = jest.fn();
-
   const outcome = await execute({
     transport,
     retries: 3,
-    onAttemptError,
   });
 
   expect(outcome).toEqual({
@@ -375,7 +364,6 @@ test('stops a non-retryable failure without reporting retry exhaustion', async (
     exhaustedRetries: false,
   });
   expect(transport.send).toHaveBeenCalledTimes(1);
-  expect(onAttemptError).toHaveBeenCalledWith(error);
 });
 
 test('reports exhaustion after all retryable attempts fail', async () => {
@@ -383,12 +371,9 @@ test('reports exhaustion after all retryable attempts fail', async () => {
   const transport = createTransport(async () => {
     throw error;
   });
-  const onAttemptError = jest.fn();
-
   const outcome = await execute({
     transport,
     retries: 1,
-    onAttemptError,
   });
 
   expect(outcome).toEqual({
@@ -397,7 +382,6 @@ test('reports exhaustion after all retryable attempts fail', async () => {
     exhaustedRetries: true,
   });
   expect(transport.send).toHaveBeenCalledTimes(2);
-  expect(onAttemptError).toHaveBeenCalledTimes(2);
 });
 
 test('does not synthesize RUN_ERROR when an attempt fails before RUN_STARTED', async () => {
@@ -439,9 +423,7 @@ test('reports an accepted protocol failure without synthesizing a terminal event
     events: createEvents([createStarted(request)]),
   }));
   const onEvent = jest.fn();
-  const onAttemptError = jest.fn();
-
-  const outcome = await execute({ transport, onEvent, onAttemptError });
+  const outcome = await execute({ transport, onEvent });
 
   expect(outcome).toMatchObject({
     kind: 'failed',
@@ -455,12 +437,6 @@ test('reports an accepted protocol failure without synthesizing a terminal event
   expect(onEvent.mock.calls.map(([event]) => event)).toEqual([
     expect.objectContaining({ type: EventType.RUN_STARTED }),
   ]);
-  expect(onAttemptError).toHaveBeenCalledWith(
-    expect.objectContaining({
-      name: 'TransportError',
-      code: 'PROTOCOL_ERROR',
-    }),
-  );
 });
 
 test('returns a server RUN_ERROR without retrying or synthesizing another terminal', async () => {
@@ -472,13 +448,10 @@ test('returns a server RUN_ERROR without retrying or synthesizing another termin
     events: createEvents([createStarted(request), runError]),
   }));
   const onEvent = jest.fn();
-  const onAttemptError = jest.fn();
-
   const outcome = await execute({
     transport,
     retries: 2,
     onEvent,
-    onAttemptError,
   });
 
   expect(outcome).toMatchObject({
@@ -490,7 +463,6 @@ test('returns a server RUN_ERROR without retrying or synthesizing another termin
     expect.objectContaining({ type: EventType.RUN_STARTED }),
     runError,
   ]);
-  expect(onAttemptError).not.toHaveBeenCalled();
 });
 
 test('cancellation after RUN_STARTED does not synthesize a terminal event', async () => {
@@ -526,18 +498,14 @@ test('retirement takes precedence without synthesizing a terminal or reporting a
       retiredController.abort();
     }
   });
-  const onAttemptError = jest.fn();
-
   const outcome = await execute({
     transport,
     retiredSignal: retiredController.signal,
     onEvent,
-    onAttemptError,
   });
 
   expect(outcome).toEqual({ kind: 'retired' });
   expect(onEvent.mock.calls.map(([event]) => event.type)).toEqual([
     EventType.RUN_STARTED,
   ]);
-  expect(onAttemptError).not.toHaveBeenCalled();
 });

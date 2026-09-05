@@ -84,7 +84,6 @@ export const reducer = createReducer(
     if (!state.attemptActive) {
       return {
         ...state,
-        stateWriteLocked: false,
         protocolError: undefined,
       };
     }
@@ -93,7 +92,6 @@ export const reducer = createReducer(
       ...state,
       committed: state.draft,
       attemptActive: false,
-      stateWriteLocked: false,
       protocolError: undefined,
     };
   }),
@@ -130,15 +128,9 @@ export const reducer = createReducer(
 
     return state;
   }),
-  on(
-    apiActions.generateMessageError,
-    devActions.stopMessageGeneration,
-    internalActions.generationSilentlyRetired,
-    internalActions.logicalGenerationSettled,
-    (state): AgentStateState => {
-      return settleLogicalGeneration(state);
-    },
-  ),
+  on(internalActions.logicalGenerationSettled, (state): AgentStateState => {
+    return settleLogicalGeneration(state);
+  }),
 );
 
 /** @internal */

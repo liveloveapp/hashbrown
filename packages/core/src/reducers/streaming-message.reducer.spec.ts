@@ -233,12 +233,24 @@ test('resets every accumulator field for all terminal adapter actions', () => {
     }),
     apiActions.generateMessageError(new Error('failed')),
     internalActions.generationSilentlyRetired(),
-    devActions.stopMessageGeneration(false),
   ];
 
   const results = actions.map((action) => reducer(state, action));
 
   expect(results.every((result) => result === initialState)).toBe(true);
+});
+
+test('user stop waits for the owned attempt rollback before clearing streaming state', () => {
+  const state = startState();
+
+  const stopped = reducer(state, devActions.stopMessageGeneration(false));
+  const rolledBack = reducer(
+    stopped,
+    internalActions.generationAttemptRolledBack(),
+  );
+
+  expect(stopped).toBe(state);
+  expect(rolledBack).toBe(initialState);
 });
 
 test('ignores lifecycle events outside an attempt and resets on rollback settlement', () => {
@@ -264,7 +276,10 @@ test('ignores lifecycle events outside an attempt and resets on rollback settlem
     active,
     internalActions.generationAttemptRolledBack(),
   );
-  const settled = reducer(active, internalActions.logicalGenerationSettled());
+  const settled = reducer(
+    active,
+    internalActions.logicalGenerationSettled({ generationId: 'generation-1' }),
+  );
 
   expect(outside).toBe(initialState);
   expect(rolledBack).toBe(initialState);

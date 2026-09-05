@@ -7,6 +7,7 @@ import * as fromAgentState from './agent-state.reducer';
 import * as fromAgUiMessages from './ag-ui-messages.reducer';
 import * as fromConfig from './config.reducer';
 import * as fromMessages from './messages.reducer';
+import * as fromGenerationOwnership from './generation-ownership.reducer';
 import * as fromStatus from './status.reducer';
 import * as fromStreamingMessage from './streaming-message.reducer';
 import * as fromToolCalls from './tool-calls.reducer';
@@ -18,6 +19,7 @@ export const reducers = {
   agentState: fromAgentState.reducer,
   agUiMessages: fromAgUiMessages.reducer,
   config: fromConfig.reducer,
+  generationOwnership: fromGenerationOwnership.reducer,
   messages: fromMessages.reducer,
   status: fromStatus.reducer,
   streamingMessage: fromStreamingMessage.reducer,
@@ -25,6 +27,22 @@ export const reducers = {
   tools: fromTools.reducer,
   thread: fromThread.reducer,
 };
+
+/** Selects the private generation-ownership slice. @internal */
+export const ɵselectGenerationOwnershipState = (state: State) =>
+  state.generationOwnership;
+
+/** Selects the active logical generation identity. @internal */
+export const ɵselectGenerationId = select(
+  ɵselectGenerationOwnershipState,
+  fromGenerationOwnership.ɵselectGenerationId,
+);
+
+/** Selects the active model-attempt identity. @internal */
+export const ɵselectGenerationAttemptId = select(
+  ɵselectGenerationOwnershipState,
+  fromGenerationOwnership.ɵselectAttemptId,
+);
 
 /**
  * Shared agent state

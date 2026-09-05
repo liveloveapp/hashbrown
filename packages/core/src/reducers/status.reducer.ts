@@ -4,6 +4,7 @@ import { apiActions, devActions, internalActions } from '../actions';
 import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 
 export interface StatusState {
+  readonly activeGenerationId: string | undefined;
   isReceiving: boolean;
   isSending: boolean;
   isGenerating: boolean;
@@ -14,6 +15,7 @@ export interface StatusState {
 }
 
 export const initialStatusState: StatusState = {
+  activeGenerationId: undefined,
   isReceiving: false,
   isSending: false,
   isGenerating: false,
@@ -54,6 +56,23 @@ export const reducer = createReducer(
       ...state,
       isSending: true,
       sendingError: undefined,
+    };
+  }),
+  on(internalActions.logicalGenerationStarted, (state, action) => ({
+    ...state,
+    activeGenerationId: action.payload.generationId,
+  })),
+  on(internalActions.logicalGenerationSettled, (state, action) => {
+    if (state.activeGenerationId !== action.payload.generationId) {
+      return state;
+    }
+
+    return {
+      ...state,
+      activeGenerationId: undefined,
+      isReceiving: false,
+      isSending: false,
+      isGenerating: false,
     };
   }),
   on(apiActions.generateMessageEvent, (state, action) => {
@@ -123,6 +142,7 @@ export const reducer = createReducer(
   on(internalActions.generationSilentlyRetired, (state) => {
     return {
       ...state,
+      activeGenerationId: undefined,
       isReceiving: false,
       isSending: false,
       isGenerating: false,
@@ -150,6 +170,7 @@ export const reducer = createReducer(
   on(devActions.stopMessageGeneration, (state) => {
     return {
       ...state,
+      activeGenerationId: undefined,
       isReceiving: false,
       isGenerating: false,
       isSending: false,

@@ -329,7 +329,6 @@ export const reducer = createReducer(
   ),
   on(
     apiActions.generateMessageError,
-    devActions.stopMessageGeneration,
     internalActions.generationSilentlyRetired,
     internalActions.logicalGenerationSettled,
     (state): MessagesState => rollback(state),

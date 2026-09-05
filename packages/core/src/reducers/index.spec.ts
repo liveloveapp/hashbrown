@@ -28,6 +28,7 @@ const initAction = { type: '@@init' } as const;
 function createState() {
   return {
     config: reducers.config(undefined, initAction),
+    generationOwnership: reducers.generationOwnership(undefined, initAction),
     agentState: reducers.agentState(undefined, initAction),
     agUiMessages: reducers.agUiMessages(undefined, initAction),
     messages: reducers.messages(undefined, initAction),
@@ -45,6 +46,10 @@ function reduceAll(
 ) {
   return {
     config: reducers.config(state.config, action),
+    generationOwnership: reducers.generationOwnership(
+      state.generationOwnership,
+      action,
+    ),
     agentState: reducers.agentState(state.agentState, action),
     agUiMessages: reducers.agUiMessages(state.agUiMessages, action),
     messages: reducers.messages(state.messages, action),

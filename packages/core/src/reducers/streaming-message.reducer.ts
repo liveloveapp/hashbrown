@@ -467,7 +467,6 @@ export const reducer = createReducer(
     internalActions.generationAttemptRolledBack,
     internalActions.generationSilentlyRetired,
     internalActions.logicalGenerationSettled,
-    devActions.stopMessageGeneration,
     devActions.setMessages,
     devActions.resendMessages,
     () => initialState,

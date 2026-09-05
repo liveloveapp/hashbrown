@@ -29,6 +29,10 @@ function createRootState() {
     agentState: rootReducers.agentState(undefined, initAction),
     agUiMessages: rootReducers.agUiMessages(undefined, initAction),
     config: rootReducers.config(undefined, initAction),
+    generationOwnership: rootReducers.generationOwnership(
+      undefined,
+      initAction,
+    ),
     messages: rootReducers.messages(undefined, initAction),
     status: rootReducers.status(undefined, initAction),
     streamingMessage: rootReducers.streamingMessage(undefined, initAction),
@@ -50,6 +54,10 @@ function reduceRoot(
     agentState: rootReducers.agentState(state.agentState, action),
     agUiMessages: rootReducers.agUiMessages(state.agUiMessages, action),
     config: rootReducers.config(state.config, action),
+    generationOwnership: rootReducers.generationOwnership(
+      state.generationOwnership,
+      action,
+    ),
     messages: rootReducers.messages(state.messages, action),
     status: rootReducers.status(state.status, action),
     streamingMessage: rootReducers.streamingMessage(
@@ -84,6 +92,36 @@ test('marks generation active from an AG-UI run start event', () => {
     isReceiving: true,
     isGenerating: true,
     generatingError: undefined,
+  });
+});
+
+test('clears status only for the matching logical generation settlement', () => {
+  let state = reducer(
+    initialStatusState,
+    internalActions.logicalGenerationStarted({ generationId: 'generation-2' }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+
+  const stale = reducer(
+    state,
+    internalActions.logicalGenerationSettled({ generationId: 'generation-1' }),
+  );
+  const matching = reducer(
+    stale,
+    internalActions.logicalGenerationSettled({ generationId: 'generation-2' }),
+  );
+
+  expect(stale).toBe(state);
+  expect(matching).toEqual({
+    ...initialStatusState,
+    activeGenerationId: undefined,
   });
 });
 

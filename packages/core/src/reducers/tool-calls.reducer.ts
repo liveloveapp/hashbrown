@@ -386,7 +386,6 @@ export const reducer = createReducer(
   ),
   on(
     apiActions.generateMessageError,
-    devActions.stopMessageGeneration,
     internalActions.generationSilentlyRetired,
     internalActions.logicalGenerationSettled,
     devActions.resendMessages,
@@ -759,9 +758,17 @@ function mergeSuccessToolCalls(
       status: existing.status,
       ...(existing.result === undefined ? {} : { result: existing.result }),
     };
+    const committedToolCall = Object.keys(merged).every(
+      (key) =>
+        Object.hasOwn(toolCall, key) &&
+        toolCall[key as keyof Chat.Internal.ToolCall] ===
+          merged[key as keyof Chat.Internal.ToolCall],
+    )
+      ? toolCall
+      : merged;
     return {
       ...current,
-      entities: { ...current.entities, [toolCall.id]: merged },
+      entities: { ...current.entities, [toolCall.id]: committedToolCall },
     };
   }, draft);
 }

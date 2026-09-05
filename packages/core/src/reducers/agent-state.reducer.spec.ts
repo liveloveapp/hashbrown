@@ -158,7 +158,7 @@ test('commits the current draft on generation success', () => {
     committed: draft.draft,
     draft: draft.draft,
     attemptActive: false,
-    stateWriteLocked: false,
+    stateWriteLocked: true,
     protocolError: undefined,
   });
 });
@@ -181,7 +181,7 @@ test('does not overwrite committed state when success arrives without an active 
   );
 
   expect(result.committed).toBe(committed);
-  expect(result.stateWriteLocked).toBe(false);
+  expect(result.stateWriteLocked).toBe(true);
 });
 
 test('rolls back an active draft without releasing the write lock', () => {
@@ -297,6 +297,18 @@ test.each([
   },
 );
 
+test('matching logical settlement releases the logical-generation write lock', () => {
+  const locked = { ...initialAgentState, stateWriteLocked: true };
+
+  const result = reducer(
+    locked,
+    internalActions.logicalGenerationSettled({ generationId: 'generation-1' }),
+  );
+
+  expect(result.stateWriteLocked).toBe(false);
+  expect(result.committed).toBeUndefined();
+});
+
 test.each([
   [
     'generation success',
@@ -311,15 +323,16 @@ test.each([
   ],
   ['stop', devActions.stopMessageGeneration(false)],
   ['silent retirement', internalActions.generationSilentlyRetired()],
-  ['logical settlement', internalActions.logicalGenerationSettled()],
-])('%s releases the logical-generation write lock', (_, action) => {
-  const locked = { ...initialAgentState, stateWriteLocked: true };
+])(
+  '%s preserves the logical-generation write lock until settlement',
+  (_, action) => {
+    const locked = { ...initialAgentState, stateWriteLocked: true };
 
-  const result = reducer(locked, action);
+    const result = reducer(locked, action);
 
-  expect(result.stateWriteLocked).toBe(false);
-  expect(result.committed).toBeUndefined();
-});
+    expect(result.stateWriteLocked).toBe(true);
+  },
+);
 
 test('tool continuation locks state writes while a normal stopped tool turn leaves them released', () => {
   const continued = reducer(

@@ -1514,7 +1514,10 @@ test('logical settlement rolls an active draft back and cannot undo supersession
       delta: 'draft',
     }),
   );
-  const settled = reducer(drafted, internalActions.logicalGenerationSettled());
+  const settled = reducer(
+    drafted,
+    internalActions.logicalGenerationSettled({ generationId: 'generation-1' }),
+  );
   const superseded = reducer(
     drafted,
     devActions.sendMessage({
@@ -1524,7 +1527,7 @@ test('logical settlement rolls an active draft back and cannot undo supersession
   );
   const staleSettlement = reducer(
     superseded,
-    internalActions.logicalGenerationSettled(),
+    internalActions.logicalGenerationSettled({ generationId: 'generation-1' }),
   );
 
   expect(settled.committed).toBe(initialized.committed);
@@ -1914,7 +1917,7 @@ test('clears configured echoes with the empty system sentinel', () => {
   );
 });
 
-test('user stop rolls an active canonical draft back to committed authority', () => {
+test('user stop waits for the owned attempt rollback', () => {
   const initialized = reducer(
     initialAgUiMessagesState,
     devActions.init({
@@ -1933,8 +1936,13 @@ test('user stop rolls an active canonical draft back to committed authority', ()
     }),
   );
   const stopped = reducer(drafted, devActions.stopMessageGeneration(true));
+  const rolledBack = reducer(
+    stopped,
+    internalActions.generationAttemptRolledBack(),
+  );
 
-  expect(stopped).toMatchObject({
+  expect(stopped).toBe(drafted);
+  expect(rolledBack).toMatchObject({
     attemptActive: false,
     committed: initialized.committed,
     draft: initialized.committed,

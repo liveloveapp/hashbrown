@@ -49,7 +49,6 @@ export interface ExecuteLogicalRunOptions {
     context: LogicalRunAttemptContext,
     error: Error | undefined,
   ) => void;
-  readonly onAttemptError: (error: Error) => void;
 }
 
 /**
@@ -83,7 +82,6 @@ export async function executeLogicalRun({
   onStarted,
   onEvent,
   onAttemptRolledBack,
-  onAttemptError,
 }: ExecuteLogicalRunOptions): Promise<LogicalRunOutcome> {
   let retryState = createLogicalRunRetryState(retries);
 
@@ -152,8 +150,6 @@ export async function executeLogicalRun({
         code: 'PROTOCOL_ERROR',
       });
     onAttemptRolledBack?.(context, error);
-    onAttemptError(error);
-
     const failureDecision = decideLogicalRunFailure(retryState, error);
     if (failureDecision.kind === 'stop') {
       return {
