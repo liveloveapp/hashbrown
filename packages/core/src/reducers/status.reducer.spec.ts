@@ -1,6 +1,7 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
 import { createStore } from '../utils/micro-ngrx';
 import {
   reducers as rootReducers,
@@ -18,10 +19,20 @@ import { initialStatusState, reducer } from './status.reducer';
 const initAction = { type: '@@init' } as const;
 const generationSilentlyRetiredAction =
   internalActions.generationSilentlyRetired();
+const canonicalUser = (content: string) =>
+  lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => `user-${content}`,
+  });
 
 function createRootState() {
   return {
+    agentState: rootReducers.agentState(undefined, initAction),
+    agUiMessages: rootReducers.agUiMessages(undefined, initAction),
     config: rootReducers.config(undefined, initAction),
+    generationOwnership: rootReducers.generationOwnership(
+      undefined,
+      initAction,
+    ),
     messages: rootReducers.messages(undefined, initAction),
     status: rootReducers.status(undefined, initAction),
     streamingMessage: rootReducers.streamingMessage(undefined, initAction),
@@ -40,7 +51,13 @@ function reduceRoot(
   action: { type: string },
 ) {
   return {
+    agentState: rootReducers.agentState(state.agentState, action),
+    agUiMessages: rootReducers.agUiMessages(state.agUiMessages, action),
     config: rootReducers.config(state.config, action),
+    generationOwnership: rootReducers.generationOwnership(
+      state.generationOwnership,
+      action,
+    ),
     messages: rootReducers.messages(state.messages, action),
     status: rootReducers.status(state.status, action),
     streamingMessage: rootReducers.streamingMessage(
@@ -75,6 +92,82 @@ test('marks generation active from an AG-UI run start event', () => {
     isReceiving: true,
     isGenerating: true,
     generatingError: undefined,
+  });
+});
+
+test('preserves the generation phase when stop is queued from an accepted terminal event', () => {
+  const protocolError = new Error('terminal protocol failed');
+  let state = reducer(
+    initialStatusState,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_FINISHED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+
+  const stopped = reducer(state, devActions.stopMessageGeneration(true));
+  const rolledBack = reducer(
+    stopped,
+    internalActions.generationAttemptRolledBack(),
+  );
+  const failed = reducer(
+    rolledBack,
+    apiActions.generateMessageError(protocolError),
+  );
+
+  expect(stopped).toMatchObject({
+    isReceiving: true,
+    isGenerating: true,
+    acceptedTerminalEvent: true,
+  });
+  expect(rolledBack).toMatchObject({
+    isReceiving: true,
+    isGenerating: true,
+    acceptedTerminalEvent: false,
+  });
+  expect(failed).toMatchObject({
+    error: protocolError,
+    sendingError: undefined,
+    generatingError: protocolError,
+  });
+});
+
+test('clears status only for the matching logical generation settlement', () => {
+  let state = reducer(
+    initialStatusState,
+    internalActions.logicalGenerationStarted({ generationId: 'generation-2' }),
+  );
+  state = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+
+  const stale = reducer(
+    state,
+    internalActions.logicalGenerationSettled({ generationId: 'generation-1' }),
+  );
+  const matching = reducer(
+    stale,
+    internalActions.logicalGenerationSettled({ generationId: 'generation-2' }),
+  );
+
+  expect(stale).toBe(state);
+  expect(matching).toEqual({
+    ...initialStatusState,
+    activeGenerationId: undefined,
   });
 });
 
@@ -169,8 +262,11 @@ test('marks a continuing tool settlement as sending', () => {
   const next = reducer(
     initialStatusState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'continue',
     }),
   );
@@ -182,8 +278,11 @@ test('keeps a stopped tool settlement idle', () => {
   const next = reducer(
     initialStatusState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'stop',
     }),
   );
@@ -195,8 +294,11 @@ test('preserves a superseding user turn sending state', () => {
   const next = reducer(
     { ...initialStatusState, isSending: true },
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'stop',
     }),
   );
@@ -207,7 +309,10 @@ test('preserves a superseding user turn sending state', () => {
 test('silent retirement returns a pending generation to idle', () => {
   const store = createRootStore();
   store.dispatch(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   const status = store.read(selectStatusState);
   const wasLoading = store.read(selectIsLoading);
@@ -232,7 +337,10 @@ test('silent retirement returns a pending generation to idle', () => {
 test('silent retirement clears active streaming state without changing committed state', () => {
   const store = createRootStore();
   store.dispatch(
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   store.dispatch(
     apiActions.generateMessageStart({
@@ -297,7 +405,10 @@ test('clears prestart errors when a retry starts and succeeds', () => {
   const prestartError = new Error('request failed before start');
   let state = reducer(
     initialStatusState,
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   state = reducer(state, apiActions.generateMessageError(prestartError));
 
@@ -334,7 +445,10 @@ test('clears an active-run server error when a retry starts', () => {
   const serverError = new Error('server failed');
   let state = reducer(
     initialStatusState,
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   state = reducer(
     state,
@@ -365,7 +479,7 @@ test('clears an active-run server error when a retry starts', () => {
   });
 });
 
-test('retry success clears unified error and enables pending tool calls', () => {
+test('retry success clears unified error without treating pending calls as running', () => {
   const toolCall: Chat.Internal.ToolCall = {
     id: 'call-1',
     name: 'lookup',
@@ -375,7 +489,10 @@ test('retry success clears unified error and enables pending tool calls', () => 
   let state = createRootState();
   state = reduceRoot(
     state,
-    devActions.sendMessage({ message: { role: 'user', content: 'Hi' } }),
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Hi'),
+      message: { role: 'user', content: 'Hi' },
+    }),
   );
   state = reduceRoot(
     state,
@@ -403,5 +520,5 @@ test('retry success clears unified error and enables pending tool calls', () => 
   );
 
   expect(selectUnifiedError(state)).toBeUndefined();
-  expect(selectIsRunningToolCalls(state)).toBe(true);
+  expect(selectIsRunningToolCalls(state)).toBe(false);
 });

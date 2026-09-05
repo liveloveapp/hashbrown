@@ -358,6 +358,39 @@ test('posts the AG-UI input with exact default headers', async () => {
   );
 });
 
+test('omits undefined state from the serialized HTTP body', async () => {
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>(
+    async () => successfulResponse(),
+  );
+  const transport = new HttpTransport({
+    fetchImpl: fetchMock as unknown as typeof fetch,
+  });
+
+  await transport.send(
+    createRequest({ input: { ...input, state: undefined } }),
+  );
+  const [, init] = fetchMock.mock.calls[0];
+  const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+
+  expect(Object.hasOwn(body, 'state')).toBe(false);
+});
+
+test('preserves initialized state in the serialized HTTP body', async () => {
+  const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>(
+    async () => successfulResponse(),
+  );
+  const transport = new HttpTransport({
+    fetchImpl: fetchMock as unknown as typeof fetch,
+  });
+  const state = { phase: 'ready', nested: [1, true] };
+
+  await transport.send(createRequest({ input: { ...input, state } }));
+  const [, init] = fetchMock.mock.calls[0];
+  const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+
+  expect(body['state']).toEqual(state);
+});
+
 test('applies middleware in order and restores the authoritative signal', async () => {
   const calls: string[] = [];
   const replacementSignal = new AbortController().signal;

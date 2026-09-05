@@ -332,3 +332,42 @@ test('useUiCompletion propagates thread identity without exposing persistence st
   expect(result.current).not.toHaveProperty('threadSaveError');
   expect(result.current).not.toHaveProperty('threadId');
 });
+
+test('useUiCompletion forwards and returns shared agent state unchanged', () => {
+  // Arrange
+  const state = { panel: 'summary' };
+  const setState = vi.fn();
+  useStructuredCompletionMock.mockReset();
+  useStructuredCompletionMock.mockReturnValue({
+    output: null,
+    reload: vi.fn(),
+    error: undefined,
+    isLoading: false,
+    isReceiving: false,
+    isSending: false,
+    isGenerating: false,
+    isRunningToolCalls: false,
+    sendingError: undefined,
+    generatingError: undefined,
+    exhaustedRetries: false,
+    state,
+    setState,
+  });
+
+  // Act
+  const { result } = renderHook(() =>
+    useUiCompletion({
+      input: null,
+      system: 'system prompt',
+      components: [],
+      state,
+    }),
+  );
+
+  // Assert
+  expect(useStructuredCompletionMock).toHaveBeenCalledWith(
+    expect.objectContaining({ state }),
+  );
+  expect(result.current.state).toBe(state);
+  expect(result.current.setState).toBe(setState);
+});

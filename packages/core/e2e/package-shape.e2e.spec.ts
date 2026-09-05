@@ -133,6 +133,19 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
           system: 'test',
           transport,
         });
+        const statefulRuntime = createChatRuntime({
+          system: 'test',
+          state: { accountId: 'account-1' },
+          transport,
+        });
+        const inferredState: { accountId: string } | undefined =
+          statefulRuntime.state();
+        const defaultedState: unknown | undefined = runtime.state();
+        statefulRuntime.setState({ accountId: 'account-2' });
+        // @ts-expect-error accountId is required and must be a string.
+        statefulRuntime.setState({ accountId: 2 });
+        // @ts-expect-error State is runtime-owned, not an update option.
+        statefulRuntime.updateOptions({ state: { accountId: 'account-3' } });
         const teardown = runtime.start();
         const frame: Frame = { type: 'generation-start' };
         const encoded = encodeFrame(frame);
@@ -169,7 +182,14 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
         // @ts-expect-error Legacy completion parameters are no longer public.
         type RemovedCompletionCreateParams = Chat.Api.CompletionCreateParams;
 
-        void [encoded, missingInput, missingEvents, teardown];
+        void [
+          encoded,
+          missingInput,
+          missingEvents,
+          teardown,
+          inferredState,
+          defaultedState,
+        ];
         void fryHashbrown;
         void (null as unknown as Hashbrown<string, Chat.AnyTool>);
         void (null as unknown as RemovedStructuredOutputOptions);

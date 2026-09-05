@@ -7,8 +7,9 @@ import { useChat } from './use-chat';
  *
  * @public
  * @typeParam Input - The type of the input to predict from.
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UseCompletionOptions<Input> {
+export interface UseCompletionOptions<Input, State = unknown> {
   /**
    * The input string to predict from.
    */
@@ -18,6 +19,11 @@ export interface UseCompletionOptions<Input> {
    * The system message to use for the completion.
    */
   system: string;
+
+  /**
+   * The initial shared agent state.
+   */
+  state?: State;
 
   /**
    * The tools to make available use for the completion.
@@ -57,8 +63,20 @@ export interface UseCompletionOptions<Input> {
  * The result of the `useCompletion` hook.
  *
  * @public
+ * @typeParam State - The shared agent state owned by the runtime.
  */
-export interface UseCompletionResult {
+export interface UseCompletionResult<State = unknown> {
+  /**
+   * The currently visible shared agent state.
+   */
+  readonly state: State | undefined;
+
+  /**
+   * Replaces the shared agent state without starting a generation.
+   * @param state - The next shared agent state.
+   */
+  setState(state: State): void;
+
   /**
    * The output from the model.
    */
@@ -120,6 +138,8 @@ export interface UseCompletionResult {
  * The result object contains functions and state enabling you to send and recieve messages and monitor the state of the chat.
  *
  * @public
+ * @typeParam Input - The type of the input to predict from.
+ * @typeParam State - The shared agent state owned by the runtime.
  * @remarks
  * The `useCompletion` hook provides functionality for completing unstructured inputs with predicted unstructured outputs.  This is useful for things like natural language autocompletions.
  *
@@ -131,13 +151,13 @@ export interface UseCompletionResult {
  * });
  * ```
  */
-export function useCompletion<Input>(
+export function useCompletion<Input, State = unknown>(
   /**
    * The options to configure the completion chat.
    */
-  options: UseCompletionOptions<Input>,
-): UseCompletionResult {
-  const { setMessages, ...chat } = useChat({
+  options: UseCompletionOptions<Input, State>,
+): UseCompletionResult<State> {
+  const { setMessages, ...chat } = useChat<Chat.AnyTool, State>({
     ...options,
   });
 
@@ -162,6 +182,8 @@ export function useCompletion<Input>(
   }, [chat.messages]);
 
   return {
+    state: chat.state,
+    setState: chat.setState,
     output,
     reload: chat.reload,
     error: chat.error,

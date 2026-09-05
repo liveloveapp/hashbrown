@@ -322,18 +322,57 @@ test('structuredChatResource reload returns false when messages are empty', () =
   expect(runtime.setMessages).not.toHaveBeenCalled();
 });
 
+test('structuredChatResource forwards initial state and exposes runtime state', () => {
+  createChatRuntimeMock.mockReset();
+  const stateSignal = createSignal<{ portfolioId: string } | undefined>({
+    portfolioId: 'alpha',
+  });
+  const runtime = createRuntimeStub({ messages: [], state: stateSignal });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  const initialState = { portfolioId: 'alpha' };
+  const system = signal('System A');
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredChatResource({
+      system,
+      schema: s.object('risk summary', { risk: s.string('Risk level') }),
+      state: initialState,
+    }),
+  );
+  stateSignal.set({ portfolioId: 'beta' });
+  resource.setState({ portfolioId: 'gamma' });
+  system.set('System B');
+  TestBed.flushEffects();
+
+  expect(createChatRuntimeMock.mock.calls[0]?.[0].state).toBe(initialState);
+  expect(resource.state()).toEqual({ portfolioId: 'beta' });
+  expect(runtime.setState).toHaveBeenCalledWith({ portfolioId: 'gamma' });
+  expect(
+    runtime.updateOptions.mock.calls.every(
+      ([updatedOptions]) => !Object.hasOwn(updatedOptions, 'state'),
+    ),
+  ).toBe(true);
+});
+
 function createRuntimeStub({
   messages,
   error,
   exhaustedRetries = false,
+  state = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   error?: Error;
   exhaustedRetries?: boolean;
+  state?: ReturnType<typeof createSignal<unknown>>;
 }) {
   const messagesSignal = createSignal(messages);
 
   return {
+    state,
     messages: messagesSignal,
     isReceiving: createSignal(false),
     isSending: createSignal(false),
@@ -355,6 +394,7 @@ function createRuntimeStub({
     resendMessages: vi.fn(),
     stop: vi.fn(),
     setMessages: vi.fn((nextMessages) => messagesSignal.set(nextMessages)),
+    setState: vi.fn(),
   } as never;
 }
 

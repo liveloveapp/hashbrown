@@ -11,7 +11,24 @@ import {
   toInternalToolCallsFromApiMessages,
   toInternalToolCallsFromView,
   toViewMessagesFromInternal,
+  ɵwithInternalMessageId,
 } from './internal_helpers';
+
+test('attaches canonical IDs to a fresh internal projection', () => {
+  // Arrange
+  const message: Chat.Internal.UserMessage = {
+    role: 'user',
+    content: 'Hello',
+  };
+
+  // Act
+  const identified = ɵwithInternalMessageId(message, 'user-1');
+
+  // Assert
+  expect(identified).toEqual({ id: 'user-1', role: 'user', content: 'Hello' });
+  expect(identified).not.toBe(message);
+  expect(message).toEqual({ role: 'user', content: 'Hello' });
+});
 
 function viewAssistant(
   reasoning?: string,

@@ -142,6 +142,50 @@ test('chatResource allows replacing message history', () => {
   expect(chat.value()).toEqual(nextMessages);
 });
 
+test('chatResource forwards initial state and exposes runtime state updates', () => {
+  createChatRuntimeMock.mockReset();
+  const stateSignal = createSignal<{ count: number } | undefined>({ count: 1 });
+  const runtime = createRuntimeStub({ messages: [], state: stateSignal });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  const initialState = { count: 1 };
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({ system: 'System A', state: initialState }),
+  );
+  stateSignal.set({ count: 2 });
+  resource.setState({ count: 3 });
+
+  expect(createChatRuntimeMock.mock.calls[0]?.[0].state).toBe(initialState);
+  expect(resource.state()).toEqual({ count: 2 });
+  expect(runtime.setState).toHaveBeenCalledWith({ count: 3 });
+});
+
+test('chatResource does not resend state when reactive options change', () => {
+  createChatRuntimeMock.mockReset();
+  const system = signal('System A');
+  const initialState = { count: 1 };
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReturnValue(runtime);
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  TestBed.runInInjectionContext(() =>
+    chatResource({ system, state: initialState }),
+  );
+  system.set('System B');
+  TestBed.flushEffects();
+
+  expect(createChatRuntimeMock).toHaveBeenCalledTimes(1);
+  expect(getLastUpdateOptions(runtime)).not.toHaveProperty('state');
+  expect(runtime.setState).not.toHaveBeenCalled();
+});
+
 test('chatResource updates runtime options when option signals change', () => {
   createChatRuntimeMock.mockReset();
   const transport = resetHttpTransportMock();
@@ -516,14 +560,17 @@ function createRuntimeStub({
   messages,
   error,
   isLoading = false,
+  state = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   error?: Error;
   isLoading?: boolean;
+  state?: ReturnType<typeof createSignal<unknown>>;
 }) {
   const messagesSignal = createSignal(messages);
 
   return {
+    state,
     messages: messagesSignal,
     isReceiving: createSignal(false),
     isSending: createSignal(false),
@@ -545,6 +592,7 @@ function createRuntimeStub({
     resendMessages: vi.fn(),
     stop: vi.fn(),
     setMessages: vi.fn((nextMessages) => messagesSignal.set(nextMessages)),
+    setState: vi.fn(),
   } as never;
 }
 

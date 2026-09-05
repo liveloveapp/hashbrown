@@ -21,6 +21,8 @@ const createCompletionStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    state: signal<unknown>(undefined),
+    setState: vi.fn(),
     value: valueSignal,
     status,
     error,
@@ -32,6 +34,29 @@ const createCompletionStub = (
     hasValue: vi.fn(),
   } as ReturnType<typeof structuredCompletionResource>;
 };
+
+test('uiCompletionResource preserves shared state signal and setter identity', () => {
+  structuredCompletionResourceMock.mockReset();
+  const state = signal<{ panelId: string } | undefined>({ panelId: 'main' });
+  const setState = vi.fn();
+  const completion = createCompletionStub(signal<any | null>(null));
+  Object.assign(completion, { state, setState });
+  structuredCompletionResourceMock.mockReturnValue(completion);
+  const initialState = { panelId: 'main' };
+
+  const resource = uiCompletionResource({
+    components: [],
+    input: signal('Describe a component'),
+    system: 'System prompt',
+    state: initialState,
+  });
+
+  expect(structuredCompletionResourceMock).toHaveBeenCalledWith(
+    expect.objectContaining({ state: initialState }),
+  );
+  expect(resource.state).toBe(state);
+  expect(resource.setState).toBe(setState);
+});
 
 test('uiCompletionResource wraps structured completion output with UI metadata', () => {
   // Arrange

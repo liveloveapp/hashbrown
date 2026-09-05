@@ -18,6 +18,8 @@ const createChatStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    state: signal<unknown>(undefined),
+    setState: vi.fn(),
     value: valueSignal,
     status,
     error,
@@ -37,6 +39,33 @@ const createChatStub = (
     hasValue: vi.fn(),
   } as unknown as ReturnType<typeof structuredChatResource>;
 };
+
+test('structuredCompletionResource preserves shared state signal and setter identity', () => {
+  structuredChatResourceMock.mockReset();
+  const state = signal<{ accountId: string } | undefined>({
+    accountId: 'account-1',
+  });
+  const setState = vi.fn();
+  const chat = createChatStub(signal<any[]>([]));
+  Object.assign(chat, { state, setState });
+  structuredChatResourceMock.mockReturnValue(chat);
+  const initialState = { accountId: 'account-1' };
+
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredCompletionResource({
+      system: 'System prompt',
+      input: signal('Summarize this'),
+      schema: s.object('summary', { summary: s.string('Summary') }),
+      state: initialState,
+    }),
+  );
+
+  expect(structuredChatResourceMock).toHaveBeenCalledWith(
+    expect.objectContaining({ state: initialState }),
+  );
+  expect(resource.state).toBe(state);
+  expect(resource.setState).toBe(setState);
+});
 
 test('structuredCompletionResource passes reactive options through without exposing persistence state', () => {
   // Arrange

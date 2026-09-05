@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { HashbrownProvider } from '../hashbrown-provider';
 import { useChat } from './use-chat';
@@ -144,12 +144,54 @@ test('useChat preserves thread identity property presence on updates', () => {
   );
 });
 
+test('useChat seeds, observes, and delegates shared agent state', () => {
+  // Arrange
+  const initialState = { count: 1 };
+  const stateSignal = createMutableSignal(initialState);
+  const runtime = createRuntimeStub({ messages: [], state: stateSignal });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
+
+  const { result, rerender } = renderHook(
+    ({ state }: { state: { count: number } }) =>
+      useChat({
+        system: 'You are a helpful assistant.',
+        state,
+      }),
+    {
+      initialProps: { state: initialState },
+      wrapper: ProviderWrapper,
+    },
+  );
+
+  // Act
+  act(() => stateSignal.set({ count: 2 }));
+  result.current.setState({ count: 3 });
+  rerender({ state: { count: 4 } });
+
+  // Assert
+  expect(createChatRuntimeMock).toHaveBeenCalledTimes(1);
+  expect(createChatRuntimeMock.mock.calls[0]?.[0].state).toBe(initialState);
+  expect(result.current.state).toEqual({ count: 2 });
+  expect(runtime.setState).toHaveBeenCalledWith({ count: 3 });
+  expect(runtime.updateOptions.mock.calls).not.toContainEqual([
+    expect.objectContaining({ state: expect.anything() }),
+  ]);
+});
+
 function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }
 
-function createRuntimeStub({ messages }: { messages: unknown[] }) {
+function createRuntimeStub({
+  messages,
+  state = createMutableSignal<unknown>(undefined),
+}: {
+  messages: unknown[];
+  state?: ReturnType<typeof createMutableSignal<unknown>>;
+}) {
   return {
+    state,
     messages: createSignal(messages),
     isReceiving: createSignal(false),
     isSending: createSignal(false),
@@ -170,8 +212,31 @@ function createRuntimeStub({ messages }: { messages: unknown[] }) {
     sendMessage: vi.fn(),
     resendMessages: vi.fn(),
     stop: vi.fn(),
+    setState: vi.fn(),
     setMessages: vi.fn(),
   } as never;
+}
+
+function createMutableSignal<T>(initialValue: T) {
+  let value = initialValue;
+  const subscribers = new Set<(newValue: T) => void>();
+  const signal = (() => value) as {
+    (): T;
+    subscribe(onChange: (newValue: T) => void): () => void;
+    set(newValue: T): void;
+  };
+  signal.subscribe = vi.fn((onChange: (newValue: T) => void) => {
+    subscribers.add(onChange);
+    onChange(value);
+
+    return () => subscribers.delete(onChange);
+  });
+  signal.set = (newValue: T) => {
+    value = newValue;
+    subscribers.forEach((subscriber) => subscriber(newValue));
+  };
+
+  return signal;
 }
 
 function createSignal<T>(value: T) {

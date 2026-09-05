@@ -136,13 +136,11 @@ describe('Store integration', () => {
 
     const todosReducer = createReducer(
       initialTodoState,
-      on(
-        todos.add,
-        (state, action): TodoState => adapter.addOne(state, action.payload),
+      on(todos.add, (state, action): TodoState =>
+        adapter.addOne(state, action.payload),
       ),
-      on(
-        todos.remove,
-        (state, action): TodoState => adapter.removeOne(state, action.payload),
+      on(todos.remove, (state, action): TodoState =>
+        adapter.removeOne(state, action.payload),
       ),
       on(todos.clear, () => initialTodoState),
     );
@@ -309,3 +307,235 @@ describe('select() memoization', () => {
     expect(second.doubled).toBe(6);
   });
 });
+
+test.each(['preparation', 'reducer', 'listener'] as const)(
+  'observed dispatch rejects a %s failure without blocking later actions',
+  async (failurePoint) => {
+    const actions = createActionGroup('Observed Dispatch Failure', {
+      fail: emptyProps(),
+      succeed: emptyProps(),
+    });
+    const error = new Error(`${failurePoint} failed`);
+    const reducer = (state = 0, action: { type: string }) => {
+      if (failurePoint === 'reducer' && action.type === actions.fail.type) {
+        throw error;
+      }
+
+      return action.type === actions.succeed.type ? state + 1 : state;
+    };
+    const store = createStore({
+      reducers: { value: reducer },
+      effects: [],
+      prepareAction: (_state, action) => {
+        if (
+          failurePoint === 'preparation' &&
+          action.type === actions.fail.type
+        ) {
+          throw error;
+        }
+
+        return action;
+      },
+    });
+    if (failurePoint === 'listener') {
+      store.when(actions.fail, () => {
+        throw error;
+      });
+    }
+    const dispatchAndWait = store.dispatchAndWait;
+
+    await expect(dispatchAndWait(actions.fail())).rejects.toBe(error);
+    store.dispatch(actions.succeed());
+
+    expect(store.read((state) => state.value)).toBe(1);
+  },
+);
+
+test('observed dispatch settles nested action failures after the scheduler drains its queue', async () => {
+  const actions = createActionGroup('Nested Observed Dispatch', {
+    outer: emptyProps(),
+    fail: emptyProps(),
+    after: emptyProps(),
+  });
+  const error = new Error('nested reducer failed');
+  const order: string[] = [];
+  const reducer = (state = 0, action: { type: string }) => {
+    if (action.type === actions.fail.type) {
+      order.push('fail');
+      throw error;
+    }
+    if (action.type === actions.after.type) {
+      order.push('after');
+      return state + 1;
+    }
+
+    return state;
+  };
+  const store = createStore({
+    reducers: { value: reducer },
+    effects: [],
+  });
+  const dispatchAndWait = store.dispatchAndWait;
+  let nestedResult: Promise<unknown> | undefined;
+  store.when(actions.outer, () => {
+    order.push('outer:start');
+    nestedResult = dispatchAndWait(actions.fail()).catch((caught) => caught);
+    store.dispatch(actions.after());
+    order.push('outer:end');
+  });
+
+  await dispatchAndWait(actions.outer());
+  const nestedError = await nestedResult;
+
+  expect(nestedError).toBe(error);
+  expect(order).toEqual(['outer:start', 'outer:end', 'fail', 'after']);
+  expect(store.read((state) => state.value)).toBe(1);
+});
+
+test('observed dispatch runs successful follow-up actions before reentrant queued actions', async () => {
+  const actions = createActionGroup('Observed Dispatch Follow Up', {
+    primary: emptyProps(),
+    followUp: emptyProps(),
+    replacement: emptyProps(),
+  });
+  const order: string[] = [];
+  const reducer = (state = 0, action: { type: string }) => {
+    if (action.type === actions.followUp.type) {
+      order.push('follow-up:reducer');
+      return state + 1;
+    }
+    if (action.type === actions.replacement.type) {
+      order.push('replacement:reducer');
+      return state + 10;
+    }
+
+    return state;
+  };
+  const store = createStore({
+    reducers: { value: reducer },
+    effects: [],
+  });
+  store.when(actions.primary, () => {
+    order.push('primary:listener');
+    store.dispatch(actions.replacement());
+  });
+
+  await store.dispatchAndWait(actions.primary(), ({ dispatch }) => {
+    order.push('completion:start');
+    dispatch(actions.followUp());
+    order.push('completion:end');
+  });
+
+  expect(order).toEqual([
+    'primary:listener',
+    'completion:start',
+    'completion:end',
+    'follow-up:reducer',
+    'replacement:reducer',
+  ]);
+  expect(store.read((state) => state.value)).toBe(11);
+});
+
+test('observed dispatch rejects follow-up failures while draining queued actions', async () => {
+  const actions = createActionGroup('Observed Dispatch Follow Up Failure', {
+    primary: emptyProps(),
+    staged: emptyProps(),
+    fail: emptyProps(),
+    after: emptyProps(),
+  });
+  const followUpError = new Error('follow-up failed');
+  const order: string[] = [];
+  const reducer = (state = 0, action: { type: string }) => {
+    if (action.type === actions.staged.type) {
+      order.push('staged:reducer');
+      return state + 100;
+    }
+    if (action.type === actions.fail.type) {
+      order.push('fail:reducer');
+      throw followUpError;
+    }
+    if (action.type === actions.after.type) {
+      order.push('after');
+      return state + 1;
+    }
+
+    return state;
+  };
+  const store = createStore({
+    reducers: { value: reducer },
+    effects: [],
+  });
+  store.when(actions.primary, () => store.dispatch(actions.after()));
+  const observedFollowUps: string[] = [];
+  store.when(actions.staged, actions.fail, (action) =>
+    observedFollowUps.push(action.type),
+  );
+
+  const result = store.dispatchAndWait(actions.primary(), ({ dispatch }) => {
+    dispatch(actions.staged());
+    dispatch(actions.fail());
+  });
+
+  await expect(result).rejects.toBe(followUpError);
+  expect(order).toEqual(['staged:reducer', 'fail:reducer', 'after']);
+  expect(observedFollowUps).toEqual([]);
+  expect(store.read((state) => state.value)).toBe(1);
+});
+
+test.each(['listener', 'selector'] as const)(
+  'observed dispatch surfaces a follow-up %s failure without rejecting or blocking later actions',
+  async (failurePoint) => {
+    const actions = createActionGroup('Observed Follow Up Observer Failure', {
+      primary: emptyProps(),
+      followUp: emptyProps(),
+      after: emptyProps(),
+    });
+    const observerError = new Error(`follow-up ${failurePoint} failed`);
+    const surfacedErrors: unknown[] = [];
+    const reducer = (state = 0, action: { type: string }) => {
+      if (action.type === actions.followUp.type) {
+        return state + 1;
+      }
+      if (action.type === actions.after.type) {
+        return state + 10;
+      }
+
+      return state;
+    };
+    const store = createStore({
+      reducers: { value: reducer },
+      effects: [],
+      surfaceError: (error) => surfacedErrors.push(error),
+    });
+    let selectorFailed = false;
+    if (failurePoint === 'listener') {
+      store.when(actions.followUp, () => {
+        throw observerError;
+      });
+    }
+    store.select(
+      (state) => {
+        if (
+          failurePoint === 'selector' &&
+          state.value === 1 &&
+          !selectorFailed
+        ) {
+          selectorFailed = true;
+          throw observerError;
+        }
+
+        return state.value;
+      },
+      () => undefined,
+    );
+    store.when(actions.primary, () => store.dispatch(actions.after()));
+
+    const result = store.dispatchAndWait(actions.primary(), ({ dispatch }) =>
+      dispatch(actions.followUp()),
+    );
+
+    await expect(result).resolves.toBeUndefined();
+    expect(surfacedErrors).toEqual([observerError]);
+    expect(store.read((state) => state.value)).toBe(11);
+  },
+);

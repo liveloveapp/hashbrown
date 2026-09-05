@@ -1314,22 +1314,42 @@ test('createChatRuntime executes and continues an AG-UI tool call over real SSE'
     expect(capturedInputs[0]?.threadId).toBe('thread-tool');
     expect(capturedInputs[1]?.threadId).toBe('thread-tool');
     expect(capturedInputs[0]?.runId).not.toBe(capturedInputs[1]?.runId);
-    expect(capturedInputs[0]?.messages).toEqual([
+    const firstRequestMessages = capturedInputs[0]?.messages;
+    const continuationMessages = capturedInputs[1]?.messages;
+    if (!firstRequestMessages || !continuationMessages) {
+      throw new Error('Expected captured AG-UI request messages.');
+    }
+    const [systemMessage, userMessage] = firstRequestMessages;
+    const toolResultMessage = continuationMessages[3];
+    if (!systemMessage || !userMessage || toolResultMessage?.role !== 'tool') {
+      throw new Error('Expected system, user, and tool result messages.');
+    }
+    const canonicalIds = continuationMessages.flatMap((message) => [
+      message.id,
+      ...(message.role === 'assistant'
+        ? (message.toolCalls ?? []).map((toolCall) => toolCall.id)
+        : []),
+    ]);
+
+    expect(canonicalIds.every((id) => id.length > 0)).toBe(true);
+    expect(new Set(canonicalIds).size).toBe(canonicalIds.length);
+    expect(continuationMessages.slice(0, firstRequestMessages.length)).toEqual(
+      firstRequestMessages,
+    );
+    expect(firstRequestMessages).toEqual([
       {
-        id: 'thread-tool:system',
+        id: systemMessage.id,
         role: 'system',
         content: 'Answer weather questions with the available tool.',
       },
       {
-        id: 'thread-tool:message:0',
+        id: userMessage.id,
         role: 'user',
         content: 'What is the weather in Paris?',
       },
     ]);
-    const firstRequestMessages = capturedInputs[0]?.messages;
-    expect(firstRequestMessages).toBeDefined();
-    expect(capturedInputs[1]?.messages).toEqual([
-      ...(firstRequestMessages ?? []),
+    expect(continuationMessages).toEqual([
+      ...firstRequestMessages,
       {
         id: 'thread-tool:message:1',
         role: 'assistant',
@@ -1346,7 +1366,7 @@ test('createChatRuntime executes and continues an AG-UI tool call over real SSE'
         ],
       },
       {
-        id: 'call-weather',
+        id: toolResultMessage.id,
         role: 'tool',
         toolCallId: 'call-weather',
         content: '{"city":"Paris","temperatureC":21,"condition":"sunny"}',

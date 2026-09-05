@@ -84,7 +84,6 @@ function createProbeMessages(threadId: string): HashbrownRunInput['messages'] {
       id: `${threadId}:message:7`,
       role: 'assistant',
       content: terminalResponse,
-      toolCalls: [],
     },
     {
       id: `${threadId}:message:8`,
@@ -195,6 +194,45 @@ function safeTranscript(messages: HashbrownRunInput['messages']) {
 
     return message;
   });
+}
+
+/** Returns a safe transcript while treating top-level message IDs as opaque. */
+function safeTranscriptWithoutMessageIds(
+  messages: HashbrownRunInput['messages'],
+) {
+  return safeTranscript(messages).map((message) =>
+    Object.fromEntries(
+      Object.entries(message).filter(([property]) => property !== 'id'),
+    ),
+  );
+}
+
+/** Returns whether all canonical message and tool-call IDs are nonempty and unique. */
+function hasOpaqueCanonicalIds(
+  messages: HashbrownRunInput['messages'],
+): boolean {
+  const ids = messages.flatMap((message) => [
+    message.id,
+    ...(message.role === 'assistant'
+      ? (message.toolCalls ?? []).map((toolCall) => toolCall.id)
+      : []),
+  ]);
+
+  return ids.every((id) => id.length > 0) && new Set(ids).size === ids.length;
+}
+
+/** Returns whether a continuation preserves every prior canonical message. */
+function hasStableMessagePrefix(
+  messages: HashbrownRunInput['messages'],
+  previous: HashbrownRunInput | undefined,
+): boolean {
+  return (
+    previous === undefined ||
+    isDeepStrictEqual(
+      messages.slice(0, previous.messages.length),
+      previous.messages,
+    )
+  );
 }
 
 function createToolContinuationEvents(
@@ -341,13 +379,17 @@ test('executes three sequential tools once each before the terminal response', a
           return (
             requestIndex <= weatherRounds.length + 1 &&
             (requestIndex === 0 || input.threadId === firstThreadId) &&
+            hasOpaqueCanonicalIds(input.messages) &&
+            hasStableMessagePrefix(input.messages, captured.at(-1)) &&
             isDeepStrictEqual(
-              input.messages,
-              requestIndex === 0
-                ? createInitialMessages(input.threadId)
-                : requestIndex <= weatherRounds.length
-                  ? createContinuationMessages(input.threadId, requestIndex)
-                  : createProbeMessages(input.threadId),
+              safeTranscriptWithoutMessageIds(input.messages),
+              safeTranscriptWithoutMessageIds(
+                requestIndex === 0
+                  ? createInitialMessages(input.threadId)
+                  : requestIndex <= weatherRounds.length
+                    ? createContinuationMessages(input.threadId, requestIndex)
+                    : createProbeMessages(input.threadId),
+              ),
             )
           );
         },
@@ -387,6 +429,16 @@ test('executes three sequential tools once each before the terminal response', a
   }
   expect(new Set(captured.map(({ threadId }) => threadId)).size).toBe(1);
   expect(new Set(captured.map(({ runId }) => runId)).size).toBe(4);
+  expect(captured.every((input) => hasOpaqueCanonicalIds(input.messages))).toBe(
+    true,
+  );
+  for (const [requestIndex, input] of captured.entries()) {
+    if (requestIndex === 0) continue;
+
+    expect(
+      hasStableMessagePrefix(input.messages, captured[requestIndex - 1]),
+    ).toBe(true);
+  }
   expect(fourthInput.messages.map(({ role }) => role)).toEqual([
     'system',
     'user',
@@ -442,17 +494,39 @@ test('executes three sequential tools once each before the terminal response', a
     provider: { trace: ['weather'] },
   });
   for (const [requestIndex, input] of captured.entries()) {
-    expect({ ...input, messages: safeTranscript(input.messages) }).toEqual({
+    expect(
+      input.messages
+        .filter(
+          (message) =>
+            message.role === 'reasoning' || message.role === 'assistant',
+        )
+        .map((message) => message.id),
+    ).toEqual(
+      requestIndex === 0
+        ? []
+        : [
+            'reasoning-weather',
+            ...weatherRounds
+              .slice(0, requestIndex)
+              .map(
+                (_round, index) =>
+                  `${firstInput.threadId}:message:${index * 2 + 1}`,
+              ),
+          ],
+    );
+    expect({
+      ...input,
+      messages: safeTranscriptWithoutMessageIds(input.messages),
+    }).toEqual({
       threadId: firstInput.threadId,
       runId: input.runId,
-      messages: safeTranscript(
+      messages: safeTranscriptWithoutMessageIds(
         requestIndex === 0
           ? createInitialMessages(firstInput.threadId)
           : createContinuationMessages(firstInput.threadId, requestIndex),
       ),
       tools: [expectedWeatherTool],
       context: [],
-      state: {},
       forwardedProps: {},
     });
   }
@@ -476,16 +550,33 @@ test('executes three sequential tools once each before the terminal response', a
   }
   expect(new Set(captured.map(({ threadId }) => threadId)).size).toBe(1);
   expect(new Set(captured.map(({ runId }) => runId)).size).toBe(5);
+  expect(hasOpaqueCanonicalIds(fifthInput.messages)).toBe(true);
+  expect(hasStableMessagePrefix(fifthInput.messages, fourthInput)).toBe(true);
+  expect(
+    fifthInput.messages
+      .filter(
+        (message) =>
+          message.role === 'reasoning' || message.role === 'assistant',
+      )
+      .map((message) => message.id),
+  ).toEqual([
+    'reasoning-weather',
+    ...weatherRounds.map(
+      (_round, index) => `${firstInput.threadId}:message:${index * 2 + 1}`,
+    ),
+    'message-weather-final',
+  ]);
   expect({
     ...fifthInput,
-    messages: safeTranscript(fifthInput.messages),
+    messages: safeTranscriptWithoutMessageIds(fifthInput.messages),
   }).toEqual({
     threadId: firstInput.threadId,
     runId: fifthInput.runId,
-    messages: safeTranscript(createProbeMessages(firstInput.threadId)),
+    messages: safeTranscriptWithoutMessageIds(
+      createProbeMessages(firstInput.threadId),
+    ),
     tools: [expectedWeatherTool],
     context: [],
-    state: {},
     forwardedProps: {},
   });
 

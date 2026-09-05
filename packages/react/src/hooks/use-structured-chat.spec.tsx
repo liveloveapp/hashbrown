@@ -106,12 +106,57 @@ test('useStructuredChat preserves thread identity property presence on updates',
   );
 });
 
+test('useStructuredChat seeds, observes, and delegates shared agent state', () => {
+  // Arrange
+  const initialState = { portfolioId: 'alpha' };
+  const stateSignal = createMutableSignal(initialState);
+  const runtime = createRuntimeStub({ messages: [], state: stateSignal });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
+
+  const { result, rerender } = renderHook(
+    ({ state }: { state: { portfolioId: string } }) =>
+      useStructuredChat({
+        system: 'You are a portfolio analyst.',
+        schema: s.object('risk summary', {
+          risk: s.string('Risk level'),
+        }),
+        state,
+      }),
+    {
+      initialProps: { state: initialState },
+      wrapper: ProviderWrapper,
+    },
+  );
+
+  // Act
+  act(() => stateSignal.set({ portfolioId: 'beta' }));
+  result.current.setState({ portfolioId: 'gamma' });
+  rerender({ state: { portfolioId: 'delta' } });
+
+  // Assert
+  expect(createChatRuntimeMock).toHaveBeenCalledTimes(1);
+  expect(createChatRuntimeMock.mock.calls[0]?.[0].state).toBe(initialState);
+  expect(result.current.state).toEqual({ portfolioId: 'beta' });
+  expect(runtime.setState).toHaveBeenCalledWith({ portfolioId: 'gamma' });
+  expect(runtime.updateOptions.mock.calls).not.toContainEqual([
+    expect.objectContaining({ state: expect.anything() }),
+  ]);
+});
+
 function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }
 
-function createRuntimeStub({ messages }: { messages: unknown[] }) {
+function createRuntimeStub({
+  messages,
+  state = createMutableSignal<unknown>(undefined),
+}: {
+  messages: unknown[];
+  state?: ReturnType<typeof createMutableSignal<unknown>>;
+}) {
   return {
+    state,
     messages: createSignal(messages),
     isReceiving: createSignal(false),
     isSending: createSignal(false),
@@ -132,8 +177,31 @@ function createRuntimeStub({ messages }: { messages: unknown[] }) {
     sendMessage: vi.fn(),
     resendMessages: vi.fn(),
     stop: vi.fn(),
+    setState: vi.fn(),
     setMessages: vi.fn(),
   } as never;
+}
+
+function createMutableSignal<T>(initialValue: T) {
+  let value = initialValue;
+  const subscribers = new Set<(newValue: T) => void>();
+  const signal = (() => value) as {
+    (): T;
+    subscribe(onChange: (newValue: T) => void): () => void;
+    set(newValue: T): void;
+  };
+  signal.subscribe = vi.fn((onChange: (newValue: T) => void) => {
+    subscribers.add(onChange);
+    onChange(value);
+
+    return () => subscribers.delete(onChange);
+  });
+  signal.set = (newValue: T) => {
+    value = newValue;
+    subscribers.forEach((subscriber) => subscriber(newValue));
+  };
+
+  return signal;
 }
 
 function createSignal<T>(value: T) {
