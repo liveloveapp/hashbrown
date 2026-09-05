@@ -352,9 +352,20 @@ export interface ɵAgUiMessageProjectionCache {
   readonly responseSchema: s.HashbrownType | undefined;
   readonly projection: AgUiMessageProjection;
   readonly entries: readonly ɵAgUiMessageProjectionEntry[];
+  readonly messageSources: Readonly<
+    Record<string, ɵAgUiCanonicalMessageSource>
+  >;
   readonly toolCallSources: Readonly<
     Record<string, ɵAgUiCanonicalToolCallSource>
   >;
+}
+
+/** Canonical source references used to retain local message projections. @internal */
+export interface ɵAgUiCanonicalMessageSource {
+  readonly message: Readonly<Extract<Message, { role: 'assistant' | 'user' }>>;
+  readonly reasoning: readonly Readonly<
+    Extract<Message, { role: 'reasoning' }>
+  >[];
 }
 
 /** Canonical source references used to retain local tool-call decorations. @internal */
@@ -363,6 +374,37 @@ export interface ɵAgUiCanonicalToolCallSource {
     Extract<Message, { role: 'assistant' }>['toolCalls']
   >[number];
   readonly result: Readonly<Extract<Message, { role: 'tool' }>> | undefined;
+}
+
+/** Indexes canonical message sources and projection dependencies. @internal */
+export function ɵindexAgUiCanonicalMessageSources(
+  messages: readonly Readonly<Message>[],
+): Readonly<Record<string, ɵAgUiCanonicalMessageSource>> {
+  const sources: Record<string, ɵAgUiCanonicalMessageSource> = {};
+  let pendingReasoning: Array<
+    Readonly<Extract<Message, { role: 'reasoning' }>>
+  > = [];
+
+  for (const message of messages) {
+    if (message.role === 'reasoning') {
+      pendingReasoning = [...pendingReasoning, message];
+      continue;
+    }
+    if (message.role === 'assistant' || message.role === 'user') {
+      Object.defineProperty(sources, message.id, {
+        value: {
+          message,
+          reasoning: message.role === 'assistant' ? pendingReasoning : [],
+        },
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+    }
+    pendingReasoning = [];
+  }
+
+  return sources;
 }
 
 interface ɵAgUiMessageProjectionEntry {
@@ -558,6 +600,7 @@ export function ɵreconcileAgUiMessageProjection(
   const entries: ɵAgUiMessageProjectionEntry[] = [];
   const projectedMessages: Chat.Internal.Message[] = [];
   const projectedToolCalls: Chat.Internal.ToolCall[] = [];
+  const messageSources: Record<string, ɵAgUiCanonicalMessageSource> = {};
   const toolCallSources: Record<string, ɵAgUiCanonicalToolCallSource> = {};
   let pendingReasoning: Array<
     Readonly<Extract<Message, { role: 'reasoning' }>>
@@ -601,6 +644,15 @@ export function ɵreconcileAgUiMessageProjection(
     entries.push(entry);
     projectedMessages.push(entry.message);
     projectedToolCalls.push(...entry.toolCalls);
+    Object.defineProperty(messageSources, source.id, {
+      value: {
+        message: source,
+        reasoning,
+      },
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
     if (source.role === 'assistant') {
       for (const [index, toolCall] of (source.toolCalls ?? []).entries()) {
         Object.defineProperty(toolCallSources, toolCall.id, {
@@ -636,6 +688,7 @@ export function ɵreconcileAgUiMessageProjection(
     responseSchema,
     projection,
     entries,
+    messageSources,
     toolCallSources,
   };
 }

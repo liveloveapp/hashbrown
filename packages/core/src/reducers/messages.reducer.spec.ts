@@ -37,6 +37,63 @@ test('replaces the visible projection from a canonical messages snapshot', () =>
   ]);
 });
 
+test('preserves local error order and identity across a reordered snapshot', () => {
+  // Arrange
+  const errorA: Chat.Internal.ErrorMessage = {
+    role: 'error',
+    content: 'error A',
+  };
+  const errorB: Chat.Internal.ErrorMessage = {
+    role: 'error',
+    content: 'error B',
+  };
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        { id: 'user-a', role: 'user', content: 'A' },
+        { id: 'user-b', role: 'user', content: 'B' },
+      ],
+      localProjection: {
+        messages: [
+          { id: 'user-a', role: 'user', content: 'A' },
+          errorA,
+          { id: 'user-b', role: 'user', content: 'B' },
+          errorB,
+        ],
+        toolCalls: [],
+      },
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  // Act
+  const snapshotted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-b', role: 'user', content: 'remote B' },
+        { id: 'user-a', role: 'user', content: 'remote A' },
+      ],
+    }),
+  );
+
+  // Assert
+  expect(snapshotted.messages).toEqual([
+    { id: 'user-b', role: 'user', content: 'remote B' },
+    errorA,
+    { id: 'user-a', role: 'user', content: 'remote A' },
+    errorB,
+  ]);
+  expect(snapshotted.messages[1]).toBe(errorA);
+  expect(snapshotted.messages[3]).toBe(errorB);
+});
+
 test('reconciles a streamed snapshot assistant by canonical ID and rolls draft output back', () => {
   const initialized = reducer(
     undefined,

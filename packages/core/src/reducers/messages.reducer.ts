@@ -1,4 +1,4 @@
-import { EventType, type Message } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { ErrorMessage } from '../models/view.models';
@@ -7,9 +7,11 @@ import { createReducer, on } from '../utils/micro-ngrx';
 import {
   projectAgUiMessages,
   type ɵAgUiCanonicalIdIndex,
+  type ɵAgUiCanonicalMessageSource,
   type ɵAgUiMessageProjectionCache,
   ɵappendAgUiCanonicalIds,
   ɵindexAgUiCanonicalIds,
+  ɵindexAgUiCanonicalMessageSources,
   ɵownValidatedAgUiMessages,
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
@@ -25,6 +27,15 @@ export interface MessagesState {
   readonly canonicalIds: ɵAgUiCanonicalIdIndex;
   readonly committedCanonicalIds: ɵAgUiCanonicalIdIndex;
   readonly preparedProjection: ɵAgUiMessageProjectionCache | undefined;
+  readonly localProvenance?: Readonly<Record<string, LocalMessageProvenance>>;
+  readonly committedLocalProvenance?: Readonly<
+    Record<string, LocalMessageProvenance>
+  >;
+}
+
+interface LocalMessageProvenance {
+  readonly source: ɵAgUiCanonicalMessageSource;
+  readonly bound: boolean;
 }
 
 const initialState: MessagesState = {
@@ -37,6 +48,8 @@ const initialState: MessagesState = {
   canonicalIds: ɵindexAgUiCanonicalIds([]),
   committedCanonicalIds: ɵindexAgUiCanonicalIds([]),
   preparedProjection: undefined,
+  localProvenance: {},
+  committedLocalProvenance: {},
 };
 
 export const reducer = createReducer(
@@ -61,6 +74,14 @@ export const reducer = createReducer(
       committedCanonicalIds: ɵindexAgUiCanonicalIds(
         action.payload.canonicalMessages,
       ),
+      localProvenance: createLocalProvenance(
+        action.payload.localProjection,
+        action.payload.canonicalMessages,
+      ),
+      committedLocalProvenance: createLocalProvenance(
+        action.payload.localProjection,
+        action.payload.canonicalMessages,
+      ),
     };
   }),
   on(devActions.setMessages, (state, action) => {
@@ -83,6 +104,14 @@ export const reducer = createReducer(
       committedCanonicalIds: ɵindexAgUiCanonicalIds(
         action.payload.canonicalMessages,
       ),
+      localProvenance: createLocalProvenance(
+        action.payload.localProjection,
+        action.payload.canonicalMessages,
+      ),
+      committedLocalProvenance: createLocalProvenance(
+        action.payload.localProjection,
+        action.payload.canonicalMessages,
+      ),
     };
   }),
   on(devActions.sendMessage, (state, action) => {
@@ -100,6 +129,13 @@ export const reducer = createReducer(
       action.payload.localProjection?.messages ??
       projectCanonical(action.payload.canonicalMessages, {});
     const committed = [...state.committed, ...appended];
+    const localProvenance = {
+      ...(state.committedLocalProvenance ?? {}),
+      ...createLocalProvenance(
+        action.payload.localProjection,
+        action.payload.canonicalMessages,
+      ),
+    };
     return {
       ...state,
       messages: committed,
@@ -110,6 +146,8 @@ export const reducer = createReducer(
       activeIgnoredTextMessageId: undefined,
       canonicalIds,
       committedCanonicalIds: canonicalIds,
+      localProvenance,
+      committedLocalProvenance: localProvenance,
     };
   }),
   on(internalActions.generationAttemptStarted, (state): MessagesState => ({
@@ -119,6 +157,8 @@ export const reducer = createReducer(
     attemptActive: true,
     activeAssistantMessageId: undefined,
     activeIgnoredTextMessageId: undefined,
+    localProvenance: state.committedLocalProvenance,
+    committedLocalProvenance: state.committedLocalProvenance,
   })),
   on(apiActions.generateMessageEvent, (state, action): MessagesState => {
     const decision = ɵreadAgUiMessageEventDecision(action);
@@ -129,9 +169,17 @@ export const reducer = createReducer(
       : action;
     if (!state.attemptActive) return state;
     if (decision && preparedProjection) {
-      const draft = preparedProjection.projection.messages;
+      const reconciled = reconcilePreparedMessages(
+        state.draft,
+        preparedProjection.projection.messages,
+        preparedProjection.messageSources,
+        state.localProvenance ?? {},
+        action.payload,
+      );
+      const draft = reconciled.draft;
       if (
         draft === state.draft &&
+        reconciled.localProvenance === state.localProvenance &&
         state.activeAssistantMessageId ===
           decision.state.activeAssistantMessageId &&
         state.activeIgnoredTextMessageId === undefined &&
@@ -149,11 +197,22 @@ export const reducer = createReducer(
         activeIgnoredTextMessageId: undefined,
         canonicalIds: preparedProjection.canonicalIds,
         preparedProjection,
+        localProvenance: reconciled.localProvenance,
       };
     }
     if (action.payload.type === EventType.MESSAGES_SNAPSHOT) {
-      const draft = projectRemoteSnapshot(action.payload);
-      if (!draft) return state;
+      const projected = projectRemoteSnapshot(action.payload);
+      if (!projected) return state;
+      const reconciled = reconcilePreparedMessages(
+        state.draft,
+        projected,
+        ɵindexAgUiCanonicalMessageSources(
+          ɵreadAgUiMessageSnapshot(action.payload),
+        ),
+        state.localProvenance ?? {},
+        action.payload,
+      );
+      const draft = reconciled.draft;
       return {
         ...state,
         draft,
@@ -163,14 +222,23 @@ export const reducer = createReducer(
         canonicalIds: ɵindexAgUiCanonicalIds(
           ɵreadAgUiMessageSnapshot(action.payload),
         ),
+        localProvenance: reconciled.localProvenance,
       };
     }
     if (decision && requiresCanonicalProjection(action.payload)) {
-      const draft = projectCanonical(decision.state.draft, {});
+      const reconciled = reconcilePreparedMessages(
+        state.draft,
+        projectCanonical(decision.state.draft, {}),
+        ɵindexAgUiCanonicalMessageSources(decision.state.draft),
+        state.localProvenance ?? {},
+        action.payload,
+      );
+      const draft = reconciled.draft;
       return {
         ...state,
         draft,
         messages: draft,
+        localProvenance: reconciled.localProvenance,
       };
     }
     if (
@@ -313,6 +381,8 @@ export const reducer = createReducer(
         activeIgnoredTextMessageId: undefined,
         committedCanonicalIds: state.canonicalIds,
         preparedProjection: state.preparedProjection,
+        localProvenance: state.localProvenance,
+        committedLocalProvenance: state.localProvenance,
       };
     }
     if (!action.payload.message) return state;
@@ -341,7 +411,15 @@ export const reducer = createReducer(
       return state;
     }
 
-    const messages = preparedProjection.projection.messages;
+    const reconciled = reconcilePreparedMessages(
+      state.attemptActive ? state.draft : state.committed,
+      preparedProjection.projection.messages,
+      preparedProjection.messageSources,
+      state.attemptActive
+        ? (state.localProvenance ?? {})
+        : (state.committedLocalProvenance ?? {}),
+    );
+    const messages = reconciled.draft;
     return {
       ...state,
       messages,
@@ -353,6 +431,8 @@ export const reducer = createReducer(
       canonicalIds: preparedProjection.canonicalIds,
       committedCanonicalIds: preparedProjection.canonicalIds,
       preparedProjection,
+      localProvenance: reconciled.localProvenance,
+      committedLocalProvenance: reconciled.localProvenance,
     };
   }),
   on(apiActions.generateMessageError, (state, action) => {
@@ -377,6 +457,8 @@ function rollback(state: MessagesState): MessagesState {
         activeIgnoredTextMessageId: undefined,
         canonicalIds: state.committedCanonicalIds,
         preparedProjection: undefined,
+        localProvenance: state.committedLocalProvenance,
+        committedLocalProvenance: state.committedLocalProvenance,
       }
     : state;
 }
@@ -472,4 +554,187 @@ function requiresCanonicalProjection(
     default:
       return false;
   }
+}
+
+function createLocalProvenance(
+  localProjection:
+    { readonly messages: readonly Chat.Internal.Message[] } | undefined,
+  canonicalMessages: readonly Readonly<Message>[],
+): Readonly<Record<string, LocalMessageProvenance>> {
+  if (!localProjection) return {};
+
+  const sources = ɵindexAgUiCanonicalMessageSources(canonicalMessages);
+  return localProjection.messages.reduce<
+    Record<string, LocalMessageProvenance>
+  >((provenance, message) => {
+    if (message.role === 'error' || message.id === undefined) {
+      return provenance;
+    }
+    const source = readOwn(sources, message.id);
+    if (!source) return provenance;
+
+    writeOwn(provenance, message.id, { source, bound: false });
+    return provenance;
+  }, {});
+}
+
+function reconcilePreparedMessages(
+  previous: readonly Chat.Internal.Message[],
+  projected: readonly Chat.Internal.Message[],
+  sources: ɵAgUiMessageProjectionCache['messageSources'],
+  provenance: Readonly<Record<string, LocalMessageProvenance>>,
+  event?: AGUIEvent,
+): {
+  readonly draft: readonly Chat.Internal.Message[];
+  readonly localProvenance: Readonly<Record<string, LocalMessageProvenance>>;
+} {
+  const previousById = new Map(
+    previous.flatMap((message) =>
+      message.role === 'error' || message.id === undefined
+        ? []
+        : [[message.id, message] as const],
+    ),
+  );
+  const nextProvenance: Record<string, LocalMessageProvenance> = {};
+  let provenanceChanged = false;
+  const synchronized = projected.map((message) => {
+    if (message.role === 'error' || message.id === undefined) return message;
+
+    const local = readOwn(provenance, message.id);
+    const source = readOwn(sources, message.id);
+    const existing = previousById.get(message.id);
+    const valid =
+      local !== undefined &&
+      source !== undefined &&
+      existing !== undefined &&
+      event?.type !== EventType.MESSAGES_SNAPSHOT &&
+      (local.bound
+        ? sameCanonicalMessageSourceReferences(local.source, source)
+        : sameCanonicalMessageSourceValues(local.source, source));
+    if (!valid) {
+      if (local !== undefined) provenanceChanged = true;
+      return message;
+    }
+
+    const next = local.bound ? local : { source, bound: true };
+    writeOwn(nextProvenance, message.id, next);
+    if (local !== next) provenanceChanged = true;
+    return existing;
+  });
+  if (Object.keys(provenance).length !== Object.keys(nextProvenance).length) {
+    provenanceChanged = true;
+  }
+
+  const withErrors = retainLocalErrors(previous, synchronized);
+  return {
+    draft: sameReferences(previous, withErrors) ? previous : withErrors,
+    localProvenance: provenanceChanged ? nextProvenance : provenance,
+  };
+}
+
+function retainLocalErrors(
+  previous: readonly Chat.Internal.Message[],
+  synchronized: readonly Chat.Internal.Message[],
+): readonly Chat.Internal.Message[] {
+  const previousSynchronizedCount = previous.filter(
+    (message) => message.role !== 'error',
+  ).length;
+  let synchronizedBefore = 0;
+  const errors = previous.flatMap((message) => {
+    if (message.role !== 'error') {
+      synchronizedBefore += 1;
+      return [];
+    }
+    return [
+      {
+        message,
+        insertionIndex:
+          synchronizedBefore === previousSynchronizedCount
+            ? synchronized.length
+            : Math.min(synchronizedBefore, synchronized.length),
+      },
+    ];
+  });
+
+  const errorsByIndex = errors.reduce((groups, error) => {
+    const group = groups.get(error.insertionIndex);
+    if (group) {
+      group.push(error.message);
+    } else {
+      groups.set(error.insertionIndex, [error.message]);
+    }
+    return groups;
+  }, new Map<number, Chat.Internal.ErrorMessage[]>());
+  return [
+    ...synchronized.flatMap((message, index) => [
+      ...(errorsByIndex.get(index) ?? []),
+      message,
+    ]),
+    ...(errorsByIndex.get(synchronized.length) ?? []),
+  ];
+}
+
+function sameCanonicalMessageSourceReferences(
+  first: ɵAgUiCanonicalMessageSource,
+  second: ɵAgUiCanonicalMessageSource,
+): boolean {
+  return (
+    first.message === second.message &&
+    sameReferences(first.reasoning, second.reasoning)
+  );
+}
+
+function sameCanonicalMessageSourceValues(
+  first: ɵAgUiCanonicalMessageSource,
+  second: ɵAgUiCanonicalMessageSource,
+): boolean {
+  return (
+    sameCanonicalValue(first.message, second.message) &&
+    sameCanonicalValue(first.reasoning, second.reasoning)
+  );
+}
+
+function sameCanonicalValue(first: unknown, second: unknown): boolean {
+  if (first === second) return true;
+  if (
+    first === null ||
+    second === null ||
+    typeof first !== 'object' ||
+    typeof second !== 'object'
+  ) {
+    return false;
+  }
+
+  const firstRecord = first as Readonly<Record<string, unknown>>;
+  const secondRecord = second as Readonly<Record<string, unknown>>;
+  const firstKeys = Object.keys(firstRecord);
+  const secondKeys = Object.keys(secondRecord);
+  return (
+    firstKeys.length === secondKeys.length &&
+    firstKeys.every(
+      (key) =>
+        Object.hasOwn(secondRecord, key) &&
+        sameCanonicalValue(firstRecord[key], secondRecord[key]),
+    )
+  );
+}
+
+function sameReferences<T>(first: readonly T[], second: readonly T[]): boolean {
+  return (
+    first.length === second.length &&
+    first.every((value, index) => value === second[index])
+  );
+}
+
+function readOwn<T>(record: Readonly<Record<string, T>>, key: string) {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
+function writeOwn<T>(record: Record<string, T>, key: string, value: T) {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
 }

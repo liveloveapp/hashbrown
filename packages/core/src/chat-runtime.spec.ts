@@ -282,6 +282,42 @@ test('allows an immediate write when a loading subscriber synchronously stops ge
   }
 });
 
+test('an output-free resend preserves the lossless local message projection', async () => {
+  // Arrange
+  const structuredContent = { prompt: 'Preserve this value.' };
+  const initialMessages: Chat.Message<string, Chat.AnyTool>[] = [
+    { role: 'user', content: structuredContent },
+    { role: 'error', content: 'local error' },
+  ];
+  const send = jest.fn(async (request: TransportRequest) => ({
+    events: successfulEvents(request),
+  }));
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'test',
+    messages: initialMessages,
+    transport: { name: 'test', send },
+  });
+  const initialProjection = runtime.messages();
+  const teardown = runtime.start();
+
+  try {
+    // Act
+    runtime.resendMessages();
+    await waitForRuntimeIdle(runtime);
+
+    const resentProjection = runtime.messages();
+
+    // Assert
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(resentProjection).toBe(initialProjection);
+    expect(resentProjection).toEqual(initialMessages);
+    expect(resentProjection[0]?.content).toBe(structuredContent);
+  } finally {
+    teardown();
+  }
+});
+
 test('publishes live snapshots and deltas before committing successful state', async () => {
   const send = jest.fn(async (request: TransportRequest) => ({
     events: successfulEvents(request, [

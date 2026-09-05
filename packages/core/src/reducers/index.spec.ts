@@ -97,6 +97,222 @@ test('gates rejected canonical events from every derived reducer', () => {
   expect(rejected.status).toBe(before.status);
 });
 
+test('canonical edits supersede local message values while retaining local errors', () => {
+  // Arrange
+  const localContent = { prompt: 'local' };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        { id: 'user-1', role: 'user', content: '{"prompt":"local"}' },
+      ],
+      localProjection: {
+        messages: [
+          { id: 'user-1', role: 'user', content: localContent },
+          { role: 'error', content: 'local error' },
+        ],
+        toolCalls: [],
+      },
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+
+  // Act
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'user-1',
+      delta: ' updated',
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CHUNK,
+      messageId: 'user-2',
+      role: 'user',
+      delta: 'new',
+    }),
+  );
+  const state = store.read((current) => current);
+
+  // Assert
+  expect(state.messages.messages).toEqual([
+    {
+      id: 'user-1',
+      role: 'user',
+      content: '{"prompt":"local"} updated',
+    },
+    { id: 'user-2', role: 'user', content: 'new' },
+    { role: 'error', content: 'local error' },
+  ]);
+  expect(state.messages.messages[0]?.content).not.toBe(localContent);
+});
+
+test('unchanged message synchronization does not serialize canonical history', () => {
+  // Arrange
+  const localContent = { prompt: 'local' };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        { id: 'user-1', role: 'user', content: '{"prompt":"local"}' },
+      ],
+      localProjection: {
+        messages: [{ id: 'user-1', role: 'user', content: localContent }],
+        toolCalls: [],
+      },
+    }),
+  );
+  store.dispatch(internalActions.generationAttemptStarted());
+  const stringify = jest.spyOn(JSON, 'stringify');
+
+  try {
+    // Act
+    store.dispatch(
+      apiActions.generateMessageEvent({
+        type: EventType.RUN_STARTED,
+        threadId: 'thread-1',
+        runId: 'run-1',
+      }),
+    );
+
+    // Assert
+    expect(stringify).not.toHaveBeenCalled();
+    expect(store.read((state) => state.messages.messages[0]?.content)).toBe(
+      localContent,
+    );
+  } finally {
+    stringify.mockRestore();
+  }
+});
+
+test('local tool settlement preserves its structured assistant projection', () => {
+  // Arrange
+  const localContent = { answer: 'local' };
+  const fulfilledValue = { answer: 42 };
+  const fulfilledResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: fulfilledValue,
+  };
+  const localAssistant: Chat.Internal.AssistantMessage = {
+    id: 'assistant-1',
+    role: 'assistant',
+    content: '{"answer":"local"}',
+    contentResolved: localContent,
+    toolCallIds: ['tool-1'],
+  };
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'tool-1',
+    name: 'lookup',
+    arguments: '{}',
+    argumentsResolved: {},
+    status: 'pending',
+  };
+  const tool: Chat.AnyTool = {
+    name: 'lookup',
+    description: 'Looks up a value.',
+    schema: s.object('lookup input', {}),
+    handler: async () => fulfilledValue,
+  };
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '{"answer":"local"}',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [localAssistant],
+        toolCalls: [toolCall],
+      },
+      tools: [tool],
+    }),
+  );
+  store.dispatch(
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  store.dispatch(
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [toolCall],
+    }),
+  );
+
+  // Act
+  store.dispatch(
+    internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [toolCall],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: 'tool-1',
+          toolName: 'lookup',
+          content: fulfilledResult,
+        },
+      ],
+      canonicalMessages: [
+        {
+          id: 'tool-result-1',
+          role: 'tool',
+          toolCallId: 'tool-1',
+          content: '{"answer":42}',
+        },
+      ],
+      continuation: 'stop',
+    }),
+  );
+  const state = store.read((current) => current);
+  const viewAssistant = store.read(selectViewMessages)[0];
+  const viewToolCall =
+    viewAssistant?.role === 'assistant'
+      ? viewAssistant.toolCalls[0]
+      : undefined;
+
+  // Assert
+  expect(state.messages.messages[0]).toBe(localAssistant);
+  expect(
+    state.messages.messages[0]?.role === 'assistant' &&
+      state.messages.messages[0].contentResolved,
+  ).toBe(localContent);
+  expect(state.toolCalls.entities['tool-1']?.result).toBe(fulfilledResult);
+  expect(viewAssistant?.role).toBe('assistant');
+  expect(viewAssistant?.role === 'assistant' && viewAssistant.content).toBe(
+    localContent,
+  );
+  expect(viewToolCall?.status).toBe('done');
+  expect(viewToolCall?.status === 'done' && viewToolCall.result).toBe(
+    fulfilledResult,
+  );
+});
+
 test('reconciles an earlier snapshot assistant before switching the live stream', () => {
   const store = createStore({
     reducers,
